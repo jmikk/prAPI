@@ -1,0 +1,13 @@
+{
+    "author": ["9003"],
+    "install_msg": "Thanks for installing pAPI! Go bug 9003 if he didn't show you how this works.",
+    "name": "pAPI",
+    "disabled": false,
+    "short": "Regional Nation Mangament",
+    "description": "Helps manage a Regional Nation vai the privite API",
+    "tags": [],
+    "requirements": [requests],
+    "hidden": false,
+    "end_user_data_statement": "This cog does not store any End User Data.",
+    "min_bot_version": "1.0.0"
+}
