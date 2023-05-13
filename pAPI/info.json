@@ -1,0 +1,10 @@
+{
+    "name": "pAPI",
+    "description": "This is a privaite api access",
+    "author": "9003",
+    "version": "1.0.0",
+    "minimum_bot_version": "3.3.0",
+    "required_cogs": [],
+    "commands": [],
+    "cogs": []
+}
