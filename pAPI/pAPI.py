@@ -17,7 +17,7 @@ class pAPI(commands.Cog):
         head = response.headers
         if waiting_time := head.get("Retry-After"):
             await asyncio.sleep(int(waiting_time) + 1)
-            await self.api_request(data, header, _limit + 1
+            await self.api_request(data, header, _limit + 1)
         requests_left = int(head["RateLimit-Remaining"])
         seconds_until_reset = int(head["RateLimit-Reset"])
         await asyncio.sleep(seconds_until_reset / requests_left)
