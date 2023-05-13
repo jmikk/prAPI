@@ -1,6 +1,7 @@
 from redbot.core import commands
 import requests
 import time
+import asyncio
 
 class pAPI(commands.Cog):
     """My custom cog"""
