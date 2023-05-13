@@ -1,7 +1,6 @@
 from redbot.core import commands
 import requests
 import time
-import asyncio
 
 class pAPI(commands.Cog):
     """My custom cog"""
@@ -12,13 +11,13 @@ class pAPI(commands.Cog):
         self.RegionalNation=""
 
 
-   async def api_request(self,data, header):
+    def api_request(self,data, header,_limit=0):
         url = "https://www.nationstates.net/cgi-bin/api.cgi"
         response = requests.post(url, data=data, headers=header)
         head = response.headers
         if waiting_time := head.get("Retry-After"):
-            await asyncio.sleep(int(waiting_time)+1))
-            await self.api_request(data,header)
+            time.sleep(int(waiting_time)+1))
+            self.api_request(data,header,_limit+1)
         try:
             requests_left = int(head["X-RateLimit-Remaining"])
         except KeyError:
@@ -27,7 +26,7 @@ class pAPI(commands.Cog):
             seconds_until_reset = int(head["X-RateLimit-Reset"])
         except KeyError:
             seconds_until_reset = int(head["RateLimit-Reset"])
-        await asyncio.sleep(seconds_until_reset / requests_left)
+        time.sleep(seconds_until_reset / requests_left)
         return response
 
 
