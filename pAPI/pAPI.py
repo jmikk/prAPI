@@ -39,14 +39,8 @@ class pAPI(commands.Cog):
         giftToken = r.text.replace(f'<NATION id="{self.RegionalNation}">\n<SUCCESS>',"")
         giftToken = giftToken.replace('</SUCCESS>\n</NATION>',"")
         giftToken= giftToken.strip()
-        #await ctx.send(giftToken)
-        #<NATION id="warden_of_the_spring">
-#<SUCCESS>7grsA-vRc-SDHWQdJqdC2Ll0mTWPRzemwUs3FRsVGu8</SUCCESS>
-#</NATION>
-        #soup = BeautifulSoup(r.content, "lxml")
         try:
             pass
-            #giftToken = soup.find("success").text
         except AttributeError:
             await ctx.send(r.status_code)
             await ctx.send(f"ERROR {r.content}")
