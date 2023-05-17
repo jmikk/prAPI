@@ -14,9 +14,8 @@ class pAPI(commands.Cog):
     async def pAPI_version(self,ctx):
         await ctx.send("This is version 1.2")
         
-    async def api_request(self,data, header,_limit=0):
+    def api_request(self,data, header,_limit=0):
         if _limit > 50:
-            await ctx.send("Sorry no API limit left for you to use I tried 50 times!")
             return
         url = "https://www.nationstates.net/cgi-bin/api.cgi"
         response = requests.post(url, data=data, headers=header)
