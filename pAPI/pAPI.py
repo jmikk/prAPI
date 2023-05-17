@@ -40,17 +40,17 @@ class pAPI(commands.Cog):
         for each in msg:
             output=output+each+" "
         data={"nation":self.RegionalNation,"region":Region,"c":"rmbpost","text":output,"mode":"prepare"}
-        r2 = self.api_request(data=data,header={"User-Agent":User_Agent,'X-Password':self.password})
-        rmbToken = r2.text.replace(f'<NATION id="{self.RegionalNation}">\n<SUCCESS>',"")
+        r = self.api_request(data=data,header={"User-Agent":User_Agent,'X-Password':self.password})
+        rmbToken = r.text.replace(f'<NATION id="{self.RegionalNation}">\n<SUCCESS>',"")
         rmbToken = rmbToken.replace('</SUCCESS>\n</NATION>',"")
         rmbToken = rmbToken.strip()
         data = {"nation":self.RegionalNation,"region":Region,"c":"rmbpost","text":output,"mode":"execute","token":rmbToken}
         headerz = {'User-Agent': User_Agent, 'X-pin': r.headers["x-pin"]}
-        r2 = self.api_request(data=data,header=headerz)
-        if str(z2.status_code) == "200":
+        r = self.api_request(data=data,header=headerz)
+        if str(r.status_code) == "200":
             await ctx.send(f"Posted on  {Region} RMB")
         else:
-            await ctx.send(z2.text)
+            await ctx.send(r.text)
         
         
     @commands.command(pass_context=True)
