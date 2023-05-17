@@ -30,7 +30,7 @@ class pAPI(commands.Cog):
 
     @commands.command()
     async def pAPI_version(self, ctx):
-        await ctx.send("This is version 1.4")
+        await ctx.send("This is version 1.5")
 
     @commands.command()
     async def rmb_post(self, ctx, Region, *, msg):
