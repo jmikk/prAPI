@@ -12,7 +12,7 @@ class pAPI(commands.Cog):
         
     @commands.command(pass_context=True)
     async def pAPI_version(self,ctx):
-        await ctx.send("This is version 1.2")
+        await ctx.send("This is version 1.4")
         
     def api_request(self,data, header,_limit=0):
         if _limit > 50:
@@ -34,6 +34,11 @@ class pAPI(commands.Cog):
         time.sleep(seconds_until_reset / requests_left)
         return response
 
+    @commands.command(pass_context=True)
+    async def log(self,ctx)
+        await ctx.send(ctx)
+    
+    
     @commands.command(pass_context=True)
     async def rmb_post(self, ctx, User_Agent, Region, *msg):
         output = ""
