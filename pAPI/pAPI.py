@@ -39,7 +39,7 @@ class pAPI(commands.Cog):
     async def rmb_post(self, ctx, User_Agent, Region, *msg):
         output = ""
         for each in msg:
-            output=output+each
+            output=output+each+" "
         data={"nation":self.RegionalNation,"region":Region,"c":"rmbpost","text":msg.join(),"mode":"prepare"}
         r = self.api_request(data=data,header={"User-Agent":User_Agent,'X-Password':self.password})
         rmbToken = r.text.replace(f'<NATION id="{self.RegionalNation}">\n<SUCCESS>',"")
