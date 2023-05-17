@@ -35,7 +35,7 @@ class pAPI(commands.Cog):
     @commands.command(pass_context=True)
     async def pAPI_version(self,ctx):
         await ctx.send("This is version 1.4")
-        self.log(">")
+    
         
     
     @commands.command(pass_context=True)
