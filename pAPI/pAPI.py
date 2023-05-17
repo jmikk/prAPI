@@ -12,7 +12,7 @@ class pAPI(commands.Cog):
         
     @commands.command(pass_context=True)
     async def pAPI_version(self,ctx):
-        await ctx.send("This is version 1.1")
+        await ctx.send("This is version 1.2")
         
     def api_request(self,data, header,_limit=0):
         if _limit > 50:
@@ -35,7 +35,18 @@ class pAPI(commands.Cog):
         time.sleep(seconds_until_reset / requests_left)
         return response
 
-
+    @commands.command(pass_context=True)
+    async def rmb_post(self, ctx, User_Agent, Region, *msg):
+        data={"nation":self.RegionalNation,"region":Region,"c":"rmbpost","text":msg.join(),"mode":"prepare"}
+        r = self.api_request(data=data,header={"User-Agent":User_Agent,'X-Password':self.password})
+        rmbToken = r.text.replace(f'<NATION id="{self.RegionalNation}">\n<SUCCESS>',"")
+        rmbToken = rmbToken.replace('</SUCCESS>\n</NATION>',"")
+        rmbToken = rmbToken.strip()
+        data = {"nation":self.RegionalNation,"region":Region,"c":"rmbpost","text":msg.join(),"mode":"execute","token":rmbToken}
+        headerz = {'User-Agent': User_Agent, 'X-pin': r.headers["x-pin"]}
+        r2 = self.api_request(data=data,header=headerz)
+        
+        
     @commands.command(pass_context=True)
     async def gift_card(self, ctx, User_Agent, giftie, cardid, season):
         await ctx.send(f"Attempting to gift {cardid} to {giftie} from {self.RegionalNation}")
@@ -45,12 +56,6 @@ class pAPI(commands.Cog):
         giftToken = r.text.replace(f'<NATION id="{self.RegionalNation}">\n<SUCCESS>',"")
         giftToken = giftToken.replace('</SUCCESS>\n</NATION>',"")
         giftToken= giftToken.strip()
-        try:
-            pass
-        except AttributeError:
-            await ctx.send(r.status_code)
-            await ctx.send(f"ERROR {r.content}")
-            return
         #await ctx.send(r.headers)
         headerz = {'User-Agent': User_Agent, 'X-pin': r.headers["x-pin"]}
         data = {'nation': self.RegionalNation, 'cardid': cardid, 'season': season, 'token': giftToken, 'to': giftie, 'mode': "execute", 'c': 'giftcard'}
