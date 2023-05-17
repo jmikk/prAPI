@@ -40,12 +40,12 @@ class pAPI(commands.Cog):
         output = ""
         for each in msg:
             output=output+each+" "
-        data={"nation":self.RegionalNation,"region":Region,"c":"rmbpost","text":msg.join(),"mode":"prepare"}
+        data={"nation":self.RegionalNation,"region":Region,"c":"rmbpost","text":output,"mode":"prepare"}
         r = self.api_request(data=data,header={"User-Agent":User_Agent,'X-Password':self.password})
         rmbToken = r.text.replace(f'<NATION id="{self.RegionalNation}">\n<SUCCESS>',"")
         rmbToken = rmbToken.replace('</SUCCESS>\n</NATION>',"")
         rmbToken = rmbToken.strip()
-        data = {"nation":self.RegionalNation,"region":Region,"c":"rmbpost","text":msg.join(),"mode":"execute","token":rmbToken}
+        data = {"nation":self.RegionalNation,"region":Region,"c":"rmbpost","text":output,"mode":"execute","token":rmbToken}
         headerz = {'User-Agent': User_Agent, 'X-pin': r.headers["x-pin"]}
         r2 = self.api_request(data=data,header=headerz)
         if str(z2.status_code) == "200":
