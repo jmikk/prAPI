@@ -36,7 +36,7 @@ class pAPI(commands.Cog):
 
     @commands.command(pass_context=True)
     async def log(self,ctx):
-        await ctx.send(ctx)
+        await ctx.send(ctx.text)
     
     
     @commands.command(pass_context=True)
