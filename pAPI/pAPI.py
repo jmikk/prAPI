@@ -37,7 +37,7 @@ class pAPI(commands.Cog):
 
     @commands.command(pass_context=True)
     async def view_log(self,ctx,msg):
-        await ctx.send(file=discord.File("log.txt")
+        await ctx.send(file=discord.File("log.txt"))
                        
     def log(self,msg):
         with open("log.txt","a+") as f:
