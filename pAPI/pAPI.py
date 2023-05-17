@@ -9,8 +9,11 @@ class pAPI(commands.Cog):
         self.bot = bot
         self.password=""
         self.RegionalNation=""
-
-
+        
+    @commands.command(pass_context=True)
+    async def pAPI_version(self,ctx):
+        await ctx.send("This is version 1.1")
+        
     def api_request(self,data, header):
         url = "https://www.nationstates.net/cgi-bin/api.cgi"
         response = requests.post(url, data=data, headers=header)
