@@ -14,13 +14,16 @@ class pAPI(commands.Cog):
     async def pAPI_version(self,ctx):
         await ctx.send("This is version 1.1")
         
-    def api_request(self,data, header):
+    def api_request(self,data, header,_limit=0):
+        if _limit > 50:
+            await ctx.send("Sorry no API limit left for you to use I tried 50 times!")
+            return
         url = "https://www.nationstates.net/cgi-bin/api.cgi"
         response = requests.post(url, data=data, headers=header)
         head = response.headers
         if waiting_time := head.get("Retry-After"):
             time.sleep(int(waiting_time)+1)
-            self.api_request(data,header)
+            self.api_request(data,header,_limit+1)
         try:
             requests_left = int(head["X-RateLimit-Remaining"])
         except KeyError:
