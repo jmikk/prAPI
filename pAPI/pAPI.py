@@ -10,11 +10,7 @@ class pAPI(commands.Cog):
         self.password=""
         self.RegionalNation=""
         
-    @commands.command(pass_context=True)
-    async def pAPI_version(self,ctx):
-        await ctx.send("This is version 1.4")
-        log(">")
-        
+
     def api_request(self,data, header,_limit=0):
         if _limit > 50:
             return
@@ -43,7 +39,11 @@ class pAPI(commands.Cog):
         with open("log.txt","a+") as f:
             f.write(msg)
             
-    
+    @commands.command(pass_context=True)
+    async def pAPI_version(self,ctx):
+        await ctx.send("This is version 1.4")
+        log(">")
+        
     
     @commands.command(pass_context=True)
     async def rmb_post(self, ctx, User_Agent, Region, *msg):
