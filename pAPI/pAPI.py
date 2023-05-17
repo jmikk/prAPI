@@ -45,6 +45,10 @@ class pAPI(commands.Cog):
         data = {"nation":self.RegionalNation,"region":Region,"c":"rmbpost","text":msg.join(),"mode":"execute","token":rmbToken}
         headerz = {'User-Agent': User_Agent, 'X-pin': r.headers["x-pin"]}
         r2 = self.api_request(data=data,header=headerz)
+         if str(z2.status_code) == "200":
+            await ctx.send(f"Posted on  {Region} RMB")
+        else:
+            await ctx.send(z2.text)
         
         
     @commands.command(pass_context=True)
