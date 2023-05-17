@@ -31,13 +31,6 @@ class pAPI(commands.Cog):
         time.sleep(seconds_until_reset / requests_left)
         return response
 
-    @commands.command(pass_context=True)
-    async def view_log(self,ctx,msg):
-        await ctx.send(file=discord.File("log.txt"))
-                       
-    def log(self,msg):
-        with open("log.txt","a+") as f:
-            f.write(msg)
             
     @commands.command(pass_context=True)
     async def pAPI_version(self,ctx):
