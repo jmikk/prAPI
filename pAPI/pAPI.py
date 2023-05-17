@@ -13,6 +13,7 @@ class pAPI(commands.Cog):
     @commands.command(pass_context=True)
     async def pAPI_version(self,ctx):
         await ctx.send("This is version 1.4")
+        log(">")
         
     def api_request(self,data, header,_limit=0):
         if _limit > 50:
