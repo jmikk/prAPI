@@ -2,6 +2,7 @@ from redbot.core import commands
 import asyncio
 import sans
 from discord.ext import commands
+import discord
 
 
 class pAPI(commands.Cog):
