@@ -31,10 +31,11 @@ class pAPI(commands.Cog):
     @commands.command()
     async def pAPI_version(self, ctx):
         await ctx.send("This is version 1.5")
-        
+
     @commands.command()
-    async def dispatch_list_types(self,ctx):
-        await ctx.send("""
+    async def dispatch_list_types(self, ctx):
+        await ctx.send(
+            """
 1 -> factbook
     100 - Overview
     101 - History
@@ -68,28 +69,28 @@ class pAPI(commands.Cog):
 8-> Meta
     835 -> Gameplay
     845 -> Reference
-""")
-    
+"""
+        )
+
     @commands.command()
-    async def new_dispatch(self,ctx,file: discord.File,title,category,subcategory):
-        with open(File,"r") as f:
-            output=f.read()
+    async def new_dispatch(self, ctx, file: discord.File, title, category, subcategory):
+        with open(File, "r") as f:
+            output = f.read()
         data = {
             "nation": self.RegionalNation,
             "c": "dispatch",
-            "dispatch":"add"
+            "dispatch": "add",
             "text": output,
             "mode": "prepare",
-            "category":category,
-            "subcategory":subcategory,
-            "title":title
+            "category": category,
+            "subcategory": subcategory,
+            "title": title,
         }
         r = await self.api_request(data=data)
         dispatchToken = r.xml.find("SUCCESS").text
         data.update(mode="execute", token=dispatchToken)
         r = await self.api_request(data=data)
         await ctx.send(f"Posted Dispatch URL when 9003 grabs it for ya")
-
 
     @commands.command()
     async def rmb_post(self, ctx, Region, *, msg):
