@@ -1,4 +1,4 @@
-from .papi import pAPI
+from .prAPI import pAPI
 
 
 async def setup(bot):
