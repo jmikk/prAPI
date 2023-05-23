@@ -76,7 +76,7 @@ class pAPI(commands.Cog):
 
     @commands.command()
     async def new_dispatch(self, ctx, file: discord.File, title, category, subcategory):
-        with open(File, "r") as f:
+        with open(file, "r") as f:
             output = f.read()
         data = {
             "nation": self.RegionalNation,
