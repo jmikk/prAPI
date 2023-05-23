@@ -5,7 +5,7 @@ from discord.ext import commands
 import discord
 
 
-class pAPI(commands.Cog):
+class prAPI(commands.Cog):
     """My custom cog"""
 
     def __init__(self, bot):
