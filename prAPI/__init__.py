@@ -1,4 +1,4 @@
-from .prAPI import pAPI
+from .prAPI import prAPI
 
 
 def setup(bot):
