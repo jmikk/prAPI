@@ -16,6 +16,14 @@ class prAPI(commands.Cog):
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
 
+    async def convertTuple(tup):
+        # initialize an empty string
+    str = ''
+    for item in tup:
+        str = str + item
+    return str
+
+
     async def cog_command_error(self, ctx, error):
         await ctx.send(" ".join(error.args))
 
