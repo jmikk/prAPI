@@ -16,14 +16,6 @@ class prAPI(commands.Cog):
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
 
-    def convertTuple(tup):
-        # initialize an empty string
-        str = ''
-        for item in tup:
-            str = str + item
-        return str
-
-
     async def cog_command_error(self, ctx, error):
         await ctx.send(" ".join(error.args))
 
@@ -103,8 +95,12 @@ class prAPI(commands.Cog):
         await ctx.send(f"Posted Dispatch URL when 9003 grabs it for ya")
 
     @commands.command()
-    async def rmb_post(self, ctx, Region, *, msg):
-        output = convertTuple(msg)
+    async def rmb_post(self, ctx, Region, *, msg)
+        str = ''
+        for item in msg:
+            str = str + item
+            
+        output = str
         data = {
             "nation": self.RegionalNation,
             "region": Region,
