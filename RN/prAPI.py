@@ -18,10 +18,10 @@ class prAPI(commands.Cog):
 
     async def convertTuple(tup):
         # initialize an empty string
-    str = ''
-    for item in tup:
-        str = str + item
-    return str
+        str = ''
+        for item in tup:
+            str = str + item
+        return str
 
 
     async def cog_command_error(self, ctx, error):
