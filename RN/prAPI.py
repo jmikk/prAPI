@@ -96,7 +96,7 @@ class prAPI(commands.Cog):
 
     @commands.command()
     async def rmb_post(self, ctx, Region, *, msg):
-        output = msg
+        output = convertTuple(msg)
         data = {
             "nation": self.RegionalNation,
             "region": Region,
