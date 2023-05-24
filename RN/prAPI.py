@@ -16,7 +16,7 @@ class prAPI(commands.Cog):
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
 
-    async def convertTuple(tup):
+    def convertTuple(tup):
         # initialize an empty string
         str = ''
         for item in tup:
