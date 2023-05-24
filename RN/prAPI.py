@@ -25,12 +25,12 @@ class prAPI(commands.Cog):
         return response
 
     @commands.command()
-    async def pAPI_agent(self, ctx, *, agent):
+    async def RN_agent(self, ctx, *, agent):
         sans.set_agent(agent, _force=True)
         await ctx.send("Agent set.")
 
     @commands.command()
-    async def pAPI_version(self, ctx):
+    async def RN_version(self, ctx):
         await ctx.send("This is version 1.5")
 
     @commands.command()
