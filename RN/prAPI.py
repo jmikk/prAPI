@@ -16,8 +16,8 @@ class prAPI(commands.Cog):
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
 
-#    async def cog_command_error(self, ctx, error):
-#        await ctx.send(" ".join(error.args))
+    async def cog_command_error(self, ctx, error):
+        await ctx.send(" ".join(error.args))
 
     async def api_request(self, data) -> sans.Response:
         response = await self.client.post(sans.World(**data), auth=self.auth)
