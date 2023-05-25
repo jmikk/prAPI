@@ -95,7 +95,7 @@ class prAPI(commands.Cog):
         await ctx.send(f"Posted Dispatch URL when 9003 grabs it for ya")
 
     @commands.command()
-    async def rmb_post(self, ctx, Region, *, msg)
+    async def rmb_post(self, ctx, Region, *, msg):
         str = ''
         for item in msg:
             str = str + item
