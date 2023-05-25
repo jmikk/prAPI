@@ -100,12 +100,11 @@ class prAPI(commands.Cog):
         for item in msg:
             str = str + item
             
-        output = str
         data = {
             "nation": self.RegionalNation,
             "region": Region,
             "c": "rmbpost",
-            "text": output,
+            "text": str,
             "mode": "prepare",
         }
         r = await self.api_request(data=data)
