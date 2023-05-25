@@ -25,8 +25,7 @@ class prAPI(commands.Cog):
         return response
 
     @commands.command()
-    async def RN_agent(self, ctx, *agent):
-        res = [' '.join(tups) for tups in agent]
+    async def RN_agent(self, ctx, *,agent):
         sans.set_agent(agent, _force=True)
         await ctx.send("Agent set.")
 
