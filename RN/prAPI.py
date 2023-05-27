@@ -93,7 +93,8 @@ class prAPI(commands.Cog):
         dispatchToken = r.xml.find("SUCCESS").text
         data.update(mode="execute", token=dispatchToken)
         r = await self.api_request(data=data)
-        await ctx.send(r.text)
+        rtext = r.xml.find("SUCCESS").text
+        await ctx.send(rtext)
 
     @commands.command()
     async def rmb_post(self, ctx, Region, *, msg):
