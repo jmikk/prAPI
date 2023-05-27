@@ -78,7 +78,7 @@ class prAPI(commands.Cog):
     async def new_dispatch(self, ctx, title: str, category: str, subcategory: str):
         attachment = ctx.message.attachments[0]
         cwd = os.getcwd()
-         file_path = os.path.join(cwd, "dispatch")
+        file_path = os.path.join(cwd, "dispatch")
         await attachment.save(file_path)
         with open(dispatch, "r") as f:
             output = f.read()
