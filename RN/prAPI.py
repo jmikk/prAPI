@@ -76,7 +76,7 @@ class prAPI(commands.Cog):
 
     @commands.command()
     async def new_dispatch(self, ctx, title: str, category: str, subcategory: str):
-        await output = ctx.message.attachments[0].read()
+        output = await ctx.message.attachments[0].read()
         data = {
             "nation": self.RegionalNation,
             "c": "dispatch",
