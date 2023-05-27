@@ -74,8 +74,8 @@ class prAPI(commands.Cog):
         )
 
     @commands.command()
-    async def new_dispatch(self, ctx, file: discord.File, title, category, subcategory):
-        with open(file.fp.name, "r") as f:
+    async def new_dispatch(self, ctx, title, category, subcategory):
+        with open(ctx.attachments[0], "r") as f:
             output = f.read()
         data = {
             "nation": self.RegionalNation,
