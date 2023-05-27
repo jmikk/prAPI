@@ -76,7 +76,7 @@ class prAPI(commands.Cog):
         )
 
     @commands.command()
-    async def new_dispatch(self, ctx, *,title: str, category:str, subcategory:str):
+    async def new_dispatch(self, ctx,title: str, category:str, subcategory:str):
         output = await ctx.message.attachments[0].read()
         output = codecs.decode(output, 'utf-8-sig')
         data = {
