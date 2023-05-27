@@ -3,6 +3,7 @@ import asyncio
 import sans
 import discord
 import os
+import codecs
 
 
 class prAPI(commands.Cog):
@@ -77,6 +78,7 @@ class prAPI(commands.Cog):
     @commands.command()
     async def new_dispatch(self, ctx, title: str, category: str, subcategory: str):
         output = await ctx.message.attachments[0].read()
+        output = codecs.decode(output, 'utf-8-sig')
         data = {
             "nation": self.RegionalNation,
             "c": "dispatch",
