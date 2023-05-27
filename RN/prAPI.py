@@ -2,6 +2,7 @@ from redbot.core import commands
 import asyncio
 import sans
 import discord
+import os
 
 
 class prAPI(commands.Cog):
@@ -76,7 +77,9 @@ class prAPI(commands.Cog):
     @commands.command()
     async def new_dispatch(self, ctx, title: str, category: str, subcategory: str):
         attachment = ctx.message.attachments[0]
-        await attachment.save("dispatch")
+        cwd = os.getcwd()
+         file_path = os.path.join(cwd, "dispatch")
+        await attachment.save(file_path)
         with open(dispatch, "r") as f:
             output = f.read()
         data = {
