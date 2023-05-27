@@ -20,7 +20,7 @@ class prAPI(commands.Cog):
  #       await ctx.send(" ".join(error.args))
 
     async def api_request(self, data) -> sans.Response:
-        response = await self.client.post(sans.World(**data), auth=self.auth)
+        response = await self.client.get(sans.World(**data), auth=self.auth)
         response.raise_for_status()
         return response
 
