@@ -1,9 +1,15 @@
 from redbot.core import commands
 import asyncio
 import sans
-import discord
-import os
 import codecs
+
+
+def is_owner_overridable():
+    # Similar to @commands.is_owner()
+    # Unlike that, however, this check can be overridden with core Permissions
+    def predicate(ctx):
+        return False
+    return commands.permissions_check(predicate)
 
 
 class prAPI(commands.Cog):
@@ -27,22 +33,25 @@ class prAPI(commands.Cog):
         return response
 
     @commands.command()
+    @commands.is_owner()
     async def RN_agent(self, ctx, *,agent):
         sans.set_agent(agent, _force=True)
         await ctx.send("Agent set.")
 
     @commands.command()
+    @is_owner_overridable()
     async def RN_version(self, ctx):
         await ctx.send("This is version 1.5")
 
     @commands.command()
+    @is_owner_overridable()
     async def dispatch_list(self, ctx):
         data = {
             "nation": self.RegionalNation,
              "q" : "dispatchlist"
         }
         r = await self.api_request(data=data)
-        dispatchs = r.xml.findall("DISPATCH")
+        r.xml.findall("DISPATCH")
        # output=""
        # for each in dispatchs:
        #    output = f"{output} ID: {each.get('id')} Title: {each.find('TITLE').text} Views: {each.find('VIEWS').text} Score: {find('SCORE').text}\n"
@@ -50,6 +59,7 @@ class prAPI(commands.Cog):
         await ctx.send(r.text)
 
     @commands.command()
+    @is_owner_overridable()
     async def dispatch_list_types(self, ctx):
         await ctx.send(
             """
@@ -90,6 +100,7 @@ class prAPI(commands.Cog):
         )
 
     @commands.command()
+    @is_owner_overridable()
     async def edit_dispatch(self, ctx, id:str, title: str, category:str, subcategory:str):
         output = await ctx.message.attachments[0].read()
         output = codecs.decode(output, 'utf-8-sig')
@@ -112,6 +123,7 @@ class prAPI(commands.Cog):
         await ctx.send(rtext)
         
     @commands.command()
+    @is_owner_overridable()
     async def new_dispatch(self, ctx,title: str, category:str, subcategory:str):
         output = await ctx.message.attachments[0].read()
         output = codecs.decode(output, 'utf-8-sig')
@@ -133,6 +145,7 @@ class prAPI(commands.Cog):
         await ctx.send(rtext)
 
     @commands.command()
+    @is_owner_overridable()
     async def rmb_post(self, ctx, Region, *, msg):
         str = ''
         for item in msg:
@@ -152,6 +165,7 @@ class prAPI(commands.Cog):
         await ctx.send(f"Posted on  {Region} RMB")
 
     @commands.command()
+    @is_owner_overridable()
     async def gift_card(self, ctx, giftie, cardid, season):
         await ctx.send(
             f"Attempting to gift {cardid} to {giftie} from {self.RegionalNation}"
@@ -173,17 +187,20 @@ class prAPI(commands.Cog):
         await ctx.send(f"Gifted {cardid}, season {season} to {giftie}")
 
     @commands.command()
+    @commands.is_owner()
     async def set_regional_nation(self, ctx, *, nation):
         nation = "_".join(nation.lower().split())
         self.RegionalNation = nation
         await ctx.send(f"Set regional nation to {self.RegionalNation}")
 
     @commands.command()
+    @commands.is_owner()
     async def set_regional_nation_password(self, ctx, *, password2):
         self.auth = sans.NSAuth(password=password2)
         await ctx.send(f"Set regional nation password for {self.RegionalNation}.")
 
     @commands.command()
+    @commands.is_owner()
     async def clear_regional_nation(self, ctx):
         await ctx.send("Voiding any saved data on the regional Nation")
         self.auth = sans.NSAuth()
