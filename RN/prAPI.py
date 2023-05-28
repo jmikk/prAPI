@@ -46,7 +46,7 @@ class prAPI(commands.Cog):
         output=""
         for each in dispatchs:
             output = f"{output} ID: {each.get('id')} Title: {each.find('TITLE').text} Views: {each.find('VIEWS').text} Score: {find('SCORE').text}\n"
-        await ctx.send(dispatchs)
+        await ctx.send(r.text)
         await ctx.send(output)
 
     @commands.command()
