@@ -37,7 +37,7 @@ class prAPI(commands.Cog):
 
     @commands.command()
     async def dispatch_list(self, ctx):
-         data = {
+        data = {
             "nation": self.RegionalNation,
              "q" : "dispatchlist"
         }
