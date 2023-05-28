@@ -43,11 +43,11 @@ class prAPI(commands.Cog):
         }
         r = await self.api_request(data=data)
         dispatchs = r.xml.findall("DISPATCH")
-        output=""
-        for each in dispatchs:
-            output = f"{output} ID: {each.get('id')} Title: {each.find('TITLE').text} Views: {each.find('VIEWS').text} Score: {find('SCORE').text}\n"
+       # output=""
+       # for each in dispatchs:
+       #    output = f"{output} ID: {each.get('id')} Title: {each.find('TITLE').text} Views: {each.find('VIEWS').text} Score: {find('SCORE').text}\n"
+       #The above code I want to work but does not
         await ctx.send(r.text)
-        await ctx.send(output)
 
     @commands.command()
     async def dispatch_list_types(self, ctx):
