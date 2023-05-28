@@ -36,6 +36,19 @@ class prAPI(commands.Cog):
         await ctx.send("This is version 1.5")
 
     @commands.command()
+    async def dispatch_list(self, ctx):
+         data = {
+            "nation": self.RegionalNation,
+             "q" : "dispatchlist"
+        }
+        r = await self.api_request(data=data)
+        dispatchs = r.xml.findall("DISPATCH")
+        output=[]
+        for each in dispatchs:
+            output=f"ID: {each.get("id")} Title: {each.find('TITLE').text} Views: {each.find('VIEWS').text} Score: {find('SCORE').text}\n"
+        await ctx.send(output)
+
+    @commands.command()
     async def dispatch_list_types(self, ctx):
         await ctx.send(
             """
