@@ -45,7 +45,7 @@ class prAPI(commands.Cog):
         dispatchs = r.xml.findall("DISPATCH")
         output=""
         for each in dispatchs:
-            output = f"{output} ID: {each.get("id")} Title: {each.find('TITLE').text} Views: {each.find('VIEWS').text} Score: {find('SCORE').text}\n"
+            output = f"{output} ID: {each.get('id')} Title: {each.find('TITLE').text} Views: {each.find('VIEWS').text} Score: {find('SCORE').text}\n"
         await ctx.send(output)
 
     @commands.command()
