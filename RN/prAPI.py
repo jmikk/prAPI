@@ -90,6 +90,28 @@ class prAPI(commands.Cog):
         )
 
     @commands.command()
+    async def edit_dispatch(self, ctx, id:str, title: str, category:str, subcategory:str):
+        output = await ctx.message.attachments[0].read()
+        output = codecs.decode(output, 'utf-8-sig')
+        data = {
+            "nation": self.RegionalNation,
+            "c": "dispatch",
+            "dispatch": "edit",
+            "text": output,
+            "mode": "prepare",
+            "category": category,
+            "subcategory": subcategory,
+            "title": title,
+            "dispatchid":id
+        }
+        r = await self.api_request(data=data)
+        dispatchToken = r.xml.find("SUCCESS").text
+        data.update(mode="execute", token=dispatchToken)
+        r = await self.api_request(data=data)
+        rtext = r.xml.find("SUCCESS").text
+        await ctx.send(rtext)
+        
+    @commands.command()
     async def new_dispatch(self, ctx,title: str, category:str, subcategory:str):
         output = await ctx.message.attachments[0].read()
         output = codecs.decode(output, 'utf-8-sig')
