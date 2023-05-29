@@ -143,6 +143,22 @@ class prAPI(commands.Cog):
         r = await self.api_request(data=data)
         rtext = r.xml.find("SUCCESS").text
         await ctx.send(rtext)
+        
+    @commands.command()
+    @is_owner_overridable()
+    async def delete_dispatch(self, ctx,ID):
+        data = {
+            "nation": self.RegionalNation,
+            "c": "dispatch",
+            "dispatch": "remove",
+            "mode": "prepare",
+        }
+        r = await self.api_request(data=data)
+        dispatchToken = r.xml.find("SUCCESS").text
+        data.update(mode="execute", token=dispatchToken)
+        r = await self.api_request(data=data)
+        rtext = r.xml.find("SUCCESS").text
+        await ctx.send(rtext)
 
     @commands.command()
     @is_owner_overridable()
