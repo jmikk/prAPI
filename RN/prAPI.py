@@ -152,6 +152,7 @@ class prAPI(commands.Cog):
             "c": "dispatch",
             "dispatch": "remove",
             "mode": "prepare",
+            "dispatchid":ID
         }
         r = await self.api_request(data=data)
         dispatchToken = r.xml.find("SUCCESS").text
