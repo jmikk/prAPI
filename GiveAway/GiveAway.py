@@ -3,7 +3,7 @@ import asyncio
 import random
 from redbot.core import commands
 
-class Giveaway(commands.Cog):
+class GiveAway(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.giveaway_channel_id = 865778321546543117
