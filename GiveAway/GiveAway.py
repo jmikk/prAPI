@@ -25,6 +25,7 @@ class GiveAway(commands.Cog):
         return f"<t:{timestamp}:R>"
 
 @commands.command()
+@commands.has_permissions(administrator=True)
 async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Role):
     if self.current_giveaway is not None:
         await ctx.send("A giveaway is already running.")
@@ -48,7 +49,7 @@ async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Ro
     )
 
     channel = self.bot.get_channel(self.giveaway_channel_id)
-    sent_message = await channel.send(message)
+    sent_message = await channel.send(content=message)
     await sent_message.add_reaction("🎉")
 
     await asyncio.sleep(duration)
@@ -67,6 +68,7 @@ async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Ro
         await channel.send(f"Congratulations to {winner.mention} for winning the giveaway!")
     else:
         await channel.send("No eligible participants. The giveaway has ended.")
+
 
 
     @commands.Cog.listener()
