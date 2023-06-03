@@ -35,8 +35,7 @@ class GiveAway(commands.Cog):
 
         new_message = await channel.fetch_message(message.id)
         reaction = discord.utils.get(new_message.reactions, emoji="🎉")
-        participants = await list(reaction.users())
-
+        participants = await reaction.users().flatten()
         eligible_participants = [
             participant
             for participant in participants
