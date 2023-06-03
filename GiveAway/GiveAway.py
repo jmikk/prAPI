@@ -21,6 +21,9 @@ class GiveAway(commands.Cog):
         else:
             return f"{seconds} seconds"
 
+    def format_timestamp(self, timestamp):
+        return f"<t:{timestamp}:R>"
+
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Role):
@@ -36,11 +39,12 @@ class GiveAway(commands.Cog):
         }
 
         formatted_duration = self.format_duration(duration)
+        end_timestamp = int((datetime.utcnow() + timedelta(seconds=duration)).timestamp())
         message = (
             f"🎉 **Giveaway** 🎉\n\n"
             f"React with 🎉 to enter the giveaway!\n"
             f"Prize: {prize}\n"
-            f"Ends in {formatted_duration}."
+            f"Ends in {self.format_timestamp(end_timestamp)}."
         )
 
         channel = self.bot.get_channel(self.giveaway_channel_id)
