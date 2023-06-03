@@ -59,7 +59,7 @@ class issues(commands.Cog):
         await ctx.send("idk boss")
         r = await self.api_request(data={'nation': self.IssueNation, 'q': 'issues'})
         # Extracting data from the parsed XML
-        r.xml.findall("issue")
+        issues=r.xml.findall("issue")
         for issue in issues:
             title = issue.find('title').text
             text = issue.find('text').text
