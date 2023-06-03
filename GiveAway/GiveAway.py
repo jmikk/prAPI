@@ -5,7 +5,7 @@ import asyncio
 class Giveaway(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.giveaway_channel_id = 1114598850049618060
+        self.giveaway_channel_id = 865778321546543117
         self.current_giveaway = None
 
     @commands.command()
@@ -57,6 +57,3 @@ class Giveaway(commands.Cog):
                 
                 if any(role in member.roles for role in self.current_giveaway["roles"]):
                     self.current_giveaway["participants"].append(member)
-
-def setup(bot):
-    bot.add_cog(Giveaway(bot))
