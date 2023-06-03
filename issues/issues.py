@@ -63,6 +63,7 @@ class issues(commands.Cog):
         
         for issue in issues:
             title = issue.find('title').text
+            await ctx.send(title)
             text = issue.find('text').text
             author = issue.find('author').text
             editor = issue.find('editor').text
