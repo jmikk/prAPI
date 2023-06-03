@@ -44,7 +44,7 @@ class issues(commands.Cog):
     @commands.is_owner()
     async def set_issues_nation(self, ctx, *, nation):
         nation = "_".join(nation.lower().split())
-        self.RegionalNation = nation
+        self.IssuesNation = nation
         await ctx.send(f"Set regional nation to {self.RegionalNation}")
 
     @commands.command()
