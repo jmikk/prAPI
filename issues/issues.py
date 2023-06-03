@@ -59,7 +59,7 @@ class issues(commands.Cog):
         # Extracting data from the parsed XML
         with open("junk.xml","w")as f:
             f.write(r.xml)
-        root = ET.parse("xml.xml").getroot()    
+        root = ET.parse("junk.xml").getroot()    
         issues = root.iter(issue)
         
         for issue in issues:
