@@ -31,15 +31,17 @@ class GiveAway(commands.Cog):
             await ctx.send("A giveaway is already running.")
             return
 
+        end_time = datetime.utcnow() + timedelta(seconds=duration)
+        end_timestamp = int(end_time.timestamp())  # Store the end timestamp
+
         self.current_giveaway = {
-            "end_time": datetime.utcnow() + timedelta(seconds=duration),
+            "end_timestamp": end_timestamp,  # Store the end timestamp
             "prize": prize,
             "roles": roles,
             "participants": []
         }
 
         formatted_duration = self.format_duration(duration)
-        end_timestamp = int((datetime.utcnow() + timedelta(seconds=duration)).timestamp())
         message = (
             f"🎉 **Giveaway** 🎉\n\n"
             f"React with 🎉 to enter the giveaway!\n"
