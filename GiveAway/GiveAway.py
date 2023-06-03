@@ -36,17 +36,21 @@ class GiveAway(commands.Cog):
         }
 
         formatted_duration = self.format_duration(duration)
-        embed = discord.Embed(title="Giveaway", description=f"React with 🎉 to enter the giveaway!\nPrize: {prize}")
-        embed.set_footer(text=f"Ends in {formatted_duration}.")
+        message = (
+            f"🎉 **Giveaway** 🎉\n\n"
+            f"React with 🎉 to enter the giveaway!\n"
+            f"Prize: {prize}\n"
+            f"Ends in {formatted_duration}."
+        )
 
         channel = self.bot.get_channel(self.giveaway_channel_id)
-        message = await channel.send(embed=embed)
-        await message.add_reaction("🎉")
+        sent_message = await channel.send(message)
+        await sent_message.add_reaction("🎉")
 
         await asyncio.sleep(duration)
         self.current_giveaway = None
 
-        new_message = await channel.fetch_message(message.id)
+        new_message = await channel.fetch_message(sent_message.id)
         reaction = discord.utils.get(new_message.reactions, emoji="🎉")
         participants = []
         async for user in reaction.users():
