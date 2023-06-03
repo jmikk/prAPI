@@ -25,7 +25,6 @@ class GiveAway(commands.Cog):
         return f"<t:{timestamp}:R>"
 
 @commands.command()
-@commands.has_permissions(administrator=True)
 async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Role):
     if self.current_giveaway is not None:
         await ctx.send("A giveaway is already running.")
