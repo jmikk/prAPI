@@ -58,10 +58,7 @@ class issues(commands.Cog):
     async def issues(self,ctx):
         r = await self.api_request(data={'nation': self.IssueNation, 'q': 'issues'})
         # Extracting data from the parsed XML
-        current_path = os.getcwd()
-        with open(f"{current_path}junk.xml","w")as f:
-            f.write(r.xml)
-        root = ET.parse(f"{current_path}junk.xml").getroot()    
+        root = ET.fromstring(r.xml)
         issues = root.iter(issue)
         
         for issue in issues:
