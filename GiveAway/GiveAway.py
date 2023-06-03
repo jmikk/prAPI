@@ -1,6 +1,7 @@
 import discord
 import asyncio
 import random
+from redbot.core import commands
 
 class Giveaway(commands.Cog):
     def __init__(self, bot):
