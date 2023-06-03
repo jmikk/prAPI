@@ -21,53 +21,44 @@ class GiveAway(commands.Cog):
         else:
             return f"{seconds} seconds"
 
-@commands.command()
-@commands.has_permissions(administrator=True)
-async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Role):
-    if self.current_giveaway is not None:
-        await ctx.send("A giveaway is already running.")
-        return
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Role):
+        if self.current_giveaway is not None:
+            await ctx.send("A giveaway is already running.")
+            return
 
-    self.current_giveaway = {
-        "end_time": datetime.utcnow() + timedelta(seconds=duration),
-        "prize": prize,
-        "roles": roles,
-        "participants": []
-    }
+        self.current_giveaway = {
+            "end_time": datetime.utcnow() + timedelta(seconds=duration),
+            "prize": prize,
+            "roles": roles,
+            "participants": []
+        }
 
-    formatted_duration = self.format_duration(duration)
+        formatted_duration = self.format_duration(duration)
+        embed = discord.Embed(title="Giveaway", description=f"React with 🎉 to enter the giveaway!\nPrize: {prize}")
+        embed.set_footer(text=f"Ends in {formatted_duration}.")
 
-    role_names = [role.name for role in roles]
-    role_mentions = " ".join([role.mention for role in roles])
+        channel = self.bot.get_channel(self.giveaway_channel_id)
+        message = await channel.send(embed=embed)
+        await message.add_reaction("🎉")
 
-    embed = discord.Embed(title="Giveaway", description=f"React with 🎉 to enter the giveaway!\nPrize: {prize}")
-    embed.add_field(name="Eligible Roles", value=role_mentions, inline=False)
+        await asyncio.sleep(duration)
+        self.current_giveaway = None
 
-    channel = self.bot.get_channel(self.giveaway_channel_id)
-    message = await channel.send(embed=embed)
-    await message.add_reaction("🎉")
+        new_message = await channel.fetch_message(message.id)
+        reaction = discord.utils.get(new_message.reactions, emoji="🎉")
+        participants = []
+        async for user in reaction.users():
+            participant = await channel.guild.fetch_member(user.id)
+            if any(role in participant.roles for role in roles):
+                participants.append(participant)
 
-    await asyncio.sleep(duration)
-    self.current_giveaway = None
-
-    new_message = await channel.fetch_message(message.id)
-    reaction = discord.utils.get(new_message.reactions, emoji="🎉")
-    participants = []
-    async for user in reaction.users():
-        participant = await channel.guild.fetch_member(user.id)
-        if any(role in participant.roles for role in roles):
-            participants.append(participant)
-
-    if participants:
-        winner = random.choice(participants)
-        await channel.send(f"Congratulations to {winner.mention} for winning the giveaway!")
-    else:
-        await channel.send("No eligible participants. The giveaway has ended.")
-
-    end_time = datetime.utcnow() + timedelta(seconds=duration)
-    fancy_end_time = f"<t:{int(end_time.timestamp())}:f>"
-    await channel.send(f"The giveaway ends at {fancy_end_time} UTC.")
-
+        if participants:
+            winner = random.choice(participants)
+            await channel.send(f"Congratulations to {winner.mention} for winning the giveaway!")
+        else:
+            await channel.send("No eligible participants. The giveaway has ended.")
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
