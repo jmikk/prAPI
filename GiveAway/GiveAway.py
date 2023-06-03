@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 class GiveAway(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.giveaway_channel_id = 865778321546543117
+        self.giveaway_channel_id = None
         self.current_giveaway = None
 
     def format_duration(self, duration):
