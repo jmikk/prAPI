@@ -51,7 +51,7 @@ class issues(commands.Cog):
     @commands.is_owner()
     async def set_issues_nation_password(self, ctx, *, password2):
         self.auth = sans.NSAuth(password=password2)
-        await ctx.send(f"Set regional nation password for {self.RegionalNation}.")
+        await ctx.send(f"Set regional nation password for {self.IssuesNation}.")
     
     @commands.command()
     @commands.is_owner()
