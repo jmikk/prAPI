@@ -81,3 +81,11 @@ class GiveAway(commands.Cog):
 
                 if any(role in member.roles for role in self.current_giveaway["roles"]):
                     self.current_giveaway["participants"].append(member)
+                    
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def setgiveawaychannel(self, ctx, channel: discord.TextChannel):
+        self.giveaway_channel_id = channel.id
+        await ctx.send(f"Giveaway channel set to {channel.mention}")
+                
+    
