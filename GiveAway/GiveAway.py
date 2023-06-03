@@ -1,8 +1,8 @@
-import asyncio
-from redbot.core import commands
 import discord
+import asyncio
+import random
 
-class GiveAway(commands.Cog):
+class Giveaway(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.giveaway_channel_id = 865778321546543117
@@ -34,9 +34,13 @@ class GiveAway(commands.Cog):
 
         new_message = await channel.fetch_message(message.id)
         reaction = discord.utils.get(new_message.reactions, emoji="🎉")
-        participants = await reaction.users().flatten()
+        participants = await list(reaction.users())
 
-        eligible_participants = [participant for participant in participants if any(role in participant.roles for role in roles)]
+        eligible_participants = [
+            participant
+            for participant in participants
+            if any(role in participant.roles for role in roles)
+        ]
 
         if eligible_participants:
             winner = random.choice(eligible_participants)
@@ -54,6 +58,7 @@ class GiveAway(commands.Cog):
             if channel_id == self.giveaway_channel_id and message_id == self.current_giveaway["message_id"]:
                 guild = self.bot.get_guild(payload.guild_id)
                 member = guild.get_member(user_id)
-                
+
                 if any(role in member.roles for role in self.current_giveaway["roles"]):
                     self.current_giveaway["participants"].append(member)
+
