@@ -32,7 +32,7 @@ class GiveAway(commands.Cog):
             return
 
         self.current_giveaway = {
-            "end_time": datetime.utcnow().timestamp() + timedelta(seconds=duration),
+            "end_time": datetime.utcnow().timestamp() + timedelta(seconds=duration).total_seconds(),
             "prize": prize,
             "roles": roles,
             "participants": []
