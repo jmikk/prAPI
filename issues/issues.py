@@ -1,6 +1,8 @@
 from redbot.core import commands
 import asyncio
 import sans
+from bs4 import BeautifulSoup
+
 
 def is_owner_overridable():
     # Similar to @commands.is_owner()
