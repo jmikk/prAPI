@@ -2,6 +2,7 @@ from redbot.core import commands
 import asyncio
 import sans
 import xml.etree.ElementTree as ET
+import os
 
 
 def is_owner_overridable():
@@ -57,9 +58,10 @@ class issues(commands.Cog):
     async def issues(self,ctx):
         r = await self.api_request(data={'nation': self.IssueNation, 'q': 'issues'})
         # Extracting data from the parsed XML
-        with open("junk.xml","w")as f:
+        current_path = os.getcwd()
+        with open(f"{current_path}junk.xml","w")as f:
             f.write(r.xml)
-        root = ET.parse("junk.xml").getroot()    
+        root = ET.parse(f"{current_path}junk.xml").getroot()    
         issues = root.iter(issue)
         
         for issue in issues:
