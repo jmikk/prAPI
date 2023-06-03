@@ -19,7 +19,7 @@ class issues(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.auth = sans.NSAuth()
-        self.IssueNation = ""
+        self.IssuesNation = ""
         self.client = sans.AsyncClient()
         
     def cog_unload(self):
