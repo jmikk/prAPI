@@ -2,6 +2,8 @@ import discord
 import asyncio
 import random
 from redbot.core import commands
+from datetime import datetime, timedelta
+from discord.utils import humanize_timedelta
 
 class GiveAway(commands.Cog):
     def __init__(self, bot):
@@ -11,41 +13,38 @@ class GiveAway(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def startgiveaway(self, ctx, time: int, prize: str, *roles: discord.Role):
+    async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Role):
         if self.current_giveaway is not None:
             await ctx.send("A giveaway is already running.")
             return
 
         self.current_giveaway = {
-            "time": time,
+            "end_time": datetime.utcnow() + timedelta(seconds=duration),
             "prize": prize,
             "roles": roles,
             "participants": []
         }
 
         embed = discord.Embed(title="Giveaway", description=f"React with 🎉 to enter the giveaway!\nPrize: {prize}")
-        embed.set_footer(text=f"Ends in {time} seconds.")
+        embed.set_footer(text=f"Ends in {humanize_timedelta(timedelta(seconds=duration))}.")
 
         channel = self.bot.get_channel(self.giveaway_channel_id)
         message = await channel.send(embed=embed)
         await message.add_reaction("🎉")
 
-        await asyncio.sleep(time)
+        await asyncio.sleep(duration)
         self.current_giveaway = None
 
         new_message = await channel.fetch_message(message.id)
         reaction = discord.utils.get(new_message.reactions, emoji="🎉")
         participants = []
-        async for participant in reaction.users():
-            participants.append(participant)
-        eligible_participants = [
-            participant
-            for participant in participants
-            if any(role in participant.roles for role in roles)
-        ]
+        async for user in reaction.users():
+            participant = await channel.guild.fetch_member(user.id)
+            if any(role in participant.roles for role in roles):
+                participants.append(participant)
 
-        if eligible_participants:
-            winner = random.choice(eligible_participants)
+        if participants:
+            winner = random.choice(participants)
             await channel.send(f"Congratulations to {winner.mention} for winning the giveaway!")
         else:
             await channel.send("No eligible participants. The giveaway has ended.")
@@ -63,4 +62,3 @@ class GiveAway(commands.Cog):
 
                 if any(role in member.roles for role in self.current_giveaway["roles"]):
                     self.current_giveaway["participants"].append(member)
-
