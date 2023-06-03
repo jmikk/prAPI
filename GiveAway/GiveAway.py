@@ -8,6 +8,7 @@ class GiveAway(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.giveaways = {}
+        self.giveaway_channel_id = None  # Initialize giveaway channel ID as None
 
     def generate_giveaway_id(self):
         while True:
@@ -67,6 +68,13 @@ class GiveAway(commands.Cog):
         else:
             await channel.send(f"No eligible participants. The giveaway ({giveaway_id}) has ended.")
 
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def setgiveawaychannel(self, ctx, channel: discord.TextChannel):
+        self.giveaway_channel_id = channel.id
+        await ctx.send(f"Giveaway channel set to {channel.mention}")
+
+            
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         for giveaway_id, giveaway_data in self.giveaways.items():
