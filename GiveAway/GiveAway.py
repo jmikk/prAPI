@@ -1,5 +1,6 @@
 import asyncio
 from redbot.core import commands
+import discord
 
 class GiveAway(commands.Cog):
     def __init__(self, bot):
