@@ -25,9 +25,10 @@ class GiveAway(commands.Cog):
         }
 
         end_timestamp = datetime.utcnow() + timedelta(seconds=duration)
-        formatted_duration = discord.utils.format_dt(end_timestamp, style="t")
-        embed = discord.Embed(title="Giveaway", description=f"React with 🎉 to enter the giveaway!\nPrize: {prize}")
-        embed.set_footer(text=f"Ends at {formatted_duration} UTC.")
+        formatted_duration = discord.utils.format_dt(end_timestamp, "R")  # Fancy timestamp
+        footer_text = f"Ends at {formatted_duration} UTC."
+
+        embed = discord.Embed(title="Giveaway", description=f"React with 🎉 to enter the giveaway!\nPrize: {prize}", footer=footer_text)
 
         channel = self.bot.get_channel(self.giveaway_channel_id)
         message = await channel.send(embed=embed)
