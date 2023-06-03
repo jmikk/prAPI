@@ -10,6 +10,17 @@ class GiveAway(commands.Cog):
         self.giveaway_channel_id = 865778321546543117
         self.current_giveaway = None
 
+    def format_duration(self, duration):
+        hours, remainder = divmod(duration, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        if hours > 0:
+            return f"{hours} hours, {minutes} minutes"
+        elif minutes > 0:
+            return f"{minutes} minutes, {seconds} seconds"
+        else:
+            return f"{seconds} seconds"
+
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Role):
@@ -24,11 +35,9 @@ class GiveAway(commands.Cog):
             "participants": []
         }
 
-        end_timestamp = datetime.utcnow() + timedelta(seconds=duration)
-        formatted_duration = discord.utils.format_dt(end_timestamp, "R")  # Fancy timestamp
-        footer_text = f"Ends at {formatted_duration} UTC."
-
-        embed = discord.Embed(title="Giveaway", description=f"React with 🎉 to enter the giveaway!\nPrize: {prize}", footer=footer_text)
+        formatted_duration = self.format_duration(duration)
+        embed = discord.Embed(title="Giveaway", description=f"React with 🎉 to enter the giveaway!\nPrize: {prize}")
+        embed.set_footer(text=f"Ends in {formatted_duration}.")
 
         channel = self.bot.get_channel(self.giveaway_channel_id)
         message = await channel.send(embed=embed)
