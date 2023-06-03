@@ -1,8 +1,8 @@
 import discord
 import asyncio
 import random
-from datetime import datetime, timedelta
 from redbot.core import commands
+from datetime import datetime, timedelta
 
 class GiveAway(commands.Cog):
     def __init__(self, bot):
@@ -59,12 +59,6 @@ class GiveAway(commands.Cog):
             await channel.send(f"Congratulations to {winner.mention} for winning the giveaway!")
         else:
             await channel.send("No eligible participants. The giveaway has ended.")
-
-        # Send a separate message with the roles allowed to enter and the timestamp for when it ends
-        role_mentions = [role.mention for role in roles]
-        end_time = self.current_giveaway["end_time"].astimezone().strftime("%Y-%m-%d %H:%M:%S %Z%z")
-        separate_message = f"Roles allowed to enter: {' '.join(role_mentions)}\nEnd time: {end_time}"
-        await channel.send(separate_message)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
