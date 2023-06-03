@@ -59,9 +59,7 @@ class issues(commands.Cog):
         await ctx.send("idk boss")
         r = await self.api_request(data={'nation': self.IssueNation, 'q': 'issues'})
         # Extracting data from the parsed XML
-        await ctx.send(r.xml)
-        issues = r.xml.iter("issue")
-        await ctx.send("|"+issues)
+        issues.findall("issue")
         for issue in issues:
             title = issue.find('title').text
             text = issue.find('text').text
@@ -75,7 +73,7 @@ class issues(commands.Cog):
             embed.set_author(name=f'Written by {author}, Edited by {editor}')
             embed.add_field(name='The issue', value=text, inline=False)
             await ctx.send(embed=embed)
-            options = issue.iter('option')
+            options = issue.findall('option')
 
             for option in options:
                 option_id = option['id']
