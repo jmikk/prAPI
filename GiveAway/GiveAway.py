@@ -2,6 +2,7 @@ import discord
 import asyncio
 import random
 from datetime import datetime, timedelta
+from redbot.core import commands
 
 class GiveAway(commands.Cog):
     def __init__(self, bot):
