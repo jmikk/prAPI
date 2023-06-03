@@ -53,8 +53,8 @@ class issues(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def issues(self,ctx):
-        r = await api_request(data='nation': self.IssueNation,
-                   'q': 'issues')
+    r = await self.api_request(data={'nation': self.IssueNation, 'q': 'issues'})
+
         
         soup = BeautifulSoup(r.text, 'html.parser')
 
