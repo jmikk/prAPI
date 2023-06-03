@@ -24,49 +24,51 @@ class GiveAway(commands.Cog):
     def format_timestamp(self, timestamp):
         return f"<t:{timestamp}:R>"
 
-    @commands.command()
-    @commands.has_permissions(administrator=True)
-    async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Role):
-        if self.current_giveaway is not None:
-            await ctx.send("A giveaway is already running.")
-            return
+@commands.command()
+@commands.has_permissions(administrator=True)
+async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Role):
+    if self.current_giveaway is not None:
+        await ctx.send("A giveaway is already running.")
+        return
 
-        self.current_giveaway = {
-            "end_time": datetime.utcnow() + timedelta(seconds=duration),
-            "prize": prize,
-            "roles": roles,
-            "participants": []
-        }
+    end_time = datetime.utcnow() + timedelta(seconds=duration)
+    self.current_giveaway = {
+        "end_time": end_time,
+        "prize": prize,
+        "roles": roles,
+        "participants": []
+    }
 
-        formatted_duration = self.format_duration(duration)
-        end_timestamp = int((datetime.utcnow() + timedelta(seconds=duration)).timestamp())
-        message = (
-            f"🎉 **Giveaway** 🎉\n\n"
-            f"React with 🎉 to enter the giveaway!\n"
-            f"Prize: {prize}\n"
-            f"Ends in {self.format_timestamp(end_timestamp)}."
-        )
+    formatted_duration = self.format_duration(duration)
+    end_timestamp = int(end_time.timestamp())
+    message = (
+        f"🎉 **Giveaway** 🎉\n\n"
+        f"React with 🎉 to enter the giveaway!\n"
+        f"Prize: {prize}\n"
+        f"Ends in {self.format_timestamp(end_timestamp)}."
+    )
 
-        channel = self.bot.get_channel(self.giveaway_channel_id)
-        sent_message = await channel.send(message)
-        await sent_message.add_reaction("🎉")
+    channel = self.bot.get_channel(self.giveaway_channel_id)
+    sent_message = await channel.send(message)
+    await sent_message.add_reaction("🎉")
 
-        await asyncio.sleep(duration)
-        self.current_giveaway = None
+    await asyncio.sleep(duration)
+    self.current_giveaway = None
 
-        new_message = await channel.fetch_message(sent_message.id)
-        reaction = discord.utils.get(new_message.reactions, emoji="🎉")
-        participants = []
-        async for user in reaction.users():
-            participant = await channel.guild.fetch_member(user.id)
-            if any(role in participant.roles for role in roles):
-                participants.append(participant)
+    new_message = await channel.fetch_message(sent_message.id)
+    reaction = discord.utils.get(new_message.reactions, emoji="🎉")
+    participants = []
+    async for user in reaction.users():
+        participant = await channel.guild.fetch_member(user.id)
+        if any(role in participant.roles for role in roles):
+            participants.append(participant)
 
-        if participants:
-            winner = random.choice(participants)
-            await channel.send(f"Congratulations to {winner.mention} for winning the giveaway!")
-        else:
-            await channel.send("No eligible participants. The giveaway has ended.")
+    if participants:
+        winner = random.choice(participants)
+        await channel.send(f"Congratulations to {winner.mention} for winning the giveaway!")
+    else:
+        await channel.send("No eligible participants. The giveaway has ended.")
+
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
