@@ -22,7 +22,8 @@ class GiveAway(commands.Cog):
             return f"{seconds} seconds"
 
     def format_timestamp(self, timestamp):
-        return f"<t:{timestamp}:R>"
+        return f"<t:{timestamp}:F>"
+
 
     @commands.command()
     @commands.has_permissions(administrator=True)
