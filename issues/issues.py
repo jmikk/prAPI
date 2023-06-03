@@ -53,7 +53,7 @@ class issues(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def issues(self,ctx):
-        r = api_request(data='nation': self.IssueNation,
+        r = await api_request(data='nation': self.IssueNation,
                    'q': 'issues')
         
         soup = BeautifulSoup(r.text, 'html.parser')
@@ -85,7 +85,7 @@ class issues(commands.Cog):
                         color=discord.Color.blue()  # You can set a custom color for the embed
                     )
                 embed.add_field(name='The option', value=option_text, inline=False)
-                await ct.send(embed=embed)
+                await ctx.send(embed=embed)
 
 
                 
