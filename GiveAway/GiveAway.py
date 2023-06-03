@@ -22,7 +22,8 @@ class GiveAway(commands.Cog):
             return f"{seconds} seconds"
 
     def format_timestamp(self, timestamp):
-        return f"<t:{timestamp}:R>"
+        return f"<t:{timestamp//1000}:R>"
+
 
 
     @commands.command()
@@ -33,7 +34,7 @@ class GiveAway(commands.Cog):
             return
 
         end_time = datetime.utcnow() + timedelta(seconds=duration)
-        end_timestamp = int(end_time.timestamp())  # Store the end timestamp
+        end_timestamp = int((datetime.utcnow() + timedelta(seconds=duration)).timestamp() * 1000)
 
         self.current_giveaway = {
             "end_timestamp": end_timestamp,  # Store the end timestamp
