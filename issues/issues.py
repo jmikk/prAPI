@@ -59,11 +59,11 @@ class issues(commands.Cog):
         await ctx.send("idk boss")
         r = await self.api_request(data={'nation': self.IssueNation, 'q': 'issues'})
         # Extracting data from the parsed XML
+        await ctx.send(r.xml)
         issues = r.xml.iter("issue")
-        
+        await ctx.send("|"+issues)
         for issue in issues:
             title = issue.find('title').text
-            await ctx.send(title)
             text = issue.find('text').text
             author = issue.find('author').text
             editor = issue.find('editor').text
