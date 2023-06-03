@@ -16,7 +16,19 @@ class GiveAway(commands.Cog):
             if giveaway_id not in self.giveaways:
                 return giveaway_id
 
-    # ... Existing code ...
+    def format_duration(self, duration):
+        hours, remainder = divmod(duration, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        if hours > 0:
+            return f"{hours} hours, {minutes} minutes"
+        elif minutes > 0:
+            return f"{minutes} minutes, {seconds} seconds"
+        else:
+            return f"{seconds} seconds"
+
+    def format_timestamp(self, timestamp):
+        return f"<t:{timestamp-18000}:R>"
 
     @commands.command()
     @commands.has_permissions(administrator=True)
