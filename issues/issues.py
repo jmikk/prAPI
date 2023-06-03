@@ -61,7 +61,7 @@ class issues(commands.Cog):
         # Extracting data from the parsed XML
         issues=r.xml.findall("issue")
         await ctx.send(issues)
-        await ctx.send(r.text)
+        await ctx.send(r)
         for issue in issues:
             title = issue.find('title').text
             text = issue.find('text').text
