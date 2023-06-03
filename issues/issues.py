@@ -57,7 +57,7 @@ class issues(commands.Cog):
     @commands.is_owner()
     async def issues(self,ctx):
         await ctx.send("idk boss")
-        r = await self.api_request(data={'nation': self.IssuesNation, 'q': 'issue'})
+        r = await self.api_request(data={'nation': self.IssuesNation, 'q': 'issues'})
         # Extracting data from the parsed XML
         issues=r.xml.findall("issue")
         await ctx.send(issues)
