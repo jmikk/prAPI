@@ -56,7 +56,8 @@ class issues(commands.Cog):
     async def issues(self,ctx):
         r = await self.api_request(data={'nation': self.IssueNation, 'q': 'issues'})
         # Extracting data from the parsed XML
-        issues = r.xml.find_all('issue')
+        root = ET.parse(r.xml).getroot()    
+        issues = root.iter(issue)
         
         for issue in issues:
             title = issue.find('title').text
@@ -71,7 +72,7 @@ class issues(commands.Cog):
             embed.set_author(name=f'Written by {author}, Edited by {editor}')
             embed.add_field(name='The issue', value=text, inline=False)
             await ctx.send(embed=embed)
-            options = issue.find_all('option')
+            options = issue.iter('option')
 
             for option in options:
                 option_id = option['id']
