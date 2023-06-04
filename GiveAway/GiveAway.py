@@ -57,7 +57,7 @@ class GiveAway(commands.Cog):
             f"React with 🎉 to enter the giveaway!\n"
             f"Prize: {prize}\n"
             f"ID: {giveaway_id}\n"
-            f"Ends in {self.format_timestamp(end_timestamp)}."
+            f"Ends in {self.format_timestamp(end_timestamp)}.\n"
             f"Host: {ctx.author.mention}"
         )
 
