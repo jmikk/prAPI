@@ -89,22 +89,6 @@ class GiveAway(commands.Cog):
         await ctx.send(f"Giveaway channel set to {channel.mention}")
 
             
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload):
-        for giveaway_id, giveaway_data in self.giveaways.items():
-            channel_id = payload.channel_id
-            message_id = payload.message_id
-            user_id = payload.user_id
-
-            if (
-                channel_id == payload.channel_id
-                and message_id == giveaway_data["message_id"]
-            ):
-                guild = self.bot.get_guild(payload.guild_id)
-                member = guild.get_member(user_id)
-
-                if any(role in member.roles for role in giveaway_data["roles"]):
-                    giveaway_data["participants"].append(member)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
