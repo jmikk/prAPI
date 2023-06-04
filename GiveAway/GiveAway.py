@@ -55,7 +55,7 @@ class GiveAway(commands.Cog):
         message = (
             f"🎉 **Giveaway** 🎉\n\n"
             f"React with 🎉 to enter the giveaway!\n"
-            f"Must have the one of the following roles to enter! {roles}"
+            f"Open to the following: {roles}"
             f"Prize: {prize}\n"
             f"ID: {giveaway_id}\n"
             f"Ends in {self.format_timestamp(end_timestamp)}.\n"
