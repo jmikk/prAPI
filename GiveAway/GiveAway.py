@@ -55,6 +55,7 @@ class GiveAway(commands.Cog):
         message = (
             f"🎉 **Giveaway** 🎉\n\n"
             f"React with 🎉 to enter the giveaway!\n"
+            f"Must have the one of the following roles to enter! {roles}"
             f"Prize: {prize}\n"
             f"ID: {giveaway_id}\n"
             f"Ends in {self.format_timestamp(end_timestamp)}.\n"
@@ -107,7 +108,7 @@ class GiveAway(commands.Cog):
                     giveaway_data["participants"].append(member)
                     await channel.send(content="Your in")
                 else:
-                    await reaction.remove(user)
+                    #await reaction.remove(user)
                     channel = reaction.message.channel
                     await channel.send(content="You do not have the required role to enter the giveaway.")
 
