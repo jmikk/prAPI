@@ -60,7 +60,7 @@ class GiveAway(commands.Cog):
         )
 
         channel = str(self.giveaway_channel_id)  # Use the current channel for the giveaway message
-        channel = ctx.get_channel(channel)
+        channel = self.get_channel(channel)
         sent_message = await channel.send(message)
         await sent_message.add_reaction("🎉")
 
