@@ -105,3 +105,27 @@ class GiveAway(commands.Cog):
 
                 if any(role in member.roles for role in giveaway_data["roles"]):
                     giveaway_data["participants"].append(member)
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        for giveaway_id, giveaway_data in self.giveaways.items():
+            channel_id = payload.channel_id
+            message_id = payload.message_id
+            user_id = payload.user_id
+
+            if (
+                channel_id == payload.channel_id
+                and message_id == giveaway_data["message_id"]
+            ):
+                guild = self.bot.get_guild(payload.guild_id)
+                member = guild.get_member(user_id)
+
+                if any(role in member.roles for role in giveaway_data["roles"]):
+                    giveaway_data["participants"].append(member)
+                else:
+                    channel = self.bot.get_channel(channel_id)
+                    message = await channel.fetch_message(message_id)
+                    user = guild.get_member(user_id)
+                    await message.remove_reaction(payload.emoji, user)
+                    await channel.send(content="You do not have the required role to enter the giveaway.", ephemeral=True)
+
