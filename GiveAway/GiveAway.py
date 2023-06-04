@@ -111,5 +111,5 @@ class GiveAway(commands.Cog):
                     message = await channel.fetch_message(message_id)
                     user = guild.get_member(user_id)
                     await message.remove_reaction(payload.emoji, user)
-                    await channel.send(content="You do not have the required role to enter the giveaway.", ephemeral=True)
+                    await channel.send(content="You do not have the required role to enter the giveaway.")
 
