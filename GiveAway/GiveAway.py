@@ -31,7 +31,7 @@ class GiveAway(commands.Cog):
         return f"<t:{timestamp-18000}:R>"
 
     @commands.command()
-    @commands.has_permissions(administrator=True)
+    @commands.has_role("Giveaway Host")
     async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Role):
         if not self.giveaway_channel_id:  
             await ctx.send("No giveaway channel set use the setgiveawaychannel to set one first")
@@ -111,8 +111,9 @@ class GiveAway(commands.Cog):
                 if any(role in member.roles for role in giveaway_data["roles"]):
                     giveaway_data["participants"].append(member)
                     await channel.send(content="Your in")
+                #THIS DOES NOT WORK FOR SOME UNKNOWN REASON mabye cuz I'm higher than the bot?
                 else:
-                    #await reaction.remove(user)
+                    await reaction.remove(user)
                     channel = reaction.message.channel
                     await channel.send(content="You do not have the required role to enter the giveaway.")
 
