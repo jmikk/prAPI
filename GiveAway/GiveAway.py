@@ -92,6 +92,7 @@ class GiveAway(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
+        await ctx.send("hERE")
         for giveaway_id, giveaway_data in self.giveaways.items():
             channel_id = payload.channel_id
             message_id = payload.message_id
