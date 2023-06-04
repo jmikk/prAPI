@@ -59,8 +59,7 @@ class GiveAway(commands.Cog):
             f"Ends in {self.format_timestamp(end_timestamp)}."
         )
 
-        channel = str(self.giveaway_channel_id)  # Use the current channel for the giveaway message
-        channel = ctx.bot.get_channel(channel)
+        channel = self.bot.get_channel(self.giveaway_channel_id)
         sent_message = await channel.send(message)
         await sent_message.add_reaction("🎉")
 
