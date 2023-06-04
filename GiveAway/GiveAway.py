@@ -56,7 +56,9 @@ class GiveAway(commands.Cog):
             f"🎉 **Giveaway** 🎉\n\n"
             f"React with 🎉 to enter the giveaway!\n"
             f"Prize: {prize}\n"
+            f"ID: {ID}\n"
             f"Ends in {self.format_timestamp(end_timestamp)}."
+            f"Host: {ctx.author.mention}"
         )
 
         channel = self.bot.get_channel(self.giveaway_channel_id)
@@ -76,7 +78,7 @@ class GiveAway(commands.Cog):
 
         if participants:
             winner = random.choice(participants)
-            await channel.send(f"Congratulations to {winner.mention} for winning the giveaway ({giveaway_id})!")
+            await channel.send(f"Congratulations to {winner.mention} for winning the giveaway ({giveaway_id}).  You won {prize}! Please let the Host:{ctx.author.mention} know where you want the prize!")
         else:
             await channel.send(f"No eligible participants. The giveaway ({giveaway_id}) has ended.")
 
