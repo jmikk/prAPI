@@ -24,6 +24,7 @@ class NationCog(commands.Cog):
         await ctx.send("Starting")
         await ctx.send("Load data from the Google Sheets CSV")
         data = self.load_spreadsheet_data()
+        await ctx.send(data)
         if data is None:
             await ctx.send("Failed to load spreadsheet data.")
             return
@@ -68,7 +69,6 @@ class NationCog(commands.Cog):
             return None
 
     def compare_nations(self, data, api_nations):
-        await ctx.send(data)
         # Parse the spreadsheet data and extract the nations
         lines = data.split("\n")
         header = lines[0].split("\t")
