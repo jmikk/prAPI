@@ -1,6 +1,6 @@
 import csv
 import requests
-
+from redbot.core import commands
 
 class NationCog(commands.Cog):
     def __init__(self, bot):
