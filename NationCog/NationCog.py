@@ -24,7 +24,7 @@ class NationCog(commands.Cog):
         await ctx.send("Starting")
         await ctx.send("Load data from the Google Sheets CSV")
         data = self.load_spreadsheet_data()
-        await ctx.send(data)
+        await ctx.send(data[0])
         if data is None:
             await ctx.send("Failed to load spreadsheet data.")
             return
