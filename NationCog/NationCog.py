@@ -68,6 +68,7 @@ class NationCog(commands.Cog):
             return None
 
     def compare_nations(self, data, api_nations):
+        await ctx.send(data)
         # Parse the spreadsheet data and extract the nations
         lines = data.split("\n")
         header = lines[0].split("\t")
