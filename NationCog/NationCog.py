@@ -1,100 +1,55 @@
-from redbot.core import commands
-import asyncio
-import discord
+import csv
 import requests
-import gspread
-import xml.etree.ElementTree as ET
 
 
 class NationCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPWrErSHEy9kZVwcT7NK_gVJsBdytg2yNnKgXgFbs_Cxe2VFj2wUbBCgsER6Uik5ewWaJMj2UrlIFz/pub?gid=0&single=true&output=csv"
-        self.api_url = "https://www.nationstates.net/cgi-bin/api.cgi?region=The_wellspring&q=nations"
-        self.user_agent = "9003"
-        self.target_channel_id = None  # Store the target channel ID here
 
-    @commands.command()
-    async def set_channel(self, ctx, channel: discord.TextChannel):
-        self.target_channel_id = channel.id
-        await ctx.send(f"Target channel set to {channel.mention}")
-
-    @commands.command()
-    async def check_nations(self, ctx):
-        await ctx.send("Starting")
-        await ctx.send("Load data from the Google Sheets CSV")
-        data = self.load_spreadsheet_data()
-        await ctx.send(data[0])
-        if data is None:
-            await ctx.send("Failed to load spreadsheet data.")
-            return
-
-        await ctx.send("Fetch the nations from the NationStates API")
-        api_nations = self.fetch_api_nations()
-        if api_nations is None:
-            await ctx.send("Failed to fetch nations from the API.")
-            return
-
-        await ctx.send("Compare the nations and send messages for missing ones")
-        missing_nations = self.compare_nations(data, api_nations)
-        if not missing_nations:
-            await ctx.send("No missing nations found.")
-            return
-
-        for nation in missing_nations:
-            discord_name = nation["Discord"]
-            wellspring_name = nation["wellspring_name"]
-            message = f"Nation not found in API: Discord Name: {discord_name}, Wellspring Name: {wellspring_name}"
-            target_channel = self.bot.get_channel(self.target_channel_id)
-            await target_channel.send(message)
-
-    def load_spreadsheet_data(self):
-        try:
-            response = requests.get(self.sheet_url)
-            response.raise_for_status()
-            return response.text
-        except requests.RequestException:
-            return None
-
-    def fetch_api_nations(self):
-        try:
-            response = requests.get(
-                self.api_url, headers={"User-Agent": self.user_agent}
-            )
-            response.raise_for_status()
-            xml_data = ET.fromstring(response.text)
-            nation_elements = xml_data.findall(".//NATIONS")
-            return [nation.text for nation in nation_elements[0]]
-        except (requests.RequestException, ET.ParseError):
-            return None
-
-    def compare_nations(self, data, api_nations):
-        # Parse the spreadsheet data and extract the nations
-        lines = data.split("\n")
-        header = lines[0].split("\t")
-        nations = []
-        for line in lines[1:]:
-            if line.strip() != "":
-                values = line.split("\t")
-                nation = dict(zip(header, values))
-                nations.append(nation)
-
-        # Create a set of lowercase API nation names
-        api_nations_set = set(api_nation.lower() for api_nation in api_nations)
-
-        # Compare the nations and find missing ones
+    def find_missing_nations(api_list, first_list):
+        api_set = set(api_list)  # Convert API list to a set
         missing_nations = []
-        for nation in nations:
-            discord_name = nation.get("Discord")
-            wellspring_name = nation.get("The Wellspring Nation")
-            if discord_name and wellspring_name:
-                if wellspring_name.lower() not in api_nations_set:
-                    missing_nations.append({
-                        "discord_name": discord_name,
-                        "wellspring_name": wellspring_name
-                    })
+        for nation in first_list:
+            if nation[1].lower().replace(" ", "_") not in api_set:
+                missing_nations.append(nation)
 
         return missing_nations
 
+    @commands.command()
+    @commands.has_role(name="Warden of Internal Affairs")
+    def cit_chk(self,ctx):
+        # Fetch the CSV data
+        csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPWrErSHEy9kZVwcT7NK_gVJsBdytg2yNnKgXgFbs_Cxe2VFj2wUbBCgsER6Uik5ewWaJMj2UrlIFz/pub?gid=0&single=true&output=csv"
+        response = requests.get(csv_url)
+        csv_data = response.text
+
+        # Parse the CSV data
+        reader = csv.reader(csv_data.splitlines())
+        next(reader)  # Skip the header row
+
+        # Create a list of The Wellspring Nation and Discord names
+        data_list = []
+        for row in reader:
+            discord_name = row[0]
+            nation_name = row[2]
+            data_list.append((discord_name, nation_name))
+
+        # Fetch the data from the NationStates API
+        header = {"User-Agent": "9003"}
+        url = "https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=nations"
+        response = requests.post(
+            url, headers=header, data={"region": "the_wellspring", "q": "nations"}
+        )
+        xml_data = response.text.replace('<REGION id="the_wellspring">\n<NATIONS>', "").replace(
+            "</NATIONS>\n</REGION>", ""
+        )
+
+        # Split the XML data into a list of nation names
+        nation_list = xml_data.split(":")
+
+        # Print the list of nations
+        for nation in nation_list:
+        print(find_missing_nations(nation_list, data_list))
 
 
