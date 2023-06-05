@@ -78,19 +78,22 @@ class NationCog(commands.Cog):
                 nation = dict(zip(header, values))
                 nations.append(nation)
 
+        # Create a set of lowercase API nation names
+        api_nations_set = set(api_nation.lower() for api_nation in api_nations)
+
         # Compare the nations and find missing ones
         missing_nations = []
         for nation in nations:
             discord_name = nation.get("Discord")
             wellspring_name = nation.get("The Wellspring Nation")
             if discord_name and wellspring_name:
-                wellspring_name_lower = wellspring_name.lower()
-                if wellspring_name_lower not in [api_nation.lower() for api_nation in api_nations]:
+                if wellspring_name.lower() not in api_nations_set:
                     missing_nations.append({
                         "discord_name": discord_name,
                         "wellspring_name": wellspring_name
                     })
 
         return missing_nations
+
 
 
