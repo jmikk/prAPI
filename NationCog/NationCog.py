@@ -52,7 +52,7 @@ class NationCog(commands.Cog):
 
         # Print the list of missing nations
         for nation in missing_nations:
-            await ctx.send(f"Missing nation: {nation[1]}")
+            await ctx.send(f"Missing nation: {nation[1]} Discord: {nation[0]}")
 
 # Add this part to your main bot file
 # bot = commands.Bot(command_prefix="!")
