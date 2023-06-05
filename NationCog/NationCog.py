@@ -83,11 +83,18 @@ class NationCog(commands.Cog):
         for nation in nations:
             discord_name = nation.get("Discord")
             wellspring_name = nation.get("The Wellspring Nation")
-            if discord_name and wellspring_name and wellspring_name not in api_nations:
-                missing_nations.append({
-                    "discord_name": discord_name,
-                    "wellspring_name": wellspring_name
-                })
+            if discord_name and wellspring_name:
+                found = False
+                for api_nation in api_nations:
+                    if wellspring_name.lower() == api_nation.lower():
+                        found = True
+                        break
+                if not found:
+                    missing_nations.append({
+                        "discord_name": discord_name,
+                        "wellspring_name": wellspring_name
+                    })
 
         return missing_nations
+
 
