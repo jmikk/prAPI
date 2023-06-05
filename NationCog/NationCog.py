@@ -19,6 +19,7 @@ class NationCog(commands.Cog):
     @commands.command()
     @commands.has_role("Warden of Internal Affairs")
     async def cit_chk(self, ctx):
+        await ctx.send("You got it I'll think for a few moments!")
         # Fetch the CSV data
         response = requests.get(self.sheet_url)
         csv_data = response.text
@@ -53,6 +54,8 @@ class NationCog(commands.Cog):
         # Print the list of missing nations
         for nation in missing_nations:
             await ctx.send(f"Missing nation: {nation[1]} Discord: {nation[0]}")
+        if not missing_nations:
+            await ctx.send("Everyone is good!")
 
 # Add this part to your main bot file
 # bot = commands.Bot(command_prefix="!")
