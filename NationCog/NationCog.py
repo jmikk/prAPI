@@ -34,7 +34,7 @@ class NationCog(commands.Cog):
             await ctx.send("Failed to fetch nations from the API.")
             return
 
-        await ctx.send("Compare the nations and send messages for missing ones"
+        await ctx.send("Compare the nations and send messages for missing ones")
         missing_nations = self.compare_nations(data, api_nations)
         if not missing_nations:
             await ctx.send("No missing nations found.")
