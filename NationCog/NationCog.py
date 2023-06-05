@@ -1,6 +1,7 @@
 from redbot.core import commands
 import asyncio
 import discord
+import request
 
 class NationCog(commands.Cog):
     def __init__(self, bot):
