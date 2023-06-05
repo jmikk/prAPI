@@ -67,7 +67,7 @@ class NationCog(commands.Cog):
         except (requests.RequestException, ET.ParseError):
             return None
 
-     def compare_nations(self, data, api_nations):
+    def compare_nations(self, data, api_nations):
         # Parse the spreadsheet data and extract the nations
         lines = data.split("\n")
         header = lines[0].split("\t")
