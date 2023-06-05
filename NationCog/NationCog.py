@@ -17,6 +17,7 @@ class NationCog(commands.Cog):
         return missing_nations
 
     @commands.command()
+    @commands.has_role("Warden of Internal Affairs ",)
     async def cit_chk(self,ctx):
         # Fetch the CSV data
         csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPWrErSHEy9kZVwcT7NK_gVJsBdytg2yNnKgXgFbs_Cxe2VFj2wUbBCgsER6Uik5ewWaJMj2UrlIFz/pub?gid=0&single=true&output=csv"
