@@ -50,6 +50,6 @@ class NationCog(commands.Cog):
 
         # Print the list of nations
         for nation in nation_list:
-            await ctx.send(find_missing_nations(nation_list, data_list))
+            await ctx.send(self.find_missing_nations(nation_list, data_list))
 
 
