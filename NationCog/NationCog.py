@@ -41,9 +41,9 @@ class NationCog(commands.Cog):
             return
 
         for nation in missing_nations:
-            discord_name = nation["discord_name"]
+            discord_name = nation["Discord"]
             wellspring_name = nation["wellspring_name"]
-            message = f"Nation not found in API: Discord Name: {discord_name}, Wellspring Name: {wellspring_name}"
+            message = f"Nation not found in API: Discord Name: {Discord}, Wellspring Name: {wellspring_name}"
             target_channel = self.bot.get_channel(self.target_channel_id)
             await target_channel.send(message)
 
@@ -91,7 +91,7 @@ class NationCog(commands.Cog):
                 if discord_name not in api_nations:
                     missing_nations.append(
                         {
-                            "discord_name": discord_name,
+                            "discord_name": Discord,
                             "wellspring_name": wellspring_name,
                         }
                     )
