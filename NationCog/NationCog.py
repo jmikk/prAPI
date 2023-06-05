@@ -2,6 +2,9 @@ from redbot.core import commands
 import asyncio
 import discord
 import requests
+import gspread
+import xml.etree.ElementTree as ET
+
 
 class NationCog(commands.Cog):
     def __init__(self, bot):
