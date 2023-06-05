@@ -7,7 +7,7 @@ class NationCog(commands.Cog):
         self.bot = bot
         self.sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPWrErSHEy9kZVwcT7NK_gVJsBdytg2yNnKgXgFbs_Cxe2VFj2wUbBCgsER6Uik5ewWaJMj2UrlIFz/pub?gid=0&single=true&output=csv"
 
-    def find_missing_nations(api_list, first_list):
+    def find_missing_nations(self,api_list, first_list):
         api_set = set(api_list)  # Convert API list to a set
         missing_nations = []
         for nation in first_list:
