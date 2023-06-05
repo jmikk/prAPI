@@ -21,19 +21,20 @@ class NationCog(commands.Cog):
 
     @commands.command()
     async def check_nations(self, ctx):
-        # Load data from the Google Sheets CSV
+        await ctx.send("Starting")
+        await ctx.send("Load data from the Google Sheets CSV")
         data = self.load_spreadsheet_data()
         if data is None:
             await ctx.send("Failed to load spreadsheet data.")
             return
 
-        # Fetch the nations from the NationStates API
+        await ctx.send("Fetch the nations from the NationStates API")
         api_nations = self.fetch_api_nations()
         if api_nations is None:
             await ctx.send("Failed to fetch nations from the API.")
             return
 
-        # Compare the nations and send messages for missing ones
+        await ctx.send("Compare the nations and send messages for missing ones"
         missing_nations = self.compare_nations(data, api_nations)
         if not missing_nations:
             await ctx.send("No missing nations found.")
