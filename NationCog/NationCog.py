@@ -37,7 +37,7 @@ class NationCog(commands.Cog):
 
         # Fetch the data from the NationStates API
         header = {"User-Agent": "9003"}
-        url = "https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=nations"
+        url = "https://www.nationstates.net/cgi-bin/api.cgi"
         response = requests.post(
             url, headers=header, data={"region": "the_wellspring", "q": "nations"}
         )
@@ -55,7 +55,26 @@ class NationCog(commands.Cog):
         for nation in missing_nations:
             await ctx.send(f"Missing nation: {nation[1]} Discord: {nation[0]}")
         if not missing_nations:
-            await ctx.send("Everyone is good!")
+            await ctx.send("Everyone is good! on resedency check")
+            
+        url = "https://www.nationstates.net/cgi-bin/api.cgi"
+        response = requests.post(
+            url, headers=header, data={"wa": "1", "q": "members"}
+        )
+        xml_data = response.text.replace('<WA council="1"><MEMBERS>', "").replace(
+            "</MEMBERS></WA>", ""
+        )
+
+        # Split the XML data into a list of nation names
+        nation_list = xml_data.split(",")
+
+        # Find missing nations
+        missing_nations = self.find_missing_nations(nation_list, data_list)
+        
+        for nation in missing_nations:
+            await ctx.send(f"Missing WA on nation: {nation[1]} Discord: {nation[0]}")
+        if not missing_nations:
+            await ctx.send("Everyone is good! on resedency check")
 
 # Add this part to your main bot file
 # bot = commands.Bot(command_prefix="!")
