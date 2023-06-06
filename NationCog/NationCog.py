@@ -33,7 +33,8 @@ class NationCog(commands.Cog):
         for row in reader:
             discord_name = row[0]
             nation_name = row[2]
-            data_list.append((discord_name, nation_name))
+            WA_name = row[4]
+            data_list.append((discord_name, nation_name,WA_name))
 
         # Fetch the data from the NationStates API
         header = {"User-Agent": "9003"}
@@ -69,8 +70,11 @@ class NationCog(commands.Cog):
         nation_list = xml_data.split(",")
 
         # Find missing nations
-        missing_nations = self.find_missing_nations(nation_list, data_list)
-        
+        api_set = set(api_list)  # Convert API list to a set
+        missing_nations = []
+        for nation in data_list:
+            if nation[2].lower().replace(" ", "_") not in api_set:
+                missing_nations.append(nation)        
         for nation in missing_nations:
             await ctx.send(f"Missing WA on nation: {nation[1]} Discord: {nation[0]}")
         if not missing_nations:
