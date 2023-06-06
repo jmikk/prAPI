@@ -70,10 +70,10 @@ class NationCog(commands.Cog):
         nation_list = xml_data.split(",")
 
         # Find missing nations
-        api_set = set(api_list)  # Convert API list to a set
+        nation_list = set(nation_list)  # Convert API list to a set
         missing_nations = []
         for nation in data_list:
-            if nation[2].lower().replace(" ", "_") not in api_set:
+            if nation[2].lower().replace(" ", "_") not in nation_list:
                 missing_nations.append(nation)        
         for nation in missing_nations:
             await ctx.send(f"Missing WA on nation: {nation[1]} Discord: {nation[0]}")
