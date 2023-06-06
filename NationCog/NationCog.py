@@ -76,7 +76,7 @@ class NationCog(commands.Cog):
             if nation[2].lower().replace(" ", "_") not in nation_list:
                 missing_nations.append(nation)        
         for nation in missing_nations:
-            await ctx.send(f"Missing WA on nation: {nation[1]} Discord: {nation[0]}")
+            await ctx.send(f"Missing WA as nation: {nation[2]}  is not in the WA Discord: {nation[0]}")
         if not missing_nations:
             await ctx.send("Everyone is good! on resedency check")
 
