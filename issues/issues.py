@@ -2,6 +2,7 @@ from redbot.core import commands
 import asyncio
 import random
 import discord
+import sans
 
 
 def is_owner_overridable():
