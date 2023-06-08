@@ -105,19 +105,29 @@ class issues(commands.Cog):
             channel = ctx.channel
             for option_message_id in option_messages:
                 option_message = await channel.fetch_message(option_message_id)
-                reaction = discord.utils.get(option_message.reactions, emoji='👍')
-                if reaction:
-                    reactions.append((option_message_id, reaction.count))
+                for reaction in option_message.reactions:
+                    if str(reaction.emoji) == '👍':
+                        reactions.append(reaction)
 
-            if not reactions:
-                chosen_option = random.choice(options)
+            # Determine the winning option based on the number of votes
+            winning_option = None
+            max_votes = 0
+            for reaction in reactions:
+                if reaction.count > max_votes:
+                    max_votes = reaction.count
+
+            tied_options = []
+            for reaction in reactions:
+                if reaction.count == max_votes:
+                    tied_options.append(reaction.message)
+
+            if tied_options:
+                winning_option = random.choice(tied_options)
             else:
-                max_votes = max(reactions, key=lambda x: x[1])[1]
-                tied_options = [option_id for option_id, votes in reactions if votes == max_votes]
-                chosen_option_id = tied_options[0]
-                chosen_option = next(option for option in options if option['id'] == chosen_option_id)
+                winning_option = random.choice(option_messages)
 
-            await self.AnswerIssue(ctx, chosen_option)
+            await self.answer_issue(winning_option.id)  # Pass the ID of the winning option to the answer_issue function
+
 
     async def AnswerIssue(self, ctx, option_id):
         await ctx.send(f"picked option {option_id}")
