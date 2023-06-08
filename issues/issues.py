@@ -59,7 +59,7 @@ class issues(commands.Cog):
         r = await self.api_request(data={'nation': self.IssuesNation, 'q': 'issues'})
         # Extracting data from the parsed XML
         #await ctx.send(r.text[0:1990])
-        root = ET.fromstring(xml_string)
+        root = ET.fromstring(r.xml)
         issues = root.findall('ISSUES/ISSUE')        
         await ctx.send(len(issues))
         for issue in issues:
