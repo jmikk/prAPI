@@ -58,7 +58,7 @@ class issues(commands.Cog):
     async def issues(self,ctx):
         r = await self.api_request(data={'nation': self.IssuesNation, 'q': 'issues'})
         # Extracting data from the parsed XML
-        await ctx.send(r.text[0:3000])
+        await ctx.send(r.text[0:1990])
         issues=r.xml.findall("issues")
         await ctx.send(len(issues))
         for issue in issues:
