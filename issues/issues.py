@@ -72,7 +72,10 @@ class issues(commands.Cog):
         editor = issue.find('EDITOR').text
         pic1 = issue.find('PIC1').text
         pic2 = issue.find('PIC2').text
-        options = [option.text for option in issue.findall('OPTION')]
+        options = [
+            {'id': option.attrib['id'], 'text': option.text}
+            for option in issue.findall('OPTION')
+        ]       
         await ctx.send(len(options))
         embed = discord.Embed(
                         title=title,
@@ -84,14 +87,12 @@ class issues(commands.Cog):
         await ctx.send(embed=embed)
 
         for option in options:
-            option_id = option['id']
-            option_text = option.text
             embed = discord.Embed(
-                        title=option_id,
-                        description='One way to handle it.',
+                        title=option['id'],
+                        description=option['id'],
                         color=discord.Color.blue()  # You can set a custom color for the embed
                     )
-            embed.add_field(name='The option', value=option_text, inline=False)
+            embed.add_field(name=option['id'], value=option['text'], inline=False)
             await ctx.send(embed=embed)
 
 
