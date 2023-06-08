@@ -78,20 +78,20 @@ class issues(commands.Cog):
                         description='The issue at hand',
                         color=discord.Color.blue()  # You can set a custom color for the embed
                     )
-         embed.set_author(name=f'Written by {author}, Edited by {editor}')
-         embed.add_field(name='The issue', value=text, inline=False)
-         await ctx.send(embed=embed)
+        embed.set_author(name=f'Written by {author}, Edited by {editor}')
+        embed.add_field(name='The issue', value=text, inline=False)
+        await ctx.send(embed=embed)
 
-         for option in options:
-             option_id = option['id']
-             option_text = option.text
-             embed = discord.Embed(
+        for option in options:
+            option_id = option['id']
+            option_text = option.text
+            embed = discord.Embed(
                         title=option_id,
                         description='One way to handle it.',
                         color=discord.Color.blue()  # You can set a custom color for the embed
                     )
-             embed.add_field(name='The option', value=option_text, inline=False)
-             await ctx.send(embed=embed)
+            embed.add_field(name='The option', value=option_text, inline=False)
+            await ctx.send(embed=embed)
 
 
                 
