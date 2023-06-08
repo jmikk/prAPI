@@ -97,6 +97,7 @@ class issues(commands.Cog):
                 )
                 embed.add_field(name=option['id'], value=option['text'], inline=False)
                 option_message = await ctx.send(embed=embed)
+                option_messages.append(option_message.id)  # Add the message ID to the option_messages list
                 await option_message.add_reaction('👍')  # Add thumbs up reaction to each option message
 
             await asyncio.sleep(self.vote_time)  # Wait for the voting time
@@ -127,6 +128,7 @@ class issues(commands.Cog):
                 winning_option = random.choice(option_messages)
 
             await self.answer_issue(winning_option.id)  # Pass the ID of the winning option to the answer_issue function
+
 
 
     async def AnswerIssue(self, ctx, option_id):
