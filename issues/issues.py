@@ -88,8 +88,7 @@ class issues(commands.Cog):
 
         for option in options:
             embed = discord.Embed(
-                        title=option['id'],
-                        description=option['id'],
+                        title="This might work...",
                         color=discord.Color.blue()  # You can set a custom color for the embed
                     )
             embed.add_field(name=option['id'], value=option['text'], inline=False)
