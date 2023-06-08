@@ -91,23 +91,26 @@ class issues(commands.Cog):
         await asyncio.sleep(self.vote_time)  # Wait for the voting time
 
         reactions = []
-        for option in options:
-            option_message = discord.utils.get(ctx.channel.messages, id=option_message.id)
+        channel = ctx.channel
+        for option_message_id in option_messages:
+            option_message = await channel.fetch_message(option_message_id)
             reaction = discord.utils.get(option_message.reactions, emoji='👍')
             if reaction:
-                reactions.append((option['id'], reaction.count))
+                reactions.append((option_message_id, reaction.count))
 
         if not reactions:
             chosen_option = random.choice(options)
         else:
             max_votes = max(reactions, key=lambda x: x[1])[1]
-            tied_options = [option for option, votes in reactions if votes == max_votes]
+            tied_options = [option_id for option_id, votes in reactions if votes == max_votes]
 
             if len(tied_options) > 1:
                 await asyncio.sleep(self.tie_break_time)
-                chosen_option = random.choice(tied_options)
+                chosen_option_id = random.choice(tied_options)
             else:
-                chosen_option = tied_options[0]
+                chosen_option_id = tied_options[0]
+
+            chosen_option = next(option for option in options if option['id'] == chosen_option_id)
 
         await self.AnswerIssue(ctx, chosen_option)
 
