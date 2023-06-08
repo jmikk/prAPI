@@ -3,6 +3,7 @@ import asyncio
 import sans
 import xml.etree.ElementTree as ET
 import os
+import discord
 
 
 def is_owner_overridable():
@@ -65,7 +66,7 @@ class issues(commands.Cog):
         for issue in issues:
             issue_id = issue.attrib['id']
             title = issue.find('TITLE').text
-            await ctx.send(title)
+            #await ctx.send(title)
             text = issue.find('TEXT').text
             author = issue.find('AUTHOR').text
             editor = issue.find('EDITOR').text
