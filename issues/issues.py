@@ -1,46 +1,40 @@
 from redbot.core import commands
 import asyncio
-import sans
-import xml.etree.ElementTree as ET
-import os
+import random
 import discord
 
 
 def is_owner_overridable():
-    # Similar to @commands.is_owner()
-    # Unlike that, however, this check can be overridden with core Permissions
     def predicate(ctx):
         return False
     return commands.permissions_check(predicate)
 
 
-class issues(commands.Cog):
+class Issues(commands.Cog):
     """My custom cog"""
-    
+
     def __init__(self, bot):
         self.bot = bot
         self.auth = sans.NSAuth()
         self.IssuesNation = ""
         self.client = sans.AsyncClient()
-        
+        self.vote_time = 6 * 3600  # 6 hours in seconds
+        self.tie_break_time = 12 * 3600  # 12 hours in seconds
+
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
-
-    # great once your done messing with the bot.
-    #   async def cog_command_error(self, ctx, error):
-    #       await ctx.send(" ".join(error.args))
 
     async def api_request(self, data) -> sans.Response:
         response = await self.client.get(sans.World(**data), auth=self.auth)
         response.raise_for_status()
         return response
-    
+
     @commands.command()
     @commands.is_owner()
-    async def issues_agent(self, ctx, *,agent):
+    async def issues_agent(self, ctx, *, agent):
         sans.set_agent(agent, _force=True)
         await ctx.send("Agent set.")
-   
+
     @commands.command()
     @commands.is_owner()
     async def set_issues_nation(self, ctx, *, nation):
@@ -53,20 +47,16 @@ class issues(commands.Cog):
     async def set_issues_nation_password(self, ctx, *, password2):
         self.auth = sans.NSAuth(password=password2)
         await ctx.send(f"Set regional nation password for {self.IssuesNation}.")
-    
+
     @commands.command()
     @commands.is_owner()
-    async def issues(self,ctx):
+    async def issues(self, ctx):
         r = await self.api_request(data={'nation': self.IssuesNation, 'q': 'issues'})
-        # Extracting data from the parsed XML
-        #await ctx.send(r.text[0:1990])
         root = ET.fromstring(r.text)
-        issues = root.findall('ISSUES/ISSUE')        
-        await ctx.send(len(issues))
+        issues = root.findall('ISSUES/ISSUE')
         issue = issues[0]
         issue_id = issue.attrib['id']
         title = issue.find('TITLE').text
-            #await ctx.send(title)
         text = issue.find('TEXT').text
         author = issue.find('AUTHOR').text
         editor = issue.find('EDITOR').text
@@ -75,34 +65,52 @@ class issues(commands.Cog):
         options = [
             {'id': option.attrib['id'], 'text': option.text}
             for option in issue.findall('OPTION')
-        ]       
-        await ctx.send(len(options))
+        ]
         embed = discord.Embed(
-                        title=title,
-                        description='The issue at hand',
-                        color=discord.Color.blue()  # You can set a custom color for the embed
-                    )
+            title=title,
+            description='The issue at hand',
+            color=discord.Color.blue()
+        )
         embed.set_author(name=f'Written by {author}, Edited by {editor}')
         embed.add_field(name='The issue', value=text, inline=False)
-        await ctx.send(embed=embed)
+        message = await ctx.send(embed=embed)
 
         for option in options:
             embed = discord.Embed(
-                        title="This might work...",
-                        color=discord.Color.blue()  # You can set a custom color for the embed
-                    )
+                title="This might work...",
+                color=discord.Color.blue()
+            )
             embed.add_field(name=option['id'], value=option['text'], inline=False)
-            await ctx.send(embed=embed)
+            option_message = await ctx.send(embed=embed)
+            await option_message.add_reaction('👍')  # Add thumbs up reaction to each option message
 
+        await asyncio.sleep(self.vote_time)  # Wait for the voting time
 
-                
-        
+        reactions = []
+        for option in options:
+            option_message = discord.utils.get(ctx.channel.messages, id=option_message.id)
+            reaction = discord.utils.get(option_message.reactions, emoji='👍')
+            if reaction:
+                reactions.append((option['id'], reaction.count))
 
-    
-    
-    
-    
-    
+        if not reactions:
+            chosen_option = random.choice(options)
+        else:
+            max_votes = max(reactions, key=lambda x: x[1])[1]
+            tied_options = [option for option, votes in reactions if votes == max_votes]
+
+            if len(tied_options) > 1:
+                await asyncio.sleep(self.tie_break_time)
+                chosen_option = random.choice(tied_options)
+            else:
+                chosen_option = tied_options[0]
+
+        await self.AnswerIssue(ctx, chosen_option)
+
+    async def AnswerIssue(self, ctx, option_id):
+        # Implement your logic to answer the issue with the chosen option
+        pass
+
     @commands.command()
     @commands.is_owner()
     async def myCom(self, ctx):
