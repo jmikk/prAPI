@@ -127,7 +127,7 @@ class issues(commands.Cog):
             else:
                 winning_option = random.choice(option_messages)
 
-            await self.answer_issue(winning_option.id)  # Pass the ID of the winning option to the answer_issue function
+            await self.Answer_Issue(winning_option.id)  # Pass the ID of the winning option to the answer_issue function
 
 
 
