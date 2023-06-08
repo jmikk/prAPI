@@ -63,6 +63,7 @@ class issues(commands.Cog):
         root = ET.fromstring(r.text)
         issues = root.findall('ISSUES/ISSUE')        
         await ctx.send(len(issues))
+        issue = issues[0]
         issue_id = issue.attrib['id']
         title = issue.find('TITLE').text
             #await ctx.send(title)
