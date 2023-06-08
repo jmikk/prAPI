@@ -63,14 +63,15 @@ class issues(commands.Cog):
         issues = root.findall('ISSUES/ISSUE')        
         await ctx.send(len(issues))
         for issue in issues:
-            title = issue.find('title').text
+            issue_id = issue.attrib['id']
+            title = issue.find('TITLE').text
             await ctx.send(title)
-            text = issue.find('text').text
-            await ctx.send(text)
-            author = issue.find('author').text
-            await ctx.send(author)
-            editor = issue.find('editor').text
-            await ctx.send(editor)
+            text = issue.find('TEXT').text
+            author = issue.find('AUTHOR').text
+            editor = issue.find('EDITOR').text
+            pic1 = issue.find('PIC1').text
+            pic2 = issue.find('PIC2').text
+            options = [option.text for option in issue.findall('OPTION')]
             embed = discord.Embed(
                         title=title,
                         description='The issue at hand',
