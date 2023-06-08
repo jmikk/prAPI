@@ -22,8 +22,8 @@ class issues(commands.Cog):
         self.auth = sans.NSAuth()
         self.IssuesNation = ""
         self.client = sans.AsyncClient()
-        self.vote_time = 60  # 6 hours in seconds
-        self.tie_break_time = 60  # 12 hours in seconds
+        self.vote_time = 30  # 6 hours in seconds
+        self.tie_break_time = 30  # 12 hours in seconds
 
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
