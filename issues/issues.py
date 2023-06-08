@@ -112,7 +112,7 @@ class issues(commands.Cog):
         await self.AnswerIssue(ctx, chosen_option)
 
     async def AnswerIssue(self, ctx, option_id):
-        # Implement your logic to answer the issue with the chosen option
+        await ctx.send(f"picked option {option_id})
         pass
 
     @commands.command()
