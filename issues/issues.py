@@ -63,36 +63,34 @@ class issues(commands.Cog):
         root = ET.fromstring(r.text)
         issues = root.findall('ISSUES/ISSUE')        
         await ctx.send(len(issues))
-        for issue in issues:
-            issue_id = issue.attrib['id']
-            title = issue.find('TITLE').text
+        issue_id = issue.attrib['id']
+        title = issue.find('TITLE').text
             #await ctx.send(title)
-            text = issue.find('TEXT').text
-            author = issue.find('AUTHOR').text
-            editor = issue.find('EDITOR').text
-            pic1 = issue.find('PIC1').text
-            pic2 = issue.find('PIC2').text
-            options = [option.text for option in issue.findall('OPTION')]
-            embed = discord.Embed(
+        text = issue.find('TEXT').text
+        author = issue.find('AUTHOR').text
+        editor = issue.find('EDITOR').text
+        pic1 = issue.find('PIC1').text
+        pic2 = issue.find('PIC2').text
+        options = [option.text for option in issue.findall('OPTION')]
+        embed = discord.Embed(
                         title=title,
                         description='The issue at hand',
                         color=discord.Color.blue()  # You can set a custom color for the embed
                     )
-            embed.set_author(name=f'Written by {author}, Edited by {editor}')
-            embed.add_field(name='The issue', value=text, inline=False)
-            await ctx.send(embed=embed)
-            options = issue.findall('option')
+         embed.set_author(name=f'Written by {author}, Edited by {editor}')
+         embed.add_field(name='The issue', value=text, inline=False)
+         await ctx.send(embed=embed)
 
-            for option in options:
-                option_id = option['id']
-                option_text = option.text
-                embed = discord.Embed(
+         for option in options:
+             option_id = option['id']
+             option_text = option.text
+             embed = discord.Embed(
                         title=option_id,
                         description='One way to handle it.',
                         color=discord.Color.blue()  # You can set a custom color for the embed
                     )
-                embed.add_field(name='The option', value=option_text, inline=False)
-                await ctx.send(embed=embed)
+             embed.add_field(name='The option', value=option_text, inline=False)
+             await ctx.send(embed=embed)
 
 
                 
