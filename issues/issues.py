@@ -56,17 +56,18 @@ class issues(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def issues(self,ctx):
-        await ctx.send("idk boss")
         r = await self.api_request(data={'nation': self.IssuesNation, 'q': 'issues'})
         # Extracting data from the parsed XML
         issues=r.xml.findall("issue")
-        await ctx.send(issues)
-        await ctx.send(r.text[0:2000])
         for issue in issues:
             title = issue.find('title').text
+            await ctx.send(title)
             text = issue.find('text').text
+            await ctx.send(text)
             author = issue.find('author').text
+            await ctx.send(author)
             editor = issue.find('editor').text
+            await ctx.send(editor)
             embed = discord.Embed(
                         title=title,
                         description='The issue at hand',
