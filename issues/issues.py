@@ -73,6 +73,7 @@ class issues(commands.Cog):
         pic1 = issue.find('PIC1').text
         pic2 = issue.find('PIC2').text
         options = [option.text for option in issue.findall('OPTION')]
+        await ctx.send(options)
         embed = discord.Embed(
                         title=title,
                         description='The issue at hand',
