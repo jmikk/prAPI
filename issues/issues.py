@@ -66,6 +66,7 @@ class issues(commands.Cog):
         editor = issue.find('EDITOR').text
         pic1 = issue.find('PIC1').text
         pic2 = issue.find('PIC2').text
+        option_messages = []
         options = [
             {'id': option.attrib['id'], 'text': option.text}
             for option in issue.findall('OPTION')
