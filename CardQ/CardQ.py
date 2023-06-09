@@ -27,7 +27,7 @@ class CardQ(commands.Cog):
             xml_data = file.read()
             xml_data = xml_data.replace("&", "&amp;")  # Replace & with &amp;
 
-        tree = ET.fromstring(xml_data)
+        root = ET.fromstring(xml_data)
 
 
         cards_found = []
