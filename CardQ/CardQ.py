@@ -32,7 +32,8 @@ class CardQ(commands.Cog):
         sql_query = "SELECT * FROM cards WHERE "
         sql_params = []
         for key, value in search_criteria.items():
-            sql_query += f"{key} = ? AND "
+            # Modify the query to use case-insensitive comparison
+            sql_query += "LOWER({}) = LOWER(?) AND ".format(key)
             sql_params.append(value)
         sql_query = sql_query.rstrip(" AND ")
 
