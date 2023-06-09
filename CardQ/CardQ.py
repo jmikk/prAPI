@@ -55,7 +55,7 @@ class CardQ(commands.Cog):
                 writer.writerows(file_data)
 
             # Send the file as an attachment
-            await ctx.send(file=discord.File(temp_file_path))
+            await ctx.send(f"{ctx.author.mention} Enjoy I dug it from the salt mine just for you!",file=discord.File(temp_file_path))
         else:
             await ctx.send("No cards found matching the specified criteria.")
 
