@@ -1,6 +1,7 @@
 from redbot.core import commands
 import asyncio
 import xml.etree.ElementTree as ET
+import discord
 
 
 def is_owner_overridable():
