@@ -39,12 +39,13 @@ class CardQ(commands.Cog):
         sql_params = []
         for key, value in search_criteria.items():
             # Modify the query to use case-insensitive comparison
-            sql_query += "LOWER({}) = LOWER(?) AND ".format(key)
+            sql_query += "LOWER(?) = LOWER(?) AND "
+            sql_params.append(key)
             sql_params.append(value)
         sql_query = sql_query.rstrip(" AND ")
 
         # Execute the query
-        cursor.execute(sql_query, sql_params)
+        cursor.execute(sql_query, tuple(sql_params))
         results = cursor.fetchall()
         
        # Check if any results were found
