@@ -23,8 +23,12 @@ class CardQ(commands.Cog):
     #       await ctx.send(" ".join(error.args))
     
     async def search_cards(self,xml_file, search_criteria):
-        tree = ET.parse(xml_file, parser=ET.XMLParser(encoding="ISO-8859-1"))
-        root = tree.getroot()
+        with open(xml_file, "r", encoding="ISO-8859-1") as file:
+        xml_data = file.read()
+        xml_data = xml_data.replace("&", "&amp;")  # Replace & with &amp;
+
+        tree = ET.fromstring(xml_data)
+
 
         cards_found = []
 
