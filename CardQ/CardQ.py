@@ -6,7 +6,7 @@ import csv
 class CardQ(commands.Cog):
     def __init__(self, bot):
         self.config = Config.get_conf(self, identifier=1234567890)
-        default_global = {"database_path": "cards.db"}
+        default_global = {"database_path": "/home/pi/cards.db"}
         self.config.register_global(**default_global)
         self.bot = bot
 
@@ -42,7 +42,7 @@ class CardQ(commands.Cog):
             file_data.extend(results)  # Data rows
 
             # Create a temporary CSV file
-            temp_file_path = 'card_results.csv'
+            temp_file_path = '/home/pi/card_results.csv'
             with open(temp_file_path, 'w', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerows(file_data)
