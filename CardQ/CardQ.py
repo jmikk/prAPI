@@ -10,11 +10,14 @@ class CardQ(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def card_search(self, ctx, **kwargs):
+    async def card_search(self, ctx, *args):
         await ctx.send("I'll think about it")
-        # Retrieve the search criteria
-        search_criteria = kwargs
-        await ctx.send(search_criteria)
+        # Parse the arguments
+        search_criteria = {}
+        for arg in args:
+            key, value = arg.split(":")
+            search_criteria[key] = value
+
         # Connect to the database
         database_path = await self.config.database_path()
         conn = sqlite3.connect("/home/pi/cards.db")
