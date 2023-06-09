@@ -74,7 +74,7 @@ class CardQ(commands.Cog):
                     + card_data["ID"]
                     + ",3,www.nationstates.net/card="
                     + card_data["ID"]
-                    + "/season=3"
+                    + "/season=3\n"
                 )
 
         return cards_found
