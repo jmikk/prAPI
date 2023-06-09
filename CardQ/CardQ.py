@@ -18,9 +18,6 @@ class CardQ(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    def cog_unload(self):
-        asyncio.create_task(self.client.aclose())
-
     # great once your done messing with the bot.
     #   async def cog_command_error(self, ctx, error):
     #       await ctx.send(" ".join(error.args))
@@ -79,18 +76,18 @@ class CardQ(commands.Cog):
         return cards_found
 
 
-    # Example usage
-    @commands.command()
-    def card_search(self,ctx,Criteria):
-        search_criteria={}
-        search_criteria = Criteria.split(",")
+        # Example usage
+        @commands.command()
+        def card_search(self,ctx,Criteria):
+            search_criteria={}
+            search_criteria = Criteria.split(",")
 
-        found_cards = search_cards("home/pi/cards.xml", search_criteria)
+            found_cards = search_cards("home/pi/cards.xml", search_criteria)
 
-        with open("output.txt", "w+") as f:
-            for card in found_cards:
-                f.write(card)
-                await ctx.send(card)
+            with open("output.txt", "w+") as f:
+                for card in found_cards:
+                    f.write(card)
+                    await ctx.send(card)
 
     
     
