@@ -10,6 +10,7 @@ class CardQ(commands.Cog):
 
     @commands.command()
     async def card_search(self, ctx, **kwargs):
+        await ctx.send("I'll think about it")
         # Retrieve the search criteria
         search_criteria = kwargs
 
