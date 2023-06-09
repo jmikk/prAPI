@@ -39,7 +39,7 @@ class CardQ(commands.Cog):
         if len(results) > 0:
             for row in results:
                 # Format and send the card information as a Discord message
-                card_info = "\n".join(f"{key.capitalize()}: {value}" for key, value in zip(cursor.description, row))
+                card_info = "\n".join(f"{key}: {value}" for key, value in zip(cursor.description, row))
                 await ctx.send(f"```{card_info}```")
         else:
             await ctx.send("No cards found matching the specified criteria.")
