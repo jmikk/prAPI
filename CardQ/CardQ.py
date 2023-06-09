@@ -1,6 +1,7 @@
 import discord
 from redbot.core import commands, Config
 import sqlite3
+import csv
 
 class CardQ(commands.Cog):
     def __init__(self, bot):
@@ -34,15 +35,23 @@ class CardQ(commands.Cog):
         # Execute the query
         cursor.execute(sql_query, sql_params)
         results = cursor.fetchall()
-
-        # Display the results
+        # Check if any results were found
         if len(results) > 0:
-            for row in results:
-                # Format and send the card information as a Discord message
-                card_info = "\n".join(f"{key}: {value}" for key, value in zip(cursor.description, row))
-                await ctx.send(f"```{card_info}```")
+            # Prepare the data to be written to the file
+            file_data = [['Card ID', 'Card Name']]  # Header row
+            file_data.extend(results)  # Data rows
+
+            # Create a temporary CSV file
+            temp_file_path = 'card_results.csv'
+            with open(temp_file_path, 'w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerows(file_data)
+
+            # Send the file as an attachment
+            await ctx.send(file=discord.File(temp_file_path))
         else:
             await ctx.send("No cards found matching the specified criteria.")
+
 
         # Close the connection
         conn.close()
