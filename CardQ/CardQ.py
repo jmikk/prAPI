@@ -5,12 +5,11 @@ import sqlite3
 class CardQ(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890)
         default_global = {"database_path": "cards.db"}
         self.config.register_global(**default_global)
 
     @commands.command()
-    async def cardsearch(self, ctx, **kwargs):
+    async def card_search(self, ctx, **kwargs):
         # Retrieve the search criteria
         search_criteria = kwargs
 
