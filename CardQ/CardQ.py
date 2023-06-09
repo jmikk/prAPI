@@ -94,4 +94,6 @@ class CardQ(commands.Cog):
         with open("home/pi/output.txt", "w+") as f:
             for card in found_cards:
                 f.write(card)
-                await ctx.send(card)
+                #await ctx.send(card)
+        with open("home/pi/output.txt","r") as f:
+            await ctx.send(file=f.read())
