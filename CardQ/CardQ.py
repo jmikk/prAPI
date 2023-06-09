@@ -97,4 +97,4 @@ class CardQ(commands.Cog):
                 f.write(card)
                 #await ctx.send(card)
         with open("home/pi/output.txt","r") as f:
-            await ctx.send(discord.File(f))
+            await ctx.send(file=discord.File(f))
