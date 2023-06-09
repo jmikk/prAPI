@@ -84,7 +84,7 @@ class CardQ(commands.Cog):
 
         found_cards = self.search_cards("home/pi/cards.xml", search_criteria)
 
-        with open("output.txt", "w+") as f:
+        with open("home/pi/output.txt", "w+") as f:
             for card in found_cards:
                 f.write(card)
                 await ctx.send(card)
