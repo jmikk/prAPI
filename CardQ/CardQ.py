@@ -24,8 +24,8 @@ class CardQ(commands.Cog):
     
     async def search_cards(self,xml_file, search_criteria):
         with open(xml_file, "r", encoding="ISO-8859-1") as file:
-        xml_data = file.read()
-        xml_data = xml_data.replace("&", "&amp;")  # Replace & with &amp;
+            xml_data = file.read()
+            xml_data = xml_data.replace("&", "&amp;")  # Replace & with &amp;
 
         tree = ET.fromstring(xml_data)
 
