@@ -35,14 +35,19 @@ class CardQ(commands.Cog):
         # Execute the query
         cursor.execute(sql_query, sql_params)
         results = cursor.fetchall()
-        # Check if any results were found
+        
+       # Check if any results were found
         if len(results) > 0:
             # Prepare the data to be written to the file
-            file_data = [['Card ID', 'Card Name']]  # Header row
-            file_data.extend(results)  # Data rows
+            file_data = [['Card ID', 'Card Name', 'Card Link']]  # Header row
+            for row in results:
+                card_id = row[0]
+                card_name = row[1]
+                card_link = f'www.nationstates.net/card={card_id}/season=3'
+                file_data.append([card_id, card_name, card_link])
 
             # Create a temporary CSV file
-            temp_file_path = '/home/pi/card_results.csv'
+            temp_file_path = 'card_results.csv'
             with open(temp_file_path, 'w', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerows(file_data)
@@ -51,7 +56,6 @@ class CardQ(commands.Cog):
             await ctx.send(file=discord.File(temp_file_path))
         else:
             await ctx.send("No cards found matching the specified criteria.")
-
 
         # Close the connection
         conn.close()
