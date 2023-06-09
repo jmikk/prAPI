@@ -12,11 +12,6 @@ class CardQ(commands.Cog):
 
     @commands.command()
     async def card_search(self, ctx, *args):
-        for key, value in search_criteria.items():
-                    sql_query += f"{key} = ? AND "
-                    sql_params.append(value)
-                sql_query = sql_query.rstrip(" AND ")
-
         # Connect to the database
         database_path = await self.config.database_path()
         conn = sqlite3.connect("/home/pi/cards.db")
