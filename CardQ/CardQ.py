@@ -17,7 +17,7 @@ class CardQ(commands.Cog):
         await ctx.send(search_criteria)
         # Connect to the database
         database_path = await self.config.database_path()
-        conn = sqlite3.connect("home/pi/cards.db")
+        conn = sqlite3.connect("/home/pi/cards.db")
         cursor = conn.cursor()
 
         # Build the SQL query dynamically based on the search criteria
@@ -45,4 +45,4 @@ class CardQ(commands.Cog):
         conn.close()
 
 def setup(bot):
-    bot.add_cog(CardSearch(bot))
+    bot.add_cog(CardQ(bot))
