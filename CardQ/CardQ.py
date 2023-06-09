@@ -78,7 +78,7 @@ class CardQ(commands.Cog):
 
         # Example usage
         @commands.command()
-        def card_search(self,ctx,Criteria):
+        async def card_search(self,ctx,Criteria):
             search_criteria={}
             search_criteria = Criteria.split(",")
 
@@ -88,10 +88,3 @@ class CardQ(commands.Cog):
                 for card in found_cards:
                     f.write(card)
                     await ctx.send(card)
-
-    
-    
-    @commands.command()
-    @commands.is_owner()
-    async def myCom1(self, ctx):
-        await ctx.send("I work")
