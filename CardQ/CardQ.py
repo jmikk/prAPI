@@ -12,9 +12,11 @@ class CardQ(commands.Cog):
 
     @commands.command()
     async def card_search(self, ctx, *args):
+        args_list=()
+        args_list=args
         await ctx.send("I'll think about it")
            # Split the input criteria into individual search terms
-        search_terms = args.split()
+        search_terms = args_list.split()
 
         # Create a dictionary to store the search criteria
         search_criteria = {}
