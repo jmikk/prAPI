@@ -89,7 +89,8 @@ class CardQ(commands.Cog):
         search_criteria = Criteria.split(",")
 
         found_cards = await self.search_cards("home/pi/cards.xml", search_criteria)
-
+        if len(found_cards) < 1:
+            await ctx.send("Found nothing")
         with open("home/pi/output.txt", "w+") as f:
             for card in found_cards:
                 f.write(card)
