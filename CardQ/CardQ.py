@@ -46,6 +46,3 @@ class CardQ(commands.Cog):
 
         # Close the connection
         conn.close()
-
-def setup(bot):
-    bot.add_cog(CardQ(bot))
