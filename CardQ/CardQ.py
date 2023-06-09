@@ -5,8 +5,6 @@ import sqlite3
 class CardQ(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        default_global = {"database_path": "cards.db"}
-        self.config.register_global(**default_global)
 
     @commands.command()
     async def card_search(self, ctx, **kwargs):
@@ -16,7 +14,7 @@ class CardQ(commands.Cog):
 
         # Connect to the database
         database_path = await self.config.database_path()
-        conn = sqlite3.connect(database_path)
+        conn = sqlite3.connect("home/pi/cards.db")
         cursor = conn.cursor()
 
         # Build the SQL query dynamically based on the search criteria
