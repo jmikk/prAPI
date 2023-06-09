@@ -17,6 +17,8 @@ class CardQ(commands.Cog):
         search_criteria = {}
         for arg in args:
             key, value = arg.split(":")
+            key = key.lower()
+            value = value.lower()
             if key=="rarity":
                 key="card_category"
             search_criteria[key] = value
