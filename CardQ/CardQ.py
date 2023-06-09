@@ -12,22 +12,22 @@ class CardQ(commands.Cog):
 
     @commands.command()
     async def card_search(self, ctx, *args):
-    await ctx.send("I'll think about it")
-       # Split the input criteria into individual search terms
-    search_terms = criteria.split()
-    
-    # Create a dictionary to store the search criteria
-    search_criteria = {}
-    
-    # Parse each search term and extract the key-value pair
-    for term in search_terms:
-        if ":" in term:
-            key, value = term.split(":", 1)
-            key = key.lower().strip()
-            if key == "rarity":
-                key=="CARD_CATEGORY"
-            value = value.strip()
-            search_criteria[key] = value
+        await ctx.send("I'll think about it")
+           # Split the input criteria into individual search terms
+        search_terms = criteria.split()
+
+        # Create a dictionary to store the search criteria
+        search_criteria = {}
+
+        # Parse each search term and extract the key-value pair
+        for term in search_terms:
+            if ":" in term:
+                key, value = term.split(":", 1)
+                key = key.lower().strip()
+                if key == "rarity":
+                    key=="CARD_CATEGORY"
+                value = value.strip()
+                search_criteria[key] = value
 
         # Connect to the database
         database_path = await self.config.database_path()
