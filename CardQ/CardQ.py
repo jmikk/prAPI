@@ -4,6 +4,9 @@ import sqlite3
 
 class CardQ(commands.Cog):
     def __init__(self, bot):
+        self.config = Config.get_conf(self, identifier=1234567890)
+        default_global = {"database_path": "cards.db"}
+        self.config.register_global(**default_global)
         self.bot = bot
 
     @commands.command()
