@@ -23,7 +23,6 @@ class CardQ(commands.Cog):
     #       await ctx.send(" ".join(error.args))
     
     async def search_cards(self,xml_file, search_criteria):
-        await ctx.send("This will take some time theres a lot of cards!")
         with open(xml_file, "r", encoding="ISO-8859-1") as file:
             xml_data = file.read()
             xml_data = xml_data.replace("&", "&amp;")  # Replace & with &amp;
@@ -84,6 +83,8 @@ class CardQ(commands.Cog):
     # Example usage
     @commands.command()
     async def card_search(self,ctx,Criteria):
+        await ctx.send("This will take some time theres a lot of cards!")
+
         search_criteria={}
         search_criteria = Criteria.split(",")
 
