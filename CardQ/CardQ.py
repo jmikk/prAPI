@@ -23,7 +23,7 @@ class CardQ(commands.Cog):
     #       await ctx.send(" ".join(error.args))
     
     async def search_cards(self,xml_file, search_criteria):
-        tree = ET.parse(xml_file, parser=ET.XMLParser(encoding="ISO-8859-1"))
+        tree = ET.parse(xml_file, parser=ET.XMLParser(encoding="ISO-8859-1",recover=True))
         root = tree.getroot()
 
         cards_found = []
