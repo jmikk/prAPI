@@ -14,7 +14,7 @@ class CardQ(commands.Cog):
         await ctx.send("I'll think about it")
         # Retrieve the search criteria
         search_criteria = kwargs
-        search_criteria=search_criteria.split(":")
+        await ctx.send(search_criteria)
         # Connect to the database
         database_path = await self.config.database_path()
         conn = sqlite3.connect("home/pi/cards.db")
