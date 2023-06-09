@@ -18,7 +18,7 @@ class CardQ(commands.Cog):
         for arg in args:
             key, value = arg.split(":")
             if key=="rarity":
-                key="CARDCATEGORY"
+                key="card_category"
             search_criteria[key] = value
 
         # Connect to the database
