@@ -85,11 +85,12 @@ class CardQ(commands.Cog):
         search_criteria={}
         search_criteria = Criteria.split(",")
 
-    found_cards = search_cards("cards.xml", search_criteria)
+        found_cards = search_cards("cards.xml", search_criteria)
 
-    with open("output.txt", "w+") as f:
-        for card in found_cards:
-            f.write(card)
+        with open("output.txt", "w+") as f:
+            for card in found_cards:
+                f.write(card)
+                await ctx.send(card)
 
     
     
