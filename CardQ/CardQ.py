@@ -45,7 +45,7 @@ class CardQ(commands.Cog):
         sql_query = sql_query.rstrip(" AND ")
 
         # Execute the query
-        cursor.execute(sql_query, tuple(sql_params))
+        cursor.execute(sql_query, sql_params)
         results = cursor.fetchall()
         
        # Check if any results were found
