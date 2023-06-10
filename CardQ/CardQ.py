@@ -45,9 +45,9 @@ class CardQ(commands.Cog):
         sql_params = []
         for key, value in search_criteria.items():
             # Modify the query to use case-insensitive comparison
-            if key == "flag" and value.startswith("uploads/"):
-                sql_conditions.append(f"{key} LIKE ?")
-                sql_params.append(value + "%")  # Append % to match any characters after the uploads/
+            if key == "flag" and value == "uploads":
+                sql_conditions.append(f"flag LIKE ?")
+                sql_params.append("uploads%")  # Append % to match any characters after the uploads/
             else:
                 sql_conditions.append(f"LOWER({key}) = LOWER(?)")
                 sql_params.append(value)
