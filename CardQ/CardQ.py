@@ -36,13 +36,15 @@ class CardQ(commands.Cog):
 
         # Build the SQL query dynamically based on the search criteria
         sql_query = "SELECT * FROM cards WHERE "
+        sql_conditions = []
         sql_params = []
         for key, value in search_criteria.items():
             # Modify the query to use case-insensitive comparison
-            sql_query += "LOWER(?) = LOWER(?) AND "
-            sql_params.append(key)
+            sql_conditions.append(f"LOWER({key}) = LOWER(?)")
             sql_params.append(value)
-        sql_query = sql_query.rstrip(" AND ")
+        sql_query += " AND ".join(sql_conditions)
+
+        # Execute the query
         await ctx.send(sql_query)
         await ctx.send(sql_params)
 
