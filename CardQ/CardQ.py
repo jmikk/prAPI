@@ -34,7 +34,6 @@ class CardQ(commands.Cog):
                 key, value = term.split(":", 1)
                 key = key.lower().strip()
                 key = self.cleankey(key)
-                if key="tropy"
                 value = value.strip()
                 search_criteria[key] = value
         
