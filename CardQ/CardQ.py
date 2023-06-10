@@ -11,7 +11,7 @@ class CardQ(commands.Cog):
         self.bot = bot
     
     async def cleankey(self,key):
-        if key=="rarity:
+        if key=="rarity":
             return card_category
         else:
             return key
