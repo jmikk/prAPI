@@ -48,6 +48,9 @@ class CardQ(commands.Cog):
             if key == "flag" and value == "uploads":
                 sql_conditions.append(f"flag LIKE ?")
                 sql_params.append("uploads%")  # Append % to match any characters after the uploads/
+            elif key == "pname":
+                sql_conditions.append(f"name LIKE ?")
+                sql_params.append(f"{value}%")  # Append % to match any characters after the uploads/
             else:
                 sql_conditions.append(f"LOWER({key}) = LOWER(?)")
                 sql_params.append(value)
