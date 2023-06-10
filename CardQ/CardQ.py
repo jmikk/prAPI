@@ -12,7 +12,7 @@ class CardQ(commands.Cog):
     
     async def cleankey(self,key):
         if key=="rarity":
-            return card_category
+            return "card_category"
         else:
             return key
     
