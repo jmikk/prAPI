@@ -49,7 +49,6 @@ class GiveAway(commands.Cog):
         giveaway_data = {
             "end_time": end_time,
             "prize": prize,
-            "roles": roles,
             "participants": []
         }
 
