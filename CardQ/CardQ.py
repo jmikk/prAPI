@@ -120,7 +120,7 @@ class CardQ(commands.Cog):
         if len(results) > 0:
             # Remove cards present in the deck from the query results
             if deck_name is not None:
-                deck_query = f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname={deck_name}"
+                deck_query = {"q":"cards+deck","nationname":deck_name}
                 deck_response = await self.api_request(deck_query)
                 deck_xml = deck_response.text
                 deck_card_ids = self.parse_deck_xml(deck_xml)
