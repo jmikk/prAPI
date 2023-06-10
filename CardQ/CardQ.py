@@ -21,7 +21,7 @@ class CardQ(commands.Cog):
 
         # Create a dictionary to store the search criteria
         search_criteria = {}
-
+        userFlags=False
         # Parse each search term and extract the key-value pair
         for term in search_terms:
             if ":" in term:
@@ -29,6 +29,9 @@ class CardQ(commands.Cog):
                 key = key.lower().strip()
                 if key == "rarity":
                     key="card_category"
+                if key == "flag" and value.startswith("uploads/"):
+                    userFlags=True
+                    
                 value = value.strip()
                 search_criteria[key] = value
         
@@ -42,8 +45,12 @@ class CardQ(commands.Cog):
         sql_params = []
         for key, value in search_criteria.items():
             # Modify the query to use case-insensitive comparison
-            sql_conditions.append(f"LOWER({key}) = LOWER(?)")
-            sql_params.append(value)
+            if key == "flag" and value.startswith("uploads/"):
+                sql_conditions.append(f"{key} LIKE ?")
+                sql_params.append(value + "%")  # Append % to match any characters after the uploads/
+            else:
+                sql_conditions.append(f"LOWER({key}) = LOWER(?)")
+                sql_params.append(value)
         sql_query += " AND ".join(sql_conditions)
 
         # Execute the query
