@@ -2,14 +2,32 @@ import discord
 from redbot.core import commands, Config
 import sqlite3
 import csv
+import sans
 
 class CardQ(commands.Cog):
     def __init__(self, bot):
+        self.auth = sans.NSAuth()
         self.config = Config.get_conf(self, identifier=1234567890)
         default_global = {"database_path": "/home/pi/cards.db"}
         self.config.register_global(**default_global)
         self.bot = bot
     
+    def cog_unload(self):
+        asyncio.create_task(self.client.aclose())
+
+ #   async def cog_command_error(self, ctx, error):
+ #       await ctx.send(" ".join(error.args))
+
+    async def api_request(self, data) -> sans.Response:
+        response = await self.client.get(sans.World(**data), auth=self.auth)
+        response.raise_for_status()
+        return response
+
+    @commands.command()
+    @commands.is_owner()
+    async def CardQ_agent(self, ctx, *,agent):
+        sans.set_agent(agent, _force=True)
+        await ctx.send("Agent set.")
     
     @commands.cooldown(1, 30, commands.BucketType.user)
     @commands.command()
@@ -21,7 +39,6 @@ class CardQ(commands.Cog):
 
         # Create a dictionary to store the search criteria
         search_criteria = {}
-        userFlags=False
         # Parse each search term and extract the key-value pair
         for term in search_terms:
             if ":" in term:
@@ -29,9 +46,6 @@ class CardQ(commands.Cog):
                 key = key.lower().strip()
                 if key == "rarity":
                     key="card_category"
-                if key == "flag" and value.startswith("uploads/"):
-                    userFlags=True
-                    
                 value = value.strip()
                 search_criteria[key] = value
         
