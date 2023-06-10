@@ -9,7 +9,15 @@ class CardQ(commands.Cog):
         default_global = {"database_path": "/home/pi/cards.db"}
         self.config.register_global(**default_global)
         self.bot = bot
-        
+    
+    async def cleankey(self,key)
+        match key:
+            case "rarity":
+                return card_category
+            defult:
+                return key
+    
+    
     @commands.cooldown(rate=1, per=30, type=commands.BucketType.guild)
     @commands.command()
     async def card_search(self, ctx, *, criteria):
@@ -26,8 +34,8 @@ class CardQ(commands.Cog):
             if ":" in term:
                 key, value = term.split(":", 1)
                 key = key.lower().strip()
-                if key == "rarity":
-                    key="card_category"
+                key = self.cleankey(key)
+                if key="tropy"
                 value = value.strip()
                 search_criteria[key] = value
         
@@ -35,15 +43,33 @@ class CardQ(commands.Cog):
         conn = sqlite3.connect("/home/pi/cards.db")
         cursor = conn.cursor()
 
-        # Build the SQL query dynamically based on the search criteria
-        sql_query = "SELECT * FROM cards WHERE "
-        sql_conditions = []
+           # Build the SQL query dynamically based on the search criteria
+        sql_query = """
+            SELECT cards.*
+            FROM cards
+            LEFT JOIN badges ON cards.id = badges.card_id
+            LEFT JOIN trophies ON cards.id = trophies.card_id
+            WHERE
+        """
         sql_params = []
+
+        # Add conditions for search criteria on cards table
         for key, value in search_criteria.items():
-            # Modify the query to use case-insensitive comparison
-            sql_conditions.append(f"LOWER({key}) = LOWER(?)")
+            sql_query += f"cards.{key} = ? AND "
             sql_params.append(value)
-        sql_query += " AND ".join(sql_conditions)
+
+        # Add conditions for search criteria on badges table
+        if "badge" in search_criteria:
+            sql_query += "badges.badge = ? AND "
+            sql_params.append(search_criteria["badge"])
+
+        # Add conditions for search criteria on trophies table
+        if "trophy" in search_criteria:
+            sql_query += "trophies.type = ? AND "
+            sql_params.append(search_criteria["trophy"])
+
+        # Remove the trailing "AND" from the query
+        sql_query = sql_query.rstrip(" AND ")
 
         # Execute the query
         #await ctx.send(sql_query)
