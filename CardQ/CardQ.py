@@ -25,8 +25,8 @@ class CardQ(commands.Cog):
             if ":" in term:
                 key, value = term.split(":", 1)
                 key = key.lower().strip()
-                #if key == "rarity":
-                    #key="card_category"
+                if key == "rarity":
+                    key="card_category"
                 value = value.strip()
                 search_criteria[key] = value
         
