@@ -44,6 +44,7 @@ class CardQ(commands.Cog):
             sql_params.append(value)
         sql_query = sql_query.rstrip(" AND ")
         await ctx.send(sql_query)
+        await ctx.send(sql_params)
 
         # Execute the query
         cursor.execute(sql_query, sql_params)
