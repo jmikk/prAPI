@@ -124,7 +124,7 @@ class CardQ(commands.Cog):
                 deck_response = await self.api_request(deck_query)
                 deck_xml = deck_response.text
                 deck_card_ids = self.parse_deck_xml(deck_xml)
-                results = [card for card in results if card[0] not in deck_card_ids]
+                results = [card for card in await results if card[0] not in deck_card_ids]
 
             # Send the formatted results as a message
             await ctx.send(self.format_results(results))
