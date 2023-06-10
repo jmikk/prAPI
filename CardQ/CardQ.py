@@ -2,7 +2,9 @@ import discord
 from redbot.core import commands, Config
 import sqlite3
 import csv
+import xml.etree.ElementTree as ET
 import sans
+import requests
 
 class CardQ(commands.Cog):
     def __init__(self, bot):
@@ -22,6 +24,14 @@ class CardQ(commands.Cog):
         response = await self.client.get(sans.World(**data), auth=self.auth)
         response.raise_for_status()
         return response
+    
+    async def parse_deck_xml(self, deck_xml):
+    root = ET.fromstring(deck_xml)
+    card_ids = []
+    for card_element in root.findall("CARD"):
+        card_id = card_element.find("CARDID").text
+        card_ids.append(card_id)
+    return card_ids
 
     @commands.command()
     @commands.is_owner()
@@ -39,16 +49,21 @@ class CardQ(commands.Cog):
 
         # Create a dictionary to store the search criteria
         search_criteria = {}
+        deck_name = None
+
         # Parse each search term and extract the key-value pair
         for term in search_terms:
             if ":" in term:
                 key, value = term.split(":", 1)
                 key = key.lower().strip()
                 if key == "rarity":
-                    key="card_category"
+                    key = "card_category"
+                elif key == "-deck":
+                    deck_name = value.strip()
+                    continue
                 value = value.strip()
                 search_criteria[key] = value
-        
+
         database_path = await self.config.database_path()
         conn = sqlite3.connect("/home/pi/cards.db")
         cursor = conn.cursor()
@@ -57,6 +72,7 @@ class CardQ(commands.Cog):
         sql_query = "SELECT * FROM cards WHERE "
         sql_conditions = []
         sql_params = []
+
         for key, value in search_criteria.items():
             # Modify the query to use case-insensitive comparison
             if key == "flag" and value == "uploads":
@@ -64,19 +80,19 @@ class CardQ(commands.Cog):
                 sql_params.append("uploads%")  # Append % to match any characters after the uploads/
             elif key == "pname":
                 sql_conditions.append(f"name LIKE ?")
-                sql_params.append(f"%{value}%")  
+                sql_params.append(f"%{value}%")
             elif key == "pmotto":
                 sql_conditions.append(f"motto LIKE ?")
                 sql_params.append(f"%{value}%")
             elif key == "psname":
                 sql_conditions.append(f"name LIKE ?")
-                sql_params.append(f"{value}%")  
+                sql_params.append(f"{value}%")
             elif key == "psmotto":
                 sql_conditions.append(f"motto LIKE ?")
                 sql_params.append(f"{value}%")
             elif key == "pename":
                 sql_conditions.append(f"name LIKE ?")
-                sql_params.append(f"%{value}")  
+                sql_params.append(f"%{value}")
             elif key == "pemotto":
                 sql_conditions.append(f"motto LIKE ?")
                 sql_params.append(f"%{value}")
@@ -95,33 +111,24 @@ class CardQ(commands.Cog):
         sql_query += " AND ".join(sql_conditions)
 
         # Execute the query
-        #await ctx.send(sql_query)
-        #await ctx.send(sql_params)
-
-        # Execute the query
         cursor.execute(sql_query, sql_params)
         results = cursor.fetchall()
-        
-       # Check if any results were found
+
+        # Check if any results were found
         if len(results) > 0:
-            # Prepare the data to be written to the file
-            file_data = [['Card ID', 'Card Name', 'Card Link']]  # Header row
-            for row in results:
-                card_id = row[0]
-                card_name = row[1]
-                card_link = f'www.nationstates.net/page=deck/card={card_id}/season=3'
-                file_data.append([card_id, card_name, card_link])
+            # Remove cards present in the deck from the query results
+            if deck_name is not None:
+                deck_query = f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname={deck_name}"
+                deck_response = await self.api_request(deck_query)
+                deck_xml = deck_response.text
+                deck_card_ids = self.parse_deck_xml(deck_xml)
+                results = [card for card in results if card[0] not in deck_card_ids]
 
-            # Create a temporary CSV file
-            temp_file_path = '/home/pi/card_results.csv'
-            with open(temp_file_path, 'w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerows(file_data)
-
-            # Send the file as an attachment
-            await ctx.send(f"{ctx.author.mention} Enjoy I dug it from the salt mine just for you!",file=discord.File(temp_file_path))
+            # Send the formatted results as a message
+            await ctx.send(self.format_results(results))
         else:
-            await ctx.send("No cards found matching the specified criteria.")
+            await ctx.send("No cards found matching the search criteria.")
 
-        # Close the connection
+        cursor.close()
         conn.close()
+
