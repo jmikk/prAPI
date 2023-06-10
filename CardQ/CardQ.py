@@ -50,7 +50,22 @@ class CardQ(commands.Cog):
                 sql_params.append("uploads%")  # Append % to match any characters after the uploads/
             elif key == "pname":
                 sql_conditions.append(f"name LIKE ?")
-                sql_params.append(f"{value}%")  # Append % to match any characters after the uploads/
+                sql_params.append(f"%{value}%")  
+            elif key == "pmotto":
+                sql_conditions.append(f"motto LIKE ?")
+                sql_params.append(f"%{value}%")
+            elif key == "psname":
+                sql_conditions.append(f"name LIKE ?")
+                sql_params.append(f"{value}%")  
+            elif key == "psmotto":
+                sql_conditions.append(f"motto LIKE ?")
+                sql_params.append(f"{value}%")
+            elif key == "pename":
+                sql_conditions.append(f"name LIKE ?")
+                sql_params.append(f"%{value}")  
+            elif key == "pemotto":
+                sql_conditions.append(f"motto LIKE ?")
+                sql_params.append(f"%{value}")  
             else:
                 sql_conditions.append(f"LOWER({key}) = LOWER(?)")
                 sql_params.append(value)
