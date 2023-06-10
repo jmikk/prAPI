@@ -10,7 +10,7 @@ class CardQ(commands.Cog):
         self.config.register_global(**default_global)
         self.bot = bot
     
-    async def cleankey(self,key)
+    async def cleankey(self,key):
         match key:
             case "rarity":
                 return card_category
