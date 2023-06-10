@@ -13,6 +13,8 @@ class CardQ(commands.Cog):
         default_global = {"database_path": "/home/pi/cards.db"}
         self.config.register_global(**default_global)
         self.bot = bot
+        self.client = sans.AsyncClient()
+
     
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
