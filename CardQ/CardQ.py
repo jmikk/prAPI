@@ -9,15 +9,7 @@ class CardQ(commands.Cog):
         default_global = {"database_path": "/home/pi/cards.db"}
         self.config.register_global(**default_global)
         self.bot = bot
-    
-    async def cleankey(self,key):
-        if key == "rarity":
-            return "card_category"
-        else:
-            return key
-    
-    
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.guild)
+
     @commands.command()
     async def card_search(self, ctx, *, criteria):
         await ctx.send("I'll think about it")
@@ -33,7 +25,8 @@ class CardQ(commands.Cog):
             if ":" in term:
                 key, value = term.split(":", 1)
                 key = key.lower().strip()
-                key = self.cleankey(key)
+                #if key == "rarity":
+                    #key="card_category"
                 value = value.strip()
                 search_criteria[key] = value
         
@@ -43,24 +36,16 @@ class CardQ(commands.Cog):
 
         # Build the SQL query dynamically based on the search criteria
         sql_query = "SELECT * FROM cards WHERE "
-        sql_conditions = []
         sql_params = []
         for key, value in search_criteria.items():
             # Modify the query to use case-insensitive comparison
-            sql_conditions.append(f"LOWER({key}) = LOWER(?)")
+            sql_query += "LOWER(?) = LOWER(?) AND "
+            sql_params.append(key)
             sql_params.append(value)
-        sql_query += " AND ".join(sql_conditions)
+        sql_query = sql_query.rstrip(" AND ")
 
         # Execute the query
-        cursor.execute(sql_query, sql_params)
-
-
-        # Execute the query
-        #await ctx.send(sql_query)
-        #await ctx.send(sql_params)
-
-        # Execute the query
-        cursor.execute(sql_query, sql_params)
+        cursor.execute(sql_query, tuple(sql_params))
         results = cursor.fetchall()
         
        # Check if any results were found
@@ -70,7 +55,7 @@ class CardQ(commands.Cog):
             for row in results:
                 card_id = row[0]
                 card_name = row[1]
-                card_link = f'www.nationstates.net/page=deck/card={card_id}/season=3'
+                card_link = f'www.nationstates.net/card={card_id}/season=3'
                 file_data.append([card_id, card_name, card_link])
 
             # Create a temporary CSV file
