@@ -11,11 +11,10 @@ class CardQ(commands.Cog):
         self.bot = bot
     
     async def cleankey(self,key):
-        match key:
-            case "rarity":
-                return card_category
-            defult:
-                return key
+        if key=="rarity:
+            return card_category
+        else:
+            return key
     
     
     @commands.cooldown(rate=1, per=30, type=commands.BucketType.guild)
