@@ -26,12 +26,12 @@ class CardQ(commands.Cog):
         return response
     
     async def parse_deck_xml(self, deck_xml):
-    root = ET.fromstring(deck_xml)
-    card_ids = []
-    for card_element in root.findall("CARD"):
-        card_id = card_element.find("CARDID").text
-        card_ids.append(card_id)
-    return card_ids
+        root = ET.fromstring(deck_xml)
+        card_ids = []
+        for card_element in root.findall("CARD"):
+            card_id = card_element.find("CARDID").text
+            card_ids.append(card_id)
+        return card_ids
 
     @commands.command()
     @commands.is_owner()
