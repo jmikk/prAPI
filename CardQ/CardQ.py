@@ -10,11 +10,12 @@ class CardQ(commands.Cog):
         self.config.register_global(**default_global)
         self.bot = bot
     
-    async def cleankey(self,key):
-        if key=="rarity":
-            return "card_category"
-        else:
-            return key
+    async def cleankey(self,key)
+        match key:
+            case "rarity":
+                return card_category
+            defult:
+                return key
     
     
     @commands.cooldown(rate=1, per=30, type=commands.BucketType.guild)
@@ -33,44 +34,34 @@ class CardQ(commands.Cog):
             if ":" in term:
                 key, value = term.split(":", 1)
                 key = key.lower().strip()
-                key = await self.cleankey(key)
+                key = self.cleankey(key)
+                if key="tropy"
                 value = value.strip()
                 search_criteria[key] = value
-
+        
         database_path = await self.config.database_path()
-        conn = sqlite3.connect(database_path)
+        conn = sqlite3.connect("/home/pi/cards.db")
         cursor = conn.cursor()
 
         # Build the SQL query dynamically based on the search criteria
-        sql_query = """
-            SELECT cards.*
-            FROM cards
-            LEFT JOIN badges ON cards.id = badges.card_id
-            LEFT JOIN trophies ON cards.id = trophies.card_id
-            WHERE 1=1
-        """
+        sql_query = "SELECT * FROM cards WHERE "
+        sql_conditions = []
         sql_params = []
-
-        # Add conditions for search criteria on cards table
         for key, value in search_criteria.items():
-            sql_query += f"AND cards.{key} = ? "
+            # Modify the query to use case-insensitive comparison
+            sql_conditions.append(f"LOWER({key}) = LOWER(?)")
             sql_params.append(value)
+        sql_query += " AND ".join(sql_conditions)
 
-        # Add conditions for search criteria on badges table
-        if "badge" in search_criteria:
-            sql_query += "AND badges.badge = ? "
-            sql_params.append(search_criteria["badge"])
-
-        # Add conditions for search criteria on trophies table
-        if "trophy" in search_criteria:
-            sql_query += "AND trophies.type = ? "
-            sql_params.append(search_criteria["trophy"])
+        # Execute the query
+        #await ctx.send(sql_query)
+        #await ctx.send(sql_params)
 
         # Execute the query
         cursor.execute(sql_query, sql_params)
         results = cursor.fetchall()
-
-        # Check if any results were found
+        
+       # Check if any results were found
         if len(results) > 0:
             # Prepare the data to be written to the file
             file_data = [['Card ID', 'Card Name', 'Card Link']]  # Header row
@@ -87,12 +78,9 @@ class CardQ(commands.Cog):
                 writer.writerows(file_data)
 
             # Send the file as an attachment
-            await ctx.send(f"{ctx.author.mention} Enjoy! Here are the search results:", file=discord.File(temp_file_path))
+            await ctx.send(f"{ctx.author.mention} Enjoy I dug it from the salt mine just for you!",file=discord.File(temp_file_path))
         else:
             await ctx.send("No cards found matching the specified criteria.")
-
-        # Close the connection
-        conn.close()
 
         # Close the connection
         conn.close()
