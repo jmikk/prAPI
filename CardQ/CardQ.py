@@ -10,7 +10,7 @@ class CardQ(commands.Cog):
     def __init__(self, bot):
         self.auth = sans.NSAuth()
         self.config = Config.get_conf(self, identifier=1234567890)
-        default_global = {"database_path": f"{os.getcwd()}/cards.db"}
+        default_global = {"database_path": "cards.db"}
         self.config.register_global(**default_global)
         self.bot = bot
 
@@ -54,7 +54,7 @@ class CardQ(commands.Cog):
 
         database_path = await self.config.database_path()
         current_path = os.getcwd()
-        conn = sqlite3.connect(f"{current_path}/cards.db")
+        conn = sqlite3.connect("cards.db")
         cursor = conn.cursor()
 
         # Build the SQL query dynamically based on the search criteria
@@ -119,7 +119,7 @@ class CardQ(commands.Cog):
                 file_data.append([card_id, card_name, card_link])
 
             # Create a temporary CSV file
-            temp_file_path = f"{os.getcwd()}card_results.csv"
+            temp_file_path = "card_results.csv"
             with open(temp_file_path, "w", newline="") as file:
                 writer = csv.writer(file)
                 writer.writerows(file_data)
