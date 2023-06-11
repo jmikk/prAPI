@@ -34,6 +34,7 @@ class CardQ(commands.Cog):
     @commands.cooldown(1, 30, commands.BucketType.user)
     @commands.command()
     async def card_search(self, ctx, *, criteria):
+        await ctx.send(os.getcwd())
         await ctx.send("I'll think about it")
 
         # Split the input criteria into individual search terms
