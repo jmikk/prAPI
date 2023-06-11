@@ -13,7 +13,7 @@ cursor = conn.cursor()
 cursor.execute(
     """
     CREATE TABLE IF NOT EXISTS cards (
-        id INTEGER PRIMARY KEY NOCASE,
+        id INTEGER PRIMARY KEY ,
         name TEXT NOCASE,
         type TEXT NOCASE,
         motto TEXT NOCASE,
