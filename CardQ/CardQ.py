@@ -3,6 +3,7 @@ from redbot.core import commands, Config
 import sqlite3
 import csv
 import sans
+import os
 
 
 class CardQ(commands.Cog):
@@ -51,7 +52,8 @@ class CardQ(commands.Cog):
                 search_criteria[key] = value
 
         database_path = await self.config.database_path()
-        conn = sqlite3.connect("/home/pi/cards.db")
+        current_path = os.getcwd()
+        conn = sqlite3.connect(f"{current_path}/cards.db")
         cursor = conn.cursor()
 
         # Build the SQL query dynamically based on the search criteria
