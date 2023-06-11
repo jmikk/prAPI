@@ -33,6 +33,8 @@ class GiveAway(commands.Cog):
     @commands.command()
     @commands.has_role("Giveaway Host")
     async def startgiveaway(self, ctx, duration: int, prize: str, *roles: discord.Role=1114650873797279927):
+        if not roles:
+            roles = [discord.utils.get(ctx.guild.roles, id=1114650873797279927)]
         if not self.giveaway_channel_id:  
             await ctx.send("No giveaway channel set use the setgiveawaychannel to set one first")
             return
