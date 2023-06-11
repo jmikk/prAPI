@@ -58,7 +58,6 @@ class GiveAway(commands.Cog):
         message = (
             f"🎉 **Giveaway** 🎉\n\n"
             f"React with 🎉 to enter the giveaway!\n"
-            f"Open to the following roles: {' '.join(role.mention for role in roles)}\n" 
             f"Prize: {prize}\n"
             f"ID: {giveaway_id}\n"
             f"Ends in {self.format_timestamp(end_timestamp)}.\n"
