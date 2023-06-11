@@ -10,7 +10,7 @@ class CardQ(commands.Cog):
     def __init__(self, bot):
         self.auth = sans.NSAuth()
         self.config = Config.get_conf(self, identifier=1234567890)
-        default_global = {"database_path": "os.getcwd()/cards.db"}
+        default_global = {"database_path": f"{os.getcwd()}/cards.db"}
         self.config.register_global(**default_global)
         self.bot = bot
 
