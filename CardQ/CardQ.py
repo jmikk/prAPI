@@ -5,6 +5,7 @@ import csv
 import sans
 import os
 import xml.etree.ElementTree as ET
+import requests
 
 class CardQ(commands.Cog):
     def __init__(self, bot):
