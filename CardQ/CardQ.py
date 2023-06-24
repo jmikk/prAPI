@@ -120,7 +120,7 @@ class CardQ(commands.Cog):
                 file_data.append([card_id, card_name, card_link])
 
             # Create a temporary CSV file
-            temp_file_path = "/card_results.csv"
+            temp_file_path = "/home/pi/card_results.csv"
             with open(temp_file_path, "w", newline="") as file:
                 writer = csv.writer(file)
                 writer.writerows(file_data)
