@@ -47,6 +47,7 @@ class prAPI(commands.Cog):
     @commands.command()
     @is_owner_overridable()
     async def dispatch_list(self, ctx):
+        self.reauth()
         data = {
             "nation": self.RegionalNation,
              "q" : "dispatchlist"
@@ -103,6 +104,7 @@ class prAPI(commands.Cog):
     @commands.command()
     @is_owner_overridable()
     async def edit_dispatch(self, ctx, id:str, title: str, category:str, subcategory:str):
+        self.reauth()
         output = await ctx.message.attachments[0].read()
         output = codecs.decode(output, 'utf-8-sig')
         data = {
@@ -126,6 +128,7 @@ class prAPI(commands.Cog):
     @commands.command()
     @is_owner_overridable()
     async def new_dispatch(self, ctx,title: str, category:str, subcategory:str):
+        self.reauth()
         output = await ctx.message.attachments[0].read()
         output = codecs.decode(output, 'utf-8-sig')
         data = {
@@ -148,6 +151,7 @@ class prAPI(commands.Cog):
     @commands.command()
     @is_owner_overridable()
     async def delete_dispatch(self, ctx,ID):
+        self.reauth()
         data = {
             "nation": self.RegionalNation,
             "c": "dispatch",
@@ -165,6 +169,7 @@ class prAPI(commands.Cog):
     @commands.command()
     @is_owner_overridable()
     async def rmb_post(self, ctx, Region, *, msg):
+        self.reauth()
         str = ''
         for item in msg:
             str = str + item
@@ -185,6 +190,7 @@ class prAPI(commands.Cog):
     @commands.command()
     @is_owner_overridable()
     async def gift_card(self, ctx, giftie, cardid, season):
+        self.reauth()
         await ctx.send(
             f"Attempting to gift {cardid} to {giftie} from {self.RegionalNation}"
         )
