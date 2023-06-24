@@ -141,7 +141,8 @@ class CardQ(commands.Cog):
 
         # Commit the changes and close the connection
         conn.commit()
-        conn.close()    
+        conn.close()  
+        await ctx.send("DB created")
         
         
     @commands.cooldown(1, 30, commands.BucketType.user)
