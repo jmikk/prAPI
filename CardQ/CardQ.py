@@ -36,7 +36,6 @@ class CardQ(commands.Cog):
     @commands.cooldown(1, 30, commands.BucketType.user)
     @commands.command()
     async def card_search(self, ctx, *, criteria):
-        await ctx.send(os.getcwd())
         await ctx.send("I'll think about it")
 
         # Split the input criteria into individual search terms
@@ -121,7 +120,7 @@ class CardQ(commands.Cog):
                 file_data.append([card_id, card_name, card_link])
 
             # Create a temporary CSV file
-            temp_file_path = "card_results.csv"
+            temp_file_path = "/card_results.csv"
             with open(temp_file_path, "w", newline="") as file:
                 writer = csv.writer(file)
                 writer.writerows(file_data)
