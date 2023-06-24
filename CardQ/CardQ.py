@@ -36,6 +36,7 @@ class CardQ(commands.Cog):
     async def CardQ_DB(self, ctx):
             # Parse the XML data
         url = "https://drive.google.com/uc?export=download&id=1yAxIswkN0nvsO37_fQsykWCjd62bBdfB"
+
         
         # Download the XML file
         response = requests.get(url)
