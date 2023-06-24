@@ -35,7 +35,14 @@ class CardQ(commands.Cog):
     @commands.is_owner()
     async def CardQ_DB(self, ctx):
             # Parse the XML data
-        tree = ET.parse("data.xml")
+        url = "https://drive.google.com/uc?export=download&id=1yAxIswkN0nvsO37_fQsykWCjd62bBdfB"
+        
+        # Download the XML file
+        response = requests.get(url)
+        xml_data = response.content
+        
+        # Parse the XML content
+        tree = ET.ElementTree(ET.fromstring(xml_data))    
         root = tree.getroot()
 
         # Connect to the database
