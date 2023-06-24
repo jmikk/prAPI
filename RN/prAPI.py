@@ -20,6 +20,7 @@ class prAPI(commands.Cog):
         self.auth = sans.NSAuth()
         self.RegionalNation = ""
         self.client = sans.AsyncClient()
+        self.password = ""
 
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
@@ -213,8 +214,12 @@ class prAPI(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def set_regional_nation_password(self, ctx, *, password2):
-        self.auth = sans.NSAuth(password=password2)
+        self.password=password2
+        self.auth = sans.NSAuth(password=self.password)
         await ctx.send(f"Set regional nation password for {self.RegionalNation}.")
+   
+    async reauth(self):
+        self.auth = sans.NSAuth(password=self.password)
 
     @commands.command()
     @commands.is_owner()
