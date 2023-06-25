@@ -226,6 +226,7 @@ class prAPI(commands.Cog):
    
     async reauth(self):
         self.auth = sans.NSAuth(password=self.password)
+        await ctx.send("Reauthed")
 
     @commands.command()
     @commands.is_owner()
