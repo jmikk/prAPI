@@ -47,6 +47,3 @@ class cardMini(commands.Cog):
                 ["walrus#8689", "@heartbreakingly mediocre", "761003357724082196", "18", "Epic", "2"]
             ]
             writer.writerows(data)
-
-def setup(bot):
-    bot.add_cog(Rarity(bot))
