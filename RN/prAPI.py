@@ -169,7 +169,7 @@ class prAPI(commands.Cog):
     @commands.command()
     @is_owner_overridable()
     async def rmb_post(self, ctx, Region, *, msg):
-        await self.reauth(ctx)
+        await self.reauth(ctx=ctx)
         str = ''
         for item in msg:
             str = str + item
