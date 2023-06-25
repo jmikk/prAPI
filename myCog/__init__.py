@@ -1,5 +1,5 @@
-from .prAPI import prAPI
+from .cardMini import cardMini
 
 
 async def setup(bot):
-    await bot.add_cog(prAPI(bot))
+    await bot.add_cog(cardMini(bot))
