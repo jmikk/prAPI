@@ -169,7 +169,7 @@ class prAPI(commands.Cog):
     @commands.command()
     @is_owner_overridable()
     async def rmb_post(self, ctx, Region, *, msg):
-        await self.reauth(ctx=ctx)
+        await self.reauth()
         str = ''
         for item in msg:
             str = str + item
@@ -226,7 +226,6 @@ class prAPI(commands.Cog):
    
     async def reauth(self,ctx):
         self.auth = sans.NSAuth(password=self.password)
-        await ctx.send("Reauthed")
 
     @commands.command()
     @commands.is_owner()
