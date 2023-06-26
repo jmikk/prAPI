@@ -101,10 +101,10 @@ class cardMini(commands.Cog):
         mv = random_card["MV"]
         id = random_card["ID"]
         flag_url = random_card["Flags"]
-
+        await ctx.send(flag_url)
 
         embed = discord.Embed(title="Random Card", color=discord.Color.blue())
-        embed.set_thumbnail(url=flag_url)
+        #embed.set_thumbnail(url=flag_url)
         embed.add_field(name="Username", value=username, inline=False)
         embed.add_field(name="Mention", value=mention, inline=False)
         embed.add_field(name="Rarity", value=rarity, inline=True)
