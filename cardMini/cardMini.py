@@ -20,7 +20,7 @@ class cardMini(commands.Cog):
 
     #db_file = data_manager.cog_data_path(self) / "cards.csv"
 
-    @commands.command()
+      @commands.command()
     async def upload_avatars(self, ctx):
         db_file = data_manager.cog_data_path(self) / "cards.csv"  # Use data_manager.cog_data_path() to determine the database file path
 
