@@ -2,6 +2,7 @@ import csv
 import requests
 from redbot.core import commands, data_manager
 import random
+from imgurpython import ImgurClient
 
 class cardMini(commands.Cog):
     def __init__(self, bot):
