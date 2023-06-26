@@ -15,26 +15,31 @@ class cardMini(commands.Cog):
 
     @commands.command()
     async def upload_avatars(self, ctx):
-        db_file = "cards.db"  # Update with your database file name
+        db_file = "cards.csv"  # Update with your database file name
 
         with open(db_file, "r") as csv_file:
             cards_data = list(csv.DictReader(csv_file))
 
-        avatar_links = []
+        updated_rows = []
         for row in cards_data:
             user_id = row["ID"]
             try:
                 user = await self.bot.fetch_user(int(user_id))
                 avatar_url = user.avatar_url
                 response = self.imgur_client.upload_from_url(avatar_url)
-                avatar_links.append(response["link"])
+                row["Flags"] = response["link"]
+                updated_rows.append(row)
             except Exception as e:
                 print(f"Error processing avatar for user ID {user_id}: {e}")
 
-        if avatar_links:
-            embed = discord.Embed(title="Avatar Upload", color=discord.Color.blue())
-            embed.add_field(name="Avatar Links", value="\n".join(avatar_links))
-            await ctx.send(embed=embed)
+        if updated_rows:
+            with open(db_file, "w", newline="") as csv_file:
+                fieldnames = updated_rows[0].keys()
+                writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(updated_rows)
+
+            await ctx.send("Avatar links have been uploaded and added to the 'Flags' column.")
         else:
             await ctx.send("No avatar links found.")
     
