@@ -20,6 +20,19 @@ class cardMini(commands.Cog):
 
     #db_file = data_manager.cog_data_path(self) / "cards.csv"
 
+import csv
+import discord
+import requests
+import os
+from discord.ext import commands
+from imgurpython import ImgurClient
+from imgurpython.helpers.error import ImgurClientError
+
+class CardCog(commands.Cog):
+    def __init__(self, bot, imgur_client_id, imgur_client_secret):
+        self.bot = bot
+        self.imgur_client = ImgurClient(imgur_client_id, imgur_client_secret)
+
     @commands.command()
     async def upload_avatars(self, ctx):
         db_file = data_manager.cog_data_path(self) / "cards.csv"  # Use data_manager.cog_data_path() to determine the database file path
@@ -31,8 +44,7 @@ class cardMini(commands.Cog):
         for row in cards_data:
             user_id = row["ID"]
             try:
-                user = await self.bot.fetch_user(int(user_id))
-                avatar_url = user.avatar_url_as(format="png")
+                avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}"
                 avatar_filename = f"avatar_{user_id}.png"
                 avatar_path = data_manager.cog_data_path(self) / avatar_filename
 
@@ -42,9 +54,10 @@ class cardMini(commands.Cog):
                     avatar_file.write(response.content)
 
                 # Upload avatar image to Imgur
-                imgur_response = self.imgur_client.upload_from_path(avatar_path)
-                row["Flags"] = imgur_response["link"]
-                updated_rows.append(row)
+                imgur_response = self.upload_to_imgur(avatar_path)
+                if imgur_response and "link" in imgur_response:
+                    row["Flags"] = imgur_response["link"]
+                    updated_rows.append(row)
 
                 # Remove the local avatar image file
                 os.remove(avatar_path)
@@ -61,6 +74,24 @@ class cardMini(commands.Cog):
             await ctx.send("Avatar links have been uploaded and added to the 'Flags' column.")
         else:
             await ctx.send("No avatar links found.")
+
+    def upload_to_imgur(self, image_path):
+        try:
+            imgur_response = self.imgur_client.upload_from_path(image_path)
+            return imgur_response
+        except ImgurClientError as e:
+            print(f"Error uploading image to Imgur: {e.error_message}")
+        except Exception as e:
+            print(f"An error occurred while uploading image to Imgur: {str(e)}")
+
+        return None
+
+def setup(bot):
+    imgur_client_id = "YOUR_IMGUR_CLIENT_ID"  # Update with your Imgur client ID
+    imgur_client_secret = "YOUR_IMGUR_CLIENT_SECRET"  # Update with your Imgur client secret
+    cog = CardCog(bot, imgur_client_id, imgur_client_secret)
+    bot.add_cog(cog)
+
 
     
     @commands.command()
