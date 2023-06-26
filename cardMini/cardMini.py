@@ -29,17 +29,25 @@ class cardMini(commands.Cog):
 
         updated_rows = []
         for row in cards_data:
-            #await ctx.send("checking"+row["Username"])
             user_id = row["ID"]
             try:
                 user = await self.bot.fetch_user(int(user_id))
-                avatar_hash = str(user.avatar) if user.avatar else str(user.default_avatar)
-                avatar_url = f"{avatar_hash}.png"
-                await ctx.send(avatar_url)
-                response = self.imgur_client.upload_from_url(avatar_url)
-                await ctx.send(response.text()+"|")
-                row["Flags"] = response["link"]
+                avatar_url = user.avatar_url_as(format="png")
+                avatar_filename = f"avatar_{user_id}.png"
+                avatar_path = data_manager.cog_data_path(self) / avatar_filename
+
+                # Download avatar image
+                response = requests.get(avatar_url)
+                with open(avatar_path, "wb") as avatar_file:
+                    avatar_file.write(response.content)
+
+                # Upload avatar image to Imgur
+                imgur_response = self.imgur_client.upload_from_path(avatar_path)
+                row["Flags"] = imgur_response["link"]
                 updated_rows.append(row)
+
+                # Remove the local avatar image file
+                os.remove(avatar_path)
             except Exception as e:
                 print(f"Error processing avatar for user ID {user_id}: {e}")
 
