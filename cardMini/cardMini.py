@@ -30,7 +30,7 @@ class cardMini(commands.Cog):
         for row in cards_data:
             user_id = row["ID"]
             try:
-                avatar_url = discord.User.default_avatar_url(user_id=user_id)
+                avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{row['ID']}.png"
                 response = self.imgur_client.upload_from_url(avatar_url)
                 row["Flags"] = response["link"]
                 updated_rows.append(row)
