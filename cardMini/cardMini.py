@@ -4,6 +4,7 @@ from redbot.core import commands, data_manager
 import random
 from imgurpython import ImgurClient
 import os
+import discord
 
 class cardMini(commands.Cog):
     def __init__(self, bot):
