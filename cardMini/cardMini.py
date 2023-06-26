@@ -100,15 +100,18 @@ class cardMini(commands.Cog):
         gobs_count = random_card["GobsCount"]
         mv = random_card["MV"]
         id = random_card["ID"]
+        flag_url = card["Flags"]
 
 
         embed = discord.Embed(title="Random Card", color=discord.Color.blue())
+        embed.set_thumbnail(url=flag_url)
         embed.add_field(name="Username", value=username, inline=False)
         embed.add_field(name="Mention", value=mention, inline=False)
         embed.add_field(name="Rarity", value=rarity, inline=True)
         embed.add_field(name="Season", value=season, inline=True)
         embed.add_field(name="GobsCount", value=gobs_count, inline=True)
         embed.add_field(name="MV", value=mv, inline=True)
+        
 
         await ctx.send(embed=embed)
         
