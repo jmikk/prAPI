@@ -29,15 +29,16 @@ class cardMini(commands.Cog):
 
         updated_rows = []
         for row in cards_data:
-            await ctx.send("checking"+row["Username"])
+            #await ctx.send("checking"+row["Username"])
             user_id = row["ID"]
             try:
                 user = await self.bot.fetch_user(int(user_id))
                 avatar_hash = str(user.avatar) if user.avatar else str(user.default_avatar)
                 avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png"
-                response = self.imgur_client.upload_from_url(avatar_url)
-                await ctx.send(response)
-                row["Flags"] = response["link"]
+                await ctx.send(avatar_url)
+                #response = self.imgur_client.upload_from_url(avatar_url)
+                #await ctx.send(response)
+                #row["Flags"] = response["link"]
                 updated_rows.append(row)
             except Exception as e:
                 print(f"Error processing avatar for user ID {user_id}: {e}")
