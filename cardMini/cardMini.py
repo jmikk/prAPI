@@ -100,7 +100,7 @@ class cardMini(commands.Cog):
         gobs_count = random_card["GobsCount"]
         mv = random_card["MV"]
         id = random_card["ID"]
-        flag_url = card["Flags"]
+        flag_url = random_card["Flags"]
 
 
         embed = discord.Embed(title="Random Card", color=discord.Color.blue())
