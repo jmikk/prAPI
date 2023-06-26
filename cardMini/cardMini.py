@@ -73,7 +73,7 @@ class cardMini(commands.Cog):
 
         await ctx.send(embed=embed)
         
-        @commands.command()
+    @commands.command()
     async def delete_database(self, ctx):
         db_file = data_manager.cog_data_path(self) / "cards.db"
 
