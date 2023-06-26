@@ -62,7 +62,7 @@ class cardMini(commands.Cog):
         else:
             await ctx.send("No avatar links found.")
 
-    def upload_to_postimages(self, image_path):
+    async def upload_to_postimages(self, image_path):
         try:
             files = {"file": open(image_path, "rb")}
             response = requests.post("https://postimages.org/json", files=files)
