@@ -49,7 +49,7 @@ class cardMini(commands.Cog):
                 # Remove the local avatar image file
                 os.remove(avatar_path)
             except Exception as e:
-                print(f"Error processing avatar for user ID {user_id}: {e}")
+               await ctx.send(f"Error processing avatar for user ID {user_id}: {e}")
 
         if updated_rows:
             with open(db_file, "w", newline="") as csv_file:
@@ -71,11 +71,11 @@ class cardMini(commands.Cog):
                 if response_data["status"] == 200:
                     return response_data["image"]["url"]
                 else:
-                    print(f"Postimages.org API returned an error: {response_data['error']}")
+                    await ctx.send(f"Postimages.org API returned an error: {response_data['error']}")
             else:
-                print(f"Failed to upload image to postimages.org. HTTP status code: {response.status_code}")
+                await ctx.send(f"Failed to upload image to postimages.org. HTTP status code: {response.status_code}")
         except Exception as e:
-            print(f"An error occurred while uploading image to postimages.org: {str(e)}")
+            await ctx.send(f"An error occurred while uploading image to postimages.org: {str(e)}")
 
         return None
     
