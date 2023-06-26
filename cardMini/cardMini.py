@@ -15,8 +15,8 @@ class cardMini(commands.Cog):
 
     @commands.command()
     async def upload_avatars(self, ctx):
-        db_file = "cards.csv"  # Update with your database file name
-
+        db_file = data_manager.cog_data_path(self) / "cards.csv"
+        
         with open(db_file, "r") as csv_file:
             cards_data = list(csv.DictReader(csv_file))
 
