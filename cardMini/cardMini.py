@@ -37,7 +37,7 @@ class cardMini(commands.Cog):
                 avatar_url = f"{avatar_hash}.png"
                 await ctx.send(avatar_url)
                 response = self.imgur_client.upload_from_url(avatar_url)
-                await ctx.send(response)
+                await ctx.send(response+"|")
                 row["Flags"] = response["link"]
                 updated_rows.append(row)
             except Exception as e:
