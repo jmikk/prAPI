@@ -5,6 +5,31 @@ from redbot.core import commands, data_manager
 class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+    
+    @commands.command()
+    async def open2(self, ctx):
+        db_file = data_manager.cog_data_path(self) / "cards.csv"
+
+        with open(db_file, "r") as csv_file:
+            cards_data = list(csv.DictReader(csv_file))
+
+        season2_cards = [card for card in cards_data if card["Season"] == "2"]
+
+        if season2_cards and random.random() < 0.9:
+            random_card = random.choice(season2_cards)
+        else:
+            random_card = random.choice(cards_data)
+
+        card_info = f"Username: {random_card['Username']}\n" \
+                    f"Mention: {random_card['Mention']}\n" \
+                    f"ID: {random_card['ID']}\n" \
+                    f"Ranking: {random_card['Ranking']}\n" \
+                    f"Rarity: {random_card['Rarity']}\n" \
+                    f"Season: {random_card['Season']}\n" \
+                    f"GobsCount: {random_card['GobsCount']}\n" \
+                    f"MV: {random_card['MV']}"
+
+        await ctx.send(f"Random Card:\n{card_info}")
 
     @commands.command()
     async def import_cards(self, ctx):
