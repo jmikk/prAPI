@@ -9,7 +9,7 @@ import discord
 class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.imgur_client = ImgurClient("e1d1b7a86bfc08a", "2bbae7cbf6619009fb9570f8388e5fe1bbe69f06")
+        self.imgur_client = ImgurClient("e37e735710f856c", "ee2ffe6712dfdada38405fa8bc5ca7b1f3544660")
 
 
     async def get_avatar_url(user_id):
