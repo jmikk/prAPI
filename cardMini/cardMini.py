@@ -6,6 +6,34 @@ import random
 class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.imgur_client = ImgurClient("e1d1b7a86bfc08a", "2bbae7cbf6619009fb9570f8388e5fe1bbe69f06")
+
+
+
+    @commands.command()
+    async def upload_avatars(self, ctx):
+        db_file = "cards.csv"  # Update with your database file name
+
+        with open(db_file, "r") as csv_file:
+            cards_data = list(csv.DictReader(csv_file))
+
+        avatar_links = []
+        for row in cards_data:
+            user_id = row["ID"]
+            try:
+                user = await self.bot.fetch_user(int(user_id))
+                avatar_url = user.avatar_url
+                response = self.imgur_client.upload_from_url(avatar_url)
+                avatar_links.append(response["link"])
+            except Exception as e:
+                print(f"Error processing avatar for user ID {user_id}: {e}")
+
+        if avatar_links:
+            embed = discord.Embed(title="Avatar Upload", color=discord.Color.blue())
+            embed.add_field(name="Avatar Links", value="\n".join(avatar_links))
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send("No avatar links found.")
     
     @commands.command()
     async def open2(self, ctx):
