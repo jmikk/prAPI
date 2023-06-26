@@ -29,7 +29,7 @@ class cardMini(commands.Cog):
 
         updated_rows = []
         for row in cards_data:
-            await ctx.send("checking"+row["Username"])
+            #await ctx.send("checking"+row["Username"])
             user_id = row["ID"]
             try:
                 user = await self.bot.fetch_user(int(user_id))
