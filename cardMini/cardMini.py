@@ -16,20 +16,22 @@ class cardMini(commands.Cog):
         user = await bot.fetch_user(user_id)
         avatar_url = user.default_avatar_url if not user.avatar else user.avatar_url
         return avatar_url
-    
+
+
+    #db_file = data_manager.cog_data_path(self) / "cards.csv"
+
     @commands.command()
     async def upload_avatars(self, ctx):
         db_file = data_manager.cog_data_path(self) / "cards.csv"
-        
         with open(db_file, "r") as csv_file:
             cards_data = list(csv.DictReader(csv_file))
 
         updated_rows = []
         for row in cards_data:
             user_id = row["ID"]
-            
             try:
-                avatar_url = get_avatar_url(user_id)
+                user = await self.bot.fetch_user(int(user_id))
+                avatar_url = user.default_avatar_url if not user.avatar else user.avatar_url
                 response = self.imgur_client.upload_from_url(avatar_url)
                 row["Flags"] = response["link"]
                 updated_rows.append(row)
