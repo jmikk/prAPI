@@ -27,9 +27,9 @@ class cardMini(commands.Cog):
         season = random_card["Season"]
         gobs_count = random_card["GobsCount"]
         mv = random_card["MV"]
+        id = random_card["ID"]
 
-        # Get the mentioned user's profile picture
-        mentioned_user = await commands.MemberConverter().convert(ctx, mention)
+        mentioned_user = await self.bot.fetch_user(id)
         avatar_url = mentioned_user.avatar_url
 
         embed = discord.Embed(title="Random Card", color=discord.Color.blue())
