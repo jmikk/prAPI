@@ -3,6 +3,7 @@ import requests
 from redbot.core import commands, data_manager
 import random
 from imgurpython import ImgurClient
+import os
 
 class cardMini(commands.Cog):
     def __init__(self, bot):
@@ -71,7 +72,18 @@ class cardMini(commands.Cog):
         embed.add_field(name="MV", value=mv, inline=True)
 
         await ctx.send(embed=embed)
+        
+        @commands.command()
+    async def delete_database(self, ctx):
+        db_file = data_manager.cog_data_path(self) / "cards.db"
 
+        if os.path.exists(db_file):
+            os.remove(db_file)
+            await ctx.send("Database file has been deleted.")
+        else:
+            await ctx.send("No database file found.")
+
+    
     @commands.command()
     async def import_cards(self, ctx):
         url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRSS2pmupriEkgsieDU1LnDc0En1TjULcY7cjS_9qCgOdgSwKeIp7NFvhdfgfGp0swVzn4bNsPfcRqs/pub?gid=0&single=true&output=csv"
@@ -98,6 +110,7 @@ class cardMini(commands.Cog):
             await ctx.send("Database created/updated successfully.")
         else:
             await ctx.send("Failed to fetch CSV data from the URL.")
+    
 
 def setup(bot):
     cog = CardCog(bot)
