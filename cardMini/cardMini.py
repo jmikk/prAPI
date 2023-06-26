@@ -22,7 +22,8 @@ class cardMini(commands.Cog):
 
     @commands.command()
     async def upload_avatars(self, ctx):
-        db_file = data_manager.cog_data_path(self) / "cards.csv"
+        db_file = data_manager.cog_data_path(self) / "cards.csv"  # Use data_manager.cog_data_path() to determine the database file path
+
         with open(db_file, "r") as csv_file:
             cards_data = list(csv.DictReader(csv_file))
 
