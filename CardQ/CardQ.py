@@ -95,7 +95,7 @@ class CardQ(commands.Cog):
                 sql_params.append(f"{value}%")
             elif key == "peflag":
                 sql_conditions.append(f"flag LIKE ?")
-                sql_params.append(f"{value}%")
+                sql_params.append(f"%{value}")
             else:
                 sql_conditions.append(f"LOWER({key}) = LOWER(?)")
                 sql_params.append(value)
