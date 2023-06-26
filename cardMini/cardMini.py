@@ -21,16 +21,27 @@ class cardMini(commands.Cog):
         else:
             random_card = random.choice(cards_data)
 
-        card_info = f"Username: {random_card['Username']}\n" \
-                    f"Mention: {random_card['Mention']}\n" \
-                    f"ID: {random_card['ID']}\n" \
-                    f"Ranking: {random_card['Ranking']}\n" \
-                    f"Rarity: {random_card['Rarity']}\n" \
-                    f"Season: {random_card['Season']}\n" \
-                    f"GobsCount: {random_card['GobsCount']}\n" \
-                    f"MV: {random_card['MV']}"
+        username = random_card["Username"]
+        mention = random_card["Mention"]
+        rarity = random_card["Rarity"]
+        season = random_card["Season"]
+        gobs_count = random_card["GobsCount"]
+        mv = random_card["MV"]
 
-        await ctx.send(f"Random Card:\n{card_info}")
+        # Get the mentioned user's profile picture
+        mentioned_user = await commands.MemberConverter().convert(ctx, mention)
+        avatar_url = mentioned_user.avatar_url
+
+        embed = discord.Embed(title="Random Card", color=discord.Color.blue())
+        embed.set_thumbnail(url=avatar_url)
+        embed.add_field(name="Username", value=username, inline=False)
+        embed.add_field(name="Mention", value=mention, inline=False)
+        embed.add_field(name="Rarity", value=rarity, inline=True)
+        embed.add_field(name="Season", value=season, inline=True)
+        embed.add_field(name="GobsCount", value=gobs_count, inline=True)
+        embed.add_field(name="MV", value=mv, inline=True)
+
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def import_cards(self, ctx):
