@@ -20,19 +20,6 @@ class cardMini(commands.Cog):
 
     #db_file = data_manager.cog_data_path(self) / "cards.csv"
 
-import csv
-import discord
-import requests
-import os
-from discord.ext import commands
-from imgurpython import ImgurClient
-from imgurpython.helpers.error import ImgurClientError
-
-class CardCog(commands.Cog):
-    def __init__(self, bot, imgur_client_id, imgur_client_secret):
-        self.bot = bot
-        self.imgur_client = ImgurClient(imgur_client_id, imgur_client_secret)
-
     @commands.command()
     async def upload_avatars(self, ctx):
         db_file = data_manager.cog_data_path(self) / "cards.csv"  # Use data_manager.cog_data_path() to determine the database file path
@@ -53,10 +40,10 @@ class CardCog(commands.Cog):
                 with open(avatar_path, "wb") as avatar_file:
                     avatar_file.write(response.content)
 
-                # Upload avatar image to Imgur
-                imgur_response = self.upload_to_imgur(avatar_path)
-                if imgur_response and "link" in imgur_response:
-                    row["Flags"] = imgur_response["link"]
+                # Upload avatar image to postimages.org
+                image_url = self.upload_to_postimages(avatar_path)
+                if image_url:
+                    row["Flags"] = image_url
                     updated_rows.append(row)
 
                 # Remove the local avatar image file
@@ -75,24 +62,22 @@ class CardCog(commands.Cog):
         else:
             await ctx.send("No avatar links found.")
 
-    def upload_to_imgur(self, image_path):
+    def upload_to_postimages(self, image_path):
         try:
-            imgur_response = self.imgur_client.upload_from_path(image_path)
-            return imgur_response
-        except ImgurClientError as e:
-            print(f"Error uploading image to Imgur: {e.error_message}")
+            files = {"file": open(image_path, "rb")}
+            response = requests.post("https://postimages.org/json", files=files)
+            if response.status_code == 200:
+                response_data = response.json()
+                if response_data["status"] == 200:
+                    return response_data["image"]["url"]
+                else:
+                    print(f"Postimages.org API returned an error: {response_data['error']}")
+            else:
+                print(f"Failed to upload image to postimages.org. HTTP status code: {response.status_code}")
         except Exception as e:
-            print(f"An error occurred while uploading image to Imgur: {str(e)}")
+            print(f"An error occurred while uploading image to postimages.org: {str(e)}")
 
         return None
-
-def setup(bot):
-    imgur_client_id = "YOUR_IMGUR_CLIENT_ID"  # Update with your Imgur client ID
-    imgur_client_secret = "YOUR_IMGUR_CLIENT_SECRET"  # Update with your Imgur client secret
-    cog = CardCog(bot, imgur_client_id, imgur_client_secret)
-    bot.add_cog(cog)
-
-
     
     @commands.command()
     async def open2(self, ctx):
