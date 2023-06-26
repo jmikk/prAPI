@@ -224,7 +224,7 @@ class prAPI(commands.Cog):
         self.auth = sans.NSAuth(password=self.password)
         await ctx.send(f"Set regional nation password for {self.RegionalNation}.")
    
-    async def reauth(self,ctx):
+    async def reauth(self):
         self.auth = sans.NSAuth(password=self.password)
 
     @commands.command()
