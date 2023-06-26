@@ -59,11 +59,8 @@ class cardMini(commands.Cog):
         mv = random_card["MV"]
         id = random_card["ID"]
 
-        mentioned_user = await self.bot.fetch_user(id)
-        avatar_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/1176px-Google_%22G%22_Logo.svg.png?20230305195327"
 
         embed = discord.Embed(title="Random Card", color=discord.Color.blue())
-        embed.set_thumbnail(url=avatar_url)
         embed.add_field(name="Username", value=username, inline=False)
         embed.add_field(name="Mention", value=mention, inline=False)
         embed.add_field(name="Rarity", value=rarity, inline=True)
