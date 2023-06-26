@@ -31,7 +31,9 @@ class cardMini(commands.Cog):
         for row in cards_data:
             user_id = row["ID"]
             try:
-                avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{row['ID']}.png"
+                user = await self.bot.fetch_user(int(user_id))
+                avatar_hash = str(user.avatar) if user.avatar else str(user.default_avatar)
+                avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png"
                 response = self.imgur_client.upload_from_url(avatar_url)
                 row["Flags"] = response["link"]
                 updated_rows.append(row)
@@ -48,6 +50,7 @@ class cardMini(commands.Cog):
             await ctx.send("Avatar links have been uploaded and added to the 'Flags' column.")
         else:
             await ctx.send("No avatar links found.")
+
     
     @commands.command()
     async def open2(self, ctx):
