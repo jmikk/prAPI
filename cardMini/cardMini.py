@@ -81,23 +81,24 @@ class cardMini(commands.Cog):
             GobsBuyPrice = .01
         if GobsSellPrice < .02:
             GobsSellPrice = .02
-        match rarity:
-            case "common":
-                embed = discord.Embed(title=" ", color=discord.Color.light_grey())
-            case "uncommon":
-                embed = discord.Embed(title=" ", color=discord.Color.green())
-            case "rare":
-                embed = discord.Embed(title=" ", color=discord.Color.blue())
-            case "Ultra-Rare":
-                embed = discord.Embed(title=" ", color=discord.Color.magenta())
-            case "Epic":
-                embed = discord.Embed(title=" ", color=discord.Color.orange())
-            case "Legendary":
-                embed = discord.Embed(title=" ", color=discord.Color.gold())
-            case "Mythic":
-                embed = discord.Embed(title=" ", color=discord.Color.red())
-            case _:
-                embed = discord.Embed(title=" ", color=discord.Color.teal())
+        
+        if rarity == "Common":
+            embed = discord.Embed(title=" ", color=discord.Color.light_grey())
+        elif rarity == "Uncommon":
+            embed = discord.Embed(title=" ", color=discord.Color.green())
+        elif rarity == "Rare":
+            embed = discord.Embed(title=" ", color=discord.Color.blue())
+        elif rarity == "Ultra-Rare":
+            embed = discord.Embed(title=" ", color=discord.Color.magenta())
+        elif rarity == "Epic":
+            embed = discord.Embed(title=" ", color=discord.Color.orange())
+        elif rarity == "Legendary":
+            embed = discord.Embed(title=" ", color=discord.Color.gold())
+        elif rarity == "Mythic":
+            embed = discord.Embed(title=" ", color=discord.Color.red())
+        else:
+            embed = discord.Embed(title=" ", color=discord.Color.teal())
+
                 
 
                 
