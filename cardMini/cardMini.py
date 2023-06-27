@@ -67,7 +67,7 @@ class cardMini(commands.Cog):
         season = random_card["Season"]
         gobs_count = random_card["GobsCount"]
         mv = random_card["MV"]
-        mv = int(mv)
+        mv = float(mv)
         id = random_card["ID"]
         flag_url = random_card["Flags"]
         GobsBuyPrice = mv - (mv * .1)
