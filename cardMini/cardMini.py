@@ -74,6 +74,9 @@ class cardMini(commands.Cog):
         flag_url = random_card["Flags"]
         GobsBuyPrice = mv - (mv * .1)
         GobsSellPrice = mv + (mv * .1)
+        GobsBuyPrice =  round(GobsBuyPrice, 2)
+        GobsSellPrice =  round(GobsSellPrice, 2)
+
         if GobsBuyPrice < .01:
             GobsBuyPrice = .01
         if GobsSellPrice < .02:
