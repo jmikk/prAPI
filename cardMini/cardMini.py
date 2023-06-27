@@ -35,7 +35,15 @@ class cardMini(commands.Cog):
                 output.append(avatar_url)
             except Exception as e:
                await ctx.send(f"Error processing avatar for user ID {user_id}: {e}")
-        await ctx.send(output)
+        #await ctx.send(output) # Create a text file and write the data to it
+        with open('list_data.txt', 'w', encoding='utf-8') as file:
+            file.write(output)
+    
+        # Create a File object from the text file
+        file = discord.File('list_data.txt')
+    
+        # Send the file as an attachment
+        await channel.send(file=file)
                 
     @commands.command()
     async def open2(self, ctx):
