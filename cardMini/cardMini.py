@@ -19,6 +19,7 @@ class cardMini(commands.Cog):
     #db_file = data_manager.cog_data_path(self) / "cards.csv"
 
     @commands.command()
+    @commands.is_owner()
     async def list_avatars(self, ctx):
         output=[]
         db_file = data_manager.cog_data_path(self) / "cards.csv"  # Use data_manager.cog_data_path() to determine the database file path
@@ -48,6 +49,7 @@ class cardMini(commands.Cog):
         await ctx.send(file=file)
                 
     @commands.command()
+    @commands.is_owner()
     async def open2(self, ctx):
         db_file = data_manager.cog_data_path(self) / "cards.csv"
 
@@ -92,6 +94,7 @@ class cardMini(commands.Cog):
         await ctx.send(embed=embed)
         
     @commands.command()
+    @commands.is_owner()
     async def delete_database(self, ctx):
         db_file = data_manager.cog_data_path(self) / "cards.csv"
 
@@ -103,6 +106,7 @@ class cardMini(commands.Cog):
 
     
     @commands.command()
+    @commands.is_owner()
     async def import_cards(self, ctx):
         url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRSS2pmupriEkgsieDU1LnDc0En1TjULcY7cjS_9qCgOdgSwKeIp7NFvhdfgfGp0swVzn4bNsPfcRqs/pub?gid=0&single=true&output=csv"
 
