@@ -2,7 +2,6 @@ import csv
 import requests
 from redbot.core import commands, data_manager
 import random
-from imgurpython import ImgurClient
 import os
 import discord
 
@@ -73,7 +72,7 @@ class cardMini(commands.Cog):
         await ctx.send(flag_url)
 
         embed = discord.Embed(title="Random Card", color=discord.Color.blue())
-        #embed.set_thumbnail(url=flag_url)
+        embed.set_thumbnail(url=flag_url)
         embed.add_field(name="Username", value=username, inline=False)
         embed.add_field(name="Mention", value=mention, inline=False)
         embed.add_field(name="Rarity", value=rarity, inline=True)
