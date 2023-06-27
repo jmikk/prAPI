@@ -77,8 +77,6 @@ class cardMini(commands.Cog):
         if GobsSellPrice < .02:
             GobsSellPrice = .02
         
-        await ctx.send(flag_url)
-
         embed = discord.Embed(title="Random Card", color=discord.Color.blue())
         embed.set_thumbnail(url=flag_url)
         embed.add_field(name="Username", value=username, inline=False)
@@ -88,7 +86,7 @@ class cardMini(commands.Cog):
         embed.add_field(name="GobsCount", value=gobs_count, inline=True)
         embed.add_field(name="MV", value=mv, inline=True)
         embed.add_field(name="Gob will buy for",value=GobsBuyPrice,inline=True)
-        embed.add_field(name="Gob will sell for",vlaue=GobsSellPrice,inline=True)
+        embed.add_field(name="Gob will sell for",value=GobsSellPrice,inline=True)
         
 
         await ctx.send(embed=embed)
