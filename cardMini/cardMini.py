@@ -9,7 +9,6 @@ import discord
 class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.imgur_client = ImgurClient("e37e735710f856c", "ee2ffe6712dfdada38405fa8bc5ca7b1f3544660")
 
 
     async def get_avatar_url(user_id):
@@ -21,7 +20,8 @@ class cardMini(commands.Cog):
     #db_file = data_manager.cog_data_path(self) / "cards.csv"
 
     @commands.command()
-    async def upload_avatars(self, ctx):
+    async def list_avatars(self, ctx):
+        output=[]
         db_file = data_manager.cog_data_path(self) / "cards.csv"  # Use data_manager.cog_data_path() to determine the database file path
 
         with open(db_file, "r") as csv_file:
@@ -32,53 +32,11 @@ class cardMini(commands.Cog):
             user_id = row["ID"]
             try:
                 avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}"
-                avatar_filename = f"avatar_{user_id}.png"
-                avatar_path = data_manager.cog_data_path(self) / avatar_filename
-
-                # Download avatar image
-                response = requests.get(avatar_url)
-                with open(avatar_path, "wb") as avatar_file:
-                    avatar_file.write(response.content)
-
-                # Upload avatar image to postimages.org
-                image_url = self.upload_to_postimages(avatar_path)
-                if image_url:
-                    row["Flags"] = image_url
-                    updated_rows.append(row)
-
-                # Remove the local avatar image file
-                os.remove(avatar_path)
+                output.append(avatar_url)
             except Exception as e:
                await ctx.send(f"Error processing avatar for user ID {user_id}: {e}")
-
-        if updated_rows:
-            with open(db_file, "w", newline="") as csv_file:
-                fieldnames = updated_rows[0].keys()
-                writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(updated_rows)
-
-            await ctx.send("Avatar links have been uploaded and added to the 'Flags' column.")
-        else:
-            await ctx.send("No avatar links found.")
-
-    async def upload_to_postimages(self, image_path):
-        try:
-            files = {"file": open(image_path, "rb")}
-            response = requests.post("https://postimages.org/json", files=files)
-            if response.status_code == 200:
-                response_data = response.json()
-                if response_data["status"] == 200:
-                    return response_data["image"]["url"]
-                else:
-                    await ctx.send(f"Postimages.org API returned an error: {response_data['error']}")
-            else:
-                await ctx.send(f"Failed to upload image to postimages.org. HTTP status code: {response.status_code}")
-        except Exception as e:
-            await ctx.send(f"An error occurred while uploading image to postimages.org: {str(e)}")
-
-        return None
-    
+        await ctx.send(output)
+                
     @commands.command()
     async def open2(self, ctx):
         db_file = data_manager.cog_data_path(self) / "cards.csv"
