@@ -81,8 +81,27 @@ class cardMini(commands.Cog):
             GobsBuyPrice = .01
         if GobsSellPrice < .02:
             GobsSellPrice = .02
-        
-        embed = discord.Embed(title="Random Card", color=discord.Color.blue())
+        match rarity:
+            case "common":
+                embed = discord.Embed(title=" ", color=discord.Color.light_grey())
+            case "uncommon":
+                embed = discord.Embed(title=" ", color=discord.Color.green())
+            case "rare":
+                embed = discord.Embed(title=" ", color=discord.Color.blue())
+            case "Ultra-Rare":
+                embed = discord.Embed(title=" ", color=discord.Color.magenta())
+            case "Epic":
+                embed = discord.Embed(title=" ", color=discord.Color.orange())
+            case "Legendary":
+                embed = discord.Embed(title=" ", color=discord.Color.gold())
+            case "Mythic":
+                embed = discord.Embed(title=" ", color=discord.Color.red())
+            case _:
+                embed = discord.Embed(title=" ", color=discord.Color.teal())
+                
+
+                
+            
         embed.set_thumbnail(url=flag_url)
         embed.add_field(name="Username", value=username, inline=False)
         embed.add_field(name="Mention", value=mention, inline=False)
