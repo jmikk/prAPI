@@ -37,7 +37,7 @@ class cardMini(commands.Cog):
                await ctx.send(f"Error processing avatar for user ID {user_id}: {e}")
         #await ctx.send(output) # Create a text file and write the data to it
         with open(data_manager.cog_data_path(self) / 'list_data.txt', 'w', encoding='utf-8') as file:
-            file.write(output)
+            file.write(str(output))
     
         # Create a File object from the text file
         file = discord.File(data_manager.cog_data_path(self) / 'list_data.txt')
