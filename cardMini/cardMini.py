@@ -89,7 +89,7 @@ class cardMini(commands.Cog):
         elif rarity == "Rare":
             embed = discord.Embed(title=" ", color=discord.Color.blue())
         elif rarity == "Ultra-Rare":
-            embed = discord.Embed(title=" ", color=discord.Color.magenta())
+            embed = discord.Embed(title=" ", color=discord.Color.purple())
         elif rarity == "Epic":
             embed = discord.Embed(title=" ", color=discord.Color.orange())
         elif rarity == "Legendary":
