@@ -34,8 +34,8 @@ class cardMini(commands.Cog):
                 user = await self.bot.fetch_user(int(user_id))
                 avatar_hash = str(user.avatar) if user.avatar else str(user.default_avatar)
                 avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png"
-                await ctx.send(avatar_url)
-                output.append(avatar_url)
+                await ctx.send(avatar_hash)
+                output.append(avatar_hash)
             except Exception as e:
                await ctx.send(f"Error processing avatar for user ID {user_id}: {e}")
         #await ctx.send(output) # Create a text file and write the data to it
