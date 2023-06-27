@@ -43,7 +43,7 @@ class cardMini(commands.Cog):
         file = discord.File(data_manager.cog_data_path(self) / 'list_data.txt')
     
         # Send the file as an attachment
-        await channel.send(file=file)
+        await ctx.send(file=file)
                 
     @commands.command()
     async def open2(self, ctx):
