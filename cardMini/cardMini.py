@@ -74,7 +74,7 @@ class cardMini(commands.Cog):
         if GobsBuyPrice < .01:
             GobsBuyPrice = .01
         if GobsSellPrice < .02:
-            GobsSellPrice = .02:
+            GobsSellPrice = .02
         
         await ctx.send(flag_url)
 
