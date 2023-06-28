@@ -100,7 +100,20 @@ class cardMini(commands.Cog):
             embed = discord.Embed(title=" ", color=discord.Color.teal())
 
                 
-
+        user_id = str(ctx.author.id)
+        user_csv_file = f"{user_id}_cards.csv"
+    
+        with open(user_csv_file, "a", newline="") as csv_file:
+            fieldnames = ["Name", "Season"]
+            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+    
+            if csv_file.tell() == 0:
+                writer.writeheader()
+    
+            writer.writerow({
+                "Name": username,
+                "Season": season,
+            })
                 
             
         embed.set_thumbnail(url=flag_url)
@@ -115,7 +128,12 @@ class cardMini(commands.Cog):
         
 
         await ctx.send(embed=embed)
+
+    @commands.command()
+    @commands.is_owner()
+    async def work2(self, ctx):
         
+    
     @commands.command()
     @commands.is_owner()
     async def delete_database(self, ctx):
