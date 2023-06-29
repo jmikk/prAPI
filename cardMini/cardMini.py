@@ -103,7 +103,7 @@ class cardMini(commands.Cog):
 
                 
         user_id = str(ctx.author.id)
-        user_csv_file = f"/home/pi/decks/{user_id}/cards.csv"
+        user_csv_file = f"/home/pi/mycogs/mycogz2/decks/{user_id}/cards.csv"
     
         with open(user_csv_file, "a", newline="") as csv_file:
             fieldnames = ["Name", "Season"]
