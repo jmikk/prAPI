@@ -47,7 +47,29 @@ class cardMini(commands.Cog):
     
         # Send the file as an attachment
         await ctx.send(file=file)
-                
+
+    @commands.command()
+    async def view_bank(self, ctx):
+        user_id = ctx.author.id
+        bank_file = f"/home/pi/mycogs/mycogz2/decks/{user_id}/bank.txt"
+        
+        # Check if the bank file exists
+        if not os.path.exists(bank_file):
+            await ctx.send("You don't have a bank file. Please do !work to gain some bank.")
+            return
+        
+        # Read the current bank value from the file
+        with open(bank_file, "r") as file:
+            try:
+                current_bank = float(file.read())
+            except ValueError:
+                await ctx.send("Invalid bank value in the file. Please check your bank file.")
+                return
+        
+        await ctx.send(f"Your current bank balance is: {current_bank:.2f}")
+
+
+    
     @commands.command()
     @commands.is_owner()
     async def open2(self, ctx):
