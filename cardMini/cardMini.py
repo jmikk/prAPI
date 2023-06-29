@@ -169,7 +169,8 @@ class cardMini(commands.Cog):
     "You've discovered the secret path to an unending infinite void!",
     "Revel in the glory of attaining absolute and infinite worthlessness!",
 ]
-            await ctx.send(random.choice(phrases))   
+            await ctx.send(random.choice(phrases))
+            return
         db_file = data_manager.cog_data_path(self) / "cards.csv"
         #await ctx.send(db_file)
         
