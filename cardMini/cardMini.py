@@ -133,7 +133,7 @@ class cardMini(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def work2(self, ctx):
-        
+       pass 
     
     @commands.command()
     @commands.is_owner()
