@@ -52,6 +52,7 @@ class cardMini(commands.Cog):
     @commands.is_owner()
     async def open2(self, ctx):
         db_file = data_manager.cog_data_path(self) / "cards.csv"
+        await ctx.send(db_file)
 
         with open(db_file, "r") as csv_file:
             cards_data = list(csv.DictReader(csv_file))
