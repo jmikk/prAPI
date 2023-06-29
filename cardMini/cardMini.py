@@ -52,7 +52,7 @@ class cardMini(commands.Cog):
     @commands.is_owner()
     async def open2(self, ctx):
         db_file = data_manager.cog_data_path(self) / "cards.csv"
-        await ctx.send(db_file)
+        #await ctx.send(db_file)
         
 
         with open(db_file, "r") as csv_file:
@@ -103,7 +103,7 @@ class cardMini(commands.Cog):
 
                 
         user_id = str(ctx.author.id)
-        user_csv_file = f"{user_id}_cards.csv"
+        user_csv_file = f"/home/pi/decks/{user_id}/cards.csv"
     
         with open(user_csv_file, "a", newline="") as csv_file:
             fieldnames = ["Name", "Season"]
