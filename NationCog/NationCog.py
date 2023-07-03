@@ -77,6 +77,7 @@ class NationCog(commands.Cog):
                 f.write(f"{name}\t{endorsement_count}\t{endorsement_str}\n")
             file = discord.File(data_manager.cog_data_path(self) / "output.txt")  # Replace with the path to your file
             await ctx.send(file=file)
+            await ctx.send("DONE!")
 
         
         os.remove(data_manager.cog_data_path(self) / "nations.xml")
