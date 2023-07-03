@@ -27,7 +27,7 @@ class NationCog(commands.Cog):
     async def WA_dump(self,ctx,region="the_wellspring"):
         await ctx.send("This might take some time give me a bit!")
         try:
-            os.remove("output.txt")
+            os.remove(data_manager.cog_data_path(self) / "output.txt")
         except Exception:
             pass
         
@@ -41,14 +41,14 @@ class NationCog(commands.Cog):
         
         # Download and unzip the file
         url = "https://www.nationstates.net/pages/nations.xml.gz"
-        filename = "nations.xml.gz"
+        filename = data_manager.cog_data_path(self) / "nations.xml.gz"
         urllib.request.urlretrieve(url, filename)
         with gzip.open(filename, "rb") as f_in:
-            with open("nations.xml", "wb") as f_out:
+            with open(data_manager.cog_data_path(self) / "nations.xml", "wb") as f_out:
                 f_out.write(f_in.read())
         
         # Parse the XML data
-        tree = ET.parse("nations.xml")
+        tree = ET.parse(data_manager.cog_data_path(self) / "nations.xml")
         root = tree.getroot()
         
         # Initialize a dictionary to store nation details
@@ -72,11 +72,14 @@ class NationCog(commands.Cog):
         for name, (endorsement_count, endorsement_list) in nations.items():
             endorsement_str = "\t".join(endorsement_list)
             print(f"{name}\t{endorsement_count}\t{endorsement_str}")
-            with open("output.txt", "a") as f:
+            with open(data_manager.cog_data_path(self) / "output.txt", "a") as f:
                 f.write(f"{name}\t{endorsement_count}\t{endorsement_str}\n")
+            file = discord.File(data_manager.cog_data_path(self) / "output.txt")  # Replace with the path to your file
+            await ctx.send(file=file)
+
         
-        os.remove("nations.xml")
-        os.remove("nations.xml.gz")
+        os.remove(data_manager.cog_data_path(self) / "nations.xml")
+        os.remove(data_manager.cog_data_path(self) / "nations.xml.gz")
     
     @commands.command()
     @commands.has_role("Warden of Internal Affairs")
