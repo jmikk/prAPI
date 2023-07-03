@@ -6,6 +6,7 @@ import gzip
 import xml.etree.ElementTree as ET
 import ssl
 import os
+import data_manager
 
 class NationCog(commands.Cog):
     def __init__(self, bot):
