@@ -1,6 +1,6 @@
 import csv
 import requests
-from redbot.core import commands
+from redbot.core import commands, data_manager
 import urllib.request
 import gzip
 import xml.etree.ElementTree as ET
