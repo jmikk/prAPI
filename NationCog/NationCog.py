@@ -22,66 +22,6 @@ class NationCog(commands.Cog):
 
         return missing_nations
 
-    @commands.command()
-    @commands.has_role("Security Officer")
-    @commands.cooldown(1, 6 * 60 * 60, commands.BucketType.user)  # 1 use per 6 hours per user
-    async def WA_dump(self,ctx,region="the_wellspring"):
-        await ctx.send("This might take some time give me a bit!")
-        try:
-            os.remove(data_manager.cog_data_path(self) / "output.txt")
-        except Exception:
-            pass
-        
-        # Disable SSL certificate verification
-        ssl._create_default_https_context = ssl._create_unverified_context
-        
-        # Set the User-Agent header
-        opener = urllib.request.build_opener()
-        opener.addheaders = [("User-Agent", "9006")]
-        urllib.request.install_opener(opener)
-        
-        # Download and unzip the file
-        url = "https://www.nationstates.net/pages/nations.xml.gz"
-        filename = data_manager.cog_data_path(self) / "nations.xml.gz"
-        urllib.request.urlretrieve(url, filename)
-        with gzip.open(filename, "rb") as f_in:
-            with open(data_manager.cog_data_path(self) / "nations.xml", "wb") as f_out:
-                f_out.write(f_in.read())
-        
-        # Parse the XML data
-        tree = ET.parse(data_manager.cog_data_path(self) / "nations.xml")
-        root = tree.getroot()
-        
-        # Initialize a dictionary to store nation details
-        nations = {}
-        
-        # Iterate over each nation
-        for nation in root.findall("./NATION"):
-            region = nation.find("REGION").text
-            unstatus = nation.find("UNSTATUS").text
-            if region == "The Wellspring" and (
-                unstatus == "WA Delegate" or unstatus == "WA Member"
-            ):
-                name = nation.find("NAME").text
-                name = name.lower().replace(" ", "_")
-                endorsements = nation.find("ENDORSEMENTS").text
-                endorsement_count = len(endorsements.split(","))
-                endorsement_list = endorsements.split(",")
-                nations[name] = (endorsement_count, endorsement_list)
-        
-        # Output the results
-        for name, (endorsement_count, endorsement_list) in nations.items():
-            endorsement_str = "\t".join(endorsement_list)
-            print(f"{name}\t{endorsement_count}\t{endorsement_str}")
-            with open(data_manager.cog_data_path(self) / "output.txt", "a") as f:
-                f.write(f"{name}\t{endorsement_count}\t{endorsement_str}\n")
-            file = discord.File(data_manager.cog_data_path(self) / "output.txt")  # Replace with the path to your file
-            await ctx.send(file=file)
-            await ctx.send("DONE!")
-
-        
-        os.remove(data_manager.cog_data_path(self) / "nations.xml")
-        os.remove(data_manager.cog_data_path(self) / "nations.xml.gz")
     
     @commands.command()
     @commands.has_role("Warden of Internal Affairs")
