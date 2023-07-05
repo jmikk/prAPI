@@ -29,25 +29,19 @@ class CardQ(commands.Cog):
                         card_link = f"www.nationstates.net/page=deck/card={card_id}/season={season}"
                         card_list.append(f"{card_id},{card_name},{card_link}")
 
-                    with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp_file:
-                        tmp_file.write("\n".join(card_list))
-                        tmp_file_path = tmp_file.name
-
-                    file = discord.File(tmp_file_path, filename="card_list.csv")
-
                     # Check if deck= parameter is provided
                     if "deck=" in params:
                         deck_name = params.split("deck=")[1].strip()
                         deck_data = await self.get_user_deck_data(deck_name)
-                        deck_ids = self.extract_card_ids_from_deck(deck_data)
-                        await ctx.send(f"Card IDs in {deck_name}'s deck: {', '.join(deck_ids)}")
+                        filtered_card_list = self.filter_card_list(card_list, deck_data, include=True)
+                        await self.send_card_list(ctx, filtered_card_list, deck_name)
                     elif "!deck=" in params:
                         deck_name = params.split("!deck=")[1].strip()
                         deck_data = await self.get_user_deck_data(deck_name)
-                        deck_ids = self.extract_card_ids_from_deck(deck_data)
-                        await ctx.send(f"Card IDs not in {deck_name}'s deck: {', '.join(deck_ids)}")
+                        filtered_card_list = self.filter_card_list(card_list, deck_data, include=False)
+                        await self.send_card_list(ctx, filtered_card_list, deck_name)
                     else:
-                        await ctx.send(f"{ctx.author.mention} Enjoy! I dug it from the salt mine just for you!", file=file)
+                        await self.send_card_list(ctx, card_list, None)
 
                 else:
                     # Send the raw data to the user
@@ -58,8 +52,7 @@ class CardQ(commands.Cog):
             "User-Agent": "9006"
         }
         params = {
-            "q": "cards+deck"
-            ,"nationname":f"{deck_name}"
+            "q": f"cards+deck;nationname={deck_name}"
         }
         api_url = "https://www.nationstates.net/cgi-bin/api.cgi"
 
@@ -68,12 +61,19 @@ class CardQ(commands.Cog):
                 deck_data = await response.text()
                 return deck_data
 
-    def extract_card_ids_from_deck(self, deck_data):
-        deck_ids = []
-        if deck_data:
-            root = ET.fromstring(deck_data)
-            cards = root.findall("./DECK/CARD")
-            for card in cards:
-                card_id = card.find("CARDID").text
-                deck_ids.append(card_id)
-        return deck_ids
+    def filter_card_list(self, card_list, deck_data, include=True):
+        deck_ids = self.extract_card_ids_from_deck(deck_data)
+        filtered_list = []
+        for card in card_list:
+            card_id = card.split(",")[0]
+            if (card_id in deck_ids and include) or (card_id not in deck_ids and not include):
+                filtered_list.append(card)
+        return filtered_list
+
+    async def send_card_list(self, ctx, card_list, deck_name):
+        if len(card_list) > 0:
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp_file:
+                tmp_file.write("\n".join(card_list))
+                tmp_file_path = tmp_file.name
+
+            file = discord.File(tmp_file_path, filename="card
