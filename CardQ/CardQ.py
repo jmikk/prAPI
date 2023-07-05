@@ -16,22 +16,21 @@ class CardQ(commands.Cog):
         async with aiohttp.ClientSession() as session:
             async with session.get(search_url) as response:
                 data = await response.json()
-                # Process the response data as needed
-        
-        # Generating the card list in the desired format
-        card_list = []
-        for card_id, card_name in data["nations"].items():
-            card_link = f"www.nationstates.net/page=deck/card={card_id}/season={season}"
-            card_list.append(f"{card_id},{card_name},{card_link}")
-        
-        # Creating a temporary file and writing the content to it
-        with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp_file:
-            tmp_file.write("\n".join(card_list))
-            tmp_file_path = tmp_file.name
-        
-        # Creating and sending the file
-        file = discord.File(tmp_file_path, filename="card_list.csv")
-        await ctx.send(file=file)
+                status = data.get("status")
+                if status == "success":
+                    # Process the response data as needed
+                    card_list = []
+                    for card_id, card_name in data["nations"].items():
+                        card_link = f"www.nationstates.net/page=deck/card={card_id}/season={season}"
+                        card_list.append(f"{card_id},{card_name},{card_link}")
 
-def setup(bot):
-    bot.add_cog(CardSearch(bot))
+                    with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp_file:
+                        tmp_file.write("\n".join(card_list))
+                        tmp_file_path = tmp_file.name
+
+                    file = discord.File(tmp_file_path, filename="card_list.csv")
+                    await ctx.send(file=file)
+                else:
+                    # Send the raw data to the user
+                    await ctx.send(data)
+
