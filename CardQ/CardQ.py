@@ -49,7 +49,7 @@ class CardQ(commands.Cog):
                             filtered_tmp_file_path = filtered_tmp_file.name
 
                         filtered_file = discord.File(filtered_tmp_file_path, filename="filtered_card_list.csv")
-                        await ctx.send(f"Card IDs in {deck_name}'s deck: {', '.join(deck_ids)}", file=filtered_file)
+                        await ctx.send(f"{ctx.author.mention}", file=filtered_file)
 
                     elif "!deck=" in params:
                         deck_name = params.split("!deck=")[1].strip()
@@ -64,7 +64,7 @@ class CardQ(commands.Cog):
                             filtered_tmp_file_path = filtered_tmp_file.name
 
                         filtered_file = discord.File(filtered_tmp_file_path, filename="filtered_card_list.csv")
-                        await ctx.send(f"Card IDs not in {deck_name}'s deck: {', '.join(deck_ids)}", file=filtered_file)
+                        await ctx.send(f"{ctx.author.mention}", file=filtered_file)
 
                     else:
                         await ctx.send(f"{ctx.author.mention} Enjoy! I dug it from the salt mine just for you!", file=file)
