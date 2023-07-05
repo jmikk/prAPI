@@ -12,8 +12,8 @@ class CardQ(commands.Cog):
     async def search_cards(self, ctx, season: int, *, search_params):
         await ctx.send("Searching for that, if you need help check out my documation here https://api.nsupc.dev/cards/v1")
         base_url = "https://api.nsupc.dev/cards/v1"
-        await ctx.send(search_params)
         params=search_params.join("&")
+        await ctx.send(params)
         query_params = f"season={season}&{params}"
         search_url = f"{base_url}?{query_params}"
         await ctx.send(search_url)
