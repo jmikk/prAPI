@@ -73,26 +73,27 @@ class CardQ(commands.Cog):
                         # Send the raw data to the user
                     await ctx.send(data)
     
-        async def get_user_deck_data(self, deck_name):
-            headers = {
+    async def get_user_deck_data(self, deck_name):
+        headers = {
                 "User-Agent": "9006"
-            }
-            params = {
-                "q": f"cards+deck;nationname={deck_name}"
-            }
-            api_url = "https://www.nationstates.net/cgi-bin/api.cgi"
+        }
+        params = {
+                "q": "cards+deck"
+            "nationname":f"{deck_name}"
+        }
+        api_url = "https://www.nationstates.net/cgi-bin/api.cgi"
     
-            async with aiohttp.ClientSession() as session:
-                async with session.get(api_url, params=params, headers=headers) as response:
-                    deck_data = await response.text()
-                    return deck_data
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, params=params, headers=headers) as response:
+                deck_data = await response.text()
+                return deck_data
     
-        def extract_card_ids_from_deck(self, deck_data):
-            deck_ids = []
-            if deck_data:
-                root = ET.fromstring(deck_data)
-                cards = root.findall("./DECK/CARD")
-                for card in cards:
-                    card_id = card.find("CARDID").text
-                    deck_ids.append(card_id)
-            return deck_ids
+    def extract_card_ids_from_deck(self, deck_data):
+        deck_ids = []
+        if deck_data:
+            root = ET.fromstring(deck_data)
+            cards = root.findall("./DECK/CARD")
+            for card in cards:
+                card_id = card.find("CARDID").text
+                deck_ids.append(card_id)
+        return deck_ids
