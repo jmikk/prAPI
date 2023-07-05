@@ -1,7 +1,6 @@
 import discord
-from discord.ext import commands
 
-class CardSearch(commands.Cog):
+class CardQ(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
