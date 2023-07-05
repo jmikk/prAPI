@@ -58,7 +58,8 @@ class CardQ(commands.Cog):
             "User-Agent": "9006"
         }
         params = {
-            "q": f"cards+deck;nationname={deck_name}"
+            "q": "cards+deck"
+            ,"nationname":f"{deck_name}"
         }
         api_url = "https://www.nationstates.net/cgi-bin/api.cgi"
 
