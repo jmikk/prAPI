@@ -15,6 +15,7 @@ class CardQ(commands.Cog):
         params=search_params.join("&")
         query_params = f"season={season}&{params}"
         search_url = f"{base_url}?{query_params}"
+        await ctx.send(search_url)
 
         async with aiohttp.ClientSession() as session:
             async with session.get(search_url) as response:
