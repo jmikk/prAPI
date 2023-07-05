@@ -1,5 +1,6 @@
 import discord
 from redbot.core import commands
+import aiohttp
 
 class CardQ(commands.Cog):
     def __init__(self, bot):
