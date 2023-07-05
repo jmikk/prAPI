@@ -9,7 +9,7 @@ class CardQ(commands.Cog):
         
     @commands.cooldown(1, 60, commands.BucketType.user)
     @commands.command()
-    async def search_cards(self, ctx, season: int, *, search_params):
+    async def search_cards(self, ctx, season: int, *search_params):
         await ctx.send("Searching for that, if you need help check out my documation here https://api.nsupc.dev/cards/v1")
         base_url = "https://api.nsupc.dev/cards/v1"
         params="&".join(search_params)
