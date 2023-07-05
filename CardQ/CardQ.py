@@ -15,7 +15,7 @@ class CardSearch(commands.Cog):
         # Example using the aiohttp library:
         async with aiohttp.ClientSession() as session:
              async with session.get(search_url) as response:
-             data = await response.json()
+                 data = await response.json()
                  # Process the response data as needed
         
         # Generating the card list in the desired format
