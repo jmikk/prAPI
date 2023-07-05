@@ -69,9 +69,9 @@ class CardQ(commands.Cog):
                     else:
                         await ctx.send(f"{ctx.author.mention} Enjoy! I dug it from the salt mine just for you!", file=file)
 
-                    else:
+                else:
                         # Send the raw data to the user
-                        await ctx.send(data)
+                    await ctx.send(data)
     
         async def get_user_deck_data(self, deck_name):
             headers = {
