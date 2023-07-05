@@ -13,10 +13,10 @@ class CardSearch(commands.Cog):
         
         # You can make an HTTP request to the API and process the response here
         # Example using the aiohttp library:
-        # async with aiohttp.ClientSession() as session:
-        #     async with session.get(search_url) as response:
-        #         data = await response.json()
-        #         # Process the response data as needed
+        async with aiohttp.ClientSession() as session:
+             async with session.get(search_url) as response:
+             data = await response.json()
+                 # Process the response data as needed
         
         # Generating the card list in the desired format
         card_list = []
