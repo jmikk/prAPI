@@ -6,7 +6,8 @@ import tempfile
 class CardQ(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
+        
+    @commands.cooldown(1, 60, commands.BucketType.user)
     @commands.command()
     async def search_cards(self, ctx, season: int, *, search_params):
         base_url = "https://api.nsupc.dev/cards/v1"
@@ -33,4 +34,5 @@ class CardQ(commands.Cog):
                 else:
                     # Send the raw data to the user
                     await ctx.send(data)
+                    
 
