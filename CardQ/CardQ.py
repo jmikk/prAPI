@@ -10,6 +10,7 @@ class CardQ(commands.Cog):
     @commands.cooldown(1, 60, commands.BucketType.user)
     @commands.command()
     async def search_cards(self, ctx, season: int, *, search_params):
+        await ctx.send("Searching for that, if you need help check out my documation here https://api.nsupc.dev/cards/v1")
         base_url = "https://api.nsupc.dev/cards/v1"
         query_params = f"season={season}&{search_params}"
         search_url = f"{base_url}?{query_params}"
@@ -30,7 +31,7 @@ class CardQ(commands.Cog):
                         tmp_file_path = tmp_file.name
 
                     file = discord.File(tmp_file_path, filename="card_list.csv")
-                    await ctx.send(file=file)
+                    await ctx.send( f"{ctx.author.mention} Enjoy I dug it from the salt mine just for you!",file=file)
                 else:
                     # Send the raw data to the user
                     await ctx.send(data)
