@@ -29,5 +29,3 @@ class CardSearch(commands.Cog):
         file = discord.File(filename="card_list.csv", data=file_content)
         await ctx.send(file=file)
 
-def setup(bot):
-    bot.add_cog(CardSearch(bot))
