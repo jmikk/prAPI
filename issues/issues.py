@@ -80,6 +80,7 @@ class issues(commands.Cog):
             pic1 = issue.find('PIC1').text
             pic2 = issue.find('PIC2').text
             option_messages = []
+            op_ids={}
             options = [
                 {'id': option.attrib['id'], 'text': option.text}
                 for option in issue.findall('OPTION')
@@ -100,6 +101,7 @@ class issues(commands.Cog):
                 )
                 embed.add_field(name=option['id'], value=option['text'], inline=False)
                 option_message = await ctx.send(embed=embed)
+                op_ids[option_message.id]=option['id']
                 option_messages.append(option_message.id)  # Add the message ID to the option_messages list
                 await option_message.add_reaction('👍')  # Add thumbs up reaction to each option message
 
