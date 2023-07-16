@@ -31,7 +31,6 @@ class issues(commands.Cog):
         asyncio.create_task(self.client.aclose())
 
     async def api_request(self, data) -> sans.Response:
-        self.auth = sans.NSAuth(password=self.password)
         response = await self.client.get(sans.World(**data), auth=self.auth)
         response.raise_for_status()
         return response
@@ -59,6 +58,7 @@ class issues(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def set_issues_nation_password(self, ctx, *, password2):
+        self.password = password2
         self.auth = sans.NSAuth(password=password2)
         await ctx.send(f"Set regional nation password for {self.IssuesNation}.")
 
