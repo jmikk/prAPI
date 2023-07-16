@@ -25,11 +25,13 @@ class issues(commands.Cog):
         self.vote_time = 30  # 6 hours in seconds
         self.tie_break_time = 30  # 12 hours in seconds  
         self.stop_loop = False  # Flag to control the while loop
+        self.password=""
         
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
 
     async def api_request(self, data) -> sans.Response:
+        self.auth = sans.NSAuth(self.password)
         response = await self.client.get(sans.World(**data), auth=self.auth)
         response.raise_for_status()
         return response
