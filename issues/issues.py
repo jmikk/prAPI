@@ -143,8 +143,8 @@ class issues(commands.Cog):
                                 }
             if not self.stop_loop:
                 r = await self.api_request(data)
-                data_str = r.json()
-                data = json.loads(data_str)
+                json_string = r.text
+                data = json.loads(json_string)(data_str)
 
                 embed = discord.Embed(
                     title=issue_id + " Option: "+ op_ids[winning_option.id],
