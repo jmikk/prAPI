@@ -143,13 +143,10 @@ class issues(commands.Cog):
                                 }
             if not self.stop_loop:
                 r = await self.api_request(data)
-                json_string = r.text
                 # Load the XML document
-                tree = ET.parse(r.text)
                 
                 # Get the root element of the XML
-                root = tree.getroot()
-                
+                root = ET.fromstring(r.text)                
                 # Find the <DESC> element using XPath
                 desc_element = root.find('.//DESC')
             
