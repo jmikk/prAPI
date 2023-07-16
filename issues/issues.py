@@ -144,14 +144,21 @@ class issues(commands.Cog):
             if not self.stop_loop:
                 r = await self.api_request(data)
                 json_string = r.text
-                await ctx.send(json_string[0:1000])
-                data = json.loads(json_string)
-
+                # Load the XML document
+                tree = ET.parse(r.text)
+                
+                # Get the root element of the XML
+                root = tree.getroot()
+                
+                # Find the <DESC> element using XPath
+                desc_element = root.find('.//DESC')
+            
+                
                 embed = discord.Embed(
                     title=issue_id + " Option: "+ op_ids[winning_option.id],
                     color=discord.Color.blue()
                 )
-                embed.add_field(name="Fresh from the well", value=data["desc"], inline=False)
+                embed.add_field(name="Fresh from the well", value=desc_element.text, inline=False)
                 await ctx.send(embed=embed)
                 
                 
