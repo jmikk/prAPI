@@ -24,7 +24,7 @@ class NationCog(commands.Cog):
 
     
     @commands.command()
-    @commands.has_role("Warden of Internal Affairs")
+    @commands.has_role("High Mage of Internal Affairs")
     async def cit_chk(self, ctx):
         await ctx.send("You got it I'll think for a few moments!")
         # Fetch the CSV data
