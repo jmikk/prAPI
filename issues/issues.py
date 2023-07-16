@@ -78,8 +78,15 @@ class issues(commands.Cog):
             issue_id = issue.attrib['id']
             title = issue.find('TITLE').text
             text = issue.find('TEXT').text
-            author = issue.find('AUTHOR').text
-            editor = issue.find('EDITOR').text
+            try:
+                author = issue.find('AUTHOR').text
+            except AttributeError: 
+                author = "None"
+            try:
+                editor = issue.find('EDITOR').text
+            except AttributeError: 
+                editor = "None"
+
             pic1 = issue.find('PIC1').text
             pic2 = issue.find('PIC2').text
             option_messages = []
