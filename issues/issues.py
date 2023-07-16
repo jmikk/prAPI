@@ -31,7 +31,7 @@ class issues(commands.Cog):
         asyncio.create_task(self.client.aclose())
 
     async def api_request(self, data) -> sans.Response:
-        self.auth = sans.NSAuth(self.password)
+        self.auth = sans.NSAuth(password=self.password)
         response = await self.client.get(sans.World(**data), auth=self.auth)
         response.raise_for_status()
         return response
