@@ -132,6 +132,13 @@ class issues(commands.Cog):
             else:
                 winning_option = random.choice(option_messages)
             await ctx.send(f"picked option {op_ids[winning_option.id]}")
+            data = payload = {
+            "nation": self.IssuesNation,
+            "c": "issue",
+            "issue": issue_id,
+            "option": op_ids[winning_option.id]
+                                }
+            await ctx.send(api_request(data))
             
 
     @commands.command()
