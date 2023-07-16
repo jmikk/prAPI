@@ -67,14 +67,6 @@ class issues(commands.Cog):
     @commands.is_owner()
     async def issues(self, ctx):
         self.stop_loop = False
-        button = Button(style=discord.ButtonStyle.link, label='Warden of the Spring', url='https://www.nationstates.net/nation=warden_of_the_spring')
-
-        # Create an action row and add the button to it
-        action_row = discord.ui.ActionRow()
-        action_row.add_button(button)
-    
-        # Create a message with the action row containing the button
-        #message = await ctx.send('Here is a button:', components=[action_row])
         while not self.stop_loop:
             self.auth = sans.NSAuth(password=self.password)
             r = await self.api_request(data={'nation': self.IssuesNation, 'q': 'issues'})
@@ -101,7 +93,7 @@ class issues(commands.Cog):
             )
             embed.set_author(name=f'Written by {author}, Edited by {editor}')
             embed.add_field(name='The issue', value=text, inline=False)
-            message = await ctx.send(embed=embed, components=[action_row])
+            message = await ctx.send(embed=embed)
 
             for option in options:
                 embed = discord.Embed(
@@ -156,7 +148,7 @@ class issues(commands.Cog):
                     color=discord.Color.blue()
                 )
                 embed.add_field(name="Fresh from the well", value=data["desc"], inline=False)
-                await ctx.send(embed=embed, components=[action_row])
+                await ctx.send(embed=embed)
                 
                 
             
