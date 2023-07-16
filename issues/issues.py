@@ -140,7 +140,7 @@ class issues(commands.Cog):
                                 }
             if not self.stop_loop:
                 r = await self.api_request(data)
-                await ctx.send(r.text)
+                data = r.text
             
 
     @commands.command()
