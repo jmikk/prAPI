@@ -67,6 +67,7 @@ class issues(commands.Cog):
     async def issues(self, ctx):
         self.stop_loop = False
         while not self.stop_loop:
+            self.auth = sans.NSAuth(password=self.password)
             r = await self.api_request(data={'nation': self.IssuesNation, 'q': 'issues'})
             root = ET.fromstring(r.text)
             issues = root.findall('ISSUES/ISSUE')
