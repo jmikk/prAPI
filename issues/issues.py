@@ -144,7 +144,7 @@ class issues(commands.Cog):
             if not self.stop_loop:
                 r = await self.api_request(data)
                 json_string = r.text
-                await ctx.send(len(json_string))
+                await ctx.send(json_string[0:1000])
                 data = json.loads(json_string)
 
                 embed = discord.Embed(
