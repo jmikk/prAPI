@@ -143,7 +143,7 @@ class issues(commands.Cog):
                                 }
             if not self.stop_loop:
                 r = await self.api_request(data)
-                data_str = r.text
+                data_str = r.json
                 data = json.loads(data_str)
 
                 embed = discord.Embed(
