@@ -141,6 +141,7 @@ class issues(commands.Cog):
                                 }
             if not self.stop_loop:
                 r = await self.api_request(data)
+                data={}
                 data = r.text
 
                 embed = discord.Embed(
