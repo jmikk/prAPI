@@ -7,6 +7,8 @@ import xml.etree.ElementTree as ET
 import os
 import discord
 from discord.ui import Button
+import json
+
 
 
 def is_owner_overridable():
@@ -141,8 +143,8 @@ class issues(commands.Cog):
                                 }
             if not self.stop_loop:
                 r = await self.api_request(data)
-                data={}
-                data = r.text
+                data_str = r.text
+                data = json.loads(data_str)
 
                 embed = discord.Embed(
                     title=issue_id + " Option: "+ op_ids[winning_option.id],
