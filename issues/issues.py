@@ -126,14 +126,8 @@ class issues(commands.Cog):
                 winning_option = random.choice(tied_options)
             else:
                 winning_option = random.choice(option_messages)
-
-            await self.Answer_Issue(winning_option.id)  # Pass the ID of the winning option to the answer_issue function
-
-
-
-    async def AnswerIssue(self, ctx, option_id):
-        await ctx.send(f"picked option {option_id}")
-        pass
+            await ctx.send(f"picked option {winning_option.id}")
+            pass
 
     @commands.command()
     @commands.is_owner()
