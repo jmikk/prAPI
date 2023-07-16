@@ -97,7 +97,7 @@ class issues(commands.Cog):
                 )
                 embed.add_field(name=option['id'], value=option['text'], inline=False)
                 option_message = await ctx.send(embed=embed)
-                option_messages.append(option_message.id)  # Add the message ID to the option_messages list
+                option_messages.append(option['id'])  # Add the message ID to the option_messages list
                 await option_message.add_reaction('👍')  # Add thumbs up reaction to each option message
 
             await asyncio.sleep(self.vote_time)  # Wait for the voting time
