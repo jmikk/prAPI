@@ -138,7 +138,8 @@ class issues(commands.Cog):
             "issue": issue_id,
             "option": op_ids[winning_option.id]
                                 }
-            await ctx.send(api_request(data))
+            if not self.stop_loop:
+                await ctx.send(self.api_request(data))
             
 
     @commands.command()
