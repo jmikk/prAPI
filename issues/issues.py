@@ -131,7 +131,7 @@ class issues(commands.Cog):
                 winning_option = random.choice(tied_options)
             else:
                 winning_option = random.choice(option_messages)
-            await ctx.send(f"picked option {winning_option.id}")
+            await ctx.send(f"picked option {op_id[winning_option.id]}")
             
 
     @commands.command()
