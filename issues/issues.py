@@ -127,9 +127,9 @@ class issues(commands.Cog):
             else:
                 winning_option = random.choice(option_messages)
             await ctx.send(f"picked option {winning_option.id}")
-            pass
+            
 
     @commands.command()
     @commands.is_owner()
     async def myCom(self, ctx):
-        await ctx.send("I work")
+        await ctx.send("I still work")
