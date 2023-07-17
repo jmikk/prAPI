@@ -25,8 +25,8 @@ class issues(commands.Cog):
         self.auth = sans.NSAuth()
         self.IssuesNation = ""
         self.client = sans.AsyncClient()
-        self.vote_time = 30  # 6 hours in seconds
-        self.tie_break_time = 30  # 12 hours in seconds  
+        self.vote_time = 43200  # 6 hours in seconds
+        self.tie_break_time = 43200  # 12 hours in seconds  
         self.stop_loop = False  # Flag to control the while loop
         self.password=""
         
