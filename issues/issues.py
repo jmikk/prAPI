@@ -118,7 +118,8 @@ class issues(commands.Cog):
             
             target_time = datetime.utcnow() + timedelta(seconds=self.vote_time-18000)
             unix_timestamp = int(target_time.timestamp())
-            ping_role = ctx.guild.get_role(1130304387156279368)
+            guild = ctx.guild
+            ping_role = guild.get_role(1130304387156279368)
             await ctx.send(f"Once again I call upon {ping_role.mention} to decide you have <t:{unix_timestamp}:R>.  If you can't all agree I'll pick one randomly.")
             await asyncio.sleep(self.vote_time)  # Wait for the voting time
             
