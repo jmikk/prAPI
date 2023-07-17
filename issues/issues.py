@@ -86,10 +86,10 @@ class issues(commands.Cog):
                 editor = issue.find('EDITOR').text
             except AttributeError: 
                 editor = "None"
+            
 
             pic1 = issue.find('PIC1').text
             pic2 = issue.find('PIC2').text
-            await ctx.send(pic1 + " " +pic2)
             option_messages = []
             op_ids={}
             options = [
@@ -101,6 +101,7 @@ class issues(commands.Cog):
                 description='The issue at hand',
                 color=discord.Color.blue()
             )
+            embed.set_footer(text=f"Written by: {Author}, Edited by: {editor}")
             embed.set_author(name=f'Written by {author}, Edited by {editor}')
             embed.add_field(name='The issue', value=text, inline=False)
             message = await ctx.send(embed=embed)
@@ -142,7 +143,7 @@ class issues(commands.Cog):
                 winning_option = random.choice(tied_options)
             else:
                 winning_option = random.choice(option_messages)
-            await ctx.send(f"picked option {op_ids[winning_option.id]}")
+            #await ctx.send(f"picked option {op_ids[winning_option.id]}")
             data = payload = {
             "nation": self.IssuesNation,
             "c": "issue",
