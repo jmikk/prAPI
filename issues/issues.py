@@ -99,8 +99,7 @@ class issues(commands.Cog):
 
             embed = discord.Embed(
                     title=title,
-                    description=text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")),
-                )
+                    description=text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")
             embed.color=discord.Color.blue()
 
             embed.set_footer(text=f"Written by: {author}, Edited by: {editor}")
@@ -122,7 +121,7 @@ class issues(commands.Cog):
                 elif counter%6 == 5:
                     embed.color = discord.Color.gold()
                    
-                embed.add_field(name="\u200b", value=option['text'].replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")), inline=False)
+                embed.add_field(name="\u200b", value=option['text'].replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**"), inline=False)
                 option_message = await ctx.send(embed=embed)
                 op_ids[option_message.id]=option['id']
                 option_messages.append(option_message.id)  # Add the message ID to the option_messages list
@@ -181,7 +180,7 @@ class issues(commands.Cog):
                     title=f" The Fates have decided, now enjoy the outcome. I must rest before the next reading I will be ready <t:{unix_timestamp}:R>",
                     color=discord.Color.purple()
                 )
-                embed.add_field(name="Fresh from the well", value=desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")), inline=False)
+                embed.add_field(name="Fresh from the well", value=desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**"), inline=False)
                 await ctx.send(embed=embed)
                 await asyncio.sleep(3600)  # Wait for the voting time
 
