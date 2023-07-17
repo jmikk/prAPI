@@ -95,6 +95,7 @@ class issues(commands.Cog):
             
             options = [
                 {'id': option.attrib['id'], 'text': option.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")}
+                for option in issue.findall('OPTION')
             ]
 
             embed = discord.Embed(
