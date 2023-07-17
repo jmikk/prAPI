@@ -21,6 +21,7 @@ class NationCog(commands.Cog):
                 missing_nations.append(nation)
 
         return missing_nations
+   
     @commands.command()
     async def ping_test(self,ctx,str=""):
         await ctx.send("This is a test <@&1130304387156279368>")
