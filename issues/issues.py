@@ -118,8 +118,8 @@ class issues(commands.Cog):
             
             target_time = datetime.utcnow() + timedelta(seconds=self.vote_time-18000)
             unix_timestamp = int(target_time.timestamp())
-
-            await ctx.send(f"Once again I call upon <@1130304387156279368> to decide you have <t:{unix_timestamp}:R>.  If you can't all agree I'll pick one randomly.")
+            ping_role = guild.get_role(1130304387156279368)
+            await ctx.send(f"Once again I call upon {ping_role.mention} to decide you have <t:{unix_timestamp}:R>.  If you can't all agree I'll pick one randomly.")
             await asyncio.sleep(self.vote_time)  # Wait for the voting time
             
             reactions = []
@@ -164,7 +164,7 @@ class issues(commands.Cog):
             
                 
                 embed = discord.Embed(
-                    title=f"<@1130304387156279368> Have decide, now enjoy the outcome.",
+                    title=f"{ping_role.mention} have decided, now enjoy the outcome.",
                     color=discord.Color.purple()
                 )
                 embed.add_field(name="Fresh from the well", value=desc_element.text, inline=False)
