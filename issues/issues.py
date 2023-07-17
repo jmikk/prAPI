@@ -119,7 +119,7 @@ class issues(commands.Cog):
             target_time = datetime.utcnow() + timedelta(seconds=self.vote_time)
             unix_timestamp = int(target_time.timestamp())
 
-            await ctx.send(f"The vote will close in <r:{unix_timestamp}>")
+            await ctx.send(f"The vote will close in <t:{unix_timestamp}:R>")
             await asyncio.sleep(self.vote_time)  # Wait for the voting time
 
             reactions = []
