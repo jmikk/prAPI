@@ -99,7 +99,7 @@ class issues(commands.Cog):
             embed = discord.Embed(
                 title=title,
                 description=text,
-                color=discord.Color.Black()
+                color=discord.Color.blue()
             )
             embed.set_footer(text=f"Written by: {author}, Edited by: {editor}")
             message = await ctx.send(embed=embed)
