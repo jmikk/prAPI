@@ -89,6 +89,7 @@ class issues(commands.Cog):
 
             pic1 = issue.find('PIC1').text
             pic2 = issue.find('PIC2').text
+            await ctx.send(pic1 + " " +pic2)
             option_messages = []
             op_ids={}
             options = [
