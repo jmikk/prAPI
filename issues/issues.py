@@ -106,10 +106,21 @@ class issues(commands.Cog):
             counter=0
             for option in options:
                 counter=counter+1
-                embed = discord.Embed(
-                    title=f"Option {counter}",
-                    color=discord.Color.blue()
-                )
+                embed = discord.Embed(title=f"Option {counter}")
+                if counter%6 == 0: 
+                    embed.color = discord.Color.purple()
+                elif counter%6 == 1:
+                    embed.color = discord.Color.blue()
+                elif counter%6 == 2:
+                    embed.color = discord.Color.green()
+                elif counter%6 == 3:
+                    embed.color = discord.Color.red()
+                elif counter%6 == 4:
+                    embed.color = discord.Color.orange()
+                elif counter%6 == 5:
+                    embed.color = discord.Color.gold()
+                
+                    
                 embed.add_field(name="\u200b", value=option['text'], inline=False)
                 option_message = await ctx.send(embed=embed)
                 op_ids[option_message.id]=option['id']
