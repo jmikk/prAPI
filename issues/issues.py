@@ -110,7 +110,7 @@ class issues(commands.Cog):
                     title=f"Option {counter}",
                     color=discord.Color.blue()
                 )
-                embed.add_field(name=option['id'], value=option['text'], inline=False)
+                embed.add_field(name="\u200b", value=option['text'], inline=False)
                 option_message = await ctx.send(embed=embed)
                 op_ids[option_message.id]=option['id']
                 option_messages.append(option_message.id)  # Add the message ID to the option_messages list
