@@ -121,7 +121,7 @@ class issues(commands.Cog):
 
             await ctx.send(f"Once again I call upon <@1130304387156279368> to decide you have <t:{unix_timestamp}:R>.  If you can't all agree I'll pick one randomly.")
             await asyncio.sleep(self.vote_time)  # Wait for the voting time
-
+            
             reactions = []
             channel = ctx.channel
             for option_message_id in option_messages:
@@ -164,8 +164,8 @@ class issues(commands.Cog):
             
                 
                 embed = discord.Embed(
-                    title=issue_id + " Option: "+ op_ids[winning_option.id],
-                    color=discord.Color.blue()
+                    title=f"<@1130304387156279368> Have decide, now enjoy the outcome.",
+                    color=discord.Color.purple()
                 )
                 embed.add_field(name="Fresh from the well", value=desc_element.text, inline=False)
                 await ctx.send(embed=embed)
