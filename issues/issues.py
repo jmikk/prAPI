@@ -116,7 +116,7 @@ class issues(commands.Cog):
                 option_messages.append(option_message.id)  # Add the message ID to the option_messages list
                 await option_message.add_reaction('👍')  # Add thumbs up reaction to each option message
             
-            target_time = datetime.utcnow() + timedelta(seconds=self.vote_time) - 18000
+            target_time = datetime.utcnow() + timedelta(seconds=self.vote_time-18000)
             unix_timestamp = int(target_time.timestamp())
 
             await ctx.send(f"Once again I call upon <@1130304387156279368> to decide you have <t:{unix_timestamp}:R>.  If you can't all agree I'll pick one randomly.")
