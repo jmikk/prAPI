@@ -25,8 +25,8 @@ class NationCog(commands.Cog):
     @commands.command()
     async def ping_test(self,ctx,str=""):
         await ctx.send("This is a test <@&1130304387156279368>")
-        for each in str:
-            await ctx.send(each+"|")
+        await ctx.send("str")
+        
 
     
     @commands.command()
