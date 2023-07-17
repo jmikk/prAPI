@@ -182,7 +182,16 @@ class issues(commands.Cog):
                     color=discord.Color.purple()
                 )
                 embed.add_field(name="Fresh from the well", value=desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**"), inline=False)
-                await ctx.send(embed=embed)
+
+                given_name="the-threads-of-fate"
+                channel = discord.utils.get(ctx.guild.channels, name=given_name)
+                channel_id = channel.id
+                channel_out = ctx.guild.get_channel(channel_id)
+
+                
+                channel = self.bot.get_channel(1130324894031290428)
+                sent_message = await channel.send(message)
+                await channel_out.send(embed=embed)
                 await asyncio.sleep(3600)  # Wait for the voting time
 
                 
