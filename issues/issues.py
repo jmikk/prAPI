@@ -8,7 +8,7 @@ import os
 import discord
 from discord.ui import Button
 import json
-
+from datetime import datetime, timedelta
 
 
 def is_owner_overridable():
@@ -98,17 +98,16 @@ class issues(commands.Cog):
             ]
             embed = discord.Embed(
                 title=title,
-                description='The issue at hand',
-                color=discord.Color.blue()
+                description=text,
+                color=discord.Color.black()
             )
-            embed.set_footer(text=f"Written by: {Author}, Edited by: {editor}")
-            embed.set_author(name=f'Written by {author}, Edited by {editor}')
-            embed.add_field(name='The issue', value=text, inline=False)
+            embed.set_footer(text=f"Written by: {author}, Edited by: {editor}")
             message = await ctx.send(embed=embed)
-
+            counter=0
             for option in options:
+                counter=counter+1
                 embed = discord.Embed(
-                    title="This might work...",
+                    title=f"Option {counter}",
                     color=discord.Color.blue()
                 )
                 embed.add_field(name=option['id'], value=option['text'], inline=False)
@@ -116,7 +115,11 @@ class issues(commands.Cog):
                 op_ids[option_message.id]=option['id']
                 option_messages.append(option_message.id)  # Add the message ID to the option_messages list
                 await option_message.add_reaction('👍')  # Add thumbs up reaction to each option message
+            
+            target_time = datetime.utcnow() + timedelta(seconds=self.vote_time)
+            unix_timestamp = int(target_time.timestamp())
 
+            await ctx.send(f"The vote will close in <r:{unix_timestamp}>")
             await asyncio.sleep(self.vote_time)  # Wait for the voting time
 
             reactions = []
