@@ -100,8 +100,9 @@ class issues(commands.Cog):
             embed = discord.Embed(
                     title=title,
                     description=text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")),
-                    color=discord.Color.blue()
                 )
+            embed.color=discord.Color.blue()
+
             embed.set_footer(text=f"Written by: {author}, Edited by: {editor}")
             message = await ctx.send(embed=embed)
             counter=0
