@@ -92,35 +92,35 @@ class issues(commands.Cog):
             pic2 = issue.find('PIC2').text
             option_messages = []
             op_ids={}
+            
             options = [
                 {'id': option.attrib['id'], 'text': option.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")}
-                for option in issue.findall('OPTION')
             ]
-                embed = discord.Embed(
+
+            embed = discord.Embed(
                     title=title,
                     description=text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")),
                     color=discord.Color.blue()
                 )
-                embed.set_footer(text=f"Written by: {author}, Edited by: {editor}")
-                message = await ctx.send(embed=embed)
-                counter=0
-                for option in options:
-                    counter=counter+1
-                    embed = discord.Embed(title=f"Option {counter}")
-                    if counter%6 == 0: 
-                        embed.color = discord.Color.purple()
-                    elif counter%6 == 1:
-                        embed.color = discord.Color.blue()
-                    elif counter%6 == 2:
-                        embed.color = discord.Color.green()
-                    elif counter%6 == 3:
-                        embed.color = discord.Color.red()
-                    elif counter%6 == 4:
-                        embed.color = discord.Color.orange()
-                    elif counter%6 == 5:
-                        embed.color = discord.Color.gold()
-                
-                    
+            embed.set_footer(text=f"Written by: {author}, Edited by: {editor}")
+            message = await ctx.send(embed=embed)
+            counter=0
+            for option in options:
+                counter=counter+1
+                embed = discord.Embed(title=f"Option {counter}")
+                if counter%6 == 0: 
+                    embed.color = discord.Color.purple()
+                elif counter%6 == 1:
+                    embed.color = discord.Color.blue()
+                elif counter%6 == 2:
+                    embed.color = discord.Color.green()
+                elif counter%6 == 3:
+                    embed.color = discord.Color.red()
+                elif counter%6 == 4:
+                    embed.color = discord.Color.orange()
+                elif counter%6 == 5:
+                    embed.color = discord.Color.gold()
+                   
                 embed.add_field(name="\u200b", value=option['text'].replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")), inline=False)
                 option_message = await ctx.send(embed=embed)
                 op_ids[option_message.id]=option['id']
