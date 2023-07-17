@@ -99,7 +99,7 @@ class issues(commands.Cog):
 
             embed = discord.Embed(
                     title=title,
-                    description=text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")
+                    description=text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**"))
             embed.color=discord.Color.blue()
 
             embed.set_footer(text=f"Written by: {author}, Edited by: {editor}")
