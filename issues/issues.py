@@ -131,7 +131,7 @@ class issues(commands.Cog):
             unix_timestamp = int(target_time.timestamp())
             guild = ctx.guild
             ping_role = guild.get_role(1130304387156279368)
-            await ctx.send(f"Once again I call upon {ping_role.mention} to decide you have <t:{unix_timestamp}:R>.  If you can't all agree I'll pick one randomly.")
+            await ctx.send(f"Once again I call upon {ping_role.mention} to decide <t:{unix_timestamp}:R>.  If you can't all agree I'll pick one randomly.")
             await asyncio.sleep(self.vote_time)  # Wait for the voting time
             
             reactions = []
@@ -174,14 +174,16 @@ class issues(commands.Cog):
                 # Find the <DESC> element using XPath
                 desc_element = root.find('.//DESC')
             
-                
+                target_time = datetime.utcnow() + timedelta(seconds=3600-18000)
+                unix_timestamp = int(target_time.timestamp())
                 embed = discord.Embed(
-                    title=f"{ping_role.mention} have decided, now enjoy the outcome.",
+                    title=f" The Fates have decided, now enjoy the outcome. I must rest before the next reading I will be ready <t:{unix_timestamp}:R>",
                     color=discord.Color.purple()
                 )
                 embed.add_field(name="Fresh from the well", value=desc_element.text, inline=False)
                 await ctx.send(embed=embed)
-                
+                await asyncio.sleep(3600)  # Wait for the voting time
+
                 
             
 
