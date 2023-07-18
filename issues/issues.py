@@ -9,6 +9,7 @@ import discord
 from discord.ui import Button
 import json
 from datetime import datetime, timedelta
+from discord import AllowedMentions
 
 
 def is_owner_overridable():
@@ -130,9 +131,13 @@ class issues(commands.Cog):
             
             target_time = datetime.utcnow() + timedelta(seconds=self.vote_time-18000)
             unix_timestamp = int(target_time.timestamp())
-            guild = ctx.guild
-            ping_role = guild.get_role(1130304387156279368)
-            await ctx.send(f"Once again I call upon {ping_role.mention} to decide <t:{unix_timestamp}:R>.  If you can't all agree I'll pick one randomly.")
+            role_id = 1130304387156279368
+            allowed_mentions = AllowedMentions(
+            everyone=False,  # Disables @everyone and @here mentions
+            users=True,      # Enables user mentions
+            roles=True       # Enables role mentions
+        )
+            await ctx.send(f"Once again I call upon <@&{role_id}> to decide <t:{unix_timestamp}:R>.  If you can't all agree I'll pick one randomly.",allowed_mentions=allowed_mentions)
             await asyncio.sleep(self.vote_time)  # Wait for the voting time
             
             reactions = []
