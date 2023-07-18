@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 import ssl
 import os
 import discord
+from discord import AllowedMentions
 
 class NationCog(commands.Cog):
     def __init__(self, bot):
@@ -24,9 +25,14 @@ class NationCog(commands.Cog):
    
     @commands.command()
     async def ping_test(self,ctx,str=""):
+        allowed_mentions = AllowedMentions(
+        everyone=False,  # Disables @everyone and @here mentions
+        users=True,      # Enables user mentions
+        roles=True       # Enables role mentions
+        )
         role_id = 1130304387156279368
         role_mention = f"<@&{role_id}>"
-        await ctx.send(f"This is a test {role_mention}")
+        await ctx.send(f"This is a test {role_mention}", allowed_mentions=allowed_mentions)
         await ctx.send(str)
         
 
