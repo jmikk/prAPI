@@ -1,4 +1,4 @@
-from redbot.core import commands,data_manager
+f.from redbot.core import commands,data_manager
 import asyncio
 import os
 
@@ -53,7 +53,7 @@ class Farm(commands.Cog):
 
     @commands.command()
     async def test(self,ctx):
-        await make_new_player(ctx.author.id)
+        await self.make_new_player(ctx.author.id)
     # Function to initialize the database and create the player table
     @commands.command()
     @commands.is_owner()
