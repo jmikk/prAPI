@@ -49,7 +49,7 @@ class Farm(commands.Cog):
         'mushroom_seeds': 10,
         'corn_seeds': 10,
         'tacos_seeds': 10,
-        'avocados_seeds': 10
+        'avocados_seeds': 10,
         'lastupdate' : int(time.time())
     }
         os.mkdir(db_file)
@@ -77,6 +77,7 @@ class Farm(commands.Cog):
         player_id = ctx.author.id
         if not self.is_player(player_id):
             self.make_new_player(player_id)
+            await ctx.send("looks like your new let me set up your stats!")
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
         with open(file_path, 'r') as file:
             data = json.load(file)
