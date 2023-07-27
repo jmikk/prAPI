@@ -25,6 +25,10 @@ class Farm(commands.Cog):
     #   async def cog_command_error(self, ctx, error):
     #       await ctx.send(" ".join(error.args))
     
+    async def remove_player(self,player_id):
+        db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
+        os.rmdir(db_file)
+        
     async def make_new_player(self,player_id):
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
         default_player_data = {
@@ -55,6 +59,11 @@ class Farm(commands.Cog):
     @commands.command()
     async def test(self,ctx):
         await self.make_new_player(ctx.author.id)
+    
+    @commands.command()
+    async def test2(self,ctx):
+        await self.remove_player(ctx.author.id)
+    
     # Function to initialize the database and create the player table
     @commands.command()
     @commands.is_owner()
