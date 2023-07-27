@@ -27,4 +27,4 @@ class Farm(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def myCom1(self, ctx):
-        await ctx.send("I work")
+        await ctx.send("I work 🥔 🥕 🥦 🌽 🌮 🥑")
