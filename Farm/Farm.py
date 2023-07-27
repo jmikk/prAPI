@@ -2,6 +2,7 @@ from redbot.core import commands,data_manager
 import asyncio
 import os
 import json
+import time
 
 def is_owner_overridable():
     # Similar to @commands.is_owner()
@@ -49,13 +50,38 @@ class Farm(commands.Cog):
         'corn_seeds': 10,
         'tacos_seeds': 10,
         'avocados_seeds': 10
+        'lastupdate' : int(time.time())
     }
         os.mkdir(db_file)
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}/stats.txt"  # Use data_manager.cog_data_path() to determine the database file path)
         with open(db_file, 'w') as file:
             json.dump(default_player_data, file, indent=4)
 
+    async def make_message(base_msg,player_id,rmb=False):
+        base_msg =  base_msg + chl_levelup(player_id)
+        if rmb:
+            pass
+            return
+        else:
+            return base_msg
+            
+    async def is_player(self,player_id)
+        db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
+        if folder_exists(db_file):
+            return True
+        else:
+            return False
 
+    @commands.command()
+    async def chk_stats(self,ctx):
+        player_id = ctx.author.id
+        if not self.is_player(player_id):
+            self.make_new_player(player_id)
+        db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+        await ctx.send(data)
+            
 
     @commands.command()
     async def test(self,ctx):
