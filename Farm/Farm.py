@@ -31,7 +31,7 @@ class Farm(commands.Cog):
         os.rmdir(db_file)
         
     async def make_new_player(self,player_id):
-        db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
+        db_file = data_manager.cog_data_path(self) / "players"  # Use data_manager.cog_data_path() to determine the database file path)
         default_player_data = {
         'level': 1,
         'exp': 0,
@@ -52,7 +52,7 @@ class Farm(commands.Cog):
         'avocados_seeds': 10,
         'lastupdate' : int(time.time())
     }
-        os.mkdir(db_file)
+        os.mkdir(f"{db_file}/{player_id}")
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}/stats.txt"  # Use data_manager.cog_data_path() to determine the database file path)
         with open(db_file, 'w') as file:
             json.dump(default_player_data, file, indent=4)
