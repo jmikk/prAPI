@@ -1,4 +1,4 @@
-f.from redbot.core import commands,data_manager
+from redbot.core import commands,data_manager
 import asyncio
 import os
 
