@@ -30,32 +30,40 @@ class Farm(commands.Cog):
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
         os.rmdir(db_file)
         
-    async def make_new_player(self,player_id):
-        db_file = data_manager.cog_data_path(self) / "players"  # Use data_manager.cog_data_path() to determine the database file path)
+     async def make_new_player(self, player_id):
         default_player_data = {
-        'level': 1,
-        'exp': 0,
-        'gold': 100,
-        'crop_rows': 1,
-        'crop_cols':1,
-        'potatoe': 0,
-        'carrot': 0,
-        'mushroom': 0,
-        'corn': 0,
-        'taco': 0,
-        'avocado': 0,
-        'potato_seeds': 10,
-        'carrot_seeds': 10,
-        'mushroom_seeds': 10,
-        'corn_seeds': 10,
-        'tacos_seeds': 10,
-        'avocados_seeds': 10,
-        'lastupdate' : int(time.time())
-    }
-        os.mkdir(f"{db_file}/{player_id}")
-        db_file = data_manager.cog_data_path(self) / f"players/{player_id}/stats.txt"  # Use data_manager.cog_data_path() to determine the database file path)
-        with open(db_file, 'w') as file:
-            json.dump(default_player_data, file, indent=4)
+            'level': 1,
+            'exp': 0,
+            'gold': 100,
+            'crop_rows': 1,
+            'crop_cols': 1,
+            'potatoe': 0,
+            'carrot': 0,
+            'mushroom': 0,
+            'corn': 0,
+            'taco': 0,
+            'avocado': 0,
+            'potato_seeds': 10,
+            'carrot_seeds': 10,
+            'mushroom_seeds': 10,
+            'corn_seeds': 10,
+            'tacos_seeds': 10,
+            'avocados_seeds': 10,
+            'lastupdate': int(time.time())
+        }
+        
+        folder_path = data_manager.cog_data_path(self) / f"players/{player_id}"
+        stats_file_path = data_manager.cog_data_path(self) / f"players/{player_id}/stats.txt"
+        
+        os.makedirs(folder_path, exist_ok=True)
+        
+        # Write the default player data to the file using await self.bot.loop.run_in_executor()
+        await self.bot.loop.run_in_executor(None, lambda: self.write_to_file(stats_file_path, default_player_data))
+    
+    async def write_to_file(self, file_path, data):
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=4)
+
 
     async def make_message(base_msg,player_id,rmb=False):
         base_msg =  base_msg + chl_levelup(player_id)
