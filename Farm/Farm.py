@@ -72,7 +72,7 @@ class Farm(commands.Cog):
     @commands.command()
     async def chk_stats(self,ctx):
         player_id = ctx.author.id
-        if not self.is_player(player_id):
+        if self.is_player(player_id):
             self.make_new_player(player_id)
             await ctx.send("looks like your new let me set up your stats!")
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
