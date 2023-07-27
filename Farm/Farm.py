@@ -47,7 +47,8 @@ class Farm(commands.Cog):
         'avocados_seeds': 10
     }
         os.mkdir(db_file)
-        with open(db_file) as f:
+        db_file = data_manager.cog_data_path(self) / f"players/{player_id}/stats.txt"  # Use data_manager.cog_data_path() to determine the database file path)
+        with open(db_file,"w") as f:
             f.write(default_player_data)
 
 
