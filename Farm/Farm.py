@@ -25,7 +25,7 @@ class Farm(commands.Cog):
     #   async def cog_command_error(self, ctx, error):
     #       await ctx.send(" ".join(error.args))
     
-    def make_new_player(player_id):
+    async def make_new_player(player_id):
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
         default_player_data = {
         'level': 1,
@@ -52,8 +52,8 @@ class Farm(commands.Cog):
 
 
     @commands.command()
-    def test(self,ctx):
-        make_new_player(ctx.author.id)
+    async def test(self,ctx):
+        await make_new_player(ctx.author.id)
     # Function to initialize the database and create the player table
     @commands.command()
     @commands.is_owner()
