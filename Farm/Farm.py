@@ -79,7 +79,7 @@ class Farm(commands.Cog):
             self.make_new_player(player_id)
             await ctx.send("looks like your new let me set up your stats!")
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
-        with open(file_path, 'r') as file:
+        with open(db_file, 'r') as file:
             data = json.load(file)
         await ctx.send(data)
             
