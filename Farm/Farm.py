@@ -30,7 +30,7 @@ class Farm(commands.Cog):
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
         os.rmdir(db_file)
         
-     async def make_new_player(self, player_id):
+    async def make_new_player(self, player_id):
         default_player_data = {
             'level': 1,
             'exp': 0,
