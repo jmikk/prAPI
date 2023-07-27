@@ -1,5 +1,6 @@
 from redbot.core import commands
 import asyncio
+import os
 
 
 def is_owner_overridable():
@@ -16,14 +17,23 @@ class Farm(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-
+    
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
 
     # great once your done messing with the bot.
     #   async def cog_command_error(self, ctx, error):
     #       await ctx.send(" ".join(error.args))
-    
+    import sqlite3
+
+    # Function to initialize the database and create the player table
+    @commands.command()
+    @commands.is_owner()
+    async def initialize_database(self,ctx):
+        db_file = data_manager.cog_data_path(self) / "players"  # Use data_manager.cog_data_path() to determine the database file path)
+        os.mkdir(db_file)
+        await ctx.send((os.path.exists(folder_path) and os.path.isdir(folder_path)))
+        
     #https://www.quackit.com/character_sets/emoji/emoji_v3.0/unicode_emoji_v3.0_characters_food_and_drink.cfm
     #🥔	POTATO	&#x1F954;
     #🥕	CARROT	&#x1F955;
