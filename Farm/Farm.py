@@ -53,8 +53,8 @@ class Farm(commands.Cog):
         os.mkdir(db_file)
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}/stats.txt"  # Use data_manager.cog_data_path() to determine the database file path)
         with open(db_file, 'w') as file:
-            json.dump(dictionary, file, indent=4)
-            await ctx.send(f"Dictionary has been successfully written to '{file_path}'.")
+            json.dump(default_player_data, file, indent=4)
+            await ctx.send(f"Dictionary has been successfully written to '{db_file}'.")
 
 
 
