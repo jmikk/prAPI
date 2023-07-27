@@ -1,7 +1,7 @@
 from redbot.core import commands,data_manager
 import asyncio
 import os
-
+import json
 
 def is_owner_overridable():
     # Similar to @commands.is_owner()
@@ -52,8 +52,10 @@ class Farm(commands.Cog):
     }
         os.mkdir(db_file)
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}/stats.txt"  # Use data_manager.cog_data_path() to determine the database file path)
-        with open(db_file,"w") as f:
-            f.write(default_player_data)
+        with open(db_file, 'w') as file:
+            json.dump(dictionary, file, indent=4)
+            await ctx.send(f"Dictionary has been successfully written to '{file_path}'.")
+
 
 
     @commands.command()
