@@ -65,7 +65,7 @@ class Farm(commands.Cog):
         else:
             return base_msg
             
-    async def is_player(self,player_id)
+    async def is_player(self,player_id):
         db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
         if folder_exists(db_file):
             return True
