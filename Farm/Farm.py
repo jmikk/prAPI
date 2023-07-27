@@ -32,7 +32,7 @@ class Farm(commands.Cog):
     async def initialize_database(self,ctx):
         db_file = data_manager.cog_data_path(self) / "players"  # Use data_manager.cog_data_path() to determine the database file path)
         os.mkdir(db_file)
-        await ctx.send((os.path.exists(folder_path) and os.path.isdir(folder_path)))
+        await ctx.send((os.path.exists(db_file) and os.path.isdir(db_file)))
         
     #https://www.quackit.com/character_sets/emoji/emoji_v3.0/unicode_emoji_v3.0_characters_food_and_drink.cfm
     #🥔	POTATO	&#x1F954;
