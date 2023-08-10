@@ -176,7 +176,13 @@ class issues(commands.Cog):
                 # Load the XML document
                 
                 # Get the root element of the XML
-                root = ET.fromstring(r.text)                
+                try:
+                    root = ET.fromstring(r.text)
+                except xml.etree.ElementTree.ParseError:
+                    channel_id = 1098673276064120842  
+                    channel = bot.get_channel(channel_id)
+                    await channel.send(r.text)
+                    
                 # Find the <DESC> element using XPath
                 desc_element = root.find('.//DESC')
             
