@@ -205,7 +205,7 @@ class issues(commands.Cog):
                 str2 = f"Fresh from the well, \n  "+desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")+" \n If you would like to help decide my fate join our discord where you can vote every 12 hours."
                 data = {
                     "nation": self.IssuesNation,
-                    "region": Region,
+                    "region": "The Wellspring",
                     "c": "rmbpost",
                     "text": str2,
                     "mode": "prepare",
