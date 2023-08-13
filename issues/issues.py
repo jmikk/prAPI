@@ -26,8 +26,8 @@ class issues(commands.Cog):
         self.auth = sans.NSAuth()
         self.IssuesNation = ""
         self.client = sans.AsyncClient()
-        self.vote_time = 60  
-        #self.vote_time = 43200  # 6 hours in seconds
+        #self.vote_time = 60
+        self.vote_time = 43200  # 6 hours in seconds
         self.tie_break_time = 43200  # 12 hours in seconds  
         self.stop_loop = False  # Flag to control the while loop
         self.password=""
@@ -202,7 +202,7 @@ class issues(commands.Cog):
 
                 await channel_out.send(embed=embed)
                 self.auth = sans.NSAuth(password=self.password)
-                str2 = f"Fresh from the well, \n  "+desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")+" \n If you would like to help decide my fate join our discord where you can vote every 12 hours."
+                str2 = f"[b]Fresh from the well,[/b] \n\n  "+desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")+" \n\n If you would like to help decide my fate join our discord where you can vote every 12 hours."
                 data = {
                     "nation": self.IssuesNation,
                     "region": "The Wellspring",
