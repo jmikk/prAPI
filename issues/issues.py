@@ -180,7 +180,7 @@ class issues(commands.Cog):
                 try:
                     root = ET.fromstring(r.text)
                 except ET.ParseError:
-                    channel_id = 1098673276064120842  
+                    channel_id = 1140421534503161866  
                     channel = bot.get_channel(channel_id)
                     await channel.send(r.text)
                     
@@ -202,7 +202,7 @@ class issues(commands.Cog):
 
                 await channel_out.send(embed=embed)
                 self.auth = sans.NSAuth(password=self.password)
-                str = f"Fresh from the well, \n  {desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")} \n If you would like to help decide my fate join our discord where you can vote every 12 hours."
+                str = f"Fresh from the well, \n  "+desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")+" \n If you would like to help decide my fate join our discord where you can vote every 12 hours."
                 data = {
                     "nation": self.RegionalNation,
                     "region": Region,
