@@ -181,7 +181,7 @@ class issues(commands.Cog):
                     root = ET.fromstring(r.text)
                 except ET.ParseError:
                     channel_id = 1140421534503161866  
-                    channel = bot.get_channel(channel_id)
+                    channel = ctx.get_channel(channel_id)
                     await channel.send(r.text)
                     
                 # Find the <DESC> element using XPath
