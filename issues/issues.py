@@ -178,7 +178,7 @@ class issues(commands.Cog):
                 # Get the root element of the XML
                 try:
                     root = ET.fromstring(r.text)
-                except xml.etree.ElementTree.ParseError:
+                except ET.ParseError:
                     channel_id = 1098673276064120842  
                     channel = bot.get_channel(channel_id)
                     await channel.send(r.text)
