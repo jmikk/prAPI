@@ -201,6 +201,20 @@ class issues(commands.Cog):
                 channel_out = ctx.guild.get_channel(channel_id)
 
                 await channel_out.send(embed=embed)
+                self.auth = sans.NSAuth(password=self.password)
+                str = f"Fresh from the well, \n  {desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")} \n If you would like to help decide my fate join our discord where you can vote every 12 hours."
+                data = {
+                    "nation": self.RegionalNation,
+                    "region": Region,
+                    "c": "rmbpost",
+                    "text": str,
+                    "mode": "prepare",
+                }
+                r = await self.api_request(data=data)
+                rmbToken = r.xml.find("SUCCESS").text
+                data.update(mode="execute", token=rmbToken)
+                r = await self.api_request(data=data)
+                
                 await asyncio.sleep(3600)  # Wait for the voting time
 
                 
