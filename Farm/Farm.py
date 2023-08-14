@@ -15,8 +15,8 @@ class Farm(commands.Cog):
         }
         self.config.register_global(**default_global)
     async def get_player_data(self, player_id: int):
-    players = await self.config.players()
-    return players.get(player_id, {})
+        players = await self.config.players()
+        return players.get(player_id, {})
 
     async def set_player_data(self, player_id: int, data: dict):
         players = await self.config.players()
