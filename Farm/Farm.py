@@ -1,8 +1,7 @@
 from redbot.core import commands,data_manager
-import asyncio
-import os
-import json
-import time
+import discord
+from discord.ext import commands
+import datetime
 
 def is_owner_overridable():
     # Similar to @commands.is_owner()
@@ -25,102 +24,77 @@ class Farm(commands.Cog):
     # great once your done messing with the bot.
     #   async def cog_command_error(self, ctx, error):
     #       await ctx.send(" ".join(error.args))
+    # Store user data and their crops
+    user_data = {}
     
-    async def remove_player(self,player_id):
-        db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
-        os.rmdir(db_file)
-        
-    async def make_new_player(self, player_id):
-        default_player_data = {
-            'level': 1,
-            'exp': 0,
-            'gold': 100,
-            'crop_rows': 1,
-            'crop_cols': 1,
-            'potatoe': 0,
-            'carrot': 0,
-            'mushroom': 0,
-            'corn': 0,
-            'taco': 0,
-            'avocado': 0,
-            'potato_seeds': 10,
-            'carrot_seeds': 10,
-            'mushroom_seeds': 10,
-            'corn_seeds': 10,
-            'tacos_seeds': 10,
-            'avocados_seeds': 10,
-            'lastupdate': int(time.time())
-        }
-        
-        folder_path = data_manager.cog_data_path(self) / f"players/{player_id}"
-        stats_file_path = data_manager.cog_data_path(self) / f"players/{player_id}/stats.txt"
-        
-        os.makedirs(folder_path, exist_ok=True)
-        
-        # Write the default player data to the file using await self.bot.loop.run_in_executor()
-        await self.bot.loop.run_in_executor(None, lambda: self.write_to_file(stats_file_path, default_player_data))
+    # Crop growth time (in days)
+    crop_growth_time = {
+        "POTATO": 2,
+        "CARROT": 3,
+        "MUSHROOM": 4,
+        "CORN": 5,
+        "TACO": 6,
+        "AVOCADO": 7
+    }
     
-    async def write_to_file(self, file_path, data):
-        with open(file_path, 'w') as file:
-            json.dump(data, file, indent=4)
-
-
-    async def make_message(base_msg,player_id,rmb=False):
-        base_msg =  base_msg + chl_levelup(player_id)
-        if rmb:
-            pass
-            return
+    def update_growths():
+        now = datetime.datetime.now()
+        for user_id, crops in user_data.items():
+            for crop_name, data in crops.items():
+                last_action_time = data["last_action_time"]
+                days_since_last_action = (now - last_action_time).days
+                if days_since_last_action > 0:
+                    data["growth_progress"] += days_since_last_action
+                    data["last_action_time"] = now
+    
+                    if data["growth_progress"] >= crop_growth_time[crop_name]:
+                        data["growth_progress"] = 0
+                        data["ready_to_harvest"] = True
+    
+    @bot.command()
+    async def plant(ctx, crop_name):
+        user_id = str(ctx.author.id)
+        if user_id not in user_data:
+            user_data[user_id] = {}
+    
+        if crop_name in crop_growth_time:
+            if crop_name not in user_data[user_id]:
+                user_data[user_id][crop_name] = {
+                    "growth_progress": 0,
+                    "ready_to_harvest": False,
+                    "last_action_time": datetime.datetime.now()
+                }
+            await ctx.send(f"You planted {crop_name}!")
         else:
-            return base_msg
-            
-    async def is_player(self,player_id):
-        db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
-        return os.path.exists(db_file) and os.path.isdir(db_file)
-
-    @commands.command()
-    async def chk_stats(self,ctx):
-        player_id = ctx.author.id
-        if not self.is_player(player_id):
-            self.make_new_player(player_id)
-            await ctx.send("looks like your new let me set up your stats!")
-        db_file = data_manager.cog_data_path(self) / f"players/{player_id}"  # Use data_manager.cog_data_path() to determine the database file path)
-        with open(db_file, 'r') as file:
-            data = json.load(file)
-        await ctx.send(data)
-            
-
-    @commands.command()
-    async def test(self,ctx):
-        await self.make_new_player(ctx.author.id)
+            await ctx.send("Invalid crop name.")
     
-    @commands.command()
-    async def test2(self,ctx):
-        await self.remove_player(ctx.author.id)
+    @bot.command()
+    async def harvest(ctx, crop_name):
+        user_id = str(ctx.author.id)
+        if user_id in user_data and crop_name in user_data[user_id]:
+            if user_data[user_id][crop_name]["ready_to_harvest"]:
+                user_data[user_id][crop_name]["ready_to_harvest"] = False
+                await ctx.send(f"You harvested {crop_name}!")
+            else:
+                await ctx.send(f"{crop_name} is not ready for harvest.")
+        else:
+            await ctx.send("You don't have any of that crop to harvest.")
     
-    # Function to initialize the database and create the player table
-    @commands.command()
-    @commands.is_owner()
-    async def make_players_folder(self,ctx):
-        db_file = data_manager.cog_data_path(self) / "players"  # Use data_manager.cog_data_path() to determine the database file path)
-        os.mkdir(db_file)
-        await ctx.send((os.path.exists(db_file) and os.path.isdir(db_file)))
+    @bot.command()
+    async def status(ctx):
+        user_id = str(ctx.author.id)
+        if user_id in user_data:
+            status_message = "Your farm status:\n"
+            for crop_name, data in user_data[user_id].items():
+                growth_progress = data["growth_progress"]
+                ready_to_harvest = "Ready to harvest" if data["ready_to_harvest"] else f"Growth: {growth_progress}/{crop_growth_time[crop_name]}"
+                status_message += f":{crop_name}: {ready_to_harvest}\n"
+            await ctx.send(status_message)
+        else:
+            await ctx.send("You haven't started farming yet.")
     
-    # Function to initialize the database and create the player table
-    @commands.command()
-    @commands.is_owner()
-    async def delete_players_folder(self,ctx):
-        db_file = data_manager.cog_data_path(self) / "players"  # Use data_manager.cog_data_path() to determine the database file path)
-        os.rmdir(db_file)
-        await ctx.send((os.path.exists(db_file) and os.path.isdir(db_file)))
+    @bot.command()
+    async def grow(ctx):
+        update_growths()
+        await ctx.send("Crops have grown!")
     
-        
-    #https://www.quackit.com/character_sets/emoji/emoji_v3.0/unicode_emoji_v3.0_characters_food_and_drink.cfm
-    #🥔	POTATO	&#x1F954;
-    #🥕	CARROT	&#x1F955;
-    #🍄	MUSHROOM	&#x1F344;
-    #🌽	CORN &#x1F33D;
-    #🌮	TACO	&#x1F32E;
-    #🥑	AVOCADO	&#x1F951;
-    @commands.command()
-    async def crops(self, ctx):
-        await ctx.send("The current crops you can grow are 🥔 (Potato) 🥕 (Carrot) 🍄 MUSHROOM 🌽(Corn) 🌮(Taco) 🥑 (Avacado)")
