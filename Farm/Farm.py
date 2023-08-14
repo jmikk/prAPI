@@ -23,17 +23,17 @@ class Farm(commands.Cog):
     
     @commands.command()
     def update_growths(user_id):
-    now = datetime.datetime.now()
-    for crop_name, data in user_data[user_id].items():
-        last_action_time = data["last_action_time"]
-        days_since_last_action = (now - last_action_time).days
-        if days_since_last_action > 0:
-            data["growth_progress"] += days_since_last_action
-            data["last_action_time"] = now
-
-            if data["growth_progress"] >= crop_growth_time[crop_name]:
-                data["growth_progress"] = 0
-                data["ready_to_harvest"] = True
+        now = datetime.datetime.now()
+        for crop_name, data in user_data[user_id].items():
+            last_action_time = data["last_action_time"]
+            days_since_last_action = (now - last_action_time).days
+            if days_since_last_action > 0:
+                data["growth_progress"] += days_since_last_action
+                data["last_action_time"] = now
+    
+                if data["growth_progress"] >= crop_growth_time[crop_name]:
+                    data["growth_progress"] = 0
+                    data["ready_to_harvest"] = True
 
     @commands.command()
     async def plant(ctx, crop_name):
