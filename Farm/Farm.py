@@ -22,7 +22,7 @@ class Farm(commands.Cog):
     }
     
     @commands.command()
-    def update_growths(user_id):
+    async def update_growths(user_id):
         now = datetime.datetime.now()
         for crop_name, data in user_data[user_id].items():
             last_action_time = data["last_action_time"]
