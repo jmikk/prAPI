@@ -1,4 +1,4 @@
-from redbot.core import commands,config
+from redbot.core import commands
 import discord
 import datetime
 import sqlite3
@@ -9,11 +9,10 @@ class Farm(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890)
         default_global = {
             "players": {}  # Dictionary to store player data
         }
-        self.config.register_global(**default_global)
+        
     async def get_player_data(self, player_id: int):
         players = await self.config.players()
         return players.get(player_id, {})
