@@ -2,15 +2,6 @@ from redbot.core import commands,data_manager
 import discord
 import datetime
 
-def is_owner_overridable():
-    # Similar to @commands.is_owner()
-    # Unlike that, however, this check can be overridden with core Permissions
-    def predicate(ctx):
-        return False
-
-    return commands.permissions_check(predicate)
-
-
 class Farm(commands.Cog):
     """My custom cog"""
 
@@ -31,7 +22,6 @@ class Farm(commands.Cog):
     }
     
     @commands.command()
-    @is_owner_overridable()
     def update_growths():
         now = datetime.datetime.now()
         for user_id, crops in user_data.items():
@@ -46,7 +36,6 @@ class Farm(commands.Cog):
                         data["growth_progress"] = 0
                         data["ready_to_harvest"] = True
     @commands.command()
-    @is_owner_overridable()
     async def plant(ctx, crop_name):
         user_id = str(ctx.author.id)
         if user_id not in user_data:
@@ -64,7 +53,6 @@ class Farm(commands.Cog):
             await ctx.send("Invalid crop name.")
     
     @commands.command()
-    @is_owner_overridable()
     async def harvest(ctx, crop_name):
         user_id = str(ctx.author.id)
         if user_id in user_data and crop_name in user_data[user_id]:
@@ -77,7 +65,6 @@ class Farm(commands.Cog):
             await ctx.send("You don't have any of that crop to harvest.")
     
     @commands.command()
-    @is_owner_overridable()
     async def status(ctx):
         user_id = str(ctx.author.id)
         if user_id in user_data:
@@ -91,7 +78,6 @@ class Farm(commands.Cog):
             await ctx.send("You haven't started farming yet.")
     
     @commands.command()
-    @is_owner_overridable()
     async def grow(ctx):
         update_growths()
         await ctx.send("Crops have grown!")
