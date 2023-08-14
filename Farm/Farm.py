@@ -37,6 +37,8 @@ class Farm(commands.Cog):
         "AVOCADO": 7
     }
     
+    @commands.command()
+    @is_owner_overridable()
     def update_growths():
         now = datetime.datetime.now()
         for user_id, crops in user_data.items():
@@ -50,8 +52,8 @@ class Farm(commands.Cog):
                     if data["growth_progress"] >= crop_growth_time[crop_name]:
                         data["growth_progress"] = 0
                         data["ready_to_harvest"] = True
-    
-    @bot.command()
+    @commands.command()
+    @is_owner_overridable()
     async def plant(ctx, crop_name):
         user_id = str(ctx.author.id)
         if user_id not in user_data:
@@ -68,7 +70,8 @@ class Farm(commands.Cog):
         else:
             await ctx.send("Invalid crop name.")
     
-    @bot.command()
+    @commands.command()
+    @is_owner_overridable()
     async def harvest(ctx, crop_name):
         user_id = str(ctx.author.id)
         if user_id in user_data and crop_name in user_data[user_id]:
@@ -80,7 +83,8 @@ class Farm(commands.Cog):
         else:
             await ctx.send("You don't have any of that crop to harvest.")
     
-    @bot.command()
+    @commands.command()
+    @is_owner_overridable()
     async def status(ctx):
         user_id = str(ctx.author.id)
         if user_id in user_data:
@@ -93,7 +97,8 @@ class Farm(commands.Cog):
         else:
             await ctx.send("You haven't started farming yet.")
     
-    @bot.command()
+    @commands.command()
+    @is_owner_overridable()
     async def grow(ctx):
         update_growths()
         await ctx.send("Crops have grown!")
