@@ -22,19 +22,19 @@ class Farm(commands.Cog):
     }
     
     @commands.command()
-    def update_growths():
-        now = datetime.datetime.now()
-        for user_id, crops in user_data.items():
-            for crop_name, data in crops.items():
-                last_action_time = data["last_action_time"]
-                days_since_last_action = (now - last_action_time).days
-                if days_since_last_action > 0:
-                    data["growth_progress"] += days_since_last_action
-                    data["last_action_time"] = now
-    
-                    if data["growth_progress"] >= crop_growth_time[crop_name]:
-                        data["growth_progress"] = 0
-                        data["ready_to_harvest"] = True
+    def update_growths(user_id):
+    now = datetime.datetime.now()
+    for crop_name, data in user_data[user_id].items():
+        last_action_time = data["last_action_time"]
+        days_since_last_action = (now - last_action_time).days
+        if days_since_last_action > 0:
+            data["growth_progress"] += days_since_last_action
+            data["last_action_time"] = now
+
+            if data["growth_progress"] >= crop_growth_time[crop_name]:
+                data["growth_progress"] = 0
+                data["ready_to_harvest"] = True
+
     @commands.command()
     async def plant(ctx, crop_name):
         user_id = str(ctx.author.id)
@@ -49,6 +49,7 @@ class Farm(commands.Cog):
                     "last_action_time": datetime.datetime.now()
                 }
             await ctx.send(f"You planted {crop_name}!")
+            update_growths(user_id)
         else:
             await ctx.send("Invalid crop name.")
     
@@ -76,9 +77,3 @@ class Farm(commands.Cog):
             await ctx.send(status_message)
         else:
             await ctx.send("You haven't started farming yet.")
-    
-    @commands.command()
-    async def grow(ctx):
-        update_growths()
-        await ctx.send("Crops have grown!")
-    
