@@ -16,13 +16,7 @@ class Farm(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-    
-    def cog_unload(self):
-        asyncio.create_task(self.client.aclose())
 
-    # great once your done messing with the bot.
-    #   async def cog_command_error(self, ctx, error):
-    #       await ctx.send(" ".join(error.args))
     # Store user data and their crops
     user_data = {}
     
