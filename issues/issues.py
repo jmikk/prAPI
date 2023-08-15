@@ -26,8 +26,8 @@ class issues(commands.Cog):
         self.auth = sans.NSAuth()
         self.IssuesNation = ""
         self.client = sans.AsyncClient()
-        #self.vote_time = 60
-        self.vote_time = 43200  # 6 hours in seconds
+        self.vote_time = 30
+        #self.vote_time = 43200  # 6 hours in seconds
         self.tie_break_time = 43200  # 12 hours in seconds  
         self.stop_loop = False  # Flag to control the while loop
         self.password=""
@@ -215,7 +215,7 @@ class issues(commands.Cog):
                 data.update(mode="execute", token=rmbToken)
                 r = await self.api_request(data=data)
                 
-                await asyncio.sleep(3600)  # Wait for the voting time
+                await asyncio.sleep(36)  # Wait for the voting time
 
                 
             
