@@ -201,7 +201,7 @@ class issues(commands.Cog):
                 channel_out = ctx.guild.get_channel(channel_id)
 
                 await channel_out.send(embed=embed)
-                self.auth = sans.NSAuth(password=self.password)
+                #self.auth = sans.NSAuth(password=self.password)
                 str2 = f"[b]Fresh from the well,[/b] \n\n  "+desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")+" \n\n If you would like to help decide my fate join our discord where you can vote every 12 hours."
                 data = {
                     "nation": self.IssuesNation,
