@@ -202,18 +202,18 @@ class issues(commands.Cog):
 
                 await channel_out.send(embed=embed)
                 #self.auth = sans.NSAuth(password=self.password)
-                str2 = f"[b]Fresh from the well,[/b] \n\n  "+desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")+" \n\n If you would like to help decide my fate join our discord where you can vote every 12 hours."
-                data = {
-                    "nation": self.IssuesNation,
-                    "region": "the wellspring",
-                    "c": "rmbpost",
-                    "text": str2,
-                    "mode": "prepare",
-                }
-                r = await self.api_request(data=data)
-                rmbToken = r.xml.find("SUCCESS").text
-                data.update(mode="execute", token=rmbToken)
-                r = await self.api_request(data=data)
+                #str2 = f"[b]Fresh from the well,[/b] \n\n  "+desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**")+" \n\n If you would like to help decide my fate join our discord where you can vote every 12 hours."
+                #data = {
+                #   "nation": self.IssuesNation,
+                #   "region": "the wellspring",
+                #   "c": "rmbpost",
+                #   "text": str2,
+                #   "mode": "prepare",
+                #}
+                #r = await self.api_request(data=data)
+                #rmbToken = r.xml.find("SUCCESS").text
+                #data.update(mode="execute", token=rmbToken)
+                #r = await self.api_request(data=data)
                 
                 await asyncio.sleep(3600)  # Wait for the voting time
 
