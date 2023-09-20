@@ -38,7 +38,7 @@ class NationCog(commands.Cog):
 
     
     @commands.command()
-    @commands.has_role("High Mage of Internal Affairs")
+    @commands.has_role("Internal Affairs")
     async def cit_chk(self, ctx):
         await ctx.send("You got it I'll think for a few moments!")
         # Fetch the CSV data
@@ -58,7 +58,7 @@ class NationCog(commands.Cog):
             data_list.append((discord_name, nation_name,WA_name))
 
         # Fetch the data from the NationStates API
-        header = {"User-Agent": "9003"}
+        header = {"User-Agent": "9006's Gob"}
         url = "https://www.nationstates.net/cgi-bin/api.cgi"
         response = requests.post(
             url, headers=header, data={"region": "the_wellspring", "q": "nations"}
