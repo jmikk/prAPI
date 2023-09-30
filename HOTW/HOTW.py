@@ -31,7 +31,7 @@ class HOTW(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def steal_water(self, ctx):
+    async def HOTW(self, ctx):
         ways_to_take_water = [
     "Bob grabs Fancy Water from Joe.",
     "Bob snatches Fancy Water from Joe.",
