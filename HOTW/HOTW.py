@@ -3,7 +3,7 @@ import asyncio
 import time
 import random
 from datetime import datetime
-import discord.py
+import discord
 
 def is_owner_overridable():
     # Similar to @commands.is_owner()
