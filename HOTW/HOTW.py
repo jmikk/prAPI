@@ -15,7 +15,7 @@ def is_owner_overridable():
 
 
 class HOTW(commands.Cog):
-    HOTW="test"
+    HOTWname="test"
     timestamp = datetime.now()  # Initialize timestamp as a datetime object
     """My custom cog"""
 
@@ -136,13 +136,12 @@ class HOTW(commands.Cog):
         random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTW))
         
         # Update the previous owner to the current author
-        if HOTW.HOTW == "test":
-            HOTW.HOTW = ctx.author.mention
-        HOTW.timestamp = current_time  # Update the timestamp
+        if HOTW.HOTWname == "test":
+            HOTW.HOTWname = ctx.author.mention
         
         # Generate a new random statement
         random_statement = random.choice(ways_to_take_water)
-        random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTW))
+        random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTWname)
         
         # Calculate the time difference in seconds and update the timestamp
         current_epoch_timestamp = datetime.now().timestamp()
@@ -151,4 +150,7 @@ class HOTW(commands.Cog):
         
         # Send the updated statement and the time difference
         await ctx.send(random_statement)
-        await ctx.send(f"{HOTW.HOTW} had the water for {time_difference_seconds} seconds")
+        await ctx.send(f"{HOTW.HOTWname} had the water for {time_difference_seconds} seconds")
+        HOTW.timestamp = current_time  # Update the timestamp
+        HOTW.HOTWname = ctx.author.mention
+
