@@ -134,7 +134,7 @@ class HOTW(commands.Cog):
 
         random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTW))
         if not HOTW.HOTW:
-            HOTW.HOTW = "God"
+            HOTW.HOTW = ctx.author.mention
         HOTW.timestamp = current_time  # Update the timestamp
 
         await ctx.send(random_statement)
