@@ -125,12 +125,12 @@ class HOTW(commands.Cog):
     "Bob procures Fancy Water from Joe in a stealthy manner."
 ]
         random_statement = random.choice(ways_to_take_water)
-        random_statement = random_statement.replace("Bob",str(ctx.author.mention)).replace("Joe",str(HOTW))
+        random_statement = random_statement.replace("Bob",str(ctx.author.mention)).replace("Joe",str(HOTW.HOTW))
         current_time = datetime.now()
-        given_datetime = datetime.fromtimestamp(timestamp)
+        given_datetime = datetime.fromtimestamp(HOTW.timestamp)
         time_difference_seconds = current_epoch_timestamp - given_epoch_timestamp
-        timestamp = current_time
+        HOTW.timestamp = current_time
 
         await ctx.send(random_statement)
-        await ctx.send(f"{HOTW} Had the water for {time_difference_seconds} secounds")
+        await ctx.send(f"{HOTW.HOTW} Had the water for {time_difference_seconds} secounds")
 
