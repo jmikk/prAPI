@@ -127,23 +127,29 @@ class HOTW(commands.Cog):
 ]
         random_statement = random.choice(ways_to_take_water)
 
-        # Calculate the time difference
         current_time = datetime.now()
         time_difference = current_time - HOTW.timestamp
         time_difference_seconds = time_difference.total_seconds()
-
+        
+        # Replace "Bob" with the current author and "Joe" with the previous owner
         random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTW))
+        
+        # Update the previous owner to the current author
         if HOTW.HOTW == "test":
             HOTW.HOTW = ctx.author.mention
-        HOTW.timestamp = current_time  # Update the timestamp 
+        HOTW.timestamp = current_time  # Update the timestamp
         
+        # Generate a new random statement
         random_statement = random.choice(ways_to_take_water)
-        random_statement = random_statement.replace("Bob",str(ctx.author.mention)).replace("Joe",str(HOTW.HOTW))
-        current_epoch_timestamp = datetime.now()
-        given_datetime = HOTW.timestamp.timestamp()
-        time_difference_seconds = current_epoch_timestamp - HOTW.timestamp
+        random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTW))
+        
+        # Calculate the time difference in seconds and update the timestamp
+        current_epoch_timestamp = datetime.now().timestamp()
+        time_difference_seconds = current_epoch_timestamp - HOTW.timestamp.timestamp()
         HOTW.timestamp = current_epoch_timestamp
-#test
+        
+        # Send the updated statement and the time difference
         await ctx.send(random_statement)
-        await ctx.send(f"{HOTW.HOTW} Had the water for {time_difference_seconds} secounds")
+        await ctx.send(f"{HOTW.HOTW} had the water for {time_difference_seconds} seconds")
+
 
