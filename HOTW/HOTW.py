@@ -133,7 +133,8 @@ class HOTW(commands.Cog):
         time_difference_seconds = time_difference.total_seconds()
 
         random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTW))
-
+        if not HOTW.HOTW:
+            HOTW.HOTW = "God"
         HOTW.timestamp = current_time  # Update the timestamp
 
         await ctx.send(random_statement)
