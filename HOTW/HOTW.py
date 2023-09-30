@@ -180,7 +180,7 @@ class HOTW(commands.Cog):
         user_id = str(HOTW.HOTWname)
         
         if user_id not in HOTW.user_data:
-            HOTW.user_data[user_id] = {"name": str(ctx.author), "total_time": 0, "current_streak": 0, "longest_streak": 0}
+            HOTW.user_data[user_id] = {"name": str(HOTW.HOTWname), "total_time": 0, "current_streak": 0, "longest_streak": 0}
         
         HOTW.user_data[user_id]["total_time"] += time_difference_seconds
         HOTW.user_data[user_id]["current_streak"] += time_difference_seconds
