@@ -55,7 +55,6 @@ class HOTW(commands.Cog):
 
 
     @commands.command()
-    @commands.is_owner()
     async def HOTW(self, ctx):
         ways_to_take_water = [
     "Bob grabs Fancy Water from Joe.",
