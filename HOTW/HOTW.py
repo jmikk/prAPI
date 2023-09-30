@@ -15,7 +15,7 @@ def is_owner_overridable():
 
 class HOTW(commands.Cog):
     HOTW=""
-    timestamp=0
+    timestamp = datetime.now()  # Initialize timestamp as a datetime object
     """My custom cog"""
 
     def __init__(self, bot):
