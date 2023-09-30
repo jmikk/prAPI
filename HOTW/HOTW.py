@@ -125,6 +125,19 @@ class HOTW(commands.Cog):
     "Bob procures Fancy Water from Joe in a stealthy manner."
 ]
         random_statement = random.choice(ways_to_take_water)
+        owner_mention = ctx.bot.get_user(ctx.bot.owner_id).mention  # Mention the owner
+
+        # Calculate the time difference
+        current_time = datetime.now()
+        time_difference = current_time - HOTW.timestamp
+        time_difference_seconds = time_difference.total_seconds()
+
+        random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTW))
+
+        HOTW.timestamp = current_time  # Update the timestamp
+
+        await ctx.send(random_statement)
+        await ctx.send(f"{HOTW.HOTW} had the water for {time_difference_seconds} seconds")        random_statement = random.choice(ways_to_take_water)
         random_statement = random_statement.replace("Bob",str(ctx.author.mention)).replace("Joe",str(HOTW.HOTW))
         current_epoch_timestamp = datetime.now()
         given_datetime = datetime.fromtimestamp(HOTW.timestamp)
