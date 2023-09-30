@@ -35,8 +35,8 @@ class HOTW(commands.Cog):
     @commands.command()
     async def leaderboard(self, ctx):
         # Sort the user_data by total time and longest streak
-        sorted_users_by_time = sorted(user_data.values(), key=lambda x: x["total_time"], reverse=True)
-        sorted_users_by_streak = sorted(user_data.values(), key=lambda x: x["longest_streak"], reverse=True)
+        sorted_users_by_time = sorted(HOTW.user_data.values(), key=lambda x: x["total_time"], reverse=True)
+        sorted_users_by_streak = sorted(HOTW.user_data.values(), key=lambda x: x["longest_streak"], reverse=True)
     
         # Create leaderboard messages
         time_leaderboard = "Top 3 Holders by Total Time:\n"
