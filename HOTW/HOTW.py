@@ -127,6 +127,7 @@ class HOTW(commands.Cog):
 ]
         random_statement = random.choice(ways_to_take_water)
 
+        # Calculate the time difference
         current_time = datetime.now()
         time_difference = current_time - HOTW.timestamp
         time_difference_seconds = time_difference.total_seconds()
@@ -146,10 +147,8 @@ class HOTW(commands.Cog):
         # Calculate the time difference in seconds and update the timestamp
         current_epoch_timestamp = datetime.now().timestamp()
         time_difference_seconds = current_epoch_timestamp - HOTW.timestamp.timestamp()
-        HOTW.timestamp = current_epoch_timestamp
+        HOTW.timestamp = current_time  # Update the timestamp
         
         # Send the updated statement and the time difference
         await ctx.send(random_statement)
         await ctx.send(f"{HOTW.HOTW} had the water for {time_difference_seconds} seconds")
-
-
