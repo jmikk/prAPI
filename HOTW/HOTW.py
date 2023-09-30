@@ -177,7 +177,7 @@ class HOTW(commands.Cog):
         await ctx.send(f"{HOTW.HOTWname} had the water for {time_difference_seconds} seconds")
 
         # Update user_data with the current user's data
-        user_id = str(ctx.author.id)
+        user_id = str(HOTW.HOTWname)
         
         if user_id not in HOTW.user_data:
             HOTW.user_data[user_id] = {"name": str(ctx.author), "total_time": 0, "current_streak": 0, "longest_streak": 0}
