@@ -137,7 +137,8 @@ class HOTW(commands.Cog):
         HOTW.timestamp = current_time  # Update the timestamp
 
         await ctx.send(random_statement)
-        await ctx.send(f"{HOTW.HOTW} had the water for {time_difference_seconds} seconds")        random_statement = random.choice(ways_to_take_water)
+        await ctx.send(f"{HOTW.HOTW} had the water for {time_difference_seconds} seconds")        
+        random_statement = random.choice(ways_to_take_water)
         random_statement = random_statement.replace("Bob",str(ctx.author.mention)).replace("Joe",str(HOTW.HOTW))
         current_epoch_timestamp = datetime.now()
         given_datetime = datetime.fromtimestamp(HOTW.timestamp)
