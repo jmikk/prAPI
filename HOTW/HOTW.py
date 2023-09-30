@@ -14,7 +14,7 @@ def is_owner_overridable():
 
 
 class HOTW(commands.Cog):
-    HOTW=""
+    HOTW="test"
     timestamp = datetime.now()  # Initialize timestamp as a datetime object
     """My custom cog"""
 
@@ -133,7 +133,7 @@ class HOTW(commands.Cog):
         time_difference_seconds = time_difference.total_seconds()
 
         random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTW))
-        if not HOTW.HOTW:
+        if HOTW.HOTW == "test":
             HOTW.HOTW = ctx.author.mention
         HOTW.timestamp = current_time  # Update the timestamp
 
