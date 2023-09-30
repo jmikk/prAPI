@@ -142,7 +142,7 @@ class HOTW(commands.Cog):
         random_statement = random.choice(ways_to_take_water)
         random_statement = random_statement.replace("Bob",str(ctx.author.mention)).replace("Joe",str(HOTW.HOTW))
         current_epoch_timestamp = datetime.now()
-        given_datetime = datetime.fromtimestamp(HOTW.timestamp)
+        given_datetime = HOTW.timestamp.timestamp()
         time_difference_seconds = current_epoch_timestamp - HOTW.timestamp
         HOTW.timestamp = current_epoch_timestamp
 #test
