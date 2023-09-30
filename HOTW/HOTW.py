@@ -133,7 +133,7 @@ class HOTW(commands.Cog):
         time_difference_seconds = time_difference.total_seconds()
         
         # Replace "Bob" with the current author and "Joe" with the previous owner
-        random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTW))
+        random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTW).replace("Fancy Water","The Magic Wellwater"))
         
         # Update the previous owner to the current author
         if HOTW.HOTWname == "test":
