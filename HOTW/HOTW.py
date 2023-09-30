@@ -17,6 +17,9 @@ def is_owner_overridable():
 class HOTW(commands.Cog):
     HOTWname="test"
     timestamp = datetime.now()  # Initialize timestamp as a datetime object
+    # Define a dictionary to store user data
+    user_data = {}
+
     """My custom cog"""
 
     def __init__(self, bot):
@@ -28,6 +31,28 @@ class HOTW(commands.Cog):
     # great once your done messing with the bot.
     #   async def cog_command_error(self, ctx, error):
     #       await ctx.send(" ".join(error.args))
+
+    @commands.command()
+    async def leaderboard(self, ctx):
+        # Sort the user_data by total time and longest streak
+        sorted_users_by_time = sorted(user_data.values(), key=lambda x: x["total_time"], reverse=True)
+        sorted_users_by_streak = sorted(user_data.values(), key=lambda x: x["longest_streak"], reverse=True)
+    
+        # Create leaderboard messages
+        time_leaderboard = "Top 3 Holders by Total Time:\n"
+        streak_leaderboard = "Top 3 Holders by Longest Streak:\n"
+    
+        for i, user_data_time in enumerate(sorted_users_by_time[:3]):
+            time_leaderboard += f"{i+1}. {user_data_time['name']} - {user_data_time['total_time']} seconds\n"
+    
+        for i, user_data_streak in enumerate(sorted_users_by_streak[:3]):
+            streak_leaderboard += f"{i+1}. {user_data_streak['name']} - {user_data_streak['longest_streak']} seconds\n"
+    
+        # Send leaderboard messages
+        await ctx.send(time_leaderboard)
+        await ctx.send(streak_leaderboard)
+    
+
 
     @commands.command()
     @commands.is_owner()
@@ -151,6 +176,21 @@ class HOTW(commands.Cog):
         # Send the updated statement and the time difference
         await ctx.send(random_statement)
         await ctx.send(f"{HOTW.HOTWname} had the water for {time_difference_seconds} seconds")
+
+        # Update user_data with the current user's data
+        user_id = str(ctx.author.id)
+        
+        if user_id not in HOTW.user_data:
+            HOTW.user_data[user_id] = {"name": str(ctx.author), "total_time": 0, "current_streak": 0, "longest_streak": 0}
+        
+        HOTW.user_data[user_id]["total_time"] += time_difference_seconds
+        HOTW.user_data[user_id]["current_streak"] += time_difference_seconds
+        
+        # Check if the current streak is longer than the longest streak
+        if HOTW.user_data[user_id]["current_streak"] > HOTW.user_data[user_id]["longest_streak"]:
+            HOTW.user_data[user_id]["longest_streak"] = HOTW.user_data[user_id]["current_streak"]
+
+        
         HOTW.timestamp = current_time  # Update the timestamp
         HOTW.HOTWname = ctx.author.mention
 
