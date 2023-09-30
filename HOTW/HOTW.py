@@ -141,7 +141,7 @@ class HOTW(commands.Cog):
         
         # Generate a new random statement
         random_statement = random.choice(ways_to_take_water)
-        random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTWname)
+        random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTWname))
         
         # Calculate the time difference in seconds and update the timestamp
         current_epoch_timestamp = datetime.now().timestamp()
