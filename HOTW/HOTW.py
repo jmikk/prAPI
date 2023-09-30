@@ -49,8 +49,8 @@ class HOTW(commands.Cog):
             streak_leaderboard += f"{i+1}. {user_data_streak['name']} - {user_data_streak['longest_streak']} seconds\n"
     
         # Send leaderboard messages
-        await ctx.send("```"+time_leaderboard+"```")
-        await ctx.send("```"+streak_leaderboard+"```")
+        await ctx.send(time_leaderboard)
+        await ctx.send(streak_leaderboard)
     
 
 
