@@ -196,5 +196,5 @@ class HOTW(commands.Cog):
         # In case someone else takes the water, reset the current streak for the current user
         for user_key in HOTW.user_data:
             if user_key != user_id:
-                user_data[user_key]["current_streak"] = 0
+                HOTW.user_data[user_key]["current_streak"] = 0
 
