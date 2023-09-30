@@ -126,7 +126,6 @@ class HOTW(commands.Cog):
     "Bob procures Fancy Water from Joe in a stealthy manner."
 ]
         random_statement = random.choice(ways_to_take_water)
-        owner_mention = ctx.bot.get_user(ctx.bot.owner_id).mention  # Mention the owner
 
         # Calculate the time difference
         current_time = datetime.now()
