@@ -128,7 +128,7 @@ class HOTW(commands.Cog):
         random_statement = random_statement.replace("Bob",str(ctx.author.mention)).replace("Joe",str(HOTW.HOTW))
         current_epoch_timestamp = datetime.now()
         given_datetime = datetime.fromtimestamp(HOTW.timestamp)
-        time_difference_seconds = current_epoch_timestamp - given_epoch_timestamp
+        time_difference_seconds = current_epoch_timestamp - HOTW.timestamp
         HOTW.timestamp = current_epoch_timestamp
 
         await ctx.send(random_statement)
