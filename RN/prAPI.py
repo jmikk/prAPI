@@ -48,6 +48,29 @@ class prAPI(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
+    async def QOTD(self, ctx,*,msg):
+        await self.reauth()
+        for Region in self.QOTDList
+            str = ''
+            for item in msg:
+                str = str + item
+                
+            data = {
+                "nation": self.RegionalNation,
+                "region": Region,
+                "c": "rmbpost",
+                "text": str,
+                "mode": "prepare",
+            }
+            r = await self.api_request(data=data)
+            rmbToken = r.xml.find("SUCCESS").text
+            data.update(mode="execute", token=rmbToken)
+            r = await self.api_request(data=data)
+            await ctx.send(f"Posted on  {Region} RMB")
+            await asyncio.sleep(1)
+
+    @commands.command()
+    @commands.is_owner()
     async def remove_region_QOTD(self, ctx,*,region):
         region = region.lower()
         self.QOTDList.remove(region)
