@@ -68,7 +68,7 @@ class prAPI(commands.Cog):
             r = await self.api_request(data=data)
             #await ctx.send(r.text)
             await ctx.send(f"Posted on  {Region} RMB")
-            await asyncio.sleep(15)
+            await asyncio.sleep(20)
 
     @commands.command()
     @commands.is_owner()
