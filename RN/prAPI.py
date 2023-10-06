@@ -56,7 +56,7 @@ class prAPI(commands.Cog):
     @commands.is_owner()
     async def QOTD(self, ctx,*,msg):
         await self.reauth()
-        await ctx.send(f"This will take approximately {int(self.QOTDTime) * len(self.QOTDList)} secounds" 
+        await ctx.send(f"This will take approximately {int(self.QOTDTime) * len(self.QOTDList)} secounds") 
         for Region in self.QOTDList:
             str = ''
             for item in msg:
