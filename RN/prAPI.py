@@ -2,6 +2,7 @@ from redbot.core import commands
 import asyncio
 import sans
 import codecs
+import os
 
 
 def is_owner_overridable():
@@ -33,6 +34,40 @@ class prAPI(commands.Cog):
         response.raise_for_status()
         return response
 
+    @commands.command()
+    @commands.is_owner()
+    async def add_region_QOTD(self, ctx,*,region):
+        region = region.lower()
+        if not os.path.exists("QOTD"):
+            os.makedirs("QOTD")
+        file_path = os.path.join("QOTD", "region.txt")
+        with open(file_path, "a") as file:
+            file.write(region+"\n")
+
+    @commands.command()
+    @commands.is_owner()
+    async def remove_region_QOTD(self, ctx,*,region):
+        region = region.lower()
+        file_path = os.path.join("QOTD", "region.txt")
+        # Create a temporary file to write the modified content
+        temp_file_path = os.path.join("QOTD", "temp_region.txt")
+        # Open the original file for reading and the temporary file for writing
+        with open(file_path, "r") as original_file, open(temp_file_path, "w") as temp_file:
+            # Read the original file line by line
+            for line in original_file:
+                # Check if the line contains the value to delete
+                if region not in line:
+                    # Write the line to the temporary file
+                    temp_file.write(line)
+        os.replace(temp_file_path, file_path)
+            
+    @commands.command()
+    @commands.is_owner()
+    async def QOTD(self, ctx,*,QOTD):   
+        with open("QOTD/region.txt","r") as file:
+            for line in file:
+                await self.rmb_post(self,ctx,line,QOTD)
+    
     @commands.command()
     @commands.is_owner()
     async def RN_agent(self, ctx, *,agent):
