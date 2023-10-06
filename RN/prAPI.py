@@ -23,6 +23,7 @@ class prAPI(commands.Cog):
         self.client = sans.AsyncClient()
         self.password = ""
         self.QOTDList=[]
+        self.UA=""
 
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
@@ -59,34 +60,13 @@ class prAPI(commands.Cog):
         await ctx.send("The current QOTDList:")
         await ctx.send(self.QOTDList)  
         
-            
-    @commands.command()
-    @commands.is_owner()
-    async def QOTD(self, ctx,*,msg):  
-        await self.reauth()
-        for Region in self.QOTDList:
-                    str = ''
-                    for item in msg:
-                        str = str + item
-                        
-                    data = {
-                        "nation": self.RegionalNation,
-                        "region": Region,
-                        "c": "rmbpost",
-                        "text": str,
-                        "mode": "prepare",
-                    }
-                    r = await self.api_request(data=data)
-                    rmbToken = r.xml.find("SUCCESS").text
-                    data.update(mode="execute", token=rmbToken)
-                    r = await self.api_request(data=data)
-                    await ctx.send(f"Posted on  {Region} RMB")
     
     @commands.command()
     @commands.is_owner()
     async def RN_agent(self, ctx, *,agent):
         sans.set_agent(agent, _force=True)
         await ctx.send("Agent set.")
+        self.UA=agent
 
     @commands.command()
     @is_owner_overridable()
