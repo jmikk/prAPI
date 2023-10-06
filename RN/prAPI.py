@@ -40,7 +40,8 @@ class prAPI(commands.Cog):
     async def add_region_QOTD(self, ctx,*,region):
         region = region.lower()
         self.QOTDList.append(region)
-        self.QOTDList = set(self.QOTDList)
+        self.QOTDList = list(set(self.QOTDList))
+        
         await ctx.send("The current QOTDList:")
         await ctx.send(self.QOTDList)
 
