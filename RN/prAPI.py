@@ -66,9 +66,9 @@ class prAPI(commands.Cog):
             rmbToken = r.xml.find("SUCCESS").text
             data.update(mode="execute", token=rmbToken)
             r = await self.api_request(data=data)
-            await ctx.send(r.text)
+            #await ctx.send(r.text)
             await ctx.send(f"Posted on  {Region} RMB")
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
 
     @commands.command()
     @commands.is_owner()
