@@ -41,6 +41,7 @@ class prAPI(commands.Cog):
     @commands.is_owner()
     async def set_QOTD_time(self, ctx,time):
         self.QOTDTime=time
+        await ctx.send(f"time set to {self.QOTDTime}")
         
     @commands.command()
     @commands.is_owner()
