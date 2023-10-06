@@ -24,6 +24,7 @@ class prAPI(commands.Cog):
         self.password = ""
         self.QOTDList=[]
         self.UA=""
+        self.QOTDTime=30
 
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
@@ -38,6 +39,11 @@ class prAPI(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
+    async def set_QOTD_time(self, ctx,time):
+        self.QOTDTime=time
+        
+    @commands.command()
+    @commands.is_owner()
     async def add_region_QOTD(self, ctx,*,region):
         region = region.lower()
         self.QOTDList.append(region)
@@ -50,6 +56,7 @@ class prAPI(commands.Cog):
     @commands.is_owner()
     async def QOTD(self, ctx,*,msg):
         await self.reauth()
+        await ctx.send(f"This will take approximately {int(self.QOTDTime) * len(self.QOTDList)} secounds" 
         for Region in self.QOTDList:
             str = ''
             for item in msg:
@@ -68,7 +75,7 @@ class prAPI(commands.Cog):
             r = await self.api_request(data=data)
             #await ctx.send(r.text)
             await ctx.send(f"Posted on  {Region} RMB")
-            await asyncio.sleep(20)
+            await asyncio.sleep(self.QOTDTime)
 
     @commands.command()
     @commands.is_owner()
