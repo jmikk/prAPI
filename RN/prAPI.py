@@ -64,7 +64,7 @@ class prAPI(commands.Cog):
     @commands.is_owner()
     async def QOTD(self, ctx,*,QOTD):   
         for line in self.QOTDList:
-            await self.rmb_post(ctx=ctx,region=line,msg=QOTD)
+            await self.rmb_post(ctx,region=line,msg=QOTD)
     
     @commands.command()
     @commands.is_owner()
