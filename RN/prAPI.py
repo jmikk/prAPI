@@ -50,7 +50,7 @@ class prAPI(commands.Cog):
     @commands.is_owner()
     async def QOTD(self, ctx,*,msg):
         await self.reauth()
-        for Region in self.QOTDList
+        for Region in self.QOTDList:
             str = ''
             for item in msg:
                 str = str + item
