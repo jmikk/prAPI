@@ -24,7 +24,7 @@ class prAPI(commands.Cog):
         self.password = ""
         self.QOTDList=[]
         self.UA=""
-        self.QOTDTime=30
+        self.QOTDTime=40
 
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
