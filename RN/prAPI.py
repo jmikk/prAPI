@@ -56,7 +56,7 @@ class prAPI(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def QOTD(self, ctx,*,msg):
-        msg = msg + "This Question of the day is brought to you by [region]The Wellspring[/region].  If you would like to sign up for questions of the day from me please send a Telegram to myself or [nation]9006[/nation].  We will get back to you as quickly as we can to set things up."  
+        msg = msg + "\n This Question of the day is brought to you by [region]The Wellspring[/region].  If you would like to sign up for questions of the day from me please send a Telegram to myself or [nation]9006[/nation].  We will get back to you as quickly as we can to set things up."  
         await self.reauth()
         await ctx.send(f"This will take approximately {int(self.QOTDTime) * len(self.QOTDList)} secounds") 
         for Region in self.QOTDList:
