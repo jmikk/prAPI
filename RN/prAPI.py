@@ -253,7 +253,7 @@ class prAPI(commands.Cog):
         await ctx.send(f"Posted on  {Region} RMB")
 
     @commands.command()
-    async def card_scan(self,ctx,season=3,puppet="9009"):
+    async def card_scan(self,ctx,season="3",puppet="9009"):
         data ={'q':'cards+deck',"nationname":puppet}
         r = await self.api_request(data)
         root = ET.fromstring(r.text)
@@ -262,8 +262,7 @@ class prAPI(commands.Cog):
         for card in root.findall(".//CARD"):
             card_season = card.find("SEASON").text
             card_category = card.find("CATEGORY").text
-            await ctx.send(card_category)
-
+            
             if card_season == season and card_category != "legendary":
                 card_id = card.find("CARDID").text
                 await ctx.send(card_id) 
