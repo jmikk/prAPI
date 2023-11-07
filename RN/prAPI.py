@@ -267,8 +267,6 @@ class prAPI(commands.Cog):
         else:
             await ctx.send(output[0:10]
             
-        await ctx.send(card_ids)
-
     @commands.command()
     @is_owner_overridable()
     async def gift_card(self, ctx, giftie, cardid, season):
