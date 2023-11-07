@@ -257,6 +257,7 @@ class prAPI(commands.Cog):
         r = await self.api_request(data)
         card_ids = r.xml.findall("CARDID")
         await ctx.send(card_ids)
+        await ctx.send(card_ids)
 
     @commands.command()
     @is_owner_overridable()
