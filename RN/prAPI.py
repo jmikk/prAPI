@@ -253,7 +253,7 @@ class prAPI(commands.Cog):
         await ctx.send(f"Posted on  {Region} RMB")
 
     @commands.command()
-    async def card_scan(self,ctx,season="3",puppet="9009"):
+    async def card_scan(self,ctx,season="3",puppet="9006"):
         data ={'q':'cards+deck',"nationname":puppet}
         r = await self.api_request(data)
         root = ET.fromstring(r.text)
@@ -265,15 +265,16 @@ class prAPI(commands.Cog):
             
             if card_season == season and card_category != "legendary":
                 card_id = card.find("CARDID").text
-                await ctx.send(card_id) 
                 card_ids.append(card_id)        
         output=[]
         for each in card_ids:
-            output.append("https://www.nationstates.net/page=deck/card={each}/season={season}\n")
+            output.append("https://www.nationstates.net/page=deck/card={each}/season={season}")
         if len(output) > 10:
-            await ctx.send(output[0:10])
+            outbutt="\n".join(output[0:10])
+            await ctx.send(outbutt)
         else:
-            await ctx.send(output)
+            outbutt="\n".join(output)
+            await ctx.send(outbutt)
             
     @commands.command()
     @is_owner_overridable()
