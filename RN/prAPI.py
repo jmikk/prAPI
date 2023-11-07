@@ -258,7 +258,15 @@ class prAPI(commands.Cog):
         r = await self.api_request(data)
         root = ET.fromstring(r.text)
         # Find all CARDID elements and extract their values
-        card_ids = [card.find('CARDID').text for card in root.findall('.//CARD')]
+        card_ids = [card.find('CARDID').text for card in root.findall(f'.//CARD[SEASON={season} and CATEGORY!="legendary"]')]
+        output=[]
+        for each in card_ids:
+            output.append("https://www.nationstates.net/page=deck/card={each}/season={season}\n")
+        if len(output) > 10:
+            await ctx.send(output)
+        else:
+            await ctx.send(output[0:10]
+            
         await ctx.send(card_ids)
 
     @commands.command()
