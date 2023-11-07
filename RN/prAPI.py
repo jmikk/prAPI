@@ -268,7 +268,7 @@ class prAPI(commands.Cog):
                 card_ids.append(card_id)        
         output=[]
         for each in card_ids:
-            output.append("https://www.nationstates.net/page=deck/card={each}/season={season}")
+            output.append(f"https://www.nationstates.net/page=deck/card={each}/season={season}")
         if len(output) > 10:
             outbutt="\n".join(output[0:10])
             await ctx.send(outbutt)
