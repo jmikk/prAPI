@@ -252,6 +252,12 @@ class prAPI(commands.Cog):
         await ctx.send(f"Posted on  {Region} RMB")
 
     @commands.command()
+    async def card_scan(self,ctx,season="3",puppet="9006"):
+        r = await self.api_request('q': 'cards deck;nationname=testlandia')
+        card_ids = r.xml.findall("CARDID")
+        await ctx.send(card_ids)
+
+    @commands.command()
     @is_owner_overridable()
     async def gift_card(self, ctx, giftie, cardid, season):
         await self.reauth()
