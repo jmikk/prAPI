@@ -261,18 +261,19 @@ class prAPI(commands.Cog):
         card_ids = []
         for card in root.findall(".//CARD"):
             card_season = card.find("SEASON").text
-            await ctx.send(card_season)
             card_category = card.find("CATEGORY").text
             if card_season == season and card_category != "legendary":
+                await ctx.send(card_season)
                 card_id = card.find("CARDID").text
+                await ctx.send(card_id) 
                 card_ids.append(card_id)        
         output=[]
         for each in card_ids:
             output.append("https://www.nationstates.net/page=deck/card={each}/season={season}\n")
         if len(output) > 10:
-            await ctx.send(output)
-        else:
             await ctx.send(output[0:10])
+        else:
+            await ctx.send(output)
             
     @commands.command()
     @is_owner_overridable()
