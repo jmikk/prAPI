@@ -3,6 +3,7 @@ import asyncio
 import sans
 import codecs
 import os
+import xml.etree.ElementTree as ET
 
 
 def is_owner_overridable():
@@ -255,8 +256,9 @@ class prAPI(commands.Cog):
     async def card_scan(self,ctx,season="3",puppet="9006"):
         data ={'q':'cards+deck',"nationname":puppet}
         r = await self.api_request(data)
-        card_ids = r.xml.findall("CARDID")
-        await ctx.send(r.text)
+        root = ET.fromstring(xml_data)
+        # Find all CARDID elements and extract their values
+        card_ids = [card.find('CARDID').text for card in root.findall('.//CARD')]
         await ctx.send(card_ids)
 
     @commands.command()
