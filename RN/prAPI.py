@@ -253,7 +253,7 @@ class prAPI(commands.Cog):
         await ctx.send(f"Posted on  {Region} RMB")
 
     @commands.command()
-    async def card_scan(self,ctx,season="3",puppet="9006"):
+    async def card_scan(self,ctx,season=3,puppet="9006"):
         data ={'q':'cards+deck',"nationname":puppet}
         r = await self.api_request(data)
         root = ET.fromstring(r.text)
