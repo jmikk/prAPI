@@ -256,7 +256,7 @@ class prAPI(commands.Cog):
     async def card_scan(self,ctx,season="3",puppet="9006"):
         data ={'q':'cards+deck',"nationname":puppet}
         r = await self.api_request(data)
-        root = ET.fromstring(xml_data)
+        root = ET.fromstring(r.text)
         # Find all CARDID elements and extract their values
         card_ids = [card.find('CARDID').text for card in root.findall('.//CARD')]
         await ctx.send(card_ids)
