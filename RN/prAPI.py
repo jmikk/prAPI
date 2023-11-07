@@ -253,7 +253,8 @@ class prAPI(commands.Cog):
 
     @commands.command()
     async def card_scan(self,ctx,season="3",puppet="9006"):
-        r = await self.api_request('q': 'cards deck;nationname=testlandia')
+        data ={'q':'cards+deck',"nationname":puppet}
+        r = await self.api_request()
         card_ids = r.xml.findall("CARDID")
         await ctx.send(card_ids)
 
