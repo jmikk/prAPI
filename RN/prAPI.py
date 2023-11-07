@@ -256,7 +256,7 @@ class prAPI(commands.Cog):
         data ={'q':'cards+deck',"nationname":puppet}
         r = await self.api_request(data)
         card_ids = r.xml.findall("CARDID")
-        await ctx.send(card_ids)
+        await ctx.send(r.text)
         await ctx.send(card_ids)
 
     @commands.command()
