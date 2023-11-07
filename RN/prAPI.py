@@ -265,7 +265,7 @@ class prAPI(commands.Cog):
         if len(output) > 10:
             await ctx.send(output)
         else:
-            await ctx.send(output[0:10]
+            await ctx.send(output[0:10])
             
     @commands.command()
     @is_owner_overridable()
