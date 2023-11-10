@@ -10,6 +10,28 @@ class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+
+    @commands.command(name='delete_series')
+    async def delete_series(ctx, series: str):
+        # Get the server ID
+        server_id = str(ctx.guild.id)
+    
+        # Connect to the SQLite database for the server
+        conn = sqlite3.connect(f'{server_id}.db')
+    
+        # Delete the table for the specified series
+        cursor = conn.cursor()
+        cursor.execute(f'''
+                DROP TABLE IF EXISTS {series}
+            ''')
+        conn.commit()    
+        # Close the connection
+        conn.close()
+    
+        # Respond to the user
+        await ctx.send(f"Series '{series}' deleted!")
+
+    
     @commands.command(name='new_season')
     async def new_season(self, ctx, series: str,legendary_limit=None,epic_limit=None,ultra_rare_limit=None,rare_limit=None,uncommon_limit=None):
         # Get the list of all server members
