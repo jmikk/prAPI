@@ -144,7 +144,7 @@ class cardMini(commands.Cog):
             cursor.execute(f'''
                 INSERT INTO {series} (userID, season, rarity, MV, Stock)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (member.id, series, rarity, MV, Stock))
+            ''', (member.id, series, rarity, MV, 10))
     
         # You can now use the user_data dictionary for further processing or storage.
         conn.commit()
