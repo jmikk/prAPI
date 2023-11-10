@@ -5,6 +5,7 @@ import random
 import os
 import discord
 from datetime import datetime, timedelta
+import sqlite3
 
 class cardMini(commands.Cog):
     def __init__(self, bot):
