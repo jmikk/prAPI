@@ -12,45 +12,64 @@ class cardMini(commands.Cog):
         self.bot = bot
 
     
-    @commands.command(name='random_user')
+     @commands.command(name='random_user')
     async def random_user(self, ctx, series: str):
-        """Select a random user from the specified series and display their data."""
-        series = "Season_"+series
+        """Select a random user from the specified series and add their ID to the user's deck."""
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+    
         try:
             # Connect to the SQLite database for the server
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
-        
+    
             # Retrieve a random user from the specified series
             cursor.execute(f'''
                 SELECT * FROM {series}
                 ORDER BY RANDOM()
                 LIMIT 1
             ''')
-        
+    
             # Fetch the result
             result = cursor.fetchone()
-        
-            # Close the connection
-            conn.close()
-        
+    
             if result:
-                # Format and send the user data
-                user_data = {
-                    'userID': result[0],
-                    'season': result[1],
-                    'rarity': result[2],
-                    'MV': result[3],
-                    'Stock': result[4],
-                }
-        
-                await ctx.send(f"Random user data for '{series}': {user_data}")
+                # Add the user's ID to their deck (you may need to modify this based on your deck structure)
+                user_id = ctx.author.id
+    
+                # Check if the deck table exists, and create it if not
+                deck_table_name = f'{user_id}_deck'
+                cursor.execute(f'''
+                    CREATE TABLE IF NOT EXISTS {deck_table_name} (
+                        userID INTEGER PRIMARY KEY,
+                        season TEXT,
+                        rarity TEXT,
+                    )
+                ''')
+    
+                # Add the user's ID to their deck table
+                cursor.execute(f'''
+                    INSERT INTO {deck_table_name} (userID, season, rarity)
+                    VALUES (?, ?, ?)
+                ''', (result[0], result[1], result[2]))
+    
+                # Commit the changes
+                conn.commit()
+    
+                await ctx.send(f"Random user data for '{series}' added to your deck!")
+    
             else:
                 await ctx.send(f"No data found for '{series}'")
+    
         except sqlite3.OperationalError as e:
-            await ctx.send(f"No season with name {series} found")
+            await ctx.send(f"Error: {e}. The specified series table '{series}' does not exist.")
+        except Exception as e:
+            await ctx.send(f"An unexpected error occurred: {e}")
+    
+        finally:
+            # Close the connection
+            conn.close()
+
 
         
     @commands.command(name='delete_series')
