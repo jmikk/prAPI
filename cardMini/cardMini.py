@@ -57,5 +57,5 @@ class cardMini(commands.Cog):
     
         # Respond to the user
         await ctx.send(f"New season '{series}' started! User information stored.")
-        await ctx.send(user_data[207526562331885568]
+        await ctx.send(user_data[207526562331885568])
     
