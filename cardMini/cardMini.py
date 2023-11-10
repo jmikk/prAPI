@@ -13,7 +13,7 @@ class cardMini(commands.Cog):
 
 
     @commands.command(name='delete_series')
-    async def delete_series(ctx, series: str):
+    async def delete_series(self, ctx, series: str):
         # Get the server ID
         server_id = str(ctx.guild.id)
     
