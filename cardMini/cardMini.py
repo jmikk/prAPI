@@ -11,7 +11,45 @@ class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    
+    @commands.command(name='random_user')
+    async def random_user(self, ctx, series: str):
+        """Select a random user from the specified series and display their data."""
+        server_id = str(ctx.guild.id)
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+    
+        # Connect to the SQLite database for the server
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+    
+        # Retrieve a random user from the specified series
+        cursor.execute(f'''
+            SELECT * FROM {series}
+            ORDER BY RANDOM()
+            LIMIT 1
+        ''')
+    
+        # Fetch the result
+        result = cursor.fetchone()
+    
+        # Close the connection
+        conn.close()
+    
+        if result:
+            # Format and send the user data
+            user_data = {
+                'userID': result[0],
+                'season': result[1],
+                'rarity': result[2],
+                'MV': result[3],
+                'Stock': result[4],
+            }
+    
+            await ctx.send(f"Random user data for '{series}': {user_data}")
+        else:
+            await ctx.send(f"No data found for '{series}'")
 
+        
     @commands.command(name='delete_series')
     async def delete_series(self, ctx, series: str):
         # Get the server ID
