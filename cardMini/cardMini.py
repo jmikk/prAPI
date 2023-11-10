@@ -11,7 +11,7 @@ class cardMini(commands.Cog):
         self.bot = bot
 
     @commands.command(name='new_season')
-    async def new_season(self, ctx, series: str):
+    async def new_season(self, ctx, series: str,legendary_limit=None,epic_limit=None,ultra_rare_limit=None,rare_limit=None,uncommon_limit=None):
         # Get the list of all server members
         members = ctx.guild.members
         
@@ -20,16 +20,16 @@ class cardMini(commands.Cog):
     
         # Calculate rarities based on the specified percentages
         mythic_limit = 1
-        legendary_limit = int(len(sorted_members) * 0.05)
-        await ctx.send(legendary_limit)
-        epic_limit = int(len(sorted_members) * 0.15)
-        await ctx.send(epic_limit)
-        ultra_rare_limit = int(len(sorted_members) * 0.30)
-        await ctx.send(ultra_rare_limit)
-        rare_limit = int(len(sorted_members) * 0.45)
-        await ctx.send(rare_limit)
-        uncommon_limit = int(len(sorted_members) * 0.70)
-        await ctx.send(uncommon_limit)
+        if not legendary_limit:
+            legendary_limit = int(len(sorted_members) * 0.05)
+        if not epic_limit:
+            epic_limit = int(len(sorted_members) * 0.15)
+        if not ultra_rare_limit:
+            ultra_rare_limit = int(len(sorted_members) * 0.30)
+        if not rare_limit:
+            rare_limit = int(len(sorted_members) * 0.45)
+        if not uncommon_limit:
+            uncommon_limit = int(len(sorted_members) * 0.70)
 
     
         # Store user information in a dictionary
