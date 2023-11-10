@@ -12,7 +12,7 @@ class cardMini(commands.Cog):
         self.bot = bot
 
     
-     @commands.command(name='random_user')
+    @commands.command(name='random_user')
     async def random_user(self, ctx, series: str):
         """Select a random user from the specified series and add their ID to the user's deck."""
         server_id = str(ctx.guild.id)
