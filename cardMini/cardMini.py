@@ -21,10 +21,16 @@ class cardMini(commands.Cog):
         # Calculate rarities based on the specified percentages
         mythic_limit = 1
         legendary_limit = int(len(sorted_members) * 0.05)
+        await ctx.send(legendary_limit)
         epic_limit = int(len(sorted_members) * 0.15)
+        await ctx.send(epic_limit)
         ultra_rare_limit = int(len(sorted_members) * 0.30)
+        await ctx.send(ultra_rare_limit)
         rare_limit = int(len(sorted_members) * 0.45)
+        await ctx.send(rare_limit)
         uncommon_limit = int(len(sorted_members) * 0.70)
+        await ctx.send(uncommon_limit)
+
     
         # Store user information in a dictionary
         user_data = {}
