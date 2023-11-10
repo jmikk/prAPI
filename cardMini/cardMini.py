@@ -37,9 +37,8 @@ class cardMini(commands.Cog):
             if result:
                 # Add the user's ID to their deck (you may need to modify this based on your deck structure)
                 user_id = ctx.author.id
-                user_id = "user_"+str(user_id)
                 # Check if the deck table exists, and create it if not
-                deck_table_name = f'{user_id}_deck'
+                deck_table_name = f'deck_{user_id}'
                 cursor.execute(f'''
                     CREATE TABLE IF NOT EXISTS {deck_table_name} (
                         userID INTEGER PRIMARY KEY,
