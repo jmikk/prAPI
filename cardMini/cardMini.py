@@ -37,6 +37,7 @@ class cardMini(commands.Cog):
     
     @commands.command(name='new_season')
     async def new_season(self, ctx, series: str,legendary_limit=None,epic_limit=None,ultra_rare_limit=None,rare_limit=None,uncommon_limit=None):
+        series = "A:"+series
         # Get the list of all server members
         server_id = str(ctx.guild.id)
         # Connect to the SQLite database for the server
