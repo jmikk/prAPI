@@ -15,7 +15,7 @@ class cardMini(commands.Cog):
     @commands.command(name='delete_series')
     async def delete_series(self, ctx, series: str):
         # Get the server ID
-        series ="Season "+series
+        series ="Season_"+series
         server_id = str(ctx.guild.id)
     
         # Connect to the SQLite database for the server
@@ -38,7 +38,7 @@ class cardMini(commands.Cog):
     
     @commands.command(name='new_season')
     async def new_season(self, ctx, series: str,legendary_limit=None,epic_limit=None,ultra_rare_limit=None,rare_limit=None,uncommon_limit=None):
-        series = "Season "+series
+        series = "Season_"+series
         # Get the list of all server members
         server_id = str(ctx.guild.id)
         # Connect to the SQLite database for the server
