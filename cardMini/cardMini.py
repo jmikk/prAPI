@@ -45,7 +45,9 @@ class cardMini(commands.Cog):
             CREATE TABLE IF NOT EXISTS {series} (
                 userID INTEGER PRIMARY KEY,
                 season TEXT,
-                rarity TEXT
+                rarity TEXT,
+                MV REAL,
+                Stock INTEGER
             )
         ''')
         conn.commit()
