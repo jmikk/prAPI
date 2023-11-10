@@ -38,7 +38,8 @@ class cardMini(commands.Cog):
         # Get the list of all server members
         server_id = str(ctx.guild.id)
         # Connect to the SQLite database for the server
-        conn = sqlite3.connect(f'{server_id}.db')
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS {series} (
