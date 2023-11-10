@@ -13,11 +13,24 @@ class cardMini(commands.Cog):
     @commands.command(name='new_season')
     async def new_season(self, ctx, series: str,legendary_limit=None,epic_limit=None,ultra_rare_limit=None,rare_limit=None,uncommon_limit=None):
         # Get the list of all server members
+        server_id = str(ctx.guild.id)
+        # Connect to the SQLite database for the server
+        conn = sqlite3.connect(f'{server_id}.db')
+        cursor = conn.cursor()
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS {series} (
+                userID INTEGER PRIMARY KEY,
+                season TEXT,
+                rarity TEXT
+            )
+        ''')
+        conn.commit()
+    
         members = ctx.guild.members
         
         # Sort members based on their join date
         sorted_members = sorted(members, key=lambda x: x.joined_at)
-    
+        cursor = conn.cursor()
         # Calculate rarities based on the specified percentages
         mythic_limit = 1
         if not legendary_limit:
@@ -58,10 +71,16 @@ class cardMini(commands.Cog):
                 MV = .01
     
             user_data[member.id] = {'userID': member.id, 'season': series, 'rarity': rarity,'MV': MV,'Stock':10}
+            # Insert user information into the table
+            cursor.execute(f'''
+                INSERT INTO {series} (userID, season, rarity)
+                VALUES (?, ?, ?)
+            ''', (member.id, series, rarity))
     
         # You can now use the user_data dictionary for further processing or storage.
-    
+        conn.commit()
+        conn.close()
         # Respond to the user
         await ctx.send(f"New season '{series}' started! User information stored.")
-        await ctx.send(user_data[207526562331885568])
+        await ctx.send(user_data[ctx.author.id])
     
