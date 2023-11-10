@@ -142,9 +142,9 @@ class cardMini(commands.Cog):
             user_data[member.id] = {'userID': member.id, 'season': series, 'rarity': rarity,'MV': MV,'Stock':10}
             # Insert user information into the table
             cursor.execute(f'''
-                INSERT INTO {series} (userID, season, rarity)
-                VALUES (?, ?, ?)
-            ''', (member.id, series, rarity))
+                INSERT INTO {series} (userID, season, rarity, MV, Stock)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (member.id, series, rarity, MV, Stock))
     
         # You can now use the user_data dictionary for further processing or storage.
         conn.commit()
