@@ -20,7 +20,7 @@ class cardMini(commands.Cog):
         # Connect to the SQLite database for the server
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
 
-        conn = sqlite3.connect('db_path')
+        conn = sqlite3.connect(db_path)
     
         # Delete the table for the specified series
         cursor = conn.cursor()
