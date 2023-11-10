@@ -18,7 +18,9 @@ class cardMini(commands.Cog):
         server_id = str(ctx.guild.id)
     
         # Connect to the SQLite database for the server
-        conn = sqlite3.connect(f'{server_id}.db')
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+
+        conn = sqlite3.connect('db_path')
     
         # Delete the table for the specified series
         cursor = conn.cursor()
