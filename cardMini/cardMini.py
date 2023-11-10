@@ -11,7 +11,7 @@ class cardMini(commands.Cog):
         self.bot = bot
 
     @commands.command(name='new_season')
-    async def new_season(ctx, series: str):
+    async def new_season(self, ctx, series: str):
         # Get the list of all server members
         members = ctx.guild.members
         
