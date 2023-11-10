@@ -15,7 +15,7 @@ class cardMini(commands.Cog):
     @commands.command(name='delete_series')
     async def delete_series(self, ctx, series: str):
         # Get the server ID
-        series ="A"+series
+        series ="Season "+series
         server_id = str(ctx.guild.id)
     
         # Connect to the SQLite database for the server
