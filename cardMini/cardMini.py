@@ -15,6 +15,7 @@ class cardMini(commands.Cog):
     @commands.command(name='random_user')
     async def random_user(self, ctx, series: str):
         """Select a random user from the specified series and add their ID to the user's deck."""
+        series = "Season_"+series
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
     
