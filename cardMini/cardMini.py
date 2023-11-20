@@ -125,6 +125,30 @@ class cardMini(commands.Cog):
         # Respond to the user
         await ctx.send(f"{deck.mention}'s deck deleted!")
 
+    @commands.command(name='list_series')
+    async def list_series(self, ctx, series: str):
+         server_id = str(ctx.guild.id)
+    
+        # Connect to the SQLite database for the server
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+
+        conn = sqlite3.connect(db_path)
+    
+        # Delete the table for the specified series
+        cursor = conn.cursor()
+
+        # Execute the query to retrieve table names
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'Season_%'")
+        
+        # Fetch all the table names from the result set
+        table_names = cursor.fetchall()
+        
+        # Close the cursor and connection
+        cursor.close()
+        conn.close()
+        
+        # Print the list of table names
+        await ctx.send(table_names)
     
     @commands.command(name='delete_series')
     async def delete_series(self, ctx, series: str):
