@@ -37,7 +37,7 @@ class cardMini(commands.Cog):
 
             await ctx.send(rows)
         except sqlite3.OperationalError as e:
-            await ctx.send(f"Error: {e}. The specified series table '{series}' does not exist.")
+            await ctx.send(f"Error: {e}. The specified series table does not exist.")
 
 
     
