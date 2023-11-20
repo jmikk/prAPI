@@ -81,8 +81,8 @@ class cardMini(commands.Cog):
     
                 # Add the user's ID to their deck table
                 cursor.execute(f'''
-                    INSERT INTO {deck_table_name} (userID, season, rarity)
-                    VALUES (?, ?, ?)
+                    INSERT INTO {deck_table_name} (userID, season)
+                    VALUES (?, ?)
                 ''', (result[0], result[1], result[2]))
     
                 # Commit the changes
