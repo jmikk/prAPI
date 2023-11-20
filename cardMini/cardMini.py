@@ -120,7 +120,7 @@ class cardMini(commands.Cog):
         conn.close()
     
         # Respond to the user
-        await ctx.send(f"Series '{series}' deleted!")
+        await ctx.send(f"{deck.mention}'s deck deleted!")
 
     
     @commands.command(name='delete_series')
