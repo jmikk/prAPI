@@ -109,7 +109,7 @@ class cardMini(commands.Cog):
     
                 # Commit the changes
                 conn.commit()
-                await ctx.send(display_card(result[0],result[1])
+                await ctx.send(display_card(result[0],result[1]))
                 await ctx.send(f"Random user data for '{series}' added to your deck!")
     
             else:
