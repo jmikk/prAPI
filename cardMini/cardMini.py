@@ -127,7 +127,7 @@ class cardMini(commands.Cog):
 
     @commands.command(name='list_series')
     async def list_series(self, ctx, series: str):
-         server_id = str(ctx.guild.id)
+        server_id = str(ctx.guild.id)
     
         # Connect to the SQLite database for the server
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
