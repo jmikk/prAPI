@@ -30,6 +30,7 @@ class cardMini(commands.Cog):
             conn.close()
             
             # Print the list of table names
+            await ctx.send("here")
             await ctx.send(result)
         
     @commands.command(name='all_deck')
@@ -109,7 +110,8 @@ class cardMini(commands.Cog):
     
                 # Commit the changes
                 conn.commit()
-                await ctx.send(self.display_card(result[0],result[1]))
+                card = await self.display_card(result[0],result[1])
+                await ctx.send(card)
                 await ctx.send(f"Random user data for '{series}' added to your deck!")
     
             else:
