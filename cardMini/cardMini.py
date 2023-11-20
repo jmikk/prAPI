@@ -12,7 +12,27 @@ class cardMini(commands.Cog):
         self.bot = bot
 
     
+    async def display_card(self,id,season):
 
+        server_id = str(ctx.guild.id)
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        season = "Season_"+str(season)
+        try:
+            # Execute the query to retrieve table names
+            cursor.execute(f"SELECT * FROM {season} WHERE id = ? AND season = ?
+            ", (id, season))
+            
+            # Fetch all the table names from the result set
+            result = cursor.fetchone()()
+            
+        finally:
+            # Close the cursor and connection
+            cursor.close()
+            conn.close()
+            
+            # Print the list of table names
+            await ctx.send(result)
+        
     @commands.command(name='all_deck')
     async def all_deck(self,ctx):
         server_id = str(ctx.guild.id)
@@ -126,7 +146,7 @@ class cardMini(commands.Cog):
         await ctx.send(f"{deck.mention}'s deck deleted!")
 
     @commands.command(name='list_series')
-    async def list_series(self, ctx, series: str):
+    async def list_series(self, ctx):
         server_id = str(ctx.guild.id)
     
         # Connect to the SQLite database for the server
