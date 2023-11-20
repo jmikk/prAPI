@@ -22,7 +22,7 @@ class cardMini(commands.Cog):
             cursor = conn.cursor()
 
             #set the deck table 
-            table_name = "deck_"+ctx.author.id
+            table_name = "deck_"+str(ctx.author.id)
 
             # Connect to the database
             connection = sqlite3.connect(database_file)
