@@ -25,7 +25,7 @@ class cardMini(commands.Cog):
             table_name = "deck_"+str(ctx.author.id)
 
             # Connect to the database
-            connection = sqlite3.connect(database_file)
+            connection = sqlite3.connect(db_path)
             cursor = connection.cursor()
 
             # Use a parameterized query to retrieve all elements from the table
