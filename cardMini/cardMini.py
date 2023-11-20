@@ -30,8 +30,7 @@ class cardMini(commands.Cog):
             conn.close()
             
             # Print the list of table names
-            await ctx.send("here")
-            await ctx.send(result)
+            return result
         
     @commands.command(name='all_deck')
     async def all_deck(self,ctx):
