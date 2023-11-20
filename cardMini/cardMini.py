@@ -38,6 +38,9 @@ class cardMini(commands.Cog):
             await ctx.send(rows)
         except sqlite3.OperationalError as e:
             await ctx.send(f"Error: {e}. The specified series table does not exist.")
+        finally:
+            # Close the connection
+            conn.close()    
 
 
     
@@ -92,15 +95,12 @@ class cardMini(commands.Cog):
     
         except sqlite3.OperationalError as e:
             await ctx.send(f"Error: {e}. The specified series table '{series}' does not exist.")
-        except Exception as e:
-            await ctx.send(f"An unexpected error occurred: {e}")
+
     
         finally:
             # Close the connection
-            conn.close()
-
-
-        
+            conn.close()        
+    
     @commands.command(name='delete_series')
     async def delete_series(self, ctx, series: str):
         # Get the server ID
