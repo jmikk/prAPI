@@ -102,7 +102,7 @@ class cardMini(commands.Cog):
             conn.close()        
 
     @commands.command(name='delete_deck')
-    async def delete_deck(self, ctx, deck: str):
+    async def delete_deck(self, ctx, deck: commands.MemberConverter):
         server_id = str(ctx.guild.id)
 
         # Connect to the SQLite database for the server
