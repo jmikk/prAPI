@@ -74,8 +74,7 @@ class cardMini(commands.Cog):
                 cursor.execute(f'''
                     CREATE TABLE IF NOT EXISTS {deck_table_name} (
                         userID INTEGER PRIMARY KEY,
-                        season TEXT,
-                        rarity TEXT
+                        season TEXT
                     )
                 ''')
     
@@ -100,6 +99,28 @@ class cardMini(commands.Cog):
         finally:
             # Close the connection
             conn.close()        
+
+    @commands.command(name='delete_series')
+    async def delete_deck(self, ctx, deck: str):
+        server_id = str(ctx.guild.id)
+
+        # Connect to the SQLite database for the server
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+
+        conn = sqlite3.connect(db_path)
+    
+        # Delete the table for the specified series
+        cursor = conn.cursor()
+        cursor.execute(f'''
+                DROP TABLE IF EXISTS deck_{deck.id}
+            ''')
+        conn.commit()    
+        # Close the connection
+        conn.close()
+    
+        # Respond to the user
+        await ctx.send(f"Series '{series}' deleted!")
+
     
     @commands.command(name='delete_series')
     async def delete_series(self, ctx, series: str):
