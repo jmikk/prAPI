@@ -38,7 +38,10 @@ class cardMini(commands.Cog):
 
             await ctx.send(rows)
         except sqlite3.OperationalError as e:
-            await ctx.send(f"Error: {e}. The specified series table does not exist.")
+            if "no such table" in str(e):
+                await ctx.send(f"No cards in your deck go open some!")
+            else:
+                await ctx.send(f"SQLite error: {e}")
         finally:
             # Close the connection
             conn.close()    
