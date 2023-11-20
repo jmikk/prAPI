@@ -75,7 +75,7 @@ class cardMini(commands.Cog):
                     CREATE TABLE IF NOT EXISTS {deck_table_name} (
                         userID INTEGER PRIMARY KEY,
                         season TEXT,
-                        rarity TEXT,
+                        rarity TEXT
                     )
                 ''')
     
