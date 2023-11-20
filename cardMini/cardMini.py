@@ -11,6 +11,7 @@ class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    
 
     @commands.command(name='all_deck')
     async def all_deck(self,ctx):
