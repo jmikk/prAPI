@@ -83,7 +83,7 @@ class cardMini(commands.Cog):
                 cursor.execute(f'''
                     INSERT INTO {deck_table_name} (userID, season)
                     VALUES (?, ?)
-                ''', (result[0], result[1], result[2]))
+                ''', (result[0], result[1]))
     
                 # Commit the changes
                 conn.commit()
