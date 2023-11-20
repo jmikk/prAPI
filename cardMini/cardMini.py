@@ -11,6 +11,35 @@ class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+
+    @commands.command(name='all_deck')
+    async def all_deck(self,ctx):
+        server_id = str(ctx.guild.id)
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        try: 
+            # Connect to the SQLite database for the server
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+
+            #set the deck table 
+            table_name = "deck_"+ctx.author.id
+
+            # Connect to the database
+            connection = sqlite3.connect(database_file)
+            cursor = connection.cursor()
+
+            # Use a parameterized query to retrieve all elements from the table
+            query = f'SELECT * FROM {table_name}'
+            cursor.execute(query)
+            
+            # Fetch all the rows from the result set
+            rows = cursor.fetchall()
+
+            await ctx.send(rows)
+        except sqlite3.OperationalError as e:
+            await ctx.send(f"Error: {e}. The specified series table '{series}' does not exist.")
+
+
     
     @commands.command(name='random_user')
     async def random_user(self, ctx, series: str):
