@@ -113,6 +113,29 @@ class cardMini(commands.Cog):
                 conn.commit()
                 card = await self.display_card(result[0],result[1],server_id)
                 await ctx.send(str(result[0])+"|"+ str(result[1]) +"|"+ str(server_id))
+#********************************************************************************************************************************************
+                db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                
+                result = ""
+                try:
+                    # Execute the query to retrieve table names
+                    cursor.execute(f'''SELECT * FROM {season} WHERE id = ? AND season = ?''', (id, season))
+                    
+                    # Fetch all the table names from the result set
+                    result = cursor.fetchone()
+                except sqlite3.OperationalError as e:
+                    await ctx.send(f"SQLite error: {e}")
+                finally:
+                    # Close the cursor and connection
+                    cursor.close()
+                    conn.close()
+                    
+                    # Print the list of table names
+                    card = result
+#***********************************************************************************************************************************
+                
                 await ctx.send(card)
                 await ctx.send(f"Random user data for '{series}' added to your deck!")
     
