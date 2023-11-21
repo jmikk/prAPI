@@ -17,7 +17,6 @@ class cardMini(commands.Cog):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        season = "Season_"+str(season)
         result = ""
         try:
             # Execute the query to retrieve table names
@@ -112,7 +111,7 @@ class cardMini(commands.Cog):
                 # Commit the changes
                 conn.commit()
                 card = await self.display_card(result[0],result[1],server_id)
-                await ctx.send(str(result[0])+"|"+ str(result[1]) +"|"+ str(server_id))
+                #await ctx.send(str(result[0])+"|"+ str(result[1]) +"|"+ str(server_id))
                 await ctx.send(card)
                 await ctx.send(f"Random user data for '{series}' added to your deck!")
     
