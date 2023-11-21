@@ -128,6 +128,7 @@ class cardMini(commands.Cog):
             # Close the connection
             conn.close()        
 
+    
     @commands.command(name='delete_deck')
     async def delete_deck(self, ctx, deck: commands.MemberConverter):
         server_id = str(ctx.guild.id)
