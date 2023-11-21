@@ -13,8 +13,13 @@ class cardMini(commands.Cog):
 
     
     async def display_card(self,id,season,server_id):
-
+       
+        
+        
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
         season = "Season_"+str(season)
         try:
             # Execute the query to retrieve table names
