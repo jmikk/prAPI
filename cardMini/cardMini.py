@@ -12,9 +12,8 @@ class cardMini(commands.Cog):
         self.bot = bot
 
     
-    async def display_card(self,id,season):
+    async def display_card(self,id,season,server_id):
 
-        server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         season = "Season_"+str(season)
         try:
@@ -109,7 +108,7 @@ class cardMini(commands.Cog):
     
                 # Commit the changes
                 conn.commit()
-                card = await self.display_card(result[0],result[1])
+                card = await self.display_card(result[0],result[1],server_id)
                 await ctx.send(card)
                 await ctx.send(f"Random user data for '{series}' added to your deck!")
     
