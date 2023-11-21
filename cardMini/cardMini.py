@@ -24,7 +24,8 @@ class cardMini(commands.Cog):
             
             # Fetch all the table names from the result set
             result = cursor.fetchone()()
-            
+        except sqlite3.OperationalError as e:
+            await ctx.send(f"SQLite error: {e}")
         finally:
             # Close the cursor and connection
             cursor.close()
