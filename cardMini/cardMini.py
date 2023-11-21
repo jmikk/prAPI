@@ -23,7 +23,7 @@ class cardMini(commands.Cog):
             cursor.execute(f'''SELECT * FROM {season} WHERE id = ? AND season = ?''', (id, season))
             
             # Fetch all the table names from the result set
-            result = cursor.fetchone()()
+            result = cursor.fetchone()
         except sqlite3.OperationalError as e:
             await ctx.send(f"SQLite error: {e}")
         finally:
