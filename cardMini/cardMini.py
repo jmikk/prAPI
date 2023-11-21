@@ -114,6 +114,8 @@ class cardMini(commands.Cog):
                 card = await self.display_card(result[0],result[1],server_id)
                 await ctx.send(str(result[0])+"|"+ str(result[1]) +"|"+ str(server_id))
 #********************************************************************************************************************************************
+                id=result[0]
+                season=result[1]
                 db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
                 conn = sqlite3.connect(db_path)
                 cursor = conn.cursor()
