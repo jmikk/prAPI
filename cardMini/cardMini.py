@@ -123,7 +123,7 @@ class cardMini(commands.Cog):
                 result = ""
                 try:
                     # Execute the query to retrieve table names
-                    cursor.execute(f'''SELECT * FROM {season} WHERE id = ? AND season = ?''', (id, season))
+                    cursor.execute(f'''SELECT * FROM {season} WHERE userID = ? AND season = ?''', (id, season))
                     
                     # Fetch all the table names from the result set
                     result = cursor.fetchone()
