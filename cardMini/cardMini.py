@@ -21,6 +21,7 @@ class cardMini(commands.Cog):
         cursor = conn.cursor()
         
         season = "Season_"+str(season)
+        result = ""
         try:
             # Execute the query to retrieve table names
             cursor.execute(f'''SELECT * FROM {season} WHERE id = ? AND season = ?''', (id, season))
