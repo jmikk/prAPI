@@ -13,9 +13,6 @@ class cardMini(commands.Cog):
 
     
     async def display_card(self,id,season,server_id):
-       
-        
-        
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -115,6 +112,7 @@ class cardMini(commands.Cog):
                 # Commit the changes
                 conn.commit()
                 card = await self.display_card(result[0],result[1],server_id)
+                await ctx.send(result[0],result[1],server_id)
                 await ctx.send(card)
                 await ctx.send(f"Random user data for '{series}' added to your deck!")
     
