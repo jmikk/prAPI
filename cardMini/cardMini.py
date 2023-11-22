@@ -15,6 +15,7 @@ class cardMini(commands.Cog):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+        output=""
         try:
             table_name = "deck_"+str(user_id)
 
@@ -26,11 +27,12 @@ class cardMini(commands.Cog):
 
             return result[0]
         except sqlite3.OperationalError as e:
-            await ctx.send(f"SQLite error: {e}")
+            output=f"SQLite error: {e}"
         finally:
             # Close the cursor and connection
             cursor.close()
-            conn.close() 
+            conn.close()
+        return output
 
         
     async def display_card(self,id,season,server_id):
@@ -46,7 +48,7 @@ class cardMini(commands.Cog):
             # Fetch all the table names from the result set
             result = cursor.fetchone()
         except sqlite3.OperationalError as e:
-            await ctx.send(f"SQLite error: {e}")
+            result= f"SQLite error: {e}"
         finally:
             # Close the cursor and connection
             cursor.close()
