@@ -19,7 +19,7 @@ class cardMini(commands.Cog):
         try:
             table_name = "deck_"+str(user_id)
 
-            query = "SELECT COUNT(*) FROM your_table WHERE userID = ? AND season = ?"
+            query = f"SELECT COUNT(*) FROM {table_name} WHERE userID = ? AND season = ?"
             cursor.execute(query, (id, season))
             
             # Fetch the result of the query
