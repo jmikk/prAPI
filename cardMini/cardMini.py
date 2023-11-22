@@ -19,7 +19,7 @@ class cardMini(commands.Cog):
         try:
             table_name = "deck_"+str(user_id)
 
-            query = f"SELECT COUNT(*) FROM {table_name} WHERE userID = ? AND season = ?"
+            query = f"SELECT count FROM {table_name} WHERE userID = ? AND season = ?"
             cursor.execute(query, (id, season))
             
             # Fetch the result of the query
@@ -122,15 +122,16 @@ class cardMini(commands.Cog):
                 cursor.execute(f'''
                     CREATE TABLE IF NOT EXISTS {deck_table_name} (
                         userID INTEGER PRIMARY KEY,
-                        season TEXT
+                        season TEXT,
+                        count INTEGER
                     )
                 ''')
     
                 # Add the user's ID to their deck table
                 cursor.execute(f'''
-                    INSERT INTO {deck_table_name} (userID, season)
-                    VALUES (?, ?)
-                ''', (result[0], result[1]))
+                    INSERT INTO {deck_table_name} (userID, season,count)
+                    VALUES (?, ?, ?)
+                ''', (result[0], result[1], 0))
     
                 # Commit the changes
                 conn.commit()
