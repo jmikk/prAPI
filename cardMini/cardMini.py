@@ -141,6 +141,8 @@ class cardMini(commands.Cog):
                 else:
                     # If the user and season combination doesn't exist, insert a new record
                     insert_query = f"INSERT INTO {deck_table_name} (userID, season, count) VALUES (?, ?, ?)"
+                    cursor.execute(insert_query, (result[0], series, 1))
+
                     await ctx.send("new")
                     
                 # Commit the changes
