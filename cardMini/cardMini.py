@@ -25,7 +25,7 @@ class cardMini(commands.Cog):
             # Fetch the result of the query
             result = cursor.fetchone()
 
-            return result[0]
+            return result
         except sqlite3.OperationalError as e:
             output=f"SQLite error: {e}"
         finally:
