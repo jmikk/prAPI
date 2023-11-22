@@ -118,6 +118,14 @@ class cardMini(commands.Cog):
             result = cursor.fetchone()
     
             if result:
+                cursor.execute(f'''
+                CREATE TABLE IF NOT EXISTS {deck_table_name} (
+                    userID INTEGER PRIMARY KEY,
+                    season TEXT,
+                    count INTEGER
+                )
+                        ''')
+
                 # Execute the SQL query to check if the user and season combination already exists
                 query = f"SELECT * FROM {deck_table_name} WHERE userID = ? AND season = ?"
                 cursor.execute(query, (user_id, series))
