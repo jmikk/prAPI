@@ -130,7 +130,7 @@ class cardMini(commands.Cog):
                 query = f"SELECT * FROM {deck_table_name} WHERE userID = ? AND season = ?"
                 cursor.execute(query, (result[0], series))
                 result2 = cursor.fetchone()
-                result[0]=689266891302502501
+                
 
                 if result2:
                     # If the user and season combination exists, update the count
