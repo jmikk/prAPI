@@ -136,7 +136,7 @@ class cardMini(commands.Cog):
                 conn.commit()
                 card = await self.display_card(result[0],result[1],server_id)
                 owner_count = await self.get_owned_count(result[0],result[1],server_id,ctx.author.id)
-                
+                await ctx.send(owner_count)
                 await ctx.send(str(result[0])+"|"+ str(result[1]) +"|"+ str(server_id))
                 await ctx.send(card)
                 await ctx.send(f"Random user data for '{series}' added to your deck!")
