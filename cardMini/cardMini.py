@@ -11,7 +11,28 @@ class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    
+    async def get_owned_count(self, id, season, server_id,user_id):
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        try:
+            table_name = "deck_"+user_id
+
+            query = "SELECT COUNT(*) FROM your_table WHERE userID = ? AND season = ?"
+            cursor.execute(query, (id, season))
+            
+            # Fetch the result of the query
+            result = cursor.fetchone()
+
+            return result[0]
+        except sqlite3.OperationalError as e:
+            await ctx.send(f"SQLite error: {e}")
+        finally:
+            # Close the cursor and connection
+            cursor.close()
+            conn.close() 
+
+        
     async def display_card(self,id,season,server_id):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
@@ -112,6 +133,10 @@ class cardMini(commands.Cog):
                 # Commit the changes
                 conn.commit()
                 card = await self.display_card(result[0],result[1],server_id)
+                await ctx.send(get_owned_count(result[0],result[1],server_id,ctx.author.id))
+                
+
+                
                 await ctx.send(str(result[0])+"|"+ str(result[1]) +"|"+ str(server_id))
                 await ctx.send(card)
                 await ctx.send(f"Random user data for '{series}' added to your deck!")
