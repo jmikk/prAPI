@@ -120,7 +120,7 @@ class cardMini(commands.Cog):
             if result:
                 # Execute the SQL query to check if the user and season combination already exists
                 query = f"SELECT * FROM {deck_table_name} WHERE userID = ? AND season = ?"
-                cursor.execute(query, (user_id, season))
+                cursor.execute(query, (user_id, series))
                 result2 = cursor.fetchone()
                 
                 if result2:
