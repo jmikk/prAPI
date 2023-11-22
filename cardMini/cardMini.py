@@ -141,16 +141,11 @@ class cardMini(commands.Cog):
                 else:
                     # If the user and season combination doesn't exist, insert a new record
                     insert_query = f"INSERT INTO {deck_table_name} (userID, season, count) VALUES (?, ?, ?)"
-                    cursor.execute(insert_query, (result[0], series, 1))
-
-                    await ctx.send("new")
-                    
+                    cursor.execute(insert_query, (result[0], series, 1))                    
                 # Commit the changes
                 conn.commit()
                 card = await self.display_card(result[0],result[1],server_id)
                 owner_count = self.get_owned_count(result[0],result[1],server_id,ctx.author.id)
-                await ctx.send(owner_count)
-                await ctx.send(str(result[0])+"|"+ str(result[1]) +"|"+ str(server_id))
                 await ctx.send(card)
                 await ctx.send(f"Random user data for '{series}' added to your deck!")
     
