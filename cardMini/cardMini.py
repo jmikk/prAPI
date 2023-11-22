@@ -98,6 +98,9 @@ class cardMini(commands.Cog):
         series = "Season_"+series
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        user_id = ctx.author.id
+         # Check if the deck table exists, and create it if not
+        deck_table_name = f'deck_{user_id}'
     
         try:
             # Connect to the SQLite database for the server
@@ -115,23 +118,20 @@ class cardMini(commands.Cog):
             result = cursor.fetchone()
     
             if result:
-                # Add the user's ID to their deck (you may need to modify this based on your deck structure)
-                user_id = ctx.author.id
-                # Check if the deck table exists, and create it if not
-                deck_table_name = f'deck_{user_id}'
-                cursor.execute(f'''
-                    CREATE TABLE IF NOT EXISTS {deck_table_name} (
-                        userID INTEGER PRIMARY KEY,
-                        season TEXT,
-                        count INTEGER
-                    )
-                ''')
-    
-                # Add the user's ID to their deck table
-                cursor.execute(f'''
-                    INSERT INTO {deck_table_name} (userID, season,count)
-                    VALUES (?, ?, ?)
-                ''', (result[0], result[1], 0))
+                # Execute the SQL query to check if the user and season combination already exists
+                query = f"SELECT * FROM {deck_table_name} WHERE userID = ? AND season = ?"
+                cursor.execute(query, (user_id, season))
+                result2 = cursor.fetchone()
+                
+                if result2:
+                    # If the user and season combination exists, update the count
+                    new_count = result2[2] + 1
+                    update_query = f"UPDATE {deck_table_name} SET count = ? WHERE userID = ? AND season = ?"
+                    cursor.execute(update_query, (new_count, user_id, season))
+                else:
+                    # If the user and season combination doesn't exist, insert a new record
+                    insert_query = f"INSERT INTO {deck_table_name} (userID, season, count) VALUES (?, ?, ?)"
+                    cursor.execute(insert_query, (user_id, season, 1))
     
                 # Commit the changes
                 conn.commit()
