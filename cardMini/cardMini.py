@@ -16,7 +16,7 @@ class cardMini(commands.Cog):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         try:
-            table_name = "deck_"+user_id
+            table_name = "deck_"+str(user_id)
 
             query = "SELECT COUNT(*) FROM your_table WHERE userID = ? AND season = ?"
             cursor.execute(query, (id, season))
