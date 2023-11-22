@@ -136,10 +136,13 @@ class cardMini(commands.Cog):
                     new_count = result2[2] + 1
                     update_query = f"UPDATE {deck_table_name} SET count = ? WHERE userID = ? AND season = ?"
                     cursor.execute(update_query, (new_count, user_id, series))
+                    await ctx.send("old card")
                 else:
                     # If the user and season combination doesn't exist, insert a new record
                     insert_query = f"INSERT INTO {deck_table_name} (userID, season, count) VALUES (?, ?, ?)"
                     cursor.execute(insert_query, (user_id, series, 1))
+                    await ctx.send("new card")
+
     
                 # Commit the changes
                 conn.commit()
