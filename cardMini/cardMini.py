@@ -94,7 +94,53 @@ class cardMini(commands.Cog):
             # Fetch all the rows from the result set
             rows = cursor.fetchall()
 
-            await ctx.send(rows)
+            # Paginate the results (display the first 10)
+            chunk_size = 10
+            paginated_rows = [rows[i:i + chunk_size] for i in range(0, len(rows), chunk_size)]
+
+            # Initialize page counter and embed
+            current_page = 0
+            total_pages = len(paginated_rows)            
+
+
+                        # Function to display the current page
+            async def display_page():
+                embed = discord.Embed(title=f"Deck Information - Page {current_page + 1}/{total_pages}")
+
+                for row in paginated_rows[current_page]:
+                    # Customize how you want to display each row in the embed
+                    embed.add_field(name=f"Card ID: {row[0]}", value=f"Season: {row[1]}, Count: {row[2]}", inline=False)
+
+                return embed
+
+            # Send the initial page
+            message = await ctx.send(embed=await display_page())
+
+            # Add reactions for navigation
+            await message.add_reaction('◀️')
+            await message.add_reaction('▶️')
+
+            # Function to update the display based on reaction input
+            def check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in ['◀️', '▶️']
+
+            while True:
+                try:
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+
+                    if str(reaction.emoji) == '▶️' and current_page < total_pages - 1:
+                        current_page += 1
+                    elif str(reaction.emoji) == '◀️' and current_page > 0:
+                        current_page -= 1
+
+                    # Update the message with the new page
+                    await message.edit(embed=await display_page())
+
+                    # Remove the user's reaction
+                    await message.remove_reaction(reaction, user)
+                except TimeoutError:
+                    # Stop listening for reactions after 60 seconds
+                    break
         except sqlite3.OperationalError as e:
             if "no such table" in str(e):
                 await ctx.send(f"No cards in your deck go open some!")
