@@ -150,7 +150,7 @@ class cardMini(commands.Cog):
                 
                 embed = discord.Embed(title="Card Information", color=0x00ff00)
                
-                user = self.get_user(card[0])
+                user = self.bot.get_user(card[0])
 
                 # Add fields to the embed
                 embed.add_field(name="User", value=user.mention, inline=True)
