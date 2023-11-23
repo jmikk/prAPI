@@ -88,7 +88,7 @@ class cardMini(commands.Cog):
                         ''')
             cursor.execute(f'SELECT bank FROM bank_{id} WHERE userID = ?', (id,))
             rows = cursor.fetchone()
-            return rows
+            return rows[0]
 
         
         except sqlite3.OperationalError as e:
