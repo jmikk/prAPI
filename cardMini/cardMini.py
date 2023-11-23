@@ -342,9 +342,7 @@ class cardMini(commands.Cog):
         cursor.execute(f'''
                 DROP TABLE IF EXISTS deck_{deck.id}
             ''')
-        cursor.execute(f'''
-                DROP TABLE IF EXISTS bank_{deck.id}
-            ''')
+        cursor.execute('DELETE FROM bank WHERE userID = ?', (deck.id,))
         conn.commit()    
         # Close the connection
         conn.close()
