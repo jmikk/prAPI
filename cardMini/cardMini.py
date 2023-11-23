@@ -162,7 +162,7 @@ class cardMini(commands.Cog):
                 embed.add_field(name="Sell Price", value=card[3]*1.1, inline=True)
             
                 # Set the thumbnail to the user's avatar if available, otherwise use the default icon
-                avatar_url = user.avatar_url if user.avatar else user.default_avatar_url
+                avatar_url = user.avatar.url if user.avatar else user.default_avatar.url
                 embed.set_thumbnail(url=avatar_url)
 
                 await ctx.send(embed=embed)
