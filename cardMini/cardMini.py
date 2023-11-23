@@ -83,7 +83,7 @@ class cardMini(commands.Cog):
             cursor.execute(f'''
                 CREATE TABLE IF NOT EXISTS bank_{id} (
                     userID INTEGER PRIMARY KEY,
-                    bank REAL DEFAULT 0
+                    bank REAL DEFAULT 0.1
                 )
                         ''')
             cursor.execute(f'SELECT * FROM bank_{id}')
@@ -93,7 +93,7 @@ class cardMini(commands.Cog):
             cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='bank_{id}'")
             result = cursor.fetchone()
                 
-            return rows
+            return result
 
         
         except sqlite3.OperationalError as e:
