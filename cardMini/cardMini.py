@@ -158,7 +158,7 @@ class cardMini(commands.Cog):
                 embed.add_field(name="Rarity", value=card[2], inline=True)
                 embed.add_field(name="MV", value=card[3], inline=True)
                 embed.add_field(name="Gob owns", value=card[4], inline=True)
-                embed.add_field(name="You own", value=owenr_count, inline=True)
+                embed.add_field(name="You own", value=owner_count, inline=True)
                 embed.add_field(name="Buy Price", value=card[3]*.9, inline=True)
                 embed.add_field(name="Sell Price", value=card[3]*1.1, inline=True)
             
