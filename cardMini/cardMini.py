@@ -86,13 +86,13 @@ class cardMini(commands.Cog):
                     bank REAL DEFAULT 0
                 )
                         ''')
-            cursor.execute('SELECT cash FROM bank WHERE userID = ?', (authorID,))
+            cursor.execute('SELECT cash FROM bank WHERE userID = ?', (id,))
             result = cursor.fetchone()
 
 
             if result is None:
             # If ctx.author.id is not in the 'bank' table, insert with default cash value
-                cursor.execute('INSERT INTO bank (userID, cash) VALUES (?, 0)', (authorID,))
+                cursor.execute('INSERT INTO bank (userID, cash) VALUES (?, 0)', (id,))
                 conn.commit()
                 return 0
             else:
