@@ -90,8 +90,8 @@ class cardMini(commands.Cog):
             rows = cursor.fetchall()
 
 
-            #cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='bank_{id}'")
-            #result = cursor.fetchone()
+            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='bank_{id}'")
+            rows = cursor.fetchone()
                 
             return rows
 
