@@ -141,8 +141,11 @@ class cardMini(commands.Cog):
 
                     # Remove the user's reaction
                     await message.remove_reaction(reaction, user)
-                except TimeoutError:
-                    # Stop listening for reactions after 60 seconds
+                except asyncio.TimeoutError:
+                    # Stop listening for reactions after 30 seconds
+                    break
+                except asyncio.CancelledError:
+                    # Handle cancellation (optional)
                     break
         except sqlite3.OperationalError as e:
             if "no such table" in str(e):
