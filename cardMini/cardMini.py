@@ -81,7 +81,7 @@ class cardMini(commands.Cog):
             cursor = conn.cursor()
             
             cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS bank_{id} (
+                CREATE TABLE IF NOT EXISTS {"bank_"+str(id)} (
                     userID INTEGER PRIMARY KEY DEFAULT {id},
                     bank REAL DEFAULT 0.1
                 )
