@@ -13,7 +13,18 @@ class cardMini(commands.Cog):
         self.bot = bot
         self.sell_mod=1.1
         self.buy_mod=.9
+   
+    @commands.command(name='set_sell_mod')
+    def set_sell_mod(self,mod:float):
+        self.sell_mod=mod
+        await ctx.send(f"sell mod now set to {self.sell_mod}")
 
+    @commands.command(name='set_buy_mod')
+    def set_buy_mod(self,mod:float):
+        self.buy_mod=mod
+        await ctx.send(f"buy mod now set to {self.buy_mod}")
+
+        
     def get_owned_count(self, id, season, server_id,user_id):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
