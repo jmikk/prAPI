@@ -111,7 +111,7 @@ class cardMini(commands.Cog):
     async def buy_card(self,ctx):
         server_id = str(ctx.guild.id)
         await ctx.send("Here")
-        await ctx.send(self.get_bank(server_id,ctx.author.id))
+        await ctx.send(self.get_bank(server_id,str(ctx.author.id)))
     
     
     @commands.command(name='all_deck')
