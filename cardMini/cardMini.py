@@ -118,13 +118,12 @@ class cardMini(commands.Cog):
                     # Fetch all the rows from the result set
                     rowz = cursor.fetchall()
                     await ctx.send(rowz)
+                    await ctx.send(len(rowz))
+
                     sell_price = round(rowz[3]*sell_mod,2)
                     buy_price = round(rowz[3]*buy_mod,2)
                     
                     embed.add_field(name=f"Card name: {name}", value=f"{row[1]}, You own: {row[2]} ID: {row[0]} Rarity: {rowz[2]}\nMV: {rowz[3]} Buy price: {buy_price} Sell price: {sell_price}", inline=False)
-
-                    #embed.add_field(name=f"Card name: {name}", value=f"{row[1]}, You own: {row[2]} ID: {row[0]} Rarity: {row[2]}\nMV: {row[3]} Buy price: {round(row[3]*buy_mod,2)} Sell price: {round(row[3]*sell_mod,2}", inline=False)
-
                 return embed
 
             # Send the initial page
