@@ -90,10 +90,10 @@ class cardMini(commands.Cog):
             rows = cursor.fetchall()
 
 
-            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='bank_{id}'")
-            result = cursor.fetchone()
+            #cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='bank_{id}'")
+            #result = cursor.fetchone()
                 
-            return result
+            return rows
 
         
         except sqlite3.OperationalError as e:
