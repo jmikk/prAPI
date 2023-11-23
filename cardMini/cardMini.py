@@ -118,7 +118,7 @@ class cardMini(commands.Cog):
                     # Fetch all the rows from the result set
                     rows = cursor.fetchall()
                     
-                    embed.add_field(name=f"Card name: {name}", value=f"Season: {row[1]}, Count: {row[2]}" {rows}, inline=False)
+                    embed.add_field(name=f"Card name: {name}", value=f"Season: {row[1]}, Count: {row[2]} {rows}", inline=False)
 
                 return embed
 
