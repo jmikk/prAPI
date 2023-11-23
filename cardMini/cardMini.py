@@ -153,11 +153,12 @@ class cardMini(commands.Cog):
                 user = self.bot.get_user(card[0])
 
                 # Add fields to the embed
-                embed.add_field(name="User", value=user.mention, inline=True)
+                embed.add_field(name="Name", value=user.mention, inline=True)
                 embed.add_field(name="Season", value=card[1], inline=True)
                 embed.add_field(name="Rarity", value=card[2], inline=True)
                 embed.add_field(name="MV", value=card[3], inline=True)
-                embed.add_field(name="Stock", value=card[4], inline=True)
+                embed.add_field(name="Gob owns", value=card[4], inline=True)
+                embed.add_field(name="You own", value=owenr_count, inline=True)
                 embed.add_field(name="Buy Price", value=card[3]*.9, inline=True)
                 embed.add_field(name="Sell Price", value=card[3]*1.1, inline=True)
             
