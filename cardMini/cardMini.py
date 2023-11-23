@@ -90,10 +90,10 @@ class cardMini(commands.Cog):
             rows = cursor.fetchall()
 
 
-            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='bank_{id}'")
-            result = cursor.fetchone()
+            #cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='bank_{id}'")
+            #result = cursor.fetchone()
                 
-            return result
+            return rows
 
         
         except sqlite3.OperationalError as e:
@@ -340,7 +340,7 @@ class cardMini(commands.Cog):
         conn.close()
     
         # Respond to the user
-        await ctx.send(f"{deck.mention}'s deck deleted!")
+        await ctx.send(f"{deck.mention}'s deck deleted! {deck.id}")
 
     @commands.command(name='list_series')
     async def list_series(self, ctx):
