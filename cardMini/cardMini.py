@@ -109,6 +109,9 @@ class cardMini(commands.Cog):
 
                 for row in paginated_rows[current_page]:
                     # Customize how you want to display each row in the embed
+                    user = self.bot.get_user(row[0])
+                    name = user.name
+                    
                     embed.add_field(name=f"Card ID: {row[0]}", value=f"Season: {row[1]}, Count: {row[2]}", inline=False)
 
                 return embed
@@ -126,7 +129,7 @@ class cardMini(commands.Cog):
 
             while True:
                 try:
-                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
 
                     if str(reaction.emoji) == '▶️' and current_page < total_pages - 1:
                         current_page += 1
