@@ -112,8 +112,13 @@ class cardMini(commands.Cog):
                     # Customize how you want to display each row in the embed
                     user = self.bot.get_user(row[0])
                     name = user.name
+
+                    # Use a parameterized query to retrieve all elements from the table
+                    cursor.execute(f'SELECT * FROM {row[1]} WHERE userID = ?')                    
+                    # Fetch all the rows from the result set
+                    rows = cursor.fetchall()
                     
-                    embed.add_field(name=f"Card ID: {row[0]}", value=f"Season: {row[1]}, Count: {row[2]}", inline=False)
+                    embed.add_field(name=f"Card name: {name}", value=f"Season: {row[1]}, Count: {row[2]}" {rows}, inline=False)
 
                 return embed
 
