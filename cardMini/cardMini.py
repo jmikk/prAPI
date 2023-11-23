@@ -151,21 +151,28 @@ class cardMini(commands.Cog):
 
                 #(ID, 'Season_1', 'Epic', 0.5, 10)
 
-                match card[2]:
-                    case "Mythic":
-                        embed = discord.Embed(title="Card Information", color=0xC30F0D)
-                    case "Legendary":
-                        embed = discord.Embed(title="Card Information", color=0xFFEA7A)
-                    case "Epic":
-                        embed = discord.Embed(title="Card Information", color=0xE3B54F)
-                    case "Ultra-Rare":
-                        embed = discord.Embed(title="Card Information", color=0xCA5BEF)
-                    case "Rare":
-                        embed = discord.Embed(title="Card Information", color=0x008EC1)
-                    case "Uncommon":
-                        embed = discord.Embed(title="Card Information", color=0x00AA4C)
-                    case "Common":
-                        embed = discord.Embed(title="Card Information", color=0xABABAB)
+                card_rarity = card[2]
+                
+                if card_rarity == "Mythic":
+                    embed.color = 0xC30F0D
+                elif card_rarity == "Legendary":
+                    embed.color = 0xFFEA7A
+                elif card_rarity == "Epic":
+                    embed.color = 0xE3B54F
+                elif card_rarity == "Ultra-Rare":
+                    embed.color = 0xCA5BEF
+                elif card_rarity == "Rare":
+                    embed.color = 0x008EC1
+                elif card_rarity == "Uncommon":
+                    embed.color = 0x00AA4C
+                elif card_rarity == "Common":
+                    embed.color = 0xABABAB
+                else:
+                    # Handle the case when card_rarity is not one of the specified values
+                    embed.color = 0xFFFFFF  # Set a default color or handle it accordingly
+                
+                # Rest of your code using the 'embed' variable...
+
                         
                
                 user = self.bot.get_user(card[0])
