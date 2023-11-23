@@ -161,9 +161,10 @@ class cardMini(commands.Cog):
                 owner_count = self.get_owned_count(result[0],result[1],server_id,ctx.author.id)
 
                 #(ID, 'Season_1', 'Epic', 0.5, 10)
+                user = self.bot.get_user(card[0])
 
                 card_rarity = card[2]
-                embed = discord.Embed(title="Card Information")
+                embed = discord.Embed(title=user.name)
                 if card_rarity == "Mythic":
                     embed.color = 0xC30F0D
                 elif card_rarity == "Legendary":
@@ -186,7 +187,6 @@ class cardMini(commands.Cog):
 
                         
                
-                user = self.bot.get_user(card[0])
 
                 # Add fields to the embed
                 embed.add_field(name="Name", value=user.mention, inline=True)
