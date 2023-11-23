@@ -150,8 +150,23 @@ class cardMini(commands.Cog):
                 owner_count = self.get_owned_count(result[0],result[1],server_id,ctx.author.id)
 
                 #(ID, 'Season_1', 'Epic', 0.5, 10)
-                
-                embed = discord.Embed(title="Card Information", color=0x00ff00)
+
+                match card[2]:
+                    case "Mythic":
+                        embed = discord.Embed(title="Card Information", color=0xC30F0D)
+                    case "Legendary":
+                        embed = discord.Embed(title="Card Information", color=0xFFEA7A)
+                    case "Epic":
+                        embed = discord.Embed(title="Card Information", color=0xE3B54F)
+                    case "Ultra-Rare":
+                        embed = discord.Embed(title="Card Information", color=0xCA5BEF)
+                    case "Rare":
+                        embed = discord.Embed(title="Card Information", color=0x008EC1)
+                    case "Uncommon":
+                        embed = discord.Embed(title="Card Information", color=0x00AA4C)
+                    case "Common":
+                        embed = discord.Embed(title="Card Information", color=0xABABAB)
+                        
                
                 user = self.bot.get_user(card[0])
 
