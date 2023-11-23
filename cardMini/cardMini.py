@@ -72,6 +72,43 @@ class cardMini(commands.Cog):
             # Print the list of table names
         return result
 
+
+    def get_bank(self,serverID,id):
+        server_id = str(ctx.guild.id)
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        try: 
+            # Connect to the SQLite database for the server
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute(f'''
+                CREATE TABLE IF NOT EXISTS bank_{id} (
+                    userID INTEGER PRIMARY KEY,
+                    bank INTEGER,
+                )
+                        ''')
+            cursor.execute(f'SELECT bank FROM bank_{id}')
+            rows = cursor.fetchone()
+            return rows
+
+        
+        except sqlite3.OperationalError as e:
+            if "no such table" in str(e):
+                await ctx.send(f"No cards in your deck go open some!")
+            else:
+                await ctx.send(f"SQLite error: {e}")
+        finally:
+            # Close the connection
+            conn.close()    
+
+
+        
+    @commands.command(name='buy_card')
+    async def buy_card(self,ctx):
+        server_id = str(ctx.guild.id)
+        await ctx.send(server_id,ctx.author.id)
+    
+    
     @commands.command(name='all_deck')
     async def all_deck(self,ctx):
         server_id = str(ctx.guild.id)
