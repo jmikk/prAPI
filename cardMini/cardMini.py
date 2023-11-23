@@ -94,7 +94,7 @@ class cardMini(commands.Cog):
             
             # Fetch all the rows from the result set
             rows = cursor.fetchall()
-
+            await ctx.send(rows)
             # Paginate the results (display the first 10)
             chunk_size = 10
             paginated_rows = [rows[i:i + chunk_size] for i in range(0, len(rows), chunk_size)]
@@ -117,7 +117,7 @@ class cardMini(commands.Cog):
                     cursor.execute(f'SELECT * FROM {row[1]} WHERE userID = ?',(row[0],))                    
                     # Fetch all the rows from the result set
                     rowz = cursor.fetchall()
-
+                    await ctx.send(rowz)
                     embed.add_field(name=f"Card name: {name}", value=f"{row[1]}, You own: {row[2]} ID: {row[0]} Rarity: {rowz[2]}\nMV: {rowz[3]} Buy price: {round(rowz[3]*buy_mod,2)} Sell price: {round(rowz[3]*sell_mod,2)}", inline=False)
 
                     #embed.add_field(name=f"Card name: {name}", value=f"{row[1]}, You own: {row[2]} ID: {row[0]} Rarity: {row[2]}\nMV: {row[3]} Buy price: {round(row[3]*buy_mod,2)} Sell price: {round(row[3]*sell_mod,2}", inline=False)
