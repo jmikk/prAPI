@@ -15,12 +15,12 @@ class cardMini(commands.Cog):
         self.buy_mod=.9
    
     @commands.command(name='set_sell_mod')
-    def set_sell_mod(self,mod:float):
+    async def set_sell_mod(self,mod:float):
         self.sell_mod=mod
         await ctx.send(f"sell mod now set to {self.sell_mod}")
 
     @commands.command(name='set_buy_mod')
-    def set_buy_mod(self,mod:float):
+    async def set_buy_mod(self,mod:float):
         self.buy_mod=mod
         await ctx.send(f"buy mod now set to {self.buy_mod}")
 
