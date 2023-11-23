@@ -118,7 +118,7 @@ class cardMini(commands.Cog):
 
         
     @commands.command(name='buy_card')
-    async def buy_card(self,ctx):
+    async def buy_card(self,ctx,name):
         server_id = str(ctx.guild.id)
         await ctx.send("Here")
         await ctx.send(self.get_bank(server_id,str(ctx.author.id)))
@@ -411,6 +411,7 @@ class cardMini(commands.Cog):
         cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS {series} (
                 userID INTEGER PRIMARY KEY,
+                name TEXT,
                 season TEXT,
                 rarity TEXT,
                 MV REAL,
@@ -468,7 +469,7 @@ class cardMini(commands.Cog):
             cursor.execute(f'''
                 INSERT INTO {series} (userID, season, rarity, MV, Stock)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (member.id, series, rarity, MV, 10))
+            ''', (member.id,member.name, series, rarity, MV, 10))
     
         # You can now use the user_data dictionary for further processing or storage.
         conn.commit()
