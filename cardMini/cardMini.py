@@ -82,12 +82,22 @@ class cardMini(commands.Cog):
             
             cursor.execute(f'''
                 CREATE TABLE IF NOT EXISTS {"bank_"+str(id)} (
-                    userID INTEGER PRIMARY KEY DEFAULT {id},
-                    bank REAL DEFAULT 0.1
+                    userID INTEGER PRIMARY KEY,
+                    bank REAL DEFAULT 0
                 )
                         ''')
-            cursor.execute(f'SELECT * FROM bank_{id}')
-            rows = cursor.fetchone()
+            cursor.execute('SELECT cash FROM bank WHERE userID = ?', (authorID,))
+            result = cursor.fetchone()
+
+
+            if result is None:
+            # If ctx.author.id is not in the 'bank' table, insert with default cash value
+                cursor.execute('INSERT INTO bank (userID, cash) VALUES (?, 0)', (authorID,))
+                conn.commit()
+                return 0
+            else:
+                # If ctx.author.id is in the 'bank' table, return the cash value
+                return result[0]
 
 
             #cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='bank_{id}'")
