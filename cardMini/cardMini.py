@@ -83,7 +83,7 @@ class cardMini(commands.Cog):
             cursor.execute(f'''
                 CREATE TABLE IF NOT EXISTS bank_{id} (
                     userID INTEGER PRIMARY KEY,
-                    bank INTEGER,
+                    bank INTEGER
                 )
                         ''')
             cursor.execute(f'SELECT bank FROM bank_{id}')
