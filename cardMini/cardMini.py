@@ -145,8 +145,34 @@ class cardMini(commands.Cog):
                 conn.commit()
                 card = await self.display_card(result[0],result[1],server_id)
                 owner_count = self.get_owned_count(result[0],result[1],server_id,ctx.author.id)
-                await ctx.send(card)
-                await ctx.send(f"Random user data for '{series}' added to your deck!")
+
+                #(ID, 'Season_1', 'Epic', 0.5, 10)
+                
+                embed = discord.Embed(title="Card Information", color=0x00ff00)
+
+                # Add fields to the embed
+                embed.add_field(name="User", value=user.mention, inline=True)
+                user = bot.get_user(card[0])
+                if user:
+                    # Get the mention string from the User object
+                    mention = user.mention
+                    await ctx.send(f"The mention for the user with ID {user_id} is: {mention}")
+                else:
+                    await ctx.send(f"User with ID {user_id} not found.")
+                
+                embed.add_field(name="Season", value=card[1], inline=True)
+                embed.add_field(name="Rarity", value=card[2], inline=True)
+                embed.add_field(name="MV", value=card[3], inline=True)
+                embed.add_field(name="Stock", value=card[4], inline=True)
+                embed.add_field(name="Buy Price", value=card[3]*.9, inline=True)
+                embed.add_field(name="Sell Price", value=card[3]*1.1, inline=True)
+            
+                # Set the thumbnail to the user's avatar if available, otherwise use the default icon
+                avatar_url = user.avatar_url if user.avatar else user.default_avatar_url
+                embed.set_thumbnail(url=avatar_url)
+
+                await ctx.send(embed=embed)
+            
     
             else:
                 await ctx.send(f"No data found for '{series}'")
