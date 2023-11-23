@@ -86,7 +86,7 @@ class cardMini(commands.Cog):
                     bank INTEGER DEFAULT 0
                 )
                         ''')
-            cursor.execute(f'SELECT * FROM bank_{id} WHERE userID = ?', (id,))
+            cursor.execute(f'SELECT * FROM bank_{id}')
             rows = cursor.fetchall()
             return rows
 
