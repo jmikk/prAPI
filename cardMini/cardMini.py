@@ -162,8 +162,8 @@ class cardMini(commands.Cog):
                 embed.add_field(name="MV", value=card[3], inline=True)
                 embed.add_field(name="Gob owns", value=card[4], inline=True)
                 embed.add_field(name="You own", value=owner_count[0], inline=True)
-                embed.add_field(name="Buy Price", value=math.floor(card[3]*self.buy_mod, inline=True))
-                embed.add_field(name="Sell Price", value=math.ceil(card[3]*self.sell_mod, inline=True))
+                embed.add_field(name="Buy Price", value=int(card[3]*self.buy_mod), inline=True)
+                embed.add_field(name="Sell Price", value=math.ceil(card[3]*self.sell_mod), inline=True)
             
                 # Set the thumbnail to the user's avatar if available, otherwise use the default icon
                 avatar_url = user.avatar.url if user.avatar else user.default_avatar.url
