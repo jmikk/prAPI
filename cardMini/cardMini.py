@@ -81,12 +81,12 @@ class cardMini(commands.Cog):
             cursor = conn.cursor()
             
             cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS bank_{id} (
+                CREATE TABLE IF NOT EXISTS bank (
                     userID INTEGER PRIMARY KEY,
                     bank INTEGER DEFAULT 0
                 )
                         ''')
-            cursor.execute(f'SELECT bank FROM bank_{id}')
+            cursor.execute(f'SELECT bank FROM bank WHERE userID = ?', (id,))
             rows = cursor.fetchone()
             return rows
 
