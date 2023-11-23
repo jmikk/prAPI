@@ -74,8 +74,7 @@ class cardMini(commands.Cog):
 
 
     def get_bank(self,serverID,id):
-        server_id = str(ctx.guild.id)
-        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{serverID}.db')
         try: 
             # Connect to the SQLite database for the server
             conn = sqlite3.connect(db_path)
