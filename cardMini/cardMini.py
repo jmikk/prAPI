@@ -91,6 +91,7 @@ class cardMini(commands.Cog):
             # Use a parameterized query to retrieve all elements from the table
             query = f'SELECT * FROM {table_name}'
             cursor.execute(query)
+
             
             # Fetch all the rows from the result set
             rows = cursor.fetchall()
