@@ -152,7 +152,7 @@ class cardMini(commands.Cog):
                 #(ID, 'Season_1', 'Epic', 0.5, 10)
 
                 card_rarity = card[2]
-                
+                embed = discord.Embed(title="Card Information")
                 if card_rarity == "Mythic":
                     embed.color = 0xC30F0D
                 elif card_rarity == "Legendary":
