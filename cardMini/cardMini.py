@@ -11,7 +11,7 @@ import math
 class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.sell_mod=1.1
+        self.sell_mod=1.1+1
         self.buy_mod=.9
 
     def get_owned_count(self, id, season, server_id,user_id):
