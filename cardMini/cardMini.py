@@ -149,17 +149,11 @@ class cardMini(commands.Cog):
                 #(ID, 'Season_1', 'Epic', 0.5, 10)
                 
                 embed = discord.Embed(title="Card Information", color=0x00ff00)
+               
+                user = bot.get_user(card[0])
 
                 # Add fields to the embed
                 embed.add_field(name="User", value=user.mention, inline=True)
-                user = bot.get_user(card[0])
-                if user:
-                    # Get the mention string from the User object
-                    mention = user.mention
-                    await ctx.send(f"The mention for the user with ID {user_id} is: {mention}")
-                else:
-                    await ctx.send(f"User with ID {user_id} not found.")
-                
                 embed.add_field(name="Season", value=card[1], inline=True)
                 embed.add_field(name="Rarity", value=card[2], inline=True)
                 embed.add_field(name="MV", value=card[3], inline=True)
