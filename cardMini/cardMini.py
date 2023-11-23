@@ -114,7 +114,7 @@ class cardMini(commands.Cog):
                     name = user.name
 
                     # Use a parameterized query to retrieve all elements from the table
-                    cursor.execute(f'SELECT * FROM {row[1]} WHERE userID = ?',(row[0]))                    
+                    cursor.execute(f'SELECT * FROM {row[1]} WHERE userID = ?',(row[0],))                    
                     # Fetch all the rows from the result set
                     rows = cursor.fetchall()
                     
