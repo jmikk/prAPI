@@ -95,7 +95,6 @@ class cardMini(commands.Cog):
             
             # Fetch all the rows from the result set
             rows = cursor.fetchall()
-            await ctx.send(rows)
             # Paginate the results (display the first 10)
             chunk_size = 10
             paginated_rows = [rows[i:i + chunk_size] for i in range(0, len(rows), chunk_size)]
