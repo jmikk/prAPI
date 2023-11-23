@@ -7,6 +7,7 @@ import discord
 from datetime import datetime, timedelta
 import sqlite3
 import math
+import asyncio
 
 class cardMini(commands.Cog):
     def __init__(self, bot):
