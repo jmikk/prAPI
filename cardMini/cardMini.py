@@ -267,7 +267,7 @@ class cardMini(commands.Cog):
                 ORDER BY RANDOM()
                 LIMIT 1
             ''')
-    
+            await ctx.send("here")
             # Fetch the result
             result = cursor.fetchone()
     
@@ -279,12 +279,14 @@ class cardMini(commands.Cog):
                     count INTEGER
                 )
                         ''')
+                await ctx.send("here2")
 
                 # Execute the SQL query to check if the user and season combination already exists
                 query = f"SELECT * FROM {deck_table_name} WHERE userID = ? AND season = ?"
                 cursor.execute(query, (result[0], series))
                 result2 = cursor.fetchone()
-                
+                await ctx.send("here3")
+
                 if result2:
                     # If the user and season combination exists, update the count
                     new_count = result2[2] + 1
@@ -294,11 +296,13 @@ class cardMini(commands.Cog):
                 else:
                     # If the user and season combination doesn't exist, insert a new record
                     insert_query = f"INSERT INTO {deck_table_name} (userID, season, count) VALUES (?, ?, ?)"
-                    cursor.execute(insert_query, (result[0], series, 1))                    
+                    cursor.execute(insert_query, (result[0], series, 1))   
+                    await ctx.send("new card")
                 # Commit the changes
                 conn.commit()
                 card = await self.display_card(result[0],result[1],server_id)
                 owner_count = self.get_owned_count(result[0],result[1],server_id,ctx.author.id)
+                await ctx.send("here4")
 
                 #(ID, 'Season_1', 'Epic', 0.5, 10)
                 user = self.bot.get_user(card[0])
@@ -329,6 +333,8 @@ class cardMini(commands.Cog):
                
 
                 # Add fields to the embed
+                await ctx.send("here5")
+
                 embed.add_field(name="Name", value=user.mention, inline=True)
                 embed.add_field(name="Season", value=card[1], inline=True)
                 embed.add_field(name="Rarity", value=card[2], inline=True)
@@ -344,7 +350,7 @@ class cardMini(commands.Cog):
 
                 await ctx.send(embed=embed)
             
-    
+                
             else:
                 await ctx.send(f"No data found for '{series}'")
     
