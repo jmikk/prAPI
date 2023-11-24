@@ -295,15 +295,11 @@ class cardMini(commands.Cog):
                     cursor.execute(insert_query, (result[0], series, 1))   
                 # Commit the changes
                 conn.commit()
-                await ctx.send(result)
                 card = await self.display_card(result[0],result[2],server_id)
                 owner_count = self.get_owned_count(result[0],result[2],server_id,ctx.author.id)
-                await ctx.send("here4")
 
                 #(ID, 'Season_1', 'Epic', 0.5, 10)
                 user = self.bot.get_user(card[0])
-                await ctx.send(card)
-                await ctx.send("here")
 
                 card_rarity = card[2]
                 embed = discord.Embed(title=user.name)
@@ -331,7 +327,6 @@ class cardMini(commands.Cog):
                
 
                 # Add fields to the embed
-                await ctx.send("here5")
 
                 embed.add_field(name="Name", value=user.mention, inline=True)
                 embed.add_field(name="Season", value=card[2], inline=True)
