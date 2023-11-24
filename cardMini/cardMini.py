@@ -267,7 +267,6 @@ class cardMini(commands.Cog):
                 ORDER BY RANDOM()
                 LIMIT 1
             ''')
-            await ctx.send("here")
             # Fetch the result
             result = cursor.fetchone()
     
@@ -279,25 +278,21 @@ class cardMini(commands.Cog):
                     count INTEGER
                 )
                         ''')
-                await ctx.send("here2")
 
                 # Execute the SQL query to check if the user and season combination already exists
                 query = f"SELECT * FROM {deck_table_name} WHERE userID = ? AND season = ?"
                 cursor.execute(query, (result[0], series))
                 result2 = cursor.fetchone()
-                await ctx.send("here3")
 
                 if result2:
                     # If the user and season combination exists, update the count
                     new_count = result2[2] + 1
                     update_query = f"UPDATE {deck_table_name} SET count = ? WHERE userID = ? AND season = ?"
                     cursor.execute(update_query, (new_count, result[0], series))
-                    await ctx.send("old card")
                 else:
                     # If the user and season combination doesn't exist, insert a new record
                     insert_query = f"INSERT INTO {deck_table_name} (userID, season, count) VALUES (?, ?, ?)"
                     cursor.execute(insert_query, (result[0], series, 1))   
-                    await ctx.send("new card")
                 # Commit the changes
                 conn.commit()
                 card = await self.display_card(result[0],result[1],server_id)
@@ -307,6 +302,8 @@ class cardMini(commands.Cog):
                 #(ID, 'Season_1', 'Epic', 0.5, 10)
                 user = self.bot.get_user(card[0])
                 await ctx.send(card)
+                await ctx.send("here")
+
                 card_rarity = card[2]
                 embed = discord.Embed(title=user.name)
                 if card_rarity == "Mythic":
