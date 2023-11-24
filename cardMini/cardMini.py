@@ -296,8 +296,8 @@ class cardMini(commands.Cog):
                 # Commit the changes
                 conn.commit()
                 await ctx.send(result)
-                card = await self.display_card(result[0],result[1],server_id)
-                owner_count = self.get_owned_count(result[0],result[1],server_id,ctx.author.id)
+                card = await self.display_card(result[0],result[2],server_id)
+                owner_count = self.get_owned_count(result[0],result[2],server_id,ctx.author.id)
                 await ctx.send("here4")
 
                 #(ID, 'Season_1', 'Epic', 0.5, 10)
