@@ -120,8 +120,25 @@ class cardMini(commands.Cog):
     @commands.command(name='buy_card')
     async def buy_card(self,ctx,name):
         server_id = str(ctx.guild.id)
-        await ctx.send("Here")
-        await ctx.send(self.get_bank(server_id,str(ctx.author.id)))
+        bank = self.get_bank(server_id,str(ctx.author.id))
+    
+    @commands.command(name='set_bank')
+    async def set_bank(self,ctx,bank, acct: commands.MemberConverter):
+        server_id = str(ctx.guild.id)
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+
+        try: 
+            # Connect to the SQLite database for the server
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+           
+            # Update the bank value for the given user
+            cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (bank, acct.id))
+            conn.commit()
+
+        
+
+
     
     
     @commands.command(name='all_deck')
