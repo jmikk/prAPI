@@ -295,6 +295,7 @@ class cardMini(commands.Cog):
                     cursor.execute(insert_query, (result[0], series, 1))   
                 # Commit the changes
                 conn.commit()
+                await ctx.send(result)
                 card = await self.display_card(result[0],result[1],server_id)
                 owner_count = self.get_owned_count(result[0],result[1],server_id,ctx.author.id)
                 await ctx.send("here4")
