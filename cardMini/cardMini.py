@@ -121,7 +121,7 @@ class cardMini(commands.Cog):
         bank = self.get_bank(server_id,str(ctx.author.id))
 
     @commands.command(name='chk_bank')
-    async def chk_bank(self,ctx,bank, acct: commands.MemberConverter):
+    async def chk_bank(self,ctx):
         server_id = str(ctx.guild.id)
 
         await ctx.send(self.get_bank(server_id,ctx.author.id))
