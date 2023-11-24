@@ -124,7 +124,7 @@ class cardMini(commands.Cog):
     async def chk_bank(self,ctx):
         server_id = str(ctx.guild.id)
 
-        await ctx.send(self.get_bank(server_id,ctx.author.id))
+        await ctx.send(f"You have: {self.get_bank(server_id,ctx.author.id))} bank.")
 
         
     @commands.command(name='set_bank')
