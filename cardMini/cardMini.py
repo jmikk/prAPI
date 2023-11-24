@@ -134,7 +134,7 @@ class cardMini(commands.Cog):
            
             # Update the bank value for the given user
             cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (bank, acct.id))
-            await ctx.send(f"new bank total is {bank}"
+            await ctx.send(f"new bank total is {bank}")
             conn.commit()
         except sqlite3.OperationalError as e:
             await ctx.send(f"SQLite error: {e}")
