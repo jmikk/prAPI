@@ -63,7 +63,7 @@ class cardMini(commands.Cog):
             # Fetch all the table names from the result set
             result = cursor.fetchone()
         except sqlite3.OperationalError as e:
-            result= f"SQLite error: {e}"
+            result= f"SQLite error: in display card {e}"
         finally:
             # Close the cursor and connection
             cursor.close()
