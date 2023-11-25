@@ -198,6 +198,7 @@ class cardMini(commands.Cog):
                     cursor.execute(f'SELECT * FROM {row[1]} WHERE userID = ?',(row[0],))                    
                     # Fetch all the rows from the result set
                     rowz = cursor.fetchall()
+                    
                     sell_price = round(rowz[0][3]*self.sell_mod,2)
                     buy_price = round(rowz[0][3]*self.buy_mod,2)
                     
