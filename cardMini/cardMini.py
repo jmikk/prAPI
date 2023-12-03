@@ -251,10 +251,8 @@ class cardMini(commands.Cog):
                     # Fetch all the rows from the result set
                     rowz = cursor.fetchall()
 
-                    sell_price=1
-                    buy_price=1
-                    #sell_price = round(float(rowz[0][3])*self.sell_mod,2)
-                    #buy_price = round(float(rowz[0][3])*self.buy_mod,2)
+                    sell_price = round(float(rowz[0][4])*self.sell_mod,2)
+                    buy_price = round(float(rowz[0][4])*self.buy_mod,2)
                     
                     embed.add_field(name=f"Card name: {name} {row[1]}", value=f"You own: {row[2]} ID: {row[0]} Rarity: {rowz[0][3]}\nMV: {rowz[0][4]} Buy price: {buy_price} Sell price: {sell_price}", inline=False)
                 return embed
