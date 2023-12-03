@@ -116,26 +116,68 @@ class cardMini(commands.Cog):
             conn.close()    
 
     @commands.command(name='buy_card')
-    async def buy_card(self,ctx,name,series):
+    async def buy_card(self, ctx, name, series):
         server_id = str(ctx.guild.id)
         series = "Season_" + series
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+    
+        try:
+            # Execute a SELECT query to find the row with the specified name in the given series
+            cursor.execute(f'''
+                SELECT MV FROM {series} WHERE name = ?
+            ''', (name,))
+    
+            # Fetch the result
+            result = cursor.fetchone()
+    
+            if result:
+                # Check if the user has enough money in the bank to buy the card
+                user_bank = self.get_bank(server_id, str(ctx.author.id))
+                if user_bank >= result[0]:
+                    # Subtract the card's MV from the user's bank
+                    new_bank_total = user_bank - result[0]
+                    cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, ctx.author.id))
+                    conn.commit()
+    
+                    # Add the purchased card to the user's deck
+                    table_name = "deck_" + str(ctx.author.id)
+                    cursor.execute(f'''
+                        CREATE TABLE IF NOT EXISTS {table_name} (
+                            userID INTEGER PRIMARY KEY,
+                            season TEXT,
+                            count INTEGER
+                        )
+                    ''')
+    
+                    # Execute the SQL query to check if the user and season combination already exists
+                    query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
+                    cursor.execute(query, (result[0], series))
+                    result2 = cursor.fetchone()
+    
+                    if result2:
+                        # If the user and season combination exists, update the count
+                        new_count = result2[2] + 1
+                        update_query = f"UPDATE {table_name} SET count = ? WHERE userID = ? AND season = ?"
+                        cursor.execute(update_query, (new_count, result[0], series))
+                    else:
+                        # If the user and season combination doesn't exist, insert a new record
+                        insert_query = f"INSERT INTO {table_name} (userID, season, count) VALUES (?, ?, ?)"
+                        cursor.execute(insert_query, (result[0], series, 1))
+                    conn.commit()
+    
+                    await ctx.send(f"You have successfully bought the card '{name}' from '{series}'.")
+                else:
+                    await ctx.send(f"You don't have enough money in your bank to buy the card '{name}'.")
+            else:
+                await ctx.send(f"No data found for the card '{name}' in the series '{series}'.")
+        except sqlite3.OperationalError as e:
+            await ctx.send(f"SQLite error: {e}")
+        finally:
+            # Close the connection
+            conn.close()
 
-        # Execute a SELECT query to find the row with the specified name in the given series
-        cursor.execute(f'''
-            SELECT MV FROM {series} WHERE name = ?
-        ''', (name,))
-
-        # Fetch the result
-        result = cursor.fetchone()
-
-        conn.close()
-        
-        
-        bank = self.get_bank(server_id,str(ctx.author.id))
-        await ctx.send(f"You have {bank} and the card has a MV of {result[0]}")
 
     @commands.command(name='chk_bank')
     async def chk_bank(self,ctx):
