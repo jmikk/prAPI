@@ -131,19 +131,19 @@ class cardMini(commands.Cog):
             ''', (name,))
              
             # Fetch the result
-            result = cursor.fetchone()
+            MV = cursor.fetchone()
             
             cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
             userID = cursor.fetchone()
 
    
     
-            if result:
+            if MV:
                 # Check if the user has enough money in the bank to buy the card
                 user_bank = self.get_bank(server_id, str(ctx.author.id))
-                if user_bank >= result[0]:
+                if user_bank >= MV[0]:
                     # Subtract the card's MV from the user's bank
-                    new_bank_total = user_bank - result[0]
+                    new_bank_total = user_bank - MV[0]
                     cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, ctx.author.id))
                     conn.commit()
     
@@ -165,7 +165,7 @@ class cardMini(commands.Cog):
                         # If the user and season combination exists, update the count
                         new_count = result2[2] + 1
                         update_query = f"UPDATE {table_name} SET count = ? WHERE userID = ? AND season = ?"
-                        cursor.execute(update_query, (int(new_count), userID[0], series))
+                        cursor.execute(update_query, (new_count, userID[0], series))
                     else:
                         # If the user and season combination doesn't exist, insert a new record
                         insert_query = f"INSERT INTO {table_name} (userID, season, count) VALUES (?, ?, ?)"
