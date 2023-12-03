@@ -127,7 +127,7 @@ class cardMini(commands.Cog):
         try:
             # Execute a SELECT query to find the row with the specified name in the given series
             cursor.execute(f'''
-                SELECT MV FROM {series} WHERE name = ?
+                SELECT MV,stock FROM {series} WHERE name = ?
             ''', (name,))
              
             # Fetch the result
@@ -136,7 +136,10 @@ class cardMini(commands.Cog):
             cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
             userID = cursor.fetchone()
 
-   
+           if stock <= 0:
+               await ctx.send("I don't have a copy of that card but sometimes when you try and open a pack I get a card!")
+               return
+               
     
             if MV:
                 # Check if the user has enough money in the bank to buy the card
