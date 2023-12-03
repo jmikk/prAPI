@@ -185,6 +185,12 @@ class cardMini(commands.Cog):
                     try:
                         cursor.execute(update_query, ((float(MV[0]) * float(self.sell_mod))+.01, userID[0]))
                         conn.commit()
+
+
+                                            # Update the stock count in the database
+                        update_stock_query = f"UPDATE {series} SET stock = ? WHERE name = ?"
+                        cursor.execute(update_stock_query, (MV[1] - 1, name))
+                        conn.commit()
                     except sqlite3.Error as e:
                         await ctx.send(f"SQLite error: {e}")
 
@@ -192,10 +198,7 @@ class cardMini(commands.Cog):
                         conn.close()
 
 
-                    # Update the stock count in the database
-                    update_stock_query = f"UPDATE {series} SET stock = ? WHERE name = ?"
-                    cursor.execute(update_stock_query, (MV[1] - 1, name))
-                    conn.commit()
+
 
     
                     await ctx.send(f"You have successfully bought the card '{name}' from '{series}'.")
