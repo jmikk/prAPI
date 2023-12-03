@@ -156,7 +156,8 @@ class cardMini(commands.Cog):
                     query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
                     cursor.execute(query, (result[0], series))
                     result2 = cursor.fetchone()
-    
+
+                    await ctx.send(f"result[0]: {result[0]}, series: {series}")
                     insert_query = f"INSERT OR REPLACE INTO {table_name} (userID, season, count) VALUES (?, ?, COALESCE((SELECT count FROM {table_name} WHERE userID = ? AND season = ?) + 1, 1))"
                     cursor.execute(insert_query, (result[0], series, result[0], series))
 
