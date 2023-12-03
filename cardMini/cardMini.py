@@ -153,7 +153,7 @@ class cardMini(commands.Cog):
                     ''')
     
                     cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {deck_table_name} (
+                CREATE TABLE IF NOT EXISTS {table_name} (
                     userID INTEGER PRIMARY KEY,
                     season TEXT,
                     count INTEGER
@@ -161,18 +161,18 @@ class cardMini(commands.Cog):
                         ''')
 
                     # Execute the SQL query to check if the user and season combination already exists
-                    query = f"SELECT * FROM {deck_table_name} WHERE userID = ? AND season = ?"
+                    query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
                     cursor.execute(query, (result[0], series))
                     result2 = cursor.fetchone()
     
                     if result2:
                         # If the user and season combination exists, update the count
                         new_count = result2[2] + 1
-                        update_query = f"UPDATE {deck_table_name} SET count = ? WHERE userID = ? AND season = ?"
+                        update_query = f"UPDATE {table_name} SET count = ? WHERE userID = ? AND season = ?"
                         cursor.execute(update_query, (new_count, result[0], series))
                     else:
                         # If the user and season combination doesn't exist, insert a new record
-                        insert_query = f"INSERT INTO {deck_table_name} (userID, season, count) VALUES (?, ?, ?)"
+                        insert_query = f"INSERT INTO {table_name} (userID, season, count) VALUES (?, ?, ?)"
                         cursor.execute(insert_query, (result[0], series, 1))   
                     # Commit the changes
                     conn.commit()
