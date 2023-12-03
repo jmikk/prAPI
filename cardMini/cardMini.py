@@ -256,7 +256,7 @@ class cardMini(commands.Cog):
                     #sell_price = round(float(rowz[0][3])*self.sell_mod,2)
                     #buy_price = round(float(rowz[0][3])*self.buy_mod,2)
                     
-                    embed.add_field(name=f"Card name: {name} {row[1]}", value=f"You own: {row[2]} ID: {row[0]} Rarity: {rowz[0][2]}\nMV: {rowz[0][3]} Buy price: {buy_price} Sell price: {sell_price}", inline=False)
+                    embed.add_field(name=f"Card name: {name} {row[1]}", value=f"You own: {row[2]} ID: {row[0]} Rarity: {rowz[0][3]}\nMV: {rowz[0][4]} Buy price: {buy_price} Sell price: {sell_price}", inline=False)
                 return embed
 
             # Send the initial page
