@@ -157,7 +157,7 @@ class cardMini(commands.Cog):
                     cursor.execute(query, (result[0], series))
                     result2 = cursor.fetchone()
 
-                    insert_query = f"INSERT OR IGNORE INTO {table_name} (userID, season, count) VALUES (?, ?, 0)"
+                    insert_query = f"INSERT OR IGNORE INTO {table_name} (userID, season, count) VALUES (?, ?, 1)"
                     update_query = f"UPDATE {table_name} SET count = count + 1 WHERE userID = ? AND season = ?"
                     
                     # Try to insert a new record, and if it already exists, update the count
