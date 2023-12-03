@@ -176,7 +176,7 @@ class cardMini(commands.Cog):
                     
 
                     # Update the MV in the database
-                    update_query = f"UPDATE {series} SET MV = ? WHERE card_id = ?"
+                    update_query = f"UPDATE {series} SET MV = ? WHERE userID = ?"
                     
                     # Use a try-except block for error handling
                     try:
