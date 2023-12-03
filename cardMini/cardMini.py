@@ -161,8 +161,8 @@ class cardMini(commands.Cog):
                     update_query = f"UPDATE {table_name} SET count = count + 1 WHERE userID = ? AND season = ?"
                     
                     # Try to insert a new record, and if it already exists, update the count
-                    cursor.execute(insert_query, (result[0], series))
-                    cursor.execute(update_query, (result[0], series))        
+                    cursor.execute(insert_query, (int(result[0]), series))
+                    cursor.execute(update_query, (int(result[0]), series))        
 
 
     
