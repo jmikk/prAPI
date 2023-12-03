@@ -127,75 +127,73 @@ class cardMini(commands.Cog):
         try:
             # Execute a SELECT query to find the row with the specified name in the given series
             cursor.execute(f'''
-                SELECT MV, stock FROM {series} WHERE name = ?
+                SELECT MV FROM {series} WHERE name = ?
             ''', (name,))
-    
+             
             # Fetch the result
-            card_info = cursor.fetchone()
+            MV = cursor.fetchone()
+            
+            cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
+            userID = cursor.fetchone()
+
+   
     
-            if card_info:
-                MV, stock = card_info
+            if MV:
+                # Check if the user has enough money in the bank to buy the card
+                user_bank = self.get_bank(server_id, str(ctx.author.id))
+                if user_bank >= MV[0]:
+                    # Subtract the card's MV from the user's bank
+                    new_bank_total = user_bank - MV[0]
+                    cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, ctx.author.id))
+                    conn.commit()
     
-                # Check if the card is in stock
-                if stock > 0:
-                    # Check if the user has enough money in the bank to buy the card
-                    user_bank = self.get_bank(server_id, str(ctx.author.id))
-                    if user_bank >= MV:
-                        # Subtract the card's MV from the user's bank
-                        new_bank_total = user_bank - MV
-                        cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, ctx.author.id))
-                        conn.commit()
-    
-                        # Update the stock count in the database
-                        update_stock_query = f"UPDATE {series} SET stock = ? WHERE name = ?"
-                        cursor.execute(update_stock_query, (stock - 1, name))
-                        conn.commit()
-    
-                        # Add the purchased card to the user's deck
-                        table_name = "deck_" + str(ctx.author.id)
-                        cursor.execute(f'''
-                            CREATE TABLE IF NOT EXISTS {table_name} (
-                                userID INTEGER PRIMARY KEY,
-                                season TEXT,
-                                count INTEGER
-                            )
-                        ''')
-                        
-                        # Execute the SQL query to check if the user and season combination already exists
-                        query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
-                        cursor.execute(query, (userID[0], series))
-                        result2 = cursor.fetchone()
-    
-                        if result2:
-                            # If the user and season combination exists, update the count
-                            new_count = result2[2] + 1
-                            update_query = f"UPDATE {table_name} SET count = ? WHERE userID = ? AND season = ?"
-                            cursor.execute(update_query, (new_count, userID[0], series))
-                        else:
-                            # If the user and season combination doesn't exist, insert a new record
-                            insert_query = f"INSERT INTO {table_name} (userID, season, count) VALUES (?, ?, ?)"
-                            cursor.execute(insert_query, (userID[0], series, 1))
-    
-                        # Commit the changes
-                        conn.commit()
-    
-                        # Update the MV in the database
-                        update_query = f"UPDATE {series} SET MV = ? WHERE userID = ?"
-    
-                        # Use a try-except block for error handling
-                        try:
-                            cursor.execute(update_query, ((float(MV) * float(self.sell_mod)) + 0.01, userID[0]))
-                            conn.commit()
-                        except sqlite3.Error as e:
-                            await ctx.send(f"SQLite error: {e}")
-                        finally:
-                            conn.close()
-    
-                        await ctx.send(f"You have successfully bought the card '{name}' from '{series}'.")
+                    # Add the purchased card to the user's deck
+                    table_name = "deck_" + str(ctx.author.id)
+                    cursor.execute(f'''
+                        CREATE TABLE IF NOT EXISTS {table_name} (
+                            userID INTEGER PRIMARY KEY,
+                            season TEXT,
+                            count INTEGER
+                        )
+                    ''')
+                    # Execute the SQL query to check if the user and season combination already exists
+                    query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
+                    cursor.execute(query, (userID[0], series))
+                    result2 = cursor.fetchone()
+
+                    if result2:
+                        # If the user and season combination exists, update the count
+                        new_count = result2[2] + 1
+                        update_query = f"UPDATE {table_name} SET count = ? WHERE userID = ? AND season = ?"
+                        cursor.execute(update_query, (new_count, userID[0], series))
                     else:
-                        await ctx.send(f"You don't have enough money in your bank to buy the card '{name}'.")
+                        # If the user and season combination doesn't exist, insert a new record
+                        insert_query = f"INSERT INTO {table_name} (userID, season, count) VALUES (?, ?, ?)"
+                        cursor.execute(insert_query, (userID[0], series, 1))   
+                    # Commit the changes
+                    conn.commit()
+
+                    
+
+                    # Update the MV in the database
+                    update_query = f"UPDATE {series} SET MV = ? WHERE userID = ?"
+                    
+                    # Use a try-except block for error handling
+                    try:
+                        cursor.execute(update_query, ((float(MV[0]) * float(self.sell_mod))+.01, userID[0]))
+                        conn.commit()
+                    except sqlite3.Error as e:
+                        await ctx.send(f"SQLite error: {e}")
+
+                    finally:
+                        conn.close()
+
+
+
+    
+                    await ctx.send(f"You have successfully bought the card '{name}' from '{series}'.")
                 else:
-                    await ctx.send(f"The card '{name}' in the series '{series}' is out of stock.")
+                    await ctx.send(f"You don't have enough money in your bank to buy the card '{name}'.")
             else:
                 await ctx.send(f"No data found for the card '{name}' in the series '{series}'.")
         except sqlite3.OperationalError as e:
@@ -203,7 +201,6 @@ class cardMini(commands.Cog):
         finally:
             # Close the connection
             conn.close()
-
 
 
     @commands.command(name='chk_bank')
