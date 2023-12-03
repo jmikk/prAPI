@@ -130,7 +130,7 @@ class cardMini(commands.Cog):
                 SELECT MV FROM {series} WHERE name = ?
             ''', (name,))
             
-            cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (card_name,))
+            cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
             userID = cursor.fetchone()
 
     
