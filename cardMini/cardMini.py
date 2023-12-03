@@ -155,20 +155,11 @@ class cardMini(commands.Cog):
                             count INTEGER
                         )
                     ''')
-    
-                    cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {table_name} (
-                    userID INTEGER PRIMARY KEY,
-                    season TEXT,
-                    count INTEGER
-                )
-                        ''')
-
                     # Execute the SQL query to check if the user and season combination already exists
                     query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
-                    cursor.execute(query, (result[0], series))
+                    cursor.execute(query, (userID[0], series))
                     result2 = cursor.fetchone()
-                    await ctx.send(result)
+                    await ctx.send(result2)
                     if result2:
                         # If the user and season combination exists, update the count
                         new_count = result2[2] + 1
