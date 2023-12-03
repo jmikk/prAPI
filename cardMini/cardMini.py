@@ -9,6 +9,7 @@ import sqlite3
 import math
 import asyncio
 
+
 class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
