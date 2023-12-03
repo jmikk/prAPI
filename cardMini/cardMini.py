@@ -135,7 +135,7 @@ class cardMini(commands.Cog):
         
         
         bank = self.get_bank(server_id,str(ctx.author.id))
-        await ctx.send(f"You have {bank} and the card has a MV of {result[0]}"
+        await ctx.send(f"You have {bank} and the card has a MV of {result[0]}")
 
     @commands.command(name='chk_bank')
     async def chk_bank(self,ctx):
