@@ -194,7 +194,7 @@ class cardMini(commands.Cog):
 
                     # Update the stock count in the database
                     update_stock_query = f"UPDATE {series} SET stock = ? WHERE name = ?"
-                    cursor.execute(update_stock_query, (stock - 1, name))
+                    cursor.execute(update_stock_query, (MV[1] - 1, name))
                     conn.commit()
 
     
