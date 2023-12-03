@@ -116,7 +116,7 @@ class cardMini(commands.Cog):
             conn.close()    
 
     @commands.command(name='buy_card')
-    async def buy_card(self,ctx,name):
+    async def buy_card(self,ctx,name,series):
         server_id = str(ctx.guild.id)
         series = "Season_" + series
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
@@ -162,11 +162,6 @@ class cardMini(commands.Cog):
         finally:
         # Close the connection
             conn.close()
-        
-
-        
-
-
     
     
     @commands.command(name='all_deck')
