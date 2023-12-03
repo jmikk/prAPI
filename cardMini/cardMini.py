@@ -118,12 +118,28 @@ class cardMini(commands.Cog):
     @commands.command(name='buy_card')
     async def buy_card(self,ctx,name):
         server_id = str(ctx.guild.id)
+        series = "Season_" + series
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Execute a SELECT query to find the row with the specified name in the given series
+        cursor.execute(f'''
+            SELECT MV FROM {series} WHERE name = ?
+        ''', (name,))
+
+        # Fetch the result
+        result = cursor.fetchone()
+
+        conn.close()
+        
+        
         bank = self.get_bank(server_id,str(ctx.author.id))
+        await ctx.send(f"You have {bank} and the card has a MV of {result[0]}"
 
     @commands.command(name='chk_bank')
     async def chk_bank(self,ctx):
         server_id = str(ctx.guild.id)
-
         await ctx.send(f"You have: {self.get_bank(server_id,ctx.author.id)} bank.")
 
         
