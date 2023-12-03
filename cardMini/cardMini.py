@@ -135,7 +135,6 @@ class cardMini(commands.Cog):
             
             cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
             userID = cursor.fetchone()
-            await ctx.send(MV[1])
             if MV[1] <= 0:
                 await ctx.send("I don't have a copy of that card but sometimes when you try and open a pack I get a card!")
                 return
@@ -201,7 +200,7 @@ class cardMini(commands.Cog):
 
 
     
-                    await ctx.send(f"You have successfully bought the card '{name}' from '{series}'.")
+                    await ctx.send(f"You have successfully bought the card '{name}' from '{series}'. I have {MV[1]-1} copies left!")
                 else:
                     await ctx.send(f"You don't have enough money in your bank to buy the card '{name}'.")
             else:
