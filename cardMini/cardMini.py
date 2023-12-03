@@ -164,7 +164,7 @@ class cardMini(commands.Cog):
                     query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
                     cursor.execute(query, (result[0], series))
                     result2 = cursor.fetchone()
-                    await ctx.send(result2)
+                    await ctx.send(result)
                     if result2:
                         # If the user and season combination exists, update the count
                         new_count = result2[2] + 1
