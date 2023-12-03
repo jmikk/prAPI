@@ -152,19 +152,30 @@ class cardMini(commands.Cog):
                         )
                     ''')
     
-                    # Check if the user and season combination already exists
-                    query = f"SELECT count FROM {table_name} WHERE userID = ? AND season = ?"
-                    cursor.execute(query, (ctx.author.id, series))
-                    result_count = cursor.fetchone()
+                    cursor.execute(f'''
+                CREATE TABLE IF NOT EXISTS {deck_table_name} (
+                    userID INTEGER PRIMARY KEY,
+                    season TEXT,
+                    count INTEGER
+                )
+                        ''')
+
+                    # Execute the SQL query to check if the user and season combination already exists
+                    query = f"SELECT * FROM {deck_table_name} WHERE userID = ? AND season = ?"
+                    cursor.execute(query, (result[0], series))
+                    result2 = cursor.fetchone()
     
-                    if result_count is not None:
-                        # If the record exists, update the count
-                        update_query = f"UPDATE {table_name} SET count = count + 1 WHERE userID = ? AND season = ?"
-                        cursor.execute(update_query, (ctx.author.id, series))
+                    if result2:
+                        # If the user and season combination exists, update the count
+                        new_count = result2[2] + 1
+                        update_query = f"UPDATE {deck_table_name} SET count = ? WHERE userID = ? AND season = ?"
+                        cursor.execute(update_query, (new_count, result[0], series))
                     else:
-                        # If the record doesn't exist, insert a new record
-                        insert_query = f"INSERT INTO {table_name} (userID, season, count) VALUES (?, ?, 1)"
-                        cursor.execute(insert_query, (ctx.author.id, series))
+                        # If the user and season combination doesn't exist, insert a new record
+                        insert_query = f"INSERT INTO {deck_table_name} (userID, season, count) VALUES (?, ?, ?)"
+                        cursor.execute(insert_query, (result[0], series, 1))   
+                    # Commit the changes
+                    conn.commit()
 
 
 
