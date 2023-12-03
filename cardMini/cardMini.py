@@ -157,9 +157,13 @@ class cardMini(commands.Cog):
                     cursor.execute(query, (result[0], series))
                     result2 = cursor.fetchone()
 
-                    await ctx.send(f"result[0]: {type(result[0])}, series: {type(series)}")
-                    insert_query = f"INSERT OR REPLACE INTO {table_name} (userID, season, count) VALUES (?, ?, COALESCE((SELECT count FROM {table_name} WHERE userID = ? AND season = ?) + 1, 1))"
-                    cursor.execute(insert_query, (result[0], series, result[0], series))
+                    insert_query = f"INSERT OR IGNORE INTO {table_name} (userID, season, count) VALUES (?, ?, 0)"
+                    update_query = f"UPDATE {table_name} SET count = count + 1 WHERE userID = ? AND season = ?"
+                    
+                    # Try to insert a new record, and if it already exists, update the count
+                    cursor.execute(insert_query, (result[0], series))
+                    cursor.execute(update_query, (result[0], series))        
+
 
     
                     await ctx.send(f"You have successfully bought the card '{name}' from '{series}'.")
