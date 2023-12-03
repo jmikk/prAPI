@@ -152,17 +152,20 @@ class cardMini(commands.Cog):
                         )
                     ''')
     
-                    # Execute the SQL query to check if the user and season combination already exists
-                    query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
-                    cursor.execute(query, (result[0], series))
-                    result2 = cursor.fetchone()
+                    # Check if the user and season combination already exists
+                    query = f"SELECT count FROM {table_name} WHERE userID = ? AND season = ?"
+                    cursor.execute(query, (ctx.author.id, series))
+                    result_count = cursor.fetchone()
+    
+                    if result_count is not None:
+                        # If the record exists, update the count
+                        update_query = f"UPDATE {table_name} SET count = count + 1 WHERE userID = ? AND season = ?"
+                        cursor.execute(update_query, (ctx.author.id, series))
+                    else:
+                        # If the record doesn't exist, insert a new record
+                        insert_query = f"INSERT INTO {table_name} (userID, season, count) VALUES (?, ?, 1)"
+                        cursor.execute(insert_query, (ctx.author.id, series))
 
-                    insert_query = f"INSERT OR IGNORE INTO {table_name} (userID, season, count) VALUES (?, ?, 1)"
-                    update_query = f"UPDATE {table_name} SET count = count + 1 WHERE userID = ? AND season = ?"
-                    
-                    # Try to insert a new record, and if it already exists, update the count
-                    cursor.execute(insert_query, (int(result[0]), series))
-                    cursor.execute(update_query, (int(result[0]), series))        
 
 
     
