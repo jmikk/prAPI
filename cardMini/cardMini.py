@@ -129,13 +129,14 @@ class cardMini(commands.Cog):
             cursor.execute(f'''
                 SELECT MV FROM {series} WHERE name = ?
             ''', (name,))
+             
+            # Fetch the result
+            result = cursor.fetchone()
             
             cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
             userID = cursor.fetchone()
 
-    
-            # Fetch the result
-            result = cursor.fetchone()
+   
     
             if result:
                 # Check if the user has enough money in the bank to buy the card
