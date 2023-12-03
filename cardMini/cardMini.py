@@ -160,8 +160,7 @@ class cardMini(commands.Cog):
                     query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
                     cursor.execute(query, (userID[0], series))
                     result2 = cursor.fetchone()
-                    await ctx.send(MV)
-                    await ctx.send(userID)
+
                     if result2:
                         # If the user and season combination exists, update the count
                         new_count = result2[2] + 1
@@ -173,6 +172,21 @@ class cardMini(commands.Cog):
                         cursor.execute(insert_query, (userID[0], series, 1))   
                     # Commit the changes
                     conn.commit()
+
+                    
+
+                    # Update the MV in the database
+                    update_query = f"UPDATE {series} SET MV = ? WHERE card_id = ?"
+                    
+                    # Use a try-except block for error handling
+                    try:
+                        cursor.execute(update_query, ((MV*sell_mod)+.01, card_id))
+                        conn.commit()
+                    except sqlite3.Error as e:
+                        await ctx.send(f"SQLite error: {e}")
+
+                    finally:
+                        conn.close()
 
 
 
