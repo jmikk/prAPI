@@ -180,7 +180,7 @@ class cardMini(commands.Cog):
                     
                     # Use a try-except block for error handling
                     try:
-                        cursor.execute(update_query, ((MV*sell_mod)+.01, card_id))
+                        cursor.execute(update_query, ((MV*self.sell_mod)+.01, card_id))
                         conn.commit()
                     except sqlite3.Error as e:
                         await ctx.send(f"SQLite error: {e}")
