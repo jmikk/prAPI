@@ -192,6 +192,10 @@ class cardMini(commands.Cog):
                         conn.close()
 
 
+                    # Update the stock count in the database
+                    update_stock_query = f"UPDATE {series} SET stock = ? WHERE name = ?"
+                    cursor.execute(update_stock_query, (stock - 1, name))
+                    conn.commit()
 
     
                     await ctx.send(f"You have successfully bought the card '{name}' from '{series}'.")
