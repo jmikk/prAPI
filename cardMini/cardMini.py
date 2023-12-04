@@ -51,7 +51,7 @@ class cardMini(commands.Cog):
                 stuff=file.readlines()
                 bad_stuff = random.choices(stuff)
             # Send the random line to the user
-            await ctx.send(f"Uh oh! {bad_stuff}")
+            await ctx.send(f"Uh oh! {bad_stuff[0]}")
     
     @commands.command(name='set_sell_mod')
     async def set_sell_mod(self,mod:float):
