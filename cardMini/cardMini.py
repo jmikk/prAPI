@@ -63,10 +63,11 @@ class cardMini(commands.Cog):
             userID = cursor.fetchone()
         except sqlite3.OperationalError as e:
             if "no such table" in str(e):
-                return "No table found"
-                
+                await ctx.send(f"No season found with name {season}")
+                return
             else:
-                return f"SQLite error: {e}"
+                await ctx.send(f"SQLite error: {e}")
+                return
 
         if not userID:
             await ctx.send(f"No card found with the name '{name}' in season '{season}'")
