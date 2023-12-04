@@ -50,6 +50,59 @@ class cardMini(commands.Cog):
             conn.close()
         return output
 
+    async def view_card(self,ctx,name,season):
+        season = "Season_" + series
+        server_id = str(ctx.guild.id)
+
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
+        userID = cursor.fetchone()
+        
+
+        card = await self.display_card(userID[0],season,server_id)
+        owner_count = self.get_owned_count(result[0],result[2],server_id,ctx.author.id)
+
+        #(ID, 'Season_1', 'Epic', 0.5, 10)
+        user = self.bot.get_user(card[0])
+
+        card_rarity = card[3]
+        embed = discord.Embed(title=user.name)
+        if card_rarity == "Mythic":
+            embed.color = 0xC30F0D
+        elif card_rarity == "Legendary":
+            embed.color = 0xFFEA7A
+        elif card_rarity == "Epic":
+            embed.color = 0xE3B54F
+        elif card_rarity == "Ultra-Rare":
+            embed.color = 0xCA5BEF
+        elif card_rarity == "Rare":
+            embed.color = 0x008EC1
+        elif card_rarity == "Uncommon":
+            embed.color = 0x00AA4C
+        elif card_rarity == "Common":
+            embed.color = 0xABABAB
+        else:
+                    # Handle the case when card_rarity is not one of the specified values
+            embed.color = 0xFFFFFF  # Set a default color or handle it accordingly
+                # Add fields to the embed
+
+        embed.add_field(name="Name", value=user.mention, inline=True)
+        embed.add_field(name="Season", value=card[2], inline=True)
+        embed.add_field(name="Rarity", value=card[3], inline=True)
+        embed.add_field(name="MV", value=card[4], inline=True)
+        embed.add_field(name="Gob owns", value=card[5], inline=True)
+        embed.add_field(name="You own", value=owner_count[0], inline=True)
+        embed.add_field(name="Buy Price", value=round(float(card[4])*self.buy_mod,2), inline=True)
+        embed.add_field(name="Sell Price", value=round(float(card[4])*self.sell_mod+.01,2), inline=True)
+            
+        # Set the thumbnail to the user's avatar if available, otherwise use the default icon
+        avatar_url = user.avatar.url if user.avatar else user.default_avatar.url
+        embed.set_thumbnail(url=avatar_url)
+
+        await ctx.send(embed=embed)
         
     async def display_card(self,id,season,server_id):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
