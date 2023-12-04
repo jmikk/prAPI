@@ -58,9 +58,15 @@ class cardMini(commands.Cog):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-
-        cursor.execute(f"SELECT userID FROM {season} WHERE name = ?", (name,))
-        userID = cursor.fetchone()
+        try:
+            cursor.execute(f"SELECT userID FROM {season} WHERE name = ?", (name,))
+            userID = cursor.fetchone()
+        except sqlite3.OperationalError as e:
+            if "no such table" in str(e):
+                return "No table found"
+                
+            else:
+                return f"SQLite error: {e}"
 
         if not userID:
             await ctx.send(f"No card found with the name '{name}' in season '{season}'")
