@@ -23,22 +23,27 @@ class cardMini(commands.Cog):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        if random.random() < 1/3:
-            # Generate a random value between 0.01 and 0.10
-            reward_amount = round(random.uniform(0.01, 0.10), 2)
+        event_type = random.randint(1, 3)
     
+        if event_type == 1:
+            # Give the user a random amount of money between 0.01 and 0.10
+            amount = round(random.uniform(0.01, 0.10), 2)
             # Get the user's current bank balance
             user_bank = self.get_bank(server_id, str(ctx.author.id))
     
             # Update the bank balance with the reward
             new_bank_total = user_bank + reward_amount
             cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, ctx.author.id))
-            conn.commit()
-    
-            await ctx.send(f"You've been awarded {reward_amount} in your bank!")
-    
-        else:
-            await ctx.send("Sorry, you didn't win this time.")
+            conn.commit()           
+            await ctx.send(f"You received {amount} in your bank!")    
+        elif event_type == 3 or event_type == 2:
+            # Read a random line from the 'bad_stuff.txt' file
+            with open('bad_stuff.txt', 'r', encoding='utf-8') as file:
+                line_number = random.randint(1, sum(1 for _ in file))
+                bad_stuff = linecache.getline('bad_stuff.txt', line_number).strip()
+
+            # Send the random line to the user
+            await ctx.send(f"Uh oh! {bad_stuff}")
     
     @commands.command(name='set_sell_mod')
     async def set_sell_mod(self,mod:float):
