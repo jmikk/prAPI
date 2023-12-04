@@ -64,7 +64,7 @@ class cardMini(commands.Cog):
         
 
         card = await self.display_card(userID[0],season,server_id)
-        owner_count = self.get_owned_count(result[0],result[2],server_id,ctx.author.id)
+        owner_count = self.get_owned_count(userID[0],season,server_id,ctx.author.id)
 
         #(ID, 'Season_1', 'Epic', 0.5, 10)
         user = self.bot.get_user(card[0])
