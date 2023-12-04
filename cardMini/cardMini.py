@@ -114,7 +114,60 @@ class cardMini(commands.Cog):
                 return f"SQLite error: {e}"
         finally:
             # Close the connection
-            conn.close()    
+            conn.close()
+
+    @commands.command(name='sell_card')
+    async def sell_card(self, ctx, name, series):
+        server_id = str(ctx.guild.id)
+        series = "Season_" + series
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+    
+        try:
+            # Execute a SELECT query to find the row with the specified name in the given series
+            cursor.execute(f'''
+                SELECT MV FROM {series} WHERE name = ?
+            ''', (name,))
+    
+            # Fetch the result
+            MV = cursor.fetchone()
+    
+            cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
+            userID = cursor.fetchone()
+    
+            if MV:
+                # Check if the user has the card in their deck
+                table_name = "deck_" + str(ctx.author.id)
+                query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
+                cursor.execute(query, (userID[0], series))
+                result = cursor.fetchone()
+    
+                if result and result[2] > 0:
+                    # Add the card's MV to the user's bank with the buy_mod multiplier
+                    sell_price = max(float(MV[0]) * float(self.buy_mod), 0.01)
+                    new_bank_total = self.get_bank(server_id, str(ctx.author.id)) + sell_price
+                    cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, ctx.author.id))
+                    conn.commit()
+    
+                    # Update the deck by decreasing the count
+                    new_count = result[2] - 1
+                    update_query = f"UPDATE {table_name} SET count = ? WHERE userID = ? AND season = ?"
+                    cursor.execute(update_query, (new_count, userID[0], series))
+                    conn.commit()
+    
+                    await ctx.send(f"You have successfully sold the card '{name}' from '{series}' for {sell_price:.2f}.")
+                else:
+                    await ctx.send(f"You don't have the card '{name}' in your deck.")
+            else:
+                await ctx.send(f"No data found for the card '{name}' in the series '{series}'.")
+        except sqlite3.OperationalError as e:
+            await ctx.send(f"SQLite error: {e}")
+        finally:
+            # Close the connection
+            conn.close()
+
+
 
     @commands.command(name='buy_card')
     async def buy_card(self, ctx, name, series):
@@ -210,7 +263,7 @@ class cardMini(commands.Cog):
         finally:
             # Close the connection
             conn.close()
-
+            
 
     @commands.command(name='chk_bank')
     async def chk_bank(self,ctx):
