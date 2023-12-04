@@ -59,7 +59,7 @@ class cardMini(commands.Cog):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
+        cursor.execute(f"SELECT userID FROM {season} WHERE name = ?", (name,))
         userID = cursor.fetchone()
         
 
