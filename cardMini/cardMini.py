@@ -127,7 +127,7 @@ class cardMini(commands.Cog):
         try:
             # Execute a SELECT query to find the row with the specified name in the given series
             cursor.execute(f'''
-                SELECT MV FROM {series} WHERE name = ?
+                SELECT MV,stock FROM {series} WHERE name = ?
             ''', (name,))
     
             # Fetch the result
