@@ -52,7 +52,7 @@ class cardMini(commands.Cog):
         
     @commands.command(name='view_card')
     async def view_card(self,ctx,name,season):
-        season = "Season_" + series
+        season = "Season_" + season
         server_id = str(ctx.guild.id)
 
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
