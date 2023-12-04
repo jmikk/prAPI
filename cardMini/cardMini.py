@@ -206,6 +206,9 @@ class cardMini(commands.Cog):
             
             cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
             userID = cursor.fetchone()
+
+            if not MV:
+                await ctx.send(f"No card found with name '{name}' in season '{series}'"
             if MV[1] <= 0:
                 await ctx.send("I don't have a copy of that card but sometimes when you try and open a pack I get a card!")
                 return
