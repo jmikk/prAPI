@@ -164,7 +164,7 @@ class cardMini(commands.Cog):
                     try:
                         update_query = f"UPDATE {series} SET MV = ? WHERE userID = ?"
                         
-                        cursor.execute(update_query, (min(float(MV[0]) * float(self.buy_mod), 0.01), userID[0]))
+                        cursor.execute(update_query, (max(float(MV[0]) * float(self.buy_mod), 0.01), userID[0]))
                         conn.commit()
 
                         # Update the stock count in the database
