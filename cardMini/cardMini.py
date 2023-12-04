@@ -209,6 +209,8 @@ class cardMini(commands.Cog):
 
             if not MV:
                 await ctx.send(f"No card found with name '{name}' in season '{series}'")
+                return
+                
             if MV[1] <= 0:
                 await ctx.send("I don't have a copy of that card but sometimes when you try and open a pack I get a card!")
                 return
