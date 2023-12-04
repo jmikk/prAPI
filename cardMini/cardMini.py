@@ -16,6 +16,25 @@ class cardMini(commands.Cog):
         self.sell_mod=1.1
         self.buy_mod=.9
    
+    @commands.command(name='mine_salt')
+    async def mine_salt(self,ctx):
+        if random.random() < 1/3:
+            # Generate a random value between 0.01 and 0.10
+            reward_amount = round(random.uniform(0.01, 0.10), 2)
+    
+            # Get the user's current bank balance
+            user_bank = self.get_bank(server_id, str(ctx.author.id))
+    
+            # Update the bank balance with the reward
+            new_bank_total = user_bank + reward_amount
+            cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, ctx.author.id))
+            conn.commit()
+    
+            await ctx.send(f"You've been awarded {reward_amount} in your bank!")
+    
+        else:
+            await ctx.send("Sorry, you didn't win this time.")
+    
     @commands.command(name='set_sell_mod')
     async def set_sell_mod(self,mod:float):
         self.sell_mod=mod
