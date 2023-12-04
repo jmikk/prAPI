@@ -49,7 +49,8 @@ class cardMini(commands.Cog):
             cursor.close()
             conn.close()
         return output
-
+        
+    @commands.command(name='view_card')
     async def view_card(self,ctx,name,season):
         season = "Season_" + series
         server_id = str(ctx.guild.id)
