@@ -214,9 +214,11 @@ class cardMini(commands.Cog):
             if MV:
                 # Check if the user has enough money in the bank to buy the card
                 user_bank = self.get_bank(server_id, str(ctx.author.id))
-                if user_bank >= MV[0]:
+                price = round(float(MV[0])*self.sell_mod+0.01,2)
+
+                if user_bank >= price:
                     # Subtract the card's MV from the user's bank
-                    new_bank_total = user_bank - MV[0]
+                    new_bank_total = user_bank - price
                     cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, ctx.author.id))
                     conn.commit()
     
@@ -253,7 +255,7 @@ class cardMini(commands.Cog):
                     
                     # Use a try-except block for error handling
                     try:
-                        cursor.execute(update_query, ((float(MV[0]) * float(self.sell_mod))+.01, userID[0]))
+                        cursor.execute(update_query, (price, userID[0]))
                         conn.commit()
 
 
@@ -271,7 +273,7 @@ class cardMini(commands.Cog):
 
 
     
-                    await ctx.send(f"You have successfully bought the card '{name}' from '{series}'. I have {MV[1]-1} copies left!")
+                    await ctx.send(f"You have successfully bought the card '{name}' from '{series}' for '{price}'. I have {MV[1]-1} copies left!")
                 else:
                     await ctx.send(f"You don't have enough money in your bank to buy the card '{name}'.")
             else:
