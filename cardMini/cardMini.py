@@ -61,6 +61,9 @@ class cardMini(commands.Cog):
 
         cursor.execute(f"SELECT userID FROM {season} WHERE name = ?", (name,))
         userID = cursor.fetchone()
+
+        if not userID:
+            await ctx.send(f"No card found with the name '{name}' in season '{season}'")
         
 
         card = await self.display_card(userID[0],season,server_id)
