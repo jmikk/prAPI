@@ -49,7 +49,7 @@ class cardMini(commands.Cog):
             
             with open(file, 'r', encoding='utf-8') as file:
                 stuff=file.readlines()
-                bad_stuff = random.choose(stuff)
+                bad_stuff = random.choices(stuff)
             # Send the random line to the user
             await ctx.send(f"Uh oh! {bad_stuff}")
     
