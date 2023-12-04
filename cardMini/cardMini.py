@@ -64,6 +64,7 @@ class cardMini(commands.Cog):
 
         if not userID:
             await ctx.send(f"No card found with the name '{name}' in season '{season}'")
+            return
         
 
         card = await self.display_card(userID[0],season,server_id)
