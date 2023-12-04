@@ -46,6 +46,7 @@ class cardMini(commands.Cog):
             # Combine the directory and file name to get the full path
             file = os.path.join(current_directory, file_name)
 
+            
             with open(file, 'r', encoding='utf-8') as file:
                 stuff=file.readlines()
                 bad_stuff = random.choose(stuff)
