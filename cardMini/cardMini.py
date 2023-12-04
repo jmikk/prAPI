@@ -147,7 +147,7 @@ class cardMini(commands.Cog):
                     # Add the card's MV to the user's bank with the buy_mod multiplier
                     sell_price = max(float(MV[0]) * float(self.buy_mod), 0.01)
                     await ctx.send(sell_price)
-                    await ctx.send(float(MV[0]) * float(self.buy_mod)
+                    await ctx.send(float(MV[0]) * float(self.buy_mod))
                     new_bank_total = self.get_bank(server_id, str(ctx.author.id)) + sell_price
                     cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, ctx.author.id))
                     conn.commit()
