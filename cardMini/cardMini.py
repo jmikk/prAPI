@@ -19,7 +19,6 @@ class cardMini(commands.Cog):
     @commands.command(name='mine_salt')
     async def mine_salt(self,ctx):
         server_id = str(ctx.guild.id)
-        file=os.path.join(data_manager.cog_data_path(self), "bad_stuff.txt")
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -39,6 +38,14 @@ class cardMini(commands.Cog):
             await ctx.send(f"You received {amount} in your bank!")    
         elif event_type == 3 or event_type == 2:
             # Read a random line from the 'bad_stuff.txt' file
+            current_directory = os.path.dirname(os.path.abspath(__file__))
+
+            # Specify the file name
+            file_name = 'bad_stuff.txt'
+            
+            # Combine the directory and file name to get the full path
+            file = os.path.join(current_directory, file_name)
+
             with open(file, 'r', encoding='utf-8') as file:
                 line_number = random.randint(1, sum(1 for _ in file))
                 bad_stuff = linecache.getline('bad_stuff.txt', line_number).strip()
