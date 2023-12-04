@@ -19,6 +19,7 @@ class cardMini(commands.Cog):
     @commands.command(name='mine_salt')
     async def mine_salt(self,ctx):
         server_id = str(ctx.guild.id)
+        os.path.join(data_manager.cog_data_path(self), "bad_stuff.txt")
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
