@@ -32,7 +32,7 @@ class cardMini(commands.Cog):
             user_bank = self.get_bank(server_id, str(ctx.author.id))
     
             # Update the bank balance with the reward
-            new_bank_total = user_bank + reward_amount
+            new_bank_total = user_bank + amount
             cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, ctx.author.id))
             conn.commit()           
             await ctx.send(f"You received {amount} in your bank!")    
