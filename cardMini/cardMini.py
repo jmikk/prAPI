@@ -18,6 +18,10 @@ class cardMini(commands.Cog):
    
     @commands.command(name='mine_salt')
     async def mine_salt(self,ctx):
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
         if random.random() < 1/3:
             # Generate a random value between 0.01 and 0.10
             reward_amount = round(random.uniform(0.01, 0.10), 2)
