@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 import sqlite3
 import math
 import asyncio
-import linecache
 
 
 class cardMini(commands.Cog):
