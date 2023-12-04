@@ -155,6 +155,22 @@ class cardMini(commands.Cog):
                     update_query = f"UPDATE {table_name} SET count = ? WHERE userID = ? AND season = ?"
                     cursor.execute(update_query, (new_count, userID[0], series))
                     conn.commit()
+
+
+                    # Update the MV in the database
+                    # Use a try-except block for error handling
+                    try:
+                        update_query = f"UPDATE {series} SET MV = ? WHERE userID = ?"
+                        
+                        cursor.execute(update_query, (min(float(MV[0]) * float(self.buy_mod), 0.01), userID[0]))
+                        conn.commit()
+
+                        # Update the stock count in the database
+                        update_stock_query = f"UPDATE {series} SET stock = ? WHERE name = ?"
+                        cursor.execute(update_stock_query, (MV[1] + 1, name))
+                        conn.commit()
+                    except sqlite3.Error as e:
+                        await ctx.send(f"SQLite error: {e}")
     
                     await ctx.send(f"You have successfully sold the card '{name}' from '{series}' for {sell_price:.2f}.")
                 else:
@@ -239,7 +255,7 @@ class cardMini(commands.Cog):
                         conn.commit()
 
 
-                                            # Update the stock count in the database
+                        # Update the stock count in the database
                         update_stock_query = f"UPDATE {series} SET stock = ? WHERE name = ?"
                         cursor.execute(update_stock_query, (MV[1] - 1, name))
                         conn.commit()
