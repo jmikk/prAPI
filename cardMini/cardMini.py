@@ -31,17 +31,15 @@ class cardMini(commands.Cog):
         for i in range(0, len(args), 2):
             user_id = args[i]
             rarity = args[i + 1]
-            await ctx.send(user_id)
-            await ctx.send(rarity)
 
             # Validate rarity input
             valid_rarities = ["Mythic", "Legendary", "Epic", "Ultra-Rare", "Rare", "Uncommon", "Common"]
-            if rarity not in valid_rarities:
+            if rarity.lower() not in valid_rarities.lower():
                 await ctx.send(f"Invalid rarity: {rarity}. Valid rarities are: {', '.join(valid_rarities)}")
                 return
 
             # Update the MV in the series table
-            series_name = f"Season_{series}"
+            series_name = f"Season_{str(series)}"
             update_query = f"UPDATE {series_name} SET MV = ?, rarity = ? WHERE userID = ?"
 
             try:
