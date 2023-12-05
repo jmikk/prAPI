@@ -17,40 +17,49 @@ class cardMini(commands.Cog):
         self.buy_mod=.9
 
     @commands.command(name='set_rarities')
-    async def set_rarities(self, ctx, series, *args):
-        await ctx.send(len(args))
-        if not args or len(args) % 2 != 0:
-            await ctx.send("Invalid input. Each user ID should be followed by a rarity.")
+    async def set_rarities(self, ctx, *mentions_and_rarities):
+        if len(mentions_and_rarities) % 2 != 0:
+            await ctx.send("Please provide a valid number of arguments (pairs of mention and rarity).")
             return
-
+    
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-
-        for i in range(0, len(args), 2):
-            user_id = args[i]
-            rarity = args[i + 1]
-
-            # Validate rarity input
-            valid_rarities = ["mythic", "legendary", "epic", "ultra-rare", "rare", "uncommon", "common"]
-            if rarity.lower() not in valid_rarities:
-                await ctx.send(f"Invalid rarity: {rarity}. Valid rarities are: {', '.join(valid_rarities)}")
-                return
-
-            # Update the MV in the series table
-            series_name = f"Season_{str(series)}"
-            update_query = f"UPDATE {series_name} SET MV = ?, rarity = ? WHERE userID = ?"
-
-            try:
-                cursor.execute(update_query, (self.get_mv_from_rarity(rarity),rarity, user_id))
+    
+        try:
+            for i in range(0, len(mentions_and_rarities), 2):
+                mention = mentions_and_rarities[i]
+                rarity = mentions_and_rarities[i + 1]
+    
+                # Convert mention to user ID
+                try:
+                    user_id = int(mention.strip('<@!>'))
+                except ValueError:
+                    await ctx.send(f"Invalid mention: {mention}. Please use @mentions.")
+                    return
+    
+                # Validate rarity input
+                valid_rarities = ["mythic", "legendary", "epic", "ultra-rare", "rare", "uncommon", "common"]
+                if rarity.lower() not in valid_rarities:
+                    await ctx.send(f"Invalid rarity: {rarity}. Valid rarities are: {', '.join(valid_rarities)}")
+                    return
+    
+                # Update the MV in the series table
+                series_name = f"Season_{str(series)}"
+                update_query = f"UPDATE {series_name} SET MV = ?, rarity = ? WHERE userID = ?"
+    
+                cursor.execute(update_query, (self.get_mv_from_rarity(rarity), rarity, user_id))
                 conn.commit()
                 await ctx.send(f"Updated rarity for user {user_id} to {rarity}.")
-            except sqlite3.Error as e:
-                await ctx.send(f"SQLite error: {e}")
+    
+        except sqlite3.Error as e:
+            await ctx.send(f"SQLite error: {e}")
+    
+        finally:
+            # Close the connection
+            conn.close()
 
-        # Close the connection
-        conn.close()
 
     def get_mv_from_rarity(self, rarity):
         if rarity == "Mythic":
