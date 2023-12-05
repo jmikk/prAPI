@@ -33,8 +33,8 @@ class cardMini(commands.Cog):
             rarity = args[i + 1]
 
             # Validate rarity input
-            valid_rarities = ["Mythic", "Legendary", "Epic", "Ultra-Rare", "Rare", "Uncommon", "Common"]
-            if rarity.lower() not in valid_rarities.lower():
+            valid_rarities = ["mythic", "legendary", "epic", "ultra-rare", "rare", "uncommon", "common"]
+            if rarity.lower() not in valid_rarities:
                 await ctx.send(f"Invalid rarity: {rarity}. Valid rarities are: {', '.join(valid_rarities)}")
                 return
 
