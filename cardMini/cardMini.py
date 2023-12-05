@@ -15,6 +15,61 @@ class cardMini(commands.Cog):
         self.bot = bot
         self.sell_mod=1.1
         self.buy_mod=.9
+
+    @commands.command(name='set_rarities')
+    async def set_rarities(self, ctx, series, *args):
+        if not args or len(args) % 2 != 0:
+            await ctx.send("Invalid input. Each user ID should be followed by a rarity.")
+            return
+
+        server_id = str(ctx.guild.id)
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        for i in range(0, len(args), 2):
+            user_id = args[i]
+            rarity = args[i + 1]
+
+            # Validate rarity input
+            valid_rarities = ["Mythic", "Legendary", "Epic", "Ultra-Rare", "Rare", "Uncommon", "Common"]
+            if rarity not in valid_rarities:
+                await ctx.send(f"Invalid rarity: {rarity}. Valid rarities are: {', '.join(valid_rarities)}")
+                return
+
+            # Update the MV in the series table
+            series_name = f"Season_{series}"
+            update_query = f"UPDATE {series_name} SET MV = ?, rarity = ? WHERE userID = ?"
+
+            try:
+                cursor.execute(update_query, (rarity, self.get_mv_from_rarity(rarity), user_id))
+                conn.commit()
+                await ctx.send(f"Updated rarity for user {user_id} to {rarity}.")
+            except sqlite3.Error as e:
+                await ctx.send(f"SQLite error: {e}")
+
+        # Close the connection
+        conn.close()
+
+    def get_mv_from_rarity(self, rarity):
+        if rarity == "Mythic":
+            return 10
+        elif rarity == "Legendary":
+            return 1
+        elif rarity == "Epic":
+            return 0.5
+        elif rarity == "Ultra-Rare":
+            return 0.25
+        elif rarity == "Rare":
+            return 0.1
+        elif rarity == "Uncommon":
+            return 0.05
+        elif rarity == "Common":
+            return 0.01
+        else:
+            return 0.01  # Default to Common if an invalid rarity is provided
+
+    
    
     @commands.command(name='mine_salt')
     async def mine_salt(self,ctx):
