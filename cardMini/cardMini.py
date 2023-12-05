@@ -43,7 +43,7 @@ class cardMini(commands.Cog):
             update_query = f"UPDATE {series_name} SET MV = ?, rarity = ? WHERE userID = ?"
 
             try:
-                cursor.execute(update_query, (rarity, self.get_mv_from_rarity(rarity), user_id))
+                cursor.execute(update_query, (self.get_mv_from_rarity(rarity),rarity, user_id))
                 conn.commit()
                 await ctx.send(f"Updated rarity for user {user_id} to {rarity}.")
             except sqlite3.Error as e:
