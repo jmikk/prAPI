@@ -31,6 +31,8 @@ class cardMini(commands.Cog):
         for i in range(0, len(args), 2):
             user_id = args[i]
             rarity = args[i + 1]
+            await ctx.send(user_id)
+            await ctx.send(rarity)
 
             # Validate rarity input
             valid_rarities = ["Mythic", "Legendary", "Epic", "Ultra-Rare", "Rare", "Uncommon", "Common"]
