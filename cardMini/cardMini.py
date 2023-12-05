@@ -16,6 +16,9 @@ class cardMini(commands.Cog):
         self.sell_mod=1.1
         self.buy_mod=.9
 
+    def mentionToID(self,mention):
+        pass
+
     @commands.command(name='set_rarities')
     async def set_rarities(self, ctx, series, *mentions_and_rarities):
         await ctx.send(len(mentions_and_rarities))
