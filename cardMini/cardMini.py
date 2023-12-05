@@ -18,6 +18,7 @@ class cardMini(commands.Cog):
 
     @commands.command(name='set_rarities')
     async def set_rarities(self, ctx, series, *args):
+        await ctx.send(len(args))
         if not args or len(args) % 2 != 0:
             await ctx.send("Invalid input. Each user ID should be followed by a rarity.")
             return
