@@ -18,6 +18,7 @@ class cardMini(commands.Cog):
 
     @commands.command(name='set_rarities')
     async def set_rarities(self, ctx, series, *mentions_and_rarities):
+        await ctx.send(len(mentions_and_rarities))
         if len(mentions_and_rarities) % 2 != 0:
             await ctx.send("Please provide a valid number of arguments (pairs of mention and rarity).")
             return
