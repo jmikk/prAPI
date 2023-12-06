@@ -212,7 +212,11 @@ class cardMini(commands.Cog):
         embed.add_field(name="Rarity", value=card[3], inline=True)
         embed.add_field(name="MV", value=round(card[4],2), inline=True)
         embed.add_field(name="Gob owns", value=card[5], inline=True)
-        embed.add_field(name="You own", value=owner_count[0], inline=True)
+        if owner_count:
+            embed.add_field(name="You own", value=owner_count[0], inline=True)
+        else:
+            embed.add_field(name="You own", value=0, inline=True)
+
         embed.add_field(name="Gob will buy for", value=round(float(card[4])*self.buy_mod,2), inline=True)
         embed.add_field(name="Gob will sell for", value=round(float(card[4])*self.sell_mod+.01,2), inline=True)
             
