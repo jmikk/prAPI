@@ -28,12 +28,12 @@ class cardMini(commands.Cog):
             return member.id
         return
 
-    def mentionToUser(self,mention):
+    def mentionToUser(self,ctx,mention):
         # Check if it's a mention
         match = re.match(r"<@!?(\d+)>", mention)
         if match:
             user_id = int(match.group(1))
-            member = discord.utils.get(guild.members, id=user_id)
+            member = discord.utils.get(ctx.guild.members, id=user_id)
             if member:
                 return member.name
         return mention
@@ -180,7 +180,7 @@ class cardMini(commands.Cog):
         
     @commands.command(name='view_card')
     async def view_card(self,ctx,name,season):
-        name = self.mentionToUser(name)
+        name = self.mentionToUser(ctx,name)
         season = "Season_" + season
         server_id = str(ctx.guild.id)
 
