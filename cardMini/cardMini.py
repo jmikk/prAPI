@@ -46,7 +46,7 @@ class cardMini(commands.Cog):
             cursor.execute(f'''
                 UPDATE {series}
                 SET Stock = {new_stock}
-                WHERE userID = %s
+                WHERE userID = ?
             ''', (result[0],))
             connection.commit()  # Commit the changes to the database
             await ctx.send(result)
