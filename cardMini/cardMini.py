@@ -32,7 +32,6 @@ class cardMini(commands.Cog):
     def mentionToUser(self,ctx,mention):
         # Check if it's a mention
         match = re.match(r"<@!?(\d+)>", mention)
-        match = self.convert_nickname(mention)
         if match:
             user_id = int(match.group(1))
             member = discord.utils.get(ctx.guild.members, id=user_id) or discord.utils.get(guild.members, nick=mention)
