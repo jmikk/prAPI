@@ -28,7 +28,7 @@ class cardMini(commands.Cog):
         # Retrieve a random user from the specified series
         cursor.execute(f'''
             SELECT * FROM {series}
-            ORDER BY RANDOM() * weight DESC
+            ORDER BY RANDOM() 
             LIMIT 1
         ''')
         # Fetch the result
