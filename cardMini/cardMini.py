@@ -36,7 +36,7 @@ class cardMini(commands.Cog):
         
         if result:
             # Extract the Stock value from the fetched row
-            current_stock = result['Stock']
+            current_stock = result[5]
         
             # Update the Stock value by incrementing it by 1
             new_stock = current_stock + 1
@@ -45,8 +45,8 @@ class cardMini(commands.Cog):
             cursor.execute(f'''
                 UPDATE {series}
                 SET Stock = {new_stock}
-                WHERE YourPrimaryKeyColumn = %s
-            ''', (result['YourPrimaryKeyColumn'],))
+                WHERE userID = %s
+            ''', (result[0],))
             connection.commit()  # Commit the changes to the database
             await ctx.send(result)
 
