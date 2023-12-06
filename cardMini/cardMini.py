@@ -17,13 +17,14 @@ class cardMini(commands.Cog):
         self.sell_mod=1.1
         self.buy_mod=.9
 
+
     def mentionToID(self,ctx,mention):
         # Check if it's a mention
         match = re.match(r"<@!?(\d+)>", mention)
         if match:
             return int(match.group(1))
         # Check if it's a username
-        member = discord.utils.get(ctx.guild.members, name=mention) or discord.utils.get(guild.members, nick=mention)
+        member = discord.utils.get(ctx.guild.members, name=mention) or discord.utils.get(ctx.guild.members, nick=mention)
         if member:
             return member.id
         return mention
@@ -31,6 +32,7 @@ class cardMini(commands.Cog):
     def mentionToUser(self,ctx,mention):
         # Check if it's a mention
         match = re.match(r"<@!?(\d+)>", mention)
+        match = self.convert_nickname(mention)
         if match:
             user_id = int(match.group(1))
             member = discord.utils.get(ctx.guild.members, id=user_id) or discord.utils.get(guild.members, nick=mention)
