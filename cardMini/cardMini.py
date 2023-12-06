@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import sqlite3
 import math
 import asyncio
+import re
 
 
 class cardMini(commands.Cog):
@@ -17,7 +18,28 @@ class cardMini(commands.Cog):
         self.buy_mod=.9
 
     def mentionToID(self,mention):
-        pass
+         # Check if it's a mention
+        match = re.match(r"<@!?(\d+)>", mention_or_username)
+        if match:
+            return int(match.group(1))
+        # Check if it's a username
+        member = discord.utils.get(guild.members, name=mention_or_username)
+        if member:
+            return member.id
+        return
+
+    def mentionToUser(self,mention):
+        # Check if it's a mention
+        match = re.match(r"<@!?(\d+)>", mention)
+        if match:
+            user_id = int(match.group(1))
+            member = discord.utils.get(guild.members, id=user_id)
+            if member:
+                return member.name
+        return mention
+
+    
+    
 
     @commands.command(name='set_rarities')
     async def set_rarities(self, ctx, series, *mentions_and_rarities):
@@ -158,6 +180,7 @@ class cardMini(commands.Cog):
         
     @commands.command(name='view_card')
     async def view_card(self,ctx,name,season):
+        name = mentionToUser(name)
         season = "Season_" + season
         server_id = str(ctx.guild.id)
 
