@@ -18,7 +18,10 @@ class cardMini(commands.Cog):
         self.buy_mod=.9
 
     @commands.command(name='gob_pack')
-    async def gob_pack(self,server_id,db_path):
+    async def gob_pack(self,ctx):
+        server_id = str(ctx.guild.id)
+
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         # Retrieve a random user from the specified series
