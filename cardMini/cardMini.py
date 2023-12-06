@@ -33,6 +33,7 @@ class cardMini(commands.Cog):
         ''')
         # Fetch the result
         result = cursor.fetchone()
+        await ctx.send(result)
         
         if result:
             # Extract the Stock value from the fetched row
