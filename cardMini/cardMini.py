@@ -17,6 +17,37 @@ class cardMini(commands.Cog):
         self.sell_mod=1.1
         self.buy_mod=.9
 
+    @commands.command(name='gob_pack')
+    async def gob_pack(self,server_id,db_path):
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        # Retrieve a random user from the specified series
+        cursor.execute(f'''
+            SELECT * FROM {series}
+            ORDER BY RANDOM() * weight DESC
+            LIMIT 1
+        ''')
+        # Fetch the result
+        result = cursor.fetchone()
+        
+        if result:
+            # Extract the Stock value from the fetched row
+            current_stock = result['Stock']
+        
+            # Update the Stock value by incrementing it by 1
+            new_stock = current_stock + 1
+        
+            # Update the row in the database
+            cursor.execute(f'''
+                UPDATE {series}
+                SET Stock = {new_stock}
+                WHERE YourPrimaryKeyColumn = %s
+            ''', (result['YourPrimaryKeyColumn'],))
+            connection.commit()  # Commit the changes to the database
+            await ctx.send(result)
+
+        
+
 
     def mentionToID(self,ctx,mention):
         # Check if it's a mention
@@ -392,7 +423,7 @@ class cardMini(commands.Cog):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
     
-        try:
+        try:            
             # Execute a SELECT query to find the row with the specified name in the given series
             cursor.execute(f'''
                 SELECT MV,stock FROM {series} WHERE name = ?
