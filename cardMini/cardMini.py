@@ -180,7 +180,7 @@ class cardMini(commands.Cog):
         
     @commands.command(name='view_card')
     async def view_card(self,ctx,name,season):
-        name = mentionToUser(name)
+        name = self.mentionToUser(name)
         season = "Season_" + season
         server_id = str(ctx.guild.id)
 
