@@ -24,7 +24,7 @@ class cardMini(commands.Cog):
         if match:
             return int(match.group(1))
         # Check if it's a username
-        member = discord.utils.get(ctx.guild.members, name=mention) or discord.utils.get(ctx.guild.members, nick=mention)
+        member = discord.utils.get(ctx.guild.members, name=mention) 
         if member:
             return member.id
         return mention
@@ -34,7 +34,7 @@ class cardMini(commands.Cog):
         match = re.match(r"<@!?(\d+)>", mention)
         if match:
             user_id = int(match.group(1))
-            member = discord.utils.get(ctx.guild.members, id=user_id) or discord.utils.get(guild.members, nick=mention)
+            member = discord.utils.get(ctx.guild.members, id=user_id)
             if member:
                 return member.name
         return mention
