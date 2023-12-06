@@ -137,7 +137,7 @@ class cardMini(commands.Cog):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        output=""
+        output=0
         try:
             table_name = "deck_"+str(user_id)
 
