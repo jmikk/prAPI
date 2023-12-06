@@ -20,6 +20,7 @@ class cardMini(commands.Cog):
     @commands.command(name='gob_pack')
     async def gob_pack(self,ctx,series):
         server_id = str(ctx.guild.id)
+        series = "Season_" + series
 
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
