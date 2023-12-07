@@ -577,7 +577,7 @@ class cardMini(commands.Cog):
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
 
-        await ctx.send(getUserDV(server_id,ctx.author.id))
+        await ctx.send(self.getUserDV(server_id,ctx.author.id))
 
         try: 
             # Connect to the SQLite database for the server
