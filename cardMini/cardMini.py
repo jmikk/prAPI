@@ -531,7 +531,9 @@ class cardMini(commands.Cog):
     
     
     @commands.command(name='all_deck')
-    async def all_deck(self,ctx):
+    async def all_deck(self,ctx,count=10):
+        if count > 20:
+            count = 20
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         try: 
@@ -556,7 +558,7 @@ class cardMini(commands.Cog):
             # Paginate the results (display the first 10)
 
             
-            chunk_size = 10
+            chunk_size = count
             paginated_rows = [rows[i:i + chunk_size] for i in range(0, len(rows), chunk_size)]
 
             # Initialize page counter and embed
