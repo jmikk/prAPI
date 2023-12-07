@@ -17,6 +17,44 @@ class cardMini(commands.Cog):
         self.sell_mod=1.1
         self.buy_mod=.9
 
+    def getUserDV(self,server_id,userID):
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        
+        try:
+            # Connect to the SQLite database for the server
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+    
+            # Set the deck table
+            table_name = "deck_" + userID
+    
+            # Use a parameterized query to retrieve all elements from the table
+            query = f'SELECT * FROM {table_name}'
+            cursor.execute(query)
+            # Fetch all the rows from the result set
+            rows = cursor.fetchall()
+    
+            total_mv = 0  # Initialize total MV
+    
+            for row in rows:
+                # Use a parameterized query to retrieve MV directly
+                cursor.execute(f'SELECT MV FROM {row[1]} WHERE userID = ?', (row[0],))
+                row_mv = cursor.fetchone()
+    
+                if row_mv:
+                    total_mv += row_mv[0] * row[2]  # Accumulate total MV
+    
+            return round(total_mv, 2)
+    
+        except sqlite3.OperationalError as e:
+            if "no such table" in str(e):
+                await ctx.send(f"No cards in your deck, go open some!")
+            else:
+                await ctx.send(f"SQLite error: {e}")
+        finally:
+            # Close the connection
+            conn.close()
+
     def gob_pack(self,server_id,series):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
@@ -532,10 +570,15 @@ class cardMini(commands.Cog):
     
     @commands.command(name='all_deck')
     async def all_deck(self,ctx,count=10):
+
+        
         if count > 20:
             count = 20
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+
+        await ctx.send(getUserDV(server_id,ctx.author.id))
+
         try: 
             # Connect to the SQLite database for the server
             conn = sqlite3.connect(db_path)
@@ -551,13 +594,9 @@ class cardMini(commands.Cog):
             # Use a parameterized query to retrieve all elements from the table
             query = f'SELECT * FROM {table_name}'
             cursor.execute(query)
-
-            
             # Fetch all the rows from the result set
             rows = cursor.fetchall()
-            # Paginate the results (display the first 10)
 
-            
             chunk_size = count
             
             paginated_rows = [rows[i:i + chunk_size] for i in range(0, len(rows), chunk_size)]
