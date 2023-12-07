@@ -17,11 +17,7 @@ class cardMini(commands.Cog):
         self.sell_mod=1.1
         self.buy_mod=.9
 
-    @commands.command(name='gob_pack')
-    async def gob_pack(self,ctx,series):
-        server_id = str(ctx.guild.id)
-        series = "Season_" + series
-
+    def gob_pack(self,server_id,series):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
