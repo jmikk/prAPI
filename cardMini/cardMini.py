@@ -335,7 +335,7 @@ class cardMini(commands.Cog):
     async def sell_card(self, ctx, name, series):
         server_id = str(ctx.guild.id)
         series = "Season_" + series
-        self.gob_pack(server_id,series):
+        self.gob_pack(server_id,series)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -405,7 +405,7 @@ class cardMini(commands.Cog):
     async def buy_card(self, ctx, name, series):
         server_id = str(ctx.guild.id)
         series = "Season_" + series
-        self.gob_pack(server_id,series):
+        self.gob_pack(server_id,series)
 
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
