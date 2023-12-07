@@ -558,7 +558,8 @@ class cardMini(commands.Cog):
             # Paginate the results (display the first 10)
 
             
-            chunk_size = count
+            chunk_size = 1
+            
             paginated_rows = [rows[i:i + chunk_size] for i in range(0, len(rows), chunk_size)]
 
             # Initialize page counter and embed
