@@ -31,10 +31,8 @@ class cardMini(commands.Cog):
             UPDATE {series}
             SET Stock = Stock + 1
             ORDER BY RANDOM()
-            LIMIT 1
         ''')
         conn.commit()  # Commit the changes to the database
-        await ctx.send()
 
         
 
