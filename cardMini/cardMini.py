@@ -555,17 +555,6 @@ class cardMini(commands.Cog):
             rows = cursor.fetchall()
             # Paginate the results (display the first 10)
 
-            # Use a parameterized query to retrieve all elements from the table
-            query = f'SELECT SUM(MV * count) AS total_sum FROM {table_name}'
-            cursor.execute(query)
-            MV_total = cursor.fetchone()
-
-            if MV_total:
-                await ctx.send(f"Total Deck value :{MV_total}")
-            else:
-                await ctx.send("No deck to add up!")
-                            
-
             
             chunk_size = 10
             paginated_rows = [rows[i:i + chunk_size] for i in range(0, len(rows), chunk_size)]
