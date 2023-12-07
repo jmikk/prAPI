@@ -561,7 +561,7 @@ class cardMini(commands.Cog):
             MV_total = cursor.fetchone()
 
             if MV_total:
-                await ctx.send(f"Total Deck value :{MV_total}"
+                await ctx.send(f"Total Deck value :{MV_total}")
             else:
                 await ctx.send("No deck to add up!")
                             
