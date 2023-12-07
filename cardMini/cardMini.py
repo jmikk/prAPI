@@ -53,11 +53,8 @@ class cardMini(commands.Cog):
             member = discord.utils.get(ctx.guild.members, id=user_id)
             if member:
                 return member.name
-        return mention
-
+        return mention        
     
-    
-
     @commands.command(name='set_rarities')
     async def set_rarities(self, ctx, series, *mentions_and_rarities):
         await ctx.send(len(mentions_and_rarities))
