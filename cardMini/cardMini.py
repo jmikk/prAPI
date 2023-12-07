@@ -534,7 +534,6 @@ class cardMini(commands.Cog):
     async def all_deck(self,ctx,count=10):
         if count > 20:
             count = 20
-        await ctx.send(count)
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         try: 
