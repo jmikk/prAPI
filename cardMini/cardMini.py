@@ -554,6 +554,19 @@ class cardMini(commands.Cog):
             # Fetch all the rows from the result set
             rows = cursor.fetchall()
             # Paginate the results (display the first 10)
+
+            # Use a parameterized query to retrieve all elements from the table
+            query = f'SELECT SUM(MV * count) AS total_sum FROM {table_name}'
+            cursor.execute(query)
+            MV_total = cursor.fetchone()
+
+            if MV_total:
+                await ctx.send(f"Total Deck value :{MV_total}"
+            else:
+                await ctx.send("No deck to add up!")
+                            
+
+            
             chunk_size = 10
             paginated_rows = [rows[i:i + chunk_size] for i in range(0, len(rows), chunk_size)]
 
@@ -590,7 +603,7 @@ class cardMini(commands.Cog):
                     buy_price = round(float(rowz[0][4])*self.buy_mod,2)
                     if row[2] > 0:
                         embed.add_field(name=f"Card name: {name} {row[1]}", value=f"You own: {row[2]} ID: {row[0]} Rarity: {rowz[0][3]}\nMV: {round(rowz[0][4],2)} Buy price: {buy_price} Sell price: {sell_price}", inline=False)
-                embed.set_footer(text=f"Total MV: {round(total_mv, 2)}")  # Display total MV in the footer
+                embed.set_footer(text=f"Total MV of this page: {round(total_mv, 2)}")  # Display total MV in the footer
                 return embed
 
             # Send the initial page
