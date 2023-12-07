@@ -566,6 +566,8 @@ class cardMini(commands.Cog):
             async def display_page():
                 embed = discord.Embed(title=f"Deck Information - Page {current_page + 1}/{total_pages}")
 
+                total_mv = 0  # Initialize total MV
+
                 for row in paginated_rows[current_page]:
                     # Customize how you want to display each row in the embed
                     user = self.bot.get_user(row[0])
@@ -576,10 +578,19 @@ class cardMini(commands.Cog):
                     # Fetch all the rows from the result set
                     rowz = cursor.fetchall()
 
+                    # Update the parameterized query to retrieve MV directly
+                    cursor.execute(f'SELECT MV FROM {row[1]} WHERE userID = ?', (row[0],))
+                    row_mv = cursor.fetchone()
+        
+                    if row_mv:
+                        total_mv += row_mv[0] * row[2]  # Accumulate total MV
+
+
                     sell_price = round(float(rowz[0][4])*self.sell_mod+0.01,2)
                     buy_price = round(float(rowz[0][4])*self.buy_mod,2)
                     if row[2] > 0:
                         embed.add_field(name=f"Card name: {name} {row[1]}", value=f"You own: {row[2]} ID: {row[0]} Rarity: {rowz[0][3]}\nMV: {round(rowz[0][4],2)} Buy price: {buy_price} Sell price: {sell_price}", inline=False)
+                embed.set_footer(text=f"Total MV: {round(total_mv, 2)}")  # Display total MV in the footer
                 return embed
 
             # Send the initial page
