@@ -26,30 +26,15 @@ class cardMini(commands.Cog):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         # Retrieve a random user from the specified series
+        # Update the Stock value of one random row
         cursor.execute(f'''
-            SELECT * FROM {series}
-            ORDER BY RANDOM() 
+            UPDATE {series}
+            SET Stock = Stock + 1
+            ORDER BY RANDOM()
             LIMIT 1
         ''')
-        # Fetch the result
-        result = cursor.fetchone()
-        await ctx.send(result)
-        
-        if result:
-            # Extract the Stock value from the fetched row
-            current_stock = result[5]
-        
-            # Update the Stock value by incrementing it by 1
-            new_stock = current_stock + 1
-        
-            # Update the row in the database
-            cursor.execute(f'''
-                UPDATE {series}
-                SET Stock = {new_stock}
-                WHERE userID = ?
-            ''', (result[0],))
-            connection.commit()  # Commit the changes to the database
-            await ctx.send(result)
+        conn.commit()  # Commit the changes to the database
+        await ctx.send()
 
         
 
