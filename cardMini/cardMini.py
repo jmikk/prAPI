@@ -48,9 +48,9 @@ class cardMini(commands.Cog):
     
         except sqlite3.OperationalError as e:
             if "no such table" in str(e):
-                await ctx.send(f"No cards in your deck, go open some!")
+                return f"No cards in your deck, go open some!"
             else:
-                await ctx.send(f"SQLite error: {e}")
+                return  f"SQLite error: {e}"
         finally:
             # Close the connection
             conn.close()
