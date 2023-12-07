@@ -26,8 +26,8 @@ class cardMini(commands.Cog):
             cursor = conn.cursor()
     
             # Set the deck table
-            table_name = "deck_" + userID
-    
+            table_name = "deck_" + str(userID)
+                                          
             # Use a parameterized query to retrieve all elements from the table
             query = f'SELECT * FROM {table_name}'
             cursor.execute(query)
