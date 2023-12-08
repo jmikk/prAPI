@@ -51,7 +51,43 @@ class cardMini(commands.Cog):
                     # If the user doesn't exist, display the user ID
                     embed.add_field(name=f"Unknown User ({user_id})", value=f"Bank Balance: {round(cash, 2)}", inline=False)
     
-            await ctx.send(embed=embed)
+            # Paginate the leaderboard
+            paginated_leaderboard = [embed.fields[i:i + 10] for i in range(0, len(embed.fields), 10)]
+            total_pages = len(paginated_leaderboard)
+            current_page = 0
+    
+            # Display the initial page
+            message = await ctx.send(embed=embed.set_footer(text=f"Page {current_page + 1}/{total_pages}"))
+    
+            # Add reactions for navigation
+            await message.add_reaction('◀️')
+            await message.add_reaction('▶️')
+    
+            # Function to update the display based on reaction input
+            def check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in ['◀️', '▶️']
+    
+            while True:
+                try:
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+    
+                    if str(reaction.emoji) == '▶️' and current_page < total_pages - 1:
+                        current_page += 1
+                    elif str(reaction.emoji) == '◀️' and current_page > 0:
+                        current_page -= 1
+    
+                    # Update the message with the new page
+                    await message.edit(embed=embed.set_footer(text=f"Page {current_page + 1}/{total_pages}"))
+                    await message.edit(embed=discord.Embed.from_dict(paginated_leaderboard[current_page]))
+    
+                    # Remove the user's reaction
+                    await message.remove_reaction(reaction, user)
+                except asyncio.TimeoutError:
+                    # Stop listening for reactions after 30 seconds
+                    break
+                except asyncio.CancelledError:
+                    # Handle cancellation (optional)
+                    break
     
         except sqlite3.OperationalError as e:
             await ctx.send(f"SQLite error: {e}")
