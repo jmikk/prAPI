@@ -21,6 +21,9 @@ class cardMini(commands.Cog):
     async def DV_leaderboard(self, ctx, count: int = 10):
         if count > 20:
             count = 20
+                    # Connect to the SQLite database for the server
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
     
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
