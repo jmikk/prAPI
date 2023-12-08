@@ -16,7 +16,8 @@ class cardMini(commands.Cog):
         self.bot = bot
         self.sell_mod=1.1
         self.buy_mod=.9
-
+    
+    @commands.command(name='setOffSeasonChance')
     async def setOffSeasonChance(self,ctx,percent):
         percent = percent.strip("%")
         if int(percent) < 50:
