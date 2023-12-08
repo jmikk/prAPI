@@ -35,6 +35,8 @@ class cardMini(commands.Cog):
         # Extract numbers from table names
         deck_numbers = [int(re.search(r'\d+', table[0]).group()) for table in deck_tables]
 
+        await ctx.send(deck_numbers)
+
 
         
     
