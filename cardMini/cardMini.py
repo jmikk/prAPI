@@ -17,6 +17,14 @@ class cardMini(commands.Cog):
         self.sell_mod=1.1
         self.buy_mod=.9
 
+    async def setOffSeasonChance(self,ctx,percent):
+        percent = percent.strip("%")
+        file = os.path.join(data_manager.cog_data_path(self), f'off_season_chance')
+        with open(file,"w") as f:
+            f.write(percent)
+        await ctx.send("Set off season chance to {percent}%")
+            
+
     def getUserDV(self,server_id,userID):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         
