@@ -22,6 +22,7 @@ class cardMini(commands.Cog):
         file = os.path.join(data_manager.cog_data_path(self), 'off_season_chance.txt')
         with open(file,"w+") as f:
              f.write(series)
+        await ctx.send(f"set on season to {series}")
 
     def get_on_season(self):
         file = os.path.join(data_manager.cog_data_path(self), 'on_season.txt')
