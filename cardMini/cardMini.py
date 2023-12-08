@@ -19,6 +19,9 @@ class cardMini(commands.Cog):
 
     async def setOffSeasonChance(self,ctx,percent):
         percent = percent.strip("%")
+        if int(percent) < 50:
+            percent = 50
+            await ctx.send("This should never be more then 50")
         file = os.path.join(data_manager.cog_data_path(self), f'off_season_chance.txt')
         with open(file,"w") as f:
             f.write(percent)
