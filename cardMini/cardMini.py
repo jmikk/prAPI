@@ -31,7 +31,7 @@ class cardMini(commands.Cog):
             cursor = conn.cursor()
     
             # Fetch all rows from the bank table
-            cursor.execute(f"SELECT userID, cash FROM bank")
+            cursor.execute(f"SELECT userID, cash FROM bank_{server_id}")
             bank_data = cursor.fetchall()
     
             # Sort users by cash in descending order
@@ -44,7 +44,12 @@ class cardMini(commands.Cog):
             embed = discord.Embed(title=f"Bank Leaderboard - Top {count}", color=0x00ff00)
             for user_id, cash in leaderboard:
                 user = self.bot.get_user(user_id)
-                embed.add_field(name=user.mention, value=f"Bank Balance: {round(cash, 2)}", inline=False)
+                if user:
+                    # If the user exists, add a field to the embed with the user mention
+                    embed.add_field(name=user.name, value=f"Bank Balance: {round(cash, 2)}", inline=False)
+                else:
+                    # If the user doesn't exist, display the user ID
+                    embed.add_field(name=f"Unknown User ({user_id})", value=f"Bank Balance: {round(cash, 2)}", inline=False)
     
             await ctx.send(embed=embed)
     
@@ -53,6 +58,7 @@ class cardMini(commands.Cog):
         finally:
             # Close the connection
             conn.close()
+
         
     @commands.command(name='setOnSeason')
     async def setOnSeason(self,ctx,series):
