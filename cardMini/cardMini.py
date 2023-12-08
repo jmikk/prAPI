@@ -596,6 +596,54 @@ class cardMini(commands.Cog):
         finally:
         # Close the connection
             conn.close()
+
+    @commands.command(name='deck_leaderboard')
+    async def deck_leaderboard(self, ctx, count: int = 10):
+        if count > 20:
+            count = 20
+    
+        server_id = str(ctx.guild.id)
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+    
+        try:
+            # Connect to the SQLite database for the server
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+    
+            # Fetch all users' deck information
+            cursor.execute(f"SELECT userID, season, count FROM deck_{server_id}")
+            deck_data = cursor.fetchall()
+    
+            # Calculate total MV for each user and store in a dictionary
+            user_mv = {}
+            for user_id, season, count in deck_data:
+                cursor.execute(f"SELECT MV FROM {season} WHERE userID = ?", (user_id,))
+                row_mv = cursor.fetchone()
+    
+                if row_mv:
+                    mv = row_mv[0] * count
+                    user_mv[user_id] = user_mv.get(user_id, 0) + mv
+    
+            # Sort users by total MV in descending order
+            sorted_users = sorted(user_mv.items(), key=lambda x: x[1], reverse=True)
+    
+            # Slice the leaderboard based on the count
+            leaderboard = sorted_users[:count]
+    
+            # Display leaderboard
+            embed = discord.Embed(title=f"Deck Leaderboard - Top {count}", color=0x00ff00)
+            for user_id, total_mv in leaderboard:
+                user = self.bot.get_user(user_id)
+                embed.add_field(name=user.name, value=f"Total MV: {round(total_mv, 2)}", inline=False)
+    
+            await ctx.send(embed=embed)
+    
+        except sqlite3.OperationalError as e:
+            await ctx.send(f"SQLite error: {e}")
+        finally:
+            # Close the connection
+            conn.close()
+
     
     
     @commands.command(name='all_deck')
