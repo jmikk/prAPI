@@ -78,7 +78,7 @@ class cardMini(commands.Cog):
     
                     # Update the message with the new page
                     await message.edit(embed=embed.set_footer(text=f"Page {current_page + 1}/{total_pages}"))
-                    await message.edit(embed=discord.Embed.from_dict(paginated_leaderboard[current_page]))
+                    await message.edit(embed=discord.Embed.from_dict({'fields': paginated_leaderboard[current_page], 'footer': embed.footer}))
     
                     # Remove the user's reaction
                     await message.remove_reaction(reaction, user)
