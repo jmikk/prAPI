@@ -18,7 +18,7 @@ class cardMini(commands.Cog):
         self.buy_mod=.9
         
     @commands.command(name='setOnSeason')
-    async def setOnSeason(self,series):
+    async def setOnSeason(self,ctx,series):
         file = os.path.join(data_manager.cog_data_path(self), 'off_season_chance.txt')
         with open(file,"w+") as f:
              f.write(series)
