@@ -51,13 +51,8 @@ class cardMini(commands.Cog):
                     # If the user doesn't exist, display the user ID
                     embed.add_field(name=f"Unknown User ({user_id})", value=f"Bank Balance: {round(cash, 2)}", inline=False)
     
-            # Paginate the leaderboard
-            paginated_leaderboard = [embed.fields[i:i + 10] for i in range(0, len(embed.fields), 10)]
-            total_pages = len(paginated_leaderboard)
-            current_page = 0
-    
-            # Display the initial page
-            message = await ctx.send(embed=embed.set_footer(text=f"Page {current_page + 1}/{total_pages}"))
+            # Send the initial leaderboard
+            message = await ctx.send(embed=embed)
     
             # Add reactions for navigation
             await message.add_reaction('◀️')
@@ -66,6 +61,9 @@ class cardMini(commands.Cog):
             # Function to update the display based on reaction input
             def check(reaction, user):
                 return user == ctx.author and str(reaction.emoji) in ['◀️', '▶️']
+    
+            current_page = 0
+            total_pages = (len(sorted_users) + count - 1) // count  # Calculate total pages
     
             while True:
                 try:
@@ -77,8 +75,20 @@ class cardMini(commands.Cog):
                         current_page -= 1
     
                     # Update the message with the new page
-                    await message.edit(embed=embed.set_footer(text=f"Page {current_page + 1}/{total_pages}"))
-                    await message.edit(embed=discord.Embed.from_dict({'fields': paginated_leaderboard[current_page], 'footer': embed.footer}))
+                    start_idx = current_page * count
+                    end_idx = (current_page + 1) * count
+                    current_leaderboard = sorted_users[start_idx:end_idx]
+    
+                    # Update the leaderboard
+                    updated_embed = discord.Embed(title=f"Bank Leaderboard - Page {current_page + 1}/{total_pages}", color=0x00ff00)
+                    for user_id, cash in current_leaderboard:
+                        user = self.bot.get_user(user_id)
+                        if user:
+                            updated_embed.add_field(name=user.name, value=f"{user.mention} Bank Balance: {round(cash, 2)}", inline=False)
+                        else:
+                            updated_embed.add_field(name=f"Unknown User ({user_id})", value=f"Bank Balance: {round(cash, 2)}", inline=False)
+    
+                    await message.edit(embed=updated_embed)
     
                     # Remove the user's reaction
                     await message.remove_reaction(reaction, user)
@@ -88,12 +98,12 @@ class cardMini(commands.Cog):
                 except asyncio.CancelledError:
                     # Handle cancellation (optional)
                     break
-    
         except sqlite3.OperationalError as e:
             await ctx.send(f"SQLite error: {e}")
         finally:
             # Close the connection
             conn.close()
+
 
         
     @commands.command(name='setOnSeason')
