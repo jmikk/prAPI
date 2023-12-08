@@ -885,7 +885,7 @@ class cardMini(commands.Cog):
         # Print the list of table names
         await ctx.send(table_names)
 
-    @commands.command(name='delete_series')
+    @commands.command(name='delete_card')
     async def delete_card(self, ctx, series: str, user_id: int):
         # Get the server ID
         series = "Season_" + series
