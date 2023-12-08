@@ -31,7 +31,7 @@ class cardMini(commands.Cog):
             cursor = conn.cursor()
     
             # Fetch all rows from the bank table
-            cursor.execute(f"SELECT userID, cash FROM bank_{server_id}")
+            cursor.execute(f"SELECT userID, cash FROM bank")
             bank_data = cursor.fetchall()
     
             # Sort users by cash in descending order
