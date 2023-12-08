@@ -713,7 +713,7 @@ class cardMini(commands.Cog):
     async def random_user(self, ctx):
         """Select a random user from the specified series and add their ID to the user's deck."""
         random_number = random.random()
-        if random_number < self.get_off_season_chance():
+        if random_number < float(self.get_off_season_chance()):
             # Get the server ID
             server_id = str(ctx.guild.id)
             # Connect to the SQLite database for the server
