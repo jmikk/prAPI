@@ -16,6 +16,43 @@ class cardMini(commands.Cog):
         self.bot = bot
         self.sell_mod=1.1
         self.buy_mod=.9
+
+    @commands.command(name='bank_leaderboard')
+    async def bank_leaderboard(self, ctx, count: int = 10):
+        if count > 20:
+            count = 20
+    
+        server_id = str(ctx.guild.id)
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+    
+        try:
+            # Connect to the SQLite database for the server
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+    
+            # Fetch all rows from the bank table
+            cursor.execute(f"SELECT userID, cash FROM bank_{server_id}")
+            bank_data = cursor.fetchall()
+    
+            # Sort users by cash in descending order
+            sorted_users = sorted(bank_data, key=lambda x: x[1], reverse=True)
+    
+            # Slice the leaderboard based on the count
+            leaderboard = sorted_users[:count]
+    
+            # Display leaderboard
+            embed = discord.Embed(title=f"Bank Leaderboard - Top {count}", color=0x00ff00)
+            for user_id, cash in leaderboard:
+                user = self.bot.get_user(user_id)
+                embed.add_field(name=user.name, value=f"Bank Balance: {round(cash, 2)}", inline=False)
+    
+            await ctx.send(embed=embed)
+    
+        except sqlite3.OperationalError as e:
+            await ctx.send(f"SQLite error: {e}")
+        finally:
+            # Close the connection
+            conn.close()
         
     @commands.command(name='setOnSeason')
     async def setOnSeason(self,ctx,series):
