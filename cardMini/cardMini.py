@@ -19,7 +19,7 @@ class cardMini(commands.Cog):
 
     async def setOffSeasonChance(self,ctx,percent):
         percent = percent.strip("%")
-        file = os.path.join(data_manager.cog_data_path(self), f'off_season_chance')
+        file = os.path.join(data_manager.cog_data_path(self), f'off_season_chance.txt')
         with open(file,"w") as f:
             f.write(percent)
         await ctx.send("Set off season chance to {percent}%")
