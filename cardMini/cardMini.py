@@ -19,14 +19,15 @@ class cardMini(commands.Cog):
 
     @commands.command(name='DV_leaderboard')
     async def DV_leaderboard(self, ctx, count: int = 10):
+        server_id = str(ctx.guild.id)
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         if count > 20:
             count = 20
                     # Connect to the SQLite database for the server
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
     
-        server_id = str(ctx.guild.id)
-        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+
         # Get a list of all tables starting with 'deck_'
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'deck_%'")
         deck_tables = cursor.fetchall()
