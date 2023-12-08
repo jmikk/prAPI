@@ -16,6 +16,7 @@ class cardMini(commands.Cog):
         self.bot = bot
         self.sell_mod=1.1
         self.buy_mod=.9
+        
     @commands.command(name='dv_leaderboard')
     async def dv_leaderboard(self, ctx, count: int = 10):
         if count > 20:
@@ -57,7 +58,7 @@ class cardMini(commands.Cog):
 
             # Function to display the current page
             async def display_page():
-                embed = discord.Embed(title=f"DV Leaderboard - Page {current_page + 1}/{total_pages}")
+                embed = discord.Embed(title=f"DV Leaderboard - Page {current_page + 1}/{total_pages},color=0xFFFFFF")
 
                 for user_id, dv in paginated_leaderboard[current_page]:
                     user = self.bot.get_user(user_id)
