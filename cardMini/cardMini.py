@@ -16,28 +16,95 @@ class cardMini(commands.Cog):
         self.bot = bot
         self.sell_mod=1.1
         self.buy_mod=.9
-
-    @commands.command(name='DV_leaderboard')
-    async def DV_leaderboard(self, ctx, count: int = 10):
-        server_id = str(ctx.guild.id)
-        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+    @commands.command(name='dv_leaderboard')
+    async def dv_leaderboard(self, ctx, count: int = 10):
         if count > 20:
             count = 20
-                    # Connect to the SQLite database for the server
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-    
 
-        # Get a list of all tables starting with 'deck_'
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'deck_%'")
-        deck_tables = cursor.fetchall()
-    
-        # Extract numbers from table names
-        deck_numbers = [int(re.search(r'\d+', table[0]).group()) for table in deck_tables]
+        server_id = str(ctx.guild.id)
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
 
-        await ctx.send(deck_numbers)
+        try:
+            # Connect to the SQLite database for the server
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
 
 
+            # Get a list of all tables starting with 'deck_'
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'deck_%'")
+            deck_tables = cursor.fetchall()
+        
+            # Extract numbers from table names
+            deck_numbers = [int(re.search(r'\d+', table[0]).group()) for table in deck_tables]
+
+            DVs=[]
+            for each in deck_numbers
+                DVs.append(self.getUserDV(server_id,each))
+
+            
+            # Fetch all rows from the bank table
+            dv_data = list(zip(deck_numbers, DVs))
+
+            # Sort users by DV in descending order
+            sorted_users = sorted(dv_data, key=lambda x: x[1], reverse=True)
+
+            # Slice the leaderboard based on the count
+            paginated_leaderboard = [sorted_users[i:i + count] for i in range(0, len(sorted_users), count)]
+
+            # Initialize page counter and embed
+            current_page = 0
+            total_pages = len(paginated_leaderboard)
+
+            # Function to display the current page
+            async def display_page():
+                embed = discord.Embed(title=f"DV Leaderboard - Page {current_page + 1}/{total_pages}")
+
+                for user_id, dv in paginated_leaderboard[current_page]:
+                    user = self.bot.get_user(user_id)
+                    if user:
+                        embed.add_field(name=user.name, value=f"{user.mention} DV: {round(dv, 2)}", inline=False)
+                    else:
+                        embed.add_field(name=f"Unknown User ({user_id})", value=f"DV: {round(dv, 2)}", inline=False)
+
+                return embed
+
+            # Send the initial page
+            message = await ctx.send(embed=await display_page())
+
+            # Add reactions for navigation
+            await message.add_reaction('◀️')
+            await message.add_reaction('▶️')
+
+            # Function to update the display based on reaction input
+            def check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in ['◀️', '▶️']
+
+            while True:
+                try:
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+
+                    if str(reaction.emoji) == '▶️' and current_page < total_pages - 1:
+                        current_page += 1
+                    elif str(reaction.emoji) == '◀️' and current_page > 0:
+                        current_page -= 1
+
+                    # Update the message with the new page
+                    await message.edit(embed=await display_page())
+
+                    # Remove the user's reaction
+                    await message.remove_reaction(reaction, user)
+                except asyncio.TimeoutError:
+                    # Stop listening for reactions after 30 seconds
+                    break
+                except asyncio.CancelledError:
+                    # Handle cancellation (optional)
+                    break
+
+        except sqlite3.OperationalError as e:
+            await ctx.send(f"SQLite error: {e}")
+        finally:
+            # Close the connection
+            conn.close()
         
     
     @commands.command(name='bank_leaderboard')
