@@ -16,6 +16,17 @@ class cardMini(commands.Cog):
         self.bot = bot
         self.sell_mod=1.1
         self.buy_mod=.9
+
+    def get_on_season(self):
+        file = os.path.join(data_manager.cog_data_path(self), 'on_season.txt')
+        with open(file,"r+") as f:
+            return f.read()
+            
+    def get_off_season_chance(self):
+        file = os.path.join(data_manager.cog_data_path(self), 'off_season_chance.txt')
+        with open(file,"r+") as f:
+            return f.read()
+
     
     @commands.command(name='setOffSeasonChance')
     async def setOffSeasonChance(self,ctx,percent):
@@ -694,7 +705,26 @@ class cardMini(commands.Cog):
     @commands.command(name='random_user')
     async def random_user(self, ctx, series: str):
         """Select a random user from the specified series and add their ID to the user's deck."""
-        series = "Season_"+series
+        random_number = random.random()
+        if random_number < self.get_off_season_chance():
+            # Get the server ID
+            server_id = str(ctx.guild.id)
+            # Connect to the SQLite database for the server
+            db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+            conn = sqlite3.connect(db_path)
+            # Get a list of tables starting with "Season_"
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'Season_%'")
+            season_tables = cursor.fetchall()
+            # Close the connection
+            conn.close()
+            if not season_tables:
+                await ctx.send("No tables starting with 'Season_' found.")
+                return
+            # Choose a random table from the list
+            series = random.choice(season_tables)[0]
+        else:
+            series = "Season_"+self.get_on_season()
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         user_id = ctx.author.id
@@ -884,6 +914,9 @@ class cardMini(commands.Cog):
     
     @commands.command(name='new_season')
     async def new_season(self, ctx, series: str,legendary_limit=None,epic_limit=None,ultra_rare_limit=None,rare_limit=None,uncommon_limit=None):
+        file = os.path.join(data_manager.cog_data_path(self), f'on_season.txt')
+        with open(file,"w+") as f:
+            f.write(series)
         series = "Season_"+series
         # Get the list of all server members
         server_id = str(ctx.guild.id)
