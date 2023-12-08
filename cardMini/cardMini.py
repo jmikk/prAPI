@@ -44,7 +44,7 @@ class cardMini(commands.Cog):
             embed = discord.Embed(title=f"Bank Leaderboard - Top {count}", color=0x00ff00)
             for user_id, cash in leaderboard:
                 user = self.bot.get_user(user_id)
-                embed.add_field(name=user.name, value=f"Bank Balance: {round(cash, 2)}", inline=False)
+                embed.add_field(name=user.mention, value=f"Bank Balance: {round(cash, 2)}", inline=False)
     
             await ctx.send(embed=embed)
     
