@@ -884,6 +884,36 @@ class cardMini(commands.Cog):
         
         # Print the list of table names
         await ctx.send(table_names)
+
+    @commands.command(name='delete_series')
+    async def delete_card(self, ctx, series: str, user_id: int):
+        # Get the server ID
+        series = "Season_" + series
+        server_id = str(ctx.guild.id)
+    
+        # Connect to the SQLite database for the server
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+    
+        conn = sqlite3.connect(db_path)
+    
+        # Delete rows from tables starting with "deck_" where season matches the specified series and userID matches
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'deck_%'")
+        deck_tables = cursor.fetchall()
+
+        cursor.execute(f"DELETE FROM {series} WHERE season = ? AND userID = ?", (series, user_id))
+        for table in deck_tables:
+            deck_table_name = table[0]
+            cursor.execute(f"DELETE FROM {deck_table_name} WHERE season = ? AND userID = ?", (series, user_id))
+    
+        conn.commit()
+    
+        # Close the connection
+        conn.close()
+    
+        # Respond to the user
+        await ctx.send(f"Rows with userID {user_id} and season '{series}' deleted from 'deck_' tables!")
+
     
     @commands.command(name='delete_series')
     async def delete_series(self, ctx, series: str):
