@@ -38,7 +38,7 @@ class cardMini(commands.Cog):
             deck_numbers = [int(re.search(r'\d+', table[0]).group()) for table in deck_tables]
 
             DVs=[]
-            for each in deck_numbers
+            for each in deck_numbers:
                 DVs.append(self.getUserDV(server_id,each))
 
             
