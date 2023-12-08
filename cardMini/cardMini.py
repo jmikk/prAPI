@@ -46,7 +46,7 @@ class cardMini(commands.Cog):
                 user = self.bot.get_user(user_id)
                 if user:
                     # If the user exists, add a field to the embed with the user mention
-                    embed.add_field(name=f"<@!{user_id}>, value=f"Bank Balance: {round(cash, 2)}", inline=False)
+                    embed.add_field(name=f"<@!{user_id}>", value=f"Bank Balance: {round(cash, 2)}", inline=False)
                 else:
                     # If the user doesn't exist, display the user ID
                     embed.add_field(name=f"Unknown User ({user_id})", value=f"Bank Balance: {round(cash, 2)}", inline=False)
