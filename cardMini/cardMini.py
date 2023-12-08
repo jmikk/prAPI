@@ -17,6 +17,23 @@ class cardMini(commands.Cog):
         self.sell_mod=1.1
         self.buy_mod=.9
 
+    @commands.command(name='DV_leaderboard')
+    async def DV_leaderboard(self, ctx, count: int = 10):
+        if count > 20:
+            count = 20
+    
+        server_id = str(ctx.guild.id)
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        # Get a list of all tables starting with 'deck_'
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'deck_%'")
+        deck_tables = cursor.fetchall()
+    
+        # Extract numbers from table names
+        deck_numbers = [int(re.search(r'\d+', table[0]).group()) for table in deck_tables]
+
+
+        
+    
     @commands.command(name='bank_leaderboard')
     async def bank_leaderboard(self, ctx, count: int = 10):
         if count > 20:
