@@ -363,7 +363,7 @@ class cardMini(commands.Cog):
             
             cursor.execute(f'''
                 CREATE TABLE IF NOT EXISTS bank (
-                    userID INTEGER PRIMARY KEY,
+                    userID INTEGER,
                     cash REAL DEFAULT 0
                 )
                         ''')
@@ -512,7 +512,7 @@ class cardMini(commands.Cog):
                     table_name = "deck_" + str(ctx.author.id)
                     cursor.execute(f'''
                         CREATE TABLE IF NOT EXISTS {table_name} (
-                            userID INTEGER PRIMARY KEY,
+                            userID INTEGER ,
                             season TEXT,
                             count INTEGER
                         )
@@ -755,7 +755,7 @@ class cardMini(commands.Cog):
             if result:
                 cursor.execute(f'''
                 CREATE TABLE IF NOT EXISTS {deck_table_name} (
-                    userID INTEGER PRIMARY KEY,
+                    userID INTEGER,
                     season TEXT,
                     count INTEGER
                 )
@@ -933,7 +933,7 @@ class cardMini(commands.Cog):
         cursor = conn.cursor()
         cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS {series} (
-                userID INTEGER PRIMARY KEY,
+                userID INTEGER ,
                 name TEXT,
                 season TEXT,
                 rarity TEXT,
