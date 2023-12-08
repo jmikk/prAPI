@@ -16,6 +16,12 @@ class cardMini(commands.Cog):
         self.bot = bot
         self.sell_mod=1.1
         self.buy_mod=.9
+        
+    @commands.command(name='setOnSeason')
+    def setOnSeason(self,series):
+        file = os.path.join(data_manager.cog_data_path(self), 'off_season_chance.txt')
+        with open(file,"w+") as f:
+             f.write(series)
 
     def get_on_season(self):
         file = os.path.join(data_manager.cog_data_path(self), 'on_season.txt')
@@ -703,7 +709,7 @@ class cardMini(commands.Cog):
 
     
     @commands.command(name='random_user')
-    async def random_user(self, ctx, series: str):
+    async def random_user(self, ctx):
         """Select a random user from the specified series and add their ID to the user's deck."""
         random_number = random.random()
         if random_number < self.get_off_season_chance():
