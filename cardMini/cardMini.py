@@ -32,6 +32,7 @@ class cardMini(commands.Cog):
     async def set_payout_time(self,ctx,time):
         """Sets the cooldown that gives money per message sent, starts at 300 ( 5 minutes)"""
         self.payout_time=time
+        await ctx.send(f"Message time set to {time}"
     
 
     @commands.command(name='updateNames')
