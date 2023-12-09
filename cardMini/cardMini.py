@@ -1421,7 +1421,7 @@ class cardMini(commands.Cog):
         await ctx.send(f"New season '{series}' started! User information stored.")
         await ctx.send(user_data[ctx.author.id])
 
-    def get_table_stats(db_path, table_name):
+    def get_table_stats(self, db_path, table_name):
         try:
             # Connect to the database
             connection = sqlite3.connect(db_path)
