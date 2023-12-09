@@ -385,8 +385,8 @@ class cardMini(commands.Cog):
 
     
    
-    @commands.command(name='mine_salt')
-    async def mine_salt(self,ctx):
+    @commands.command(name='mine_salt',aliases=["mine","salt"])
+    async def work(self,ctx):
         """Work and adds a small amount of bank to the user"""
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
@@ -461,7 +461,7 @@ class cardMini(commands.Cog):
             conn.close()
         return output
         
-    @commands.command(name='view_card')
+    @commands.command(name='view_card',aliases=["card_view"])
     async def view_card(self,ctx,name,season):
         """View's a given card {name} can be an username or mention {season} should just be the name after Season_"""
         name = self.mentionToUser(ctx,name)
@@ -776,7 +776,7 @@ class cardMini(commands.Cog):
             conn.close()
             
 
-    @commands.command(name='chk_bank')
+    @commands.command(name='chk_bank',aliases=["bank"])
     async def chk_bank(self,ctx):
         """Checks your current bank total"""
         server_id = str(ctx.guild.id)
@@ -805,10 +805,15 @@ class cardMini(commands.Cog):
         # Close the connection
             conn.close()
         
-    @commands.command(name='all_deck')
-    async def all_deck(self,ctx,count=10):
-        """View your deck {count} is how many cards per page default 10"""
-
+    @commands.command(name='view_deck',aliases=["all_deck","deck")
+    async def view_deck(self,ctx,name="",count=10):
+        """View your deck (or someone elses with {mention}, you can use {count} to change many cards per page default 10"""
+        if not name:
+            #set the deck table 
+            table_name = "deck_"+str(ctx.author.id)
+        else:
+            table_name = "deck_"+str(self.mentionToID(name)
+           
         
         if count > 20:
             count = 20
@@ -822,8 +827,7 @@ class cardMini(commands.Cog):
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
 
-            #set the deck table 
-            table_name = "deck_"+str(ctx.author.id)
+
 
             # Connect to the database
             connection = sqlite3.connect(db_path)
