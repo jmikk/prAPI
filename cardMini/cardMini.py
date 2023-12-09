@@ -932,7 +932,7 @@ class cardMini(commands.Cog):
 
 
     
-    @commands.command(name='random_user')
+    @commands.command(name='random_user',aliases=["open","open_pack"])
     async def random_user(self, ctx):
         """Select a random user from the specified series and add their ID to the user's deck."""
         random_number = random.random()
