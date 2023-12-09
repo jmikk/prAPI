@@ -811,10 +811,10 @@ class cardMini(commands.Cog):
         if not name:
             #set the deck table 
             table_name = "deck_"+str(ctx.author.id)
-            Mname = ctx.author.nick
+            Mname = ctx.author.mention
         else:
             table_name = "deck_"+str(name.id)
-            Mname = name.nick
+            Mname = name.mention
            
         
         if count > 20:
