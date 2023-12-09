@@ -1,4 +1,3 @@
-import csv
 import requests
 from redbot.core import commands, data_manager
 import random
@@ -947,7 +946,7 @@ class cardMini(commands.Cog):
                 stuff=file.readlines()
                 bad_stuff = random.choices(stuff)
             # Send the random line to the user
-            await ctx.send(f"Uh oh! Instead of getting a pack, {bad_stuff[0]}")
+            await ctx.send(f"Uh oh! {bad_stuff[0]}")
             return
             
         
