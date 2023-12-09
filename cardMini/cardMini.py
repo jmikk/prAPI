@@ -850,7 +850,7 @@ class cardMini(commands.Cog):
 
                         # Function to display the current page
             async def display_page():
-                embed = discord.Embed(title=f"Deck Information - Page {current_page + 1}/{total_pages}")
+                embed = discord.Embed(title=f"Deck Information - Page {current_page + 1}/{total_pages}\nYour total DV: {self.getUserDV(server_id,ctx.author.id)}")
 
                 total_mv = 0  # Initialize total MV
 
