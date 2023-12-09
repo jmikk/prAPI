@@ -1190,31 +1190,83 @@ class cardMini(commands.Cog):
         # Respond to the user
         await ctx.send(f"{deck.mention}'s deck deleted! {deck.id}")
 
-    @commands.command(name='list_season',aliases=["list_seasons"])
+    @commands.command(name='list_season', aliases=["list_seasons"])
     async def list_series(self, ctx):
         """Lists all seasons"""
         server_id = str(ctx.guild.id)
-    
+
         # Connect to the SQLite database for the server
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
 
-        conn = sqlite3.connect(db_path)
-    
-        # Delete the table for the specified series
-        cursor = conn.cursor()
+        try:
+            # Connect to the database
+            connection = sqlite3.connect(db_path)
+            cursor = connection.cursor()
 
-        # Execute the query to retrieve table names
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'Season_%'")
-        
-        # Fetch all the table names from the result set
-        table_names = cursor.fetchall()
-        
-        # Close the cursor and connection
-        cursor.close()
-        conn.close()
-        
-        # Print the list of table names
-        await ctx.send(table_names)
+            # Execute the query to retrieve table names
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'Season_%'")
+
+            # Fetch all the table names from the result set
+            table_names = cursor.fetchall()
+
+            # Close the cursor and connection
+            cursor.close()
+            connection.close()
+
+            chunk_size = 10  # Set your desired chunk size for pagination
+            paginated_tables = [table_names[i:i + chunk_size] for i in range(0, len(table_names), chunk_size)]
+
+            # Initialize page counter and embed
+            current_page = 0
+            total_pages = len(paginated_tables)
+
+            # Function to display the current page
+            async def display_page():
+                embed = discord.Embed(title=f"Seasons - Page {current_page + 1}/{total_pages}")
+
+                for table_name in paginated_tables[current_page]:
+                    # Customize how you want to display each table name in the embed
+                    embed.add_field(name="Season", value=table_name[0], inline=False)
+
+                return embed
+
+            # Send the initial page
+            message = await ctx.send(embed=await display_page())
+
+            # Add reactions for navigation
+            await message.add_reaction('◀️')
+            await message.add_reaction('▶️')
+
+            # Function to update the display based on reaction input
+            def check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in ['◀️', '▶️']
+
+            while True:
+                try:
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+
+                    if str(reaction.emoji) == '▶️' and current_page < total_pages - 1:
+                        current_page += 1
+                    elif str(reaction.emoji) == '◀️' and current_page > 0:
+                        current_page -= 1
+
+                    # Update the message with the new page
+                    await message.edit(embed=await display_page())
+
+                    # Remove the user's reaction
+                    await message.remove_reaction(reaction, user)
+                except asyncio.TimeoutError:
+                    # Stop listening for reactions after 30 seconds
+                    break
+                except asyncio.CancelledError:
+                    # Handle cancellation (optional)
+                    break
+
+        except sqlite3.OperationalError as e:
+            await ctx.send(f"SQLite error: {e}")
+        finally:
+            # Close the connection
+            connection.close()
 
     @commands.command(name='delete_card')
     @commands.is_owner()
