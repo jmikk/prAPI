@@ -967,7 +967,7 @@ class cardMini(commands.Cog):
 
                 card = await self.display_card(result[0],result[2],server_id)
                 owner_count = 0
-
+                await ctx.send(result)
                 #(ID, 'Season_1', 'Epic', 0.5, 10)
                 user = self.bot.get_user(card[0])
                 card_rarity = card[3]
