@@ -942,6 +942,7 @@ class cardMini(commands.Cog):
 
 
     @commands.command(name='set_steal_chance')
+    @commands.is_owner()
     async def set_steal_chance(self,ctx,percent):
         """Sets the chance for Gob to steal a card when you try and open a pack starts at 1%"""
         if float(percent) > 50:
