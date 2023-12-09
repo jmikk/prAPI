@@ -1225,6 +1225,7 @@ class cardMini(commands.Cog):
                 embed = discord.Embed(title=f"Seasons - Page {current_page + 1}/{total_pages}")
 
                 for table_name in paginated_tables[current_page]:
+                    await ctx.send(table_name)
                     stats = self.get_table_stats(table_name,server_id)
                     # Customize how you want to display each table name in the embed
                     embed.add_field(name=table_name[0], value=f"Total Cards: {stats[0]}, Total MV: {round(stats[1], 2)}, Total Cards Gob Owns: {stats[2]}")
