@@ -807,12 +807,12 @@ class cardMini(commands.Cog):
         
     @commands.command(name='view_deck',aliases=["all_deck","deck"])
     async def view_deck(self,ctx,name="",count=10):
-        """View your deck (or someone elses with {mention}, you can use {count} to change many cards per page default 10"""
+        """View your deck (or someone elses with {mention})"""
         if not name:
             #set the deck table 
             table_name = "deck_"+str(ctx.author.id)
         else:
-            table_name = "deck_"+str(self.mentionToID(name))
+            table_name = "deck_"+str(self.mentionToID(ctx,name))
            
         
         if count > 20:
