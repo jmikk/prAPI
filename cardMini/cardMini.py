@@ -990,7 +990,7 @@ class cardMini(commands.Cog):
                     
                     
                     # Update the stock count in the database
-                    update_stock_query = f"UPDATE {season} SET stock = stock + {count} WHERE userID = ?"
+                    update_stock_query = f"UPDATE {season} SET stock = stock + {result[2]} WHERE userID = ?"
                     cursor.execute(update_stock_query, (userID,))
                     conn.commit()
                 except sqlite3.Error as e:
