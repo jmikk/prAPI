@@ -954,13 +954,16 @@ class cardMini(commands.Cog):
             cursor = conn.cursor()
     
             # Retrieve a random user from the specified series
-            cursor.execute(f'''
+            try:
+                cursor.execute(f'''
                 SELECT userID FROM deck_{ctx.author.id}
                 ORDER BY RANDOM()
                 LIMIT 1
             ''')
             # Fetch the result
-            result = cursor.fetchone()
+                result = cursor.fetchone()
+            except sqlite3.OperationalError:
+                result=""
 
             if result:
                 await ctx.send(f"You know what, its mine that's right I'm taking all copies of a card")
