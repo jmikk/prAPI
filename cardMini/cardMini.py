@@ -8,6 +8,7 @@ import sqlite3
 import math
 import asyncio
 import re
+import time
 
 
 def is_owner_overridable():
@@ -23,6 +24,7 @@ class cardMini(commands.Cog):
         self.sell_mod=1.1
         self.buy_mod=.9
         self.steal_mod = 1
+        self.cooldowns = {}  # Dictionary to store last execution time for each user
 
     @commands.command(name='updateNames')
     @commands.is_owner()
@@ -1356,4 +1358,39 @@ class cardMini(commands.Cog):
         # Respond to the user
         await ctx.send(f"New season '{series}' started! User information stored.")
         await ctx.send(user_data[ctx.author.id])
+
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        # Check if the message is from a bot or in a DM (optional)
+        if message.author.bot or not message.guild:
+            return
+
+        server_id = str(message.guild.id)
+        user_id = str(message.author.id)
+
+        # Check cooldown
+        current_time = time.time()
+        last_execution_time = self.cooldowns.get((server_id, user_id), 0)
+        if current_time - last_execution_time < 300:  # 300 seconds = 5 minutes
+            return
+
+        # Update the cooldown
+        self.cooldowns[(server_id, user_id)] = current_time
+
+        # Give the user a random amount of money between 0.01 and 0.10
+        amount = round(random.uniform(0.01, 0.10), 2)
+
+        # Get the user's current bank balance
+        user_bank = self.get_bank(server_id, user_id)
+
+        # Update the bank balance with the reward
+        new_bank_total = user_bank + amount
+
+        # Replace this with your actual database update logic
+        conn = sqlite3.connect('your_database.db')
+        cursor = conn.cursor()
+        cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, user_id))
+        conn.commit()
+        conn.close()
     
