@@ -24,6 +24,17 @@ class cardMini(commands.Cog):
         self.sell_mod=1.1
         self.buy_mod=.9
         
+    @commands.is_owner()
+    async def updateNames(self,ctx):
+        """This WILL PING EVERYONE IN THE SERVER, it is used to mass update names DO NOT USE IT UNLESS YOU ARE IN A PRIVIATE CHANNEL"""
+        member_ids = [member.id for member in guild.members]
+        # Send IDs in sets of 30
+        chunk_size = 30
+        for i in range(0, len(member_ids), chunk_size):
+            chunk = member_ids[i:i + chunk_size]
+            formatted_ids = [f"<@{member_id}>" for member_id in chunk]
+            await channel.send(f"List of member IDs: {' '.join(formatted_ids)}")
+        
     @commands.command(name='DV_leaderboard', aliases=['DVL', 'leaderboard_DV'])
     async def DV_leaderboard(self, ctx, count: int = 10):
         """Displayes a leaderboard with whoever has the most Deck value {# per page} default 10"""
