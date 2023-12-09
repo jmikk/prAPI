@@ -25,6 +25,14 @@ class cardMini(commands.Cog):
         self.buy_mod=.9
         self.steal_mod = 1
         self.cooldowns = {}  # Dictionary to store last execution time for each user
+        self.payout_time=300
+
+    @commands.command(name='updateNames')
+    @commands.is_owner()    
+    async def set_payout_time(self,ctx,time):
+        """Sets the cooldown that gives money per message sent, starts at 300 ( 5 minutes)"""
+        self.payout_time=time
+    
 
     @commands.command(name='updateNames')
     @commands.is_owner()
