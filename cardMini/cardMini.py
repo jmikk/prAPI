@@ -28,7 +28,7 @@ class cardMini(commands.Cog):
     @commands.is_owner()
     async def updateNames(self,ctx):
         """This WILL PING EVERYONE IN THE SERVER, it is used to mass update names DO NOT USE IT UNLESS YOU ARE IN A PRIVIATE CHANNEL"""
-        member_ids = [member.id for member in guild.members]
+        member_ids = [member.id for member in ctx.guild.members]
         # Send IDs in sets of 30
         chunk_size = 30
         for i in range(0, len(member_ids), chunk_size):
