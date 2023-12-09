@@ -969,7 +969,7 @@ class cardMini(commands.Cog):
                 owner_count = 0
                 await ctx.send(result)
                 #(ID, 'Season_1', 'Epic', 0.5, 10)
-                user = self.bot.get_user(card[0])
+                user = ctx.get_user(card[0])
                 card_rarity = card[3]
                 embed = discord.Embed(title=user.name)
                 if card_rarity == "Mythic":
