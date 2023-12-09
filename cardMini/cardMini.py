@@ -996,12 +996,12 @@ class cardMini(commands.Cog):
 
                 finally:
                     conn.close()
-                uname= self.bot.get_user(result[0]).strip("#0")
+                uname = self.bot.get_user(result[0])
                 
                 if result[2] == 1:
-                    await ctx.send(f"You know what, it's mine that's right I'm taking your {result[2]} copy of {uname}.  If you want them back you have to buy them.")
+                    await ctx.send(f"You know what, it's mine that's right I'm taking your {result[2]} copy of {uname.name}.  If you want them back you have to buy them.")
                 else:
-                    await ctx.send(f"You know what, it's mine that's right I'm taking your {result[2]} copy of {uname}.  If you want them back you have to buy them.")
+                    await ctx.send(f"You know what, it's mine that's right I'm taking your {result[2]} copy of {uname.name}.  If you want them back you have to buy them.")
 
                 return
 
