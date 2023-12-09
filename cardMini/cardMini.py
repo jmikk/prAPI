@@ -806,7 +806,7 @@ class cardMini(commands.Cog):
             conn.close()
         
     @commands.command(name='view_deck',aliases=["all_deck","deck"])
-    async def view_deck(self,ctx, name: discord.MemberConverter=default,count=10):
+    async def view_deck(self,ctx, name: discord.MemberConverter="",count=10):
         """View your deck (or someone elses with {mention})"""
         if not name:
             #set the deck table 
