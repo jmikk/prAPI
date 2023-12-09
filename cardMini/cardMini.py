@@ -941,7 +941,7 @@ class cardMini(commands.Cog):
         """Select a random user from the specified series and add their ID to the user's deck."""
 
         event_type = random.randint(1, 2)
-        steal_chance = self.get_steal_chance()/100
+        steal_chance = self.steal_mod/100
 
         evil_num = random.random()
         if evil_num > float(self.get_off_season_chance())/100:
