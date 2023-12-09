@@ -34,7 +34,6 @@ class cardMini(commands.Cog):
         self.payout_time=time
         await ctx.send(f"Message time set to {time}")
     
-
     @commands.command(name='updateNames')
     @commands.is_owner()
     async def updateNames(self,ctx):
