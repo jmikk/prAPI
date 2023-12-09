@@ -22,6 +22,7 @@ class cardMini(commands.Cog):
         self.bot = bot
         self.sell_mod=1.1
         self.buy_mod=.9
+        self.steal_mod = 50
 
     @commands.command(name='updateNames')
     @commands.is_owner()
@@ -928,14 +929,92 @@ class cardMini(commands.Cog):
             conn.close()    
 
 
+    @commands.command(name='random_user',aliases=["open","open_pack"])
+    async def set_steal_chance(self,ctx,percent):
+        """Sets the chance for Gob to steal a card when you try and open a pack starts at 1%"""
+        if float(percent) > 50:
+            percent = 50
+        self.steal_mod=percent
     
     @commands.command(name='random_user',aliases=["open","open_pack"])
     async def random_user(self, ctx):
         """Select a random user from the specified series and add their ID to the user's deck."""
 
-        event_type = random.randint(1, 3)
+        event_type = random.randint(1, 2)
+        steal_chance = random.get_steal_chance()/100
+
+        evil_num = random.random()
+        if evil_num > float(self.get_off_season_chance())/100:
+            # Connect to the SQLite database for the server
+            # Get the server ID
+            server_id = str(ctx.guild.id)
+            # Connect to the SQLite database for the server
+            db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
     
-        if event_type == 2 or event_type == 3:
+            # Retrieve a random user from the specified series
+            cursor.execute(f'''
+                SELECT * FROM deck_{ctx.author.id}
+                ORDER BY RANDOM()
+                LIMIT 1
+            ''')
+            # Fetch the result
+            result = cursor.fetchone()
+
+            if result:
+                await ctx.send(f"You know what, its mine that's right I'm taking all copies of a card")
+
+                card = await self.display_card(result[0],result[2],server_id)
+                owner_count = 0
+
+                #(ID, 'Season_1', 'Epic', 0.5, 10)
+                user = self.bot.get_user(card[0])
+                card_rarity = card[3]
+                embed = discord.Embed(title=user.name)
+                if card_rarity == "Mythic":
+                    embed.color = 0xC30F0D
+                elif card_rarity == "Legendary":
+                    embed.color = 0xFFEA7A
+                elif card_rarity == "Epic":
+                    embed.color = 0xE3B54F
+                elif card_rarity == "Ultra-Rare":
+                    embed.color = 0xCA5BEF
+                elif card_rarity == "Rare":
+                    embed.color = 0x008EC1
+                elif card_rarity == "Uncommon":
+                    embed.color = 0x00AA4C
+                elif card_rarity == "Common":
+                    embed.color = 0xABABAB
+                else:
+                    # Handle the case when card_rarity is not one of the specified values
+                    embed.color = 0xFFFFFF  # Set a default color or handle it accordingly
+                
+                # Rest of your code using the 'embed' variable...
+                # Add fields to the embed
+
+                embed.add_field(name="Name", value=user.mention, inline=True)
+                embed.add_field(name="Season", value=card[2], inline=True)
+                embed.add_field(name="Rarity", value=card[3], inline=True)
+                embed.add_field(name="MV", value=card[4], inline=True)
+                embed.add_field(name="Gob owns", value=card[5], inline=True)
+                embed.add_field(name="You own", value=owner_count[0], inline=True)
+                embed.add_field(name="Gob will buy for", value=round(float(card[4])*self.buy_mod,2), inline=True)
+                embed.add_field(name="Gob will sell for", value=round(float(card[4])*self.sell_mod+.01,2), inline=True)
+            
+                # Set the thumbnail to the user's avatar if available, otherwise use the default icon
+                avatar_url = user.avatar.url if user.avatar else user.default_avatar.url
+                embed.set_thumbnail(url=avatar_url)
+
+                await ctx.send(embed=embed)
+                
+                
+
+            
+            
+        
+    
+        if event_type == 2:
             # Read a random line from the 'bad_stuff.txt' file
             current_directory = os.path.dirname(os.path.abspath(__file__))
             # Specify the file name
@@ -1015,6 +1094,7 @@ class cardMini(commands.Cog):
                     cursor.execute(insert_query, (result[0], series, 1))   
                 # Commit the changes
                 conn.commit()
+                
                 card = await self.display_card(result[0],result[2],server_id)
                 owner_count = self.get_owned_count(result[0],result[2],server_id,ctx.author.id)
 
@@ -1042,9 +1122,6 @@ class cardMini(commands.Cog):
                     embed.color = 0xFFFFFF  # Set a default color or handle it accordingly
                 
                 # Rest of your code using the 'embed' variable...
-
-                        
-               
 
                 # Add fields to the embed
 
