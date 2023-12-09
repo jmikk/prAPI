@@ -966,10 +966,8 @@ class cardMini(commands.Cog):
                 result=""
 
             if result:
-                await ctx.send(f"You know what, its mine that's right I'm taking all copies of a card")
 
                 # Delete the random row
-                await ctx.send(result[0])
                 userID = result[0]
                 season = result[1]
                 cursor.execute(f'DELETE FROM deck_{ctx.author.id} WHERE userID = ? AND season = ?', (userID,season))
@@ -998,7 +996,8 @@ class cardMini(commands.Cog):
 
                 finally:
                     conn.close()
-                
+                uname= self.bot.get_user(result[0])
+                await ctx.send(f"You know what, its mine that's right I'm taking your {result[2]} copies of {uname}.\nIf you want them back you have to buy them.")
                 return
 
                 
