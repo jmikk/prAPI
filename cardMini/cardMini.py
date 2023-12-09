@@ -1388,7 +1388,8 @@ class cardMini(commands.Cog):
         new_bank_total = user_bank + amount
 
         # Replace this with your actual database update logic
-        conn = sqlite3.connect('your_database.db')
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, user_id))
         conn.commit()
