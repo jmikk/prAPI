@@ -398,6 +398,7 @@ class cardMini(commands.Cog):
     
    
     @commands.command(name='mine_salt',aliases=["mine","salt"])
+    @commands.cooldown(1, 60, commands.BucketType.user)
     async def work(self,ctx):
         """Work and adds a small amount of bank to the user"""
         server_id = str(ctx.guild.id)
@@ -937,6 +938,7 @@ class cardMini(commands.Cog):
         self.steal_mod=percent
     
     @commands.command(name='random_user',aliases=["open","open_pack"])
+    @commands.cooldown(1, 10, commands.BucketType.user)
     async def random_user(self, ctx):
         """Select a random user from the specified series and add their ID to the user's deck."""
 
