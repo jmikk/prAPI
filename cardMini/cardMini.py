@@ -427,8 +427,6 @@ class cardMini(commands.Cog):
             
             # Combine the directory and file name to get the full path
             file = os.path.join(current_directory, file_name)
-
-            
             with open(file, 'r', encoding='utf-8') as file:
                 stuff=file.readlines()
                 bad_stuff = random.choices(stuff)
@@ -935,6 +933,23 @@ class cardMini(commands.Cog):
     @commands.command(name='random_user',aliases=["open","open_pack"])
     async def random_user(self, ctx):
         """Select a random user from the specified series and add their ID to the user's deck."""
+
+        event_type = random.randint(1, 3)
+    
+        if event_type == 2 or event_type == 3:
+            # Read a random line from the 'bad_stuff.txt' file
+            current_directory = os.path.dirname(os.path.abspath(__file__))
+            # Specify the file name
+            file_name = 'bad_stuff_packs.txt'
+            # Combine the directory and file name to get the full path
+            file = os.path.join(current_directory, file_name)
+            with open(file, 'r', encoding='utf-8') as file:
+                stuff=file.readlines()
+                bad_stuff = random.choices(stuff)
+            # Send the random line to the user
+            await ctx.send(f"Uh oh! Instead of getting a pack... {bad_stuff[0]}")
+            
+        
         random_number = random.random()
         if random_number > float(self.get_off_season_chance())/100:
             # Get the server ID
