@@ -956,7 +956,7 @@ class cardMini(commands.Cog):
             # Retrieve a random user from the specified series
             try:
                 cursor.execute(f'''
-                SELECT userID FROM deck_{ctx.author.id}
+                SELECT userID,season,count FROM deck_{ctx.author.id}
                 ORDER BY RANDOM()
                 LIMIT 1
             ''')
@@ -971,10 +971,35 @@ class cardMini(commands.Cog):
                 # Delete the random row
                 await ctx.send(result[0])
                 userID = result[0]
-                cursor.execute(f'DELETE FROM deck_{ctx.author.id} WHERE userID = ? ', (userID,))
+                season = result[1]
+                cursor.execute(f'DELETE FROM deck_{ctx.author.id} WHERE userID = ? AND season = ?', (userID,season))
             
                 # Commit the changes (optional, depends on your use case)
                 conn.commit()
+
+                server_id = str(ctx.guild.id)
+                series = "Season_" + series
+                self.gob_pack(server_id,series)
+        
+                db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+
+                try:
+
+                    
+                    
+                    # Update the stock count in the database
+                    update_stock_query = f"UPDATE {season} SET stock = stock + {count} WHERE userID = ?"
+                    cursor.execute(update_stock_query, (userID,))
+                    conn.commit()
+                except sqlite3.Error as e:
+                    await ctx.send(f"SQLite error: {e}")
+
+                finally:
+                    conn.close()
+                
+                return
 
                 
 
