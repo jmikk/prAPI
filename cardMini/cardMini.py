@@ -34,7 +34,7 @@ class cardMini(commands.Cog):
         for i in range(0, len(member_ids), chunk_size):
             chunk = member_ids[i:i + chunk_size]
             formatted_ids = [f"<@{member_id}>" for member_id in chunk]
-            await channel.send(f"List of member IDs: {' '.join(formatted_ids)}")
+            await ctx.send(f"List of member IDs: {' '.join(formatted_ids)}")
         
     @commands.command(name='DV_leaderboard', aliases=['DVL', 'leaderboard_DV'])
     async def DV_leaderboard(self, ctx, count: int = 10):
