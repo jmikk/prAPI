@@ -805,7 +805,7 @@ class cardMini(commands.Cog):
         # Close the connection
             conn.close()
         
-    @commands.command(name='view_deck',aliases=["all_deck","deck")
+    @commands.command(name='view_deck',aliases=["all_deck","deck"])
     async def view_deck(self,ctx,name="",count=10):
         """View your deck (or someone elses with {mention}, you can use {count} to change many cards per page default 10"""
         if not name:
