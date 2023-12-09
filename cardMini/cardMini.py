@@ -1085,7 +1085,7 @@ class cardMini(commands.Cog):
         # Respond to the user
         await ctx.send(f"{deck.mention}'s deck deleted! {deck.id}")
 
-    @commands.command(name='list_series')
+    @commands.command(name='list_season',aliases=["list_seasons"])
     async def list_series(self, ctx):
         """Lists all seasons"""
         server_id = str(ctx.guild.id)
