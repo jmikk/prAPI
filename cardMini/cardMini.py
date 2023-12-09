@@ -949,7 +949,7 @@ class cardMini(commands.Cog):
             percent = 50
         self.steal_mod=percent
     
-    @commands.command(name='random_user',aliases=["open","open_pack"])
+    @commands.command(name='open_pack',aliases=["open","open_pack"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def random_user(self, ctx):
         """Select a random user from the specified series and add their ID to the user's deck."""
