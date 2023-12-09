@@ -27,7 +27,7 @@ class cardMini(commands.Cog):
         self.cooldowns = {}  # Dictionary to store last execution time for each user
         self.payout_time=300
 
-    @commands.command(name='updateNames')
+    @commands.command(name='set_payout_time')
     @commands.is_owner()    
     async def set_payout_time(self,ctx,time):
         """Sets the cooldown that gives money per message sent, starts at 300 ( 5 minutes)"""
@@ -1381,7 +1381,7 @@ class cardMini(commands.Cog):
         # Check cooldown
         current_time = time.time()
         last_execution_time = self.cooldowns.get((server_id, user_id), 0)
-        if current_time - last_execution_time < 300:  # 300 seconds = 5 minutes
+        if current_time - last_execution_time < self.payout_time:  # 300 seconds = 5 minutes
             return
 
         # Update the cooldown
