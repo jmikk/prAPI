@@ -1442,7 +1442,7 @@ class cardMini(commands.Cog):
             return row_count, mv_sum, stock_sum
 
         except sqlite3.Error as e:
-            print(f"SQLite error: {e}")
+            await ctx.send(f"SQLite error: {e}")
             return None
 
         finally:
