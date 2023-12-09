@@ -111,7 +111,7 @@ class cardMini(commands.Cog):
     
     @commands.command(name='bank_leaderboard',aliases=["BL","leaderboard_bank"])
     async def bank_leaderboard(self, ctx, count: int = 10):
-    """Displayes a leaderboard with whoever has the most Deck value {# per page} default 10"""
+        """Displayes a leaderboard with whoever has the most Deck value {# per page} default 10"""
 
         if count > 20:
             count = 20
