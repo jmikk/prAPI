@@ -397,7 +397,7 @@ class cardMini(commands.Cog):
 
     
    
-    @commands.command(name='mine_salt',aliases=["mine","salt"])
+    @commands.command(name='mine_salt',aliases=["mine","salt","work"])
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def work(self,ctx):
         """Work and adds a small amount of bank to the user"""
