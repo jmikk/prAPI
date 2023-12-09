@@ -874,7 +874,7 @@ class cardMini(commands.Cog):
                     sell_price = round(float(rowz[0][4])*self.sell_mod+0.01,2)
                     buy_price = round(float(rowz[0][4])*self.buy_mod,2)
                     if row[2] > 0:
-                        embed.add_field(name=f"Card name: {name} {row[1]}", value=f"You own: {row[2]} ID: {row[0]} Rarity: {rowz[0][3]}\nMV: {round(rowz[0][4],2)} Buy price: {buy_price} Sell price: {sell_price}", inline=False)
+                        embed.add_field(name=f"Card name: {name} {row[1]}", value=f"You own: {row[2]} ID: <@{row[0]}> Rarity: {rowz[0][3]}\nMV: {round(rowz[0][4],2)} Buy price: {buy_price} Sell price: {sell_price}", inline=False)
                 embed.set_footer(text=f"Total MV of this page: {round(total_mv, 2)}")  # Display total MV in the footer
                 return embed
 
