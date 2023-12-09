@@ -1420,7 +1420,34 @@ class cardMini(commands.Cog):
         await ctx.send(f"New season '{series}' started! User information stored.")
         await ctx.send(user_data[ctx.author.id])
 
+    def get_table_stats(db_path, table_name):
+        try:
+            # Connect to the database
+            connection = sqlite3.connect(db_path)
+            cursor = connection.cursor()
+    
+            # Count the number of rows in the table
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+            row_count = cursor.fetchone()[0]
+    
+            # Sum the 'MV' column
+            cursor.execute(f"SELECT SUM(MV) FROM {table_name}")
+            mv_sum = cursor.fetchone()[0] or 0  # If the result is None, default to 0
+    
+            # Sum the 'stock' column
+            cursor.execute(f"SELECT SUM(stock) FROM {table_name}")
+            stock_sum = cursor.fetchone()[0] or 0  # If the result is None, default to 0
+    
+            return row_count, mv_sum, stock_sum
 
+        except sqlite3.Error as e:
+            print(f"SQLite error: {e}")
+            return None
+
+        finally:
+            # Close the connection
+            connection.close()
+    
     @commands.Cog.listener()
     async def on_message(self, message):
         # Check if the message is from a bot or in a DM (optional)
