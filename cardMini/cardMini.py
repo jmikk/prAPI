@@ -1375,6 +1375,11 @@ class cardMini(commands.Cog):
         # Check if the message is from a bot or in a DM (optional)
         if message.author.bot or not message.guild:
             return
+            
+        first_char = message.content[0]
+        if not first_char.isalpha():
+            return
+        
 
         server_id = str(message.guild.id)
         user_id = str(message.author.id)
