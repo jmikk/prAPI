@@ -978,7 +978,7 @@ class cardMini(commands.Cog):
                 conn.commit()
 
                 server_id = str(ctx.guild.id)
-                series = "Season_" + series
+                series = season
                 self.gob_pack(server_id,series)
         
                 db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
