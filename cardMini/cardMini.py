@@ -812,7 +812,7 @@ class cardMini(commands.Cog):
             #set the deck table 
             table_name = "deck_"+str(ctx.author.id)
         else:
-            table_name = "deck_"+str(self.mentionToID(ctx,name))
+            table_name = "deck_"+str(name.id)
            
         
         if count > 20:
