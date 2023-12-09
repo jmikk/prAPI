@@ -11,6 +11,13 @@ import asyncio
 import re
 
 
+def is_owner_overridable():
+    # Similar to @commands.is_owner()
+    # Unlike that, however, this check can be overridden with core Permissions
+    def predicate(ctx):
+        return False
+    return commands.permissions_check(predicate)
+
 class cardMini(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -201,6 +208,7 @@ class cardMini(commands.Cog):
 
         
     @commands.command(name='setOnSeason')
+    @commands.is_owner()
     async def setOnSeason(self,ctx,series):
         """Sets what season is the 'on' Season defults to the last season created"""
         file = os.path.join(data_manager.cog_data_path(self), 'off_season_chance.txt')
@@ -220,6 +228,7 @@ class cardMini(commands.Cog):
 
     
     @commands.command(name='setOffSeasonChance')
+    @commands.is_owner()
     async def setOffSeasonChance(self,ctx,percent):
         """Sets the chance to pull cards from old seasons defualts to 10%"""
         percent = percent.strip("%")
@@ -309,6 +318,7 @@ class cardMini(commands.Cog):
         return mention        
     
     @commands.command(name='set_rarities')
+    @commands.is_owner()
     async def set_rarities(self, ctx, series, *mentions_and_rarities):
         """Mannually sets the rarity of given card(s), must be entered in {userID} {rarity} pairs"""
         await ctx.send(len(mentions_and_rarities))
@@ -414,12 +424,14 @@ class cardMini(commands.Cog):
             await ctx.send(f"Uh oh! Instead of working... {bad_stuff[0]}")
     
     @commands.command(name='set_sell_mod')
+    @commands.is_owner()
     async def set_sell_mod(self,mod:float):
         """Sets the sell modifier, make sure it is lower than the buy mod and higher than 1 unless you want a wonky game."""
         self.sell_mod=mod
         await ctx.send(f"sell mod now set to {self.sell_mod}")
 
     @commands.command(name='set_buy_mod')
+    @commands.is_owner()
     async def set_buy_mod(self,mod:float):
         """Sets the buy modifier, make sure it is higher than the sell mod and lower than 1 unless you want a wonkey game."""
         self.buy_mod=mod
@@ -772,6 +784,7 @@ class cardMini(commands.Cog):
 
         
     @commands.command(name='set_bank')
+    @commands.is_owner()
     async def set_bank(self,ctx,bank, acct: commands.MemberConverter):
         """Sets a user's bank total"""
         server_id = str(ctx.guild.id)
@@ -1034,6 +1047,7 @@ class cardMini(commands.Cog):
 
     
     @commands.command(name='delete_deck')
+    @commands.is_owner()
     async def delete_deck(self, ctx, deck: commands.MemberConverter):
         """Deletes a {mention} deck"""
         server_id = str(ctx.guild.id)
@@ -1083,6 +1097,7 @@ class cardMini(commands.Cog):
         await ctx.send(table_names)
 
     @commands.command(name='delete_card')
+    @commands.is_owner()
     async def delete_card(self, ctx, series: str, user_id: int):
         """Delete a card from everyones deck and the game"""
         # Get the server ID
@@ -1114,6 +1129,7 @@ class cardMini(commands.Cog):
 
     
     @commands.command(name='delete_series')
+    @commands.is_owner()
     async def delete_series(self, ctx, series: str):
         """Delete a season so it no longer is in the game"""
         # Get the server ID
@@ -1149,6 +1165,7 @@ class cardMini(commands.Cog):
 
     
     @commands.command(name='new_season')
+    @commands.is_owner()
     async def new_season(self, ctx, series: str,legendary_limit=None,epic_limit=None,ultra_rare_limit=None,rare_limit=None,uncommon_limit=None):
         """Creates a new season you can pass the limits for each rarity or it will take the default values"""
         file = os.path.join(data_manager.cog_data_path(self), f'on_season.txt')
