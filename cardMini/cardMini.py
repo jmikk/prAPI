@@ -967,7 +967,8 @@ class cardMini(commands.Cog):
 
                 # Delete the random row
                 await ctx.send(result[0])
-                cursor.execute(f'DELETE FROM deck_{ctx.author.id} WHERE userID = ? ', (result[0]))
+                userID = result[0]
+                cursor.execute(f'DELETE FROM deck_{ctx.author.id} WHERE userID = ? ', (userID))
             
                 # Commit the changes (optional, depends on your use case)
                 conn.commit()
