@@ -811,17 +811,16 @@ class cardMini(commands.Cog):
         if not name:
             #set the deck table 
             table_name = "deck_"+str(ctx.author.id)
+            Mname = ctx.author.mention
         else:
             table_name = "deck_"+str(name.id)
+            Mname = name.mention
            
         
         if count > 20:
             count = 20
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
-
-        await ctx.send(f"Your total DV: {self.getUserDV(server_id,ctx.author.id)}")
-
         try: 
             # Connect to the SQLite database for the server
             conn = sqlite3.connect(db_path)
@@ -850,7 +849,7 @@ class cardMini(commands.Cog):
 
                         # Function to display the current page
             async def display_page():
-                embed = discord.Embed(title=f"Deck Information - Page {current_page + 1}/{total_pages}\nYour total DV: {self.getUserDV(server_id,ctx.author.id)}")
+                embed = discord.Embed(title=f"Deck Information - Page {current_page + 1}/{total_pages}\n{Mname}'s total DV: {self.getUserDV(server_id,ctx.author.id)}")
 
                 total_mv = 0  # Initialize total MV
 
