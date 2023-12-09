@@ -23,7 +23,8 @@ class cardMini(commands.Cog):
         self.bot = bot
         self.sell_mod=1.1
         self.buy_mod=.9
-        
+
+    @commands.command(name='updateNames')
     @commands.is_owner()
     async def updateNames(self,ctx):
         """This WILL PING EVERYONE IN THE SERVER, it is used to mass update names DO NOT USE IT UNLESS YOU ARE IN A PRIVIATE CHANNEL"""
