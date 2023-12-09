@@ -22,7 +22,7 @@ class cardMini(commands.Cog):
         self.bot = bot
         self.sell_mod=1.1
         self.buy_mod=.9
-        self.steal_mod = 50
+        self.steal_mod = 1
 
     @commands.command(name='updateNames')
     @commands.is_owner()
