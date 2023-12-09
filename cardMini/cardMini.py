@@ -17,8 +17,9 @@ class cardMini(commands.Cog):
         self.sell_mod=1.1
         self.buy_mod=.9
         
-    @commands.command(name='dv_leaderboard')
-    async def dv_leaderboard(self, ctx, count: int = 10):
+    @commands.command(name='DV_leaderboard', aliases=['DVL', 'leaderboard_DV'])
+    async def DV_leaderboard(self, ctx, count: int = 10):
+        """Displayes a leaderboard with whoever has the most Deck value {# per page} default 10"""
         if count > 20:
             count = 20
 
@@ -108,8 +109,10 @@ class cardMini(commands.Cog):
             conn.close()
         
     
-    @commands.command(name='bank_leaderboard')
+    @commands.command(name='bank_leaderboard',aliases=["BL","leaderboard_bank"])
     async def bank_leaderboard(self, ctx, count: int = 10):
+    """Displayes a leaderboard with whoever has the most Deck value {# per page} default 10"""
+
         if count > 20:
             count = 20
     
@@ -199,6 +202,7 @@ class cardMini(commands.Cog):
         
     @commands.command(name='setOnSeason')
     async def setOnSeason(self,ctx,series):
+        """Sets what season is the 'on' Season defults to the last season created"""
         file = os.path.join(data_manager.cog_data_path(self), 'off_season_chance.txt')
         with open(file,"w+") as f:
              f.write(series)
@@ -217,6 +221,7 @@ class cardMini(commands.Cog):
     
     @commands.command(name='setOffSeasonChance')
     async def setOffSeasonChance(self,ctx,percent):
+        """Sets the chance to pull cards from old seasons defualts to 10%"""
         percent = percent.strip("%")
         if int(percent) > 50:
             percent = 50
@@ -305,6 +310,7 @@ class cardMini(commands.Cog):
     
     @commands.command(name='set_rarities')
     async def set_rarities(self, ctx, series, *mentions_and_rarities):
+        """Mannually sets the rarity of given card(s), must be entered in {userID} {rarity} pairs"""
         await ctx.send(len(mentions_and_rarities))
         if len(mentions_and_rarities) % 2 != 0:
             await ctx.send("Please provide a valid number of arguments (pairs of mention and rarity).")
@@ -371,6 +377,7 @@ class cardMini(commands.Cog):
    
     @commands.command(name='mine_salt')
     async def mine_salt(self,ctx):
+        """Work and adds a small amount of bank to the user"""
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
@@ -408,11 +415,13 @@ class cardMini(commands.Cog):
     
     @commands.command(name='set_sell_mod')
     async def set_sell_mod(self,mod:float):
+        """Sets the sell modifier, make sure it is lower than the buy mod and higher than 1 unless you want a wonky game."""
         self.sell_mod=mod
         await ctx.send(f"sell mod now set to {self.sell_mod}")
 
     @commands.command(name='set_buy_mod')
     async def set_buy_mod(self,mod:float):
+        """Sets the buy modifier, make sure it is higher than the sell mod and lower than 1 unless you want a wonkey game."""
         self.buy_mod=mod
         await ctx.send(f"buy mod now set to {self.buy_mod}")
 
@@ -442,6 +451,7 @@ class cardMini(commands.Cog):
         
     @commands.command(name='view_card')
     async def view_card(self,ctx,name,season):
+        """View's a given card {name} can be an username or mention {season} should just be the name after Season_"""
         name = self.mentionToUser(ctx,name)
         season = "Season_" + season
         server_id = str(ctx.guild.id)
@@ -578,6 +588,7 @@ class cardMini(commands.Cog):
 
     @commands.command(name='sell_card')
     async def sell_card(self, ctx, name, series):
+        """Sell's a card to Gob, {name} can be a username or mention {series} should be the words/numbers after Season_"""
         server_id = str(ctx.guild.id)
         series = "Season_" + series
         self.gob_pack(server_id,series)
@@ -648,6 +659,8 @@ class cardMini(commands.Cog):
 
     @commands.command(name='buy_card')
     async def buy_card(self, ctx, name, series):
+        """Buy's a card to Gob, {name} can be a username or mention {series} should be the words/numbers after Season_"""
+
         server_id = str(ctx.guild.id)
         series = "Season_" + series
         self.gob_pack(server_id,series)
@@ -753,12 +766,14 @@ class cardMini(commands.Cog):
 
     @commands.command(name='chk_bank')
     async def chk_bank(self,ctx):
+        """Checks your current bank total"""
         server_id = str(ctx.guild.id)
         await ctx.send(f"You have: {round(self.get_bank(server_id,ctx.author.id),2)} bank.")
 
         
     @commands.command(name='set_bank')
     async def set_bank(self,ctx,bank, acct: commands.MemberConverter):
+        """Sets a user's bank total"""
         server_id = str(ctx.guild.id)
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
 
@@ -779,6 +794,7 @@ class cardMini(commands.Cog):
         
     @commands.command(name='all_deck')
     async def all_deck(self,ctx,count=10):
+        """View your deck {count} is how many cards per page default 10"""
 
         
         if count > 20:
@@ -1019,6 +1035,7 @@ class cardMini(commands.Cog):
     
     @commands.command(name='delete_deck')
     async def delete_deck(self, ctx, deck: commands.MemberConverter):
+        """Deletes a {mention} deck"""
         server_id = str(ctx.guild.id)
 
         # Connect to the SQLite database for the server
@@ -1041,6 +1058,7 @@ class cardMini(commands.Cog):
 
     @commands.command(name='list_series')
     async def list_series(self, ctx):
+        """Lists all seasons"""
         server_id = str(ctx.guild.id)
     
         # Connect to the SQLite database for the server
@@ -1066,6 +1084,7 @@ class cardMini(commands.Cog):
 
     @commands.command(name='delete_card')
     async def delete_card(self, ctx, series: str, user_id: int):
+        """Delete a card from everyones deck and the game"""
         # Get the server ID
         series = "Season_" + series
         server_id = str(ctx.guild.id)
@@ -1096,6 +1115,7 @@ class cardMini(commands.Cog):
     
     @commands.command(name='delete_series')
     async def delete_series(self, ctx, series: str):
+        """Delete a season so it no longer is in the game"""
         # Get the server ID
         series = "Season_" + series
         server_id = str(ctx.guild.id)
@@ -1130,6 +1150,7 @@ class cardMini(commands.Cog):
     
     @commands.command(name='new_season')
     async def new_season(self, ctx, series: str,legendary_limit=None,epic_limit=None,ultra_rare_limit=None,rare_limit=None,uncommon_limit=None):
+        """Creates a new season you can pass the limits for each rarity or it will take the default values"""
         file = os.path.join(data_manager.cog_data_path(self), f'on_season.txt')
         with open(file,"w+") as f:
             f.write(series)
