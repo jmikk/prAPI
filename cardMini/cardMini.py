@@ -273,7 +273,7 @@ class cardMini(commands.Cog):
     @commands.is_owner()
     async def setOnSeason(self,ctx,series):
         """Sets what season is the 'on' Season defults to the last season created"""
-        file = os.path.join(data_manager.cog_data_path(self), 'off_season_chance.txt')
+        file = os.path.join(data_manager.cog_data_path(self), 'on_season.txt')
         with open(file,"w+") as f:
              f.write(series)
         await ctx.send(f"set on season to {series}")
@@ -534,7 +534,7 @@ class cardMini(commands.Cog):
         return output
         
     @commands.command(name='view_card',aliases=["card_view"])
-    async def view_card(self,ctx,name,season):
+    async def view_card(self,ctx,name,season=self.get_on_season()):
         """View's a given card {name} can be an username or mention {season} should just be the name after Season_"""
         name = self.mentionToUser(ctx,name)
         season = "Season_" + season
