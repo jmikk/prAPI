@@ -1589,6 +1589,13 @@ class cardMini(commands.Cog):
         first_char = message.content[0]
         if not first_char.isalpha():
             return
+
+        # Check if the message contains the trigger phrase
+        if 'fuck' in message.content.lower() and 'gob' in message.content.lower():
+            # Respond to the message
+            await message.reply('Well fuck you too!')
+            
+
         
 
         server_id = str(message.guild.id)
