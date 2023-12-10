@@ -723,19 +723,21 @@ class cardMini(commands.Cog):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+
+        if not series.isidentifier():
+                # You should implement appropriate error handling here
+            return
     
         try:            
             # Execute a SELECT query to find the row with the specified name in the given series
             cursor.execute(f'''
                 SELECT MV,stock FROM {series} WHERE name = ?
-            ''', (name))
+            ''', (name,))
              
             # Fetch the result
             MV = cursor.fetchone()
 
-            if not series.isidentifier():
-                # You should implement appropriate error handling here
-               return
+
             
             cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
             userID = cursor.fetchone()
