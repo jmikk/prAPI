@@ -80,7 +80,7 @@ class cardMini(commands.Cog):
             formatted_ids = [f"<@{member_id}>" for member_id in chunk]
             await ctx.send(f"List of member IDs: {' '.join(formatted_ids)}")
         
-    @commands.command(name='DV_leaderboard', aliases=['DVL', 'leaderboard_DV'])
+    @commands.command(name='DV_leaderboard', aliases=['DVL', 'leaderboard_DV','top'])
     async def DV_leaderboard(self, ctx, count: int = 10):
         """Displayes a leaderboard with whoever has the most Deck value {# per page} default 10"""
         if count > 20:
