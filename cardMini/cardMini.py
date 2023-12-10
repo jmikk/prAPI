@@ -119,11 +119,14 @@ class cardMini(commands.Cog):
             # Initialize page counter and embed
             current_page = 0
             total_pages = len(paginated_leaderboard)
-
+            if total_pages == 0:
+                await ctx.send("No ones played! go open some cards!")
+                return
+            
             # Function to display the current page
             async def display_page():
                 embed = discord.Embed(title=f"DV Leaderboard - Page {current_page + 1}/{total_pages}",color=0xFFFFFF)
-
+                
                 for user_id, dv in paginated_leaderboard[current_page]:
                     user = self.bot.get_user(user_id)
                     if user:
@@ -193,6 +196,9 @@ class cardMini(commands.Cog):
     
             # Sort users by cash in descending order
             sorted_users = sorted(bank_data, key=lambda x: x[1], reverse=True)
+            if len(sorted_users) == 0:
+                await ctx.send("No users on the bank leaderboard")
+                return
     
             # Slice the leaderboard based on the count
             leaderboard = sorted_users[:count]
