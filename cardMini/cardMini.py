@@ -501,7 +501,7 @@ class cardMini(commands.Cog):
         
         event_type = random.randint(1, 3)
     
-        if event_type == 1:
+        if event_type == 1 or event_type == 2:
             # Give the user a random amount of money between 0.01 and 0.10
             amount = round(random.uniform(0.01, 0.10), 2)
             # Get the user's current bank balance
@@ -512,7 +512,7 @@ class cardMini(commands.Cog):
             cursor.execute('UPDATE bank SET cash = ? WHERE userID = ?', (new_bank_total, ctx.author.id))
             conn.commit()           
             await ctx.send(f"You received {amount} in your bank!")    
-        elif event_type == 3 or event_type == 2:
+        elif event_type == 3:
             # Read a random line from the 'bad_stuff.txt' file
             current_directory = os.path.dirname(os.path.abspath(__file__))
 
