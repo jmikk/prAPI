@@ -677,8 +677,8 @@ class cardMini(commands.Cog):
     
                     # Update the deck by decreasing the count
                     new_count = result[2] - 1
-                    update_query = f"UPDATE ? SET count = ? WHERE userID = ? AND season = ?"
-                    cursor.execute(update_query, (table_name, new_count, userID[0], series))
+                    update_query = f"UPDATE {table_name} SET count = ? WHERE userID = ? AND season = ?"
+                    cursor.execute(update_query, (new_count, userID[0], series))
                     conn.commit()
 
 
