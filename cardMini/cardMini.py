@@ -175,7 +175,7 @@ class cardMini(commands.Cog):
             conn.close()
         
     
-    @commands.command(name='bank_leaderboard',aliases=["BL","leaderboard_bank"])
+    @commands.command(name='bank_leaderboard',aliases=["BL","leaderboard_bank","bank_top","top_bank"])
     async def bank_leaderboard(self, ctx, count: int = 10):
         """Displayes a leaderboard with whoever has the most Deck value {# per page} default 10"""
 
