@@ -27,6 +27,41 @@ class cardMini(commands.Cog):
         self.cooldowns = {}  # Dictionary to store last execution time for each user
         self.payout_time=300
 
+
+    @commands.command(name='list_tables')
+    @commands.is_owner()
+    async def list_tables(self, ctx):
+        """List all tables in the database"""
+        # Get the server ID
+        server_id = str(ctx.guild.id)
+    
+        # Connect to the SQLite database for the server
+        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+    
+        conn = sqlite3.connect(db_path)
+    
+        # Retrieve table names from sqlite_master
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        table_names = cursor.fetchall()
+    
+        # Close the connection
+        conn.close()
+    
+        # Extract table names from the result
+        table_names = [table[0] for table in table_names]
+    
+        # Check if there are tables
+        if not table_names:
+            await ctx.send("No tables found in the database.")
+            return
+    
+        # Respond to the user with the list of table names
+        table_list = "\n".join(table_names)
+        await ctx.send(f"Tables in the database:\n```\n{table_list}\n```")
+
+    
+
     @commands.command(name='set_payout_time')
     @commands.is_owner()    
     async def set_payout_time(self,ctx,time):
@@ -1103,15 +1138,6 @@ class cardMini(commands.Cog):
 
                 return
 
-                
-
-                
-                
-
-            
-            
-        
-    
         if event_type == 2:
             # Read a random line from the 'bad_stuff.txt' file
             current_directory = os.path.dirname(os.path.abspath(__file__))
