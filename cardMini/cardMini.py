@@ -1154,7 +1154,7 @@ class cardMini(commands.Cog):
             
         
         random_number = random.random()
-        if random_number > float(self.get_off_season_chance())/100:
+        if random_number < float(self.get_off_season_chance())/100:
             season_tables=""
             # Get the server ID
             server_id = str(ctx.guild.id)
@@ -1255,7 +1255,7 @@ class cardMini(commands.Cog):
                 embed.add_field(name="Name", value=user.mention, inline=True)
                 embed.add_field(name="Season", value=card[2], inline=True)
                 embed.add_field(name="Rarity", value=card[3], inline=True)
-                embed.add_field(name="MV", value=card[4], inline=True)
+                embed.add_field(name="MV", value=round(float(card[4]),2), inline=True)
                 embed.add_field(name="Gob owns", value=card[5], inline=True)
                 embed.add_field(name="You own", value=owner_count[0], inline=True)
                 embed.add_field(name="Gob will buy for", value=round(float(card[4])*self.buy_mod,2), inline=True)
