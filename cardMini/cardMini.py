@@ -273,7 +273,8 @@ class cardMini(commands.Cog):
     
             # Set the deck table
             table_name = "deck_" + str(userID)
-                                          
+            if not table_name.isidentifier():
+                return                                          
             # Use a parameterized query to retrieve all elements from the table
             query = f'SELECT * FROM {table_name}'
             cursor.execute(query)
@@ -466,9 +467,12 @@ class cardMini(commands.Cog):
         output=0
         try:
             table_name = "deck_"+str(user_id)
+            if not table_name.isidentifier():
+                # You should implement appropriate error handling here
+                return
 
-            query = "SELECT count FROM ? WHERE userID = ? AND season = ?"
-            cursor.execute(query, (table_name, id, season))
+            query = f"SELECT count FROM {table_name} WHERE userID = ? AND season = ?"
+            cursor.execute(query, ( id, season))
             
             # Fetch the result of the query
             result = cursor.fetchone()
@@ -493,7 +497,10 @@ class cardMini(commands.Cog):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         try:
-            cursor.execute(f"SELECT userID FROM ? WHERE name = ?", (season,name))
+            if not season.isidentifier():
+                # You should implement appropriate error handling here
+                return
+            cursor.execute(f"SELECT userID FROM {season} WHERE name = ?", (name,))
             userID = cursor.fetchone()
         except sqlite3.OperationalError as e:
             if "no such table" in str(e):
@@ -562,7 +569,10 @@ class cardMini(commands.Cog):
         result = ""
         try:
             # Execute the query to retrieve table names
-            cursor.execute(f'''SELECT * FROM ? WHERE userID = ? AND season = ?''', (season, id, season))
+            if not season.isidentifier():
+                # You should implement appropriate error handling here
+                return
+            cursor.execute(f'''SELECT * FROM {season} WHERE userID = ? AND season = ?''', ( id, season))
                     
             # Fetch all the table names from the result set
             result = cursor.fetchone()
@@ -631,21 +641,24 @@ class cardMini(commands.Cog):
     
         try:
             # Execute a SELECT query to find the row with the specified name in the given series
-            cursor.execute('''
-                SELECT MV,stock FROM ? WHERE name = ?
-            ''', (series,name))
+            if not series.isidentifier():
+                # You should implement appropriate error handling here
+                return
+            cursor.execute(f'''
+                SELECT MV,stock FROM {series} WHERE name = ?
+            ''', (name,))
     
             # Fetch the result
             MV = cursor.fetchone()
     
-            cursor.execute("SELECT userID FROM ? WHERE name = ?", (series,name))
+            cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
             userID = cursor.fetchone()
     
             if MV:
                 # Check if the user has the card in their deck
                 table_name = "deck_" + str(ctx.author.id)
-                query = "SELECT * FROM ? WHERE userID = ? AND season = ?"
-                cursor.execute(query, (table_name, userID[0], series))
+                query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
+                cursor.execute(query, (userID[0], series))
                 result = cursor.fetchone()
     
                 if result and result[2] > 0:
@@ -710,8 +723,12 @@ class cardMini(commands.Cog):
              
             # Fetch the result
             MV = cursor.fetchone()
+
+            if not series.isidentifier():
+                # You should implement appropriate error handling here
+               return
             
-            cursor.execute("SELECT userID FROM ? WHERE name = ?", (series, name))
+            cursor.execute(f"SELECT userID FROM {series} WHERE name = ?", (name,))
             userID = cursor.fetchone()
 
             if not MV:
@@ -736,16 +753,19 @@ class cardMini(commands.Cog):
     
                     # Add the purchased card to the user's deck
                     table_name = "deck_" + str(ctx.author.id)
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS ? (
+                    
+                    if not table_name.isidentifier():
+                        return
+                    cursor.execute(f'''
+                        CREATE TABLE IF NOT EXISTS {table_name} (
                             userID INTEGER ,
                             season TEXT,
                             count INTEGER
                         )
-                    '''),(table_name,)
+                    ''')
                     # Execute the SQL query to check if the user and season combination already exists
-                    query = "SELECT * FROM ? WHERE userID = ? AND season = ?"
-                    cursor.execute(query, (table_name, userID[0], series))
+                    query = f"SELECT * FROM {table_name} WHERE userID = ? AND season = ?"
+                    cursor.execute(query, (userID[0], series))
                     result2 = cursor.fetchone()
 
                     if result2:
@@ -852,10 +872,11 @@ class cardMini(commands.Cog):
             # Connect to the database
             connection = sqlite3.connect(db_path)
             cursor = connection.cursor()
-
+            if not table_name.isidentifier():
+                        return
             # Use a parameterized query to retrieve all elements from the table
-            query = f'SELECT * FROM ?'
-            cursor.execute(query,(table_name,))
+            query = f'SELECT * FROM {table_name}'
+            cursor.execute(query)
             # Fetch all the rows from the result set
             rows = cursor.fetchall()
 
@@ -880,12 +901,12 @@ class cardMini(commands.Cog):
                     name = user.name
 
                     # Use a parameterized query to retrieve all elements from the table
-                    cursor.execute('SELECT * FROM ? WHERE userID = ?',(row[1], row[0]))                    
+                    cursor.execute(f'SELECT * FROM {row[1]} WHERE userID = ?',(row[0],))                    
                     # Fetch all the rows from the result set
                     rowz = cursor.fetchall()
 
                     # Update the parameterized query to retrieve MV directly
-                    cursor.execute('SELECT MV FROM ? WHERE userID = ?', (row[1], row[0]))
+                    cursor.execute(f'SELECT MV FROM {row[1]} WHERE userID = ?', (row[0],))
                     row_mv = cursor.fetchone()
         
                     if row_mv:
@@ -968,11 +989,12 @@ class cardMini(commands.Cog):
     
             # Retrieve a random user from the specified series
             try:
+                
                 cursor.execute(f'''
-                SELECT userID,season,count FROM ?
+                SELECT userID,season,count FROM deck_{ctx.author.id}
                 ORDER BY RANDOM()
                 LIMIT 1
-            ''',(f"deck_{ctx.author.id}",))
+            ''')
             # Fetch the result
                 result = cursor.fetchone()
             except sqlite3.OperationalError:
@@ -983,7 +1005,7 @@ class cardMini(commands.Cog):
                 # Delete the random row
                 userID = result[0]
                 season = result[1]
-                cursor.execute('DELETE FROM ? WHERE userID = ? AND season = ?', (f"deck_{ctx.author.id}",userID,season))
+                cursor.execute(f'DELETE FROM deck_{ctx.author.id} WHERE userID = ? AND season = ?', (userID,season))
             
                 # Commit the changes (optional, depends on your use case)
                 conn.commit()
@@ -1072,27 +1094,29 @@ class cardMini(commands.Cog):
             # Connect to the SQLite database for the server
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
-    
+            if not series.isidentifier():
+                # You should implement appropriate error handling here
+                return 
             # Retrieve a random user from the specified series
-            cursor.execute('''
-                SELECT * FROM ?
+            cursor.execute(f'''
+                SELECT * FROM {series}
                 ORDER BY RANDOM()
                 LIMIT 1
-            ''',(series,))
+            ''')
             # Fetch the result
             result = cursor.fetchone()
     
             if result:
-                cursor.execute('''
-                CREATE TABLE IF NOT EXISTS ? (
+                cursor.execute(f'''
+                CREATE TABLE IF NOT EXISTS {deck_table_name} (
                     userID INTEGER,
                     season TEXT,
                     count INTEGER
                 )
-                        ''',(deck_table_name,))
+                        ''')
 
                 # Execute the SQL query to check if the user and season combination already exists
-                query = "SELECT * FROM ? WHERE userID = ? AND season = ?"
+                query = f"SELECT * FROM {deck_table_name} WHERE userID = ? AND season = ?"
                 cursor.execute(query, (deck_table_name,result[0], series))
                 result2 = cursor.fetchone()
 
@@ -1179,9 +1203,12 @@ class cardMini(commands.Cog):
     
         # Delete the table for the specified series
         cursor = conn.cursor()
+        deck_name_id = f"deck_{deck.id}"
+        if not deck_name_id.isidentifier():
+            return
         cursor.execute(f'''
-                DROP TABLE IF EXISTS ?
-            ''',(f"deck_{deck.id}",))
+                DROP TABLE IF EXISTS {deck_name_id}
+            ''')
         cursor.execute('DELETE FROM bank WHERE userID = ?', (deck.id,))
         conn.commit()    
         # Close the connection
@@ -1287,10 +1314,13 @@ class cardMini(commands.Cog):
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'deck_%'")
         deck_tables = cursor.fetchall()
 
-        cursor.execute("DELETE FROM ? WHERE season = ? AND userID = ?", (series, series, user_id))
+        if not series.isidentifier():
+            return
+            
+        cursor.execute(f"DELETE FROM {series} WHERE season = ? AND userID = ?", (series, user_id))
         for table in deck_tables:
             deck_table_name = table[0]
-            cursor.execute("DELETE FROM ? WHERE season = ? AND userID = ?", (deck_table_name, series, user_id))
+            cursor.execute(f"DELETE FROM {deck_table_name} WHERE season = ? AND userID = ?", (series, user_id))
     
         conn.commit()
     
@@ -1316,7 +1346,7 @@ class cardMini(commands.Cog):
 
         # Delete the table for the specified series
         cursor = conn.cursor()
-        cursor.execute('DROP TABLE IF EXISTS ?',(series,))
+        cursor.execute(f'DROP TABLE IF EXISTS {series}')
         conn.commit()
 
         # Delete rows from tables starting with "deck_" where season matches the specified series
@@ -1325,7 +1355,7 @@ class cardMini(commands.Cog):
         
         for table in deck_tables:
             deck_table_name = table[0]
-            cursor.execute("DELETE FROM ? WHERE season = ?", (deck_table_name, series,))
+            cursor.execute(f"DELETE FROM {deck_table_name} WHERE season = ?", (series,))
         
         conn.commit()
 
@@ -1351,8 +1381,12 @@ class cardMini(commands.Cog):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS ? (
+
+        if not series.isidentifier():
+            return
+        
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS {series} (
                 userID INTEGER ,
                 name TEXT,
                 season TEXT,
@@ -1360,7 +1394,7 @@ class cardMini(commands.Cog):
                 MV REAL,
                 Stock INTEGER
             )
-        ''',(series,))
+        ''')
         conn.commit()
     
         members = ctx.guild.members
@@ -1430,15 +1464,18 @@ class cardMini(commands.Cog):
             cursor = connection.cursor()
     
             # Count the number of rows in the table
-            cursor.execute("SELECT COUNT(*) FROM ?",(table_name,))
+            if not table_name.isidentifier():
+                return
+            
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
             row_count = cursor.fetchone()[0]
     
             # Sum the 'MV' column
-            cursor.execute("SELECT SUM(MV) FROM ?",(table_name,))
+            cursor.execute(f"SELECT SUM(MV) FROM {table_name}")
             mv_sum = cursor.fetchone()[0] or 0  # If the result is None, default to 0
     
             # Sum the 'stock' column
-            cursor.execute("SELECT SUM(stock) FROM ?",(table_name,))
+            cursor.execute(f"SELECT SUM(stock) FROM {table_name}")
             stock_sum = cursor.fetchone()[0] or 0  # If the result is None, default to 0
     
             return row_count, mv_sum, stock_sum
