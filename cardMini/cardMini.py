@@ -377,9 +377,13 @@ class cardMini(commands.Cog):
     
                 # Update the MV in the series table
                 series_name = f"Season_{str(series)}"
-                update_query = "UPDATE ? SET MV = ?, rarity = ? WHERE userID = ?"
+
+                if not series_name.isidentifier():
+                    return
+                
+                update_query = f"UPDATE {series_name} SET MV = ?, rarity = ? WHERE userID = ?"
     
-                cursor.execute(update_query, (series_name, self.get_mv_from_rarity(rarity), rarity, user_id))
+                cursor.execute(update_query, (self.get_mv_from_rarity(rarity), rarity, user_id))
                 conn.commit()
                 await ctx.send(f"Updated rarity for user {user_id} to {rarity}.")
     
@@ -681,14 +685,16 @@ class cardMini(commands.Cog):
                     # Update the MV in the database
                     # Use a try-except block for error handling
                     try:
-                        update_query = f"UPDATE ? SET MV = ? WHERE userID = ?"
+                        if not series.isidentifier():
+                            return
+                        update_query = f"UPDATE {series} SET MV = ? WHERE userID = ?"
                         
-                        cursor.execute(update_query, (series, max(float(MV[0]) * float(self.buy_mod), 0.01), userID[0]))
+                        cursor.execute(update_query, (max(float(MV[0]) * float(self.buy_mod), 0.01), userID[0]))
                         conn.commit()
 
                         # Update the stock count in the database
-                        update_stock_query = "UPDATE  SET stock = ? WHERE name = ?"
-                        cursor.execute(update_stock_query, (series, MV[1] + 1, name))
+                        update_stock_query = f"UPDATE {series} SET stock = ? WHERE name = ?"
+                        cursor.execute(update_stock_query, (MV[1] + 1, name))
                         conn.commit()
                     except sqlite3.Error as e:
                         await ctx.send(f"SQLite error: {e}")
@@ -720,9 +726,9 @@ class cardMini(commands.Cog):
     
         try:            
             # Execute a SELECT query to find the row with the specified name in the given series
-            cursor.execute('''
-                SELECT MV,stock FROM  WHERE name = ?
-            ''', (series,name))
+            cursor.execute(f'''
+                SELECT MV,stock FROM {series} WHERE name = ?
+            ''', (name))
              
             # Fetch the result
             MV = cursor.fetchone()
@@ -774,29 +780,35 @@ class cardMini(commands.Cog):
                     if result2:
                         # If the user and season combination exists, update the count
                         new_count = result2[2] + 1
-                        update_query = "UPDATE ? SET count = ? WHERE userID = ? AND season = ?"
-                        cursor.execute(update_query, (table_name, new_count, userID[0], series))
+                        if not table_name.isidentifier():
+                            return
+                        update_query = f"UPDATE {table_name} SET count = ? WHERE userID = ? AND season = ?"
+                        cursor.execute(update_query, (new_count, userID[0], series))
                     else:
                         # If the user and season combination doesn't exist, insert a new record
-                        insert_query = "INSERT INTO ? (userID, season, count) VALUES (?, ?, ?)"
-                        cursor.execute(insert_query, (table_name, userID[0], series, 1))   
+                        if not table_name.isidentifier():
+                            return
+                        insert_query = f"INSERT INTO {table_name} (userID, season, count) VALUES (?, ?, ?)"
+                        cursor.execute(insert_query, (userID[0], series, 1))   
                     # Commit the changes
                     conn.commit()
 
                     
 
                     # Update the MV in the database
-                    update_query = "UPDATE ? SET MV = ? WHERE userID = ?"
+                    if not series.isidentifier():
+                            return
+                    update_query = f"UPDATE {series} SET MV = ? WHERE userID = ?"
                     
                     # Use a try-except block for error handling
                     try:
-                        cursor.execute(update_query, (series, price, userID[0]))
+                        cursor.execute(update_query, (price, userID[0]))
                         conn.commit()
 
 
                         # Update the stock count in the database
-                        update_stock_query = "UPDATE ? SET stock = ? WHERE name = ?"
-                        cursor.execute(update_stock_query, (series, MV[1] - 1, name))
+                        update_stock_query = f"UPDATE {series} SET stock = ? WHERE name = ?"
+                        cursor.execute(update_stock_query, (MV[1] - 1, name))
                         conn.commit()
                     except sqlite3.Error as e:
                         await ctx.send(f"SQLite error: {e}")
@@ -1026,7 +1038,9 @@ class cardMini(commands.Cog):
                     
                     
                     # Update the stock count in the database
-                    update_stock_query = "UPDATE ? SET stock = stock + ? WHERE userID = ?"
+                    if not season.isidentifier():
+                            return
+                    update_stock_query = f"UPDATE {season} SET stock = stock + ? WHERE userID = ?"
                     cursor.execute(update_stock_query, (season,result[2],userID,))
                     conn.commit()
                 except sqlite3.Error as e:
@@ -1446,10 +1460,13 @@ class cardMini(commands.Cog):
     
             user_data[member.id] = {'userID': member.id, 'season': series, 'rarity': rarity,'MV': MV,'Stock':10}
             # Insert user information into the table
-            cursor.execute('''
-                INSERT INTO ? (userID,name, season, rarity, MV, Stock)
+
+            if not series.isidentifier():
+                return
+            cursor.execute(f'''
+                INSERT INTO {series} (userID,name, season, rarity, MV, Stock)
                 VALUES (?, ?, ?, ?, ?, ?)
-            ''', (series, member.id,member.name, series, rarity, MV, 10))
+            ''', (member.id,member.name, series, rarity, MV, 10))
     
         # You can now use the user_data dictionary for further processing or storage.
         conn.commit()
