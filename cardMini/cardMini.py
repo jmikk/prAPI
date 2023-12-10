@@ -986,7 +986,7 @@ class cardMini(commands.Cog):
         await ctx.send(f"set_steal_chance set to {percent}")
     
     @commands.command(name='open_pack',aliases=["open","random_user"])
-    @commands.cooldown(1, 5, commands.BucketType.user)
+    #@commands.cooldown(1, 5, commands.BucketType.user)
     async def random_user(self, ctx):
         """Select a random user from the specified series and add their ID to the user's deck."""
 
