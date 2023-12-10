@@ -534,7 +534,7 @@ class cardMini(commands.Cog):
         return output
         
     @commands.command(name='view_card',aliases=["card_view"])
-    async def view_card(self,ctx,name,season=self.get_on_season()):
+    async def view_card(self,ctx,name,season):
         """View's a given card {name} can be an username or mention {season} should just be the name after Season_"""
         name = self.mentionToUser(ctx,name)
         season = "Season_" + season
