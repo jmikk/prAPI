@@ -33,6 +33,35 @@ class cardMini(commands.Cog):
         """Sets the cooldown that gives money per message sent, starts at 300 ( 5 minutes)"""
         self.payout_time=time
         await ctx.send(f"Message time set to {time}")
+
+    @commands.command(name="set_stock")
+    @commands.is_owner()
+    async def set_stock_command(self, ctx, series: str, count: int):
+        try:
+            server_id = str(ctx.guild.id)
+            db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+
+            # Validate and sanitize the table name before using it in the query
+            if not series.isidentifier():
+                await ctx.send("Invalid table name")
+                return
+
+            # Connect to the SQLite database
+            db_path = os.path.join(data_manager.cog_data_path(self), f'{ctx.guild.id}.db')
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+
+            # Update the stock for all rows in the specified table
+            cursor.execute(f'''
+                UPDATE "{series}"
+                SET Stock = ?
+            ''', (count,))
+
+            conn.commit()
+            conn.close()
+
+            await ctx.send(f"Stock set to {count} for all items in {series} table.")
+
     
     @commands.command(name='updateNames')
     @commands.is_owner()
