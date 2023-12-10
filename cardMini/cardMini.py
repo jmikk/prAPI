@@ -983,6 +983,7 @@ class cardMini(commands.Cog):
         if float(percent) > 50:
             percent = 50
         self.steal_mod=percent
+        await ctx.send(f"set_steal_chance set to {percent}")
     
     @commands.command(name='open_pack',aliases=["open","random_user"])
     @commands.cooldown(1, 5, commands.BucketType.user)
