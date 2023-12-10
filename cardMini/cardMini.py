@@ -312,7 +312,7 @@ class cardMini(commands.Cog):
             SET Stock = Stock + 1
             ORDER BY RANDOM()
             LIMIT 1
-        '''),(series,))
+        ''',(series,))
         conn.commit()  # Commit the changes to the database
 
         
