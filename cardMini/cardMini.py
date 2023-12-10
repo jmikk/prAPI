@@ -38,6 +38,7 @@ class cardMini(commands.Cog):
     @commands.is_owner()
     async def set_stock_command(self, ctx, series: str, count: int):
         try:
+            series = f"Season_{series}"
             server_id = str(ctx.guild.id)
             db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
 
