@@ -712,7 +712,7 @@ class cardMini(commands.Cog):
             conn.close()
 
     @commands.command(name='sell_card')
-    async def sell_card(self, ctx, name, series):
+    async def sell_card(self, ctx, *name, series):
         """Sell's a card to Gob, {name} can be a username or mention {series} should be the words/numbers after Season_"""
         server_id = str(ctx.guild.id)
         series = "Season_" + series
@@ -788,7 +788,7 @@ class cardMini(commands.Cog):
 
 
     @commands.command(name='buy_card')
-    async def buy_card(self, ctx, name, series):
+    async def buy_card(self, ctx, *name, series):
         """Buy's a card to Gob, {name} can be a username or mention {series} should be the words/numbers after Season_"""
 
         server_id = str(ctx.guild.id)
