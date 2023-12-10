@@ -61,6 +61,10 @@ class cardMini(commands.Cog):
             conn.close()
 
             await ctx.send(f"Stock set to {count} for all items in {series} table.")
+        except Exception as e:
+            print(e)
+            await ctx.send("An error occurred while processing the command.")
+
 
     
     @commands.command(name='updateNames')
