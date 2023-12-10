@@ -1155,6 +1155,7 @@ class cardMini(commands.Cog):
         
         random_number = random.random()
         if random_number > float(self.get_off_season_chance())/100:
+            season_tables=""
             # Get the server ID
             server_id = str(ctx.guild.id)
             # Connect to the SQLite database for the server
