@@ -1318,7 +1318,7 @@ class cardMini(commands.Cog):
 
     @commands.command(name='delete_card')
     @commands.is_owner()
-    async def delete_card(self, ctx, series: str, user_id: int):
+    async def delete_card(self, ctx, user_id: int, series: str):
         """Delete a card from everyones deck and the game"""
         # Get the server ID
         series = "Season_" + series
