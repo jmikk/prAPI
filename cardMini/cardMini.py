@@ -306,14 +306,17 @@ class cardMini(commands.Cog):
         db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+
+        if not series.isidentifier():
+            return
         # Retrieve a random user from the specified series
         # Update the Stock value of one random row
-        cursor.execute('''
-            UPDATE ?
+        cursor.execute(f'''
+            UPDATE {series}
             SET Stock = Stock + 1
             ORDER BY RANDOM()
             LIMIT 1
-        ''',(series,))
+        ''')
         conn.commit()  # Commit the changes to the database
 
         
