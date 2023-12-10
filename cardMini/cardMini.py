@@ -1042,7 +1042,7 @@ class cardMini(commands.Cog):
                     if not season.isidentifier():
                             return
                     update_stock_query = f"UPDATE {season} SET stock = stock + ? WHERE userID = ?"
-                    cursor.execute(update_stock_query, (season,result[2],userID,))
+                    cursor.execute(update_stock_query, (result[2],userID,))
                     conn.commit()
                 except sqlite3.Error as e:
                     await ctx.send(f"SQLite error: {e}")
