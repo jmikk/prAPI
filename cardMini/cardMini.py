@@ -529,14 +529,14 @@ class cardMini(commands.Cog):
     
     @commands.command(name='set_sell_mod')
     @commands.is_owner()
-    async def set_sell_mod(self,mod:float):
+    async def set_sell_mod(self,ctx,mod:float):
         """Sets the sell modifier, make sure it is lower than the buy mod and higher than 1 unless you want a wonky game."""
         self.sell_mod=mod
         await ctx.send(f"sell mod now set to {self.sell_mod}")
 
     @commands.command(name='set_buy_mod')
     @commands.is_owner()
-    async def set_buy_mod(self,mod:float):
+    async def set_buy_mod(self,ctx,mod:float):
         """Sets the buy modifier, make sure it is higher than the sell mod and lower than 1 unless you want a wonkey game."""
         self.buy_mod=mod
         await ctx.send(f"buy mod now set to {self.buy_mod}")
