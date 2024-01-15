@@ -31,8 +31,8 @@ class Farm(commands.Cog):
             cursor.execute('INSERT INTO players (player_id, inventory) VALUES (?, ?)',
                            (player_id, str(initial_inventory)))
             self.conn.commit()
-            result = await self.get_player_data(player_id,depth=1)
-        return {} if result is None else {"inventory": eval(result[0])}
+            return await self.get_player_data(player_id,depth=1)
+        return {} if result is None else {"inventory": eval(result[1])}
 
     async def set_player_data(self, player_id: int, data: dict):
         cursor = self.conn.cursor()
