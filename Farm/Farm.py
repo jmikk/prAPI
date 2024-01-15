@@ -89,17 +89,17 @@ class Farm(commands.Cog):
         await self.set_player_data(player_id, {"inventory": inventory})
         await ctx.send(f"You harvested a {crop}!")
     
-        @commands.command()
-        @commands.is_owner()
-        async def reset_farm(self, ctx, target: discord.Member):
-            """Drop a player by removing them from the database."""
-            # Remove player from the database
-            player_id = target.id
-            cursor = self.conn.cursor()
-            cursor.execute('DELETE FROM players WHERE player_id = ?', (player_id,))
-            self.conn.commit()
+    @commands.command()
+    @commands.is_owner()
+    async def reset_farm(self, ctx, target: discord.Member):
+        """Drop a player by removing them from the database."""
+        # Remove player from the database
+        player_id = target.id
+        cursor = self.conn.cursor()
+        cursor.execute('DELETE FROM players WHERE player_id = ?', (player_id,))
+        self.conn.commit()
     
-            await ctx.send(f"{ctx.author.mention} dropped {target.mention}!")
+        await ctx.send(f"{ctx.author.mention} dropped {target.mention}!")
 
 
 
