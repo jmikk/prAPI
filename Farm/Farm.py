@@ -32,7 +32,7 @@ class Farm(commands.Cog):
                            (player_id, str(initial_inventory)))
             self.conn.commit()
             return await self.get_player_data(player_id,depth=1)
-        return {} if result is None else {"inventory": result}
+        return {} if result is None else {"inventory": result[0]}
 
     async def set_player_data(self, player_id: int, data: dict):
         cursor = self.conn.cursor()
