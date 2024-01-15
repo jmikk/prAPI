@@ -1,6 +1,7 @@
 from redbot.core import commands
 import discord
 import sqlite3
+import datetime
 
 class Farm(commands.Cog):
     """My custom cog"""
@@ -9,6 +10,7 @@ class Farm(commands.Cog):
         self.bot = bot
         self.conn = sqlite3.connect('farm.db')  # SQLite database connection
         self.create_table()
+        self.save_data.start()  # Start the daily save task
 
     def create_table(self):
         cursor = self.conn.cursor()
@@ -32,6 +34,17 @@ class Farm(commands.Cog):
             INSERT OR REPLACE INTO players (player_id, inventory) VALUES (?, ?)
         ''', (player_id, str(data.get("inventory", {}))))
         self.conn.commit()
+
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.save_data.start()  # Start the daily save task when the bot is ready
+
+    @tasks.loop(hours=24)  # Run the task every 24 hours
+    async def save_data(self):
+        print("Saving data to the database...")
+        # Implement your logic to save data here
+        # Example: Iterate through players and save their data
 
     @commands.command()
     async def inventory(self, ctx):
@@ -83,4 +96,5 @@ class Farm(commands.Cog):
         await ctx.send(f"You harvested a {crop}!")
 
     def __unload(self):
+        self.save_data.cancel()  # Stop the daily save task
         self.conn.close()
