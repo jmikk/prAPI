@@ -21,16 +21,17 @@ class Farm(commands.Cog):
         ''')
         self.conn.commit()
 
-    async def get_player_data(self, player_id: int):
+    async def get_player_data(self, player_id: int,depth=0):
         cursor = self.conn.cursor()
         cursor.execute('SELECT * FROM players WHERE player_id = ?', (player_id,))
         result = cursor.fetchone()
-        if result is None:
+        if result is None and depth==0:
             # Player not found, initialize with 10 potatoes
             initial_inventory = {"potato": 10}
             cursor.execute('INSERT INTO players (player_id, inventory) VALUES (?, ?)',
                            (player_id, str(initial_inventory)))
             self.conn.commit()
+            return get_player_data(player_id,1)
         return {} if result is None else {"inventory": eval(result[1])}
 
     async def set_player_data(self, player_id: int, data: dict):
