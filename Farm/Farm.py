@@ -90,6 +90,7 @@ class Farm(commands.Cog):
         await ctx.send(f"You harvested a {crop}!")
     
         @commands.command()
+        @commands.is_owner()
         async def reset_farm(self, ctx, target: discord.Member):
             """Drop a player by removing them from the database."""
             # Remove player from the database
