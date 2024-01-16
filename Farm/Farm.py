@@ -25,6 +25,19 @@ class Farm(commands.Cog):
         ''')
         self.conn.commit()
 
+    @commands.command()
+    async def list_tables(self, ctx):
+        """List all tables in the database."""
+        tables = self.list_tables()
+        await ctx.send("Tables in the database:\n" + "\n".join(tables))
+
+    def list_tables(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        return [table[0] for table in tables]
+
+    
     async def get_player_data(self, player_id: int,depth=0):
         cursor = self.conn.cursor()
         cursor.execute('SELECT * FROM players WHERE player_id = ?', (player_id,))
