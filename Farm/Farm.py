@@ -26,7 +26,7 @@ class Farm(commands.Cog):
         self.conn.commit()
         
     @commands.command()
-    async def recreate_player_table(self):
+    async def recreate_player_table(self,ctx):
         cursor = self.conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS players (
