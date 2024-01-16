@@ -11,7 +11,6 @@ class Farm(commands.Cog):
         self.conn = sqlite3.connect('farm.db')  # SQLite database connection
         self.create_table()
         
-    @commands.command()
     def create_table(self):
         cursor = self.conn.cursor()
         cursor.execute('''
