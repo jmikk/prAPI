@@ -132,6 +132,17 @@ class Farm(commands.Cog):
         cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
         self.conn.commit()
 
+    @commands.command()
+    async def farm_list_columns(self, ctx):
+        """List all columns in the players table."""
+        columns = self.list_columns("players")
+        await ctx.send("Columns in the players table:\n" + "\n".join(columns))
+
+    def list_columns(self, table_name):
+        cursor = self.conn.cursor()
+        cursor.execute(f"PRAGMA table_info({table_name});")
+        columns = cursor.fetchall()
+        return [column[1] for column in columns]
 
     @commands.command()
     async def sleep(self, ctx):
