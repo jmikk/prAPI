@@ -16,7 +16,10 @@ class Farm(commands.Cog):
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS players (
                 player_id INTEGER PRIMARY KEY,
-                inventory TEXT
+                inventory_seeds TEXT
+                plot_size INTEGER
+                inventory_crops TEXT
+                gold INTEGER
             )
         ''')
         self.conn.commit()
@@ -28,31 +31,32 @@ class Farm(commands.Cog):
         if result is None and depth==0:
             # Player not found, initialize with 10 potatoes
             initial_inventory = {"potato": 10}
-            cursor.execute('INSERT INTO players (player_id, inventory) VALUES (?, ?)',
-                           (player_id, str(initial_inventory)))
+            cursor.execute('INSERT INTO players (player_id, inventory_seeds, plot_size, gold) VALUES (?, ?, ?)',
+                           (player_id, str(initial_inventory),1,0))
             self.conn.commit()
             return await self.get_player_data(player_id,depth=1)
         return {} if result is None else {"player_id": result[0], "inventory": eval(result[1])}
 
     
-    async def set_player_data(self, player_id: int, data: dict):
+    async def set_player_seeds(self, player_id: int, data: dict):
         cursor = self.conn.cursor()
         cursor.execute('''
-            INSERT OR REPLACE INTO players (player_id, inventory) VALUES (?, ?)
-        ''', (player_id, str(data.get("inventory", {}))))
+            INSERT OR REPLACE INTO players (player_id, inventory_seeds) VALUES (?, ?)
+        ''', (player_id, str(data.get("inventory_seeds", {}))))
         self.conn.commit()
 
     @commands.command()
     async def inventory(self, ctx):
         player_id = ctx.author.id
         player_data = await self.get_player_data(player_id)
-        inventory = player_data.get("inventory", {})
+        inventory_seeds = player_data.get("inventory_seeds", {})
 
-        if not inventory:
+        if not inventory_seeds:
             await ctx.send("Your inventory is empty.")
             return
 
-        inventory_text = "\n".join([f"{item}: {count}" for item, count in inventory.items()])
+        inventory_text = "\n".join([f"{item}: {count}" for item, count in inventory_seeds.items()])
+        
         await ctx.send(f"Your inventory:\n{inventory_text}")
 
     @commands.command()
@@ -74,22 +78,6 @@ class Farm(commands.Cog):
             await ctx.send(f"You planted a {crop}!")
         else:
             await ctx.send(f"You don't have any {crop} to plant.")
-
-    @commands.command()
-    async def harvest(self, ctx, crop: str):
-        player_id = ctx.author.id
-        crop = crop.lower()
-
-        player_data = await self.get_player_data(player_id)
-        inventory = player_data.get("inventory", {})
-
-        if crop in inventory:
-            inventory[crop] += 1
-        else:
-            inventory[crop] = 1
-
-        await self.set_player_data(player_id, {"inventory": inventory})
-        await ctx.send(f"You harvested a {crop}!")
     
     @commands.command()
     @commands.is_owner()
@@ -102,6 +90,36 @@ class Farm(commands.Cog):
         self.conn.commit()
     
         await ctx.send(f"{ctx.author.mention} dropped {target.mention}!")
+
+
+    @commands.command()
+    async def sleep(self, ctx):
+        """Simulate sleeping to help crops grow."""
+        player_id = ctx.author.id
+        player_data = await self.get_player_data(player_id)
+        inventory = player_data.get("inventory", {})
+
+        # Simulate growth for each crop based on one night slept
+        for crop, growth_chance in self.crop_growth.items():
+            if crop in inventory:
+                # Calculate growth chance for each crop
+                if random.random() <= growth_chance:
+                    # Crop is ready to be harvested
+                    inventory[crop] += 1
+
+        await self.set_player_data(player_id, {"inventory": inventory})
+        await ctx.send("You slept for one night. Crops have grown!")
+
+    # ... (other commands)
+
+    crop_growth = {
+        "potato": 0.8,  # 80% chance
+        "carrot": 0.6,  # 60% chance
+        "mushroom": 0.7,  # 70% chance
+        "corn": 0.5,  # 50% chance
+        "taco": 0.4,  # 40% chance
+        "avocado": 0.2,  # 20% chance
+    }
 
 
 
