@@ -106,7 +106,7 @@ class Farm(commands.Cog):
 
         if inventory.get(crop, 0) > 0:
             inventory[crop] -= 1
-            await self.set_player_data(player_id, {"inventory": inventory})
+            await self.set_player_seeds(player_id, {"inventory": inventory})
 
             await ctx.send(f"You planted a {crop}!")
         else:
