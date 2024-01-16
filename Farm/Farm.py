@@ -16,10 +16,10 @@ class Farm(commands.Cog):
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS players (
                 player_id INTEGER PRIMARY KEY,
-                inventory_seeds TEXT
-                inventory_crops TEXT
-                inventory_loot TEXT
-                plot_size INTEGER
+                inventory_seeds TEXT,
+                inventory_crops TEXT,
+                inventory_loot TEXT,
+                plot_size INTEGER,
                 gold INTEGER
             )
         ''')
