@@ -61,7 +61,7 @@ class Farm(commands.Cog):
             # Player not found, initialize with 10 potatoes
             initial_inventory = {"potato": 10}
             cursor.execute('INSERT INTO players (player_id, inventory_seeds,inventory_crops, inventory_loot, plot_size, gold) VALUES (?, ?, ?, ?, ?, ?)',
-                           (player_id, str(initial_inventory),"","",1,0))
+                           (player_id, str(initial_inventory)," "," ",1,0))
             self.conn.commit()
             return await self.get_player_data(player_id,depth=1)
         return {} if result is None else {"player_id": result[0], "inventory": eval(result[1])}
