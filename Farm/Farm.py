@@ -24,6 +24,21 @@ class Farm(commands.Cog):
             )
         ''')
         self.conn.commit()
+        
+    @commands.command()
+    async def recreate_player_table(self):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS players (
+                player_id INTEGER PRIMARY KEY,
+                inventory_seeds TEXT
+                inventory_crops TEXT
+                inventory_loot TEXT
+                plot_size INTEGER
+                gold INTEGER
+            )
+        ''')
+        self.conn.commit()
 
     @commands.command()
     async def list_farm_tables(self, ctx):
