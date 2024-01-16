@@ -26,19 +26,23 @@ class Farm(commands.Cog):
         self.conn.commit()
         
     @commands.command()
-    async def recreate_player_table(self,ctx):
-        cursor = self.conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS players (
-                player_id INTEGER PRIMARY KEY,
-                inventory_seeds TEXT
-                inventory_crops TEXT
-                inventory_loot TEXT
-                plot_size INTEGER
-                gold INTEGER
-            )
-        ''')
-        self.conn.commit()
+    async def recreate_player_table(self, ctx):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS players (
+                    player_id INTEGER PRIMARY KEY,
+                    inventory_seeds TEXT,
+                    inventory_crops TEXT,
+                    inventory_loot TEXT,
+                    plot_size INTEGER,
+                    gold INTEGER
+                )
+            ''')
+            self.conn.commit()
+            await ctx.send("The players table has been recreated.")
+        except Exception as e:
+            await ctx.send(f"An error occurred: {e}")
 
     @commands.command()
     async def list_farm_tables(self, ctx):
