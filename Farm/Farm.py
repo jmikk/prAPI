@@ -17,8 +17,9 @@ class Farm(commands.Cog):
             CREATE TABLE IF NOT EXISTS players (
                 player_id INTEGER PRIMARY KEY,
                 inventory_seeds TEXT
-                plot_size INTEGER
                 inventory_crops TEXT
+                inventory_loot TEXT
+                plot_size INTEGER
                 gold INTEGER
             )
         ''')
@@ -31,8 +32,8 @@ class Farm(commands.Cog):
         if result is None and depth==0:
             # Player not found, initialize with 10 potatoes
             initial_inventory = {"potato": 10}
-            cursor.execute('INSERT INTO players (player_id, inventory_seeds, plot_size, gold) VALUES (?, ?, ?)',
-                           (player_id, str(initial_inventory),1,0))
+            cursor.execute('INSERT INTO players (player_id, inventory_seeds,inventory_crops, inventory_loot, plot_size, gold) VALUES (?, ?, ?, ?, ?, ?)',
+                           (player_id, str(initial_inventory),"","",1,0))
             self.conn.commit()
             return await self.get_player_data(player_id,depth=1)
         return {} if result is None else {"player_id": result[0], "inventory": eval(result[1])}
