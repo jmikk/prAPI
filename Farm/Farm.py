@@ -105,6 +105,18 @@ class Farm(commands.Cog):
     
         await ctx.send(f"{ctx.author.mention} dropped {target.mention}!")
 
+    @commands.command()
+    @commands.is_owner()
+    async def drop_players_table(self, ctx):
+        """Drop the entire players table from the database."""
+        self.drop_table("players")
+        await ctx.send("The players table has been dropped.")
+
+    def drop_table(self, table_name):
+        cursor = self.conn.cursor()
+        cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
+        self.conn.commit()
+
 
     @commands.command()
     async def sleep(self, ctx):
