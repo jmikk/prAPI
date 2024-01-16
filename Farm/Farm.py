@@ -26,7 +26,7 @@ class Farm(commands.Cog):
         self.conn.commit()
 
     @commands.command()
-    async def list_tables(self, ctx):
+    async def list_farm_tables(self, ctx):
         """List all tables in the database."""
         tables = self.list_tables()
         await ctx.send("Tables in the database:\n" + "\n".join(tables))
