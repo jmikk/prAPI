@@ -69,7 +69,7 @@ class Farm(commands.Cog):
     def _get_growth_time(self, crop_name):
         """Get the growth time for a crop in seconds."""
         growth_times = {
-            "potatoe": 60,  # 1 minute in seconds
+            "potato": 60,  # 1 minute in seconds
             "taco": 86400   # 1 day in seconds (24 hours * 60 minutes * 60 seconds)
         }
         return growth_times.get(crop_name, 0)  # Returns 0 if the crop is not defined
