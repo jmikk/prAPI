@@ -4,7 +4,9 @@ import datetime
 
 class Farm(commands.Cog):
     """Farming Game Cog for Discord."""
-
+    
+    crops=["potato","taco"]
+    
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=12345789630, force_registration=True)
@@ -34,8 +36,11 @@ class Farm(commands.Cog):
     @farm.command()
     async def plant(self, ctx, crop_name: str):
         """Plant a crop."""
-        await self._plant_crop(ctx.author, crop_name)
-        await ctx.send(f"{crop_name} planted!")
+        if crop_name in self.crops:
+            await self._plant_crop(ctx.author, crop_name)
+            await ctx.send(f"{crop_name} planted!")
+        else:
+            await ctx.send(f"Sorry you have to pick from, {self.crops}")
 
     async def _plant_crop(self, user, crop_name):
         now = datetime.datetime.now().timestamp()
