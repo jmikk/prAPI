@@ -15,6 +15,16 @@ class Farm(commands.Cog):
         }
         self.config.register_user(**default_user)
 
+    def _emojify(crop,discord=True):
+        if discord:
+            match crop.lower():
+                case "potato":
+                    return ":potato:"
+                case "taco":
+                    return ":taco:"
+                case _: 
+                    return f":{crop}:"
+
     @commands.group()
     async def farm(self, ctx):
         """Farming commands."""
