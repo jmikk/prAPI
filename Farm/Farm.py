@@ -19,13 +19,13 @@ class Farm(commands.Cog):
 
     def _emojify(crop,discord=True):
         if discord:
-            match crop.lower():
-                case "potato":
-                    return ":potato:"
-                case "taco":
-                    return ":taco:"
-                case _: 
-                    return f":{crop}:"
+            crop.lower()=temp
+            if temp == "potato":
+                return ":potato:"
+            elif temp == "taco":
+                return ":taco:"
+            else: 
+                return f":{crop}:"
 
     @commands.group()
     async def farm(self, ctx):
