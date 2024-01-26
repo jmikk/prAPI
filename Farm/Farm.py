@@ -2,7 +2,7 @@ from redbot.core import commands, Config
 import asyncio
 import datetime
 
-class FarmingGame(commands.Cog):
+class Farm(commands.Cog):
     """Farming Game Cog for Discord."""
 
     def __init__(self, bot):
