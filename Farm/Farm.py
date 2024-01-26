@@ -1,183 +1,82 @@
-from redbot.core import commands
-import discord
-import sqlite3
+from redbot.core import commands, Config
+import asyncio
 import datetime
 
-class Farm(commands.Cog):
-    """My custom cog"""
+class FarmingGame(commands.Cog):
+    """Farming Game Cog for Discord."""
 
     def __init__(self, bot):
         self.bot = bot
-        self.conn = sqlite3.connect('farm.db')  # SQLite database connection
-        self.create_table()
-        
-    def create_table(self):
-        cursor = self.conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS players (
-                player_id INTEGER PRIMARY KEY,
-                inventory_seeds TEXT,
-                inventory_crops TEXT,
-                inventory_loot TEXT,
-                plot_size INTEGER,
-                gold INTEGER
-            )
-        ''')
-        self.conn.commit()
-        
-    @commands.command()
-    async def recreate_player_table(self, ctx):
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS players (
-                    player_id INTEGER PRIMARY KEY,
-                    inventory_seeds TEXT,
-                    inventory_crops TEXT,
-                    inventory_loot TEXT,
-                    plot_size INTEGER,
-                    gold INTEGER
-                )
-            ''')
-            self.conn.commit()
-            await ctx.send("The players table has been recreated.")
-        except Exception as e:
-            await ctx.send(f"An error occurred: {e}")
+        self.config = Config.get_conf(self, identifier=12345789630, force_registration=True)
 
-    @commands.command()
-    async def list_farm_tables(self, ctx):
-        """List all tables in the database."""
-        tables = self.list_tables()
-        await ctx.send("Tables in the database:\n" + "\n".join(tables))
+        default_user = {
+            "inventory": {},
+            "fields": {}
+        }
+        self.config.register_user(**default_user)
 
-    def list_tables(self):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
-        return [table[0] for table in tables]
+    @commands.group()
+    async def farm(self, ctx):
+        """Farming commands."""
+        if ctx.invoked_subcommand is None:
+            await ctx.send("Use `plant`, `status`, or `harvest` commands to play.")
 
-    
-    async def get_player_data(self, player_id: int,depth=0):
-        cursor = self.conn.cursor()
-        cursor.execute('SELECT * FROM players WHERE player_id = ?', (player_id,))
-        result = cursor.fetchone()
-        if result is None and depth==0:
-            # Player not found, initialize with 10 potatoes
-            initial_inventory = {"potato": 10}
-            cursor.execute('INSERT INTO players (player_id, inventory_seeds,inventory_crops, inventory_loot, plot_size, gold) VALUES (?, ?, ?, ?, ?, ?)',
-                           (player_id, str(initial_inventory)," "," ",1,0))
-            self.conn.commit()
-            return await self.get_player_data(player_id,depth=1)
-        return {} if result is None else {"player_id": result[0], "inventory": eval(result[1])}
+    @farm.command()
+    async def plant(self, ctx, crop_name: str):
+        """Plant a crop."""
+        await self._plant_crop(ctx.author, crop_name)
+        await ctx.send(f"{crop_name} planted!")
 
-    
-    async def set_player_seeds(self, player_id: int, data: dict):
-        cursor = self.conn.cursor()
-        cursor.execute('''
-            INSERT OR REPLACE INTO players (player_id, inventory_seeds) VALUES (?, ?)
-        ''', (player_id, str(data.get("inventory_seeds", {}))))
-        self.conn.commit()
+    async def _plant_crop(self, user, crop_name):
+        now = datetime.datetime.now().timestamp()
+        async with self.config.user(user).fields() as fields:
+            fields[crop_name] = now
 
-    @commands.command()
-    async def inventory(self, ctx):
-        player_id = ctx.author.id
-        player_data = await self.get_player_data(player_id)
-        inventory_seeds = player_data.get("inventory_seeds", {})
+    @farm.command()
+    async def status(self, ctx):
+        """Check the status of your crops."""
+        fields = await self.config.user(ctx.author).fields()
+        status_messages = await self._get_crop_statuses(fields)
+        await ctx.send("\n".join(status_messages))
 
-        if not inventory_seeds:
-            await ctx.send("Your inventory is empty.")
-            return
+    async def _get_crop_statuses(self, fields):
+        now = datetime.datetime.now().timestamp()
+        messages = []
+        for crop, planted_time in fields.items():
+            growth_time = self._get_growth_time(crop)  # Define this method based on your crop types
+            remaining = growth_time - (now - planted_time)
+            if remaining > 0:
+                messages.append(f"{crop} will be ready in {remaining / 3600:.2f} hours.")
+            else:
+                messages.append(f"{crop} is ready to harvest!")
+        return messages
 
-        inventory_text = "\n".join([f"{item}: {count}" for item, count in inventory_seeds.items()])
-        
-        await ctx.send(f"Your inventory:\n{inventory_text}")
+    def _get_growth_time(self, crop_name):
+        """Get the growth time for a crop in seconds."""
+        growth_times = {
+            "potatoes": 60,  # 1 minute in seconds
+            "tacos": 86400   # 1 day in seconds (24 hours * 60 minutes * 60 seconds)
+        }
+        return growth_times.get(crop_name, 0)  # Returns 0 if the crop is not defined
 
-    @commands.command()
-    async def plant(self, ctx, crop: str):
-        player_id = ctx.author.id
-        crop = crop.lower()
 
-        if crop not in ["potato", "carrot", "mushroom", "corn", "taco", "avocado"]:
-            await ctx.send("Invalid crop name.")
-            return
-
-        player_data = await self.get_player_data(player_id)
-        inventory = player_data.get("inventory", {})
-
-        if inventory.get(crop, 0) > 0:
-            inventory[crop] -= 1
-            await self.set_player_seeds(player_id, {"inventory": inventory})
-
-            await ctx.send(f"You planted a {crop}!")
+    @farm.command()
+    async def harvest(self, ctx, crop_name: str):
+        """Harvest a ready crop."""
+        success = await self._harvest_crop(ctx.author, crop_name)
+        if success:
+            await ctx.send(f"{crop_name} harvested successfully!")
         else:
-            await ctx.send(f"You don't have any {crop} to plant.")
-    
-    @commands.command()
-    @commands.is_owner()
-    async def reset_farm(self, ctx, target: discord.Member):
-        """Drop a player by removing them from the database."""
-        # Remove player from the database
-        player_id = target.id
-        cursor = self.conn.cursor()
-        cursor.execute('DELETE FROM players WHERE player_id = ?', (player_id,))
-        self.conn.commit()
-    
-        await ctx.send(f"{ctx.author.mention} dropped {target.mention}!")
+            await ctx.send(f"{crop_name} is not ready yet.")
 
-    @commands.command()
-    @commands.is_owner()
-    async def drop_players_table(self, ctx):
-        """Drop the entire players table from the database."""
-        self.drop_table("players")
-        await ctx.send("The players table has been dropped.")
-
-    def drop_table(self, table_name):
-        cursor = self.conn.cursor()
-        cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
-        self.conn.commit()
-
-    @commands.command()
-    async def farm_list_columns(self, ctx):
-        """List all columns in the players table."""
-        columns = self.list_columns("players")
-        await ctx.send("Columns in the players table:\n" + "\n".join(columns))
-
-    def list_columns(self, table_name):
-        cursor = self.conn.cursor()
-        cursor.execute(f"PRAGMA table_info({table_name});")
-        columns = cursor.fetchall()
-        return [column[1] for column in columns]
-
-    @commands.command()
-    async def sleep(self, ctx):
-        """Simulate sleeping to help crops grow."""
-        player_id = ctx.author.id
-        player_data = await self.get_player_data(player_id)
-        inventory = player_data.get("inventory", {})
-
-        # Simulate growth for each crop based on one night slept
-        for crop, growth_chance in self.crop_growth.items():
-            if crop in inventory:
-                # Calculate growth chance for each crop
-                if random.random() <= growth_chance:
-                    # Crop is ready to be harvested
-                    inventory[crop] += 1
-
-        await self.set_player_data(player_id, {"inventory": inventory})
-        await ctx.send("You slept for one night. Crops have grown!")
-
-    # ... (other commands)
-
-    crop_growth = {
-        "potato": 0.8,  # 80% chance
-        "carrot": 0.6,  # 60% chance
-        "mushroom": 0.7,  # 70% chance
-        "corn": 0.5,  # 50% chance
-        "taco": 0.4,  # 40% chance
-        "avocado": 0.2,  # 20% chance
-    }
-
-
-
-    def __unload(self):
-        self.conn.close()
+    async def _harvest_crop(self, user, crop_name):
+        fields = await self.config.user(user).fields()
+        if crop_name in fields:
+            now = datetime.datetime.now().timestamp()
+            planted_time = fields[crop_name]
+            growth_time = self._get_growth_time(crop_name)  # Define this method
+            if now - planted_time >= growth_time:
+                async with self.config.user(user).fields() as fields:
+                    del fields[crop_name]
+                return True
+        return False
