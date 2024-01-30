@@ -19,6 +19,7 @@ class Farm(commands.Cog):
 
     def _emojify(crop,discord=True):
         if discord:
+            await ctx.send(crop)
             temp = crop.lower()
             if temp == "potato":
                 return ":potato:"
