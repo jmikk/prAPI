@@ -83,15 +83,46 @@ class Farm(commands.Cog):
             await ctx.send(f"{crop_name} harvested successfully!")
         else:
             await ctx.send(f"{crop_name} is not ready yet.")
-
+            
     async def _harvest_crop(self, user, crop_name):
         fields = await self.config.user(user).fields()
         if crop_name in fields:
             now = datetime.datetime.now().timestamp()
             planted_time = fields[crop_name]
-            growth_time = self._get_growth_time(crop_name)  # Define this method
+            growth_time = self._get_growth_time(crop_name)
             if now - planted_time >= growth_time:
                 async with self.config.user(user).fields() as fields:
                     del fields[crop_name]
+                await self._add_to_inventory(user, crop_name)
                 return True
         return False
+
+    async def _add_to_inventory(self, user, crop_name):
+        """Add harvested crop to the user's inventory."""
+        async with self.config.user(user).inventory() as inventory:
+            if crop_name in inventory:
+                inventory[crop_name] += 1
+            else:
+                inventory[crop_name] = 1
+
+    @farm.command(name="inventory", aliases=["inv"])
+    async def view_inventory(self, ctx):
+        """View your inventory of harvested crops."""
+        inventory = await self.config.user(ctx.author).inventory()
+        if not inventory:
+            await ctx.send("Your inventory is empty.")
+            return
+
+        inventory_message = self._format_inventory(inventory)
+        await ctx.send(inventory_message)
+    
+    def _format_inventory(self, inventory):
+        """Format the inventory into a string for display."""
+        inventory_lines = []
+        for crop, quantity in inventory.items():
+            inventory_lines.append(f"{crop.title()}: {quantity}")
+        inventory_message = "\n".join(inventory_lines)
+        return f"**Your Inventory:**\n{inventory_message}"
+
+
+
