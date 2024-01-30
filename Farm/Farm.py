@@ -13,7 +13,9 @@ class Farm(commands.Cog):
 
         default_user = {
             "inventory": {},
-            "fields": {}
+            "fields": {},
+            "gold": 0
+            "field_size": 1  # Default field size allowing only 1 crop at a time
         }
         self.config.register_user(**default_user)
 
@@ -35,12 +37,17 @@ class Farm(commands.Cog):
 
     @farm.command()
     async def plant(self, ctx, crop_name: str):
-        """Plant a crop."""
-        if crop_name in self.crops:
-            await self._plant_crop(ctx.author, crop_name)
-            await ctx.send(f"{crop_name} planted!")
-        else:
-            await ctx.send(f"Sorry you have to pick from, {self.crops}")
+        """Plant a crop, respecting the field size limit."""
+        fields = await self.config.user(ctx.author).fields()
+        field_size = await self.config.user(ctx.author).field_size()
+    
+        if len(fields) >= field_size:
+            await ctx.send(f"You can only grow {field_size} crop(s) at a time. Harvest or wait for your current crops to finish growing.")
+            return
+    
+        await self._plant_crop(ctx.author, crop_name)
+        await ctx.send(f"{crop_name.capitalize()} planted!")
+
 
     async def _plant_crop(self, user, crop_name):
         now = datetime.datetime.now().timestamp()
@@ -123,6 +130,40 @@ class Farm(commands.Cog):
             inventory_lines.append(f"{crop.title()} {self._emojify(crop)}: {quantity}")
         inventory_message = "\n".join(inventory_lines)
         return f"**Your Inventory:**\n{inventory_message}"
+
+    @farm.command()
+    async def upgrade_field(self, ctx):
+        """Upgrade the field size by spending gold."""
+        # Placeholder values for cost and upgrade increment
+        upgrade_cost = 100  # Cost to upgrade the field
+        upgrade_increment = 1  # Increase field size by 1
+    
+        gold = await self.config.user(ctx.author).gold()  # Assuming gold is tracked in the user's config
+    
+        if gold >= upgrade_cost:
+            async with self.config.user(ctx.author) as user_data:
+                user_data["gold"] -= upgrade_cost  # Deduct the cost
+                user_data["field_size"] += upgrade_increment  # Increase field size
+            await ctx.send(f"Field upgraded! You can now plant {user_data['field_size']} crops at a time.")
+        else:
+            await ctx.send("You don't have enough gold to upgrade your field.")
+    
+    @farm.command()
+    async def update_user_configs(self):
+        all_members = [member for guild in self.bot.guilds for member in guild.members]
+        for member in all_members:
+            user_config = await self.config.user(member).all()
+    
+            # Check and update field_size
+            if "field_size" not in user_config:
+                await self.config.user(member).field_size.set(1)
+            if "gold" not in user_config:
+                await self.config.user(member).gold.set(0)
+            
+    
+            # Repeat for other new fields as necessary
+
+
 
 
 
