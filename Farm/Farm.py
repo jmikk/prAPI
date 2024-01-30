@@ -120,7 +120,7 @@ class Farm(commands.Cog):
         """Format the inventory into a string for display."""
         inventory_lines = []
         for crop, quantity in inventory.items():
-            inventory_lines.append(f"{crop.title()}: {quantity}")
+            inventory_lines.append(f"{crop.title()} {self._emojify(crop)}: {quantity}")
         inventory_message = "\n".join(inventory_lines)
         return f"**Your Inventory:**\n{inventory_message}"
 
