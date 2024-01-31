@@ -106,9 +106,9 @@ class Farm(commands.Cog):
             growth_time = self._get_growth_time(crop)  # Define this method based on your crop types
             remaining = growth_time - (now - planted_time)
             if remaining > 0:
-                messages.append(f"{crop} {self.items[crop]["emoji"]} will be ready in {remaining / 3600:.2f} hours.")
+                messages.append(f"{crop} {self.items[crop]['emoji']} will be ready in {remaining / 3600:.2f} hours.")
             else:
-                messages.append(f"{crop} {self.items[crop]["emoji"]} is ready to harvest!")
+                messages.append(f"{crop} {self.items[crop]['emoji']} is ready to harvest!")
         return messages
 
     def _get_growth_time(self, crop_name):
