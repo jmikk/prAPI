@@ -158,7 +158,7 @@ class Farm(commands.Cog):
             await ctx.send("Your inventory is empty.")
             return
 
-        inventory_message = self._format_inventory(inventory)
+        inventory_message = self._format_inventory(inventory,gold)
         await ctx.send(inventory_message)
     
     def _format_inventory(self, inventory,gold):
