@@ -65,7 +65,7 @@ class Farm(commands.Cog):
     async def farm(self, ctx):
         """Farming commands."""
         if ctx.invoked_subcommand is None:
-            await ctx.send("Use `plant`, `status`, or `harvest` commands to play.")
+            await ctx.send("Use `plant potato` to get started.")
 
     @farm.command()
     async def plant(self, ctx, crop_name: str):
