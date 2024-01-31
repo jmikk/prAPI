@@ -280,6 +280,29 @@ class Farm(commands.Cog):
         else:
             await ctx.send(f"You need {upgrade_cost} gold to upgrade your field, but you only have {user_gold} gold.")
 
+    @commands.command()
+    async def clear_field(self, ctx):
+        """Clears all crops from your field after confirmation."""
+        confirmation_message = await ctx.send("Are you sure you want to clear your field? React with ✅ to confirm.")
+    
+        # React to the message with a checkmark
+        await confirmation_message.add_reaction("✅")
+    
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) == "✅" and reaction.message.id == confirmation_message.id
+    
+        try:
+            # Wait for the user to react with the checkmark
+            await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+    
+            # Clear the field after confirmation
+            await self.config.user(ctx.author).fields.set({})
+            await ctx.send("All crops in your field have been cleared.")
+    
+        except asyncio.TimeoutError:
+            await ctx.send("Field clear canceled.")
+
+
 
 
     
