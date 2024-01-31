@@ -24,6 +24,8 @@ class Farm(commands.Cog):
         self.items = {
             "potato": {"min_price": 5, "max_price": 15, "current_price": 10},
             "carrot": {"min_price": 8, "max_price": 20, "current_price": 14},
+            "taco": {"min_price": 10, "max_price": 25, "current_price": 16},
+
             # Add more items as needed
         }
 
