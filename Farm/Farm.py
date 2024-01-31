@@ -61,6 +61,8 @@ class Farm(commands.Cog):
                 return ":potato:"
             elif temp == "taco":
                 return ":taco:"
+            elif temp == "gold":
+                return ":coin:"
             else: 
                 return f":{crop}:"
 
@@ -162,7 +164,7 @@ class Farm(commands.Cog):
     def _format_inventory(self, inventory,gold):
         """Format the inventory into a string for display."""
         inventory_lines = []
-        inventory_lines.append(f"Gold: {self._emojify("gold")}: {gold}")
+        inventory_lines.append(f"Gold: {self._emojify('gold')}: {gold}")
         for crop, quantity in inventory.items():
             inventory_lines.append(f"{crop.title()} {self._emojify(crop)}: {quantity}")
         inventory_message = "\n".join(inventory_lines)
