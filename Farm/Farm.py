@@ -168,7 +168,7 @@ class Farm(commands.Cog):
         inventory_lines = []
         inventory_lines.append(f"Gold: :coin:: {gold}")
         for crop, quantity in inventory.items():
-            inventory_lines.append(f"{crop.title()} {self.items[crop]["emoji"]}: {quantity}")
+            inventory_lines.append(f"{crop.title()} {self.items[crop]['emoji']}: {quantity}")
         inventory_message = "\n".join(inventory_lines)
         return f"**Your Inventory:**\n{inventory_message}"
 
@@ -251,7 +251,7 @@ class Farm(commands.Cog):
 
         prices_message = "**Current Market Prices:**\n"
         for item_name, item_info in self.items.items():
-            prices_message += f"{item_name.title()} {self.items[item_name]["emoji"]}: {item_info['current_price']} gold\n"
+            prices_message += f"{item_name.title()} {self.items[item_name]['emoji']}: {item_info['current_price']} gold\n"
 
         await ctx.send(prices_message)
 
