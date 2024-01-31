@@ -101,7 +101,7 @@ class Farm(commands.Cog):
         now = datetime.datetime.now().timestamp()
         messages = []
         for crop, planted_time in fields.items():
-            growth_time = self._get_growth_time(crop)  # Define this method based on your crop types
+            growth_time = float(self._get_growth_time(crop))  # Define this method based on your crop types
             remaining = growth_time - (now - planted_time)
             if remaining > 0:
                 messages.append(f"{crop} will be ready in {remaining / 3600:.2f} hours.")
