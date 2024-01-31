@@ -255,7 +255,7 @@ class Farm(commands.Cog):
         await ctx.send(prices_message)
 
     @farm.command()
-    async def upgrade_field(self, ctx):
+    async def field_upgrade(self, ctx):
         base_cost = 1  # Starting cost for the first upgrade
         multiplier = 1.5  # Cost multiplier for each subsequent upgrade
     
