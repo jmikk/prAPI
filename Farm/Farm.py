@@ -22,7 +22,7 @@ class Farm(commands.Cog):
         self.config.register_user(**default_user)
 
         self.items = {
-            "potato": {"emoji": "🥔", "min_price": 10, "max_price": 30, "current_price": 20, "growth_time": 60000},
+            "potato": {"emoji": "🥔", "min_price": 10, "max_price": 30, "current_price": 20, "growth_time": 60},
             "carrot": {"emoji": "🥕", "min_price": 10, "max_price": 20, "current_price": 15, "growth_time": 1},
             "corn": {"emoji": "🌽", "min_price": 15, "max_price": 35, "current_price": 25, "growth_time": 18000},
             "tomato": {"emoji": "🍅", "min_price": 20, "max_price": 40, "current_price": 30, "growth_time": 21600},
