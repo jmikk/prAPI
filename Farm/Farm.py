@@ -97,7 +97,8 @@ class Farm(commands.Cog):
         """Check the status of your crops."""
         fields = await self.config.user(ctx.author).fields()
         status_messages = await self._get_crop_statuses(fields)
-        await ctx.send("\n".join(status_messages))
+        status_messages.append(f"Your field can hold {await self.config.user(ctx.author).field_size()} crops in total.")
+        await ctx.send("\n".join(status_messages)) 
 
     async def _get_crop_statuses(self, fields):
         now = datetime.datetime.now().timestamp()
