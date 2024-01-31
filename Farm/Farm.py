@@ -32,6 +32,8 @@ class Farm(commands.Cog):
             "peach": {"emoji": "🍑", "min_price": 35, "max_price": 55, "current_price": 60, "growth_time": 43200},
             "cherries": {"emoji": "🍒", "min_price": 22, "max_price": 42, "current_price": 35, "growth_time": 25200},
             "lemon": {"emoji": "🍋", "min_price": 28, "max_price": 48, "current_price": 45, "growth_time": 32400},
+            "taco": {"emoji": "🌮", "min_price": 28, "max_price": 48, "current_price": 45, "growth_time": 32400},
+
         }
 
 
@@ -101,7 +103,7 @@ class Farm(commands.Cog):
         now = datetime.datetime.now().timestamp()
         messages = []
         for crop, planted_time in fields.items():
-            growth_time = float(self._get_growth_time(crop))  # Define this method based on your crop types
+            growth_time = self._get_growth_time(crop)  # Define this method based on your crop types
             remaining = growth_time - (now - planted_time)
             if remaining > 0:
                 messages.append(f"{crop} will be ready in {remaining / 3600:.2f} hours.")
