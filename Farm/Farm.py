@@ -235,6 +235,23 @@ class Farm(commands.Cog):
 
         await ctx.send(f"Sold {quantity} {item_name}(s) for {total_sale} gold. You now have {new_gold_total} gold.")
 
+    @farm.command()
+    async def check_market(self, ctx):
+        """Check the current market prices of items."""
+        if not self.items:  # Check if the items dictionary is empty
+            await ctx.send("The market is currently empty.")
+            return
+
+        prices_message = "**Current Market Prices:**\n"
+        for item_name, item_info in self.items.items():
+            prices_message += f"{item_name.title()} {self._emjify(item_name)}: {item_info['current_price']} gold\n"
+
+        await ctx.send(prices_message)
+
+
+for crop, quantity in inventory.items():
+            inventory_lines.append(f"{crop.title()} {self._emojify(crop)}: {quantity}")
+        inventory_message = "\n".join(inventory_lines)
 
 
 
