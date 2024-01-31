@@ -115,7 +115,7 @@ class Farm(commands.Cog):
             if now < ready_time:
                 messages.append(f"{crop_name} {emoji} will be ready <t:{int(ready_time)}:R>.")
             else:
-                messages.append(f"{crop_name} {emoji} is ready to harvest! <t:{int(ready_time)}:f>")
+                messages.append(f"{crop_name} {emoji} is ready to harvest! <t:{int(ready_time)}:R>")
         return messages
 
 
