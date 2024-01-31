@@ -8,7 +8,6 @@ import math
 class Farm(commands.Cog):
     """Farming Game Cog for Discord."""
     
-    crops=["potato","taco"]
     
     def __init__(self, bot):
         self.bot = bot
