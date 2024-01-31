@@ -25,6 +25,7 @@ class Farm(commands.Cog):
             "potato": {"min_price": 5, "max_price": 15, "current_price": 10},
             "carrot": {"min_price": 8, "max_price": 20, "current_price": 14},
             "taco": {"min_price": 10, "max_price": 25, "current_price": 16},
+            "me": {"min_price": 0, "max_price": 0, "current_price": 0}
 
             # Add more items as needed
         }
