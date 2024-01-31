@@ -23,7 +23,7 @@ class Farm(commands.Cog):
 
         self.items = {
             "potato": {"emoji": "🥔", "min_price": 10, "max_price": 30, "current_price": 20, "growth_time": 14400},
-            "carrot": {"emoji": "🥕", "min_price": 10, "max_price": 20, "current_price": 15, "growth_time": 10800},
+            "carrot": {"emoji": "🥕", "min_price": 10, "max_price": 20, "current_price": 15, "growth_time": 1},
             "corn": {"emoji": "🌽", "min_price": 15, "max_price": 35, "current_price": 25, "growth_time": 18000},
             "tomato": {"emoji": "🍅", "min_price": 20, "max_price": 40, "current_price": 30, "growth_time": 21600},
             "grapes": {"emoji": "🍇", "min_price": 25, "max_price": 45, "current_price": 40, "growth_time": 28800},
