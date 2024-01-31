@@ -12,7 +12,7 @@ class Farm(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=12345789630, force_registration=True)
+        self.config = Config.get_conf(self, identifier=12345789631, force_registration=True)
 
         default_user = {
             "inventory": {},
