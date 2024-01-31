@@ -239,8 +239,7 @@ class Farm(commands.Cog):
         new_price = max(item["min_price"], item["current_price"] - price_decrease)  # Ensure price doesn't go below min
         self.items[item_name]["current_price"] = math.floor(new_price)  # Round down the new price
 
-        await ctx.send(f"Sold {quantity} {item_name}(s) for {total_sale} gold. You now have {new_gold_total} gold.\nThe new market price for {item_name} is {self.items[item_name]['current_price']} gold.
-    await ctx.send(message)")
+        await ctx.send(f"Sold {quantity} {item_name}(s) for {total_sale} gold. You now have {new_gold_total} gold.\nThe new market price for {item_name} is {self.items[item_name]['current_price']} gold.")
 
     @farm.command()
     async def check_market(self, ctx):
