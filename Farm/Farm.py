@@ -76,10 +76,12 @@ class Farm(commands.Cog):
     @farm.command()
     async def plant(self, ctx, crop_name: str):
         """Plant a crop, respecting the field size limit."""
-
-        if crop_name not in self.items:
-            await ctx.send(f"{crop_name.capitalize()} is not available for planting. Please choose from the available crops, {self.items.items()}")
-            return    
+   
+    if crop_name not in self.items:
+        available_crops = ', '.join(self.items.keys())  # Create a string of available crop names
+        message = f"{crop_name.capitalize()} is not available for planting. Please choose from the available crops: {available_crops}."
+        await ctx.send(message)
+        return  
         
         fields = await self.config.user(ctx.author).fields()
         field_size = await self.config.user(ctx.author).field_size()
