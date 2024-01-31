@@ -151,6 +151,7 @@ class Farm(commands.Cog):
     async def view_inventory(self, ctx):
         """View your inventory of harvested crops."""
         inventory = await self.config.user(ctx.author).inventory()
+        gold = await self.config.user(ctx.author).gold()
         if not inventory:
             await ctx.send("Your inventory is empty.")
             return
@@ -158,9 +159,10 @@ class Farm(commands.Cog):
         inventory_message = self._format_inventory(inventory)
         await ctx.send(inventory_message)
     
-    def _format_inventory(self, inventory):
+    def _format_inventory(self, inventory,gold):
         """Format the inventory into a string for display."""
         inventory_lines = []
+        inventory_lines.append(f"Gold: {self._emojify("gold")}: {gold}")
         for crop, quantity in inventory.items():
             inventory_lines.append(f"{crop.title()} {self._emojify(crop)}: {quantity}")
         inventory_message = "\n".join(inventory_lines)
