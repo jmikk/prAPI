@@ -1,6 +1,7 @@
-from redbot.core import commands, Config, tasks
+from redbot.core import commands, Config
 import asyncio
 import datetime
+from discord.ext import tasks
 #from redbot.core import tasks
 
 class Farm(commands.Cog):
