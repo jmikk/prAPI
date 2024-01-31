@@ -149,7 +149,7 @@ class Farm(commands.Cog):
             await ctx.send("You don't have enough gold to upgrade your field.")
     
     @farm.command()
-    async def update_user_configs(self):
+    async def update_user_configs(self,ctx):
         all_members = [member for guild in self.bot.guilds for member in guild.members]
         for member in all_members:
             user_config = await self.config.user(member).all()
@@ -157,6 +157,7 @@ class Farm(commands.Cog):
             # Check and update field_size
             if "field_size" not in user_config:
                 await self.config.user(member).field_size.set(1)
+                await ctx.send("adding Field_size")
             if "gold" not in user_config:
                 await self.config.user(member).gold.set(0)
             
