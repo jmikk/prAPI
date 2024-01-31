@@ -23,19 +23,19 @@ class Farm(commands.Cog):
         self.config.register_user(**default_user)
 
         self.items = {
-            "potato": {"emoji": "🥔", "min_price": 10, "max_price": 30, "current_price": 20, "growth_time": 60},
-            "carrot": {"emoji": "🥕", "min_price": 10, "max_price": 20, "current_price": 15, "growth_time": 1},
-            "corn": {"emoji": "🌽", "min_price": 15, "max_price": 35, "current_price": 25, "growth_time": 18000},
-            "tomato": {"emoji": "🍅", "min_price": 20, "max_price": 40, "current_price": 30, "growth_time": 21600},
-            "grapes": {"emoji": "🍇", "min_price": 25, "max_price": 45, "current_price": 40, "growth_time": 28800},
-            "apple": {"emoji": "🍎", "min_price": 30, "max_price": 50, "current_price": 50, "growth_time": 36000},
-            "strawberry": {"emoji": "🍓", "min_price": 5, "max_price": 15, "current_price": 10, "growth_time": 7200},
-            "peach": {"emoji": "🍑", "min_price": 35, "max_price": 55, "current_price": 60, "growth_time": 43200},
-            "cherries": {"emoji": "🍒", "min_price": 22, "max_price": 42, "current_price": 35, "growth_time": 25200},
-            "lemon": {"emoji": "🍋", "min_price": 28, "max_price": 48, "current_price": 45, "growth_time": 32400},
-            "taco": {"emoji": "🌮", "min_price": 28, "max_price": 48, "current_price": 45, "growth_time": 32400},
-
+            "potato": {"emoji": "🥔", "min_price": 5, "max_price": 10, "current_price": 7, "growth_time": 60},  # 1 minute
+            "carrot": {"emoji": "🥕", "min_price": 8, "max_price": 16, "current_price": 12, "growth_time": 300},  # 5 minutes
+            "corn": {"emoji": "🌽", "min_price": 20, "max_price": 40, "current_price": 30, "growth_time": 10800},  # 3 hours
+            "tomato": {"emoji": "🍅", "min_price": 30, "max_price": 60, "current_price": 45, "growth_time": 21600},  # 6 hours
+            "grapes": {"emoji": "🍇", "min_price": 40, "max_price": 80, "current_price": 60, "growth_time": 43200},  # 12 hours
+            "apple": {"emoji": "🍎", "min_price": 50, "max_price": 100, "current_price": 75, "growth_time": 86400},  # 1 day
+            "strawberry": {"emoji": "🍓", "min_price": 15, "max_price": 30, "current_price": 22, "growth_time": 1800},  # 30 minutes
+            "peach": {"emoji": "🍑", "min_price": 60, "max_price": 120, "current_price": 90, "growth_time": 129600},  # 1.5 days
+            "cherries": {"emoji": "🍒", "min_price": 35, "max_price": 70, "current_price": 52, "growth_time": 57600},  # 16 hours
+            "lemon": {"emoji": "🍋", "min_price": 45, "max_price": 90, "current_price": 67, "growth_time": 172800},  # 2 days
+            "taco": {"emoji": "🌮", "min_price": 100, "max_price": 200, "current_price": 150, "growth_time": 604800},  # 1 week
         }
+
 
 
         self.market_conditions = {
