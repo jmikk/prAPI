@@ -71,7 +71,8 @@ class Farm(commands.Cog):
     @farm.command()
     async def plant(self, ctx, crop_name: str):
         if crop_name not in self.items:
-            await ctx.send(f"{crop_name.capitalize()} is not available for planting.")
+            available_crops = ', '.join([f"{name} {info['emoji']}" for name, info in self.items.items()])
+            await ctx.send(f"{crop_name.capitalize()} is not available for planting. Available crops are: {available_crops}.")
             return
     
         user_fields = await self.config.user(ctx.author).fields()
@@ -80,10 +81,12 @@ class Farm(commands.Cog):
             return
     
         planted_time = datetime.datetime.now().timestamp()
+        # Append a new crop instance to the fields list
         user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"]})
         await self.config.user(ctx.author).fields.set(user_fields)
     
         await ctx.send(f"{crop_name.capitalize()} {self.items[crop_name]['emoji']} planted successfully!")
+
 
 
     async def _plant_crop(self, user, crop_name):
@@ -102,17 +105,19 @@ class Farm(commands.Cog):
     async def _get_crop_statuses(self, fields):
         now = datetime.datetime.now().timestamp()
         messages = []
-        for crop, planted_time in fields.items():
-            growth_time = self._get_growth_time(crop)  # Ensure this method returns growth time in seconds
-            ready_time = planted_time + growth_time  # Calculate when the crop will be ready
+        for crop_instance in fields:
+            crop_name = crop_instance["name"]
+            planted_time = crop_instance["planted_time"]
+            growth_time = self._get_growth_time(crop_name)
+            ready_time = planted_time + growth_time
+            emoji = crop_instance["emoji"]
     
             if now < ready_time:
-                # Use Discord's Timestamp Styling, 'R' for relative time
-                messages.append(f"{crop} {self.items[crop]['emoji']} will be ready <t:{int(ready_time)}:R>.")
+                messages.append(f"{crop_name} {emoji} will be ready <t:{int(ready_time)}:R>.")
             else:
-                # Use 'f' for short date/time format since the crop is ready
-                messages.append(f"{crop} {self.items[crop]['emoji']} is ready to harvest!")
+                messages.append(f"{crop_name} {emoji} is ready to harvest! <t:{int(ready_time)}:f>")
         return messages
+
 
     def _get_growth_time(self, crop_name):
         """Get the growth time for a crop in seconds from the items dictionary."""
@@ -129,11 +134,27 @@ class Farm(commands.Cog):
     @farm.command()
     async def harvest(self, ctx, crop_name: str):
         """Harvest a ready crop."""
-        success = await self._harvest_crop(ctx.author, crop_name)
-        if success:
+        fields = await self.config.user(ctx.author).fields()
+        now = datetime.datetime.now().timestamp()
+        harvested = False
+    
+        for i, crop_instance in enumerate(fields):
+            if crop_instance["name"] == crop_name:
+                growth_time = self._get_growth_time(crop_name)
+                ready_time = crop_instance["planted_time"] + growth_time
+                
+                if now >= ready_time:
+                    harvested = True
+                    await self._add_to_inventory(ctx.author, crop_name)
+                    del fields[i]  # Remove the harvested crop from the fields
+                    break  # Assuming we harvest the first ready crop of this type
+    
+        if harvested:
+            await self.config.user(ctx.author).fields.set(fields)  # Update the fields without the harvested crop
             await ctx.send(f"{crop_name} harvested successfully!")
         else:
-            await ctx.send(f"{crop_name} is not ready yet.")
+            await ctx.send(f"No ready {crop_name} crops to harvest.")
+
             
     async def _harvest_crop(self, user, crop_name):
         fields = await self.config.user(user).fields()
