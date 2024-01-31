@@ -2,6 +2,7 @@ from redbot.core import commands, Config
 import asyncio
 import datetime
 from discord.ext import tasks
+import math
 #from redbot.core import tasks
 
 class Farm(commands.Cog):
@@ -228,11 +229,16 @@ class Farm(commands.Cog):
             if inventory[item_name] <= 0:
                 del inventory[item_name]  # Remove the item if quantity is zero
 
+        
         # Update user gold
         user_gold = await self.config.user(ctx.author).gold()
         new_gold_total = user_gold + total_sale
         await self.config.user(ctx.author).gold.set(new_gold_total)
-
+        
+        price_decrease = item["current_price"] * (.01 * quantity)  # Example: decrease price by 5%
+        new_price = max(item["min_price"], item["current_price"] - price_decrease)  # Ensure price doesn't go below min
+        self.items[item_name]["current_price"] = math.floor(new_price)  # Round down the new price
+        
         await ctx.send(f"Sold {quantity} {item_name}(s) for {total_sale} gold. You now have {new_gold_total} gold.")
 
     @farm.command()
