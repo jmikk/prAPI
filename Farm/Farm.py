@@ -155,7 +155,7 @@ class Farm(commands.Cog):
         """View your inventory of harvested crops."""
         inventory = await self.config.user(ctx.author).inventory()
         gold = await self.config.user(ctx.author).gold()
-        if not inventory:
+        if not inventory and not gold:
             await ctx.send("Your inventory is empty.")
             return
 
