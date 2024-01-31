@@ -98,21 +98,23 @@ class Farm(commands.Cog):
         status_messages = await self._get_crop_statuses(fields)
         status_messages.append(f"Your field can hold {await self.config.user(ctx.author).field_size()} crops in total.")
         await ctx.send("\n".join(status_messages)) 
-
+    
     async def _get_crop_statuses(self, fields):
         now = datetime.datetime.now().timestamp()
         messages = []
-        for crop, planted_time in fields.items():
-            growth_time = self._get_growth_time(crop)  # Ensure this method returns growth time in seconds
-            ready_time = planted_time + growth_time  # Calculate when the crop will be ready
+        for crop_instance in fields:
+            crop_name = crop_instance["name"]
+            planted_time = crop_instance["planted_time"]
+            growth_time = self._get_growth_time(crop_name)
+            ready_time = planted_time + growth_time
+            emoji = crop_instance["emoji"]
     
             if now < ready_time:
-                # Use Discord's Timestamp Styling, 'R' for relative time
-                messages.append(f"{crop} {self.items[crop]['emoji']} will be ready <t:{int(ready_time)}:R>.")
+                messages.append(f"{crop_name} {emoji} will be ready <t:{int(ready_time)}:R>.")
             else:
-                # Use 'f' for short date/time format since the crop is ready
-                messages.append(f"{crop} {self.items[crop]['emoji']} is ready to harvest!")
+                messages.append(f"{crop_name} {emoji} is ready to harvest! <t:{int(ready_time)}:f>")
         return messages
+
 
     def _get_growth_time(self, crop_name):
         """Get the growth time for a crop in seconds from the items dictionary."""
