@@ -1,6 +1,7 @@
 from redbot.core import commands, Config
 import asyncio
 import datetime
+from redbot.core import tasks
 
 class Farm(commands.Cog):
     """Farming Game Cog for Discord."""
@@ -18,6 +19,37 @@ class Farm(commands.Cog):
             "field_size": 1  # Default field size allowing only 1 crop at a time
         }
         self.config.register_user(**default_user)
+
+        self.items = {
+            "potato": {"min_price": 5, "max_price": 15, "current_price": 10},
+            "carrot": {"min_price": 8, "max_price": 20, "current_price": 14},
+            # Add more items as needed
+        }
+
+        self.market_conditions = {
+            "calm": (1, 3),
+            "normal": (3, 7),
+            "wild": (7, 10)
+        }
+
+        self.current_market_condition = "normal"  # Default market condition
+
+    def cog_load(self):
+        self.price_update_task.start()
+
+    def cog_unload(self):
+        self.price_update_task.cancel()
+
+    @tasks.loop(hours=1)
+    async def price_update_task(self):
+        modifier_range = self.market_conditions[self.current_market_condition]
+        for item, data in self.items.items():
+            change = random.randint(*modifier_range) * random.choice([-1, 1])  # Randomly decide to increase or decrease
+            new_price = data["current_price"] + change
+            # Ensure new price stays within min and max bounds
+            new_price = max(min(new_price, data["max_price"]), data["min_price"])
+            self.items[item]["current_price"] = new_price
+
 
     def _emojify(self,crop,discord=True):
         if discord:
@@ -163,9 +195,39 @@ class Farm(commands.Cog):
             if "gold" not in user_config:
                 await self.config.user(member).gold.set(0)
         await ctx.send("All done") 
-            
-    
             # Repeat for other new fields as necessary
+
+    @farm.command()
+    async def sell(self, ctx, item_name: str, quantity: int):
+        if item_name not in self.items:
+            await ctx.send(f"{item_name.capitalize()} is not a valid item.")
+            return
+
+        if quantity <= 0:
+            await ctx.send("Quantity must be greater than zero.")
+            return
+
+        user_inventory = await self.config.user(ctx.author).inventory()
+        if item_name not in user_inventory or user_inventory[item_name] < quantity:
+            await ctx.send(f"You do not have enough {item_name}(s) to sell.")
+            return
+
+        item = self.items[item_name]
+        total_sale = item["current_price"] * quantity
+
+        # Update user inventory
+        async with self.config.user(ctx.author).inventory() as inventory:
+            inventory[item_name] -= quantity
+            if inventory[item_name] <= 0:
+                del inventory[item_name]  # Remove the item if quantity is zero
+
+        # Update user gold
+        user_gold = await self.config.user(ctx.author).gold()
+        new_gold_total = user_gold + total_sale
+        await self.config.user(ctx.author).gold.set(new_gold_total)
+
+        await ctx.send(f"Sold {quantity} {item_name}(s) for {total_sale} gold. You now have {new_gold_total} gold.")
+
 
 
 
