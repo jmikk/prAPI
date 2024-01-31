@@ -70,22 +70,20 @@ class Farm(commands.Cog):
 
     @farm.command()
     async def plant(self, ctx, crop_name: str):
-        """Plant a crop, respecting the field size limit."""
-   
         if crop_name not in self.items:
-            available_crops = ', '.join(self.items.keys())  # Create a string of available crop names
-            message = f"{crop_name.capitalize()} is not available for planting. Please choose from the available crops: {available_crops}."
-            await ctx.send(message)
-            return  
-        
-        fields = await self.config.user(ctx.author).fields()
-        field_size = await self.config.user(ctx.author).field_size()
-        if len(fields) >= field_size:
-            await ctx.send(f"You can only grow {field_size} crop(s) at a time. Harvest or wait for your current crops to finish growing or expand your farm with field_upgrade")
+            await ctx.send(f"{crop_name.capitalize()} is not available for planting.")
             return
     
-        await self._plant_crop(ctx.author, crop_name)
-        await ctx.send(f"{crop_name.capitalize()} planted!")
+        user_fields = await self.config.user(ctx.author).fields()
+        if len(user_fields) >= await self.config.user(ctx.author).field_size():
+            await ctx.send("You don't have enough space in your field to plant more crops.")
+            return
+    
+        planted_time = datetime.datetime.now().timestamp()
+        user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"]})
+        await self.config.user(ctx.author).fields.set(user_fields)
+    
+        await ctx.send(f"{crop_name.capitalize()} {self.items[crop_name]['emoji']} planted successfully!")
 
 
     async def _plant_crop(self, user, crop_name):
