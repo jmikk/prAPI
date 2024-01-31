@@ -195,23 +195,6 @@ class Farm(commands.Cog):
             await ctx.send("You don't have enough gold to upgrade your field.")
     
     @farm.command()
-    @commands.is_owner()
-    async def update_user_configs(self,ctx):
-        await ctx.send("starting to update folks")
-        all_members = [member for guild in self.bot.guilds for member in guild.members]
-        for member in all_members:
-            user_config = await self.config.user(member).all()
-    
-            # Check and update field_size
-            if "field_size" not in user_config:
-                await self.config.user(member).field_size.set(1)
-                await ctx.send("adding Field_size")
-            if "gold" not in user_config:
-                await self.config.user(member).gold.set(0)
-        await ctx.send("All done") 
-            # Repeat for other new fields as necessary
-
-    @farm.command()
     async def sell(self, ctx, item_name: str, quantity: int):
         if item_name not in self.items:
             await ctx.send(f"{item_name.capitalize()} is not a valid item.")
@@ -304,6 +287,33 @@ class Farm(commands.Cog):
     
         except asyncio.TimeoutError:
             await ctx.send("Field clear canceled.")
+   
+    @farm.command()
+    async def update_user_configs(self):
+        # Fetch all user IDs from the bot's configuration
+        all_user_ids = await self.config.all_users()
+    
+        for user_id in all_user_ids:
+            user_fields = await self.config.user_from_id(user_id).fields()
+    
+            # Check if the user's fields are in the old dictionary format
+            if isinstance(user_fields, dict):
+                # Convert the old dictionary to a new format where each key is unique
+                new_fields = {}
+                for crop_name, planted_time in user_fields.items():
+                    unique_key = f"{crop_name}_{planted_time}"  # Unique key using crop name and planted time
+                    new_fields[unique_key] = {
+                        "name": crop_name,
+                        "planted_time": planted_time,
+                        "emoji": self.items[crop_name]["emoji"]
+                    }
+    
+                # Update the user's fields configuration with the new dictionary format
+                await self.config.user_from_id(user_id).fields.set(new_fields)
+                print(f"Updated fields for user {user_id}")
+    
+        await ctx.sendI("All user configurations have been updated.")
+    
 
 
 
