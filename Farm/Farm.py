@@ -79,7 +79,7 @@ class Farm(commands.Cog):
         fields = await self.config.user(ctx.author).fields()
         field_size = await self.config.user(ctx.author).field_size()
         if crop_name not in self.items():
-            await ctx.send(f"Invaild crop Try planting {self.items().capitalize()}"
+            await ctx.send(f"Invaild crop Try planting {self.items().capitalize()}")
         if len(fields) >= field_size:
             await ctx.send(f"You can only grow {field_size} crop(s) at a time. Harvest or wait for your current crops to finish growing or expand your farm with field_upgrade")
             return
