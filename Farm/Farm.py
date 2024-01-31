@@ -200,17 +200,21 @@ class Farm(commands.Cog):
     @commands.is_owner()
     async def update_user_configs(self,ctx):
         await ctx.send("starting to update folks")
-        all_members = [member for guild in self.bot.guilds for member in guild.members]
-        for member in all_members:
-            user_config = await self.config.user(member).all()
-    
-            # Check and update field_size
-            if "field_size" not in user_config:
-                await self.config.user(member).field_size.set(1)
-                await ctx.send("adding Field_size")
-            if "gold" not in user_config:
-                await self.config.user(member).gold.set(0)
-        await ctx.send("All done") 
+        all_user_ids = await self.config.all_users()
+
+        for user_id in all_user_ids:
+            user_config = await self.config.user_from_id(user_id).fields()
+
+            # Check if the user's fields are in the old dictionary format
+            if isinstance(user_config, dict):
+                # Convert the dictionary to a list of dictionaries
+                new_fields = [{"name": crop_name, "planted_time": planted_info, "emoji": self.items[crop_name]["emoji"]} for crop_name, planted_info in user_config.items()]
+
+                # Update the user's fields configuration with the new list format
+                await self.config.user_from_id(user_id).fields.set(new_fields)
+                print(f"Updated fields for user {user_id}")
+
+        await ctx.send("All user configurations have been updated.")
             # Repeat for other new fields as necessary
 
     @farm.command()
