@@ -22,12 +22,18 @@ class Farm(commands.Cog):
         self.config.register_user(**default_user)
 
         self.items = {
-            "potato": {"min_price": 5, "max_price": 15, "current_price": 10},
-            "carrot": {"min_price": 8, "max_price": 20, "current_price": 14},
-            "taco": {"min_price": 10, "max_price": 25, "current_price": 16},
-
-            # Add more items as needed
+            "potato": {"emoji": "🥔", "min_price": 10, "max_price": 30, "current_price": 20, "growth_time": 14400},
+            "carrot": {"emoji": "🥕", "min_price": 10, "max_price": 20, "current_price": 15, "growth_time": 10800},
+            "corn": {"emoji": "🌽", "min_price": 15, "max_price": 35, "current_price": 25, "growth_time": 18000},
+            "tomato": {"emoji": "🍅", "min_price": 20, "max_price": 40, "current_price": 30, "growth_time": 21600},
+            "grapes": {"emoji": "🍇", "min_price": 25, "max_price": 45, "current_price": 40, "growth_time": 28800},
+            "apple": {"emoji": "🍎", "min_price": 30, "max_price": 50, "current_price": 50, "growth_time": 36000},
+            "strawberry": {"emoji": "🍓", "min_price": 5, "max_price": 15, "current_price": 10, "growth_time": 7200},
+            "peach": {"emoji": "🍑", "min_price": 35, "max_price": 55, "current_price": 60, "growth_time": 43200},
+            "cherries": {"emoji": "🍒", "min_price": 22, "max_price": 42, "current_price": 35, "growth_time": 25200},
+            "lemon": {"emoji": "🍋", "min_price": 28, "max_price": 48, "current_price": 45, "growth_time": 32400},
         }
+
 
         self.market_conditions = {
             "calm": (1, 3),
@@ -52,19 +58,6 @@ class Farm(commands.Cog):
             # Ensure new price stays within min and max bounds
             new_price = max(min(new_price, data["max_price"]), data["min_price"])
             self.items[item]["current_price"] = new_price
-
-
-    def _emojify(self,crop,discord=True):
-        if discord:
-            temp = crop.lower()
-            if temp == "potato":
-                return ":potato:"
-            elif temp == "taco":
-                return ":taco:"
-            elif temp == "gold":
-                return ":coin:"
-            else: 
-                return f":{crop}:"
 
     @commands.group()
     async def farm(self, ctx):
@@ -173,9 +166,9 @@ class Farm(commands.Cog):
     def _format_inventory(self, inventory,gold):
         """Format the inventory into a string for display."""
         inventory_lines = []
-        inventory_lines.append(f"Gold: {self._emojify('gold')}: {gold}")
+        inventory_lines.append(f"Gold: :coin:: {gold}")
         for crop, quantity in inventory.items():
-            inventory_lines.append(f"{crop.title()} {self._emojify(crop)}: {quantity}")
+            inventory_lines.append(f"{crop.title()} {self.items[crop]["emoji"]}: {quantity}")
         inventory_message = "\n".join(inventory_lines)
         return f"**Your Inventory:**\n{inventory_message}"
 
@@ -258,7 +251,7 @@ class Farm(commands.Cog):
 
         prices_message = "**Current Market Prices:**\n"
         for item_name, item_info in self.items.items():
-            prices_message += f"{item_name.title()} {self._emojify(item_name)}: {item_info['current_price']} gold\n"
+            prices_message += f"{item_name.title()} {self.items[item_name]["emoji"]}: {item_info['current_price']} gold\n"
 
         await ctx.send(prices_message)
 
