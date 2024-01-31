@@ -56,7 +56,7 @@ class Farm(commands.Cog):
     async def price_update_task(self):
         modifier_range = self.market_conditions[self.current_market_condition]
         for item, data in self.items.items():
-            change = random.randint(*modifier_range) * random.choice([-1, 1])  # Randomly decide to increase or decrease
+            change = random.randint(*modifier_range) * random.choice([-1, 1, 1, 1])  # Randomly decide to increase or decrease
             new_price = data["current_price"] + change
             # Ensure new price stays within min and max bounds
             new_price = max(min(new_price, data["max_price"]), data["min_price"])
