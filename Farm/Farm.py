@@ -78,7 +78,7 @@ class Farm(commands.Cog):
         """Plant a crop, respecting the field size limit."""
 
         if crop_name not in self.items:
-            await ctx.send(f"{crop_name.capitalize()} is not available for planting. Please choose from the available crops, {self.items}")
+            await ctx.send(f"{crop_name.capitalize()} is not available for planting. Please choose from the available crops, {self.items.items()}")
             return    
         
         fields = await self.config.user(ctx.author).fields()
