@@ -308,7 +308,23 @@ class Farm(commands.Cog):
     
         except asyncio.TimeoutError:
             await ctx.send("Field clear canceled.")
-   
+
+    @commands.command(name="migrate_fields")
+    @commands.is_owner()
+    async def migrate_fields(self, ctx):
+        all_users = await self.config.all_users()
+    
+        for user_id, data in all_users.items():
+            user_fields = data.get("fields", None)
+            
+            # Check if the fields are in the old dictionary format and migrate to list
+            if isinstance(user_fields, dict):
+                new_fields_list = [{"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"]} for crop_name, planted_time in user_fields.items()]
+                await self.config.user_from_id(user_id).fields.set(new_fields_list)
+                await ctx.send(f"Migrated fields for user ID {user_id}.")
+        
+        await ctx.send("Migration complete.")
+
     
 
 
