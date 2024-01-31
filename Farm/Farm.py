@@ -254,8 +254,31 @@ class Farm(commands.Cog):
 
         await ctx.send(prices_message)
 
+    @farm.command()
+    async def upgrade_field(self, ctx):
+        base_cost = 1  # Starting cost for the first upgrade
+        multiplier = 1.5  # Cost multiplier for each subsequent upgrade
+    
+        user_data = await self.config.user(ctx.author).all()
+        current_field_size = user_data['field_size']
+        user_gold = user_data['gold']
+    
+        upgrade_cost = math.floor(base_cost * (multiplier ** current_field_size))  # Calculate the cost for the next upgrade
+    
+        if user_gold >= upgrade_cost:
+            new_field_size = current_field_size + 1
+            new_gold_total = user_gold - upgrade_cost
+    
+            # Update the user's gold and field size
+            await self.config.user(ctx.author).gold.set(new_gold_total)
+            await self.config.user(ctx.author).field_size.set(new_field_size)
+    
+            await ctx.send(f"Field upgraded to size {new_field_size}! It cost you {upgrade_cost} gold. You now have {new_gold_total} gold.")
+        else:
+            await ctx.send(f"You need {upgrade_cost} gold to upgrade your field, but you only have {user_gold} gold.")
 
 
 
+    
 
 
