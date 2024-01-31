@@ -249,10 +249,6 @@ class Farm(commands.Cog):
         await ctx.send(prices_message)
 
 
-for crop, quantity in inventory.items():
-            inventory_lines.append(f"{crop.title()} {self._emojify(crop)}: {quantity}")
-        inventory_message = "\n".join(inventory_lines)
-
 
 
 
