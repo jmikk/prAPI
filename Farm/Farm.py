@@ -16,7 +16,7 @@ class Farm(commands.Cog):
 
         default_user = {
             "inventory": {},
-            "fields": {},
+            "fields": [],
             "gold": 0,
             "field_size": 1  # Default field size allowing only 1 crop at a time
         }
