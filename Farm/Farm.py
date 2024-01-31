@@ -149,6 +149,7 @@ class Farm(commands.Cog):
             await ctx.send("You don't have enough gold to upgrade your field.")
     
     @farm.command()
+    @commands.is_owner()
     async def update_user_configs(self,ctx):
         await ctx.send("starting to update folks")
         all_members = [member for guild in self.bot.guilds for member in guild.members]
