@@ -113,7 +113,7 @@ class Farm(commands.Cog):
                 messages.append(f"{crop} {self.items[crop]['emoji']} will be ready <t:{int(ready_time)}:R>.")
             else:
                 # Use 'f' for short date/time format since the crop is ready
-                messages.append(f"{crop} {self.items[crop]['emoji']} is ready to harvest! <t:{int(ready_time)}:f>")
+                messages.append(f"{crop} {self.items[crop]['emoji']} is ready to harvest!")
         return messages
 
     def _get_growth_time(self, crop_name):
