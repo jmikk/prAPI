@@ -67,7 +67,7 @@ class Farm(commands.Cog):
         """Farming commands."""
         if ctx.invoked_subcommand is None:
             prefix = await self.bot.get_prefix(ctx.message)
-            await ctx.send(f"Use `{prefix}farm plant potato` to get started.")
+            await ctx.send(f"Use `{prefix[0]}farm plant potato` to get started.")
 
     @farm.command()
     async def plant(self, ctx, crop_name: str):
