@@ -280,7 +280,7 @@ class Farm(commands.Cog):
         else:
             await ctx.send(f"You need {upgrade_cost} gold to upgrade your field, but you only have {user_gold} gold.")
 
-    @commands.command()
+    @farm.command()
     async def clear_field(self, ctx):
         """Clears all crops from your field after confirmation."""
         confirmation_message = await ctx.send("Are you sure you want to clear your field? React with ✅ to confirm.")
