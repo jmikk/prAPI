@@ -150,6 +150,7 @@ class Farm(commands.Cog):
     
     @farm.command()
     async def update_user_configs(self,ctx):
+        await ctx.send("starting to update folks")
         all_members = [member for guild in self.bot.guilds for member in guild.members]
         for member in all_members:
             user_config = await self.config.user(member).all()
@@ -160,6 +161,7 @@ class Farm(commands.Cog):
                 await ctx.send("adding Field_size")
             if "gold" not in user_config:
                 await self.config.user(member).gold.set(0)
+        await ctx.send("All done") 
             
     
             # Repeat for other new fields as necessary
