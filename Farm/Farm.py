@@ -117,12 +117,15 @@ class Farm(commands.Cog):
         return messages
 
     def _get_growth_time(self, crop_name):
-        """Get the growth time for a crop in seconds."""
-        growth_times = {
-            "potato": 60,  # 1 minute in seconds
-            "taco": 86400   # 1 day in seconds (24 hours * 60 minutes * 60 seconds)
-        }
-        return growth_times.get(crop_name, 0)  # Returns 0 if the crop is not defined
+        """Get the growth time for a crop in seconds from the items dictionary."""
+        # Check if the crop exists in the items dictionary
+        if crop_name in self.items:
+            # Return the growth time for the specified crop
+            return self.items[crop_name]['growth_time']
+        else:
+            # Return a default growth time or raise an error if the crop is not found
+            return None  # or raise ValueError(f"Crop {crop_name} not found")
+
 
 
     @farm.command()
