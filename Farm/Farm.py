@@ -3,6 +3,7 @@ import asyncio
 import datetime
 from discord.ext import tasks
 import math
+import datetime
 #from redbot.core import tasks
 
 class Farm(commands.Cog):
@@ -104,12 +105,15 @@ class Farm(commands.Cog):
         now = datetime.datetime.now().timestamp()
         messages = []
         for crop, planted_time in fields.items():
-            growth_time = self._get_growth_time(crop)  # Define this method based on your crop types
-            remaining = growth_time - (now - planted_time)
-            if remaining > 0:
-                messages.append(f"{crop} {self.items[crop]['emoji']} will be ready in {remaining / 3600:.2f} hours.")
+            growth_time = self._get_growth_time(crop)  # Ensure this method returns growth time in seconds
+            ready_time = planted_time + growth_time  # Calculate when the crop will be ready
+    
+            if now < ready_time:
+                # Use Discord's Timestamp Styling, 'R' for relative time
+                messages.append(f"{crop} {self.items[crop]['emoji']} will be ready <t:{int(ready_time)}:R>.")
             else:
-                messages.append(f"{crop} {self.items[crop]['emoji']} is ready to harvest!")
+                # Use 'f' for short date/time format since the crop is ready
+                messages.append(f"{crop} {self.items[crop]['emoji']} is ready to harvest! <t:{int(ready_time)}:f>")
         return messages
 
     def _get_growth_time(self, crop_name):
