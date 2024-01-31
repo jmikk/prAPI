@@ -1,7 +1,7 @@
-from redbot.core import commands, Config
+from redbot.core import commands, Config, tasks
 import asyncio
 import datetime
-from redbot.core import tasks
+#from redbot.core import tasks
 
 class Farm(commands.Cog):
     """Farming Game Cog for Discord."""
