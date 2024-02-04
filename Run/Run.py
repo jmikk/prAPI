@@ -20,8 +20,8 @@ class Run(commands.Cog):
             """
             await ctx.send(f"Keep running! Your server score is now {scores}.\n{lap_art}")
 
-    @commands.command(name="leaderboard")
-    async def leaderboard_command(self, ctx):
+    @commands.command(name="Run_leaderboard")
+    async def Run_leaderboard(self, ctx):
         all_scores = await self.config.all_guilds()
         
         # Sort scores by value in descending order
