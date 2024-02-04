@@ -9,7 +9,7 @@ class Run(commands.Cog):
 
     @commands.guild_only()
     @commands.command(name="run!")
-    async def run(self, ctx):
+    async def run_command(self, ctx):
         # Increment the server score
         async with self.config.guild(ctx.guild).scores() as scores:
             scores += 1
