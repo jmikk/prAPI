@@ -10,15 +10,20 @@ class Run(commands.Cog):
     @commands.guild_only()
     @commands.command(name="run!")
     async def run_command(self, ctx):
-        # Increment the server score
-        async with self.config.guild(ctx.guild).scores() as scores:
-            scores += 1
-            lap_art = """
-            __o
-          _ \<_
-         (_)/(_)
-            """
-            await ctx.send(f"Keep running! Your server score is now {scores}.\n{lap_art}")
+        # Retrieve the current score
+        current_score = await self.config.guild(ctx.guild).scores()
+        new_score = current_score + 1
+    
+        # Update the score
+        await self.config.guild(ctx.guild).scores.set(new_score)
+    
+        lap_art = """
+        __o
+      _ \<_
+     (_)/(_)
+        """
+        await ctx.send(f"Keep running! Your server score is now {new_score}.\n{lap_art}")
+
 
     @commands.command(name="Run_leaderboard")
     async def Run_leaderboard(self, ctx):
