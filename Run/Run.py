@@ -1,5 +1,6 @@
 from redbot.core import commands, Config
 import discord
+import random
 
 class Run(commands.Cog):
     def __init__(self, bot):
@@ -18,6 +19,7 @@ class Run(commands.Cog):
         await self.config.guild(ctx.guild).scores.set(new_score)
     
         lap_art = ["https://tenor.com/view/earth-gif-8912275","https://tenor.com/view/funny-gif-24784982","https://tenor.com/view/spongebob-panic-patrick-ahhh-run-around-gif-9319829","https://tenor.com/view/mobile-girl-mim-running-excited-gif-21459068","https://tenor.com/view/chicken-run-chicken-in-shoes-crash-bandicoot-crash-gif-3420651847898329517","https://tenor.com/view/cat-hopping-cute-kitty-kitty-baby-cat-gif-104564847600069574","https://tenor.com/view/cat-run-omg-gif-10386143","https://tenor.com/view/dog-running-coming-doggo-gif-12143874","https://tenor.com/view/ham-burger-hot-dog-running-funny-animated-gif-17820157"]
+        lap_art = random.choice(lap_art)
         # Include the server name in the message
         await ctx.send(f"Keep running, {ctx.guild.name}! Your server score is now {new_score}.\n{lap_art}")
 
