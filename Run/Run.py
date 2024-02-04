@@ -18,9 +18,24 @@ class Run(commands.Cog):
         await self.config.guild(ctx.guild).scores.set(new_score)
     
         lap_art = """
-        __o
-      _ \<_
-     (_)/(_)
+
+                        ,////,
+                        /// 6|
+                        //  _|
+                       _/_,-'
+                  _.-/'/   \   ,/;,
+               ,-' /'  \_   \ / _/
+               `\ /     _/\  ` /
+                 |     /,  `\_/
+                 |     \'
+     /\_        /`      /\
+   /' /_``--.__/\  `,. /  \
+  |_/`  `-._     `\/  `\   `.
+            `-.__/'     `\   |
+                          `\  \
+                            `\ \
+                              \_\__
+                               \___)
         """
         # Include the server name in the message
         await ctx.send(f"Keep running, {ctx.guild.name}! Your server score is now {new_score}.\n{lap_art}")
