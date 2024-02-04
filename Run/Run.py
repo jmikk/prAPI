@@ -5,7 +5,7 @@ import random
 class Run(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
+        self.config = Config.get_conf(self, identifier=34591395, force_registration=True)
         self.config.register_guild(scores=0)
 
     @commands.guild_only()
