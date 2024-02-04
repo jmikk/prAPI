@@ -10,46 +10,21 @@ class Run(commands.Cog):
     @commands.guild_only()
     @commands.command(name="run!")
     async def run_command(self, ctx):
-        # Define the running animation frames
-        running_frames = [
-            """
-             __o
-           _ \\<_
-          (_)/(_)
-            """,
-            """
-             \o/
-              |
-             / \\
-            """,
-            """
-             __o
-               \\<_
-              (_)/
-            """,
-            """
-              o
-             /|
-             / \\
-            """
-        ]
-    
-        # Retrieve the current score and frame index
-        async with self.config.guild(ctx.guild).all() as guild_data:
-            current_score = guild_data['scores']
-            frame_index = guild_data.get('frame_index', 0)  # Default to 0 if not set
-    
+        # Retrieve the current score
+        current_score = await self.config.guild(ctx.guild).scores()
         new_score = current_score + 1
+    
         # Update the score
-        guild_data['scores'] = new_score
+        await self.config.guild(ctx.guild).scores.set(new_score)
     
-        # Get the next frame of running animation
-        next_frame = running_frames[frame_index]
-        # Update the frame index for the next run
-        guild_data['frame_index'] = (frame_index + 1) % len(running_frames)  # Loop back to the first frame
-    
-        # Include the server name and the next frame of running animation in the message
-        await ctx.send(f"Keep running, {ctx.guild.name}! Your server score is now {new_score}.\n{next_frame}")
+        lap_art = """
+        __o
+      _ \<_
+     (_)/(_)
+        """
+        # Include the server name in the message
+        await ctx.send(f"Keep running, {ctx.guild.name}! Your server score is now {new_score}.\n{lap_art}")
+
 
 
 
