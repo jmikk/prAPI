@@ -22,7 +22,7 @@ class Run(commands.Cog):
       _ \<_
      (_)/(_)
         """
-        await ctx.send(f"Keep running! Your server score is now {new_score}.\n{lap_art}")
+        await ctx.send(f"Keep running! {ctx.guild.name} score is now {new_score}.\n{lap_art}")
 
 
     @commands.command(name="Run_leaderboard")
