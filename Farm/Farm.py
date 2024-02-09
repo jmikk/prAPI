@@ -267,7 +267,7 @@ class Farm(commands.Cog):
 
     @farm.command()
     async def field_upgrade(self, ctx):
-        base_cost = 100  # Starting cost for the first upgrade
+        base_cost = 50  # Starting cost for the first upgrade
         multiplier = 1.2  # Cost multiplier for each subsequent upgrade
     
         user_data = await self.config.user(ctx.author).all()
