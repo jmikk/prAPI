@@ -304,7 +304,7 @@ class Farm(commands.Cog):
             await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
     
             # Clear the field after confirmation
-            await self.config.user(ctx.author).fields.set({})
+            await self.config.user(ctx.author).fields.set([])
             await ctx.send("All crops in your field have been cleared.")
     
         except asyncio.TimeoutError:
