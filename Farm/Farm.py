@@ -261,7 +261,7 @@ class Farm(commands.Cog):
 
         prices_message = "**Current Market Prices:**\n"
         for item_name, item_info in self.items.items():
-            prices_message += f"{item_name.title()} {self.items[item_name]['emoji']}: {item_info['current_price']} gold\n"
+            prices_message += f"{item_name.title()} {self.items[item_name]['emoji']}: {item_info['current_price']} gold, {item_info['growth_time']} secounds to grow\n"
 
         await ctx.send(prices_message)
 
