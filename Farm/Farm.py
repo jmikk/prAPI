@@ -199,22 +199,6 @@ class Farm(commands.Cog):
         inventory_message = "\n".join(inventory_lines)
         return f"**Your Inventory:**\n{inventory_message}"
 
-    @farm.command()
-    async def upgrade_field(self, ctx):
-        """Upgrade the field size by spending gold."""
-        # Placeholder values for cost and upgrade increment
-        upgrade_cost = 50  # Cost to upgrade the field
-        upgrade_increment = 1  # Increase field size by 1
-    
-        gold = await self.config.user(ctx.author).gold()  # Assuming gold is tracked in the user's config
-    
-        if gold >= upgrade_cost:
-            async with self.config.user(ctx.author) as user_data:
-                user_data["gold"] -= upgrade_cost  # Deduct the cost
-                user_data["field_size"] += upgrade_increment  # Increase field size
-            await ctx.send(f"Field upgraded! You can now plant {user_data['field_size']} crops at a time.")
-        else:
-            await ctx.send("You don't have enough gold to upgrade your field.")
     
     @farm.command()
     async def sell(self, ctx, item_name: str, quantity: int):
