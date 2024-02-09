@@ -203,7 +203,7 @@ class Farm(commands.Cog):
     async def upgrade_field(self, ctx):
         """Upgrade the field size by spending gold."""
         # Placeholder values for cost and upgrade increment
-        upgrade_cost = 100  # Cost to upgrade the field
+        upgrade_cost = 50  # Cost to upgrade the field
         upgrade_increment = 1  # Increase field size by 1
     
         gold = await self.config.user(ctx.author).gold()  # Assuming gold is tracked in the user's config
