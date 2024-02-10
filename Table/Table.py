@@ -100,19 +100,7 @@ class Table(commands.Cog):
     
         table = tables[table_id]
         result = self.roll_on_table(table)
-    
-        # Check if the result is a table trigger
-        if result.startswith("table:"):
-            trigger_table_name = result.split("table:")[1]
-            trigger_table_id = f"{user.id}_{trigger_table_name}"  # Assuming the same user's table
-            if trigger_table_id in tables:
-                # Increment the depth since we're triggering another table roll
-                depth += 1
-                await self.roll_table(ctx, user.mention, trigger_table_name, depth=depth)
-            else:
-                await ctx.send(f"Triggered table '{trigger_table_name}' not found.")
-        else:
-            await ctx.send(f"Rolling on '{table_name}' by {user.display_name}: {result}")
+        await ctx.send(f"Rolling on '{table_name}' by {user.display_name}: {result}")
         
     def roll_on_table(self, table):
         """Rolls on a given table."""
