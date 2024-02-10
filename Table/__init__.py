@@ -1,5 +1,5 @@
-from .Farmland import Farmland
+from .Table import Table
 
 
 async def setup(bot):
-    await bot.add_cog(Farmland(bot))
+    await bot.add_cog(Table(bot))
