@@ -72,33 +72,30 @@ class Table(commands.Cog):
 
    
     @table_group.command(name="roll")
-    async def roll_table(self, ctx, *args):
-        """Rolls on a specified table.
+    async def roll_table(self, ctx, *args,depth=0):
+        """Rolls on a specified table and handles table triggers.
     
         Usage: [p]table roll [user_mention|user_id] <table_name>
         If no user is specified, defaults to the command invoker's tables.
         """
+        MAX_RECURSION_DEPTH = 5  # Example limit
+       
         if not args:
             await ctx.send("You must specify a table name.")
             return
+        if depth < 10:
+            return "This table has rolled 10 other tables to get here and that is as far as I can go"
     
         # Attempt to resolve the first argument as a table name under the command invoker's tables
         table_name = args[0]
         user = ctx.author
         table_id = f"{user.id}_{table_name}"
     
+       if depth > MAX_RECURSION_DEPTH:
+            await ctx.send("Maximum table roll depth exceeded.")
+            return
+    
         tables = await self.config.guild(ctx.guild).tables()
-    
-        if table_id not in tables and len(args) > 1:
-            # The first argument isn't a valid table name; attempt to resolve it as a user
-            try:
-                user = await commands.UserConverter().convert(ctx, args[0])
-                table_name = args[1]
-                table_id = f"{user.id}_{table_name}"
-            except commands.UserNotFound:
-                await ctx.send(f"User '{args[0]}' not found. Please specify a valid user or table name.")
-                return
-    
         if table_id not in tables:
             await ctx.send(f"No table found with the name '{table_name}' created by {user.display_name}.")
             return
@@ -106,9 +103,19 @@ class Table(commands.Cog):
         table = tables[table_id]
         result = self.roll_on_table(table)
     
-        await ctx.send(f"Rolling on '{table_name}' by {user.display_name}: {result}")
-
-
+        # Check if the result is a table trigger
+        if result.startswith("table:"):
+            trigger_table_name = result.split("table:")[1]
+            trigger_table_id = f"{user.id}_{trigger_table_name}"  # Assuming the same user's table
+            if trigger_table_id in tables:
+                # Increment the depth since we're triggering another table roll
+                depth += 1
+                await self.roll_table(ctx, user.mention, trigger_table_name, depth=depth)
+            else:
+                await ctx.send(f"Triggered table '{trigger_table_name}' not found.")
+        else:
+            await ctx.send(f"Rolling on '{table_name}' by {user.display_name}: {result}")
+        
     def roll_on_table(self, table):
         """Rolls on a given table."""
         if table["type"] == "standard":
