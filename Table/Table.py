@@ -1,5 +1,8 @@
-from redbot.core import commands
+from redbot.core import commands, Config
+import discord
+import random
 import asyncio
+
 
 
 def is_owner_overridable():
@@ -16,20 +19,18 @@ class Table(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
 
-    def cog_unload(self):
-        asyncio.create_task(self.client.aclose())
+        # Define a default guild setting structure
+        default_guild = {
+            "tables": {}
+        }
 
-    # great once your done messing with the bot.
-    #   async def cog_command_error(self, ctx, error):
-    #       await ctx.send(" ".join(error.args))
+        self.config.register_guild(**default_guild)
 
-    @commands.command()
-    @commands.is_owner()
-    async def myCom1(self, ctx):
-        await ctx.send("I work")
+    @commands.guild_only()
+    @commands.group(name="table")
+    async def table_group(self, ctx):
+        """Commands for managing D&D tables."""
+        pass
 
-    @commands.command()
-    @is_owner_overridable()
-    async def myCom2(self, ctx):
-        await ctx.send("I still work!")
