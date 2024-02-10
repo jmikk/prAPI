@@ -91,7 +91,7 @@ class Table(commands.Cog):
         user = ctx.author
         table_id = f"{user.id}_{table_name}"
     
-       if depth > MAX_RECURSION_DEPTH:
+        if depth > MAX_RECURSION_DEPTH:
             await ctx.send("Maximum table roll depth exceeded.")
             return
     
