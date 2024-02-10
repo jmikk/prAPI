@@ -72,24 +72,33 @@ class Table(commands.Cog):
 
    
     @table_group.command(name="roll")
-    async def roll_table(self, ctx, user: discord.User=None, table_name: str=None):
+    async def roll_table(self, ctx, *args):
         """Rolls on a specified table.
     
         Usage: [p]table roll [user_mention|user_id] <table_name>
         If no user is specified, defaults to the command invoker's tables.
         """
-        # If no user is specified, use the command invoker's ID
-        if user is None:
-            user = ctx.author
-    
-        if table_name is None:
+        if not args:
             await ctx.send("You must specify a table name.")
             return
     
-        # Construct the table ID using the user's ID
+        # Attempt to resolve the first argument as a table name under the command invoker's tables
+        table_name = args[0]
+        user = ctx.author
         table_id = f"{user.id}_{table_name}"
     
         tables = await self.config.guild(ctx.guild).tables()
+    
+        if table_id not in tables and len(args) > 1:
+            # The first argument isn't a valid table name; attempt to resolve it as a user
+            try:
+                user = await commands.UserConverter().convert(ctx, args[0])
+                table_name = args[1]
+                table_id = f"{user.id}_{table_name}"
+            except commands.UserNotFound:
+                await ctx.send(f"User '{args[0]}' not found. Please specify a valid user or table name.")
+                return
+    
         if table_id not in tables:
             await ctx.send(f"No table found with the name '{table_name}' created by {user.display_name}.")
             return
@@ -99,7 +108,6 @@ class Table(commands.Cog):
     
         await ctx.send(f"Rolling on '{table_name}' by {user.display_name}: {result}")
 
-    # The rest of the roll_table method...
 
     def roll_on_table(self, table):
         """Rolls on a given table."""
