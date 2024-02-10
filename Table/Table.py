@@ -78,13 +78,11 @@ class Table(commands.Cog):
         Usage: [p]table roll [user_mention|user_id] <table_name>
         If no user is specified, defaults to the command invoker's tables.
         """
-        MAX_RECURSION_DEPTH = 5  # Example limit
+        MAX_RECURSION_DEPTH = 10  # Example limit
        
         if not args:
             await ctx.send("You must specify a table name.")
             return
-        if depth < 10:
-            return "This table has rolled 10 other tables to get here and that is as far as I can go"
     
         # Attempt to resolve the first argument as a table name under the command invoker's tables
         table_name = args[0]
