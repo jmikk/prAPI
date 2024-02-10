@@ -19,7 +19,7 @@ class Table(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
+        self.config = Config.get_conf(self, identifier="DnD_Table", force_registration=True)
 
         # Define a default guild setting structure
         default_guild = {
