@@ -58,36 +58,48 @@ class Table(commands.Cog):
         else:
             parsed_items = list(items)
 
-        # Save the table
+        # Construct the table ID using the command invoker's ID
+        table_id = f"{ctx.author.id}_{table_name}"
+    
         async with self.config.guild(ctx.guild).tables() as tables:
-            if table_name in tables:
-                await ctx.send(f"A table with the name '{table_name}' already exists.")
+            if table_id in tables:
+                await ctx.send(f"You already have a table with the name '{table_name}'.")
                 return
-            tables[table_name] = {"type": table_type, "items": parsed_items}
-
+    
+            tables[table_id] = {"type": table_type, "items": parsed_items}
+    
         await ctx.send(f"Table '{table_name}' uploaded successfully.")
+
    
     @table_group.command(name="roll")
-    async def roll_table(self, ctx, table_name: str):
+    async def roll_table(self, ctx, user: discord.User=None, table_name: str=None):
         """Rolls on a specified table.
-
-        Usage: [p]table roll <table_name>
+    
+        Usage: [p]table roll [user_mention|user_id] <table_name>
+        If no user is specified, defaults to the command invoker's tables.
         """
-        tables = await self.config.guild(ctx.guild).tables()
-        if table_name not in tables:
-            await ctx.send(f"No table found with the name '{table_name}'.")
+        # If no user is specified, use the command invoker's ID
+        if user is None:
+            user = ctx.author
+    
+        if table_name is None:
+            await ctx.send("You must specify a table name.")
             return
-
-        table = tables[table_name]
+    
+        # Construct the table ID using the user's ID
+        table_id = f"{user.id}_{table_name}"
+    
+        tables = await self.config.guild(ctx.guild).tables()
+        if table_id not in tables:
+            await ctx.send(f"No table found with the name '{table_name}' created by {user.display_name}.")
+            return
+    
+        table = tables[table_id]
         result = self.roll_on_table(table)
+    
+        await ctx.send(f"Rolling on '{table_name}' by {user.display_name}: {result}")
 
-        await ctx.send(f"Rolling on '{table_name}': {result}")
-
-        # Check if the result triggers another table roll
-        if result in tables:
-            await ctx.send(f"'{result}' triggers another table roll!")
-            triggered_result = self.roll_on_table(tables[result])
-            await ctx.send(f"Rolling on '{result}': {triggered_result}")
+    # The rest of the roll_table method...
 
     def roll_on_table(self, table):
         """Rolls on a given table."""
