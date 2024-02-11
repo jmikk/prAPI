@@ -136,20 +136,27 @@ class Table(commands.Cog):
         for table_id, table in current_page:
             embed.add_field(name=table_id, value=f"Type: {table['type']}", inline=False)
 
-        await ctx.send(embed=embed)
+# Check if this is an edit of an existing message
+        if edit:
+            await ctx.message.edit(embed=embed)
+            # Clear existing reactions to reset pagination controls
+            await ctx.message.clear_reactions()
+        else:
+            sent_message = await ctx.send(embed=embed)
 
         if len(pages) > items_per_page:
-            await ctx.message.add_reaction("◀")
-            await ctx.message.add_reaction("▶")
-            self.bot.loop.create_task(self.handle_reactions(ctx, user, page, len(pages) // items_per_page + (len(pages) % items_per_page > 0)))
+            # Add reactions to the sent message for navigation
+            await sent_message.add_reaction("◀")
+            await sent_message.add_reaction("▶")
+            self.bot.loop.create_task(self.handle_reactions(ctx, sent_message, user, page, len(pages) // items_per_page + (len(pages) % items_per_page > 0)))
 
-    async def handle_reactions(self, ctx, user, page, max_page):
-        def check(reaction, user_reacted):
-            return user_reacted == ctx.author and str(reaction.emoji) in ["◀", "▶"] and reaction.message == ctx.message
+    async def handle_reactions(self, ctx, message, user, page, max_page):
+        def check(reaction, user_reacted, message_checked):
+            return user_reacted == ctx.author and str(reaction.emoji) in ["◀", "▶"] and message_checked.id == message.id
 
         while True:
             try:
-                reaction, user_reacted = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+                reaction, user_reacted = await self.bot.wait_for("reaction_add", timeout=60.0, check=lambda reaction, user_reacted: check(reaction, user_reacted, message))
 
                 if str(reaction.emoji) == "▶" and page < max_page:
                     page += 1
@@ -158,9 +165,10 @@ class Table(commands.Cog):
                 else:
                     continue
 
-                await reaction.remove(user_reacted)
-                await self.list_tables(ctx, user, page)
+                await message.remove_reaction(reaction, user_reacted)
+                await self.list_tables(ctx, user, page, edit=True)
                 break
 
             except asyncio.TimeoutError:
+                await message.clear_reactions()
                 break
