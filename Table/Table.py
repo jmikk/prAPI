@@ -114,53 +114,53 @@ class Table(commands.Cog):
 
     @table_group.command(name="list")
     async def list_tables(self, ctx, user: discord.User = None, page: int = 1):
-        """Lists all tables or tables belonging to a specified user, with pagination.
-    
-        Usage:
-        - [p]table list
-        - [p]table list @username
-        - [p]table list @username <page_number>
-        - [p]table list <page_number>
-        """
+        """Lists all tables or tables belonging to a specified user, with pagination."""
         tables = await self.config.guild(ctx.guild).tables()
         if user:
-            # Filter tables by the specified user
             user_tables = {k: v for k, v in tables.items() if str(user.id) in k}
             tables_to_list = user_tables
         else:
             tables_to_list = tables
-    
-        # Pagination logic
+
         items_per_page = 10
-        pages = [tables_to_list.items()][(page - 1) * items_per_page:page * items_per_page]
-        await ctx.send(pages)
-        if not pages:
+        pages = list(tables_to_list.items())
+        start = (page - 1) * items_per_page
+        end = start + items_per_page
+        current_page = pages[start:end]
+
+        if not current_page:
             await ctx.send("No tables found.")
             return
-    
-        # Constructing the message
+
         embed = discord.Embed(title=f"Tables Page {page}", colour=discord.Colour.blue())
-        for table_id, table in pages:
+        for table_id, table in current_page:
             embed.add_field(name=table_id, value=f"Type: {table['type']}", inline=False)
-    
+
         await ctx.send(embed=embed)
-    
-        # Add reactions to navigate pages if there are more pages
-        if len(tables_to_list) > items_per_page:
+
+        if len(pages) > items_per_page:
             await ctx.message.add_reaction("◀")
             await ctx.message.add_reaction("▶")
-    
-            def check(reaction, user_reacted):
-                return user_reacted == ctx.author and str(reaction.emoji) in ["◀", "▶"]
-    
+            self.bot.loop.create_task(self.handle_reactions(ctx, user, page, len(pages) // items_per_page + (len(pages) % items_per_page > 0)))
+
+    async def handle_reactions(self, ctx, user, page, max_page):
+        def check(reaction, user_reacted):
+            return user_reacted == ctx.author and str(reaction.emoji) in ["◀", "▶"] and reaction.message == ctx.message
+
+        while True:
             try:
                 reaction, user_reacted = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
-    
-                if str(reaction.emoji) == "▶" and len(pages) > page * items_per_page:
-                    await self.list_tables(ctx, user, page + 1)
-                elif str(reaction.emoji) == "◀" and page > 1:
-                    await self.list_tables(ctx, user, page - 1)
-    
-            except asyncio.TimeoutError:
-                await ctx.send("Table list navigation timed out.")
 
+                if str(reaction.emoji) == "▶" and page < max_page:
+                    page += 1
+                elif str(reaction.emoji) == "◀" and page > 1:
+                    page -= 1
+                else:
+                    continue
+
+                await reaction.remove(user_reacted)
+                await self.list_tables(ctx, user, page)
+                break
+
+            except asyncio.TimeoutError:
+                break
