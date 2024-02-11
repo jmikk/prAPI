@@ -113,7 +113,7 @@ class Table(commands.Cog):
 
 
     @table_group.command(name="list")
-    async def list_tables(self, ctx, user: discord.User = None, page: int = 1):
+    async def list_tables(self, ctx, user: discord.User = None, page: int = 1, edit: bool = False):
         """Lists all tables or tables belonging to a specified user, with pagination."""
         tables = await self.config.guild(ctx.guild).tables()
         if user:
