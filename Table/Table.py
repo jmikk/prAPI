@@ -133,7 +133,7 @@ class Table(commands.Cog):
         # Pagination logic
         items_per_page = 10
         pages = [tables_to_list.items()][(page - 1) * items_per_page:page * items_per_page]
-    
+        await ctx.send(pages)
         if not pages:
             await ctx.send("No tables found.")
             return
