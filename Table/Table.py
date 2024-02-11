@@ -121,54 +121,52 @@ class Table(commands.Cog):
             tables_to_list = user_tables
         else:
             tables_to_list = tables
-
-        items_per_page = 2
+    
+        items_per_page = 10
         pages = list(tables_to_list.items())
         start = (page - 1) * items_per_page
         end = start + items_per_page
         current_page = pages[start:end]
-
+    
         if not current_page:
             await ctx.send("No tables found.")
             return
-
+    
         embed = discord.Embed(title=f"Tables Page {page}", colour=discord.Colour.blue())
         for table_id, table in current_page:
             embed.add_field(name=table_id, value=f"Type: {table['type']}", inline=False)
-
-# Check if this is an edit of an existing message
+    
+        # Check if we are editing an existing message or sending a new one
         if edit:
             await ctx.message.edit(embed=embed)
-            # Clear existing reactions to reset pagination controls
-            await ctx.message.clear_reactions()
         else:
             sent_message = await ctx.send(embed=embed)
-
-        if len(pages) > items_per_page:
-            # Add reactions to the sent message for navigation
-            await sent_message.add_reaction("◀")
-            await sent_message.add_reaction("▶")
-            self.bot.loop.create_task(self.handle_reactions(ctx, sent_message, user, page, len(pages) // items_per_page + (len(pages) % items_per_page > 0)))
-
+    
+            if len(pages) > items_per_page:
+                await sent_message.add_reaction("◀")
+                await sent_message.add_reaction("▶")
+                self.bot.loop.create_task(self.handle_reactions(ctx, sent_message, user, page, len(pages) // items_per_page + (len(pages) % items_per_page > 0)))
+    
     async def handle_reactions(self, ctx, message, user, page, max_page):
-        def check(reaction, user_reacted, message_checked):
-            return user_reacted == ctx.author and str(reaction.emoji) in ["◀", "▶"] and message_checked.id == message.id
-
+        def check(reaction, user_reacted):
+            return user_reacted == ctx.author and str(reaction.emoji) in ["◀", "▶"] and reaction.message.id == message.id
+    
         while True:
             try:
-                reaction, user_reacted = await self.bot.wait_for("reaction_add", timeout=60.0, check=lambda reaction, user_reacted: check(reaction, user_reacted, message))
-
+                reaction, user_reacted = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+    
                 if str(reaction.emoji) == "▶" and page < max_page:
                     page += 1
                 elif str(reaction.emoji) == "◀" and page > 1:
                     page -= 1
                 else:
                     continue
-
+    
                 await message.remove_reaction(reaction, user_reacted)
                 await self.list_tables(ctx, user, page, edit=True)
                 break
-
+    
             except asyncio.TimeoutError:
                 await message.clear_reactions()
                 break
+
