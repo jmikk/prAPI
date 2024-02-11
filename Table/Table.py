@@ -122,7 +122,7 @@ class Table(commands.Cog):
         else:
             tables_to_list = tables
 
-        items_per_page = 10
+        items_per_page = 2
         pages = list(tables_to_list.items())
         start = (page - 1) * items_per_page
         end = start + items_per_page
