@@ -111,3 +111,56 @@ class Table(commands.Cog):
             items, weights = zip(*table["items"])
             return random.choices(items, weights=weights, k=1)[0]
 
+
+    @table_group.command(name="list")
+    async def list_tables(self, ctx, user: discord.User = None, page: int = 1):
+        """Lists all tables or tables belonging to a specified user, with pagination.
+    
+        Usage:
+        - [p]table list
+        - [p]table list @username
+        - [p]table list @username <page_number>
+        - [p]table list <page_number>
+        """
+        tables = await self.config.guild(ctx.guild).tables()
+        if user:
+            # Filter tables by the specified user
+            user_tables = {k: v for k, v in tables.items() if str(user.id) in k}
+            tables_to_list = user_tables
+        else:
+            tables_to_list = tables
+    
+        # Pagination logic
+        items_per_page = 10
+        pages = [tables_to_list.items()][(page - 1) * items_per_page:page * items_per_page]
+    
+        if not pages:
+            await ctx.send("No tables found.")
+            return
+    
+        # Constructing the message
+        embed = discord.Embed(title=f"Tables Page {page}", colour=discord.Colour.blue())
+        for table_id, table in pages:
+            embed.add_field(name=table_id, value=f"Type: {table['type']}", inline=False)
+    
+        await ctx.send(embed=embed)
+    
+        # Add reactions to navigate pages if there are more pages
+        if len(tables_to_list) > items_per_page:
+            await ctx.message.add_reaction("◀")
+            await ctx.message.add_reaction("▶")
+    
+            def check(reaction, user_reacted):
+                return user_reacted == ctx.author and str(reaction.emoji) in ["◀", "▶"]
+    
+            try:
+                reaction, user_reacted = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+    
+                if str(reaction.emoji) == "▶" and len(pages) > page * items_per_page:
+                    await self.list_tables(ctx, user, page + 1)
+                elif str(reaction.emoji) == "◀" and page > 1:
+                    await self.list_tables(ctx, user, page - 1)
+    
+            except asyncio.TimeoutError:
+                await ctx.send("Table list navigation timed out.")
+
