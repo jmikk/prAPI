@@ -36,6 +36,17 @@ class Farm(commands.Cog):
             "taco": {"emoji": "🌮", "min_price": 100, "max_price": 200, "current_price": 150, "growth_time": 604800},  # 1 week
         }
 
+        # Step 2: Modify the items dictionary
+        self.items["zombie"] = {
+            "emoji": "🧟",  # Example emoji for zombies
+            "min_price": 50,  # Base min price for zombies without traits
+            "max_price": 100,  # Base max price for zombies with valuable traits
+            "current_price": 75,  # Starting price
+            "growth_time": 86400,  # Base growth time in seconds (1 day)
+            "traits": ["base"]  # Base traits for zombies
+        }
+
+
 
 
         self.market_conditions = {
@@ -45,6 +56,17 @@ class Farm(commands.Cog):
         }
 
         self.current_market_condition = "normal"  # Default market condition
+
+
+    # Step 3: Trait inheritance logic
+    def inherit_traits(self, surrounding_crops):
+        traits = ["base"]  # All zombies start with the base trait
+        for crop in surrounding_crops:
+            if crop in ["corn", "tomato"]:  # Example: certain crops influence zombie traits
+                traits.append("fast_grower")  # Example trait
+            elif crop in ["strawberry", "peach"]:
+                traits.append("high_value")  # Example trait
+        return traits
 
     def cog_load(self):
         self.price_update_task.start()
@@ -69,6 +91,7 @@ class Farm(commands.Cog):
             prefix = await self.bot.get_prefix(ctx.message)
             await ctx.send(f"Use `{prefix[0]}farm plant potato` to get started.")
 
+    # Update the plant command to include zombie trait logic
     @farm.command()
     async def plant(self, ctx, crop_name: str):
         if crop_name not in self.items:
@@ -82,11 +105,19 @@ class Farm(commands.Cog):
             return
     
         planted_time = datetime.datetime.now().timestamp()
-        # Append a new crop instance to the fields list
-        user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"]})
-        await self.config.user(ctx.author).fields.set(user_fields)
+        if crop_name == "zombie":
+            surrounding_crops = [crop["name"] for crop in user_fields]  # Get names of crops in the field
+            traits = self.inherit_traits(surrounding_crops)  # Determine traits based on surrounding crops
+            user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"], "traits": traits})
+        else:
+            user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"]})
     
-        await ctx.send(f"{crop_name.capitalize()} {self.items[crop_name]['emoji']} planted successfully!")
+        await self.config.user(ctx.author).fields.set(user_fields)
+        if crop_name == "zombie" and len(traits) > 1:
+            await ctx.send(f"Zombie {self.items[crop_name]['emoji']} planted successfully with traits: {', '.join(traits)}!")
+        else:
+            await ctx.send(f"{crop_name.capitalize()} {self.items[crop_name]['emoji']} planted successfully!")
+
 
 
 
