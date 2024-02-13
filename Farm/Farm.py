@@ -161,27 +161,31 @@ class Farm(commands.Cog):
 
     @farm.command()
     async def harvest(self, ctx):
-        """Harvest a ready crop."""
+        """Harvest all ready crops."""
         fields = await self.config.user(ctx.author).fields()
         now = datetime.datetime.now().timestamp()
-        harvested = False
-        crops=[]
-        for i, crop_instance in enumerate(fields):
+        harvested_crops = []  # List to store harvested crop emojis
+        remaining_fields = []  # List to store crops that are not ready for harvest
+    
+        for crop_instance in fields:
             growth_time = self._get_growth_time(crop_instance["name"])
             ready_time = crop_instance["planted_time"] + growth_time
-                
-            if now >= ready_time:
-                harvested = True
-                crops.append(crop_instance["emoji"])
-                await self._add_to_inventory(ctx.author, crop_instance["name"])
-                del fields[i]  # Remove the harvested crop from the fields
     
-        if harvested:
-            await self.config.user(ctx.author).fields.set(fields)  # Update the fields without the harvested crop
-            await ctx.send(f"{''.join(crops)} harvested successfully!")
+            if now >= ready_time:
+                harvested_crops.append(crop_instance["emoji"])  # Add emoji to harvested list
+                await self._add_to_inventory(ctx.author, crop_instance["name"])  # Add crop to inventory
+            else:
+                remaining_fields.append(crop_instance)  # Crop is not ready, keep it in fields
+    
+        # Update fields to only include crops that weren't harvested
+        await self.config.user(ctx.author).fields.set(remaining_fields)
+    
+        if harvested_crops:
+            harvested_message = ''.join(harvested_crops) + " harvested successfully!"
+            await ctx.send(harvested_message)
         else:
-            await ctx.send(f"No ready crops ready to harvest.")
-
+            await ctx.send("No ready crops to harvest.")
+    
             
 
     async def _add_to_inventory(self, user, crop_name):
