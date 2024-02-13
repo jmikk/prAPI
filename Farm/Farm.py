@@ -104,7 +104,7 @@ class Farm(commands.Cog):
     
         await self.config.user(ctx.author).fields.set(user_fields)
         if crop_name == "zombie" and len(traits) > 1:
-            await ctx.send(f"Zombie {self.items[crop_name]['emoji']} planted successfully with traits: {', '.join(traits)}!")
+            await ctx.send(f"Zombie {self.items[crop_name]['emoji']} planted successfully with traits: {', '.join(traits[1])}!")
         else:
             await ctx.send(f"{crop_name.capitalize()} {self.items[crop_name]['emoji']} planted successfully!")
 
