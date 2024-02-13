@@ -28,7 +28,7 @@ class Farm(commands.Cog):
             "carrot": {"emoji": "🥕", "min_price": 8, "max_price": 16, "current_price": 12, "growth_time": 300 , "trait_out":"slow_grow", "trait_out_%":70},  # 5 minutes
             "corn": {"emoji": "🌽", "min_price": 20, "max_price": 40, "current_price": 30, "growth_time": 10800 , "trait_out":"slow_grow", "trait_out_%":40},  # 3 hours
             "tomato": {"emoji": "🍅", "min_price": 30, "max_price": 60, "current_price": 45, "growth_time": 21600 , "trait_out":"slow_grow", "trait_out_%":20},  # 6 hours
-            "grapes": {"emoji": "🍇", "min_price": 40, "max_price": 80, "current_price": 60, "growth_time": 43200 , "trait_out":"SUPER RARE AMAZING OH WAIT NO ITS NOT", "trait_out_%":1},  # 12 hours
+            "grapes": {"emoji": "🍇", "min_price": 40, "max_price": 80, "current_price": 60, "growth_time": 43200 , "trait_out":"SUPER_RARE_AMAZING_OH_WAIT_NO_ITS_NOT", "trait_out_%":1},  # 12 hours
             "apple": {"emoji": "🍎", "min_price": 50, "max_price": 100, "current_price": 75, "growth_time": 86400, "trait_out":"glow", "trait_out_%":10},  # 1 day
             "strawberry": {"emoji": "🍓", "min_price": 15, "max_price": 30, "current_price": 22, "growth_time": 1800 , "trait_out":"golden", "trait_out_%":10},  # 30 minutes
             "peach": {"emoji": "🍑", "min_price": 60, "max_price": 120, "current_price": 90, "growth_time": 129600 , "trait_out":"golden", "trait_out_%":10},  # 1.5 days
