@@ -94,19 +94,17 @@ class Farm(commands.Cog):
             return
     
         planted_time = datetime.datetime.now().timestamp()
-
+        
+        surrounding_crops = [crop["name"] for crop in user_fields]  # Get names of crops in the field
+        traits = self.inherit_traits(surrounding_crops)  # Determine traits based on surrounding crops
         if crop_name == "zombie":
-            surrounding_crops = [crop["name"] for crop in user_fields]  # Get names of crops in the field
-            traits = self.inherit_traits(surrounding_crops)  # Determine traits based on surrounding crops
             if traits.count("slow_grow") > 0:
                 for _ in range(traits.count("slow_grow")):
                     planted_time = planted_time + (self.items[crop_name]["growth_time"]*.50)
             if traits.count("fast_grow") > 0:
                 for _ in range(traits.count("fast_grow")):
                     planted_time = planted_time - (self.items[crop_name]["growth_time"]*.1)
-            user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"], "traits": traits})
-        else:
-            user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"]})
+        user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"], "traits": traits})
     
         await self.config.user(ctx.author).fields.set(user_fields)
         if crop_name == "zombie" and len(traits) > 1:
