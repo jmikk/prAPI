@@ -103,7 +103,7 @@ class Farm(commands.Cog):
                     planted_time = planted_time + (self.items[crop_name]["growth_time"]*.50)
             if traits.count("fast_grow") > 0:
                 for _ in range(traits.count("fast_grow")):
-                    planted_time = planted_time - (self.items[crop_name]["growth_time"]*.50)
+                    planted_time = planted_time - (self.items[crop_name]["growth_time"]*.1)
             user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"], "traits": traits})
         else:
             user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"]})
