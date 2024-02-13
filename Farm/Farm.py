@@ -178,7 +178,7 @@ class Farm(commands.Cog):
     
         if harvested:
             await self.config.user(ctx.author).fields.set(fields)  # Update the fields without the harvested crop
-            await ctx.send(f"{crops.join("")} harvested successfully!")
+            await ctx.send(f"{crops.join('')} harvested successfully!")
         else:
             await ctx.send(f"No ready crops ready to harvest.")
 
