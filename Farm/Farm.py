@@ -4,6 +4,7 @@ import datetime
 from discord.ext import tasks
 import math
 import datetime
+import random
 #from redbot.core import tasks
 
 class Farm(commands.Cog):
@@ -23,7 +24,7 @@ class Farm(commands.Cog):
         self.config.register_user(**default_user)
 
         self.items = {
-            "potato": {"emoji": "🥔", "min_price": 5, "max_price": 10, "current_price": 7, "growth_time": 60},  # 1 minute
+            "potato": {"emoji": "🥔", "min_price": 5, "max_price": 10, "current_price": 7, "growth_time": 60,"trait_out":"slow_grow","trait_out_%":50},  # 1 minute
             "carrot": {"emoji": "🥕", "min_price": 8, "max_price": 16, "current_price": 12, "growth_time": 300},  # 5 minutes
             "corn": {"emoji": "🌽", "min_price": 20, "max_price": 40, "current_price": 30, "growth_time": 10800},  # 3 hours
             "tomato": {"emoji": "🍅", "min_price": 30, "max_price": 60, "current_price": 45, "growth_time": 21600},  # 6 hours
@@ -33,7 +34,7 @@ class Farm(commands.Cog):
             "peach": {"emoji": "🍑", "min_price": 60, "max_price": 120, "current_price": 90, "growth_time": 129600},  # 1.5 days
             "cherries": {"emoji": "🍒", "min_price": 35, "max_price": 70, "current_price": 52, "growth_time": 57600},  # 16 hours
             "lemon": {"emoji": "🍋", "min_price": 45, "max_price": 90, "current_price": 67, "growth_time": 172800},  # 2 days
-            "taco": {"emoji": "🌮", "min_price": 100, "max_price": 200, "current_price": 150, "growth_time": 604800},  # 1 week
+            "taco": {"emoji": "🌮", "min_price": 100, "max_price": 200, "current_price": 150, "growth_time": 604800,"trait_out:fast_grow"},  # 1 week
             "zombie": {"emoji": "🧟", "min_price": 50, "max_price": 100,  "current_price": 75, "growth_time": 86400, "traits": ["base"]} 
         }
 
@@ -52,10 +53,8 @@ class Farm(commands.Cog):
     def inherit_traits(self, surrounding_crops):
         traits = ["base"]  # All zombies start with the base trait
         for crop in surrounding_crops:
-            if crop in ["corn", "tomato"]:  # Example: certain crops influence zombie traits
-                traits.append("fast_grower")  # Example trait
-            elif crop in ["strawberry", "peach"]:
-                traits.append("high_value")  # Example trait
+            if self.items["crop"]["trait_out_%"]/100 > random.random():
+                traits.append(self.items["crop"]["trait_out"])  
         return traits
 
     def cog_load(self):
