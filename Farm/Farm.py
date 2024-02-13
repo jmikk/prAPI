@@ -53,8 +53,8 @@ class Farm(commands.Cog):
     def inherit_traits(self, surrounding_crops):
         traits = ["base"]  # All zombies start with the base trait
         for crop in surrounding_crops:
-            if self.items["crop"]["trait_out_%"]/100 > random.random():
-                traits.append(self.items["crop"]["trait_out"])  
+            if self.items[crop]["trait_out_%"]/100 > random.random():
+                traits.append(self.items[crop]["trait_out"])  
         return traits
 
     def cog_load(self):
