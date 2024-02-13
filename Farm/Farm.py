@@ -34,6 +34,7 @@ class Farm(commands.Cog):
             "cherries": {"emoji": "🍒", "min_price": 35, "max_price": 70, "current_price": 52, "growth_time": 57600},  # 16 hours
             "lemon": {"emoji": "🍋", "min_price": 45, "max_price": 90, "current_price": 67, "growth_time": 172800},  # 2 days
             "taco": {"emoji": "🌮", "min_price": 100, "max_price": 200, "current_price": 150, "growth_time": 604800},  # 1 week
+            "zombie": {"emoji": "🧟", "min_price": 50, "max_price": 100,  "current_price": 75, "growth_time": 86400, "traits": ["base"] 
         }
 
         # Step 2: Modify the items dictionary
