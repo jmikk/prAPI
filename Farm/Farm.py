@@ -160,7 +160,7 @@ class Farm(commands.Cog):
 
 
     @farm.command()
-    async def harvest(self, ctx, crop_name: str):
+    async def harvest(self, ctx):
         """Harvest a ready crop."""
         fields = await self.config.user(ctx.author).fields()
         now = datetime.datetime.now().timestamp()
