@@ -165,23 +165,22 @@ class Farm(commands.Cog):
         fields = await self.config.user(ctx.author).fields()
         now = datetime.datetime.now().timestamp()
         harvested = False
-    
+        crops=[]
         for i, crop_instance in enumerate(fields):
-            if crop_instance["name"] == crop_name:
-                growth_time = self._get_growth_time(crop_name)
-                ready_time = crop_instance["planted_time"] + growth_time
+            growth_time = self._get_growth_time(crop_name)
+            ready_time = crop_instance["planted_time"] + growth_time
                 
-                if now >= ready_time:
-                    harvested = True
-                    await self._add_to_inventory(ctx.author, crop_name)
-                    del fields[i]  # Remove the harvested crop from the fields
-                    break  # Assuming we harvest the first ready crop of this type
+            if now >= ready_time:
+                harvested = True
+                crops.append(crop_instance["emoji"])
+                await self._add_to_inventory(ctx.author, crop_name)
+                del fields[i]  # Remove the harvested crop from the fields
     
         if harvested:
             await self.config.user(ctx.author).fields.set(fields)  # Update the fields without the harvested crop
-            await ctx.send(f"{crop_name} harvested successfully!")
+            await ctx.send(f"{crops.join("")} harvested successfully!")
         else:
-            await ctx.send(f"No ready {crop_name} crops to harvest.")
+            await ctx.send(f"No ready crops ready to harvest.")
 
             
     async def _harvest_crop(self, user, crop_name):
