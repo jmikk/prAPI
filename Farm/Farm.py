@@ -167,13 +167,13 @@ class Farm(commands.Cog):
         harvested = False
         crops=[]
         for i, crop_instance in enumerate(fields):
-            growth_time = self._get_growth_time(crop_name)
+            growth_time = self._get_growth_time(crop_instance["name"])
             ready_time = crop_instance["planted_time"] + growth_time
                 
             if now >= ready_time:
                 harvested = True
                 crops.append(crop_instance["emoji"])
-                await self._add_to_inventory(ctx.author, crop_name)
+                await self._add_to_inventory(ctx.author, crop_instance["name"])
                 del fields[i]  # Remove the harvested crop from the fields
     
         if harvested:
@@ -183,18 +183,6 @@ class Farm(commands.Cog):
             await ctx.send(f"No ready crops ready to harvest.")
 
             
-    async def _harvest_crop(self, user, crop_name):
-        fields = await self.config.user(user).fields()
-        if crop_name in fields:
-            now = datetime.datetime.now().timestamp()
-            planted_time = fields[crop_name]
-            growth_time = self._get_growth_time(crop_name)
-            if now - planted_time >= growth_time:
-                async with self.config.user(user).fields() as fields:
-                    del fields[crop_name]
-                await self._add_to_inventory(user, crop_name)
-                return True
-        return False
 
     async def _add_to_inventory(self, user, crop_name):
         """Add harvested crop to the user's inventory."""
