@@ -22,7 +22,7 @@ class Farm(commands.Cog):
             "field_size": 1  # Default field size allowing only 1 crop at a time
         }
         self.config.register_user(**default_user)
-
+        #working traits are fast_grow, slow_grow
         self.items = {
             "potato": {"emoji": "🥔", "min_price": 5, "max_price": 10, "current_price": 7, "growth_time": 60, "trait_out":"slow_grow", "trait_out_%":90},  # 1 minute
             "carrot": {"emoji": "🥕", "min_price": 8, "max_price": 16, "current_price": 12, "growth_time": 300 , "trait_out":"slow_grow", "trait_out_%":70},  # 5 minutes
