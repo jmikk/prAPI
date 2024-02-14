@@ -36,7 +36,7 @@ class Farm(commands.Cog):
             "cherries": {"emoji": "🍒", "min_price": 35, "max_price": 70, "current_price": 52, "growth_time": 57600 , "trait_out":"fast_grow", "trait_out_%":5},  # 16 hours
             "lemon": {"emoji": "🍋", "min_price": 45, "max_price": 90, "current_price": 67, "growth_time": 172800 , "trait_out":"fast_grow", "trait_out_%":40},  # 2 days
             "taco": {"emoji": "🌮", "min_price": 100, "max_price": 200, "current_price": 150, "growth_time": 604800, "trait_out":"fast_grow", "trait_out_%":50},  # 1 week
-            "zombie": {"emoji": "🧟", "min_price": 50, "max_price": 100,  "current_price": 75, "growth_time": 86400, "trait_out":"rot", "trait_out_%":50, "traits": ["base"]} 
+            "zombie": {"emoji": "🧟", "min_price": 50, "max_price": 100,  "current_price": 75, "growth_time": 30, "trait_out":"rot", "trait_out_%":50, "traits": ["base"]} 
         }
 
         default_global = {
