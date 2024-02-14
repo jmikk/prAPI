@@ -211,8 +211,9 @@ class Farm(commands.Cog):
                 if "rot" in crop_instance["traits"]:
                     harvested_crops.append("🧪")  # Add emoji to harvested list
                     await self._add_to_inventory(ctx.author, "rot")  # Add crop to inventory
-                harvested_crops.append(crop_instance["emoji"])  # Add emoji to harvested list
-                await self._add_to_inventory(ctx.author, crop_instance["name"])  # Add crop to inventory
+                else:
+                    harvested_crops.append(crop_instance["emoji"])  # Add emoji to harvested list
+                    await self._add_to_inventory(ctx.author, crop_instance["name"])  # Add crop to inventory
             else:
                 remaining_fields.append(crop_instance)  # Crop is not ready, keep it in fields
     
