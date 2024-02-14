@@ -21,6 +21,7 @@ class Farm(commands.Cog):
             "gold": 0,
             "field_size": 1  # Default field size allowing only 1 crop at a time
         }
+        
         self.config.register_user(**default_user)
         #working traits are fast_grow, slow_grow
         self.items = {
@@ -38,7 +39,11 @@ class Farm(commands.Cog):
             "zombie": {"emoji": "🧟", "min_price": 50, "max_price": 100,  "current_price": 75, "growth_time": 86400, "trait_out":"slow_grow", "trait_out_%":50, "traits": ["base"]} 
         }
 
-
+        default_global = {
+            "donations": {},
+            "donation_goal": {}
+        }
+        self.config.register_global(**default_global)
 
         self.market_conditions = {
             "calm": (1, 3),
