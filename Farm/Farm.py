@@ -108,10 +108,8 @@ class Farm(commands.Cog):
                     planted_time = planted_time + (self.items[crop_name]["growth_time"]*.50)
             if traits.count("fast_grow") > 0:
                 # Initial reduction percentage for the first "Fast Grow" trait
-                reduction_percentage = 0.1  # 10% reduction for the first instance
-                await ctx.send("here")
-            
-                for i in range(traits.count("Fast Grow")):
+                reduction_percentage = 0.1  # 10% reduction for the first instance            
+                for i in range(traits.count("fast_grow")):
                     # Apply diminishing returns for each subsequent "Fast Grow" trait
                     if i > 0:
                         reduction_percentage *= 0.5  # Diminish the reduction by 50% for each additional trait
