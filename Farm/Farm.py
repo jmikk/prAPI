@@ -23,7 +23,7 @@ class Farm(commands.Cog):
         }
         
         self.config.register_user(**default_user)
-        #working traits are fast_grow, slow_grow
+        #working traits are fast_grow, slow_grow, high_yeild
         self.items = {
             "potato": {"emoji": "🥔", "min_price": 1, "max_price": 10, "current_price": 7, "growth_time": 60, "trait_out":"slow_grow", "trait_out_%":90},  # 1 minute
             "carrot": {"emoji": "🥕", "min_price": 1, "max_price": 16, "current_price": 12, "growth_time": 300 , "trait_out":"slow_grow", "trait_out_%":70},  # 5 minutes
@@ -34,8 +34,8 @@ class Farm(commands.Cog):
             "strawberry": {"emoji": "🍓", "min_price": 1, "max_price": 30, "current_price": 22, "growth_time": 1800 , "trait_out":"golden", "trait_out_%":10},  # 30 minutes
             "peach": {"emoji": "🍑", "min_price": 1, "max_price": 120, "current_price": 90, "growth_time": 129600 , "trait_out":"golden", "trait_out_%":10},  # 1.5 days
             "cherries": {"emoji": "🍒", "min_price": 1, "max_price": 70, "current_price": 52, "growth_time": 57600 , "trait_out":"fast_grow", "trait_out_%":5},  # 16 hours
-            "lemon": {"emoji": "🍋", "min_price": 1, "max_price": 90, "current_price": 67, "growth_time": 172800 , "trait_out":"fast_grow", "trait_out_%":40},  # 2 days
-            "taco": {"emoji": "🌮", "min_price": 1, "max_price": 200, "current_price": 150, "growth_time": 604800, "trait_out":"fast_grow", "trait_out_%":50},  # 1 week
+            "lemon": {"emoji": "🍋", "min_price": 1, "max_price": 90, "current_price": 67, "growth_time": 172800 , "trait_out":"fast_grow", "trait_out_%":20},  # 2 days
+            "taco": {"emoji": "🌮", "min_price": 1, "max_price": 200, "current_price": 150, "growth_time": 604800, "trait_out":"fast_grow", "trait_out_%":30},  # 1 week
             "zombie": {"emoji": "🧟", "min_price": 1, "max_price": 100,  "current_price": 75, "growth_time": 86400, "trait_out":"rot", "trait_out_%":50, "traits": ["base"]} 
         }
 
