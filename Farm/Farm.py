@@ -105,7 +105,7 @@ class Farm(commands.Cog):
         if crop_name == "zombie":
             if traits.count("slow_grow") > 0:
                 # Initial reduction percentage for the first "Fast Grow" trait
-                reduction_percentage = 0.2  # 10% reduction for the first instance            
+                reduction_percentage = 0.3  # 10% reduction for the first instance            
                 for i in range(traits.count("slow_grow")):
                     # Apply diminishing returns for each subsequent "Fast Grow" trait
                     if i > 0:
@@ -117,11 +117,9 @@ class Farm(commands.Cog):
                     # Update the planted_time by subtracting the reduction amount
                     planted_time += reduction_amount
             
-                    # Send messages to show the updated planted_time after each reduction
-                    await ctx.send(f"Planted time after {i+1} 'Fast Grow' trait(s): {planted_time}")
             if traits.count("fast_grow") > 0:
                 # Initial reduction percentage for the first "Fast Grow" trait
-                reduction_percentage = 0.2  # 10% reduction for the first instance            
+                reduction_percentage = 0.3  # 10% reduction for the first instance            
                 for i in range(traits.count("fast_grow")):
                     # Apply diminishing returns for each subsequent "Fast Grow" trait
                     if i > 0:
@@ -132,9 +130,6 @@ class Farm(commands.Cog):
             
                     # Update the planted_time by subtracting the reduction amount
                     planted_time -= reduction_amount
-            
-                    # Send messages to show the updated planted_time after each reduction
-                    await ctx.send(f"Planted time after {i+1} 'Fast Grow' trait(s): {planted_time}")
 
 
         user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"], "traits": traits})
