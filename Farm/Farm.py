@@ -104,11 +104,24 @@ class Farm(commands.Cog):
         traits = self.inherit_traits(surrounding_crops)  # Determine traits based on surrounding crops
         if crop_name == "zombie":
             if traits.count("slow_grow") > 0:
-                for _ in range(traits.count("slow_grow")):
-                    planted_time = planted_time + (self.items[crop_name]["growth_time"]*.50)
+                # Initial reduction percentage for the first "Fast Grow" trait
+                reduction_percentage = 0.2  # 10% reduction for the first instance            
+                for i in range(traits.count("slow_grow")):
+                    # Apply diminishing returns for each subsequent "Fast Grow" trait
+                    if i > 0:
+                        reduction_percentage *= 0.5  # Diminish the reduction by 50% for each additional trait
+            
+                    # Calculate the reduction amount
+                    reduction_amount = self.items[crop_name]["growth_time"] * reduction_percentage
+            
+                    # Update the planted_time by subtracting the reduction amount
+                    planted_time += reduction_amount
+            
+                    # Send messages to show the updated planted_time after each reduction
+                    await ctx.send(f"Planted time after {i+1} 'Fast Grow' trait(s): {planted_time}")
             if traits.count("fast_grow") > 0:
                 # Initial reduction percentage for the first "Fast Grow" trait
-                reduction_percentage = 0.1  # 10% reduction for the first instance            
+                reduction_percentage = 0.2  # 10% reduction for the first instance            
                 for i in range(traits.count("fast_grow")):
                     # Apply diminishing returns for each subsequent "Fast Grow" trait
                     if i > 0:
