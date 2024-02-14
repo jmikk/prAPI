@@ -36,7 +36,9 @@ class Farm(commands.Cog):
             "cherries": {"emoji": "🍒", "min_price": 1, "max_price": 70, "current_price": 52, "growth_time": 57600 , "trait_out":"fast_grow", "trait_out_%":5},  # 16 hours
             "lemon": {"emoji": "🍋", "min_price": 1, "max_price": 90, "current_price": 67, "growth_time": 172800 , "trait_out":"fast_grow", "trait_out_%":20},  # 2 days
             "taco": {"emoji": "🌮", "min_price": 1, "max_price": 200, "current_price": 150, "growth_time": 604800, "trait_out":"fast_grow", "trait_out_%":30},  # 1 week
-            "zombie": {"emoji": "🧟", "min_price": 1, "max_price": 100,  "current_price": 75, "growth_time": 86400, "trait_out":"rot", "trait_out_%":50, "traits": ["base"]} 
+            "zombie": {"emoji": "🧟", "min_price": 1, "max_price": 100,  "current_price": 75, "growth_time": 86400, "trait_out":"rot", "trait_out_%":50, "traits": ["base"]},
+            "rot": {"emoji": "🧪", "min_price": 1, "max_price": 100,  "current_price": 75, "growth_time": "n/a", "trait_out":"rot", "trait_out_%":50, "traits": ["rot"]} 
+
         }
 
         default_global = {
@@ -88,6 +90,10 @@ class Farm(commands.Cog):
     # Update the plant command to include zombie trait logic
     @farm.command()
     async def plant(self, ctx, crop_name: str):
+        if crop_name == "rot":
+            await ctx.send("You can't plant rot!")
+            return
+            
         if crop_name not in self.items:
             available_crops = ', '.join([f"{name} {info['emoji']}" for name, info in self.items.items()])
             await ctx.send(f"{crop_name.capitalize()} is not available for planting. Available crops are: {available_crops}.")
@@ -200,7 +206,10 @@ class Farm(commands.Cog):
             if now >= ready_time:
                 if "high_yeild" in crop_instance["traits"]:
                     harvested_crops.append(crop_instance["emoji"])  # Add emoji to harvested list
-                    await self._add_to_inventory(ctx.author, crop_instance["name"])  # Add crop to inventory                    
+                    await self._add_to_inventory(ctx.author, crop_instance["name"])  # Add crop to inventory
+                if "rot" in crop_instance["traits"]:
+                    harvested_crops.append("🧪")  # Add emoji to harvested list
+                    await self._add_to_inventory(ctx.author, "rot")  # Add crop to inventory
                 harvested_crops.append(crop_instance["emoji"])  # Add emoji to harvested list
                 await self._add_to_inventory(ctx.author, crop_instance["name"])  # Add crop to inventory
             else:
