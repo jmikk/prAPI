@@ -108,7 +108,10 @@ class Farm(commands.Cog):
                     planted_time = planted_time + (self.items[crop_name]["growth_time"]*.50)
             if traits.count("fast_grow") > 0:
                 for _ in range(traits.count("fast_grow")):
+                    await ctx.send(planted_time)
                     planted_time = planted_time - (self.items[crop_name]["growth_time"]*.1)
+                    await ctx.send(planted_time)
+
         user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"], "traits": traits})
     
         await self.config.user(ctx.author).fields.set(user_fields)
