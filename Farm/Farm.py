@@ -109,6 +109,7 @@ class Farm(commands.Cog):
             if traits.count("fast_grow") > 0:
                 # Initial reduction percentage for the first "Fast Grow" trait
                 reduction_percentage = 0.1  # 10% reduction for the first instance
+                await ctx.send("here")
             
                 for i in range(traits.count("Fast Grow")):
                     # Apply diminishing returns for each subsequent "Fast Grow" trait
