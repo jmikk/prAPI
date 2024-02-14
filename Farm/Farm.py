@@ -96,7 +96,7 @@ class Farm(commands.Cog):
             
         if crop_name not in self.items:
             available_crops = ', '.join([f"{name} {info['emoji']}" for name, info in self.items.items()])
-            available_crops = available_crops[:-5]
+            available_crops = available_crops[:-6]
             await ctx.send(f"{crop_name.capitalize()} is not available for planting. Available crops are: {available_crops}.")
             return
     
