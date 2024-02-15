@@ -434,6 +434,7 @@ class Farm(commands.Cog):
         await ctx.send(f"Donation goal for {item} set to {quantity}.")
 
     @commands.command()
+    @commands.is_owner()
     async def givegold(self, ctx, member: discord.Member, amount: int):
         """
         Give a specified amount of gold to a player.
