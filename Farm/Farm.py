@@ -5,6 +5,7 @@ from discord.ext import tasks
 import math
 import datetime
 import random
+import discord
 #from redbot.core import tasks
 
 class Farm(commands.Cog):
