@@ -432,6 +432,32 @@ class Farm(commands.Cog):
         await self.config.donation_goal.set({item: quantity})    
         await ctx.send(f"Donation goal for {item} set to {quantity}.")
 
+    @commands.command()
+    @commands.is_owner()
+    async def givegold(self, ctx, member: discord.Member, amount: int):
+        """
+        Give a specified amount of gold to a player.
+
+        Args:
+        member (discord.Member): The member to give gold to.
+        amount (int): The amount of gold to give.
+        """
+        if amount < 0:
+            await ctx.send("Amount of gold must be positive.")
+            return
+
+        # Fetch the current gold amount for the member
+        current_gold = await self.config.user(member).gold()
+
+        # Add the specified amount to the member's current gold
+        new_gold = current_gold + amount
+
+        # Update the member's gold in the config
+        await self.config.user(member).gold.set(new_gold)
+
+        # Confirm the transaction
+        await ctx.send(f"{amount} gold has been added to {member.display_name}'s account. They now have {new_gold} gold.")
+
 
     
 
