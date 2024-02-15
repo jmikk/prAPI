@@ -38,7 +38,7 @@ class Farm(commands.Cog):
             "cherries": {"emoji": "🍒", "min_price": 1, "max_price": 70, "current_price": 52, "growth_time": 57600 , "trait_out":"fast_grow", "trait_out_%":5, "traits": ["base"]},  # 16 hours
             "lemon": {"emoji": "🍋", "min_price": 1, "max_price": 90, "current_price": 67, "growth_time": 172800 , "trait_out":"fast_grow", "trait_out_%":20, "traits": ["base"]},  # 2 days
             "taco": {"emoji": "🌮", "min_price": 1, "max_price": 200, "current_price": 150, "growth_time": 604800, "trait_out":"fast_grow", "trait_out_%":30, "traits": ["base"]},  # 1 week
-            "zombie": {"emoji": "🧟", "min_price": 1, "max_price": 100,  "current_price": 75, "growth_time": 86400, "trait_out":"rot", "trait_out_%":50, "traits": ["base"]},
+            "zombie": {"emoji": "🧟", "min_price": 1, "max_price": 100,  "current_price": 75, "growth_time": 86400, "trait_out":"rot", "trait_out_%":20, "traits": ["base"]},
             "rot": {"emoji": "🧪", "min_price": 1, "max_price": 100,  "current_price": 75, "growth_time": "n/a", "trait_out":"rot", "trait_out_%":50, "traits": ["rot"]} 
 
         }
@@ -240,6 +240,11 @@ class Farm(commands.Cog):
                 if "high_yeild" in crop_instance["traits"]:
                     harvested_crops.append(crop_instance["emoji"])  # Add emoji to harvested list
                     await self._add_to_inventory(ctx.author, crop_instance["name"])  # Add crop to inventory
+                if "golden" in crop_instance["traits"]:
+                    harvested_crops.append(":coin:")  # Add emoji to harvested list
+                    current_gold = await self.config.user(user).gold()
+                    new_gold = current_gold + amount
+                    await self.config.user(user).gold.set(new_gold)
                 if "rot" in crop_instance["traits"]:
                     harvested_crops.append("🧪")  # Add emoji to harvested list
                     await self._add_to_inventory(ctx.author, "rot")  # Add crop to inventory
