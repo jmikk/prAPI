@@ -6,6 +6,7 @@ import math
 import datetime
 import random
 import discord
+from discord import Embed
 #from redbot.core import tasks
 
 class Farm(commands.Cog):
