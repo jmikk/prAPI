@@ -186,7 +186,8 @@ class Farm(commands.Cog):
 
             # Add reactions for navigation
             navigation_emojis = ['⬅️', '➡️']
-            start_adding_reactions(message, navigation_emojis)
+            await message.add_reaction('⬅️')
+            await message.add_reaction('➡️')
 
             def check(reaction, user):
                 return user == ctx.author and str(reaction.emoji) in navigation_emojis and reaction.message.id == message.id
