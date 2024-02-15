@@ -158,27 +158,56 @@ class Farm(commands.Cog):
 
     @farm.command()
     async def status(self, ctx):
-        """Check the status of your crops."""
+        """Check the status of your crops with pagination."""
         fields = await self.config.user(ctx.author).fields()
-        status_messages = await self._get_crop_statuses(fields)
-        status_messages.append(f"Your field can hold {await self.config.user(ctx.author).field_size()} crops in total.")
-        await ctx.send("\n".join(status_messages)) 
+        pages = [fields[i:i + 10] for i in range(0, len(fields), 10)]  # Split fields into pages of 10
 
-    async def _get_crop_statuses(self, fields):
-        now = datetime.datetime.now().timestamp()
-        messages = []
-        for crop_instance in fields:
-            crop_name = crop_instance["name"]
-            planted_time = crop_instance["planted_time"]
-            growth_time = self._get_growth_time(crop_name)
-            ready_time = planted_time + growth_time
-            emoji = crop_instance["emoji"]
-    
-            if now < ready_time:
-                messages.append(f"{crop_name} {emoji} will be ready <t:{int(ready_time)}:R>.")
-            else:
-                messages.append(f"{crop_name} {emoji} is ready to harvest! <t:{int(ready_time)}:R>")
-        return messages
+        # Function to create the embed for each page
+        def get_embed(page, page_number, total_pages):
+            embed = Embed(title="Crop Status", description="Here is the status of your crops:", color=0x00FF00)
+            for crop_instance in page:
+                crop_name = crop_instance["name"]
+                emoji = crop_instance["emoji"]
+                growth_time = self._get_growth_time(crop_name)
+                ready_time = crop_instance["planted_time"] + growth_time
+                now = datetime.datetime.now().timestamp()
+                if now < ready_time:
+                    embed.add_field(name=f"{crop_name} {emoji}", value=f"Will be ready <t:{int(ready_time)}:R>.", inline=False)
+                else:
+                    embed.add_field(name=f"{crop_name} {emoji}", value="Ready to harvest!", inline=False)
+            embed.set_footer(text=f"Page {page_number+1}/{total_pages}")
+            return embed
+
+        # Function to control page navigation
+        async def status_pages(ctx, pages):
+            current_page = 0
+            message = await ctx.send(embed=get_embed(pages[current_page], current_page, len(pages)))
+
+            # Add reactions for navigation
+            navigation_emojis = ['⬅️', '➡️']
+            start_adding_reactions(message, navigation_emojis)
+
+            def check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in navigation_emojis and reaction.message.id == message.id
+
+            while True:
+                try:
+                    reaction, user = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+
+                    # Handle navigation
+                    if str(reaction.emoji) == '⬅️' and current_page > 0:
+                        current_page -= 1
+                    elif str(reaction.emoji) == '➡️' and current_page < len(pages) - 1:
+                        current_page += 1
+
+                    # Update the embed
+                    await message.edit(embed=get_embed(pages[current_page], current_page, len(pages)))
+                    await message.remove_reaction(reaction, user)
+                except asyncio.TimeoutError:
+                    break  # End pagination after timeout
+
+        # Start pagination
+        await status_pages(ctx, pages)
 
 
     def _get_growth_time(self, crop_name):
