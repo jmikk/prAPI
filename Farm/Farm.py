@@ -243,7 +243,7 @@ class Farm(commands.Cog):
                 if "golden" in crop_instance["traits"]:
                     harvested_crops.append(":coin:")  # Add emoji to harvested list
                     current_gold = await self.config.user(ctx.author).gold()
-                    new_gold = current_gold + amount
+                    new_gold = current_gold + 5
                     await self.config.user(user).gold.set(new_gold)
                 if "rot" in crop_instance["traits"]:
                     harvested_crops.append("🧪")  # Add emoji to harvested list
