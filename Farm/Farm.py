@@ -93,7 +93,7 @@ class Farm(commands.Cog):
     # Update the plant command to include zombie trait logic
     @farm.command()
     async def plant(self, ctx, crop_name: str):
-        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
         if crop_name == "rot":
             await ctx.send("You can't plant rot!")
             return
@@ -162,7 +162,7 @@ class Farm(commands.Cog):
     @farm.command()
     async def status(self, ctx):
         """Check the status of your crops with pagination."""
-        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
 
         fields = await self.config.user(ctx.author).fields()
         pages = [fields[i:i + 10] for i in range(0, len(fields), 10)]  # Split fields into pages of 10
@@ -231,7 +231,7 @@ class Farm(commands.Cog):
     @farm.command()
     async def harvest(self, ctx):
         """Harvest all ready crops."""
-        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
 
         fields = await self.config.user(ctx.author).fields()
         now = datetime.datetime.now().timestamp()
@@ -282,7 +282,7 @@ class Farm(commands.Cog):
     @farm.command(name="inventory", aliases=["inv"])
     async def view_inventory(self, ctx):
         """View your inventory of harvested crops."""
-        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
 
         inventory = await self.config.user(ctx.author).inventory()
         gold = await self.config.user(ctx.author).gold()
@@ -305,7 +305,7 @@ class Farm(commands.Cog):
     
     @farm.command()
     async def sell(self, ctx, item_name: str, quantity: int):
-        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
 
         if item_name not in self.items:
             await ctx.send(f"{item_name.capitalize()} is not a valid item.")
@@ -344,7 +344,7 @@ class Farm(commands.Cog):
     @farm.command()
     async def check_market(self, ctx):
         """Check the current market prices of items."""
-        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
 
         if not self.items:  # Check if the items dictionary is empty
             await ctx.send("The market is currently empty.")
@@ -358,7 +358,7 @@ class Farm(commands.Cog):
 
     @farm.command()
     async def field_upgrade(self, ctx):
-        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
 
         base_cost = 50  # Starting cost for the first upgrade
         multiplier = 1.2  # Cost multiplier for each subsequent upgrade
@@ -384,7 +384,7 @@ class Farm(commands.Cog):
     @farm.command()
     async def clear_field(self, ctx):
         """Clears all crops from your field after confirmation."""
-        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
 
         confirmation_message = await ctx.send("Are you sure you want to clear your field? React with ✅ to confirm.")
     
@@ -407,7 +407,7 @@ class Farm(commands.Cog):
 
     @farm.command()
     async def donate(self, ctx, item_name: str, quantity: int):
-        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
 
         if quantity <= 0:
             await ctx.send("Please specify a valid quantity to donate.")
@@ -439,7 +439,7 @@ class Farm(commands.Cog):
 
     @farm.command()
     async def donation_progress(self, ctx):
-        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
 
         current_donations = await self.config.donations()
         donation_goal = await self.config.donation_goal()
