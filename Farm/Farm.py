@@ -93,6 +93,7 @@ class Farm(commands.Cog):
     # Update the plant command to include zombie trait logic
     @farm.command()
     async def plant(self, ctx, crop_name: str):
+        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
         if crop_name == "rot":
             await ctx.send("You can't plant rot!")
             return
@@ -161,6 +162,8 @@ class Farm(commands.Cog):
     @farm.command()
     async def status(self, ctx):
         """Check the status of your crops with pagination."""
+        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+
         fields = await self.config.user(ctx.author).fields()
         pages = [fields[i:i + 10] for i in range(0, len(fields), 10)]  # Split fields into pages of 10
 
@@ -228,6 +231,8 @@ class Farm(commands.Cog):
     @farm.command()
     async def harvest(self, ctx):
         """Harvest all ready crops."""
+        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+
         fields = await self.config.user(ctx.author).fields()
         now = datetime.datetime.now().timestamp()
         harvested_crops = []  # List to store harvested crop emojis
@@ -277,6 +282,8 @@ class Farm(commands.Cog):
     @farm.command(name="inventory", aliases=["inv"])
     async def view_inventory(self, ctx):
         """View your inventory of harvested crops."""
+        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+
         inventory = await self.config.user(ctx.author).inventory()
         gold = await self.config.user(ctx.author).gold()
         if not inventory and not gold:
@@ -298,6 +305,8 @@ class Farm(commands.Cog):
     
     @farm.command()
     async def sell(self, ctx, item_name: str, quantity: int):
+        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+
         if item_name not in self.items:
             await ctx.send(f"{item_name.capitalize()} is not a valid item.")
             return
@@ -335,6 +344,8 @@ class Farm(commands.Cog):
     @farm.command()
     async def check_market(self, ctx):
         """Check the current market prices of items."""
+        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+
         if not self.items:  # Check if the items dictionary is empty
             await ctx.send("The market is currently empty.")
             return
@@ -347,6 +358,8 @@ class Farm(commands.Cog):
 
     @farm.command()
     async def field_upgrade(self, ctx):
+        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+
         base_cost = 50  # Starting cost for the first upgrade
         multiplier = 1.2  # Cost multiplier for each subsequent upgrade
     
@@ -371,6 +384,8 @@ class Farm(commands.Cog):
     @farm.command()
     async def clear_field(self, ctx):
         """Clears all crops from your field after confirmation."""
+        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+
         confirmation_message = await ctx.send("Are you sure you want to clear your field? React with ✅ to confirm.")
     
         # React to the message with a checkmark
@@ -390,24 +405,10 @@ class Farm(commands.Cog):
         except asyncio.TimeoutError:
             await ctx.send("Field clear canceled.")
 
-    @commands.command(name="migrate_fields")
-    @commands.is_owner()
-    async def migrate_fields(self, ctx):
-        all_users = await self.config.all_users()
-    
-        for user_id, data in all_users.items():
-            user_fields = data.get("fields", None)
-            
-            # Check if the fields are in the old dictionary format and migrate to list
-            if isinstance(user_fields, dict):
-                new_fields_list = [{"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"]} for crop_name, planted_time in user_fields.items()]
-                await self.config.user_from_id(user_id).fields.set(new_fields_list)
-                await ctx.send(f"Migrated fields for user ID {user_id}.")
-        
-        await ctx.send("Migration complete.")
-
     @farm.command()
     async def donate(self, ctx, item_name: str, quantity: int):
+        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+
         if quantity <= 0:
             await ctx.send("Please specify a valid quantity to donate.")
             return
@@ -438,6 +439,8 @@ class Farm(commands.Cog):
 
     @farm.command()
     async def donation_progress(self, ctx):
+        await self.config.user(ctx).last_activity.set(datetime.datetime.now().timestamp())
+
         current_donations = await self.config.donations()
         donation_goal = await self.config.donation_goal()
         progress_messages = []
