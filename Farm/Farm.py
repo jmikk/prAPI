@@ -21,8 +21,8 @@ class Farm(commands.Cog):
             "inventory": {},
             "fields": [],
             "gold": 0,
-            "field_size": 1  # Default field size allowing only 1 crop at a time
-            "last_activity":0
+            "field_size": 1,  # Default field size allowing only 1 crop at a time
+            "last_activity":0,
         }
         
         self.config.register_user(**default_user)
