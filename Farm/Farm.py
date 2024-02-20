@@ -496,6 +496,23 @@ class Farm(commands.Cog):
         await ctx.send(f"{amount} gold has been added to {member.display_name}'s account. They now have {new_gold} gold.")
 
 
+    @commands.command(name="init_last_activity")
+    @commands.is_owner()
+    async def init_last_activity(self, ctx):
+        """
+        Initialize the last_activity field for all users in the config.
+        """
+        all_users = await self.config.all_users()
+    
+        for user_id, data in all_users.items():
+            # Check if the user already has a last_activity field
+            if "last_activity" not in data:
+                # Set the last_activity to the current timestamp
+                await self.config.user_from_id(user_id).last_activity.set(datetime.datetime.now().timestamp())
+    
+        await ctx.send("Initialized last_activity for all users.")
+
+
     
 
 
