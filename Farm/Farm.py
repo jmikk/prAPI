@@ -7,6 +7,7 @@ import datetime
 import random
 import discord
 from discord import Embed
+import os
 #from redbot.core import tasks
 
 class Farm(commands.Cog):
@@ -143,6 +144,46 @@ class Farm(commands.Cog):
         if ctx.invoked_subcommand is None:
             prefix = await self.bot.get_prefix(ctx.message)
             await ctx.send(f"Use `{prefix[0]}farm plant potato` to get started.")
+
+
+    @farm.command()
+    @farm.is_owner()
+    async def fight(self, ctx):
+        user_data = await self.config.user(ctx.author).all()
+    
+        # Check if the user has enough zombies to fight
+        if user_data.get("inventory", {}).get("zombie", 0) < 1:
+            await ctx.send("You need at least 1 zombie to initiate a fight!")
+            return
+    
+        # Deduct 1 zombie from the user's inventory
+        user_data["inventory"]["zombie"] -= 1
+        await self.config.user(ctx.author).inventory.set(user_data["inventory"])
+    
+        # Load zombie names from the file
+        zombie_names_path = os.path.join(os.path.dirname(__file__), 'zombie_names.txt')  # Adjust the path as necessary
+        with open(zombie_names_path, 'r') as file:
+            zombie_names = [line.strip() for line in file.readlines()]
+    
+        # Select a random zombie name
+        enemy_name = random.choice(zombie_names)
+    
+        # Generate enemy stats based on the user's stats
+        enemy_stats = {
+            "strength": random.randint(1, user_data.get("strength", 1) + 1),
+            "defense": random.randint(1, user_data.get("defense", 1) + 1),
+            "speed": random.randint(1, user_data.get("speed", 1) + 1),
+            "luck": random.randint(1, user_data.get("luck", 1) + 1),
+            "Health": random.randint(10, user_data.get("Health", 10) + 10),
+            "Critical_chance": random.randint(1, user_data.get("Critical_chance", 1) + 1),
+        }
+    
+        # Simulate the fight (This part can be expanded with actual fight mechanics)
+        result = "won" if random.random() > 0.5 else "lost"  # 50-50 chance for simplicity
+        await ctx.send(f"You fought {enemy_name} with stats: {enemy_stats} and you {result} the fight!")
+    
+        # Adjust the user's inventory based on the fight outcome
+        # This is where you could add logic to handle rewards or penalties
 
     # Update the plant command to include zombie trait logic
     @farm.command()
