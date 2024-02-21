@@ -23,7 +23,27 @@ class Farm(commands.Cog):
             "gold": 0,
             "field_size": 1,  # Default field size allowing only 1 crop at a time
             "last_activity":0,
+
+            #need to be added 
+            "scrap":0,
             
+            "rep":1,
+            "strength":1,
+            "defense":1,
+            "speed":1,
+            "luck":1,
+            "Health":10,
+            "Critical_chance":1,
+            
+            "helmet":{},
+            "body":{},
+            "boots":{},
+            "gloves":{},
+            "ring":{},
+            "weapon":{},
+            "artifact":{},
+            "belt":{},
+            "loot":[],
         }
         
         self.config.register_user(**default_user)
