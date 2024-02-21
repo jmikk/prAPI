@@ -75,13 +75,46 @@ class Farm(commands.Cog):
 
     @tasks.loop(hours=1)
     async def price_update_task(self):
-        modifier_range = self.market_conditions[self.current_market_condition]
+        all_users = await self.config.all_users()
+        # Determine active users (activity in the last 30 days)
+        active_users = {user_id: data for user_id, data in all_users.items() if datetime.datetime.now().timestamp() - data.get("last_activity", 0) <= 30 * 24 * 60 * 60}
+    
+        # Calculate total inventory for each crop among active users
+        total_inventory = {crop: 0 for crop in self.items.keys()}
+        for user_id, data in active_users.items():
+            inventory = data.get("inventory", {})
+            for crop, quantity in inventory.items():
+                if crop in total_inventory:
+                    total_inventory[crop] += quantity
+    
+        # Calculate total number of crops in active inventories
+        total_crops = sum(total_inventory.values())
+    
+        # Adjust price based on inventory percentage
         for item, data in self.items.items():
-            change = random.randint(*modifier_range) * random.choice([-1, 1, 1, 1])  # Randomly decide to increase or decrease
-            new_price = data["current_price"] + change
-            # Ensure new price stays within min and max bounds
-            new_price = max(min(new_price, data["max_price"]), data["min_price"])
-            self.items[item]["current_price"] = new_price
+            if total_crops > 0:  # Avoid division by zero
+                crop_percentage = total_inventory[item] / total_crops * 100  # Percentage of total
+    
+                # Determine price adjustment direction
+                if crop_percentage > 20:
+                    price_direction = -1  # Decrease price
+                elif crop_percentage < 10:
+                    price_direction = 1  # Increase price
+                else:
+                    price_direction = random.choice([-1, 1])  # 50-50 chance
+    
+                # Calculate price change
+                modifier_range = self.market_conditions[self.current_market_condition]
+                base_change = random.randint(*modifier_range) * price_direction
+    
+                # Apply the price change
+                new_price = data["current_price"] + base_change
+                # Ensure new price is within min and max bounds
+                new_price = max(min(new_price, data["max_price"]), data["min_price"])
+                self.items[item]["current_price"] = new_price
+            else:
+                pass
+
 
     @commands.group()
     async def farm(self, ctx):
