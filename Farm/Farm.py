@@ -40,7 +40,7 @@ class Farm(commands.Cog):
             "lemon": {"emoji": "🍋", "min_price": 1, "max_price": 90, "current_price": 67, "growth_time": 172800 , "trait_out":"fast_grow", "trait_out_%":20, "traits": ["base"]},  # 2 days
             "taco": {"emoji": "🌮", "min_price": 1, "max_price": 200, "current_price": 150, "growth_time": 604800, "trait_out":"fast_grow", "trait_out_%":30, "traits": ["base"]},  # 1 week
             "zombie": {"emoji": "🧟", "min_price": 1, "max_price": 100,  "current_price": 75, "growth_time": 86400, "trait_out":"rot", "trait_out_%":20, "traits": ["base"]},
-            "rot": {"emoji": "🧪", "min_price": 1, "max_price": 100,  "current_price": 75, "growth_time": "n/a", "trait_out":"rot", "trait_out_%":50, "traits": ["rot"]} 
+            "rot": {"emoji": "🧪", "min_price": 1, "max_price": 40,  "current_price": 75, "growth_time": "n/a", "trait_out":"rot", "trait_out_%":50, "traits": ["rot"]} 
 
         }
 
