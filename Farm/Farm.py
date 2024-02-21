@@ -23,6 +23,7 @@ class Farm(commands.Cog):
             "gold": 0,
             "field_size": 1,  # Default field size allowing only 1 crop at a time
             "last_activity":0,
+            
         }
         
         self.config.register_user(**default_user)
@@ -73,7 +74,7 @@ class Farm(commands.Cog):
     def cog_unload(self):
         self.price_update_task.cancel()
 
-    @tasks.loop(hours=1)
+    @tasks.loop(hours=8)
     async def price_update_task(self):
         all_users = await self.config.all_users()
         # Determine active users (activity in the last 30 days)
@@ -101,7 +102,7 @@ class Farm(commands.Cog):
                 elif crop_percentage < 10:
                     price_direction = 1  # Increase price
                 else:
-                    price_direction = random.choice([-1, 1])  # 50-50 chance
+                    price_direction = random.choice([-1, 1.2,])  # 50-50 chance
     
                 # Calculate price change
                 modifier_range = self.market_conditions[self.current_market_condition]
