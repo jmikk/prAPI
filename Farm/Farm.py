@@ -147,7 +147,6 @@ class Farm(commands.Cog):
 
 
     @farm.command()
-    @farm.is_owner()
     async def fight(self, ctx):
         user_data = await self.config.user(ctx.author).all()
     
