@@ -394,7 +394,7 @@ class Farm(commands.Cog):
     def _format_inventory(self, inventory,gold):
         """Format the inventory into a string for display."""
         inventory_lines = []
-        inventory_lines.append(f"Gold: :coin:: {gold}")
+        inventory_lines.append(f"Gold: :coin:: {math.floor(gold)}")
         for crop, quantity in inventory.items():
             inventory_lines.append(f"{crop.title()} {self.items[crop]['emoji']}: {quantity}")
         inventory_message = "\n".join(inventory_lines)
