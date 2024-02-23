@@ -269,7 +269,7 @@ class Farm(commands.Cog):
 
         # Function to create the embed for each page
         def get_embed(page, page_number, total_pages):
-            embed = Embed(title="Crop Status", description=f"Current field size: {len(fields)}/{field_size}.  Your fields are {math.floor(len(fields)/field_size)*100)}% full", color=0x00FF00)
+            embed = Embed(title="Crop Status", description=f"Current field size: {len(fields)}/{field_size}.  Your fields are {math.floor((len(fields)/field_size)*100)}% full", color=0x00FF00)
             for crop_instance in page:
                 crop_name = crop_instance["name"]
                 emoji = crop_instance["emoji"]
