@@ -188,66 +188,58 @@ class Farm(commands.Cog):
         # Adjust the user's inventory based on the fight outcome
         # This is where you could add logic to handle rewards or penalties
 
-    # Update the plant command to include zombie trait logic
+
     @farm.command()
-    async def plant(self, ctx, crop_name: str):
+    async def plant(self, ctx, crop_name: str, quantity: int = 1):
         await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
+    
         if crop_name == "rot":
             await ctx.send("You can't plant rot!")
             return
-            
+    
         if crop_name not in self.items:
             available_crops = ', '.join([f"{name} {info['emoji']}" for name, info in self.items.items()])
-            available_crops = available_crops[:-7]
             await ctx.send(f"{crop_name.capitalize()} is not available for planting. Available crops are: {available_crops}.")
             return
     
         user_fields = await self.config.user(ctx.author).fields()
-        if len(user_fields) >= await self.config.user(ctx.author).field_size():
-            await ctx.send("You don't have enough space in your field to plant more crops.")
+        max_fields = await self.config.user(ctx.author).field_size()
+    
+        if len(user_fields) + quantity > max_fields:
+            await ctx.send(f"You don't have enough space in your field to plant {quantity} more crops.")
             return
     
         planted_time = datetime.datetime.now().timestamp()
-        
-        surrounding_crops = [crop["name"] for crop in user_fields]  # Get names of crops in the field
-        traits = self.inherit_traits(surrounding_crops)  # Determine traits based on surrounding crops
-        if crop_name == "zombie":
-            if traits.count("slow_grow") > 0:
-                # Initial reduction percentage for the first "Fast Grow" trait
-                reduction_percentage = 0.3  # 10% reduction for the first instance            
-                for i in range(traits.count("slow_grow")):
-                    # Apply diminishing returns for each subsequent "Fast Grow" trait
-                    if i > 0:
-                        reduction_percentage *= 0.5  # Diminish the reduction by 50% for each additional trait
-            
-                    # Calculate the reduction amount
-                    reduction_amount = self.items[crop_name]["growth_time"] * reduction_percentage
-            
-                    # Update the planted_time by subtracting the reduction amount
-                    planted_time += reduction_amount
-            
-            if traits.count("fast_grow") > 0:
-                # Initial reduction percentage for the first "Fast Grow" trait
-                reduction_percentage = 0.3  # 10% reduction for the first instance            
-                for i in range(traits.count("fast_grow")):
-                    # Apply diminishing returns for each subsequent "Fast Grow" trait
-                    if i > 0:
-                        reduction_percentage *= 0.5  # Diminish the reduction by 50% for each additional trait
-            
-                    # Calculate the reduction amount
-                    reduction_amount = self.items[crop_name]["growth_time"] * reduction_percentage
-            
-                    # Update the planted_time by subtracting the reduction amount
-                    planted_time -= reduction_amount
-
-
-        user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"], "traits": traits})
+    
+        for _ in range(quantity):  # Loop to plant multiple crops
+            surrounding_crops = [crop["name"] for crop in user_fields]  # Get names of crops in the field
+            traits = self.inherit_traits(surrounding_crops)  # Determine traits based on surrounding crops
+    
+            if crop_name == "zombie":
+                if "slow_grow" in traits:
+                    # Apply logic for slow_grow trait
+                    reduction_percentage = 0.3  # Initial reduction percentage
+                    for i in range(traits.count("slow_grow")):
+                        reduction_amount = self.items[crop_name]["growth_time"] * reduction_percentage
+                        planted_time += reduction_amount  # Increase planted time for slow growth
+                        reduction_percentage *= 0.5  # Diminish the reduction for each additional trait
+    
+                if "fast_grow" in traits:
+                    # Apply logic for fast_grow trait
+                    reduction_percentage = 0.3  # Initial reduction percentage
+                    for i in range(traits.count("fast_grow")):
+                        reduction_amount = self.items[crop_name]["growth_time"] * reduction_percentage
+                        planted_time -= reduction_amount  # Decrease planted time for fast growth
+                        reduction_percentage *= 0.5  # Diminish the reduction for each additional trait
+    
+            user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"], "traits": traits})
     
         await self.config.user(ctx.author).fields.set(user_fields)
         if crop_name == "zombie" and len(traits) > 1:
             await ctx.send(f"Zombie {self.items[crop_name]['emoji']} planted successfully with traits: {', '.join(traits[1:])}!")
         else:
-            await ctx.send(f"{crop_name.capitalize()} {self.items[crop_name]['emoji']} planted successfully!")
+            await ctx.send(f"{quantity} {crop_name.capitalize()} {self.items[crop_name]['emoji']} planted successfully!")
+
 
 
 
