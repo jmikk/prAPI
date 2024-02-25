@@ -215,21 +215,21 @@ class Farm(commands.Cog):
             surrounding_crops = [crop["name"] for crop in user_fields]  # Get names of crops in the field
             traits = self.inherit_traits(surrounding_crops)  # Determine traits based on surrounding crops
     
-                if "slow_grow" in traits:
-                    # Apply logic for slow_grow trait
-                    reduction_percentage = 0.3  # Initial reduction percentage
-                    for i in range(traits.count("slow_grow")):
-                        reduction_amount = self.items[crop_name]["growth_time"] * reduction_percentage
-                        planted_time += reduction_amount  # Increase planted time for slow growth
-                        reduction_percentage *= 0.5  # Diminish the reduction for each additional trait
+            if "slow_grow" in traits:
+                # Apply logic for slow_grow trait
+                reduction_percentage = 0.3  # Initial reduction percentage
+                for i in range(traits.count("slow_grow")):
+                    reduction_amount = self.items[crop_name]["growth_time"] * reduction_percentage
+                    planted_time += reduction_amount  # Increase planted time for slow growth
+                    reduction_percentage *= 0.5  # Diminish the reduction for each additional trait
     
-                if "fast_grow" in traits:
-                    # Apply logic for fast_grow trait
-                    reduction_percentage = 0.3  # Initial reduction percentage
-                    for i in range(traits.count("fast_grow")):
-                        reduction_amount = self.items[crop_name]["growth_time"] * reduction_percentage
-                        planted_time -= reduction_amount  # Decrease planted time for fast growth
-                        reduction_percentage *= 0.5  # Diminish the reduction for each additional trait
+            if "fast_grow" in traits:
+                # Apply logic for fast_grow trait
+                reduction_percentage = 0.3  # Initial reduction percentage
+                for i in range(traits.count("fast_grow")):
+                    reduction_amount = self.items[crop_name]["growth_time"] * reduction_percentage
+                    planted_time -= reduction_amount  # Decrease planted time for fast growth
+                    reduction_percentage *= 0.5  # Diminish the reduction for each additional trait
     
             user_fields.append({"name": crop_name, "planted_time": planted_time, "emoji": self.items[crop_name]["emoji"], "traits": traits})
     
