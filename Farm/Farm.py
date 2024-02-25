@@ -215,7 +215,6 @@ class Farm(commands.Cog):
             surrounding_crops = [crop["name"] for crop in user_fields]  # Get names of crops in the field
             traits = self.inherit_traits(surrounding_crops)  # Determine traits based on surrounding crops
     
-            if crop_name == "zombie":
                 if "slow_grow" in traits:
                     # Apply logic for slow_grow trait
                     reduction_percentage = 0.3  # Initial reduction percentage
