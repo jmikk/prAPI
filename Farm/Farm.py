@@ -236,6 +236,22 @@ class Farm(commands.Cog):
                     user_data[item['slot']] = item
                     await self.config.user(user).set(user_data)
                     await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
+
+                    for stat, bonus in current_item.get("stats", {}).items():
+                        if stat in user:
+                            user[stat] -= bonus
+                    
+                    # Equip the new item
+                    user[item_slot] = new_item
+                    
+                    # Add the new item's stats
+                    for stat, bonus in new_item.get("stats", {}).items():
+                        if stat in user:
+                            user[stat] += bonus
+
+        # Make sure to call update_player_stats if you have further stat adjustments or constraints
+        self.update_player_stats(user)
+                
                 else:
                     # User chose to keep the old item
                     await ctx.send("You've kept your current item.")
