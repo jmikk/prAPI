@@ -8,6 +8,7 @@ import random
 import discord
 from discord import Embed
 import os
+import json
 #from redbot.core import tasks
 
 class Farm(commands.Cog):
