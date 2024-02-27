@@ -211,7 +211,15 @@ class Farm(commands.Cog):
     
         if current_item:
             # There's already an item in this slot. Prompt the user to decide.
-            message = await ctx.send(f"You already have a {current_item['name']} in your {item['slot']}. Do you want to swap it with {item['name']}? React with ✅ to swap or ❌ to keep.")
+            current_item_stats = ', '.join([f"{stat}: {value}" for stat, value in current_item.get('stats', {}).items()])
+            new_item_stats = ', '.join([f"{stat}: {value}" for stat, value in loot_box_item['stats'].items()])
+        
+            # Updated prompt message to include current and new item stats
+            message = await ctx.send(
+                f"You already have a {current_item['name']} in your {item['slot']} with stats: {current_item_stats}. "
+                f"Do you want to swap it with {item['name']} with stats: {new_item_stats}? "
+                "React with ✅ to swap or ❌ to keep."
+            )
             
             # Add reactions for the user to choose
             await message.add_reaction("✅")
