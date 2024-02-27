@@ -210,7 +210,7 @@ class Farm(commands.Cog):
     
         if current_item:
             # There's already an item in this slot. Prompt the user to decide.
-            message = await self.bot.say(f"You already have a {current_item['name']} in your {item['slot']}. Do you want to swap it with {item['name']}? React with ✅ to swap or ❌ to keep.")
+            message = await ctx.send(f"You already have a {current_item['name']} in your {item['slot']}. Do you want to swap it with {item['name']}? React with ✅ to swap or ❌ to keep.")
             
             # Add reactions for the user to choose
             await message.add_reaction("✅")
@@ -226,19 +226,19 @@ class Farm(commands.Cog):
                     # User chose to swap the item
                     user_data[item['slot']] = item
                     await self.config.user(user).set(user_data)
-                    await self.bot.say(f"You've equipped {item['name']} in your {item['slot']}.")
+                    await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
                 else:
                     # User chose to keep the old item
-                    await self.bot.say("You've kept your current item.")
+                    await ctx.send("You've kept your current item.")
     
             except asyncio.TimeoutError:
-                await self.bot.say("No response. Keeping your current item.")
+                await ctx.send("No response. Keeping your current item.")
     
         else:
             # The slot is empty, simply add the new item
             user_data[item['slot']] = item
             await self.config.user(user).set(user_data)
-            await self.bot.say(f"You've equipped {item['name']} in your {item['slot']}.")
+            await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
 
     @farm.command()
     async def plant(self, ctx, crop_name: str, quantity: int = 1):
