@@ -198,7 +198,7 @@ class Farm(commands.Cog):
             stats = loot_box_item['stats']
     
             # Add the loot item to the player's inventory
-            await self._add_loot_to_inventory(ctx.author, item_name, stats)
+            await self._add_loot_to_inventory(ctx.author, loot_box_item, stats)
     
             # Inform the player about their loot
             await ctx.send(f"Congratulations! You've received a {item_name} from the loot box! Stats: {stats}")
