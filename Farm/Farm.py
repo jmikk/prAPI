@@ -204,7 +204,7 @@ class Farm(commands.Cog):
             await ctx.send(f"Congratulations! You've received a {item_name} from the loot box! Stats: {stats}")
 
     
-    async def _add_loot_to_inventory(self, user, item):
+    async def _add_loot_to_inventory(self, user, item, stats):
         user_data = await self.config.user(user).all()
         current_item = user_data[item['slot']]
     
