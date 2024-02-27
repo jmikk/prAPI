@@ -183,7 +183,7 @@ class Farm(commands.Cog):
         }
     
         # Simulate the fight (This part can be expanded with actual fight mechanics)
-        result = "won" if random.random() > 0.5 else "lost"  # 50-50 chance for simplicity
+        result = "won" if random.random() > 0.01 else "lost"  # 50-50 chance for simplicity
         await ctx.send(f"You fought {enemy_name} with stats: {enemy_stats} and you {result} the fight!")
 
         if result == "won":
