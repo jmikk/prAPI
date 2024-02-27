@@ -683,6 +683,22 @@ class Farm(commands.Cog):
     
         await ctx.send("Initialized last_activity for all users.")
 
+       
+    @farm.command()
+    async def view_stats
+        rep = await self.config.user(ctx.author).rep()
+        str = await self.config.user(ctx.author).strength()
+        defense = await self.config.user(ctx.author).defense()
+        speed = await self.config.user(ctx.author).speed()
+        luck = await self.config.user(ctx.author).luck()
+        life  = await self.config.user(ctx.author).Health()
+        crit = await self.config.user(ctx.author).Critical_chance()
+
+        await ctx.send(f"Your defense is {defense}")
+            
+    
+
+
 
     
 
