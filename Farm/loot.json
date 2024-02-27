@@ -1,18 +1,20 @@
 {
   "items": [
     {
-      "name": "Rusty Sword",
+      "name": "Rusty Helm",
+      "slot": "helmet",
       "stats": {
-        "attack": 2,
-        "defense": -1
+        "defense": 2,
+        "speed": -1
       }
     },
     {
-      "name": "Ancient Shield",
+      "name": "Ancient Armor",
+      "slot": "body",
       "stats": {
-        "attack": 0,
-        "defense": 3
+        "defense": 5
       }
     }
+    // Add more items as needed
   ]
 }
