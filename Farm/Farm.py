@@ -184,10 +184,60 @@ class Farm(commands.Cog):
         # Simulate the fight (This part can be expanded with actual fight mechanics)
         result = "won" if random.random() > 0.5 else "lost"  # 50-50 chance for simplicity
         await ctx.send(f"You fought {enemy_name} with stats: {enemy_stats} and you {result} the fight!")
-    
-        # Adjust the user's inventory based on the fight outcome
-        # This is where you could add logic to handle rewards or penalties
 
+        if result == "won":
+            # Load loot items (consider making this a separate function if used elsewhere)
+            loot_items_path = os.path.join(os.path.dirname(__file__), 'loot.json')  # Adjust the path as necessary
+            with open(loot_items_path, 'r') as file:
+                loot_items = json.load(file)['items']
+    
+            # Generate a loot box
+            loot_box_item = random.choice(loot_items)
+            item_name = loot_box_item['name']
+            stats = loot_box_item['stats']
+    
+            # Add the loot item to the player's inventory
+            await self._add_loot_to_inventory(ctx.author, item_name, stats)
+    
+            # Inform the player about their loot
+            await ctx.send(f"Congratulations! You've received a {item_name} from the loot box! Stats: {stats}")
+
+    
+    async def _add_loot_to_inventory(self, user, item):
+        user_data = await self.config.user(user).all()
+        current_item = user_data[item['slot']]
+    
+        if current_item:
+            # There's already an item in this slot. Prompt the user to decide.
+            message = await self.bot.say(f"You already have a {current_item['name']} in your {item['slot']}. Do you want to swap it with {item['name']}? React with ✅ to swap or ❌ to keep.")
+            
+            # Add reactions for the user to choose
+            await message.add_reaction("✅")
+            await message.add_reaction("❌")
+    
+            def check(reaction, user_reacted):
+                return user_reacted == user and str(reaction.emoji) in ["✅", "❌"]
+    
+            try:
+                reaction, user_reacted = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+    
+                if str(reaction.emoji) == "✅":
+                    # User chose to swap the item
+                    user_data[item['slot']] = item
+                    await self.config.user(user).set(user_data)
+                    await self.bot.say(f"You've equipped {item['name']} in your {item['slot']}.")
+                else:
+                    # User chose to keep the old item
+                    await self.bot.say("You've kept your current item.")
+    
+            except asyncio.TimeoutError:
+                await self.bot.say("No response. Keeping your current item.")
+    
+        else:
+            # The slot is empty, simply add the new item
+            user_data[item['slot']] = item
+            await self.config.user(user).set(user_data)
+            await self.bot.say(f"You've equipped {item['name']} in your {item['slot']}.")
 
     @farm.command()
     async def plant(self, ctx, crop_name: str, quantity: int = 1):
