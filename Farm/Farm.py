@@ -686,7 +686,7 @@ class Farm(commands.Cog):
 
        
     @farm.command()
-    async def view_stats
+    async def view_stats(self,ctx):
         rep = await self.config.user(ctx.author).rep()
         str = await self.config.user(ctx.author).strength()
         defense = await self.config.user(ctx.author).defense()
