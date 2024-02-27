@@ -212,7 +212,7 @@ class Farm(commands.Cog):
         if current_item:
             # There's already an item in this slot. Prompt the user to decide.
             current_item_stats = ', '.join([f"{stat}: {value}" for stat, value in current_item.get('stats', {}).items()])
-            new_item_stats = ', '.join([f"{stat}: {value}" for stat, value in loot_box_item['stats'].items()])
+            new_item_stats = ', '.join([f"{stat}: {value}" for stat, value in item['stats'].items()])
         
             # Updated prompt message to include current and new item stats
             message = await ctx.send(
