@@ -245,7 +245,7 @@ class Farm(commands.Cog):
                     #add the new stats to the player.
                     for stat, bonus in stats.items():
                         if stat in user_data:
-                            await ctx.send(user_data)
+                            await ctx.send(user_data[stat])
                             user_data[stat] = user_data[stat] - bonus
                             await ctx.send(user_data)
 
