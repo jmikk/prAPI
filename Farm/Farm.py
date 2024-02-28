@@ -239,18 +239,16 @@ class Farm(commands.Cog):
 
                     for stat, bonus in current_item.get("stats", {}).items():
                         await ctx.send(str(stat) + str(bonus))
-                        if stat in user:
-                            user[stat] -= bonus
-                            await self.config.user(ctx.author).stat.set(user[stat])
+                        if stat in user_data:
+                            user_data[stat] -= bonus
+                            await self.config.user(ctx.author).stat.set(user_data[stat])
                     
-                    # Equip the new item
-                    user[item_slot] = new_item
                     
                     # Add the new item's stats
                     for stat, bonus in new_item.get("stats", {}).items():
-                        if stat in user:
-                            user[stat] += bonus
-                            await self.config.user(ctx.author).stat.set(user[stat])
+                        if stat in user_data:
+                            user_data[stat] += bonus
+                            await self.config.user(ctx.author).stat.set(user_data[stat])
 
 
                 
