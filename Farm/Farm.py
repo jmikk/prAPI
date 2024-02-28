@@ -250,7 +250,7 @@ class Farm(commands.Cog):
                             user_data[stat] = user_data[stat] - bonus
                     user_data[stat] = user_data[stat] - bonus
                     
-                    #await self.config.user(user).set(user_data)
+                    await self.config.user(user).set(user_data)
 
                 
                 else:
