@@ -238,6 +238,7 @@ class Farm(commands.Cog):
                     await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
 
                     for stat, bonus in current_item.get("stats", {}).items():
+                        await ctx.send(stat,bonus)
                         if stat in user:
                             user[stat] -= bonus
                             await self.config.user(ctx.author).stat.set(user[stat])
