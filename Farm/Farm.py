@@ -212,6 +212,7 @@ class Farm(commands.Cog):
         if current_item:
             # There's already an item in this slot. Prompt the user to decide.
             current_item_stats = ', '.join([f"{stat}: {value}" for stat, value in current_item.get('stats', {}).items()])
+            await ctx.send(current_item_stats)
             new_item_stats = ', '.join([f"{stat}: {value}" for stat, value in item['stats'].items()])
         
             # Updated prompt message to include current and new item stats
@@ -244,7 +245,10 @@ class Farm(commands.Cog):
                     #add the new stats to the player.
                     for stat, bonus in stats.items():
                         if stat in user_data:
+                            await ctx.send(user_data)
                             user_data[stat] = user_data[stat] - bonus
+                            await ctx.send(user_data)
+
                     user_data[stat] = user_data[stat] - bonus
                     
                     await self.config.user(user).set(user_data)
