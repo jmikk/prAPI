@@ -174,12 +174,12 @@ class Farm(commands.Cog):
     
         # Generate enemy stats based on the user's stats
         enemy_stats = {
-            "strength": random.randint(1, user_data.get("strength", 1) + 1),
-            "defense": random.randint(1, user_data.get("defense", 1) + 1),
-            "speed": random.randint(1, user_data.get("speed", 1) + 1),
-            "luck": random.randint(1, user_data.get("luck", 1) + 1),
-            "Health": random.randint(10, user_data.get("Health", 10) + 10),
-            "Critical_chance": random.randint(1, user_data.get("Critical_chance", 1) + 1),
+            "strength": random.randint(1, 1 + 1),
+            "defense": random.randint(1, 1 + 1),
+            "speed": random.randint(1, 1 + 1),
+            "luck": random.randint(1, 1 + 1),
+            "Health": random.randint(10, 1 + 10),
+            "Critical_chance": random.randint(1, 1 + 1),
         }
     
         # Simulate the fight (This part can be expanded with actual fight mechanics)
