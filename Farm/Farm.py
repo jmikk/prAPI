@@ -245,7 +245,7 @@ class Farm(commands.Cog):
                     
                     
                     # Add the new item's stats
-                    for  stat, bonus in new_item_stats.split(", "):
+                    for  stat, bonus in stats:
                         await ctx.send(str(stat) + str(bonus))
                         if stat in user_data:
                             user_data[stat] = user_data[stat] + bonus
