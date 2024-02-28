@@ -242,10 +242,12 @@ class Farm(commands.Cog):
                         if stat in user_data:
                             user_data[stat] = user_data[stat] - bonus
 
-                    
+                    await ctx.send("here")
                     #add the new stats to the player.
-                    await ctx.send("eeee")
-                    await ctx.send(stats)
+                    for stat, bonus in stats.items():
+                        await ctx.send(str(stat) + str(bonus))
+                        if stat in user_data:
+                            user_data[stat] = user_data[stat] - bonus
                     user_data[stat] = user_data[stat] - bonus
                     
                     #await self.config.user(user).set(user_data)
