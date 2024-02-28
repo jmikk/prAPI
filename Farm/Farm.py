@@ -206,7 +206,6 @@ class Farm(commands.Cog):
 
     
     async def _add_loot_to_inventory(self,ctx, user, item, stats):
-        await ctx.send(stats)
         user_data = await self.config.user(user).all()
         current_item = user_data[item['slot']]
     
@@ -245,8 +244,11 @@ class Farm(commands.Cog):
 
                     
                     #add the new stats to the player.
-
-
+                    await ctx.send("eeee")
+                    await ctx.send(stats)
+                    user_data[stat] = user_data[stat] - bonus
+                    
+                    #await self.config.user(user).set(user_data)
 
                 
                 else:
