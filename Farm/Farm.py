@@ -247,7 +247,7 @@ class Farm(commands.Cog):
                         if stat in user_data:
                             await ctx.send(user_data[stat])
                             user_data[stat] = user_data[stat] - bonus
-                            await ctx.send(user_data)
+                            await ctx.send(user_data[stat])
 
                     user_data[stat] = user_data[stat] - bonus
                     
