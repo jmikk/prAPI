@@ -239,8 +239,8 @@ class Farm(commands.Cog):
                     
                     for stat, bonus in current_item.get("stats", {}).items():
                         await ctx.send(str(stat) + str(bonus))
-                            if stat in user_data:
-                                user_data[stat] = user_data[stat] - bonus
+                        if stat in user_data:
+                            user_data[stat] = user_data[stat] - bonus
 
                     
                     
