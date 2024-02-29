@@ -788,7 +788,7 @@ class Farm(commands.Cog):
         else:
             await ctx.send(f"Stat {stat} not found.")
 
-    @commands.command(name="viewgear")
+    @farm.command(name="viewgear")
     async def view_gear(self, ctx):
         user_data = await self.config.user(ctx.author).all()
 
