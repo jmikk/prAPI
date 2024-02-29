@@ -181,9 +181,39 @@ class Farm(commands.Cog):
             "Health": random.randint(10, 1 + 10),
             "Critical_chance": random.randint(1, 1 + 1),
         }
+        
+        while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
+            # Calculate effective stats and damage as before
     
-        # Simulate the fight (This part can be expanded with actual fight mechanics)
-        result = "won" if random.random() > 0.01 else "lost"  # 50-50 chance for simplicity
+            player_effective_attack = user_data['strength'] * (1 + user_data['luck'] / 100)
+            player_effective_defense = user_data['defense'] * (1 + user_data['speed'] / 100)
+            enemy_effective_attack = enemy_stats['strength'] * (1 + enemy_stats['luck'] / 100)
+            enemy_effective_defense = enemy_stats['defense'] * (1 + enemy_stats['speed'] / 100)
+    
+            player_damage = max(0, player_effective_attack - enemy_effective_defense)
+            enemy_damage = max(0, enemy_effective_attack - player_effective_defense)
+    
+            # Consider Critical Chance
+            if random.random() < user_data['Critical_chance'] / 100:
+                player_damage *= 2  # Double damage for critical hit
+    
+            if random.random() < enemy_stats['Critical_chance'] / 100:
+                enemy_damage *= 2  # Double damage for enemy critical hit
+    
+            # Apply damage to Health
+            user_data['Health'] -= enemy_damage
+            enemy_stats['Health'] -= player_damage
+    
+            # Provide feedback for each round
+            await ctx.send(f"Round results: {enemy_name} took {player_damage} damage. You took {enemy_damage} damage.")
+            # Simulate the fight (This part can be expanded with actual fight mechanics)
+            # Determine the result
+        if user_data['Health'] > 0:
+            result = "won"
+            # Proceed with loot distribution as before
+        else:
+            result = "lost"
+            # Perhaps apply some penalty for losing
         await ctx.send(f"You fought {enemy_name} with stats: {enemy_stats} and you {result} the fight!")
 
         if result == "won":
