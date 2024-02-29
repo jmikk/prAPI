@@ -225,7 +225,6 @@ class Farm(commands.Cog):
             # Update the player's rep
             user_data['rep'] += rep_reward
             await self.config.user(ctx.author).set(user_data)  
-            await ctx.send(f"Congratulations on your victory! You've earned {rep_reward} rep.")        
         else:
             result = "lost"
             # Perhaps apply some penalty for losing
