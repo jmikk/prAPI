@@ -8,6 +8,8 @@ import discord
 from discord import Embed
 import os
 import json
+from redbot.core import commands
+
 #from redbot.core import tasks
 
 class Farm(commands.Cog):
@@ -299,7 +301,7 @@ class Farm(commands.Cog):
 
                     #add the new stats to the player.
                     #reepuip
-                    #await ctx.send(stats.items())
+                    await ctx.send(stats.items())
                     for stat, bonus in stats.items():
                         if stat in user_data:
                             user_data[stat] = user_data[stat] + bonus
