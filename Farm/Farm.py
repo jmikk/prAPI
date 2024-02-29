@@ -702,6 +702,34 @@ class Farm(commands.Cog):
 
         await ctx.send(f"Your defense is {defense} \n Your rep is {rep} \n Your Speed is: {speed} \n Your luck is {luck} \n Your Life is {life} \n Your crit chance is {crit}")
 
+
+    @commands.is_owner()  # Ensure only the bot owner can use this command
+    async def set_stat(self, ctx, member: discord.Member, stat: str, value: int):
+        """
+        Command to forcefully set a player's stat, restricted to the bot owner.
+    
+        Args:
+        member (discord.Member): The member whose stat is to be set.
+        stat (str): The name of the stat to set (e.g., 'strength', 'Health').
+        value (int): The new value for the stat.
+        """
+        # Validate the stat
+        valid_stats = ['rep', 'strength', 'defense', 'speed', 'luck', 'Health', 'Critical_chance']
+        if stat not in valid_stats:
+            await ctx.send(f"Invalid stat. Valid stats are: {', '.join(valid_stats)}")
+            return
+    
+        # Fetch the current user data
+        user_data = await self.config.user(member).all()
+    
+        # Check if the stat exists in user data
+        if stat in user_data:
+            # Update the stat
+            user_data[stat] = value
+            await self.config.user(member).set(user_data)
+            await ctx.send(f"{member.display_name}'s {stat} has been set to {value}.")
+        else:
+            await ctx.send(f"Stat {stat} not found.")
             
     
 
