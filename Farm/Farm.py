@@ -177,7 +177,7 @@ class Farm(commands.Cog):
             "strength": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
             "defense": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
             "speed": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
-            "luck": random.randint(math.floot(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
+            "luck": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
             "Health": random.randint(math.floor(5+user_rep/2), math.ceil((user_rep+5)*1.1)),
             "Critical_chance": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
         }
