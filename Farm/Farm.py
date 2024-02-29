@@ -702,7 +702,7 @@ class Farm(commands.Cog):
 
         await ctx.send(f"Your defense is {defense} \n Your rep is {rep} \n Your Speed is: {speed} \n Your luck is {luck} \n Your Life is {life} \n Your crit chance is {crit}")
 
-
+    @commands.command(name='setstat')
     @commands.is_owner()  # Ensure only the bot owner can use this command
     async def set_stat(self, ctx, member: discord.Member, stat: str, value: int):
         """
