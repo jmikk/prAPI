@@ -257,16 +257,18 @@ class Farm(commands.Cog):
     async def _add_loot_to_inventory(self,ctx, user, item, stats):
         user_data = await self.config.user(user).all()
         current_item = user_data[item['slot']]
+
+        player_rep = user_data['rep']  # Get the player's current rep
+        new_item_stats_with_bonus = {stat: math.floor(value + player_rep/2) for stat, value in stats.items()}
+
+        new_item_stats = ', '.join([f"{stat}: {value})" for stat, value in new_item_stats_with_bonus.items()])
+        
     
         if current_item:
             # There's already an item in this slot. Prompt the user to decide.
             current_item_stats = ', '.join([f"{stat}: {value}" for stat, value in current_item.get('stats', {}).items()])
-            await ctx.send(current_item_stats)
             
-            player_rep = user_data['rep']  # Get the player's current rep
-
-            new_item_stats = ', '.join([f"{stat}: {math.floor(value + player_rep/2)}" for stat, value in item['stats'].items()])
-        
+            
             # Updated prompt message to include current and new item stats
             message = await ctx.send(
                 f"You already have a {current_item['name']} in your {item['slot']} with stats: {current_item_stats}. "
@@ -286,6 +288,7 @@ class Farm(commands.Cog):
     
                 if str(reaction.emoji) == "✅":
                     # User chose to swap the item
+                    item['stats'] = new_item_stats_with_bonus
                     
                     user_data[item['slot']] = item
                     await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
@@ -298,8 +301,8 @@ class Farm(commands.Cog):
                     #add the new stats to the player.
                     for stat, bonus in stats.items():
                         if stat in user_data:
-                            bonus = math.floor(bonus + player_rep/2)
-                            user_data[stat] = user_data[stat] + bonus
+                            user_data[stat] = user_data[stat]
+                        
 
                     
                     await self.config.user(user).set(user_data)
@@ -314,6 +317,7 @@ class Farm(commands.Cog):
     
         else:
             # The slot is empty, simply add the new item
+            item['stats'] = new_item_stats_with_bonus
             user_data[item['slot']] = item
             await self.config.user(user).set(user_data)
             await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
