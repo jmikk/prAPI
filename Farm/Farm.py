@@ -787,7 +787,30 @@ class Farm(commands.Cog):
             await ctx.send(f"{member.display_name}'s {stat} has been set to {value}.")
         else:
             await ctx.send(f"Stat {stat} not found.")
-            
+
+    @commands.command(name="viewgear")
+    async def view_gear(self, ctx):
+        user_data = await self.config.user(ctx.author).all()
+
+        # List of gear slots to check in the user's data
+        gear_slots = ["helmet", "body", "boots", "gloves", "ring", "weapon", "artifact", "belt"]
+
+        gear_messages = []
+        for slot in gear_slots:
+            item = user_data.get(slot, {})
+            if item:  # Check if there's an item equipped in the slot
+                item_name = item.get("name", "Unknown Item")
+                item_stats = item.get("stats", {})
+                stats_message = ', '.join([f"{stat}: {value}" for stat, value in item_stats.items()])
+                gear_messages.append(f"**{slot.capitalize()}**: {item_name} ({stats_message})")
+            else:
+                gear_messages.append(f"**{slot.capitalize()}**: No item equipped")
+
+        # Combine all the gear messages into one message
+        gear_summary = "\n".join(gear_messages)
+
+        # Send the gear summary to the player
+        await ctx.send(f"**Your Gear:**\n{gear_summary}")
     
 
 
