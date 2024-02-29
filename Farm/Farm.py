@@ -253,6 +253,8 @@ class Farm(commands.Cog):
             # Inform the player about their loot
         else:
             user_data['rep'] =  user_data['rep'] - 1 
+            if user_data['rep'] < 1:
+                 user_data['rep'] = 1
             await self.config.user(ctx.author).set(user_data)
 
     
