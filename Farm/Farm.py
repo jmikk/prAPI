@@ -179,7 +179,7 @@ class Farm(commands.Cog):
             "speed": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
             "luck": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
             "Health": random.randint(math.floor(5+user_rep/2), math.ceil((user_rep+5)*1.1)),
-            "Critical_chance": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
+            "Critical_chance": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1))),
         }
         round_count=0
         start_life = user_data['Health'] 
