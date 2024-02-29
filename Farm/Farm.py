@@ -181,8 +181,10 @@ class Farm(commands.Cog):
             "Health": random.randint(10, 1 + 10),
             "Critical_chance": random.randint(1, 1 + 1),
         }
-        
+        round_count=0
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
+            round_count= round_count + 1
+
             # Calculate effective stats and damage as before
     
             player_effective_attack = user_data['strength'] * (1 + user_data['luck'] / 100)
@@ -190,8 +192,8 @@ class Farm(commands.Cog):
             enemy_effective_attack = enemy_stats['strength'] * (1 + enemy_stats['luck'] / 100)
             enemy_effective_defense = enemy_stats['defense'] * (1 + enemy_stats['speed'] / 100)
     
-            player_damage = max(1, player_effective_attack - enemy_effective_defense)
-            enemy_damage = max(1, enemy_effective_attack - player_effective_defense)
+            player_damage = max(round_count, player_effective_attack - enemy_effective_defense)
+            enemy_damage = max(round_count, enemy_effective_attack - player_effective_defense)
     
             # Consider Critical Chance
             if random.random() < user_data['Critical_chance'] / 100:
@@ -205,7 +207,7 @@ class Farm(commands.Cog):
             enemy_stats['Health'] -= player_damage
     
             # Provide feedback for each round
-            await ctx.send(f"Round results: {enemy_name} took {player_damage} damage. You took {enemy_damage} damage.")
+            await ctx.send(f"Round {round_count} results: {enemy_name} took {player_damage} damage. You took {enemy_damage} damage.")
             # Simulate the fight (This part can be expanded with actual fight mechanics)
             # Determine the result
         if user_data['Health'] > 0:
