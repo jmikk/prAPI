@@ -2,7 +2,7 @@ from redbot.core import commands, Config
 import asyncio
 import datetime
 from discord.ext import tasks
-import Math
+import math
 import datetime
 import random
 import discord
@@ -174,12 +174,12 @@ class Farm(commands.Cog):
         user_rep = user_data['rep']  # Fetch the user's rep
         # Generate enemy stats based on the user's stats
         enemy_stats = {
-            "strength": random.randint(Math.floor(1+user_rep/2), Math.ceil((user_rep+1)*1.1)),
-            "defense": random.randint(Math.floor(1+user_rep/2), Math.ceil((user_rep+1)*1.1)),
-            "speed": random.randint(Math.floor(1+user_rep/2), Math.ceil((user_rep+1)*1.1)),
-            "luck": random.randint(Math.floot(1+user_rep/2), Math.ceil((user_rep+1)*1.1)),
-            "Health": random.randint(Math.floor(5+user_rep/2), Math.ceil((user_rep+5)*1.1)),
-            "Critical_chance": random.randint(Math.floor(1+user_rep/2), Math.ceil((user_rep+1)*1.1)),
+            "strength": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
+            "defense": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
+            "speed": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
+            "luck": random.randint(math.floot(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
+            "Health": random.randint(math.floor(5+user_rep/2), math.ceil((user_rep+5)*1.1)),
+            "Critical_chance": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
         }
         round_count=0
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
