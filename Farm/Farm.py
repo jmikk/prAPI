@@ -291,16 +291,18 @@ class Farm(commands.Cog):
                     
                     user_data[item['slot']] = item
                     await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
-                    
+
+                    #unequip
                     for stat, bonus in current_item.get("stats", {}).items():
                         if stat in user_data:
                             user_data[stat] = user_data[stat] - bonus
 
 
                     #add the new stats to the player.
+                    #reepuip
                     for stat, bonus in stats.items():
                         if stat in user_data:
-                            user_data[stat] = user_data[stat]
+                            user_data[stat] = user_data[stat] + bonus
                         
 
                     
