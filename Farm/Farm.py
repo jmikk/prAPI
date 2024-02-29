@@ -251,6 +251,9 @@ class Farm(commands.Cog):
             await self._add_loot_to_inventory(ctx,ctx.author, loot_box_item, stats)
     
             # Inform the player about their loot
+        else:
+            user_data['rep'] =  user_data['rep'] - 1 
+            await self.config.user(ctx.author).set(user_data)
 
     
     async def _add_loot_to_inventory(self,ctx, user, item, stats):
