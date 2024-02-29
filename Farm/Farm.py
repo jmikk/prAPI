@@ -299,8 +299,8 @@ class Farm(commands.Cog):
 
                     #add the new stats to the player.
                     #reepuip
-                    await ctx.send(stats.items())
-                    for stat, bonus in stats.items():
+                    await ctx.send(item['stats'].items())
+                    for stat, bonus in item['stats'].items():
                         if stat in user_data:
                             user_data[stat] = user_data[stat] + bonus
                         
