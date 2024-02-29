@@ -1,4 +1,3 @@
-from redbot.core import commands, Config
 import asyncio
 import datetime
 from discord.ext import tasks
@@ -300,6 +299,7 @@ class Farm(commands.Cog):
 
                     #add the new stats to the player.
                     #reepuip
+                    await ctx.send(stats.items())
                     for stat, bonus in stats.items():
                         if stat in user_data:
                             user_data[stat] = user_data[stat] + bonus
