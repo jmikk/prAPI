@@ -285,19 +285,13 @@ class Farm(commands.Cog):
                     
                     for stat, bonus in current_item.get("stats", {}).items():
                         if stat in user_data:
-                            await ctx.send(user_data[stat])
-                            await ctx.send("down")
                             user_data[stat] = user_data[stat] - bonus
-                            await ctx.send(user_data[stat])
 
 
                     #add the new stats to the player.
                     for stat, bonus in stats.items():
                         if stat in user_data:
-                            await ctx.send(user_data[stat])
-                            await ctx.send("up")
                             user_data[stat] = user_data[stat] + bonus
-                            await ctx.send(user_data[stat])
 
                     
                     await self.config.user(user).set(user_data)
