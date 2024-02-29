@@ -178,7 +178,7 @@ class Farm(commands.Cog):
             "defense": random.randint(1, 1 + 1),
             "speed": random.randint(1, 1 + 1),
             "luck": random.randint(1, 1 + 1),
-            "Health": random.randint(10, 1 + 10),
+            "Health": random.randint(1, 2),
             "Critical_chance": random.randint(1, 1 + 1),
         }
         round_count=0
