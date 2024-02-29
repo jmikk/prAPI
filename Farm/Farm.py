@@ -261,7 +261,10 @@ class Farm(commands.Cog):
             # There's already an item in this slot. Prompt the user to decide.
             current_item_stats = ', '.join([f"{stat}: {value}" for stat, value in current_item.get('stats', {}).items()])
             await ctx.send(current_item_stats)
-            new_item_stats = ', '.join([f"{stat}: {value}" for stat, value in item['stats'].items()])
+            
+            player_rep = user_data['rep']  # Get the player's current rep
+
+            new_item_stats = ', '.join([f"{stat}: {math.floor(value + player_rep/2}" for stat, value in item['stats'].items()])
         
             # Updated prompt message to include current and new item stats
             message = await ctx.send(
@@ -283,11 +286,7 @@ class Farm(commands.Cog):
                 if str(reaction.emoji) == "✅":
                     # User chose to swap the item
                     
-                    player_rep = user_data['rep']  # Get the player's current rep
-                    await ctx.send(item['stats'])
-                    item['stats'] = item['stats'] + ("rep",player_rep)
                     user_data[item['slot']] = item
-                    await self.config.user(user).set(user_data)
                     await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
                     
                     for stat, bonus in current_item.get("stats", {}).items():
