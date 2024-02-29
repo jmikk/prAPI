@@ -182,6 +182,7 @@ class Farm(commands.Cog):
             "Critical_chance": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
         }
         round_count=0
+        start_life = user_data['Health'] 
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
             round_count= round_count + 1
 
@@ -231,6 +232,8 @@ class Farm(commands.Cog):
             # Perhaps apply some penalty for losing
         await ctx.send(f"You fought {enemy_name} with stats: {enemy_stats} and you {result} the fight!")
 
+        user_data['Health'] = start_life 
+        
         if result == "won":
             # Load loot items (consider making this a separate function if used elsewhere)
             loot_items_path = os.path.join(os.path.dirname(__file__), 'loot.json')  # Adjust the path as necessary
