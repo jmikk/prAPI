@@ -1,19 +1,1712 @@
 {
   "items": [
-    {
-      "name": "SUPER Rusty Helm",
-      "slot": "helmet",
+    {"name": "Cotton Tunic", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Woolen Vest", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Roughspun Robe", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Leather Jerkin", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Padded Gambeson", "slot": "body", "stats": {"defense": 4}},
+    {"name": "Fur-lined Coat", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Simple Chainmail", "slot": "body", "stats": {"defense": 4}},
+    {"name": "Banded Armor", "slot": "body", "stats": {"defense": 5}},
+    {"name": "Brigandine Vest", "slot": "body", "stats": {"defense": 4}},
+    {"name": "Peasant's Garb", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Footman's Tunic", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Squire's Armor", "slot": "body", "stats": {"defense": 4}},
+    {"name": "Apprentice's Robe", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Scout's Leather", "slot": "body", "stats": {"defense": 3, "speed": 1}},
+    {"name": "Bandit's Mail", "slot": "body", "stats": {"defense": 4}},
+    {"name": "Guard's Chestplate", "slot": "body", "stats": {"defense": 5}},
+    {"name": "Mercenary's Hauberk", "slot": "body", "stats": {"defense": 4}},
+    {"name": "Raider's Vest", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Fisherman's Tunic", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Hunter's Coat", "slot": "body", "stats": {"defense": 3, "luck": 1}},
+    {"name": "Traveler's Cloak", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Wanderer's Robe", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Hermit's Garb", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Miner's Vest", "slot": "body", "stats": {"defense": 4}},
+    {"name": "Smith's Apron", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Farmer's Plaid", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Militia Armor", "slot": "body", "stats": {"defense": 4}},
+    {"name": "Forester's Tunic", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Linen Shirt", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Dockworker's Vest", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Stablehand's Tunic", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Page's Armor", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Beggar's Rags", "slot": "body", "stats": {"defense": 1}},
+    {"name": "Pilgrim's Robe", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Acolyte's Vestment", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Novice's Robe", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Trapper's Vest", "slot": "body", "stats": {"defense": 3}},
+    {"name": "Prospector's Gear", "slot": "body", "stats": {"defense": 4}},
+    {"name": "Barkeep's Apron", "slot": "body", "stats": {"defense": 2}},
+    {"name": "Courier's Mail", "slot": "body", "stats": {"defense": 3, "speed": 1}},
+    {"name": "Glyphed Vestment", "slot": "body", "stats": {"defense": 6, "luck": 2}},
+    {"name": "Hardened Leather Armor", "slot": "body", "stats": {"defense": 7, "speed": 1}},
+    {"name": "Elemental Tunic", "slot": "body", "stats": {"defense": 6, "Critical_chance": 2}},
+    {"name": "Invoker's Robe", "slot": "body", "stats": {"defense": 5, "Health": 3}},
+    {"name": "Thief's Jacket", "slot": "body", "stats": {"defense": 6, "speed": 3}},
+    {"name": "Guardian's Mail", "slot": "body", "stats": {"defense": 8, "strength": 2}},
+    {"name": "Druidic Wrap", "slot": "body", "stats": {"defense": 6, "luck": 4}},
+    {"name": "Warrior's Cuirass", "slot": "body", "stats": {"defense": 9, "strength": 3}},
+    {"name": "Mercenary's Plate", "slot": "body", "stats": {"defense": 7, "Health": 2}},
+    {"name": "Sage's Cloak", "slot": "body", "stats": {"defense": 5, "Critical_chance": 3}},
+    {"name": "Rune Etched Vest", "slot": "body", "stats": {"defense": 6, "luck": 2}},
+    {"name": "Chain Hauberk", "slot": "body", "stats": {"defense": 7, "speed": 1}},
+    {"name": "Adventurer's Garb", "slot": "body", "stats": {"defense": 6, "luck": 3}},
+    {"name": "Bandit's Hide", "slot": "body", "stats": {"defense": 8, "speed": 2}},
+    {"name": "Knight's Breastplate", "slot": "body", "stats": {"defense": 9, "strength": 2}},
+    {"name": "Monk's Habit", "slot": "body", "stats": {"defense": 5, "Health": 4}},
+    {"name": "Archer's Leather", "slot": "body", "stats": {"defense": 7, "speed": 3}},
+    {"name": "Cleric's Vestment", "slot": "body", "stats": {"defense": 6, "luck": 3}},
+    {"name": "Enchanter's Robe", "slot": "body", "stats": {"defense": 5, "Critical_chance": 4}},
+    {"name": "Berserker's Mail", "slot": "body", "stats": {"defense": 8, "strength": 4}},
+    {"name": "Scout's Jerkin", "slot": "body", "stats": {"defense": 7, "speed": 4}},
+    {"name": "Assassin's Cloak", "slot": "body", "stats": {"defense": 6, "speed": 5}},
+    {"name": "Paladin's Armor", "slot": "body", "stats": {"defense": 9, "Health": 3}},
+    {"name": "Mystic's Shroud", "slot": "body", "stats": {"defense": 6, "luck": 5}},
+    {"name": "Necromancer's Robe", "slot": "body", "stats": {"defense": 5, "Critical_chance": 3}},
+    {"name": "Ranger's Tunic", "slot": "body", "stats": {"defense": 7, "speed": 2}},
+    {"name": "Gladiator's Armor", "slot": "body", "stats": {"defense": 8, "strength": 3}},
+    {"name": "Scholar's Gown", "slot": "body", "stats": {"defense": 6, "Health": 4}},
+    {"name": "Shadow Cloak", "slot": "body", "stats": {"defense": 12, "speed": 5, "luck": 4}},
+    {"name": "Plate of the Fallen", "slot": "body", "stats": {"defense": 15, "strength": 6, "Health": 5}},
+    {"name": "Robes of the Magi", "slot": "body", "stats": {"defense": 10, "Critical_chance": 7, "Health": 4}},
+    {"name": "Vest of the Vagabond", "slot": "body", "stats": {"defense": 11, "speed": 6, "luck": 5}},
+    {"name": "Breastplate of Valor", "slot": "body", "stats": {"defense": 16, "strength": 7}},
+    {"name": "Warden's Mail", "slot": "body", "stats": {"defense": 14, "Health": 6, "luck": 3}},
+    {"name": "Tunic of the Wild", "slot": "body", "stats": {"defense": 12, "speed": 7, "Health": 4}},
+    {"name": "Chestguard of Mysteries", "slot": "body", "stats": {"defense": 13, "Critical_chance": 6}},
+    {"name": "Armor of the Forsaken", "slot": "body", "stats": {"defense": 15, "strength": 5, "speed": 4}},
+    {"name": "Mantle of the Oracle", "slot": "body", "stats": {"defense": 11, "luck": 6, "Critical_chance": 5}},
+    {"name": "Hauberk of the Bear", "slot": "body", "stats": {"defense": 14, "strength": 8}},
+    {"name": "Vestments of the Seer", "slot": "body", "stats": {"defense": 10, "Health": 7, "luck": 4}},
+    {"name": "Garb of the Phantom", "slot": "body", "stats": {"defense": 13, "speed": 5, "Critical_chance": 6}},
+    {"name": "Raiment of the Arctic", "slot": "body", "stats": {"defense": 15, "Health": 5, "strength": 4}},
+    {"name": "Cuirass of the Just", "slot": "body", "stats": {"defense": 16, "luck": 5}},
+    {"name": "Jerkin of the Agile", "slot": "body", "stats": {"defense": 12, "speed": 8}},
+    {"name": "Regalia of the Arcane", "slot": "body", "stats": {"defense": 11, "Critical_chance": 7, "Health": 3}},
+    {"name": "Chain of Resolve", "slot": "body", "stats": {"defense": 14, "strength": 6, "luck": 4}},
+    {"name": "Vest of the Dawn", "slot": "body", "stats": {"defense": 13, "Health": 6, "speed": 4}},
+    {"name": "Plackart of the Sentinel", "slot": "body", "stats": {"defense": 15, "strength": 7, "Critical_chance": 5}},
+        {
+      "name": "Celestial Robe",
+      "slot": "body",
       "stats": {
-        "defense": 2,
-        "speed": -1
+        "defense": 25,
+        "speed": 10,
+        "luck": 8,
+        "Health": 15,
+        "Critical_chance": 10,
+        "strength": 5
       }
     },
     {
-      "name": "Ancient Armor",
+      "name": "Dragonhide Armor",
       "slot": "body",
       "stats": {
+        "defense": 30,
+        "strength": 10,
+        "Health": 20,
+        "speed": 5,
+        "luck": 7,
+        "Critical_chance": 12
+      }
+    },
+    {
+      "name": "Ethereal Vestment",
+      "slot": "body",
+      "stats": {
+        "defense": 20,
+        "Critical_chance": 15,
+        "luck": 10,
+        "Health": 10,
+        "speed": 8,
+        "strength": 7
+      }
+    },
+    {
+      "name": "Armor of the Phoenix",
+      "slot": "body",
+      "stats": {
+        "defense": 28,
+        "Health": 18,
+        "speed": 7,
+        "Critical_chance": 9,
+        "strength": 8,
+        "luck": 5
+      }
+    },
+    {
+      "name": "Titan's Carapace",
+      "slot": "body",
+      "stats": {
+        "defense": 35,
+        "strength": 12,
+        "Health": 15,
+        "Critical_chance": 8,
+        "speed": 4,
+        "luck": 6
+      }
+    },
+    {
+      "name": "Vest of the Void",
+      "slot": "body",
+      "stats": {
+        "defense": 22,
+        "speed": 12,
+        "luck": 9,
+        "Health": 14,
+        "Critical_chance": 11,
+        "strength": 6
+      }
+    },
+    {
+      "name": "Mantle of the Ancients",
+      "slot": "body",
+      "stats": {
+        "defense": 26,
+        "luck": 12,
+        "Health": 16,
+        "speed": 6,
+        "Critical_chance": 10,
+        "strength": 9
+      }
+    },
+    {
+      "name": "Guardian's Aegis",
+      "slot": "body",
+      "stats": {
+        "defense": 30,
+        "Health": 20,
+        "strength": 11,
+        "Critical_chance": 7,
+        "speed": 5,
+        "luck": 8
+      }
+    },
+    {
+      "name": "Spectral Shroud",
+      "slot": "body",
+      "stats": {
+        "defense": 24,
+        "speed": 11,
+        "Critical_chance": 13,
+        "Health": 12,
+        "strength": 7,
+        "luck": 10
+      }
+    },
+    {
+      "name": "Glorious Plate",
+      "slot": "body",
+      "stats": {
+        "defense": 32,
+        "strength": 10,
+        "Health": 18,
+        "Critical_chance": 9,
+        "speed": 3,
+        "luck": 7
+      }
+    },
+    {
+      "name": "Robes of Enlightenment",
+      "slot": "body",
+      "stats": {
+        "defense": 23,
+        "Critical_chance": 14,
+        "luck": 11,
+        "Health": 13,
+        "speed": 9,
+        "strength": 5
+      }
+    },
+    {"name": "Bulwark of the Storm","slot": "body","stats": {"defense": 28,"Health": 17,"speed": 8,"Critical_chance": 10,"strength": 9,"luck": 6}},
+
+    {"name": "Basic Helm", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Rusty Cap", "slot": "helmet", "stats": {"defense": 1}},
+    {"name": "Leather Hood", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Copper Helm", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Bandit Mask", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Wooden Coif", "slot": "helmet", "stats": {"defense": 1}},
+    {"name": "Worn Tricorne", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Padded Cap", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Tin Helmet", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Iron Visor", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Squire's Helm", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Braided Hood", "slot": "helmet", "stats": {"defense": 1}},
+    {"name": "Plated Cap", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Scout's Hat", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Footman's Helm", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Mercenary Hood", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Peasant's Hat", "slot": "helmet", "stats": {"defense": 1}},
+    {"name": "Buckled Helmet", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Chain Hood", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Fur Cap", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Guard's Helm", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Traveler's Cap", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Raider's Mask", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Novice's Hood", "slot": "helmet", "stats": {"defense": 1}},
+    {"name": "Fisherman's Hat", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Hunter's Cap", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Thief's Hood", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Gambler's Hat", "slot": "helmet", "stats": {"defense": 1}},
+    {"name": "Archer's Cap", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Monk's Hood", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Drifter's Helm", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Wanderer's Hood", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Brawler's Helm", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Apprentice's Cap", "slot": "helmet", "stats": {"defense": 1}},
+    {"name": "Soldier's Helmet", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Miner's Hat", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Smith's Cap", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Forester's Hood", "slot": "helmet", "stats": {"defense": 2}},
+    {"name": "Duelist's Cap", "slot": "helmet", "stats": {"defense": 3}},
+    {"name": "Pilgrim's Hood", "slot": "helmet", "stats": {"defense": 1}},
+    {"name": "Engraved Steel Helm", "slot": "helmet", "stats": {"defense": 5, "luck": 1}},
+    {"name": "Reinforced Leather Cap", "slot": "helmet", "stats": {"defense": 4, "speed": 1}},
+    {"name": "Mystic's Circlet", "slot": "helmet", "stats": {"defense": 4, "Critical_chance": 2}},
+    {"name": "Battlemage Hood", "slot": "helmet", "stats": {"defense": 5, "luck": 2}},
+    {"name": "Tracker's Hood", "slot": "helmet", "stats": {"defense": 4, "speed": 2}},
+    {"name": "Veteran's Helm", "slot": "helmet", "stats": {"defense": 6, "strength": 1}},
+    {"name": "Gladiator's Casque", "slot": "helmet", "stats": {"defense": 5, "Health": 2}},
+    {"name": "Rogue's Mask", "slot": "helmet", "stats": {"defense": 4, "luck": 3}},
+    {"name": "Knight's Helm", "slot": "helmet", "stats": {"defense": 7, "strength": 2}},
+    {"name": "Sorcerer's Hat", "slot": "helmet", "stats": {"defense": 4, "Critical_chance": 3}},
+    {"name": "Assassin's Hood", "slot": "helmet", "stats": {"defense": 5, "speed": 3}},
+    {"name": "Guardian's Helm", "slot": "helmet", "stats": {"defense": 6, "Health": 3}},
+    {"name": "Druid's Cap", "slot": "helmet", "stats": {"defense": 5, "luck": 2}},
+    {"name": "Berserker's Helm", "slot": "helmet", "stats": {"defense": 6, "strength": 3}},
+    {"name": "Sage's Diadem", "slot": "helmet", "stats": {"defense": 4, "Critical_chance": 4}},
+    {"name": "Explorer's Cap", "slot": "helmet", "stats": {"defense": 5, "speed": 2}},
+    {"name": "Necromancer's Hood", "slot": "helmet", "stats": {"defense": 4, "luck": 4}},
+    {"name": "Paladin's Helm", "slot": "helmet", "stats": {"defense": 7, "Health": 2}},
+    {"name": "Ranger's Headgear", "slot": "helmet", "stats": {"defense": 5, "speed": 3}},
+    {"name": "Warlock's Cowl", "slot": "helmet", "stats": {"defense": 4, "Critical_chance": 5}},
+    {"name": "Mercenary's Helm", "slot": "helmet", "stats": {"defense": 6, "strength": 2}},
+    {"name": "Frostborne Helm", "slot": "helmet", "stats": {"defense": 5, "Health": 4}},
+    {"name": "Shadow Veil", "slot": "helmet", "stats": {"defense": 5, "luck": 3}},
+    {"name": "Templar's Helm", "slot": "helmet", "stats": {"defense": 7, "strength": 1}},
+    {"name": "Beastmaster's Cap", "slot": "helmet", "stats": {"defense": 5, "speed": 4}},
+    {"name": "Monk's Headband", "slot": "helmet", "stats": {"defense": 4, "Health": 3}},
+    {"name": "Vindicator's Helm", "slot": "helmet", "stats": {"defense": 6, "Critical_chance": 2}},
+    {"name": "Seafarer's Hat", "slot": "helmet", "stats": {"defense": 5, "luck": 4}},
+    {"name": "Helm of the Abyss", "slot": "helmet", "stats": {"defense": 8, "Critical_chance": 4, "luck": 3}},
+    {"name": "Crown of Insight", "slot": "helmet", "stats": {"defense": 7, "Health": 5, "luck": 5}},
+    {"name": "Mask of the Predator", "slot": "helmet", "stats": {"defense": 9, "speed": 5, "strength": 4}},
+    {"name": "Visage of the Phoenix", "slot": "helmet", "stats": {"defense": 10, "Health": 6, "Critical_chance": 3}},
+    {"name": "Cap of the Wild", "slot": "helmet", "stats": {"defense": 8, "speed": 6, "luck": 4}},
+    {"name": "Helm of Valor", "slot": "helmet", "stats": {"defense": 11, "strength": 5, "Health": 4}},
+    {"name": "Skyward Circlet", "slot": "helmet", "stats": {"defense": 7, "Critical_chance": 5, "speed": 4}},
+    {"name": "Nightstalker's Hood", "slot": "helmet", "stats": {"defense": 9, "speed": 7, "luck": 3}},
+    {"name": "Diadem of the Sage", "slot": "helmet", "stats": {"defense": 8, "Health": 5, "Critical_chance": 4}},
+    {"name": "Giant's Casque", "slot": "helmet", "stats": {"defense": 12, "strength": 6}},
+    {"name": "Wraith's Veil", "slot": "helmet", "stats": {"defense": 10, "speed": 5, "Critical_chance": 4}},
+    {"name": "Crest of the Ocean", "slot": "helmet", "stats": {"defense": 8, "Health": 7, "luck": 4}},
+    {"name": "Glacier Cap", "slot": "helmet", "stats": {"defense": 11, "strength": 4, "Health": 5}},
+    {"name": "Lightbane Helm", "slot": "helmet", "stats": {"defense": 9, "Critical_chance": 6, "speed": 3}},
+    {"name": "Dread Pirate's Hat", "slot": "helmet", "stats": {"defense": 8, "luck": 6, "speed": 4}},
+    {"name": "Arcanist's Hood", "slot": "helmet", "stats": {"defense": 7, "Health": 5, "Critical_chance": 5}},
+    {"name": "Warlord's Helm", "slot": "helmet", "stats": {"defense": 12, "strength": 5, "luck": 3}},
+    {"name": "Elder Druid's Cowl", "slot": "helmet", "stats": {"defense": 10, "Health": 6, "speed": 4}},
+    {"name": "Sentinel's Visor", "slot": "helmet", "stats": {"defense": 11, "Critical_chance": 4, "strength": 4}},
+    {"name": "Bard's Chapeau", "slot": "helmet", "stats": {"defense": 9, "luck": 7, "Health": 4}},
+       {
+      "name": "Crown of the Eternal",
+      "slot": "helmet",
+      "stats": {
+        "defense": 15,
+        "speed": 8,
+        "strength": 7,
+        "Health": 10,
+        "luck": 6,
+        "Critical_chance": 5
+      }
+    },
+    {
+      "name": "Helm of the Dragonlord",
+      "slot": "helmet",
+      "stats": {
+        "defense": 18,
+        "strength": 10,
+        "Health": 12,
+        "Critical_chance": 7,
+        "luck": 5
+      }
+    },
+    {
+      "name": "Celestial Diadem",
+      "slot": "helmet",
+      "stats": {
+        "defense": 14,
+        "Critical_chance": 8,
+        "luck": 7,
+        "Health": 9,
+        "speed": 6
+      }
+    },
+    {
+      "name": "Voidwalker's Hood",
+      "slot": "helmet",
+      "stats": {
+        "defense": 16,
+        "speed": 10,
+        "Critical_chance": 6,
+        "Health": 8,
+        "strength": 5
+      }
+    },
+    {
+      "name": "Phoenix Plume Helm",
+      "slot": "helmet",
+      "stats": {
+        "defense": 17,
+        "Health": 11,
+        "luck": 9,
+        "speed": 7,
+        "Critical_chance": 5
+      }
+    },
+    {
+      "name": "Titan's Crown",
+      "slot": "helmet",
+      "stats": {
+        "defense": 20,
+        "strength": 12,
+        "Health": 10,
+        "luck": 4,
+        "Critical_chance": 6
+      }
+    },
+    {
+      "name": "Mystic's Aura Hood",
+      "slot": "helmet",
+      "stats": {
+        "defense": 15,
+        "Critical_chance": 9,
+        "luck": 8,
+        "Health": 7,
+        "speed": 5
+      }
+    },
+    {
+      "name": "Guardian of the Lost",
+      "slot": "helmet",
+      "stats": {
+        "defense": 18,
+        "Health": 12,
+        "strength": 7,
+        "luck": 6,
+        "Critical_chance": 4
+      }
+    },
+    {
+      "name": "Spectral Visage",
+      "slot": "helmet",
+      "stats": {
+        "defense": 16,
+        "speed": 9,
+        "Health": 10,
+        "Critical_chance": 7,
+        "strength": 6
+      }
+    },
+    {
+      "name": "Helm of the Seer",
+      "slot": "helmet",
+      "stats": {
+        "defense": 14,
+        "luck": 10,
+        "Critical_chance": 8,
+        "Health": 9,
+        "speed": 7
+      }
+    },
+    {
+      "name": "Warrior's Sigil Helm",
+      "slot": "helmet",
+      "stats": {
+        "defense": 19,
+        "strength": 11,
+        "Health": 10,
+        "luck": 5,
+        "Critical_chance": 6
+      }
+    },
+    {
+      "name": "Ascendant's Crown",
+      "slot": "helmet",
+      "stats": {
+        "defense": 17,
+        "Critical_chance": 10,
+        "luck": 7,
+        "Health": 8,
+        "speed": 6
+      }
+    },
+    {"name": "Worn Leather Boots", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Rough Cloth Shoes", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Sturdy Work Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Old Marching Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Simple Sandals", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Farmer's Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Tattered Moccasins", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Patched Leather Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Frayed Cloth Boots", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Basic Steel-Toed Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Lightweight Travel Shoes", "slot": "boots", "stats": {"defense": 1, "speed": 1}},
+    {"name": "Reinforced Hide Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Rusty Chainmail Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Novice's Walking Shoes", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Peasant's Footwraps", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Apprentice's Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Footman's Greaves", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Scout's Light Boots", "slot": "boots", "stats": {"defense": 1, "speed": 1}},
+    {"name": "Woolen Socks", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Miner's Heavy Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Smith's Protective Footwear", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Hunter's Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Bandit's Shoes", "slot": "boots", "stats": {"defense": 1, "speed": 1}},
+    {"name": "Traveler's Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Fisher's Boots", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Merchant's Sturdy Shoes", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Ranger's Light Footwear", "slot": "boots", "stats": {"defense": 2, "speed": 1}},
+    {"name": "Pilgrim's Sandals", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Sailor's Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Cobbled Shoes", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Bard's Soft Shoes", "slot": "boots", "stats": {"defense": 1, "speed": 1}},
+    {"name": "Acolyte's Slippers", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Villager's Footwear", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Adventurer's Boots", "slot": "boots", "stats": {"defense": 2, "speed": 1}},
+    {"name": "Gladiator's Sandals", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Monk's Walking Shoes", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Thief's Quiet Shoes", "slot": "boots", "stats": {"defense": 1, "speed": 2}},
+    {"name": "Dancer's Light Footwear", "slot": "boots", "stats": {"defense": 1, "speed": 1}},
+    {"name": "Herbalist's Boots", "slot": "boots", "stats": {"defense": 2}},
+    {"name": "Scribe's Shoes", "slot": "boots", "stats": {"defense": 1}},
+    {"name": "Trailblazer's Boots", "slot": "boots", "stats": {"defense": 3, "speed": 2}},
+    {"name": "Boots of the Vanguard", "slot": "boots", "stats": {"defense": 4, "strength": 1}},
+    {"name": "Windwalker Sandals", "slot": "boots", "stats": {"defense": 3, "speed": 3}},
+    {"name": "Greaves of Fortitude", "slot": "boots", "stats": {"defense": 5, "Health": 2}},
+    {"name": "Marauder's Boots", "slot": "boots", "stats": {"defense": 4, "speed": 1, "strength": 2}},
+    {"name": "Sorcerer's Slippers", "slot": "boots", "stats": {"defense": 3, "Critical_chance": 2}},
+    {"name": "Pathfinder's Boots", "slot": "boots", "stats": {"defense": 4, "speed": 2}},
+    {"name": "Tempered Steel Boots", "slot": "boots", "stats": {"defense": 5}},
+    {"name": "Boots of the Zephyr", "slot": "boots", "stats": {"defense": 3, "speed": 4}},
+    {"name": "Guardian's Sabatons", "slot": "boots", "stats": {"defense": 6, "Health": 1}},
+    {"name": "Rogue's Softsteps", "slot": "boots", "stats": {"defense": 3, "speed": 3, "luck": 1}},
+    {"name": "Knight's War Boots", "slot": "boots", "stats": {"defense": 6, "strength": 1}},
+    {"name": "Boots of Twilight", "slot": "boots", "stats": {"defense": 4, "luck": 2}},
+    {"name": "Swiftness Anklets", "slot": "boots", "stats": {"defense": 3, "speed": 4}},
+    {"name": "Boots of the Bear", "slot": "boots", "stats": {"defense": 5, "strength": 2}},
+    {"name": "Scholar's Shoes", "slot": "boots", "stats": {"defense": 3, "Critical_chance": 3}},
+    {"name": "Boots of the Falcon", "slot": "boots", "stats": {"defense": 4, "speed": 3}},
+    {"name": "Mercenary's Stompers", "slot": "boots", "stats": {"defense": 5, "strength": 1}},
+    {"name": "Ranger's Footwear", "slot": "boots", "stats": {"defense": 4, "speed": 2, "luck": 1}},
+    {"name": "Cleric's Sandals", "slot": "boots", "stats": {"defense": 4, "Health": 3}},
+    {"name": "Assassin's Boots", "slot": "boots", "stats": {"defense": 3, "speed": 4, "Critical_chance": 1}},
+    {"name": "Elemental Walkers", "slot": "boots", "stats": {"defense": 4, "luck": 3}},
+    {"name": "Warlock's Boots", "slot": "boots", "stats": {"defense": 3, "Critical_chance": 4}},
+    {"name": "Boots of the Wisp", "slot": "boots", "stats": {"defense": 3, "speed": 5}},
+    {"name": "Dwarven Steel Boots", "slot": "boots", "stats": {"defense": 6, "strength": 2}},
+    {"name": "Boots of the Nomad", "slot": "boots", "stats": {"defense": 4, "speed": 3, "Health": 2}},
+    {"name": "Glacial Greaves", "slot": "boots", "stats": {"defense": 5, "Health": 3}},
+    {"name": "Nimblefoot Boots", "slot": "boots", "stats": {"defense": 3, "speed": 4, "luck": 2}},
+    {"name": "Boots of the Gale", "slot": "boots", "stats": {"defense": 7, "speed": 6, "luck": 3}},
+    {"name": "Inferno Walkers", "slot": "boots", "stats": {"defense": 8, "strength": 4, "Health": 3}},
+    {"name": "Tidecaller's Treads", "slot": "boots", "stats": {"defense": 6, "Critical_chance": 5, "speed": 4}},
+    {"name": "Boots of the Earthshaker", "slot": "boots", "stats": {"defense": 9, "strength": 5, "Health": 4}},
+    {"name": "Shadowstep Boots", "slot": "boots", "stats": {"defense": 7, "speed": 7, "luck": 4}},
+    {"name": "Greaves of the Titan", "slot": "boots", "stats": {"defense": 10, "strength": 6}},
+    {"name": "Frostbound Sabatons", "slot": "boots", "stats": {"defense": 8, "Health": 5, "speed": 3}},
+    {"name": "Boots of Blazing Trail", "slot": "boots", "stats": {"defense": 7, "speed": 5, "Critical_chance": 4}},
+    {"name": "Vortex Boots", "slot": "boots", "stats": {"defense": 6, "speed": 6, "luck": 5}},
+    {"name": "Arcanist's Footgear", "slot": "boots", "stats": {"defense": 7, "Critical_chance": 6, "Health": 3}},
+    {"name": "Boots of the Guardian", "slot": "boots", "stats": {"defense": 9, "Health": 6, "strength": 3}},
+    {"name": "Spectral Treads", "slot": "boots", "stats": {"defense": 7, "speed": 8}},
+    {"name": "Lavawalker Boots", "slot": "boots", "stats": {"defense": 8, "strength": 4, "Critical_chance": 5}},
+    {"name": "Stormstrider Boots", "slot": "boots", "stats": {"defense": 6, "speed": 7, "luck": 4}},
+    {"name": "Greaves of the Phoenix", "slot": "boots", "stats": {"defense": 10, "Health": 5, "strength": 4}},
+    {"name": "Path of the Nomad", "slot": "boots", "stats": {"defense": 7, "speed": 6, "Health": 4}},
+    {"name": "Boots of the Fallen King", "slot": "boots", "stats": {"defense": 9, "strength": 5, "luck": 3}},
+    {"name": "Wraithwalk Boots", "slot": "boots", "stats": {"defense": 7, "speed": 9, "Critical_chance": 3}},
+    {"name": "Harbinger's Hooves", "slot": "boots", "stats": {"defense": 8, "Critical_chance": 7, "Health": 3}},
+    {"name": "Boots of Endless Journey", "slot": "boots", "stats": {"defense": 7, "speed": 7, "Health": 5}},
+        {
+      "name": "Ethereal Striders",
+      "slot": "boots",
+      "stats": {
+        "defense": 12,
+        "speed": 10,
+        "Health": 8,
+        "luck": 7,
+        "Critical_chance": 6,
+        "strength": 5
+      }
+    },
+    {
+      "name": "Boots of Ascension",
+      "slot": "boots",
+      "stats": {
+        "defense": 15,
+        "speed": 12,
+        "Health": 10,
+        "Critical_chance": 8,
+        "strength": 7
+      }
+    },
+    {
+      "name": "Phoenix Featherwalk",
+      "slot": "boots",
+      "stats": {
+        "defense": 14,
+        "speed": 11,
+        "Health": 9,
+        "luck": 8,
+        "Critical_chance": 7
+      }
+    },
+    {
+      "name": "Voidwalker Greaves",
+      "slot": "boots",
+      "stats": {
+        "defense": 13,
+        "speed": 10,
+        "Health": 8,
+        "Critical_chance": 9,
+        "strength": 6
+      }
+    },
+    {
+      "name": "Tempest Winged Boots",
+      "slot": "boots",
+      "stats": {
+        "defense": 12,
+        "speed": 15,
+        "Health": 7,
+        "luck": 6,
+        "Critical_chance": 5
+      }
+    },
+    {
+      "name": "Titan's March",
+      "slot": "boots",
+      "stats": {
+        "defense": 18,
+        "strength": 10,
+        "Health": 12,
+        "speed": 7,
+        "luck": 5
+      }
+    },
+    {
+      "name": "Mystic's Path",
+      "slot": "boots",
+      "stats": {
+        "defense": 11,
+        "speed": 9,
+        "Critical_chance": 10,
+        "Health": 6,
+        "luck": 7
+      }
+    },
+    {
+      "name": "Boots of the Divine",
+      "slot": "boots",
+      "stats": {
+        "defense": 14,
+        "Health": 11,
+        "speed": 8,
+        "luck": 9,
+        "Critical_chance": 6
+      }
+    },
+    {
+      "name": "Shadow Dancer's Shoes",
+      "slot": "boots",
+      "stats": {
+        "defense": 13,
+        "speed": 14,
+        "luck": 8,
+        "Health": 7,
+        "Critical_chance": 7
+      }
+    },
+    {
+      "name": "Galeforce Treads",
+      "slot": "boots",
+      "stats": {
+        "defense": 12,
+        "speed": 13,
+        "Health": 8,
+        "luck": 7,
+        "Critical_chance": 8
+      }
+    },
+    {
+      "name": "Boots of Eternal Light",
+      "slot": "boots",
+      "stats": {
+        "defense": 16,
+        "Health": 10,
+        "speed": 9,
+        "Critical_chance": 9,
+        "strength": 8
+      }
+    },
+    {
+      "name": "Invoker's Steps",
+      "slot": "boots",
+      "stats": {
+        "defense": 11,
+        "speed": 10,
+        "Critical_chance": 11,
+        "Health": 7,
+        "luck": 6
+      }
+    },
+    {"name": "Roughspun Gloves", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Leather Work Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Knitted Mittens", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Burlap Handwraps", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Patchwork Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Worn Mail Gauntlets", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Simple Cloth Gloves", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Tough Hide Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Old Linen Mitts", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Stitched Leather Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Fisherman's Gloves", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Farmer's Handwear", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Sailor's Grips", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Apprentice's Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Bandit's Handwraps", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Ranger's Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Peasant's Wraps", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Mercenary's Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Footman's Gauntlets", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Trader's Mitts", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Explorer's Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Scout's Handguards", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Miner's Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Smith's Gauntlets", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Gardener's Handwear", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Hunter's Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Mason's Grips", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Herbalist's Handwraps", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Carpenter's Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Baker's Mitts", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Butcher's Handwear", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Painter's Gloves", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Archivist's Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Gravedigger's Mitts", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Brewer's Handwraps", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Fletcher's Gloves", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Scribe's Handwear", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Locksmith's Grips", "slot": "gloves", "stats": {"defense": 2}},
+    {"name": "Courier's Mitts", "slot": "gloves", "stats": {"defense": 1}},
+    {"name": "Beggar's Handwraps", "slot": "gloves", "stats": {"defense": 1}},
+      {"name": "Enforced Mail Gauntlets", "slot": "gloves", "stats": {"defense": 3, "strength": 1}},
+    {"name": "Padded Leather Gloves", "slot": "gloves", "stats": {"defense": 4, "speed": 1}},
+    {"name": "Gloves of the Falcon", "slot": "gloves", "stats": {"defense": 3, "speed": 2}},
+    {"name": "Mystic's Handwraps", "slot": "gloves", "stats": {"defense": 3, "Critical_chance": 2}},
+    {"name": "Brigand's Gloves", "slot": "gloves", "stats": {"defense": 4, "luck": 2}},
+    {"name": "Archer's Gloves", "slot": "gloves", "stats": {"defense": 3, "speed": 3}},
+    {"name": "Soldier's Gauntlets", "slot": "gloves", "stats": {"defense": 5, "strength": 1}},
+    {"name": "Thief's Gloves", "slot": "gloves", "stats": {"defense": 3, "luck": 3}},
+    {"name": "Explorer's Gloves", "slot": "gloves", "stats": {"defense": 4, "speed": 2}},
+    {"name": "Sorcerer's Gloves", "slot": "gloves", "stats": {"defense": 3, "Critical_chance": 3}},
+    {"name": "Ranger's Handguards", "slot": "gloves", "stats": {"defense": 4, "speed": 2, "luck": 1}},
+    {"name": "Knight's Gauntlets", "slot": "gloves", "stats": {"defense": 6, "strength": 2}},
+    {"name": "Nimble Gloves", "slot": "gloves", "stats": {"defense": 3, "speed": 4}},
+    {"name": "Cleric's Mitts", "slot": "gloves", "stats": {"defense": 4, "Health": 2}},
+    {"name": "Brawler's Handwraps", "slot": "gloves", "stats": {"defense": 5, "strength": 2}},
+    {"name": "Beastmaster's Gloves", "slot": "gloves", "stats": {"defense": 4, "luck": 2}},
+    {"name": "Adept's Gloves", "slot": "gloves", "stats": {"defense": 3, "Critical_chance": 4}},
+    {"name": "Mercenary's Gloves", "slot": "gloves", "stats": {"defense": 5, "strength": 1, "speed": 1}},
+    {"name": "Assassin's Handwraps", "slot": "gloves", "stats": {"defense": 3, "speed": 5}},
+    {"name": "Druid's Gloves", "slot": "gloves", "stats": {"defense": 4, "Health": 3}},
+    {"name": "Warlock's Gloves", "slot": "gloves", "stats": {"defense": 3, "Critical_chance": 5}},
+    {"name": "Paladin's Gauntlets", "slot": "gloves", "stats": {"defense": 6, "Health": 2}},
+    {"name": "Bandit's Gloves", "slot": "gloves", "stats": {"defense": 4, "luck": 3}},
+    {"name": "Scholar's Handwear", "slot": "gloves", "stats": {"defense": 3, "Critical_chance": 3, "speed": 1}},
+    {"name": "Gladiator's Gauntlets", "slot": "gloves", "stats": {"defense": 5, "strength": 3}},
+    {"name": "Elementalist's Gloves", "slot": "gloves", "stats": {"defense": 3, "Critical_chance": 4, "luck": 2}},
+    {"name": "Vanguard's Gloves", "slot": "gloves", "stats": {"defense": 6, "strength": 2, "Health": 1}},
+    {"name": "Scavenger's Handwraps", "slot": "gloves", "stats": {"defense": 4, "speed": 3, "luck": 1}},
+    {"name": "Gloves of the Arcanist", "slot": "gloves", "stats": {"defense": 6, "Critical_chance": 5, "luck": 3}},
+    {"name": "Warlord's Gauntlets", "slot": "gloves", "stats": {"defense": 8, "strength": 4, "Health": 3}},
+    {"name": "Shadow Grasp", "slot": "gloves", "stats": {"defense": 7, "speed": 6, "luck": 4}},
+    {"name": "Gauntlets of the Titan", "slot": "gloves", "stats": {"defense": 9, "strength": 5, "Health": 4}},
+    {"name": "Mystic's Embrace", "slot": "gloves", "stats": {"defense": 6, "Critical_chance": 6, "speed": 3}},
+    {"name": "Gloves of the Agile", "slot": "gloves", "stats": {"defense": 7, "speed": 7, "luck": 3}},
+    {"name": "Vindicator's Handguards", "slot": "gloves", "stats": {"defense": 8, "strength": 4, "Critical_chance": 4}},
+    {"name": "Frostfire Gloves", "slot": "gloves", "stats": {"defense": 6, "Health": 5, "Critical_chance": 5}},
+    {"name": "Tempest Gloves", "slot": "gloves", "stats": {"defense": 7, "speed": 6, "Critical_chance": 4}},
+    {"name": "Gauntlets of the Phoenix", "slot": "gloves", "stats": {"defense": 9, "Health": 6, "strength": 3}},
+    {"name": "Necromancer's Touch", "slot": "gloves", "stats": {"defense": 6, "Critical_chance": 7, "luck": 2}},
+    {"name": "Ranger's Grip", "slot": "gloves", "stats": {"defense": 7, "speed": 5, "luck": 4}},
+    {"name": "Berserker's Clasp", "slot": "gloves", "stats": {"defense": 8, "strength": 6}},
+    {"name": "Sage's Handwear", "slot": "gloves", "stats": {"defense": 6, "Critical_chance": 6, "Health": 3}},
+    {"name": "Assassin's Grip", "slot": "gloves", "stats": {"defense": 7, "speed": 8, "Critical_chance": 3}},
+    {"name": "Paladin's Mitts", "slot": "gloves", "stats": {"defense": 9, "Health": 5, "strength": 4}},
+    {"name": "Elemental Grips", "slot": "gloves", "stats": {"defense": 6, "luck": 5, "Critical_chance": 4}},
+    {"name": "Guardian's Gauntlets", "slot": "gloves", "stats": {"defense": 8, "Health": 7, "strength": 3}},
+    {"name": "Druid's Handwraps", "slot": "gloves", "stats": {"defense": 7, "speed": 5, "Health": 4}},
+    {"name": "Invoker's Gloves", "slot": "gloves", "stats": {"defense": 6, "Critical_chance": 8, "luck": 3}},
+        {
+      "name": "Gloves of Infinity",
+      "slot": "gloves",
+      "stats": {
+        "defense": 10,
+        "speed": 8,
+        "strength": 7,
+        "Health": 10,
+        "luck": 6,
+        "Critical_chance": 5
+      }
+    },
+    {
+      "name": "Ethereal Touch",
+      "slot": "gloves",
+      "stats": {
+        "defense": 12,
+        "Critical_chance": 8,
+        "speed": 7,
+        "Health": 9,
+        "luck": 7
+      }
+    },
+    {
+      "name": "Gauntlets of the Ancients",
+      "slot": "gloves",
+      "stats": {
+        "defense": 15,
+        "strength": 10,
+        "Health": 8,
+        "Critical_chance": 6
+      }
+    },
+    {
+      "name": "Hands of Fate",
+      "slot": "gloves",
+      "stats": {
+        "defense": 11,
+        "luck": 9,
+        "Critical_chance": 7,
+        "speed": 6,
+        "Health": 7
+      }
+    },
+    {
+      "name": "Void Grips",
+      "slot": "gloves",
+      "stats": {
+        "defense": 13,
+        "speed": 10,
+        "Critical_chance": 9,
+        "luck": 8
+      }
+    },
+    {
+      "name": "Phoenix Embrace",
+      "slot": "gloves",
+      "stats": {
+        "defense": 14,
+        "Health": 12,
+        "strength": 9,
+        "Critical_chance": 5
+      }
+    },
+    {
+      "name": "Titan's Grasp",
+      "slot": "gloves",
+      "stats": {
+        "defense": 16,
+        "strength": 11,
+        "Health": 10,
+        "luck": 4
+      }
+    },
+    {
+      "name": "Mystic's Claws",
+      "slot": "gloves",
+      "stats": {
+        "defense": 10,
+        "Critical_chance": 11,
+        "luck": 9,
+        "speed": 7
+      }
+    },
+    {
+      "name": "Tempest Fingers",
+      "slot": "gloves",
+      "stats": {
+        "defense": 12,
+        "speed": 12,
+        "Health": 8,
+        "luck": 5
+      }
+    },
+    {
+      "name": "Harbinger's Handwear",
+      "slot": "gloves",
+      "stats": {
+        "defense": 14,
+        "Critical_chance": 10,
+        "strength": 8,
+        "speed": 6
+      }
+    },
+    {
+      "name": "Gloves of the Guardian",
+      "slot": "gloves",
+      "stats": {
+        "defense": 15,
+        "Health": 11,
+        "strength": 7,
+        "luck": 6
+      }
+    },
+    {
+      "name": "Shadow Silk Gloves",
+      "slot": "gloves",
+      "stats": {
+        "defense": 11,
+        "speed": 9,
+        "Critical_chance": 12,
+        "luck": 7
+      }
+    },
+    {"name": "Copper Band", "slot": "ring", "stats": {"luck": 1}},
+    {"name": "Braided Hemp Ring", "slot": "ring", "stats": {"Health": 2}},
+    {"name": "Wooden Signet", "slot": "ring", "stats": {"defense": 1}},
+    {"name": "Tin Circlet", "slot": "ring", "stats": {"speed": 1}},
+    {"name": "Glass Ring", "slot": "ring", "stats": {"luck": 2}},
+    {"name": "Iron Loop", "slot": "ring", "stats": {"strength": 1}},
+    {"name": "Twisted Vine Ring", "slot": "ring", "stats": {"Health": 3}},
+    {"name": "Stone Ring", "slot": "ring", "stats": {"defense": 2}},
+    {"name": "Clay Band", "slot": "ring", "stats": {"speed": 2}},
+    {"name": "Bone Ring", "slot": "ring", "stats": {"luck": 3}},
+    {"name": "Frosty Silver Ring", "slot": "ring", "stats": {"Critical_chance": 1}},
+    {"name": "Beaded Ring", "slot": "ring", "stats": {"Health": 4}},
+    {"name": "Rough Gold Band", "slot": "ring", "stats": {"defense": 3}},
+    {"name": "Woven Grass Ring", "slot": "ring", "stats": {"speed": 3}},
+    {"name": "Plated Bronze Ring", "slot": "ring", "stats": {"luck": 4}},
+    {"name": "Carved Ivory Ring", "slot": "ring", "stats": {"strength": 2}},
+    {"name": "Obsidian Ring", "slot": "ring", "stats": {"Health": 5}},
+    {"name": "Gilded Copper Ring", "slot": "ring", "stats": {"defense": 4}},
+    {"name": "Slate Ring", "slot": "ring", "stats": {"speed": 4}},
+    {"name": "Lapis Lazuli Ring", "slot": "ring", "stats": {"luck": 5}},
+    {"name": "Moss Agate Ring", "slot": "ring", "stats": {"Critical_chance": 2}},
+    {"name": "Turquoise Band", "slot": "ring", "stats": {"Health": 6}},
+    {"name": "Silver Knot Ring", "slot": "ring", "stats": {"defense": 5}},
+    {"name": "Braided Silk Ring", "slot": "ring", "stats": {"speed": 5}},
+    {"name": "Jade Signet Ring", "slot": "ring", "stats": {"luck": 6}},
+    {"name": "Quartz Ring", "slot": "ring", "stats": {"strength": 3}},
+    {"name": "Topaz Loop", "slot": "ring", "stats": {"Health": 7}},
+    {"name": "Garnet Band", "slot": "ring", "stats": {"defense": 6}},
+    {"name": "Flint Ring", "slot": "ring", "stats": {"speed": 6}},
+    {"name": "Amethyst Ring", "slot": "ring", "stats": {"luck": 7}},
+    {"name": "Coral Ring", "slot": "ring", "stats": {"Critical_chance": 3}},
+    {"name": "Pearl Band", "slot": "ring", "stats": {"Health": 8}},
+    {"name": "Ebony Loop", "slot": "ring", "stats": {"defense": 7}},
+    {"name": "Ivory Ring", "slot": "ring", "stats": {"speed": 7}},
+    {"name": "Ruby Signet", "slot": "ring", "stats": {"luck": 8}},
+    {"name": "Sapphire Circle", "slot": "ring", "stats": {"strength": 4}},
+    {"name": "Emerald Band", "slot": "ring", "stats": {"Health": 9}},
+    {"name": "Onyx Ring", "slot": "ring", "stats": {"defense": 8}},
+    {"name": "Sunstone Loop", "slot": "ring", "stats": {"speed": 8}},
+    {"name": "Moonstone Ring", "slot": "ring", "stats": {"luck": 9}},
+    {"name": "Ring of Nimbleness", "slot": "ring", "stats": {"speed": 4, "luck": 2}},
+    {"name": "Band of Fortitude", "slot": "ring", "stats": {"Health": 10, "defense": 3}},
+    {"name": "Signet of Strength", "slot": "ring", "stats": {"strength": 5, "Health": 2}},
+    {"name": "Arcanist's Band", "slot": "ring", "stats": {"Critical_chance": 4, "luck": 3}},
+    {"name": "Gladiator's Ring", "slot": "ring", "stats": {"defense": 5, "strength": 4}},
+    {"name": "Sorcerer's Seal", "slot": "ring", "stats": {"Critical_chance": 5, "speed": 3}},
+    {"name": "Explorer's Loop", "slot": "ring", "stats": {"speed": 5, "Health": 3}},
+    {"name": "Guardian's Band", "slot": "ring", "stats": {"Health": 12, "defense": 4}},
+    {"name": "Assassin's Signet", "slot": "ring", "stats": {"speed": 6, "luck": 4}},
+    {"name": "Ranger's Knot", "slot": "ring", "stats": {"luck": 5, "speed": 4}},
+    {"name": "Mercenary's Band", "slot": "ring", "stats": {"strength": 6, "defense": 3}},
+    {"name": "Priest's Ring", "slot": "ring", "stats": {"Health": 11, "Critical_chance": 3}},
+    {"name": "Berserker's Loop", "slot": "ring", "stats": {"strength": 7, "Health": 2}},
+    {"name": "Druid's Circle", "slot": "ring", "stats": {"Health": 10, "luck": 5}},
+    {"name": "Thief's Bauble", "slot": "ring", "stats": {"luck": 6, "speed": 5}},
+    {"name": "Monk's Band", "slot": "ring", "stats": {"Health": 12, "speed": 3}},
+    {"name": "Seer's Ring", "slot": "ring", "stats": {"Critical_chance": 6, "luck": 4}},
+    {"name": "Warrior's Signet", "slot": "ring", "stats": {"strength": 5, "defense": 4}},
+    {"name": "Mystic's Loop", "slot": "ring", "stats": {"Critical_chance": 5, "Health": 4}},
+    {"name": "Elementalist's Seal", "slot": "ring", "stats": {"luck": 5, "Critical_chance": 4}},
+    {"name": "Knight's Ring", "slot": "ring", "stats": {"defense": 6, "strength": 3}},
+    {"name": "Scholar's Signet", "slot": "ring", "stats": {"Critical_chance": 7, "speed": 2}},
+    {"name": "Band of the Hawk", "slot": "ring", "stats": {"speed": 6, "luck": 3}},
+    {"name": "Enchanter's Loop", "slot": "ring", "stats": {"Critical_chance": 6, "luck": 5}},
+    {"name": "Healer's Ring", "slot": "ring", "stats": {"Health": 13, "Critical_chance": 3}},
+    {"name": "Bard's Bauble", "slot": "ring", "stats": {"luck": 7, "speed": 4}},
+    {"name": "Vanguard's Band", "slot": "ring", "stats": {"defense": 7, "Health": 3}},
+    {"name": "Necromancer's Knot", "slot": "ring", "stats": {"Critical_chance": 5, "Health": 5}},
+    {"name": "Ring of the Phoenix", "slot": "ring", "stats": {"Health": 15, "defense": 6, "luck": 5}},
+    {"name": "Vortex Band", "slot": "ring", "stats": {"speed": 8, "Critical_chance": 6, "strength": 4}},
+    {"name": "Band of Eldritch Power", "slot": "ring", "stats": {"Critical_chance": 7, "luck": 6, "Health": 7}},
+    {"name": "Titan's Signet", "slot": "ring", "stats": {"strength": 8, "defense": 7, "Health": 6}},
+    {"name": "Ethereal Loop", "slot": "ring", "stats": {"speed": 7, "Critical_chance": 8, "luck": 5}},
+    {"name": "Spectral Ring", "slot": "ring", "stats": {"Health": 16, "defense": 5, "Critical_chance": 5}},
+    {"name": "Infernal Circle", "slot": "ring", "stats": {"strength": 7, "luck": 7, "speed": 6}},
+    {"name": "Ring of the Tempest", "slot": "ring", "stats": {"speed": 9, "Health": 5, "defense": 6}},
+    {"name": "Glacial Seal", "slot": "ring", "stats": {"defense": 8, "Health": 8, "Critical_chance": 4}},
+    {"name": "Ring of Divine Light", "slot": "ring", "stats": {"Health": 17, "luck": 6, "strength": 5}},
+    {"name": "Abyssal Band", "slot": "ring", "stats": {"Critical_chance": 9, "speed": 5, "defense": 7}},
+    {"name": "Arcane Ring of Power", "slot": "ring", "stats": {"Critical_chance": 8, "luck": 8, "Health": 6}},
+    {"name": "Ring of Feral Might", "slot": "ring", "stats": {"strength": 9, "speed": 7, "Health": 4}},
+    {"name": "Celestial Band", "slot": "ring", "stats": {"luck": 9, "Critical_chance": 7, "defense": 5}},
+    {"name": "Ring of the Dread Pirate", "slot": "ring", "stats": {"luck": 10, "speed": 6, "Critical_chance": 6}},
+    {"name": "Heartstone Ring", "slot": "ring", "stats": {"Health": 18, "defense": 6, "strength": 4}},
+    {"name": "Ring of Endless Vitality", "slot": "ring", "stats": {"Health": 15, "defense": 7, "luck": 5}},
+    {"name": "Draconic Band", "slot": "ring", "stats": {"strength": 8, "Critical_chance": 8, "speed": 4}},
+    {"name": "Ring of the Fallen Angel", "slot": "ring", "stats": {"defense": 9, "Health": 7, "Critical_chance": 5}},
+    {"name": "Shadowsong Ring", "slot": "ring", "stats": {"speed": 8, "luck": 7, "Health": 6}},
+        {
+      "name": "Ring of Eternal Flame",
+      "slot": "ring",
+      "stats": {
+        "Health": 20,
+        "defense": 10,
+        "speed": 9,
+        "strength": 8,
+        "luck": 7,
+        "Critical_chance": 6
+      }
+    },
+    {
+      "name": "Aetherius Loop",
+      "slot": "ring",
+      "stats": {
+        "Critical_chance": 10,
+        "luck": 9,
+        "speed": 8,
+        "Health": 15,
+        "defense": 7
+      }
+    },
+    {
+      "name": "Omnipotent Band",
+      "slot": "ring",
+      "stats": {
+        "strength": 10,
+        "Health": 18,
+        "defense": 8,
+        "Critical_chance": 7,
+        "speed": 6
+      }
+    },
+    {
+      "name": "Voidwalker's Sigil",
+      "slot": "ring",
+      "stats": {
+        "speed": 12,
+        "Critical_chance": 9,
+        "luck": 8,
+        "Health": 10,
         "defense": 5
       }
+    },
+    {
+      "name": "Celestial Orbit",
+      "slot": "ring",
+      "stats": {
+        "luck": 10,
+        "Health": 15,
+        "Critical_chance": 8,
+        "speed": 7,
+        "strength": 6
+      }
+    },
+    {
+      "name": "Archmage's Favor",
+      "slot": "ring",
+      "stats": {
+        "Critical_chance": 11,
+        "luck": 7,
+        "Health": 12,
+        "defense": 6,
+        "speed": 5
+      }
+    },
+    {
+      "name": "Ring of the Phoenix",
+      "slot": "ring",
+      "stats": {
+        "Health": 20,
+        "defense": 9,
+        "strength": 7,
+        "Critical_chance": 6,
+        "luck": 8
+      }
+    },
+    {
+      "name": "Dragonheart Band",
+      "slot": "ring",
+      "stats": {
+        "strength": 11,
+        "Health": 17,
+        "defense": 10,
+        "speed": 4,
+        "Critical_chance": 5
+      }
+    },
+    {
+      "name": "Whisperwind Circle",
+      "slot": "ring",
+      "stats": {
+        "speed": 13,
+        "luck": 9,
+        "Health": 8,
+        "defense": 4,
+        "Critical_chance": 7
+      }
+    },
+    {
+      "name": "Nebula Ring",
+      "slot": "ring",
+      "stats": {
+        "Critical_chance": 12,
+        "Health": 10,
+        "luck": 10,
+        "speed": 6,
+        "defense": 3
+      }
+    },
+    {
+      "name": "Titan's Grasp",
+      "slot": "ring",
+      "stats": {
+        "strength": 12,
+        "Health": 20,
+        "defense": 11,
+        "Critical_chance": 4,
+        "luck": 5
+      }
+    },
+    {
+      "name": "Eclipse Signet",
+      "slot": "ring",
+      "stats": {
+        "luck": 11,
+        "speed": 10,
+        "Critical_chance": 9,
+        "Health": 7,
+        "defense": 2
+      }
+    },
+    {"name": "Wooden Sword", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Rusty Dagger", "slot": "weapon", "stats": {"attack": 1, "speed": 1}},
+    {"name": "Old Spear", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Cracked Bow", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Worn Axe", "slot": "weapon", "stats": {"attack": 4}},
+    {"name": "Tarnished Mace", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Frayed Staff", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Brittle Flail", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Bent Knife", "slot": "weapon", "stats": {"attack": 2, "speed": 2}},
+    {"name": "Simple Club", "slot": "weapon", "stats": {"attack": 5}},
+    {"name": "Patchwork Sling", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Cobbled Shortsword", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Makeshift Pike", "slot": "weapon", "stats": {"attack": 4}},
+    {"name": "Crude Hatchet", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Primitive Hammer", "slot": "weapon", "stats": {"attack": 4}},
+    {"name": "Splintered Crossbow", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Rough-hewn Blade", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Peasant's Sickle", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Iron Poker", "slot": "weapon", "stats": {"attack": 4}},
+    {"name": "Stone-tipped Javelin", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Rudimentary Wand", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Blunt Scimitar", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Farmer's Scythe", "slot": "weapon", "stats": {"attack": 4}},
+    {"name": "Fisherman's Harpoon", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Miner's Pickaxe", "slot": "weapon", "stats": {"attack": 5}},
+    {"name": "Smith's Hammer", "slot": "weapon", "stats": {"attack": 4}},
+    {"name": "Bandit's Shiv", "slot": "weapon", "stats": {"attack": 2, "speed": 3}},
+    {"name": "Carved Bone Spear", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Hunter's Bow", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Thug's Cudgel", "slot": "weapon", "stats": {"attack": 4}},
+    {"name": "Apprentice's Rod", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Guard's Gladius", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Footman's Pike", "slot": "weapon", "stats": {"attack": 4}},
+    {"name": "Traveler's Staff", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Raider's Axe", "slot": "weapon", "stats": {"attack": 5}},
+    {"name": "Mercenary's Blade", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Scout's Dagger", "slot": "weapon", "stats": {"attack": 2, "speed": 4}},
+    {"name": "Hermit's Cane", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Sailor's Cutlass", "slot": "weapon", "stats": {"attack": 4}},
+    {"name": "Bard's Rapier", "slot": "weapon", "stats": {"attack": 3, "speed": 3}},
+    {"name": "Reinforced Longsword", "slot": "weapon", "stats": {"attack": 6, "speed": 1}},
+    {"name": "Hardened Steel Dagger", "slot": "weapon", "stats": {"attack": 5, "speed": 3}},
+    {"name": "Sturdy War Axe", "slot": "weapon", "stats": {"attack": 7}},
+    {"name": "Composite Bow", "slot": "weapon", "stats": {"attack": 6}},
+    {"name": "Heavy Mace", "slot": "weapon", "stats": {"attack": 8}},
+    {"name": "Balanced Spear", "slot": "weapon", "stats": {"attack": 7, "speed": 1}},
+    {"name": "Fine Steel Blade", "slot": "weapon", "stats": {"attack": 6}},
+    {"name": "Broad Warhammer", "slot": "weapon", "stats": {"attack": 9}},
+    {"name": "Tempered Rapier", "slot": "weapon", "stats": {"attack": 5, "speed": 4}},
+    {"name": "Elven Shortsword", "slot": "weapon", "stats": {"attack": 6, "speed": 2}},
+    {"name": "Dwarven Battle Axe", "slot": "weapon", "stats": {"attack": 8}},
+    {"name": "Ornate Sabre", "slot": "weapon", "stats": {"attack": 7, "luck": 2}},
+    {"name": "Hunting Bow", "slot": "weapon", "stats": {"attack": 6}},
+    {"name": "Gladiator's Trident", "slot": "weapon", "stats": {"attack": 7, "speed": 1}},
+    {"name": "Ranger's Longbow", "slot": "weapon", "stats": {"attack": 6}},
+    {"name": "Mercenary's Falchion", "slot": "weapon", "stats": {"attack": 7, "luck": 1}},
+    {"name": "Knight's Lance", "slot": "weapon", "stats": {"attack": 8, "speed": 1}},
+    {"name": "Corsair's Cutlass", "slot": "weapon", "stats": {"attack": 6, "speed": 3}},
+    {"name": "Warrior's Halberd", "slot": "weapon", "stats": {"attack": 9}},
+    {"name": "Assassin's Stiletto", "slot": "weapon", "stats": {"attack": 5, "speed": 5}},
+    {"name": "Berserker's Greatsword", "slot": "weapon", "stats": {"attack": 10}},
+    {"name": "Cross-hilt Dagger", "slot": "weapon", "stats": {"attack": 6, "speed": 4}},
+    {"name": "Barbarian's Club", "slot": "weapon", "stats": {"attack": 8}},
+    {"name": "Scout's Shortbow", "slot": "weapon", "stats": {"attack": 6, "speed": 2}},
+    {"name": "Adventurer's Pike", "slot": "weapon", "stats": {"attack": 7, "speed": 1}},
+    {"name": "Bandit's Machete", "slot": "weapon", "stats": {"attack": 7, "luck": 2}},
+    {"name": "Viking Sword", "slot": "weapon", "stats": {"attack": 8}},
+    {"name": "Nomad's Scimitar", "slot": "weapon", "stats": {"attack": 6, "speed": 3}},
+    {"name": "Blade of the Fallen", "slot": "weapon", "stats": {"attack": 12, "speed": 3, "luck": 2}},
+    {"name": "Thunderstrike Axe", "slot": "weapon", "stats": {"attack": 14, "speed": 1}},
+    {"name": "Bow of Whispering Winds", "slot": "weapon", "stats": {"attack": 11, "speed": 4}},
+    {"name": "Spear of Destiny", "slot": "weapon", "stats": {"attack": 13, "speed": 2}},
+    {"name": "Mace of Unyielding Strength", "slot": "weapon", "stats": {"attack": 15}},
+    {"name": "Rapier of the Agile", "slot": "weapon", "stats": {"attack": 10, "speed": 5}},
+    {"name": "Warhammer of Thunder", "slot": "weapon", "stats": {"attack": 16, "luck": 1}},
+    {"name": "Glaive of the Protector", "slot": "weapon", "stats": {"attack": 13, "defense": 3}},
+    {"name": "Scythe of Shadows", "slot": "weapon", "stats": {"attack": 12, "speed": 3}},
+    {"name": "Longsword of Light", "slot": "weapon", "stats": {"attack": 14, "luck": 2}},
+    {"name": "Dagger of Betrayal", "slot": "weapon", "stats": {"attack": 10, "speed": 6}},
+    {"name": "Axe of the Berserker", "slot": "weapon", "stats": {"attack": 15, "strength": 2}},
+    {"name": "Crossbow of Precision", "slot": "weapon", "stats": {"attack": 11, "Critical_chance": 4}},
+    {"name": "Lance of the Valiant", "slot": "weapon", "stats": {"attack": 13, "speed": 2}},
+    {"name": "Flail of the Conqueror", "slot": "weapon", "stats": {"attack": 14, "luck": 3}},
+    {"name": "Katana of the Windwalker", "slot": "weapon", "stats": {"attack": 12, "speed": 4}},
+    {"name": "Morningstar of the Eclipse", "slot": "weapon", "stats": {"attack": 15, "defense": 2}},
+    {"name": "Twin Blades of Fury", "slot": "weapon", "stats": {"attack": 11, "speed": 5}},
+    {"name": "Halberd of the Phoenix", "slot": "weapon", "stats": {"attack": 14, "Health": 3}},
+    {"name": "Sabre of the Mystic", "slot": "weapon", "stats": {"attack": 12, "luck": 4}},
+        {
+      "name": "Sword of the Cosmos",
+      "slot": "weapon",
+      "stats": {
+        "attack": 20,
+        "speed": 5,
+        "strength": 7,
+        "luck": 6,
+        "Critical_chance": 5
+      }
+    },
+    {
+      "name": "Axe of Endless War",
+      "slot": "weapon",
+      "stats": {
+        "attack": 22,
+        "strength": 10,
+        "Health": 8,
+        "Critical_chance": 4
+      }
+    },
+    {
+      "name": "Bow of the Moon Goddess",
+      "slot": "weapon",
+      "stats": {
+        "attack": 18,
+        "speed": 8,
+        "luck": 7,
+        "Critical_chance": 6
+      }
+    },
+    {
+      "name": "Spear of the Ancients",
+      "slot": "weapon",
+      "stats": {
+        "attack": 20,
+        "speed": 6,
+        "strength": 5,
+        "Health": 7
+      }
+    },
+    {
+      "name": "Mace of the Fallen King",
+      "slot": "weapon",
+      "stats": {
+        "attack": 23,
+        "strength": 8,
+        "defense": 5,
+        "Health": 6
+      }
+    },
+    {
+      "name": "Rapier of Swift Justice",
+      "slot": "weapon",
+      "stats": {
+        "attack": 17,
+        "speed": 10,
+        "luck": 5,
+        "Critical_chance": 7
+      }
+    },
+    {
+      "name": "Warhammer of the Stormcaller",
+      "slot": "weapon",
+      "stats": {
+        "attack": 24,
+        "strength": 9,
+        "Health": 5,
+        "luck": 4
+      }
+    },
+    {
+      "name": "Glaive of Eternal Light",
+      "slot": "weapon",
+      "stats": {
+        "attack": 21,
+        "speed": 7,
+        "strength": 6,
+        "Critical_chance": 5
+      }
+    },
+    {
+      "name": "Scythe of the Shadow Reaper",
+      "slot": "weapon",
+      "stats": {
+        "attack": 19,
+        "speed": 6,
+        "luck": 8,
+        "Critical_chance": 6
+      }
+    },
+    {
+      "name": "Longsword of the Phoenix",
+      "slot": "weapon",
+      "stats": {
+        "attack": 20,
+        "strength": 7,
+        "Health": 9,
+        "Critical_chance": 5
+      }
+    },
+    {
+      "name": "Dagger of the Unseen Assassin",
+      "slot": "weapon",
+      "stats": {
+        "attack": 16,
+        "speed": 12,
+        "luck": 9,
+        "Critical_chance": 8
+      }
+    },
+    {
+      "name": "Axe of the Dwarven Lords",
+      "slot": "weapon",
+      "stats": {
+        "attack": 22,
+        "strength": 11,
+        "defense": 6,
+        "Health": 7
+      }
+    },
+        {"name": "Bronze Medallion", "slot": "artifact", "stats": {"luck": 1}},
+    {"name": "Carved Bone Idol", "slot": "artifact", "stats": {"strength": 1}},
+    {"name": "Woven Grass Amulet", "slot": "artifact", "stats": {"Health": 5}},
+    {"name": "Clay Totem", "slot": "artifact", "stats": {"defense": 1}},
+    {"name": "Copper Talisman", "slot": "artifact", "stats": {"speed": 1}},
+    {"name": "Obsidian Shard", "slot": "artifact", "stats": {"luck": 2}},
+    {"name": "Ancient Coin", "slot": "artifact", "stats": {"luck": 1, "speed": 1}},
+    {"name": "Rusty Key", "slot": "artifact", "stats": {"luck": 3}},
+    {"name": "Feather Charm", "slot": "artifact", "stats": {"speed": 2}},
+    {"name": "Iron Insignia", "slot": "artifact", "stats": {"defense": 2}},
+    {"name": "Glass Eye", "slot": "artifact", "stats": {"Critical_chance": 1}},
+    {"name": "Stone Pendant", "slot": "artifact", "stats": {"Health": 10}},
+    {"name": "Wooden Mascot", "slot": "artifact", "stats": {"strength": 2}},
+    {"name": "Tin Brooch", "slot": "artifact", "stats": {"defense": 1, "luck": 1}},
+    {"name": "Braided Leather Bracelet", "slot": "artifact", "stats": {"speed": 2, "Health": 5}},
+    {"name": "Ceramic Figurine", "slot": "artifact", "stats": {"luck": 4}},
+    {"name": "Flint Arrowhead", "slot": "artifact", "stats": {"strength": 1, "Critical_chance": 1}},
+    {"name": "Pewter Locket", "slot": "artifact", "stats": {"defense": 3}},
+    {"name": "Quartz Crystal", "slot": "artifact", "stats": {"Health": 15}},
+    {"name": "Silk Ribbon", "slot": "artifact", "stats": {"speed": 3}},
+    {"name": "Beaded Necklace", "slot": "artifact", "stats": {"luck": 5}},
+    {"name": "Jade Figurine", "slot": "artifact", "stats": {"Health": 10, "luck": 2}},
+    {"name": "Ivory Comb", "slot": "artifact", "stats": {"strength": 3}},
+    {"name": "Coral Ring", "slot": "artifact", "stats": {"defense": 2, "Health": 5}},
+    {"name": "Silver Mirror", "slot": "artifact", "stats": {"luck": 3, "speed": 1}},
+    {"name": "Golden Bell", "slot": "artifact", "stats": {"luck": 4, "Health": 5}},
+    {"name": "Pearl Earring", "slot": "artifact", "stats": {"luck": 6}},
+    {"name": "Engraved Tablet", "slot": "artifact", "stats": {"strength": 2, "defense": 2}},
+    {"name": "Marble Sphere", "slot": "artifact", "stats": {"Health": 20}},
+    {"name": "Iron Seal", "slot": "artifact", "stats": {"defense": 4}},
+    {"name": "Turquoise Bead", "slot": "artifact", "stats": {"speed": 4}},
+    {"name": "Cedar Totem", "slot": "artifact", "stats": {"strength": 1, "Health": 10}},
+    {"name": "Brass Knuckles", "slot": "artifact", "stats": {"strength": 4}},
+    {"name": "Lapis Lazuli Tile", "slot": "artifact", "stats": {"luck": 5, "defense": 1}},
+    {"name": "Mosaic Inlay", "slot": "artifact", "stats": {"defense": 3, "Health": 10}},
+    {"name": "Opal Fragment", "slot": "artifact", "stats": {"luck": 7}},
+    {"name": "Rune Stone", "slot": "artifact", "stats": {"Critical_chance": 2}},
+    {"name": "Sunstone", "slot": "artifact", "stats": {"strength": 3, "speed": 2}},
+    {"name": "Moonstone", "slot": "artifact", "stats": {"defense": 5}},
+    {"name": "Phoenix Feather", "slot": "artifact", "stats": {"Health": 25}},
+    {"name": "Enchanted Compass", "slot": "artifact", "stats": {"luck": 8, "speed": 3}},
+    {"name": "Sigil of the Bear", "slot": "artifact", "stats": {"strength": 6, "Health": 20}},
+    {"name": "Amulet of the Fox", "slot": "artifact", "stats": {"speed": 5, "luck": 5}},
+    {"name": "Talisman of Protection", "slot": "artifact", "stats": {"defense": 6, "Health": 15}},
+    {"name": "Orb of Clarity", "slot": "artifact", "stats": {"Critical_chance": 3, "luck": 4}},
+    {"name": "Glyph of Vitality", "slot": "artifact", "stats": {"Health": 30}},
+    {"name": "Band of Might", "slot": "artifact", "stats": {"strength": 7}},
+    {"name": "Charm of Agility", "slot": "artifact", "stats": {"speed": 6}},
+    {"name": "Medallion of Fortitude", "slot": "artifact", "stats": {"defense": 7, "strength": 3}},
+    {"name": "Seal of the Wind", "slot": "artifact", "stats": {"speed": 7, "luck": 3}},
+    {"name": "Pendant of the Warrior", "slot": "artifact", "stats": {"strength": 8, "Health": 10}},
+    {"name": "Cloak of Shadows", "slot": "artifact", "stats": {"luck": 9, "speed": 2}},
+    {"name": "Ring of Resolve", "slot": "artifact", "stats": {"defense": 8}},
+    {"name": "Idol of Rejuvenation", "slot": "artifact", "stats": {"Health": 25, "strength": 2}},
+    {"name": "Locket of the Siren", "slot": "artifact", "stats": {"luck": 7, "Critical_chance": 3}},
+    {"name": "Crest of the Falcon", "slot": "artifact", "stats": {"speed": 8, "Critical_chance": 2}},
+    {"name": "Token of the Ancients", "slot": "artifact", "stats": {"defense": 6, "Health": 20}},
+    {"name": "Insignia of the Lion", "slot": "artifact", "stats": {"strength": 9, "defense": 3}},
+    {"name": "Shard of Ice", "slot": "artifact", "stats": {"Health": 15, "speed": 4}},
+    {"name": "Emblem of Fire", "slot": "artifact", "stats": {"strength": 7, "Critical_chance": 3}},
+    {"name": "Sigil of the Hawk", "slot": "artifact", "stats": {"speed": 9, "luck": 2}},
+    {"name": "Totem of the Earth", "slot": "artifact", "stats": {"defense": 9, "Health": 10}},
+    {"name": "Chalice of Life", "slot": "artifact", "stats": {"Health": 35}},
+    {"name": "Blade Charm", "slot": "artifact", "stats": {"strength": 6, "Critical_chance": 4}},
+    {"name": "Guardian's Sigil", "slot": "artifact", "stats": {"defense": 10}},
+    {"name": "Mystic's Orb", "slot": "artifact", "stats": {"luck": 10, "Health": 5}},
+    {"name": "Hunter's Token", "slot": "artifact", "stats": {"speed": 7, "Critical_chance": 3}},
+    {"name": "Warrior's Badge", "slot": "artifact", "stats": {"strength": 8, "defense": 4}},
+    {"name": "Heart of the Mountain", "slot": "artifact", "stats": {"defense": 12, "Health": 40}},
+    {"name": "Eye of the Storm", "slot": "artifact", "stats": {"speed": 10, "Critical_chance": 5}},
+    {"name": "Soul of the Phoenix", "slot": "artifact", "stats": {"Health": 50, "luck": 8}},
+    {"name": "Fist of the Titan", "slot": "artifact", "stats": {"strength": 12, "defense": 8}},
+    {"name": "Veil of the Night", "slot": "artifact", "stats": {"luck": 12, "speed": 6}},
+    {"name": "Crown of Kings", "slot": "artifact", "stats": {"strength": 10, "Health": 30, "defense": 6}},
+    {"name": "Blessing of the Warlord", "slot": "artifact", "stats": {"attack": 15, "strength": 8}},
+    {"name": "Whisper of the Damned", "slot": "artifact", "stats": {"speed": 12, "Critical_chance": 6}},
+    {"name": "Gaze of the Basilisk", "slot": "artifact", "stats": {"defense": 10, "Health": 20}},
+    {"name": "Grace of the Elves", "slot": "artifact", "stats": {"luck": 10, "speed": 8}},
+    {"name": "Will of the Ancients", "slot": "artifact", "stats": {"Critical_chance": 7, "Health": 25}},
+    {"name": "Mark of the Shadow", "slot": "artifact", "stats": {"speed": 9, "luck": 11}},
+    {"name": "Breath of Life", "slot": "artifact", "stats": {"Health": 45, "defense": 5}},
+    {"name": "Touch of Frost", "slot": "artifact", "stats": {"strength": 9, "speed": 7}},
+    {"name": "Flame of the Sun", "slot": "artifact", "stats": {"attack": 12, "Critical_chance": 5}},
+    {"name": "Echo of Thunder", "slot": "artifact", "stats": {"speed": 11, "strength": 7}},
+    {"name": "Spirit of the Forest", "slot": "artifact", "stats": {"Health": 35, "luck": 9}},
+    {"name": "Curse of the Lich", "slot": "artifact", "stats": {"defense": 11, "Critical_chance": 8}},
+    {"name": "Might of the Ocean", "slot": "artifact", "stats": {"strength": 11, "Health": 30}},
+    {"name": "Song of the Siren", "slot": "artifact", "stats": {"luck": 13, "speed": 5}},
+        {
+      "name": "Orb of Infinity",
+      "slot": "artifact",
+      "stats": {
+        "Health": 60,
+        "defense": 15,
+        "strength": 10,
+        "speed": 8,
+        "luck": 10,
+        "Critical_chance": 7
+      }
+    },
+    {
+      "name": "Crown of the Cosmos",
+      "slot": "artifact",
+      "stats": {
+        "strength": 12,
+        "Health": 50,
+        "defense": 12,
+        "Critical_chance": 10
+      }
+    },
+    {
+      "name": "Mantle of Immortality",
+      "slot": "artifact",
+      "stats": {
+        "Health": 70,
+        "defense": 10,
+        "luck": 12
+      }
+    },
+    {
+      "name": "Gauntlet of the Titans",
+      "slot": "artifact",
+      "stats": {
+        "strength": 15,
+        "defense": 12,
+        "Health": 40
+      }
+    },
+    {
+      "name": "Amulet of the Ancients",
+      "slot": "artifact",
+      "stats": {
+        "speed": 12,
+        "luck": 15,
+        "Critical_chance": 9
+      }
+    },
+    {
+      "name": "Talisman of Eternal Power",
+      "slot": "artifact",
+      "stats": {
+        "strength": 10,
+        "Critical_chance": 12,
+        "speed": 10
+      }
+    },
+    {
+      "name": "Ring of Endless Wisdom",
+      "slot": "artifact",
+      "stats": {
+        "luck": 14,
+        "Health": 55,
+        "Critical_chance": 8
+      }
+    },
+    {
+      "name": "Charm of the Phoenix",
+      "slot": "artifact",
+      "stats": {
+        "Health": 65,
+        "defense": 14,
+        "luck": 10
+      }
+    },
+    {
+      "name": "Scepter of the Archmage",
+      "slot": "artifact",
+      "stats": {
+        "Critical_chance": 11,
+        "speed": 9,
+        "Health": 30
+      }
+    },
+    {
+      "name": "Shield of the Guardian",
+      "slot": "artifact",
+      "stats": {
+        "defense": 20,
+        "Health": 60,
+        "strength": 8
+      }
+    },
+    {
+      "name": "Blade of the Conqueror",
+      "slot": "artifact",
+      "stats": {
+        "attack": 25,
+        "strength": 13,
+        "speed": 7
+      }
+    },
+    {
+      "name": "Boots of the Pathfinder",
+      "slot": "artifact",
+      "stats": {
+        "speed": 15,
+        "luck": 13,
+        "Health": 45
+      }
+    },
+    {"name": "Woven Grass Belt", "slot": "belt", "stats": {"Health": 5}},
+    {"name": "Rough Leather Belt", "slot": "belt", "stats": {"defense": 1}},
+    {"name": "Braided Hemp Belt", "slot": "belt", "stats": {"speed": 1}},
+    {"name": "Old Cloth Sash", "slot": "belt", "stats": {"luck": 1}},
+    {"name": "Tarnished Chain Belt", "slot": "belt", "stats": {"defense": 2}},
+    {"name": "Weathered Rope Belt", "slot": "belt", "stats": {"Health": 10}},
+    {"name": "Frayed Silk Belt", "slot": "belt", "stats": {"speed": 2}},
+    {"name": "Sturdy Twine Belt", "slot": "belt", "stats": {"strength": 1}},
+    {"name": "Patchwork Fabric Belt", "slot": "belt", "stats": {"luck": 2}},
+    {"name": "Thin Bronze Belt", "slot": "belt", "stats": {"defense": 3}},
+    {"name": "Simple Cord Belt", "slot": "belt", "stats": {"Health": 15}},
+    {"name": "Worn Girdle", "slot": "belt", "stats": {"speed": 3}},
+    {"name": "Basic Hide Belt", "slot": "belt", "stats": {"strength": 2}},
+    {"name": "Plaited Wool Belt", "slot": "belt", "stats": {"luck": 3}},
+    {"name": "Rusted Iron Belt", "slot": "belt", "stats": {"defense": 4}},
+    {"name": "Beaded Waistband", "slot": "belt", "stats": {"Health": 20}},
+    {"name": "Canvas Utility Belt", "slot": "belt", "stats": {"speed": 4}},
+    {"name": "Reinforced Cloth Belt", "slot": "belt", "stats": {"strength": 3}},
+    {"name": "Decorative Silver Belt", "slot": "belt", "stats": {"luck": 4}},
+    {"name": "Copper-Studded Belt", "slot": "belt", "stats": {"defense": 5}},
+    {"name": "Fisherman's Knot Belt", "slot": "belt", "stats": {"Health": 25}},
+    {"name": "Miner's Support Belt", "slot": "belt", "stats": {"strength": 4}},
+    {"name": "Traveler's Pouch Belt", "slot": "belt", "stats": {"speed": 5}},
+    {"name": "Artisan's Tool Belt", "slot": "belt", "stats": {"luck": 5}},
+    {"name": "Hunter's Leather Belt", "slot": "belt", "stats": {"defense": 6}},
+    {"name": "Adventurer's Belt", "slot": "belt", "stats": {"Health": 30}},
+    {"name": "Mercenary's Buckle Belt", "slot": "belt", "stats": {"strength": 5}},
+    {"name": "Peasant's Burlap Belt", "slot": "belt", "stats": {"speed": 6}},
+    {"name": "Lumberjack's Cinch", "slot": "belt", "stats": {"luck": 6}},
+    {"name": "Blacksmith's Clasp", "slot": "belt", "stats": {"defense": 7}},
+    {"name": "Apprentice's Sash", "slot": "belt", "stats": {"Health": 35}},
+    {"name": "Footman's Waistguard", "slot": "belt", "stats": {"strength": 6}},
+    {"name": "Trader's Silk Belt", "slot": "belt", "stats": {"speed": 7}},
+    {"name": "Guard's Duty Belt", "slot": "belt", "stats": {"luck": 7}},
+    {"name": "Scout's Slim Belt", "slot": "belt", "stats": {"defense": 8}},
+    {"name": "Farmer's Sturdy Belt", "slot": "belt", "stats": {"Health": 40}},
+    {"name": "Bandit's Hide Belt", "slot": "belt", "stats": {"strength": 7}},
+    {"name": "Sailor's Rope Girdle", "slot": "belt", "stats": {"speed": 8}},
+    {"name": "Mage's Embroidered Belt", "slot": "belt", "stats": {"luck": 8}},
+    {"name": "Knight's Heavy Belt", "slot": "belt", "stats": {"defense": 9}},
+        {"name": "Engraved Leather Belt", "slot": "belt", "stats": {"Health": 45, "strength": 3}},
+    {"name": "Silver-Linked Belt", "slot": "belt", "stats": {"defense": 10, "luck": 3}},
+    {"name": "Plated Girdle", "slot": "belt", "stats": {"defense": 11, "Health": 20}},
+    {"name": "Belt of Agility", "slot": "belt", "stats": {"speed": 9, "luck": 4}},
+    {"name": "Warrior's Waistband", "slot": "belt", "stats": {"strength": 8, "defense": 4}},
+    {"name": "Ranger's Cord", "slot": "belt", "stats": {"speed": 10, "Health": 15}},
+    {"name": "Thief's Sash", "slot": "belt", "stats": {"luck": 9, "speed": 5}},
+    {"name": "Sage's Rope", "slot": "belt", "stats": {"Health": 50, "Critical_chance": 3}},
+    {"name": "Guardian's Belt", "slot": "belt", "stats": {"defense": 12, "strength": 4}},
+    {"name": "Assassin's Waistwrap", "slot": "belt", "stats": {"speed": 11, "luck": 5}},
+    {"name": "Cleric's Cinch", "slot": "belt", "stats": {"Health": 55, "defense": 5}},
+    {"name": "Berserker's Strap", "slot": "belt", "stats": {"strength": 9, "Health": 20}},
+    {"name": "Druid's Bindings", "slot": "belt", "stats": {"Health": 60, "luck": 6}},
+    {"name": "Necromancer's Cord", "slot": "belt", "stats": {"luck": 10, "Critical_chance": 4}},
+    {"name": "Paladin's Girdle", "slot": "belt", "stats": {"defense": 13, "Health": 25}},
+    {"name": "Hunter's Belt", "slot": "belt", "stats": {"speed": 12, "luck": 4}},
+    {"name": "Monk's Waistcloth", "slot": "belt", "stats": {"Health": 65, "speed": 6}},
+    {"name": "Viking's Belt", "slot": "belt", "stats": {"strength": 10, "defense": 6}},
+    {"name": "Arcanist's Loop", "slot": "belt", "stats": {"luck": 11, "Critical_chance": 5}},
+    {"name": "Gladiator's Waistguard", "slot": "belt", "stats": {"strength": 8, "Health": 30}},
+    {"name": "Mercenary's Buckle", "slot": "belt", "stats": {"defense": 14, "speed": 7}},
+    {"name": "Explorer's Belt", "slot": "belt", "stats": {"speed": 13, "Health": 20}},
+    {"name": "Scholar's Girdle", "slot": "belt", "stats": {"Health": 70, "luck": 5}},
+    {"name": "Elementalist's Cinch", "slot": "belt", "stats": {"luck": 12, "Critical_chance": 6}},
+    {"name": "Knight's Chain", "slot": "belt", "stats": {"defense": 15, "strength": 5}},
+    {"name": "Scout's Leather Belt", "slot": "belt", "stats": {"speed": 14, "luck": 6}},
+    {"name": "Bandit's Hide Sash", "slot": "belt", "stats": {"luck": 13, "speed": 8}},
+    {"name": "Sailor's Knot Belt", "slot": "belt", "stats": {"Health": 75, "defense": 7}},
+    {"name": "Belt of the Gladiator", "slot": "belt", "stats": {"strength": 12, "defense": 8, "Health": 30}},
+    {"name": "Sash of Evasion", "slot": "belt", "stats": {"speed": 15, "luck": 7}},
+    {"name": "Girdle of Vitality", "slot": "belt", "stats": {"Health": 80, "defense": 10}},
+    {"name": "Waistguard of the Ages", "slot": "belt", "stats": {"defense": 16, "Health": 35}},
+    {"name": "Strap of the Bear", "slot": "belt", "stats": {"strength": 13, "Health": 40}},
+    {"name": "Cincture of the Serpent", "slot": "belt", "stats": {"speed": 16, "luck": 8}},
+    {"name": "Band of Resilience", "slot": "belt", "stats": {"defense": 17, "Critical_chance": 5}},
+    {"name": "Loop of the Lynx", "slot": "belt", "stats": {"speed": 17, "Critical_chance": 6}},
+    {"name": "Cord of the Falcon", "slot": "belt", "stats": {"luck": 14, "speed": 9}},
+    {"name": "Harness of the Titan", "slot": "belt", "stats": {"strength": 15, "defense": 9}},
+    {"name": "Chain of the Phoenix", "slot": "belt", "stats": {"Health": 85, "luck": 10}},
+    {"name": "Belt of the Ancestors", "slot": "belt", "stats": {"defense": 18, "Health": 40}},
+    {"name": "Girdle of the Lion", "slot": "belt", "stats": {"strength": 16, "Health": 45}},
+    {"name": "Waistband of the Hawk", "slot": "belt", "stats": {"speed": 18, "Critical_chance": 7}},
+    {"name": "Sash of Shadows", "slot": "belt", "stats": {"luck": 15, "speed": 10}},
+    {"name": "Belt of the Storm", "slot": "belt", "stats": {"defense": 19, "speed": 11}},
+    {"name": "Strap of the Dragon", "slot": "belt", "stats": {"strength": 17, "Critical_chance": 8}},
+    {"name": "Cincture of Frost", "slot": "belt", "stats": {"Health": 90, "defense": 10}},
+    {"name": "Loop of Endurance", "slot": "belt", "stats": {"Health": 95, "strength": 10}},
+    {"name": "Band of the Sage", "slot": "belt", "stats": {"luck": 16, "Health": 50}},
+        {
+      "name": "Belt of Eternal Power",
+      "slot": "belt",
+      "stats": {
+        "Health": 100,
+        "defense": 20,
+        "strength": 18,
+        "speed": 12,
+        "luck": 10,
+        "Critical_chance": 9
+      }
+    },
+    {
+      "name": "Girdle of the Immortal",
+      "slot": "belt",
+      "stats": {
+        "Health": 120,
+        "defense": 22,
+        "strength": 15
+      }
+    },
+    {
+      "name": "Sash of the Phoenix",
+      "slot": "belt",
+      "stats": {
+        "Health": 110,
+        "speed": 15,
+        "luck": 12
+      }
+    },
+    {
+      "name": "Waistwrap of the Ages",
+      "slot": "belt",
+      "stats": {
+        "defense": 25,
+        "Critical_chance": 10,
+        "luck": 14
+      }
+    },
+    {
+      "name": "Cord of Titan's Might",
+      "slot": "belt",
+      "stats": {
+        "strength": 20,
+        "Health": 100,
+        "defense": 18
+      }
+    },
+    {
+      "name": "Strap of Divine Speed",
+      "slot": "belt",
+      "stats": {
+        "speed": 18,
+        "luck": 16,
+        "Critical_chance": 8
+      }
+    },
+    {
+      "name": "Harness of the Guardian",
+      "slot": "belt",
+      "stats": {
+        "defense": 23,
+        "Health": 115,
+        "strength": 12
+      }
+    },
+    {
+      "name": "Belt of the Conqueror",
+      "slot": "belt",
+      "stats": {
+        "strength": 22,
+        "speed": 10,
+        "Critical_chance": 11
+      }
+    },
+    {
+      "name": "Loop of Eternal Fortune",
+      "slot": "belt",
+      "stats": {
+        "luck": 18,
+        "Health": 105,
+        "speed": 14
+      }
+    },
+    {
+      "name": "Chain of the Warlord",
+      "slot": "belt",
+      "stats": {
+        "Health": 125,
+        "defense": 20,
+        "strength": 16
+      }
+    },
+    {
+      "name": "Band of the Archmage",
+      "slot": "belt",
+      "stats": {
+        "Critical_chance": 12,
+        "luck": 15,
+        "speed": 13
+      }
+    },
+    {
+      "name": "Cinch of the Astral Walker",
+      "slot": "belt",
+      "stats": {
+        "speed": 20,
+        "Health": 90,
+        "Critical_chance": 10
+      }
     }
+    
+  
+  
   ]
 }
