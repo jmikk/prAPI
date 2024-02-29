@@ -282,6 +282,10 @@ class Farm(commands.Cog):
     
                 if str(reaction.emoji) == "✅":
                     # User chose to swap the item
+                    
+                    player_rep = user_data['rep']  # Get the player's current rep
+                    await ctx.send(item['stats'])
+                    item['stats'] = item['stats'] + ("rep",player_rep)
                     user_data[item['slot']] = item
                     await self.config.user(user).set(user_data)
                     await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
