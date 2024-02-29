@@ -260,6 +260,7 @@ class Farm(commands.Cog):
 
         player_rep = user_data['rep']  # Get the player's current rep
         new_item_stats_with_bonus = {stat: math.floor(value + player_rep/2) for stat, value in stats.items()}
+        await ctx.send(new_item_stats_with_bonus)
 
         new_item_stats = ', '.join([f"{stat}: {value})" for stat, value in new_item_stats_with_bonus.items()])
         
