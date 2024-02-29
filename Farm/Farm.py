@@ -171,15 +171,15 @@ class Farm(commands.Cog):
     
         # Select a random zombie name
         enemy_name = random.choice(zombie_names)
-    
+        user_rep = user_data['rep']  # Fetch the user's rep
         # Generate enemy stats based on the user's stats
         enemy_stats = {
-            "strength": random.randint(1, 1 + 1),
-            "defense": random.randint(1, 1 + 1),
-            "speed": random.randint(1, 1 + 1),
-            "luck": random.randint(1, 1 + 1),
-            "Health": random.randint(1, 2),
-            "Critical_chance": random.randint(1, 1 + 1),
+            "strength": random.randint(1+user_rep, (user_rep+1)*1.1),
+            "defense": random.randint(1+user_rep, (user_rep+1)*1.1),
+            "speed": random.randint(1+user_rep, (user_rep+1)*1.1),
+            "luck": random.randint(1+user_rep, (user_rep+1)*1.1),
+            "Health": random.randint(5+user_rep, (user_rep+5)*1.1),
+            "Critical_chance": random.randint(1+user_rep, (user_rep+1)*1.1),
         }
         round_count=0
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
@@ -197,9 +197,11 @@ class Farm(commands.Cog):
     
             # Consider Critical Chance
             if random.random() < user_data['Critical_chance'] / 100:
+                await ctx.send("You CRIT!")
                 player_damage *= 2  # Double damage for critical hit
     
             if random.random() < enemy_stats['Critical_chance'] / 100:
+                await ctx.send("The zombie Crit against you")
                 enemy_damage *= 2  # Double damage for enemy critical hit
     
             # Apply damage to Health
