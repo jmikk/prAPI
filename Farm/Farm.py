@@ -174,12 +174,12 @@ class Farm(commands.Cog):
         user_rep = user_data['rep']  # Fetch the user's rep
         # Generate enemy stats based on the user's stats
         enemy_stats = {
-            "strength": random.randint(1+user_rep, int((user_rep+1)*1.1)),
-            "defense": random.randint(1+user_rep, int((user_rep+1)*1.1)),
-            "speed": random.randint(1+user_rep, int((user_rep+1)*1.1)),
-            "luck": random.randint(1+user_rep, int((user_rep+1)*1.1)),
-            "Health": random.randint(5+user_rep, int((user_rep+5)*1.1)),
-            "Critical_chance": random.randint(1+user_rep, int((user_rep+1)*1.1)),
+            "strength": random.randint(1+user_rep/2, int((user_rep+1)*1.1)),
+            "defense": random.randint(1+user_rep/2, int((user_rep+1)*1.1)),
+            "speed": random.randint(1+user_rep/2, int((user_rep+1)*1.1)),
+            "luck": random.randint(1+user_rep/2, int((user_rep+1)*1.1)),
+            "Health": random.randint(5+user_rep/2, int((user_rep+5)*1.1)),
+            "Critical_chance": random.randint(1+user_rep/2, int((user_rep+1)*1.1)),
         }
         round_count=0
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
@@ -214,7 +214,7 @@ class Farm(commands.Cog):
             # Determine the result
         if user_data['Health'] > 0:
             result = "won"
-            base_rep_reward = 10
+            base_rep_reward = 5
             max_rounds_for_max_reward = 5  # The max rounds to receive the full base rep reward
         
             # Calculate the rep reward
