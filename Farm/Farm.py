@@ -264,7 +264,7 @@ class Farm(commands.Cog):
             
             player_rep = user_data['rep']  # Get the player's current rep
 
-            new_item_stats = ', '.join([f"{stat}: {math.floor(value + player_rep/2}" for stat, value in item['stats'].items()])
+            new_item_stats = ', '.join([f"{stat}: {math.floor(value + player_rep/2)}" for stat, value in item['stats'].items()])
         
             # Updated prompt message to include current and new item stats
             message = await ctx.send(
