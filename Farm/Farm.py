@@ -299,6 +299,7 @@ class Farm(commands.Cog):
                     #add the new stats to the player.
                     for stat, bonus in stats.items():
                         if stat in user_data:
+                            bonus = math.floor(bonus + player_rep/2)
                             user_data[stat] = user_data[stat] + bonus
 
                     
