@@ -215,13 +215,12 @@ class Farm(commands.Cog):
             # Determine the result
         if user_data['Health'] > 0:
             result = "won"
-            base_rep_reward = 5
-            max_rounds_for_max_reward = 5  # The max rounds to receive the full base rep reward
+            
         
             # Calculate the rep reward
             # The formula below assumes the rep reward decreases linearly with the number of rounds,
             # but never goes below 1
-            rep_reward = max(1, base_rep_reward - ((round_count - max_rounds_for_max_reward) * (base_rep_reward / max_rounds_for_max_reward)))
+            rep_reward = 1
         
             # Update the player's rep
             user_data['rep'] += rep_reward
