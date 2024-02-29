@@ -233,6 +233,8 @@ class Farm(commands.Cog):
         await ctx.send(f"You fought {enemy_name} with stats: {enemy_stats} and you {result} the fight!")
 
         user_data['Health'] = start_life 
+        await self.config.user(user).set(user_data)
+
         
         if result == "won":
             # Load loot items (consider making this a separate function if used elsewhere)
