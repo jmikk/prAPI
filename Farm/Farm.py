@@ -8,8 +8,7 @@ import discord
 from discord import Embed
 import os
 import json
-from redbot.core import commands
-
+from redbot.core import commands, Config
 #from redbot.core import tasks
 
 class Farm(commands.Cog):
