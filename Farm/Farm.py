@@ -214,7 +214,17 @@ class Farm(commands.Cog):
             # Determine the result
         if user_data['Health'] > 0:
             result = "won"
-            # Proceed with loot distribution as before
+            base_rep_reward = 10
+            max_rounds_for_max_reward = 5  # The max rounds to receive the full base rep reward
+        
+            # Calculate the rep reward
+            # The formula below assumes the rep reward decreases linearly with the number of rounds,
+            # but never goes below 1
+            rep_reward = max(1, base_rep_reward - ((round_count - max_rounds_for_max_reward) * (base_rep_reward / max_rounds_for_max_reward)))
+        
+            # Update the player's rep
+            user_data['rep'] += rep_reward
+            await self.config.user(ctx.author).set(user_data)        
         else:
             result = "lost"
             # Perhaps apply some penalty for losing
