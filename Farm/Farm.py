@@ -811,7 +811,7 @@ class Farm(commands.Cog):
 
     @commands.command(name='setstat')
     @commands.is_owner()  # Ensure only the bot owner can use this command
-    def reset_player_stats(self, ctx, member: discord.Member):
+    async def reset_player_stats(self, ctx, member: discord.Member):
         user_data = await self.config.user(member).all()
 
         # Resetting base stats
