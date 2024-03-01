@@ -837,6 +837,7 @@ class Farm(commands.Cog):
         user_data['loot'] = []
     
         await self.config.user(member).set(user_data)
+        await ctx.send("all done")
 
     
     @farm.command(name="viewgear")
