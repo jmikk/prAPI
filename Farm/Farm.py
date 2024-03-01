@@ -190,9 +190,9 @@ class Farm(commands.Cog):
 
             # Calculate effective stats and damage as before
     
-            player_effective_attack = user_data['strength'] * (1 + user_data['luck'] / 100)
+            player_effective_attack = user_data['strength'] + random.randint(1, user_data['luck'])
             player_effective_defense = user_data['defense'] * (1 + user_data['speed'] / 100)
-            enemy_effective_attack = enemy_stats['strength'] * (1 + enemy_stats['luck'] / 100)
+            enemy_effective_attack = enemy_stats['strength'] + random.randint(1, enemy_stats['luck'])
             enemy_effective_defense = enemy_stats['defense'] * (1 + enemy_stats['speed'] / 100)
     
             player_damage = max(round_count, player_effective_attack - enemy_effective_defense)
