@@ -193,7 +193,7 @@ class Farm(commands.Cog):
             enemy_effective_attack = enemy_stats['strength'] * (1 + enemy_stats['luck'] / 100)
             enemy_effective_defense = enemy_stats['defense'] * (1 + enemy_stats['speed'] / 100)
     
-            player_damage = max(round_count, player_effective_attack - enemy_effective_defense)
+            player_damage = max(0, player_effective_attack - enemy_effective_defense)
             enemy_damage = max(round_count, enemy_effective_attack - player_effective_defense)
     
             # Consider Critical Chance
