@@ -206,8 +206,8 @@ class Farm(commands.Cog):
                 enemy_damage *= 2  # Double damage for enemy critical hit
     
             # Apply damage to Health
-            user_data['Health'] -= enemy_damage
-            enemy_stats['Health'] -= player_damage
+            user_data['Health'] -= Math.floor(enemy_damage)
+            enemy_stats['Health'] -= Math.ceil(player_damage)
     
             # Provide feedback for each round
             await ctx.send(f"Round {round_count} results: {enemy_name} took {player_damage} damage. You took {enemy_damage} damage.")
@@ -228,7 +228,7 @@ class Farm(commands.Cog):
         else:
             result = "lost"
             # Perhaps apply some penalty for losing
-        await ctx.send(f"You fought {enemy_name} with stats: {enemy_stats} and you {result} the fight!")
+        await ctx.send(f"You fought {enemy_name} and you {result} the fight!")
 
         user_data['Health'] = start_life 
         await self.config.user(ctx.author).set(user_data)
