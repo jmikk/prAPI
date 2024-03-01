@@ -278,7 +278,7 @@ class Farm(commands.Cog):
             # Updated prompt message to include current and new item stats
             message = await ctx.send(
                 f"You already have a **{current_item['name']}** in your **{item['slot']}** with stats: **{current_item_stats}**. "
-                f"Do you want to swap it with {item['name']} with stats: {new_item_stats}? "
+                f"Do you want to swap it with **{item['name']}** with stats: **{new_item_stats}**? "
                 "React with ✅ to swap or ❌ to keep."
             )
             
