@@ -204,7 +204,10 @@ class Farm(commands.Cog):
             if random.random() < enemy_stats['Critical_chance'] / 100:
                 await ctx.send("The zombie Crit against you")
                 enemy_damage *= 2  # Double damage for enemy critical hit
-    
+
+            enemy_damage = math.floor(enemy_damage)
+            player_damage = math.ceil(player_damage)
+            
             # Apply damage to Health
             user_data['Health'] -= math.floor(enemy_damage)
             enemy_stats['Health'] -= math.ceil(player_damage)
