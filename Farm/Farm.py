@@ -808,6 +808,37 @@ class Farm(commands.Cog):
         else:
             await ctx.send(f"Stat {stat} not found.")
 
+
+    @commands.command(name='setstat')
+    @commands.is_owner()  # Ensure only the bot owner can use this command
+    def reset_player_stats(self, ctx, member: discord.Member):
+        user_data = await self.config.user(member).all()
+
+        # Resetting base stats
+        user_data['rep'] = 1
+        user_data['strength'] = 1
+        user_data['defense'] = 1
+        user_data['speed'] = 1
+        user_data['luck'] = 1
+        user_data['Health'] = 10
+        user_data['Critical_chance'] = 1
+    
+        # Clearing equipment slots
+        user_data['helmet'] = {}
+        user_data['body'] = {}
+        user_data['boots'] = {}
+        user_data['gloves'] = {}
+        user_data['ring'] = {}
+        user_data['weapon'] = {}
+        user_data['artifact'] = {}
+        user_data['belt'] = {}
+    
+        # Clearing loot
+        user_data['loot'] = []
+    
+        await self.config.user(member).set(user_data)
+
+    
     @farm.command(name="viewgear")
     async def view_gear(self, ctx):
         user_data = await self.config.user(ctx.author).all()
@@ -831,6 +862,7 @@ class Farm(commands.Cog):
 
         # Send the gear summary to the player
         await ctx.send(f"**Your Gear:**\n{gear_summary}")
+        
     
 
 
