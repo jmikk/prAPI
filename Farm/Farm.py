@@ -173,13 +173,15 @@ class Farm(commands.Cog):
         enemy_name = random.choice(zombie_names)
         user_rep = user_data['rep']  # Fetch the user's rep
         # Generate enemy stats based on the user's stats
+        low_mod = 1
+        high_mod = 2
         enemy_stats = {
-            "strength": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*2)),
-            "defense": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*2)),
-            "speed": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*2)),
-            "luck": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*2)),
-            "Health": random.randint(math.floor(5+user_rep/2), math.ceil((user_rep+5)*2)),
-            "Critical_chance": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*2)),
+            "strength": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
+            "defense": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
+            "speed": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
+            "luck": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
+            "Health": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
+            "Critical_chance": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
         }
         round_count=0
         start_life = user_data['Health'] 
