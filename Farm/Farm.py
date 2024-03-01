@@ -809,7 +809,7 @@ class Farm(commands.Cog):
             await ctx.send(f"Stat {stat} not found.")
 
 
-    @commands.command(name='reset')
+    @farm.command(name='reset')
     @commands.is_owner()  # Ensure only the bot owner can use this command
     async def reset_player_stats(self, ctx, member: discord.Member):
         user_data = await self.config.user(member).all()
