@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 from discord.ext import tasks
-import Math
+import math
 import datetime
 import random
 import discord
