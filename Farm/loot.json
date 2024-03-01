@@ -222,6 +222,98 @@
     },
     {"name": "Bulwark of the Storm","slot": "body","stats": {"defense": 28,"Health": 17,"speed": 8,"Critical_chance": 10,"strength": 9,"luck": 6}},
 
+    {"name": "Gleaming Scimitar", "slot": "weapon", "stats": {"attack": 4, "Critical_chance": 3}},
+    {"name": "Stalwart Halberd", "slot": "weapon", "stats": {"attack": 4, "Critical_chance": 1}},
+    {"name": "Shadowed Shortbow", "slot": "weapon", "stats": {"attack": 5, "defense": 2}},
+    {"name": "Mystic Kris", "slot": "weapon", "stats": {"attack": 6, "speed": 2}},
+    {"name": "Stormforged Axe", "slot": "weapon", "stats": {"attack": 6, "luck": 1}},
+    {"name": "Lunar Staff", "slot": "weapon", "stats": {"attack": 5, "speed": 3}},
+    {"name": "Sunlit Rapier", "slot": "weapon", "stats": {"attack": 5, "speed": 2}},
+    {"name": "Duskblade Dagger", "slot": "weapon", "stats": {"attack": 5, "defense": 1}},
+    {"name": "Frostbound Mace", "slot": "weapon", "stats": {"attack": 6, "speed": 1}},
+    {"name": "Starlight Spear", "slot": "weapon", "stats": {"attack": 4, "Critical_chance": 2}},
+    {"name": "Aurora Crossbow", "slot": "weapon", "stats": {"attack": 6, "luck": 1}},
+    {"name": "Vortex Longsword", "slot": "weapon", "stats": {"attack": 4, "Critical_chance": 1}},
+    {"name": "Eclipse Falchion", "slot": "weapon", "stats": {"attack": 6, "Critical_chance": 3}},
+    {"name": "Tidecaller Trident", "slot": "weapon", "stats": {"attack": 5, "defense": 3}},
+    {"name": "Ember Pike", "slot": "weapon", "stats": {"attack": 5, "luck": 1}},
+    {"name": "Windstalker Bow", "slot": "weapon", "stats": {"attack": 5, "luck": 1}},
+    {"name": "Thorned Whip", "slot": "weapon", "stats": {"attack": 5, "luck": 1}},
+    {"name": "Voidtouched Sword", "slot": "weapon", "stats": {"attack": 5, "defense": 3}},
+    {"name": "Lightbringer Hammer", "slot": "weapon", "stats": {"attack": 5, "defense": 3}},
+    {"name": "Netherbane Axe", "slot": "weapon", "stats": {"attack": 5, "luck": 2}},
+    {"name": "Soulreaper Scythe", "slot": "weapon", "stats": {"attack": 5, "Critical_chance": 1}},
+    {"name": "Dreadnought Katana", "slot": "weapon", "stats": {"attack": 6, "luck": 2}},
+    {"name": "Skyfire Glaive", "slot": "weapon", "stats": {"attack": 4, "defense": 2}},
+    {"name": "Earthshaker Maul", "slot": "weapon", "stats": {"attack": 5, "defense": 3}},
+    {"name": "Thunderfist Gauntlets", "slot": "weapon", "stats": {"attack": 6, "speed": 3}},
+    {"name": "Seastorm Harpoon", "slot": "weapon", "stats": {"attack": 6, "speed": 3}},
+    {"name": "Blazefury Sabre", "slot": "weapon", "stats": {"attack": 5, "luck": 1}},
+    {"name": "Moonshadow Scepter", "slot": "weapon", "stats": {"attack": 5, "defense": 3}},
+
+    {"name": "Blade of the Inferno", "slot": "weapon", "stats": {"attack": 8, "Health": 5, "defense": 5}},
+    {"name": "Scepter of the Ancients", "slot": "weapon", "stats": {"attack": 7, "Health": 2, "Critical_chance": 2}},
+    {"name": "Bow of the Gale Winds", "slot": "weapon", "stats": {"attack": 8, "luck": 3, "Critical_chance": 5}},
+    {"name": "Axe of the Leviathan", "slot": "weapon", "stats": {"attack": 9, "defense": 3, "speed": 4}},
+    {"name": "Hammer of the Sun", "slot": "weapon", "stats": {"attack": 10, "Critical_chance": 4, "speed": 3}},
+    {"name": "Lance of the Fallen", "slot": "weapon", "stats": {"attack": 9, "Critical_chance": 3, "luck": 3}},
+    {"name": "Dagger of the Eclipse", "slot": "weapon", "stats": {"attack": 10, "Health": 5, "defense": 2}},
+    {"name": "Staff of the Moon", "slot": "weapon", "stats": {"attack": 9, "Health": 5, "luck": 5}},
+    {"name": "Scythe of the Harvest", "slot": "weapon", "stats": {"attack": 8, "luck": 3, "defense": 3}},
+    {"name": "Sword of the Stars", "slot": "weapon", "stats": {"attack": 7, "Critical_chance": 5, "speed": 2}},
+    {"name": "Mace of the Depths", "slot": "weapon", "stats": {"attack": 8, "speed": 3, "luck": 4}},
+    {"name": "Crossbow of the Ranger", "slot": "weapon", "stats": {"attack": 9, "Health": 2, "Critical_chance": 2}},
+    {"name": "Katana of the Dawn", "slot": "weapon", "stats": {"attack": 8, "speed": 5, "luck": 3}},
+    {"name": "Glaive of the Tempest", "slot": "weapon", "stats": {"attack": 10, "speed": 4, "Health": 3}},
+    {"name": "Rapier of the Mist", "slot": "weapon", "stats": {"attack": 10, "Critical_chance": 2, "defense": 5}},
+    {"name": "Halberd of the Frost", "slot": "weapon", "stats": {"attack": 10, "defense": 4, "Health": 2}},
+    {"name": "Whip of the Wildfire", "slot": "weapon", "stats": {"attack": 10, "luck": 5, "Critical_chance": 2}},
+    {"name": "Falchion of the Night", "slot": "weapon", "stats": {"attack": 9, "speed": 2, "luck": 5}},
+    {"name": "Spear of the Divine", "slot": "weapon", "stats": {"attack": 7, "Critical_chance": 2, "speed": 5}},
+    {"name": "Gauntlets of the Titan", "slot": "weapon", "stats": {"attack": 8, "Critical_chance": 5, "Health": 4}},
+
+    
+    
+    {"name": "Basic Sword", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Rusty Dagger", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Leather Scabbard", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Copper Blade", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Bandit Shiv", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Wooden Staff", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Worn Axe", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Iron Mace", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Stone Sling", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Hunter's Bow", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Fisherman's Harpoon", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Thief's Knife", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Farmer's Pitchfork", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Gladiator's Spear", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Knight's Longsword", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Raider's Hatchet", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Scout's Crossbow", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Mage's Wand", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Mercenary's Falchion", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Sailor's Cutlass", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Adventurer's Rapier", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Duelist's Sabre", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Guard's Halberd", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Footman's Pike", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Archer's Shortbow", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Cavalier's Lance", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Berserker's Warhammer", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Assassin's Stiletto", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Brawler's Knuckles", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Monk's Quarterstaff", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Druid's Staff", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Warlock's Rod", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Paladin's Hammer", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Necromancer's Scythe", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Shaman's Totem", "slot": "weapon", "stats": {"attack": 2}},
+    {"name": "Ranger's Longbow", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Bard's Lute", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Jester's Club", "slot": "weapon", "stats": {"attack": 1}},
+    {"name": "Priest's Miter", "slot": "weapon", "stats": {"attack": 3}},
+    {"name": "Viking's Axe", "slot": "weapon", "stats": {"attack": 2}},
     {"name": "Basic Helm", "slot": "helmet", "stats": {"defense": 2}},
     {"name": "Rusty Cap", "slot": "helmet", "stats": {"defense": 1}},
     {"name": "Leather Hood", "slot": "helmet", "stats": {"defense": 2}},
@@ -443,6 +535,140 @@
         "speed": 6
       }
     },
+
+        {
+      "name": "Excalibur Reborn",
+      "slot": "weapon",
+      "stats": {
+        "attack": 16,
+        "defense": 4,
+        "speed": 5,
+        "luck": 8,
+        "Critical_chance": 7
+      }
+    },
+    {
+      "name": "Gungnir's Echo",
+      "slot": "weapon",
+      "stats": {
+        "attack": 16,
+        "defense": 6,
+        "speed": 4,
+        "luck": 5,
+        "Critical_chance": 9
+      }
+    },
+    {
+      "name": "Aegis Fang",
+      "slot": "weapon",
+      "stats": {
+        "attack": 16,
+        "defense": 10,
+        "speed": 5,
+        "luck": 7,
+        "Critical_chance": 9
+      }
+    },
+    {
+      "name": "Celestia's Grace",
+      "slot": "weapon",
+      "stats": {
+        "attack": 15,
+        "defense": 6,
+        "speed": 6,
+        "luck": 8,
+        "Critical_chance": 8
+      }
+    },
+    {
+      "name": "Voidheart Blade",
+      "slot": "weapon",
+      "stats": {
+        "attack": 15,
+        "defense": 4,
+        "speed": 6,
+        "luck": 8,
+        "Critical_chance": 7
+      }
+    },
+    {
+      "name": "Arcanum's Bane",
+      "slot": "weapon",
+      "stats": {
+        "attack": 15,
+        "defense": 8,
+        "speed": 6,
+        "luck": 6,
+        "Critical_chance": 5
+      }
+    },
+    {
+      "name": "Infernal Whisper",
+      "slot": "weapon",
+      "stats": {
+        "attack": 14,
+        "defense": 7,
+        "speed": 8,
+        "luck": 8,
+        "Critical_chance": 8
+      }
+    },
+    {
+      "name": "Tempest's Fury",
+      "slot": "weapon",
+      "stats": {
+        "attack": 15,
+        "defense": 6,
+        "speed": 8,
+        "luck": 9,
+        "Critical_chance": 8
+      }
+    },
+    {
+      "name": "Elysium's End",
+      "slot": "weapon",
+      "stats": {
+        "attack": 16,
+        "defense": 9,
+        "speed": 8,
+        "luck": 5,
+        "Critical_chance": 9
+      }
+    },
+    {
+      "name": "Nemesis",
+      "slot": "weapon",
+      "stats": {
+        "attack": 13,
+        "defense": 6,
+        "speed": 10,
+        "luck": 5,
+        "Critical_chance": 7
+      }
+    },
+    {
+      "name": "Oblivion's Edge",
+      "slot": "weapon",
+      "stats": {
+        "attack": 14,
+        "defense": 7,
+        "speed": 7,
+        "luck": 6,
+        "Critical_chance": 6
+      }
+    },
+    {
+      "name": "Harmony's Resonance",
+      "slot": "weapon",
+      "stats": {
+        "attack": 17,
+        "defense": 5,
+        "speed": 6,
+        "luck": 6,
+        "Critical_chance": 10
+      }
+    },
+    
     {"name": "Worn Leather Boots", "slot": "boots", "stats": {"defense": 1}},
     {"name": "Rough Cloth Shoes", "slot": "boots", "stats": {"defense": 1}},
     {"name": "Sturdy Work Boots", "slot": "boots", "stats": {"defense": 2}},
