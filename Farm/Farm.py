@@ -197,15 +197,31 @@ class Farm(commands.Cog):
     
             player_damage = max(round_count, player_effective_attack - enemy_effective_defense)
             enemy_damage = max(round_count * round_count, enemy_effective_attack - player_effective_defense)
-    
-            # Consider Critical Chance
-            if random.random() < user_data['Critical_chance'] / 100:
-                await ctx.send("You CRIT!")
-                player_damage *= 2  # Double damage for critical hit
-    
-            if random.random() < enemy_stats['Critical_chance'] / 100:
-                await ctx.send("The zombie Crit against you")
-                enemy_damage *= 2  # Double damage for enemy critical hit
+
+            
+            guaranteed_crits = user_data['Critical_chance'] // 100
+            chance_for_extra_crit = user_data['Critical_chance'] % 100
+        
+            # Guaranteed crits for the player
+            for _ in range(guaranteed_crits):
+                player_damage *= 2  # Double damage for each guaranteed critical hit
+        
+            # Chance for an additional crit
+            if random.random() < chance_for_extra_crit / 100:
+                player_damage *= 2  # Double damage for additional critical hit
+        
+            # Enemy's turn
+            guaranteed_crits_enemy = enemy_stats['Critical_chance'] // 100
+            chance_for_extra_crit_enemy = enemy_stats['Critical_chance'] % 100
+        
+            # Guaranteed crits for the enemy
+            for _ in range(guaranteed_crits_enemy):
+                enemy_damage *= 2  # Double damage for each guaranteed critical hit
+        
+            # Chance for an additional crit for the enemy
+            if random.random() < chance_for_extra_crit_enemy / 100:
+                enemy_damage *= 2  # Double damage for additional critical hit
+
 
             enemy_damage = math.floor(enemy_damage)
             player_damage = math.ceil(player_damage)
