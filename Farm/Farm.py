@@ -213,7 +213,7 @@ class Farm(commands.Cog):
             enemy_stats['Health'] -= math.ceil(player_damage)
     
             # Provide feedback for each round
-            await ctx.send(f"Round {round_count} results: {enemy_name} took {player_damage} damage. You took {enemy_damage} damage.")
+            await ctx.send(f"Round {round_count} results: {enemy_name} took **{player_damage}** damage. You took **{enemy_damage}** damage.")
             # Simulate the fight (This part can be expanded with actual fight mechanics)
             # Determine the result
         if user_data['Health'] > 0:
@@ -307,7 +307,6 @@ class Farm(commands.Cog):
 
                     #add the new stats to the player.
                     #reepuip
-                    await ctx.send(item['stats'].items())
                     for stat, bonus in item['stats'].items():
                         if stat in user_data:
                             user_data[stat] = user_data[stat] + bonus
