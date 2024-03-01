@@ -174,12 +174,12 @@ class Farm(commands.Cog):
         user_rep = user_data['rep']  # Fetch the user's rep
         # Generate enemy stats based on the user's stats
         enemy_stats = {
-            "strength": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
-            "defense": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
-            "speed": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
-            "luck": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*1.1)),
-            "Health": random.randint(math.floor(5+user_rep/2), math.ceil((user_rep+5)*1.1)),
-            "Critical_chance": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1))),
+            "strength": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*2)),
+            "defense": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*2)),
+            "speed": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*2)),
+            "luck": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*2)),
+            "Health": random.randint(math.floor(5+user_rep/2), math.ceil((user_rep+5)*2)),
+            "Critical_chance": random.randint(math.floor(1+user_rep/2), math.ceil((user_rep+1)*2)),
         }
         round_count=0
         start_life = user_data['Health'] 
