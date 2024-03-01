@@ -345,6 +345,11 @@ class Farm(commands.Cog):
             # The slot is empty, simply add the new item
             item['stats'] = new_item_stats_with_bonus
             user_data[item['slot']] = item
+            
+            for stat, bonus in item['stats'].items():
+                if stat in user_data:
+                    user_data[stat] = user_data[stat] + bonus
+            
             await self.config.user(user).set(user_data)
             await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
 
