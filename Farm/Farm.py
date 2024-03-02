@@ -933,15 +933,17 @@ class Farm(commands.Cog):
         # Send the gear summary to the player
         await ctx.send(f"**Your Gear:**\n{gear_summary}")
     
-    @farm.command(name="upgrade_gear")
-    async def upgrade_item(self,ctx, slot):
-        user_data = await self.config.user(ctx.author).all()
 
-        # Check if the slot is valid and has an item
-        if slot.lower() not in user_data or not user_data[slot]:
-            return "Invalid slot or no item equipped in this slot."
+    @farm.command(name="upgrade_gear")
+    async def upgrade_item(self, ctx, slot):
+        user_data = await self.config.user(ctx.author).all()
     
-        item = user_data[slot]  # The item to upgrade
+        # Check if the slot is valid and has an item
+        if slot.lower() not in user_data or not user_data[slot.lower()]:
+            await ctx.send("Invalid slot or no item equipped in this slot.")
+            return
+    
+        item = user_data[slot.lower()]  # The item to upgrade
         stats = item.get("stats", {})  # Item stats
     
         # Calculate upgrade cost: 100 gold for each 100 points in item stats
@@ -949,29 +951,40 @@ class Farm(commands.Cog):
         cost = (total_stats // 200) * 100
     
         if user_data["gold"] < cost:
-            return f"Not enough gold. Upgrade costs {cost} gold."
+            await ctx.send(f"Not enough gold. Upgrade costs {cost} gold.")
+            return
     
-        # Randomly choose a stat to upgrade
+        # Confirmation message
+        confirm_msg = await ctx.send(f"Upgrading will cost {cost} gold. Do you wish to proceed? React with ✅ to confirm or ❌ to cancel.")
     
-        stat_to_upgrade = random.choice(list(stats.keys()))
-        stats[stat_to_upgrade] += 1  # Increment the chosen stat by 1
+        # Add reactions for confirmation
+        await confirm_msg.add_reaction("✅")
+        await confirm_msg.add_reaction("❌")
     
-            # Deduct the cost from player's gold
-        user_data["gold"] -= cost
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["✅", "❌"] and reaction.message.id == confirm_msg.id
     
-            # Save changes if necessary, depending on how user_data is stored and managed
-        await ctx.send(f"Upgraded {stat_to_upgrade} on your {slot}. New value: {stats[stat_to_upgrade]}. Cost: {cost} gold.")
-        await self.config.user(member).set(user_data)
-
-
-        
+        try:
+            reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
     
-
-
-
+            # If the player cancels the upgrade
+            if str(reaction.emoji) == "❌":
+                await ctx.send("Upgrade cancelled.")
+                return
     
-
-
-
-
+            # If the player confirms the upgrade
+            if str(reaction.emoji) == "✅":
+                # Randomly choose a stat to upgrade
+                stat_to_upgrade = random.choice(list(stats.keys()))
+                stats[stat_to_upgrade] += 1  # Increment the chosen stat by 1
     
+                # Deduct the cost from player's gold
+                user_data["gold"] -= cost
+    
+                # Save changes
+                await self.config.user(ctx.author).set(user_data)
+    
+                await ctx.send(f"Upgraded {stat_to_upgrade} on your {slot}. New value: {stats[stat_to_upgrade]}. Cost: {cost} gold.")
+    
+        except asyncio.TimeoutError:
+            await ctx.send("Upgrade request timed out.")
