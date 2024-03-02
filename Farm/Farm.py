@@ -1023,3 +1023,70 @@ class Farm(commands.Cog):
     
         except asyncio.TimeoutError:
             await ctx.send("Upgrade request timed out.")
+
+
+    async def get_leaderboard_page(self, ctx, attribute="rep", page=1):
+        guild = ctx.guild
+        members = guild.members
+
+        leaderboard_data = []
+        for member in members:
+            member_data = await self.config.user(member).all()
+            leaderboard_data.append((member.display_name, member_data.get(attribute, 0)))
+
+        leaderboard_data.sort(key=lambda x: x[1], reverse=True)
+
+        items_per_page = 10
+        total_pages = len(leaderboard_data) // items_per_page + (1 if len(leaderboard_data) % items_per_page > 0 else 0)
+        start_index = (page - 1) * items_per_page
+        end_index = start_index + items_per_page
+        page_data = leaderboard_data[start_index:end_index]
+
+        return page_data, total_pages
+
+    async def update_leaderboard_embed(self, message, ctx, attribute, page, total_pages):
+        page_data, _ = await self.get_leaderboard_page(ctx, attribute, page)
+        embed = discord.Embed(title=f"Leaderboard: {attribute.capitalize()}", color=discord.Color.blue())
+        for name, value in page_data:
+            embed.add_field(name=name, value=value, inline=False)
+        embed.set_footer(text=f"Page {page}/{total_pages}")
+        await message.edit(embed=embed)
+
+    @commands.command()
+    async def leaderboard(self, ctx, attribute: str = "rep", page: int = 1):
+        page_data, total_pages = await self.get_leaderboard_page(ctx, attribute, page)
+        if not page_data:
+            await ctx.send("No data available.")
+            return
+
+        embed = discord.Embed(title=f"Leaderboard: {attribute.capitalize()}", color=discord.Color.blue())
+        for name, value in page_data:
+            embed.add_field(name=name, value=value, inline=False)
+        embed.set_footer(text=f"Page {page}/{total_pages}")
+
+        message = await ctx.send(embed=embed)
+
+        # Add reactions for pagination
+        await message.add_reaction("⬅️")
+        await message.add_reaction("➡️")
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["⬅️", "➡️"] and reaction.message.id == message.id
+
+        while True:
+            try:
+                reaction, user = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+
+                if str(reaction.emoji) == "⬅️" and page > 1:
+                    page -= 1
+                elif str(reaction.emoji) == "➡️" and page < total_pages:
+                    page += 1
+                else:
+                    continue
+
+                await self.update_leaderboard_embed(message, ctx, attribute, page, total_pages)
+                await message.remove_reaction(reaction, user)
+
+            except asyncio.TimeoutError:
+                break  # End the loop if there's no reaction within the timeout period
+
