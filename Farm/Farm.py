@@ -1059,8 +1059,15 @@ class Farm(commands.Cog):
 
 
     @farm.command()
-    async def leaderboard(self, ctx, attribute: str = "rep"):
-        page=1
+    async def leaderboard(self, ctx, attribute: str = "rep",page=1):
+        attribute = attribute.lower().replace(" ","_")
+        stats=["rep","strength","defense","speed","luck","health","critical_chance"]
+        if attribute not in stats:
+            ctx.send(f"Try doing one of the following {stats.join(", ")}")
+            attribute = "rep"
+        attribute.replace("health","Health").replace("critical_chance","Critical_chance")
+        
+        
         page_data, total_pages = await self.get_leaderboard_page(ctx, attribute, page)
         if not page_data:
             await ctx.send("No data available.")
@@ -1069,7 +1076,7 @@ class Farm(commands.Cog):
         embed = discord.Embed(title=f"Leaderboard: {attribute.capitalize()}", color=discord.Color.blue())
         
         for index, (name, value) in enumerate(page_data):
-            embed.add_field(name=f"{index+1}. {name}", value=f"{attribute}{value}", inline=False)
+            embed.add_field(name=f"{index+1}. {name}", value=f"{attribute} {value}", inline=False)
         embed.set_footer(text=f"Page {page}/{total_pages}")
 
         message = await ctx.send(embed=embed)
