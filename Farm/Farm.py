@@ -949,6 +949,8 @@ class Farm(commands.Cog):
         # Calculate upgrade cost: 100 gold for each 100 points in item stats
         total_stats = sum(stats.values())
         cost = (total_stats // 200) * 100
+        if cost < 100:
+            cost = 100
     
         if user_data["gold"] < cost:
             await ctx.send(f"Not enough gold. Upgrade costs {cost} gold.")
