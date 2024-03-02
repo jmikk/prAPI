@@ -235,7 +235,7 @@ class Farm(commands.Cog):
 
             bar_length = 10  # Number of emojis in the health bar
             health_ratio = enemy_stats['Health']  / bad_start_life
-            filled_blocks = int(bar_length * health_ratio)
+            filled_blocks = int(math.ceil(bar_length * health_ratio))
             empty_blocks = bar_length - filled_blocks
             
             bad_life_bar = "Health: " + "💚" * filled_blocks + "🖤" * empty_blocks
@@ -244,9 +244,9 @@ class Farm(commands.Cog):
             
             bar_length = 10  # Number of emojis in the health bar
             health_ratio = user_data['Health'] / start_life
-            filled_blocks = int(bar_length * health_ratio)
+            filled_blocks = int(math.ceil(bar_length * health_ratio))
             empty_blocks = bar_length - filled_blocks
-            
+
             player_life_bar = "Health: " + "❤️" * filled_blocks + "💟" * empty_blocks
             if len(player_life_bar) > 28:
                 player_life_bar = player_life_bar[:28]
@@ -335,7 +335,7 @@ class Farm(commands.Cog):
                     item['stats'] = new_item_stats_with_bonus
                     
                     user_data[item['slot']] = item
-                    await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
+                    await ctx.send(f"You've equipped **{item['name']}** in your {item['slot']} slot.")
 
                     #unequip
                     for stat, bonus in current_item.get("stats", {}).items():
