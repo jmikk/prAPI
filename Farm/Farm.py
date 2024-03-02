@@ -285,7 +285,7 @@ class Farm(commands.Cog):
 
         player_rep = user_data['rep']  # Get the player's current rep
         new_item_stats_with_bonus = {stat: math.floor(value + player_rep/2) for stat, value in stats.items()}
-        new_item_stats = "\n" + '\n'.join([f"{stat.replace("_"," ")}: {value}" for stat, value in new_item_stats_with_bonus.items()])+"\n\n"
+        new_item_stats = "\n" + '\n'.join([f"{stat.replace('_', ' ')}: {value}" for stat, value in new_item_stats_with_bonus.items()]) + "\n\n"
         
     
         if current_item:
