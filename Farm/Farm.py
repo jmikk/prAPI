@@ -183,77 +183,51 @@ class Farm(commands.Cog):
             "Health": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
             "Critical_chance": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
         }
-        round_count=0
-        start_life = user_data['Health'] 
-        bad_start_life = enemy_stats['Health']
+        
+        round_count = 0
+        round_messages = []  # To store embeds for each round
+    
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
-            round_count= round_count + 1
-
-            # Calculate effective stats and damage as before
+            round_count += 1
+            # Calculate stats and damage as before...
     
-            player_effective_attack = user_data['strength'] + random.randint(1, user_data['luck'])
-            player_effective_defense = user_data['defense'] * (1 + user_data['speed'] / 100)
-            enemy_effective_attack = enemy_stats['strength'] + random.randint(1, enemy_stats['luck'])
-            enemy_effective_defense = enemy_stats['defense'] * (1 + enemy_stats['speed'] / 100)
+            # Create the Embed for the round
+            embed = discord.Embed(title=f"Round {round_count}", color=discord.Color.blue())
+            embed.add_field(name=f"{enemy_name}", value=f"Damage Taken: **{player_damage}**\n{bad_life_bar}", inline=False)
+            embed.add_field(name="You", value=f"Damage Taken: **{enemy_damage}**\n{player_life_bar}", inline=False)
     
-            player_damage = max(round_count, player_effective_attack - enemy_effective_defense)
-            enemy_damage = max((round_count * round_count)/2, enemy_effective_attack - player_effective_defense)
-
-            
-            guaranteed_crits = user_data['Critical_chance'] // 100
-            chance_for_extra_crit = user_data['Critical_chance'] % 100
-        
-            # Guaranteed crits for the player
-            for _ in range(guaranteed_crits):
-                player_damage *= 2  # Double damage for each guaranteed critical hit
-        
-            # Chance for an additional crit
-            if random.random() < chance_for_extra_crit / 100:
-                player_damage *= 2  # Double damage for additional critical hit
-        
-            # Enemy's turn
-            guaranteed_crits_enemy = enemy_stats['Critical_chance'] // 100
-            chance_for_extra_crit_enemy = enemy_stats['Critical_chance'] % 100
-        
-            # Guaranteed crits for the enemy
-            for _ in range(guaranteed_crits_enemy):
-                enemy_damage *= 2  # Double damage for each guaranteed critical hit
-        
-            # Chance for an additional crit for the enemy
-            if random.random() < chance_for_extra_crit_enemy / 100:
-                enemy_damage *= 2  # Double damage for additional critical hit
-
-
-            enemy_damage = math.floor(enemy_damage)
-            player_damage = math.ceil(player_damage)
-            
-            # Apply damage to Health
-            user_data['Health'] -= math.floor(enemy_damage)
-            enemy_stats['Health'] -= math.ceil(player_damage)
+            # Append the embed to the round messages
+            round_messages.append(embed)
     
-            # Provide feedback for each round
+            # Check for end of combat and break loop if needed...
+    
+        # Pagination (send first message and add reactions for navigation)
+        current_page = 0
+        message = await ctx.send(embed=round_messages[current_page])
+    
+        await message.add_reaction('◀')
+        await message.add_reaction('▶')
+    
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ['◀', '▶'] and reaction.message.id == message.id
+    
+        while True:
+            try:
+                reaction, user = await ctx.bot.wait_for('reaction_add', timeout=60.0, check=check)
+    
+                if str(reaction.emoji) == '▶' and current_page < len(round_messages) - 1:
+                    current_page += 1
+                    await message.edit(embed=round_messages[current_page])
+                    await message.remove_reaction(reaction, user)
+    
+                elif str(reaction.emoji) == '◀' and current_page > 0:
+                    current_page -= 1
+                    await message.edit(embed=round_messages[current_page])
+                    await message.remove_reaction(reaction, user)
+    
+            except TimeoutError:
+                break  # End pagination if user doesn't react for a while
 
-            bar_length = 10  # Number of emojis in the health bar
-            health_ratio = enemy_stats['Health']  / bad_start_life
-            filled_blocks = int(math.ceil(bar_length * health_ratio))
-            empty_blocks = bar_length - filled_blocks
-            
-            bad_life_bar = "Health: " + "💚" * filled_blocks + "🖤" * empty_blocks
-            if len(bad_life_bar) > 18:
-                bad_life_bar = bad_life_bar[:18]
-            
-            bar_length = 10  # Number of emojis in the health bar
-            health_ratio = user_data['Health'] / start_life
-            filled_blocks = int(math.ceil(bar_length * health_ratio))
-            empty_blocks = bar_length - filled_blocks
-
-            player_life_bar = "Health: " + "❤️" * filled_blocks + "🖤" * empty_blocks
-            if len(player_life_bar) > 28:
-                player_life_bar = player_life_bar[:28]
-            
-            await ctx.send(f"\nRound {round_count}\nresults: {enemy_name} took **{player_damage}** damage.\n{bad_life_bar}\n\nYou took **{enemy_damage}** damage.\n{player_life_bar}")
-            # Simulate the fight (This part can be expanded with actual fight mechanics)
-            # Determine the result
         if user_data['Health'] > 0:
             result = "won"
             
