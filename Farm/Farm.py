@@ -288,8 +288,8 @@ class Farm(commands.Cog):
                     await message.edit(embed=round_messages[current_page])
                     await message.remove_reaction(reaction, user)
     
-            except TimeoutError:
-                break  # End pagination if user doesn't react for a while
+            except asyncio.TimeoutError:
+                    break  # End pagination if user doesn't react for a while
 
         if user_data['Health'] > 0:
             result = "won"
