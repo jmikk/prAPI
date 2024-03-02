@@ -1052,7 +1052,7 @@ class Farm(commands.Cog):
         embed.set_footer(text=f"Page {page}/{total_pages}")
         await message.edit(embed=embed)
 
-    @commands.command()
+    @farm.command()
     async def leaderboard(self, ctx, attribute: str = "rep", page: int = 1):
         page_data, total_pages = await self.get_leaderboard_page(ctx, attribute, page)
         if not page_data:
