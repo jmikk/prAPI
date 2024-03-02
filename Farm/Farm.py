@@ -266,7 +266,7 @@ class Farm(commands.Cog):
             item_name = loot_box_item['name']
             stats = loot_box_item['stats']
 
-            await ctx.send(f"Congratulations! You've received a **{item_name}** from the loot box!")
+            await ctx.send(f"**Congratulations!** You've received a **{item_name}** from the loot box!")
 
             # Add the loot item to the player's inventory
             await self._add_loot_to_inventory(ctx,ctx.author, loot_box_item, stats)
@@ -285,12 +285,12 @@ class Farm(commands.Cog):
 
         player_rep = user_data['rep']  # Get the player's current rep
         new_item_stats_with_bonus = {stat: math.floor(value + player_rep/2) for stat, value in stats.items()}
-        new_item_stats = "\n" + '\n'.join([f"{stat}: {value}" for stat, value in new_item_stats_with_bonus.items()])+"\n\n"
+        new_item_stats = "\n" + '\n'.join([f"{stat.replace("_"," ")}: {value}" for stat, value in new_item_stats_with_bonus.items()])+"\n\n"
         
     
         if current_item:
             # There's already an item in this slot. Prompt the user to decide.
-            current_item_stats = "\n" + '\n'.join([f"{stat}: {value}" for stat, value in current_item.get('stats', {}).items()])+"\n\n"
+            current_item_stats = "\n" + '\n'.join([f"{stat.replace("_"," "}: {value}" for stat, value in current_item.get('stats', {}).items()])+"\n\n"
             
             
             # Updated prompt message to include current and new item stats
