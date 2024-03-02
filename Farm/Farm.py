@@ -285,12 +285,12 @@ class Farm(commands.Cog):
 
         player_rep = user_data['rep']  # Get the player's current rep
         new_item_stats_with_bonus = {stat: math.floor(value + player_rep/2) for stat, value in stats.items()}
-        new_item_stats = ', '.join([f"{stat}: {value}" for stat, value in new_item_stats_with_bonus.items()])
+        new_item_stats = "\n" + '\n'.join([f"{stat}: {value}" for stat, value in new_item_stats_with_bonus.items()])
         
     
         if current_item:
             # There's already an item in this slot. Prompt the user to decide.
-            current_item_stats = '\n'.join([f"{stat}: {value}" for stat, value in current_item.get('stats', {}).items()])
+            current_item_stats = "\n" + '\n'.join([f"{stat}: {value}" for stat, value in current_item.get('stats', {}).items()])
             
             
             # Updated prompt message to include current and new item stats
