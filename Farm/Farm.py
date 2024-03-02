@@ -329,7 +329,7 @@ class Farm(commands.Cog):
             item_name = loot_box_item['name']
             stats = loot_box_item['stats']
 
-            await ctx.send(f"**Congratulations!** You've received a **{item_name}** from the loot box!")
+            #await ctx.send(f"**Congratulations!** You've received a **{item_name}** from the loot box!")
 
             # Add the loot item to the player's inventory
             await self._add_loot_to_inventory(ctx,ctx.author, loot_box_item, stats)
@@ -353,7 +353,7 @@ class Farm(commands.Cog):
     
         if current_item:
             # Create an embed object
-            embed = discord.Embed(title="Item Swap Confirmation", color=discord.Color.blue())
+            embed = discord.Embed(title="Congratulations you won!", color=discord.Color.blue())
             
             # Add the current item's name and stats to the embed
             current_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in current_item.get('stats', {}).items()])
