@@ -1052,7 +1052,7 @@ class Farm(commands.Cog):
         start_rank = (page - 1) * items_per_page + 1  # Calculate the starting rank for the current page
     
         for index, (name, value) in enumerate(page_data, start=start_rank):
-            embed.add_field(name=f"{index}. @<{name.id}>", value=f"{attribute} {value}", inline=False)
+            embed.add_field(name=f"{index}. {name}", value=f"{attribute} {value}", inline=False)
         
         embed.set_footer(text=f"Page {page}/{total_pages}")
         await message.edit(embed=embed)
@@ -1069,7 +1069,7 @@ class Farm(commands.Cog):
         embed = discord.Embed(title=f"Leaderboard: {attribute.capitalize()}", color=discord.Color.blue())
         
         for index, (name, value) in enumerate(page_data):
-            embed.add_field(name=f"{index+1}. @<{name}>", value=f"{attribute}{value}", inline=False)
+            embed.add_field(name=f"{index+1}. {name}", value=f"{attribute}{value}", inline=False)
         embed.set_footer(text=f"Page {page}/{total_pages}")
 
         message = await ctx.send(embed=embed)
