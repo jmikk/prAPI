@@ -1028,22 +1028,21 @@ class Farm(commands.Cog):
     async def get_leaderboard_page(self, ctx, attribute="rep", page=1):
         guild = ctx.guild
         members = guild.members
-    
+
         leaderboard_data = []
         for member in members:
             member_data = await self.config.user(member).all()
-            leaderboard_data.append((member, member_data.get(attribute, 0)))  # Store the member object
-    
+            leaderboard_data.append((member.display_name, member_data.get(attribute, 0)))
+
         leaderboard_data.sort(key=lambda x: x[1], reverse=True)
-    
+
         items_per_page = 10
         total_pages = len(leaderboard_data) // items_per_page + (1 if len(leaderboard_data) % items_per_page > 0 else 0)
         start_index = (page - 1) * items_per_page
         end_index = start_index + items_per_page
         page_data = leaderboard_data[start_index:end_index]
-    
-        return page_data, total_pages
 
+        return page_data, total_pages
 
     async def update_leaderboard_embed(self, message, ctx, attribute, page, total_pages):
         page_data, _ = await self.get_leaderboard_page(ctx, attribute, page)
@@ -1070,7 +1069,7 @@ class Farm(commands.Cog):
         embed = discord.Embed(title=f"Leaderboard: {attribute.capitalize()}", color=discord.Color.blue())
         
         for index, (name, value) in enumerate(page_data):
-            embed.add_field(name=f"{index+1}. @<{name.id}>", value=f"{attribute}{value}", inline=False)
+            embed.add_field(name=f"{index+1}. @<{name}>", value=f"{attribute}{value}", inline=False)
         embed.set_footer(text=f"Page {page}/{total_pages}")
 
         message = await ctx.send(embed=embed)
@@ -1098,4 +1097,3 @@ class Farm(commands.Cog):
 
             except asyncio.TimeoutError:
                 break  # End the loop if there's no reaction within the timeout period
-
