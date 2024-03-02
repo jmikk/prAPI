@@ -313,7 +313,7 @@ class Farm(commands.Cog):
             result = "lost"
 
             # Create an embed object with a title and a color (red for loss)
-            embed = discord.Embed(title="Fight Result", description=f"{ctx.mention}, you lost the fight!", color=discord.Color.red())
+            embed = discord.Embed(title="Fight Result", description=f"{ctx.id.mention}, you lost the fight!", color=discord.Color.red())
     
             # Add fields to provide more details about the fight
             embed.add_field(name="Opponent", value=enemy_name, inline=False)
