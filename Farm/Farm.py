@@ -247,7 +247,7 @@ class Farm(commands.Cog):
             filled_blocks = int(math.ceil(bar_length * health_ratio))
             empty_blocks = bar_length - filled_blocks
 
-            player_life_bar = "Health: " + "❤️" * filled_blocks + "💟" * empty_blocks
+            player_life_bar = "Health: " + "❤️" * filled_blocks + "🖤" * empty_blocks
             if len(player_life_bar) > 28:
                 player_life_bar = player_life_bar[:28]
             
