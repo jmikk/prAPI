@@ -362,6 +362,7 @@ class Farm(commands.Cog):
 
         player_rep = user_data['rep']  # Get the player's current rep
         new_item_stats_with_bonus = {stat: math.floor(value + player_rep/2) for stat, value in stats.items()}
+        await ctx.send(new_item_stats_with_bonus)
         new_item_stats = "\n" + '\n'.join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in new_item_stats_with_bonus.items()]) + "\n\n"
         
     
@@ -372,7 +373,8 @@ class Farm(commands.Cog):
             # Add the current item's name and stats to the embed
             current_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in current_item.get('stats', {}).items()])
             embed.add_field(name=f"Current Item: {current_item['name']}", value=current_item_stats, inline=False)
-            
+            item['stats'] = new_item_stats_with_bonus
+
             # Add the new item's name and stats to the embed
             new_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in item.get('stats', {}).items()])
             embed.add_field(name=f"New Item: {item['name']}", value=new_item_stats, inline=False)
