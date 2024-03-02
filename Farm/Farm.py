@@ -186,6 +186,9 @@ class Farm(commands.Cog):
         
         round_count = 0
         round_messages = []  # To store embeds for each round
+
+        bad_start_life=enemy_stats['Health']
+        start_life=user_data['Health']
     
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
             round_count += 1
