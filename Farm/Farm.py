@@ -372,11 +372,18 @@ class Farm(commands.Cog):
             
             # Add the current item's name and stats to the embed
             current_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in current_item.get('stats', {}).items()])
+            
+            current_item_stats = current_item_stats.replace("Strength","⚔️Strength⚔️").replace("Defense","🛡️Defense🛡️").replace("Speed","🏃Speed🏃‍♀️").replace("Luck","🍀Luck🍀").replace("Health","❤️Health❤️").replace("Critical Chance","💥Critical Chance💥")
+           
             embed.add_field(name=f"Current Item: {current_item['name']}", value=current_item_stats, inline=False)
             item['stats'] = new_item_stats_with_bonus
 
             # Add the new item's name and stats to the embed
             new_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in item.get('stats', {}).items()])
+
+            new_item_stats = new_item_stats.replace("Strength","⚔️Strength⚔️").replace("Defense","🛡️Defense🛡️").replace("Speed","🏃Speed🏃‍♀️").replace("Luck","🍀Luck🍀").replace("Health","❤️Health❤️").replace("Critical Chance","💥Critical Chance💥")
+
+            
             embed.add_field(name=f"New Item: {item['name']}", value=new_item_stats, inline=False)
             
             # Set footer instructions
