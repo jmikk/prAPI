@@ -290,7 +290,7 @@ class Farm(commands.Cog):
     
         if current_item:
             # There's already an item in this slot. Prompt the user to decide.
-            current_item_stats = ', '.join([f"{stat}: {value}" for stat, value in current_item.get('stats', {}).items()])
+            current_item_stats = '\n'.join([f"{stat}: {value}" for stat, value in current_item.get('stats', {}).items()])
             
             
             # Updated prompt message to include current and new item stats
