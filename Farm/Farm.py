@@ -230,6 +230,26 @@ class Farm(commands.Cog):
 
             user_data['Health'] -= math.floor(enemy_damage)
             enemy_stats['Health'] -= math.ceil(player_damage)
+
+
+            bar_length = 10  # Number of emojis in the health bar
+            health_ratio = enemy_stats['Health']  / bad_start_life
+            filled_blocks = int(math.ceil(bar_length * health_ratio))
+            empty_blocks = bar_length - filled_blocks
+            
+            bad_life_bar = "Health: " + "💚" * filled_blocks + "🖤" * empty_blocks
+            if len(bad_life_bar) > 18:
+                bad_life_bar = bad_life_bar[:18]
+            
+            bar_length = 10  # Number of emojis in the health bar
+            health_ratio = user_data['Health'] / start_life
+            filled_blocks = int(math.ceil(bar_length * health_ratio))
+            empty_blocks = bar_length - filled_blocks
+
+            player_life_bar = "Health: " + "❤️" * filled_blocks + "🖤" * empty_blocks
+            if len(player_life_bar) > 28:
+                player_life_bar = player_life_bar[:28]
+
             
             # Create the Embed for the round
             embed = discord.Embed(title=f"Round {round_count}", color=discord.Color.blue())
