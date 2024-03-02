@@ -190,7 +190,47 @@ class Farm(commands.Cog):
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
             round_count += 1
             # Calculate stats and damage as before...
+
+
+            player_effective_attack = user_data['strength'] + random.randint(1, user_data['luck'])
+            player_effective_defense = user_data['defense'] * (1 + user_data['speed'] / 100)
+            enemy_effective_attack = enemy_stats['strength'] + random.randint(1, enemy_stats['luck'])
+            enemy_effective_defense = enemy_stats['defense'] * (1 + enemy_stats['speed'] / 100)
     
+            player_damage = max(round_count, player_effective_attack - enemy_effective_defense)
+            enemy_damage = max((round_count * round_count)/2, enemy_effective_attack - player_effective_defense)
+
+            
+            guaranteed_crits = user_data['Critical_chance'] // 100
+            chance_for_extra_crit = user_data['Critical_chance'] % 100
+        
+            # Guaranteed crits for the player
+            for _ in range(guaranteed_crits):
+                player_damage *= 2  # Double damage for each guaranteed critical hit
+        
+            # Chance for an additional crit
+            if random.random() < chance_for_extra_crit / 100:
+                player_damage *= 2  # Double damage for additional critical hit
+        
+            # Enemy's turn
+            guaranteed_crits_enemy = enemy_stats['Critical_chance'] // 100
+            chance_for_extra_crit_enemy = enemy_stats['Critical_chance'] % 100
+        
+            # Guaranteed crits for the enemy
+            for _ in range(guaranteed_crits_enemy):
+                enemy_damage *= 2  # Double damage for each guaranteed critical hit
+        
+            # Chance for an additional crit for the enemy
+            if random.random() < chance_for_extra_crit_enemy / 100:
+                enemy_damage *= 2  # Double damage for additional critical hit
+
+
+            enemy_damage = math.floor(enemy_damage)
+            player_damage = math.ceil(player_damage)
+
+            user_data['Health'] -= math.floor(enemy_damage)
+            enemy_stats['Health'] -= math.ceil(player_damage)
+            
             # Create the Embed for the round
             embed = discord.Embed(title=f"Round {round_count}", color=discord.Color.blue())
             embed.add_field(name=f"{enemy_name}", value=f"Damage Taken: **{player_damage}**\n{bad_life_bar}", inline=False)
