@@ -877,7 +877,7 @@ class Farm(commands.Cog):
         crit = await self.config.user(ctx.author).Critical_chance()
 
         
-        await ctx.send(f"Your ⚔️**Strength⚔** is {str}\n Your **🛡️Defense** is {defense} \n Your **🏆Rep** is {rep} \n Your 🏃**Speed** is: {speed} \n Your 🍀**Luck** is {luck} \n Your ❤️**Life** is {life} \n Your 💥**Crit Chance** is {crit}")
+        await ctx.send(f"Your ⚔️**Strength** is {str}\n Your **🛡️Defense** is {defense} \n Your **🏆Rep** is {rep} \n Your 🏃**Speed** is: {speed} \n Your 🍀**Luck** is {luck} \n Your ❤️**Life** is {life} \n Your 💥**Crit Chance** is {crit}")
 
     @commands.command(name='setstat')
     @commands.is_owner()  # Ensure only the bot owner can use this command
