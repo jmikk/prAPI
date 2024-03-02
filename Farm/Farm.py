@@ -239,13 +239,13 @@ class Farm(commands.Cog):
             empty_blocks = bar_length - filled_blocks
             
             bad_life_bar = "Health: " + "💚" * filled_blocks + "🖤" * empty_blocks
-
+            
             bar_length = 10  # Number of emojis in the health bar
             health_ratio = user_data['Health'] / start_life
             filled_blocks = int(bar_length * health_ratio)
             empty_blocks = bar_length - filled_blocks
             
-            player_life_bar = "Health: " + "💚" * filled_blocks + "🖤" * empty_blocks
+            player_life_bar = "Health: " + "❤️" * filled_blocks + "💟" * empty_blocks
             
             await ctx.send(f"Round {round_count}\nresults: {enemy_name} took **{player_damage}** damage.\n{bad_life_bar}\n\n You took **{enemy_damage}** damage.\n{player_life_bar}")
             # Simulate the fight (This part can be expanded with actual fight mechanics)
