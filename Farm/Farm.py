@@ -312,21 +312,21 @@ class Farm(commands.Cog):
         else:
             result = "lost"
 
-        # Create an embed object with a title and a color (red for loss)
-        embed = discord.Embed(title="Fight Result", description=f"{player_name}, you lost the fight!", color=discord.Color.red())
-
-        # Add fields to provide more details about the fight
-        embed.add_field(name="Opponent", value=enemy_name, inline=False)
-        embed.add_field(name="Result", value="Defeat", inline=False)
+            # Create an embed object with a title and a color (red for loss)
+            embed = discord.Embed(title="Fight Result", description=f"{ctx.author}, you lost the fight!", color=discord.Color.red())
     
-        # Optionally, you can add an encouraging message or tips for the player
-        embed.add_field(name="Better luck next time!", value="Consider upgrading your gear or strategizing differently.", inline=False)
-    
-        # Set a thumbnail or image related to defeat or the context of the fight
-        embed.set_thumbnail(url="https://example.com/defeat_image.png")  # Replace the URL with an actual image URL
-    
-        # Send the embed in the channel
-        await ctx.send(embed=embed)
+            # Add fields to provide more details about the fight
+            embed.add_field(name="Opponent", value=enemy_name, inline=False)
+            embed.add_field(name="Result", value="Defeat", inline=False)
+        
+            # Optionally, you can add an encouraging message or tips for the player
+            embed.add_field(name="Better luck next time!", value="Consider upgrading your gear or strategizing differently.", inline=False)
+        
+            # Set a thumbnail or image related to defeat or the context of the fight
+            embed.set_thumbnail(url="https://example.com/defeat_image.png")  # Replace the URL with an actual image URL
+        
+            # Send the embed in the channel
+            await ctx.send(embed=embed)
 
         
         #await ctx.send(f"You fought **{enemy_name}** and you {result} the fight!")
