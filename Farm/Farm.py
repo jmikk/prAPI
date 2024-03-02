@@ -276,7 +276,7 @@ class Farm(commands.Cog):
     
         while True:
             try:
-                reaction, user = await ctx.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                reaction, user = await ctx.bot.wait_for('reaction_add', timeout=30.0, check=check)
     
                 if str(reaction.emoji) == '▶' and current_page < len(round_messages) - 1:
                     current_page += 1
