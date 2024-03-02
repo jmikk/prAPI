@@ -248,10 +248,10 @@ class Farm(commands.Cog):
             empty_blocks = bar_length - filled_blocks
             
             player_life_bar = "Health: " + "❤️" * filled_blocks + "💟" * empty_blocks
-            if len(player_life_bar) > 18:
-                player_life_bar = player_life_bar[:18]
+            if len(player_life_bar) > 20:
+                player_life_bar = player_life_bar[:20]
             
-            await ctx.send(f"Round {round_count}\nresults: {enemy_name} took **{player_damage}** damage.\n{bad_life_bar}\n\n You took **{enemy_damage}** damage.\n{player_life_bar}")
+            await ctx.send(f"Round {round_count}\nresults: {enemy_name} took **{player_damage}** damage.\n{bad_life_bar}\n\nYou took **{enemy_damage}** damage.\n{player_life_bar}")
             # Simulate the fight (This part can be expanded with actual fight mechanics)
             # Determine the result
         if user_data['Health'] > 0:
