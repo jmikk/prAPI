@@ -953,7 +953,7 @@ class Farm(commands.Cog):
                 item_name = item.get("name", "Unknown Item")
                 item_stats = item.get("stats", {})
                 stats_message = ', '.join([f"{stat.capitalize()}: {value}" for stat, value in item_stats.items()])
-                stats_message = stats_message.replace("Strength","⚔️Strength⚔️").replace("Defense","🛡️Defense🛡️").replace("Speed","🏃Speed🏃‍♀️").replace("Luck","🍀Luck🍀").replace("Health","❤️Health❤️").replace("Critical Chance","💥Critical Chance💥")
+                stats_message = stats_message.replace("Strength","⚔️Strength⚔️").replace("Defense","🛡️Defense🛡️").replace("Speed","🏃Speed🏃‍♀️").replace("Luck","🍀Luck🍀").replace("Health","❤️Health❤️").replace("Critical_chance","💥Critical Chance💥")
 
                 gear_messages.append(f"**{slot.capitalize()}**: {item_name} ({stats_message})")
             else:
