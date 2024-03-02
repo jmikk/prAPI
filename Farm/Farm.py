@@ -185,6 +185,7 @@ class Farm(commands.Cog):
         }
         round_count=0
         start_life = user_data['Health'] 
+        bad_start_life = enemy_stats['Health']
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
             round_count= round_count + 1
 
@@ -233,14 +234,14 @@ class Farm(commands.Cog):
             # Provide feedback for each round
 
             bar_length = 10  # Number of emojis in the health bar
-            health_ratio = current_health / max_health
+            health_ratio = enemy_stats['Health']  / bad_start_life
             filled_blocks = int(bar_length * health_ratio)
             empty_blocks = bar_length - filled_blocks
             
             bad_life_bar = "Health: " + "💚" * filled_blocks + "🖤" * empty_blocks
 
             bar_length = 10  # Number of emojis in the health bar
-            health_ratio = current_health / max_health
+            health_ratio = user_data['Health'] / start_life
             filled_blocks = int(bar_length * health_ratio)
             empty_blocks = bar_length - filled_blocks
             
