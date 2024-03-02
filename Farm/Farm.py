@@ -1052,21 +1052,23 @@ class Farm(commands.Cog):
         start_rank = (page - 1) * items_per_page + 1  # Calculate the starting rank for the current page
     
         for index, (name, value) in enumerate(page_data, start=start_rank):
-            embed.add_field(name=f"{index}. {name}", value=value, inline=False)
+            embed.add_field(name=f"{index}. {name}", value=f"{attribute} {value}", inline=False)
         
         embed.set_footer(text=f"Page {page}/{total_pages}")
         await message.edit(embed=embed)
 
 
     @farm.command()
-    async def leaderboard(self, ctx, attribute: str = "rep", page: int = 1):
+    async def leaderboard(self, ctx, attribute: str = "rep"):
+        page=1
         page_data, total_pages = await self.get_leaderboard_page(ctx, attribute, page)
         if not page_data:
             await ctx.send("No data available.")
             return
 
         embed = discord.Embed(title=f"Leaderboard: {attribute.capitalize()}", color=discord.Color.blue())
-        for name, value in page_data:
+        
+        for index, (name, value) in enumerate(page_data):
             embed.add_field(name=name, value=f"{attribute}{value}", inline=False)
         embed.set_footer(text=f"Page {page}/{total_pages}")
 
