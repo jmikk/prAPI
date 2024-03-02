@@ -352,20 +352,27 @@ class Farm(commands.Cog):
         
     
         if current_item:
-            # There's already an item in this slot. Prompt the user to decide.
-            current_item_stats = "\n" + '\n'.join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in current_item.get('stats', {}).items()]) + "\n\n"
+            # Create an embed object
+            embed = discord.Embed(title="Item Swap Confirmation", color=discord.Color.blue())
             
+            # Add the current item's name and stats to the embed
+            current_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in current_item.get('stats', {}).items()])
+            embed.add_field(name=f"Current Item: {current_item['name']}", value=current_item_stats, inline=False)
             
-            # Updated prompt message to include current and new item stats
-            message = await ctx.send(
-                f"You already have a **{current_item['name']}** in your **{item['slot']} slot** with stats: **{current_item_stats}**"
-                f"Do you want to swap it with **{item['name']}** with stats: **{new_item_stats}**"
-                "React with ✅ to swap or ❌ to keep."
-            )
+            # Add the new item's name and stats to the embed
+            new_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in item.get('stats', {}).items()])
+            embed.add_field(name=f"New Item: {item['name']}", value=new_item_stats, inline=False)
             
-            # Add reactions for the user to choose
+            # Set footer instructions
+            embed.set_footer(text="React with ✅ to swap or ❌ to keep.")
+            
+            # Send the embed in the channel
+            message = await ctx.send(embed=embed)
+            
+            # Add reaction options for user decision
             await message.add_reaction("✅")
             await message.add_reaction("❌")
+
             
     
             def check(reaction, user_reacted):
