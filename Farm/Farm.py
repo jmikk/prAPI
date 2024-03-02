@@ -1063,7 +1063,7 @@ class Farm(commands.Cog):
         attribute = attribute.lower().replace(" ","_")
         stats=["rep","strength","defense","speed","luck","health","critical_chance"]
         if attribute not in stats:
-            ctx.send(f"Try doing one of the following {stats.join(", ")}")
+            ctx.send(f"Try doing one of the following {stats.join(', ')}")
             attribute = "rep"
         attribute.replace("health","Health").replace("critical_chance","Critical_chance")
         
