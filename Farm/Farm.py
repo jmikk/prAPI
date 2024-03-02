@@ -1069,7 +1069,7 @@ class Farm(commands.Cog):
         embed = discord.Embed(title=f"Leaderboard: {attribute.capitalize()}", color=discord.Color.blue())
         
         for index, (name, value) in enumerate(page_data):
-            embed.add_field(name=name, value=f"{attribute}{value}", inline=False)
+            embed.add_field(name=f"{index} {name}", value=f"{attribute}{value}", inline=False)
         embed.set_footer(text=f"Page {page}/{total_pages}")
 
         message = await ctx.send(embed=embed)
