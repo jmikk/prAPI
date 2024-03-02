@@ -231,7 +231,22 @@ class Farm(commands.Cog):
             enemy_stats['Health'] -= math.ceil(player_damage)
     
             # Provide feedback for each round
-            await ctx.send(f"Round {round_count} results: {enemy_name} took **{player_damage}** damage. You took **{enemy_damage}** damage.")
+
+            bar_length = 10  # Number of emojis in the health bar
+            health_ratio = current_health / max_health
+            filled_blocks = int(bar_length * health_ratio)
+            empty_blocks = bar_length - filled_blocks
+            
+            bad_life_bar = "Health: " + "💚" * filled_blocks + "🖤" * empty_blocks
+
+            bar_length = 10  # Number of emojis in the health bar
+            health_ratio = current_health / max_health
+            filled_blocks = int(bar_length * health_ratio)
+            empty_blocks = bar_length - filled_blocks
+            
+            player_life_bar = "Health: " + "💚" * filled_blocks + "🖤" * empty_blocks
+            
+            await ctx.send(f"Round {round_count}\nresults: {enemy_name} took **{player_damage}** damage.\n{bad_life_bar}\n\n You took **{enemy_damage}** damage.\n{Player_life_bar}")
             # Simulate the fight (This part can be expanded with actual fight mechanics)
             # Determine the result
         if user_data['Health'] > 0:
@@ -295,7 +310,7 @@ class Farm(commands.Cog):
             
             # Updated prompt message to include current and new item stats
             message = await ctx.send(
-                f"You already have a **{current_item['name']}** in your **{item['slot']} slot** with stats: **{current_item_stats}** "
+                f"You already have a **{current_item['name']}** in your **{item['slot']} slot** with stats: **{current_item_stats}**"
                 f"Do you want to swap it with **{item['name']}** with stats: **{new_item_stats}**"
                 "React with ✅ to swap or ❌ to keep."
             )
