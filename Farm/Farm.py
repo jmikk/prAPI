@@ -269,7 +269,7 @@ class Farm(commands.Cog):
         else:
             result = "lost"
             # Perhaps apply some penalty for losing
-        await ctx.send(f"You fought {enemy_name} and you {result} the fight!")
+        await ctx.send(f"You fought **{enemy_name}** and you {result} the fight!")
 
         user_data['Health'] = start_life 
         await self.config.user(ctx.author).set(user_data)
