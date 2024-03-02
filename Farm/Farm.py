@@ -681,7 +681,7 @@ class Farm(commands.Cog):
         
         # Update user gold
         user_gold = await self.config.user(ctx.author).gold()
-        new_gold_total = user_gold + total_sale
+        new_gold_total = math.floor(user_gold + total_sale)
         await self.config.user(ctx.author).gold.set(new_gold_total)
         
         price_decrease = item["current_price"] * (.01 * quantity)  # Example: decrease price by 5%
