@@ -255,7 +255,7 @@ class Farm(commands.Cog):
 
             
             # Create the Embed for the round
-            embed = discord.Embed(title=f"Round {round_count}", color=discord.Color.blue())
+            embed = discord.Embed(title=f"Round {round_count} - {enemy_name}", color=discord.Color.blue())
             embed.add_field(name=f"{enemy_name}", value=f"Damage Taken: **{player_damage}**\n{bad_life_bar}", inline=False)
             embed.add_field(name="You", value=f"Damage Taken: **{enemy_damage}**\n{player_life_bar}", inline=False)
     
@@ -311,8 +311,25 @@ class Farm(commands.Cog):
             await self.config.user(ctx.author).set(user_data)  
         else:
             result = "lost"
-            # Perhaps apply some penalty for losing
-        await ctx.send(f"You fought **{enemy_name}** and you {result} the fight!")
+
+        # Create an embed object with a title and a color (red for loss)
+        embed = discord.Embed(title="Fight Result", description=f"{player_name}, you lost the fight!", color=discord.Color.red())
+
+        # Add fields to provide more details about the fight
+        embed.add_field(name="Opponent", value=enemy_name, inline=False)
+        embed.add_field(name="Result", value="Defeat", inline=False)
+    
+        # Optionally, you can add an encouraging message or tips for the player
+        embed.add_field(name="Better luck next time!", value="Consider upgrading your gear or strategizing differently.", inline=False)
+    
+        # Set a thumbnail or image related to defeat or the context of the fight
+        embed.set_thumbnail(url="https://example.com/defeat_image.png")  # Replace the URL with an actual image URL
+    
+        # Send the embed in the channel
+        await ctx.send(embed=embed)
+
+        
+        #await ctx.send(f"You fought **{enemy_name}** and you {result} the fight!")
 
         user_data['Health'] = start_life 
         await self.config.user(ctx.author).set(user_data)
