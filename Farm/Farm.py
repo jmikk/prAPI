@@ -251,7 +251,7 @@ class Farm(commands.Cog):
             if len(player_life_bar) > 28:
                 player_life_bar = player_life_bar[:28]
             
-            await ctx.send(f"Round {round_count}\nresults: {enemy_name} took **{player_damage}** damage.\n{bad_life_bar}\n\nYou took **{enemy_damage}** damage.\n{player_life_bar}")
+            await ctx.send(f"\nRound {round_count}\nresults: {enemy_name} took **{player_damage}** damage.\n{bad_life_bar}\n\nYou took **{enemy_damage}** damage.\n{player_life_bar}")
             # Simulate the fight (This part can be expanded with actual fight mechanics)
             # Determine the result
         if user_data['Health'] > 0:
