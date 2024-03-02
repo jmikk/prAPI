@@ -875,8 +875,8 @@ class Farm(commands.Cog):
         luck = await self.config.user(ctx.author).luck()
         life  = await self.config.user(ctx.author).Health()
         crit = await self.config.user(ctx.author).Critical_chance()
-
-        await ctx.send(f"Your strength is {str}\n Your defense is {defense} \n Your rep is {rep} \n Your Speed is: {speed} \n Your luck is {luck} \n Your Life is {life} \n Your crit chance is {crit}")
+        
+        await ctx.send(f"Your **⚔️Strength⚔️** is {str}\n Your 🛡️Defense🛡️ is {defense} \n Your 🏆Rep🏆 is {rep} \n Your 🏃Speed🏃‍♀️ is: {speed} \n Your 🍀luck🍀 is {luck} \n Your ❤️Life❤️ is {life} \n Your 💥Crit Chance💥 is {crit}")
 
     @commands.command(name='setstat')
     @commands.is_owner()  # Ensure only the bot owner can use this command
@@ -939,7 +939,7 @@ class Farm(commands.Cog):
         await ctx.send("all done")
 
     
-    @farm.command(name="viewgear")
+    @farm.command(name="view_gear")
     async def view_gear(self, ctx):
         user_data = await self.config.user(ctx.author).all()
 
@@ -952,7 +952,9 @@ class Farm(commands.Cog):
             if item:  # Check if there's an item equipped in the slot
                 item_name = item.get("name", "Unknown Item")
                 item_stats = item.get("stats", {})
-                stats_message = ', '.join([f"{stat}: {value}" for stat, value in item_stats.items()])
+                stats_message = ', '.join([f"{stat.capitalize}: {value}" for stat, value in item_stats.items()])
+                stats_message = stats_message.replace("Strength","⚔️Strength⚔️").replace("Defense","🛡️Defense🛡️").replace("Speed","🏃Speed🏃‍♀️").replace("Luck","🍀Luck🍀").replace("Health","❤️Health❤️").replace("Critical Chance","💥Critical Chance💥")
+
                 gear_messages.append(f"**{slot.capitalize()}**: {item_name} ({stats_message})")
             else:
                 gear_messages.append(f"**{slot.capitalize()}**: No item equipped")
