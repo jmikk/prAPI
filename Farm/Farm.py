@@ -266,7 +266,7 @@ class Farm(commands.Cog):
             item_name = loot_box_item['name']
             stats = loot_box_item['stats']
 
-            await ctx.send(f"Congratulations! You've received a {item_name} from the loot box!")
+            await ctx.send(f"Congratulations! You've received a **{item_name}** from the loot box!")
 
             # Add the loot item to the player's inventory
             await self._add_loot_to_inventory(ctx,ctx.author, loot_box_item, stats)
@@ -295,8 +295,8 @@ class Farm(commands.Cog):
             
             # Updated prompt message to include current and new item stats
             message = await ctx.send(
-                f"You already have a **{current_item['name']}** in your **{item['slot']}** with stats: **{current_item_stats}**. "
-                f"Do you want to swap it with **{item['name']}** with stats: **{new_item_stats}**? "
+                f"You already have a **{current_item['name']}** in your **{item['slot']}** with stats: **{current_item_stats}** "
+                f"Do you want to swap it with **{item['name']}** with stats: **{new_item_stats}**"
                 "React with ✅ to swap or ❌ to keep."
             )
             
