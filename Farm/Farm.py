@@ -150,6 +150,7 @@ class Farm(commands.Cog):
 
     @farm.command()
     async def fight(self, ctx):
+        
         if not ctx.author.id == 207526562331885568:
             await ctx.send("Coming soon, Fight club")
             return
