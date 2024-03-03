@@ -155,41 +155,7 @@ class Farm(commands.Cog):
             return
             
         user_data = await self.config.user(ctx.author).all()
-    
-        # Check if the user has enough zombies to fight
-        if user_data.get("inventory", {}).get("zombie", 0) < 1:
-            await ctx.send("You need at least 1 zombie to initiate a fight! I can sell you one if you have 100 gold!")
-            user_gold = await self.config.user(ctx.author).gold()
-
-            if user_gold < 100:
-                await ctx.send("Sorry you are broke!")
-                return
-    
-            # Ask for confirmation
-            confirm_message = await ctx.send("Do you want to spend 100 gold? Respond with 'yes' to confirm.")
-    
-            def check(m):
-                return m.author == ctx.author and m.channel == ctx.channel and m.content.lower() in ["yes", "no"]
-    
-            try:
-                response = await self.bot.wait_for('message', check=check, timeout=30.0)  # 30 seconds to respond
-    
-                if response.content.lower() == "yes":
-                    # Deduct 100 gold and save the new value
-                    new_gold = user_gold - 100
-                    await self.config.user(ctx.author).gold.set(new_gold)
-                    await ctx.send("100 gold has been spent. Thank you!")
-                else:
-                    return
-
-            except asyncio.TimeoutError:
-                await ctx.send("You did not respond in time. Operation cancelled.")
-                return
-    
-        # Deduct 1 zombie from the user's inventory
-        user_data["inventory"]["zombie"] -= 1
-        await self.config.user(ctx.author).inventory.set(user_data["inventory"])
-    
+        
         # Load zombie names from the file
         zombie_names_path = os.path.join(os.path.dirname(__file__), 'zombie_names.txt')  # Adjust the path as necessary
         with open(zombie_names_path, 'r') as file:
