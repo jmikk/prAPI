@@ -157,13 +157,13 @@ class Farm(commands.Cog):
         user_data = await self.config.user(ctx.author).all()
     
         # Check if the user has enough zombies to fight
-        #if user_data.get("inventory", {}).get("zombie", 0) < 1:
-        #   await ctx.send("You need at least 1 zombie to initiate a fight!")
-        #   return
+        if user_data.get("inventory", {}).get("zombie", 0) < 1:
+           await ctx.send("You need at least 1 zombie to initiate a fight!")
+           return
     
         # Deduct 1 zombie from the user's inventory
-        #user_data["inventory"]["zombie"] -= 1
-        #await self.config.user(ctx.author).inventory.set(user_data["inventory"])
+        user_data["inventory"]["zombie"] -= 1
+        await self.config.user(ctx.author).inventory.set(user_data["inventory"])
     
         # Load zombie names from the file
         zombie_names_path = os.path.join(os.path.dirname(__file__), 'zombie_names.txt')  # Adjust the path as necessary
