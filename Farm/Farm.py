@@ -182,9 +182,9 @@ class Farm(commands.Cog):
                 else:
                     return
 
-        except asyncio.TimeoutError:
-            await ctx.send("You did not respond in time. Operation cancelled.")
-            return
+            except asyncio.TimeoutError:
+                await ctx.send("You did not respond in time. Operation cancelled.")
+                return
     
         # Deduct 1 zombie from the user's inventory
         user_data["inventory"]["zombie"] -= 1
