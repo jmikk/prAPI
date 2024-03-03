@@ -455,9 +455,9 @@ class Farm(commands.Cog):
             await ctx.send(f"You don't have enough space in your field to plant {quantity} more crops.")
             return
     
-        planted_time = datetime.datetime.now().timestamp()
     
         for _ in range(quantity):  # Loop to plant multiple crops
+            planted_time = datetime.datetime.now().timestamp()
             surrounding_crops = [crop["name"] for crop in user_fields]  # Get names of crops in the field
             traits = self.inherit_traits(surrounding_crops)  # Determine traits based on surrounding crops
     
