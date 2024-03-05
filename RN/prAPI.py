@@ -5,6 +5,7 @@ import codecs
 import os
 import xml.etree.ElementTree as ET
 import requests
+import math
 
 
 def is_owner_overridable():
