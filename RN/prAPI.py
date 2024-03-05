@@ -322,3 +322,23 @@ class prAPI(commands.Cog):
         await ctx.send("Voiding any saved data on the regional Nation")
         self.auth = sans.NSAuth()
         self.RegionalNation = ""
+
+    @commands.command()
+    await def endo_lotto(self,ctx,name)
+        # Fetch the XML data
+        url = "https://www.nationstates.net/cgi-bin/api.cgi?nation=9006&q=endorsements"
+        headers = {"User-Agent": "9006"}
+        response = requests.get(url, headers=headers)
+        
+        # Parse the XML
+        root = ET.fromstring(response.content)
+        
+        # Find the endorsements element
+        endorsements_element = root.find('ENDORSEMENTS')
+        
+        # Split the text content of the endorsements element into a list of names
+        endorsements_list = endorsements_element.text.split(',')
+        
+        # Randomly select one of the names
+        random_endorsement = random.choice(endorsements_list)
+        await ctx.send(f"Here you go {random_endorsement}")
