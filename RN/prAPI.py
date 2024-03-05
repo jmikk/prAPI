@@ -342,5 +342,5 @@ class prAPI(commands.Cog):
         endorsements_list = endorsements_element.text.split(',')
         
         # Randomly select one of the names
-        random_endorsement = random.choice(endorsements_list)
+        random_endorsement = math.random.choice(endorsements_list)
         await ctx.send(f"Here you go {random_endorsement}")
