@@ -324,7 +324,7 @@ class prAPI(commands.Cog):
         self.RegionalNation = ""
 
     @commands.command()
-    await def endo_lotto(self,ctx,name):
+    async def endo_lotto(self,ctx,name):
         # Fetch the XML data
         url = "https://www.nationstates.net/cgi-bin/api.cgi?nation=9006&q=endorsements"
         headers = {"User-Agent": "9006"}
