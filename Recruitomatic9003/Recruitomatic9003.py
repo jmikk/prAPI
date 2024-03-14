@@ -42,12 +42,12 @@ class Recruitomatic9003(commands.Cog):
         }
         self.config.register_user(**default_user_settings)
         self.loop_running = False
-        self.last_cycle_time = datetime.utcnow().strftime("%s")  # Initialize with the current time
+        self.listed_nations = set()  # Set to track nations already included in previous cycles
 
-    async def fetch_nation_details(self, user_agent, since_time):
+    async def fetch_nation_details(self, user_agent):
         async with aiohttp.ClientSession() as session:
             headers = {'User-Agent': user_agent}
-            url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=newnationdetails;sincetime={since_time}"
+            url = "https://www.nationstates.net/cgi-bin/api.cgi?q=newnationdetails"
             async with session.get(url, headers=headers) as response:
                 if response.status == 200:
                     return await response.text()
@@ -57,7 +57,7 @@ class Recruitomatic9003(commands.Cog):
         user_agent = user_settings['user_agent']
         template = user_settings['template'] if user_settings['template'] else "%%TEMPLATE-XXXXXX%%"
 
-        data = await self.fetch_nation_details(user_agent, self.last_cycle_time)
+        data = await self.fetch_nation_details(user_agent)
         if data is None:
             await ctx.send("Failed to fetch nation details.")
             return False
@@ -70,14 +70,17 @@ class Recruitomatic9003(commands.Cog):
 
         nations = []
         for new_nation in root.findall('./NEWNATIONDETAILS/NEWNATION'):
+            nation_name = new_nation.get('name')
             region = new_nation.find('REGION').text
-            if region not in excluded_regions:
-                nations.append(new_nation.get('name'))
+            if region not in excluded_regions and nation_name not in self.listed_nations:
+                nations.append(nation_name)
+                self.listed_nations.add(nation_name)  # Add to the set of already processed nations
 
-        grouped_nations = [nations[i:i + 8] for i in range(0, len(nations), 8)]
-        if not grouped_nations:
+        if not nations:
             await ctx.send("No new nations found in this cycle.")
             return True
+
+        grouped_nations = [nations[i:i + 8] for i in range(0, len(nations), 8)]
 
         view.clear_items()
         for i, group in enumerate(grouped_nations, start=1):
@@ -89,7 +92,6 @@ class Recruitomatic9003(commands.Cog):
         view.add_item(DoneButton("All Done", "done", self))
 
         await ctx.send("Click on the buttons below or wait for the next cycle:", view=view)
-        self.last_cycle_time = datetime.utcnow().strftime("%s")  # Update the time for the next cycle
         return True
 
     @commands.command()
@@ -114,3 +116,6 @@ class Recruitomatic9003(commands.Cog):
             cycles += 1
 
         self.loop_running = False
+
+async def setup(bot):
+    bot.add_cog(Recruitomatic9003(bot))
