@@ -8,7 +8,7 @@ class Recruitomatic9003(commands.Cog):
         self.config = Config.get_conf(self, identifier="Recruitomatic9003")
         default_user_settings = {
             "template": None,
-            "excluded_regions": [],
+            "excluded_regions": ["the_wellspring"],
             "user_agent": None
         }
         self.config.register_user(**default_user_settings)
@@ -35,7 +35,7 @@ class Recruitomatic9003(commands.Cog):
     @commands.command()
     async def recruit(self, ctx):
         user_settings = await self.config.user(ctx.author).all()
-        excluded_regions = user_settings['excluded_regions'].append("The_wellspring")
+        excluded_regions = user_settings['excluded_regions']
         user_agent = user_settings['user_agent']
         
         headers = {'User-Agent': user_agent}
