@@ -35,7 +35,7 @@ class Recruitomatic9003(commands.Cog):
     @commands.command()
     async def recruit(self, ctx):
         user_settings = await self.config.user(ctx.author).all()
-        excluded_regions = user_settings['excluded_regions'] + "The_wellspring"
+        excluded_regions = user_settings['excluded_regions'].append("The_wellspring")
         user_agent = user_settings['user_agent']
         
         headers = {'User-Agent': user_agent}
