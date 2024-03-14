@@ -111,4 +111,3 @@ class Recruitomatic9003(commands.Cog):
             cycles += 1
 
         self.loop_running = False
-
