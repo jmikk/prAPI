@@ -1,6 +1,10 @@
 from redbot.core import commands, Config
 import requests
 import xml.etree.ElementTree as ET
+from discord import ButtonStyle
+from discord.ui import View
+
+
 
 class Recruitomatic9003(commands.Cog):
     def __init__(self, bot):
@@ -37,17 +41,28 @@ class Recruitomatic9003(commands.Cog):
         user_settings = await self.config.user(ctx.author).all()
         excluded_regions = user_settings['excluded_regions']
         user_agent = user_settings['user_agent']
-        
+        template = user_settings['template'] if user_settings['template'] else "%TEMPLATE-XXXXXX%"
+
         headers = {'User-Agent': user_agent}
         response = requests.get("https://www.nationstates.net/cgi-bin/api.cgi?q=newnationdetails", headers=headers)
         data = ET.fromstring(response.content)
-        
+
         nations = []
         for new_nation in data.find('NEWNATIONDETAILS').findall('NEWNATION'):
             region = new_nation.find('REGION').text
             if region not in excluded_regions:
                 nations.append(new_nation.get('name'))
-        
+
         grouped_nations = [nations[i:i + 8] for i in range(0, len(nations), 8)]
-        for group in grouped_nations:
-            await ctx.send(', '.join(group))
+        if not grouped_nations:
+            await ctx.send("No nations found or all nations are in excluded regions.")
+            return
+
+        view = View()
+        for i, group in enumerate(grouped_nations, start=1):
+            nations_str = ",".join(group)
+            url = f"https://www.nationstates.net/page=compose_telegram?tgto={nations_str}&message={template}"
+            view.add_item(Button(style=ButtonStyle.url, label=f"Batch {i}", url=url))
+
+        await ctx.send("Click on the buttons below to send telegrams to the nations:", view=view)
+
