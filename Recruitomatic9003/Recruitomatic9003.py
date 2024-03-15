@@ -108,10 +108,16 @@ class Recruitomatic9003(commands.Cog):
         nations_count = len(nations)
         view.add_item(ApproveButton("Approve", "approve", self, ctx, nations_count))
         view.add_item(DoneButton("All Done", "done", self, ctx))
+
+
+        current_time = int(datetime.utcnow().timestamp())
+        # Create the fancy timestamp string
+        fancy_timestamp = f"<t:{current_time}:R>"
+        # Send the message with the fancy timestamp        
         if embed.description == "No new nations found in this cycle.":
-            await ctx.send(embed=embed, view=view)
+            await ctx.send(content=fancy_timestamp,embed=embed, view=view)
         else:
-            await ctx.send(content=ctx.author.mention,embed=embed, view=view)
+            await ctx.send(content=ctx.author.mention+" "+fancy_timestamp,embed=embed, view=view)
 
         return True
 
