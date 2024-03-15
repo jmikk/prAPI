@@ -16,13 +16,7 @@ class ApproveButton(Button):
         await interaction.response.defer()
         user_settings = await self.cog_instance.config.user(self.ctx.author).all()
         view = View()
-        tokens_earned = len(self.cog_instance.listed_nations)
-        await self.cog_instance.config.user(self.ctx.author).tokens.set(user_settings.get('tokens', 0) + tokens_earned)
         success = await self.cog_instance.run_cycle(self.ctx, user_settings, view)
-        if success:
-            await interaction.followup.send(f"New cycle started! You earned {tokens_earned} tokens.", ephemeral=True)
-        else:
-            await interaction.followup.send("Failed to start a new cycle.", ephemeral=True)
 
 class DoneButton(Button):
     def __init__(self, label: str, custom_id: str, cog_instance):
@@ -40,8 +34,7 @@ class Recruitomatic9003(commands.Cog):
         default_user_settings = {
             "template": None,
             "excluded_regions": ["the_wellspring"],
-            "user_agent": "YourUserAgentHere",
-            "tokens": 0
+            "user_agent": "YourUserAgentHere"
         }
         self.config.register_user(**default_user_settings)
         self.loop_running = False
@@ -62,30 +55,31 @@ class Recruitomatic9003(commands.Cog):
 
         data = await self.fetch_nation_details(user_agent)
         if data is None:
-            await ctx.send("Failed to fetch nation details.")
+            embed = Embed(title="Error", description="Failed to fetch nation details.", color=0xff0000)
+            await ctx.send(embed=embed)
             return False
 
         try:
             root = ET.fromstring(data)
         except ET.ParseError as e:
-            await ctx.send(f"Error parsing XML: {e}")
+            embed = Embed(title="Error", description=f"Error parsing XML: {e}", color=0xff0000)
+            await ctx.send(embed=embed)
             return False
 
         nations = []
         for new_nation in root.findall('./NEWNATIONDETAILS/NEWNATION'):
             nation_name = new_nation.get('name')
             region = new_nation.find('REGION').text
-            if region not in excluded_regions:
+            if region not in excluded_regions and nation_name not in self.listed_nations:
                 nations.append(nation_name)
                 self.listed_nations.add(nation_name)
 
-        embed = Embed(title="Nation Recruitment", color=0x00ff00)
         view.clear_items()
+        embed = Embed(title="Recruitment Cycle", color=0x00ff00)
         if not nations:
             embed.description = "No new nations found in this cycle."
         else:
-            nation_details = "\n".join([f"Batch {i+1}: {', '.join(group)}" for i, group in enumerate(nations)])
-            embed.description = f"Nations ready for recruitment:\n{nation_details}"
+            embed.description = "\n".join([f"Batch {i+1}: {', '.join(group)}" for i, group in enumerate([nations[i:i + 8] for i in range(0, len(nations), 8)])])
 
         view.add_item(ApproveButton("Approve", "approve", self, ctx))
         view.add_item(DoneButton("All Done", "done", self))
@@ -114,3 +108,6 @@ class Recruitomatic9003(commands.Cog):
             cycles += 1
 
         self.loop_running = False
+
+async def setup(bot):
+    bot.add_cog(Recruitomatic9003(bot))
