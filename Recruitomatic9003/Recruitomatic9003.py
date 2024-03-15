@@ -24,7 +24,6 @@ class ApproveButton(Button):
         for item in self.view.children:
             item.disabled = True
         # Acknowledge the interaction and update the message with disabled buttons
-        await interaction.response.edit_message(view=self.view)
         
         # Fetch current user settings
         user_settings = await self.cog_instance.config.user(self.ctx.author).all()
@@ -35,6 +34,8 @@ class ApproveButton(Button):
         # Continue with running the next cycle
         view = View()
         await self.cog_instance.run_cycle(self.ctx, user_settings, view)
+        await interaction.response.edit_message(view=self.view)
+
 
 
 class DoneButton(Button):
