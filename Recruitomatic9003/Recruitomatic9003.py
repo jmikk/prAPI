@@ -43,6 +43,7 @@ class Recruitomatic9003(commands.Cog):
         self.config.register_user(**default_user_settings)
         self.loop_running = False
         self.processed_nations = set()  # Track already processed nations
+        
 
     async def fetch_nation_details(self, user_agent):
         async with aiohttp.ClientSession() as session:
@@ -106,8 +107,9 @@ class Recruitomatic9003(commands.Cog):
         start_time = datetime.utcnow()
 
         user_settings = await self.config.user(ctx.author).all()
-        view = View()
         while self.loop_running and cycles < 10 and (datetime.utcnow() - start_time).total_seconds() < 600:
+            view = View()
+
             success = await self.run_cycle(ctx, user_settings, view)
             if not success:
                 break
