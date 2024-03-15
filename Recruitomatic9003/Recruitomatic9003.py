@@ -6,6 +6,10 @@ import asyncio
 import aiohttp
 from datetime import datetime
 
+class BatchButton(Button):
+    def __init__(self, label: str, url: str):
+        super().__init__(style=ButtonStyle.url, label=label, url=url)
+
 class ApproveButton(Button):
     def __init__(self, label: str, custom_id: str, cog_instance, ctx):
         super().__init__(style=ButtonStyle.success, label=label, custom_id=custom_id)
@@ -70,16 +74,21 @@ class Recruitomatic9003(commands.Cog):
         for new_nation in root.findall('./NEWNATIONDETAILS/NEWNATION'):
             nation_name = new_nation.get('name')
             region = new_nation.find('REGION').text
-            if region not in excluded_regions and nation_name not in self.listed_nations:
+            if region not in excluded_regions:
                 nations.append(nation_name)
                 self.listed_nations.add(nation_name)
 
-        view.clear_items()
+        grouped_nations = [nations[i:i + 8] for i in range(0, len(nations), 8)]
+
         embed = Embed(title="Recruitment Cycle", color=0x00ff00)
         if not nations:
             embed.description = "No new nations found in this cycle."
         else:
-            embed.description = "\n".join([f"Batch {i+1}: {', '.join(group)}" for i, group in enumerate([nations[i:i + 8] for i in range(0, len(nations), 8)])])
+            for i, group in enumerate(grouped_nations):
+                nations_str = ",".join(group)
+                url = f"https://www.nationstates.net/page=compose_telegram?tgto={nations_str}&message={template}"
+                view.add_item(BatchButton(label=f"Batch {i+1}", url=url))
+            embed.description = "Nations ready for recruitment:"
 
         view.add_item(ApproveButton("Approve", "approve", self, ctx))
         view.add_item(DoneButton("All Done", "done", self))
