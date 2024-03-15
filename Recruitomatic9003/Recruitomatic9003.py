@@ -222,11 +222,13 @@ class Recruitomatic9003(commands.Cog):
     def get_leaderboard_embed(self, data, page):
         embed = Embed(title="Token Leaderboard")
         start_index = page * 10
-        end_index = start_index + 10
-
-        for i, item in enumerate(data[start_index:end_index], start=start_index):
-            embed.add_field(name=f"{i + 1}. User {item[0]}", value=f"Tokens: {item[1]}", inline=False)
-
+        end_index = min(start_index + 10, len(data))  # Ensure end_index does not exceed data length
+    
+        for i, (user_id, tokens) in enumerate(data[start_index:end_index], start=start_index):
+            user = self.bot.get_user(user_id)
+            # Use mention if the user is found, otherwise fallback to "User ID: user_id"
+            username = user.mention if user else f'User ID: {user_id}'
+            embed.add_field(name=f"{i + 1}. {username}", value=f"Tokens: {tokens}", inline=False)
+    
         return embed
-
 
