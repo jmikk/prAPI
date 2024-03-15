@@ -109,7 +109,7 @@ class Recruitomatic9003(commands.Cog):
         if not user_settings['template']:
             await ctx.send("Make sure to set a template first with [p]set_user_template %template-1234%")
             return 
-        template = user_settings['template']
+        template = user_settings['template'].replace("%","%25")
 
         data = await self.fetch_nation_details(user_agent)
         if data is None:
