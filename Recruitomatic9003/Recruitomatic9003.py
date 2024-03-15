@@ -65,6 +65,7 @@ class DoneButton(Button):
 
 class Recruitomatic9003(commands.Cog):
     def __init__(self, bot):
+        self.cycle_count = 0  # Initialize the cycle counter
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
         default_user_settings = {
@@ -120,6 +121,10 @@ class Recruitomatic9003(commands.Cog):
         if not nations:
             embed.description = "No new nations found in this cycle."
         else:
+
+            if self.cycle_count == 0:
+                nations = nations[:3]
+            
             for i, group in enumerate([nations[i:i + 8] for i in range(0, len(nations), 8)]):
                 nations_str = ",".join(group)
                 url = f"https://www.nationstates.net/page=compose_telegram?tgto={nations_str}&message={template}"
