@@ -108,7 +108,11 @@ class Recruitomatic9003(commands.Cog):
         nations_count = len(nations)
         view.add_item(ApproveButton("Approve", "approve", self, ctx, nations_count))
         view.add_item(DoneButton("All Done", "done", self, ctx))
-        await ctx.send(content=ctx.author.mention,embed=embed, view=view)
+        if embed.description == "No new nations found in this cycle.":
+            await ctx.send(embed=embed, view=view)
+        else:
+            await ctx.send(content=ctx.author.mention,embed=embed, view=view)
+
         return True
 
     @commands.command()
