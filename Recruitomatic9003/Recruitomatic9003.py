@@ -99,7 +99,7 @@ class Recruitomatic9003(commands.Cog):
             embed.description = "Nations ready for recruitment:"
 
         view.add_item(ApproveButton("Approve", "approve", self, ctx))
-        view.add_item(DoneButton("All Done", "done", self))
+        view.add_item(DoneButton("All Done", "done", self, ctx))
         await ctx.send(embed=embed, view=view)
         return True
 
