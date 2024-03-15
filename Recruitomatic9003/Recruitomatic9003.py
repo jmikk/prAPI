@@ -73,6 +73,7 @@ class Recruitomatic9003(commands.Cog):
                 nations.append(nation_name)
                 self.listed_nations.add(nation_name)  # Add to the set of already processed nations
 
+        view.clear_items()
         if not nations:
             view.add_item(ApproveButton("Approve", "approve", self, ctx))
             view.add_item(DoneButton("All Done", "done", self))
@@ -81,7 +82,6 @@ class Recruitomatic9003(commands.Cog):
 
         grouped_nations = [nations[i:i + 8] for i in range(0, len(nations), 8)]
 
-        view.clear_items()
         for i, group in enumerate(grouped_nations, start=1):
             nations_str = ",".join(group)
             url = f"https://www.nationstates.net/page=compose_telegram?tgto={nations_str}&message={template}"
