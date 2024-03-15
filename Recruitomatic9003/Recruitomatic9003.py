@@ -70,7 +70,7 @@ class Recruitomatic9003(commands.Cog):
         self.config = Config.get_conf(self, identifier=1234567890)
         default_user_settings = {
             "template": None,
-            "user_agent": f"Recruitomatic9003 in use by {input("user_agent")} written by 9003, nswa9002@gmail.com (discord: 9003)     V 1"
+            "user_agent": f"Recruitomatic9003 in use by {input('user_agent')} written by 9003, nswa9002@gmail.com (discord: 9003)     V 1"
         }
         self.config.register_user(**default_user_settings)
         self.loop_running = False
