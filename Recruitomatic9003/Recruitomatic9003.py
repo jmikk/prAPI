@@ -194,7 +194,7 @@ class Recruitomatic9003(commands.Cog):
         data = []
         for member in members:
             member_data = await self.config.user(member).all()
-            data.append((member.display_name, member_data.get("token", 0)))
+            data.append((member.display_name, member_data.get("tokens", 0)))
         page = 0
 
         msg = await ctx.send(embed=self.get_leaderboard_embed(data, page))
