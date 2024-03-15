@@ -145,7 +145,7 @@ class Recruitomatic9003(commands.Cog):
         start_time = datetime.utcnow()
 
         user_settings = await self.config.user(ctx.author).all()
-        while self.loop_running and cycles < 10 and (datetime.utcnow() - start_time).total_seconds() < timer:
+        while self.loop_running and cycles < 10 and (datetime.utcnow() - start_time).total_seconds() < 600:
             view = View()
 
             success = await self.run_cycle(ctx, user_settings, view)
