@@ -74,7 +74,11 @@ class Recruitomatic9003(commands.Cog):
     async def run_cycle(self, ctx, user_settings, view):
         excluded_regions = user_settings['excluded_regions']
         user_agent = user_settings['user_agent']
-        template = user_settings['template'] if user_settings['template'] else "%%TEMPLATE-XXXXXX%%"
+
+        if not user_settings['template']
+            await ctx.send("Make sure to set a template first with [p]set_user_template %template-1234%")
+            return
+        template = user_settings['template']
 
         data = await self.fetch_nation_details(user_agent)
         if data is None:
