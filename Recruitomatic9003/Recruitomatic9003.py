@@ -17,13 +17,18 @@ class ApproveButton(Button):
         self.cog_instance = cog_instance
         self.ctx = ctx
         self.nations_count = nations_count  # Number of processed nations
+        self.invoker_id = ctx.author.id  # Store the ID of the user who invoked the command
 
     async def callback(self, interaction):
         # First, disable all buttons
-        for item in self.view.children:
-            item.disabled = True
-        # Acknowledge the interaction and update the message with disabled buttons
-        await interaction.response.edit_message(view=self.view)
+        if interaction.user.id == self.invoker_id:
+            for item in self.view.children:
+                item.disabled = True
+            # Acknowledge the interaction and update the message with disabled buttons
+            await interaction.response.edit_message(view=self.view)
+            pass
+        else:
+            await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
 
 
         
