@@ -5,6 +5,7 @@ from discord.ui import View, Button
 import asyncio
 import aiohttp
 from datetime import datetime
+from datetime import datetime, timedelta
 
 class BatchButton(Button):
     def __init__(self, label: str, url: str):
@@ -110,10 +111,16 @@ class Recruitomatic9003(commands.Cog):
         view.add_item(DoneButton("All Done", "done", self, ctx))
 
 
-        current_time = int(datetime.utcnow().timestamp())
-        # Create the fancy timestamp string
-        fancy_timestamp = f"<t:{current_time}:R>"
-        # Send the message with the fancy timestamp        
+        current_time = datetime.utcnow()
+        # Subtract 5 hours
+        new_time = current_time - timedelta(hours=5)
+        
+        # Convert the new time to a Unix timestamp
+        new_unix_timestamp = int(new_time.timestamp())
+        
+        # Now you can format this for Discord
+        fancy_timestamp = f"<t:{new_unix_timestamp}:R>"
+   
         if embed.description == "No new nations found in this cycle.":
             await ctx.send(content=fancy_timestamp,embed=embed, view=view)
         else:
