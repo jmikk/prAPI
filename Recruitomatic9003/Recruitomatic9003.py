@@ -70,12 +70,16 @@ class Recruitomatic9003(commands.Cog):
         self.config = Config.get_conf(self, identifier=1234567890)
         default_user_settings = {
             "template": None,
-            "excluded_regions": ["the_wellspring"],
             "user_agent": "YourUserAgentHere"
         }
         self.config.register_user(**default_user_settings)
         self.loop_running = False
         self.processed_nations = set()  # Track already processed nations
+
+        default_guild_settings = {
+            "excluded_regions": ["the_wellspring"],
+        }
+        self.config.register_guild(**default_guild_settings)
         
 
     async def fetch_nation_details(self, user_agent):
