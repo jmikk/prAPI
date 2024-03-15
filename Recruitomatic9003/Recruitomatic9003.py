@@ -21,9 +21,6 @@ class ApproveButton(Button):
     async def callback(self, interaction):
         await interaction.response.defer()
 
-        for item in self.view.children:
-            item.disabled = True
-        # Acknowledge the interaction and update the message with disabled buttons
         
         # Fetch current user settings
         user_settings = await self.cog_instance.config.user(self.ctx.author).all()
@@ -34,7 +31,6 @@ class ApproveButton(Button):
         # Continue with running the next cycle
         view = View()
         await self.cog_instance.run_cycle(self.ctx, user_settings, view)
-        await interaction.response.edit_message(view=self.view)
 
 
 
@@ -48,10 +44,6 @@ class DoneButton(Button):
         # Stop the recruitment loop
         self.cog_instance.loop_running = False
 
-        for item in self.view.children:
-            item.disabled = True
-        # Acknowledge the interaction and update the message with disabled buttons
-        await interaction.response.edit_message(view=self.view)
         # Fetch the total tokens earned by the user
         user_settings = await self.cog_instance.config.user(self.ctx.author).all()
         total_tokens = user_settings.get('tokens', 0)
@@ -59,6 +51,11 @@ class DoneButton(Button):
         embed = Embed(title="Tokens Earned", description=f"You have a total of {total_tokens} tokens. Use [p]token_shop to access the token shop to spend them on cool things!", color=0x00ff00)
         # Respond with the embed
         await interaction.response.send_message(embed=embed)
+        
+        for item in self.view.children:
+            item.disabled = True
+        # Acknowledge the interaction and update the message with disabled buttons
+        await interaction.response.edit_message(view=self.view)
         self.processed_nations.clear()
 
 class Recruitomatic9003(commands.Cog):
