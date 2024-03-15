@@ -115,6 +115,3 @@ class Recruitomatic9003(commands.Cog):
             cycles += 1
 
         self.loop_running = False
-
-async def setup(bot):
-    bot.add_cog(Recruitomatic9003(bot))
