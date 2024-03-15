@@ -123,7 +123,7 @@ class Recruitomatic9003(commands.Cog):
         else:
 
             if self.cycle_count == 0:
-                nations = nations[:3]
+                nations = nations[:8]
             
             for i, group in enumerate([nations[i:i + 8] for i in range(0, len(nations), 8)]):
                 nations_str = ",".join(group)
