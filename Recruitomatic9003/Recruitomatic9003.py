@@ -42,7 +42,7 @@ class Recruitomatic9003(commands.Cog):
         }
         self.config.register_user(**default_user_settings)
         self.loop_running = False
-        self.listed_nations = set()
+        self.processed_nations = set()  # Track already processed nations
 
     async def fetch_nation_details(self, user_agent):
         async with aiohttp.ClientSession() as session:
@@ -74,17 +74,16 @@ class Recruitomatic9003(commands.Cog):
         for new_nation in root.findall('./NEWNATIONDETAILS/NEWNATION'):
             nation_name = new_nation.get('name')
             region = new_nation.find('REGION').text
-            if region not in excluded_regions:
+            if region not in excluded_regions and nation_name not in self.processed_nations:
                 nations.append(nation_name)
-                self.listed_nations.add(nation_name)
+                self.processed_nations.add(nation_name)  # Add to the set of already processed nations
 
-        grouped_nations = [nations[i:i + 8] for i in range(0, len(nations), 8)]
-
+        view.clear_items()
         embed = Embed(title="Recruitment Cycle", color=0x00ff00)
         if not nations:
             embed.description = "No new nations found in this cycle."
         else:
-            for i, group in enumerate(grouped_nations):
+            for i, group in enumerate([nations[i:i + 8] for i in range(0, len(nations), 8)]):
                 nations_str = ",".join(group)
                 url = f"https://www.nationstates.net/page=compose_telegram?tgto={nations_str}&message={template}"
                 view.add_item(BatchButton(label=f"Batch {i+1}", url=url))
