@@ -70,7 +70,7 @@ class Recruitomatic9003(commands.Cog):
         self.config = Config.get_conf(self, identifier=1234567890)
         default_user_settings = {
             "template": None,
-            "user_agent": f"Recruitomatic9003 in use by {input('user_agent')} written by 9003, nswa9002@gmail.com (discord: 9003)     V 1"
+            "user_agent": f"Recruitomatic9003 written by 9003, nswa9002@gmail.com (discord: 9003)     V 1"
         }
         self.config.register_user(**default_user_settings)
         self.loop_running = False
@@ -283,6 +283,10 @@ class Recruitomatic9003(commands.Cog):
     @commands.command()
     async def Thanks_9003(self, ctx):
         await ctx.send("Your appreacation is appreacated if this has been a useful tool please let 9003/9006 know by sending them a TG or a discord message. The wellspring starts on the exluded region list, another way you can say thanks is by leaving it on there!")
+
+    @commands.command()
+    async def set_user_agent(self,ctx,useragent):
+        self.useragent
 
 
 
