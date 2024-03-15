@@ -11,16 +11,24 @@ class BatchButton(Button):
         super().__init__(style=ButtonStyle.url, label=label, url=url)
 
 class ApproveButton(Button):
-    def __init__(self, label: str, custom_id: str, cog_instance, ctx):
+    def __init__(self, label: str, custom_id: str, cog_instance, ctx, nations_count):
         super().__init__(style=ButtonStyle.success, label=label, custom_id=custom_id)
         self.cog_instance = cog_instance
         self.ctx = ctx
+        self.nations_count = nations_count  # Number of processed nations
 
     async def callback(self, interaction):
         await interaction.response.defer()
+        # Fetch current user settings
         user_settings = await self.cog_instance.config.user(self.ctx.author).all()
+        # Calculate new token count
+        new_token_count = user_settings.get('tokens', 0) + self.nations_count
+        # Update user settings with new token count
+        await self.cog_instance.config.user(self.ctx.author).tokens.set(new_token_count)
+        # Continue with running the next cycle
         view = View()
-        success = await self.cog_instance.run_cycle(self.ctx, user_settings, view)
+        await self.cog_instance.run_cycle(self.ctx, user_settings, view)
+
 
 class DoneButton(Button):
     def __init__(self, label: str, custom_id: str, cog_instance, ctx):
@@ -97,8 +105,8 @@ class Recruitomatic9003(commands.Cog):
                 url = f"https://www.nationstates.net/page=compose_telegram?tgto={nations_str}&message={template}"
                 view.add_item(BatchButton(label=f"Batch {i+1}", url=url))
             embed.description = "Nations ready for recruitment:"
-
-        view.add_item(ApproveButton("Approve", "approve", self, ctx))
+        nations_count = len(nations)
+        view.add_item(ApproveButton("Approve", "approve", self, ctx, nations_count))
         view.add_item(DoneButton("All Done", "done", self, ctx))
         await ctx.send(embed=embed, view=view)
         return True
