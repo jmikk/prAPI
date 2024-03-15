@@ -23,13 +23,21 @@ class ApproveButton(Button):
         success = await self.cog_instance.run_cycle(self.ctx, user_settings, view)
 
 class DoneButton(Button):
-    def __init__(self, label: str, custom_id: str, cog_instance):
+    def __init__(self, label: str, custom_id: str, cog_instance, ctx):
         super().__init__(style=ButtonStyle.danger, label=label, custom_id=custom_id)
         self.cog_instance = cog_instance
+        self.ctx = ctx
 
     async def callback(self, interaction):
+        # Stop the recruitment loop
         self.cog_instance.loop_running = False
-        await interaction.response.send_message("Loop stopped, done for now.", ephemeral=True)
+        # Fetch the total tokens earned by the user
+        user_settings = await self.cog_instance.config.user(self.ctx.author).all()
+        total_tokens = user_settings.get('tokens', 0)
+        # Create an embed with the total tokens information
+        embed = Embed(title="Tokens Earned", description=f"You have earned a total of {total_tokens} tokens.", color=0x00ff00)
+        # Respond with the embed
+        await interaction.response.send_message(embed=embed)
 
 class Recruitomatic9003(commands.Cog):
     def __init__(self, bot):
