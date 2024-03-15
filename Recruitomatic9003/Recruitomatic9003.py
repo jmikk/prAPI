@@ -75,9 +75,9 @@ class Recruitomatic9003(commands.Cog):
         excluded_regions = user_settings['excluded_regions']
         user_agent = user_settings['user_agent']
 
-        if not user_settings['template']
+        if not user_settings['template']:
             await ctx.send("Make sure to set a template first with [p]set_user_template %template-1234%")
-            return
+            return 
         template = user_settings['template']
 
         data = await self.fetch_nation_details(user_agent)
