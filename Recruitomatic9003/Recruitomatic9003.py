@@ -20,27 +20,27 @@ class ApproveButton(Button):
         self.invoker_id = ctx.author.id  # Store the ID of the user who invoked the command
 
     async def callback(self, interaction):
-        # First, disable all buttons
+        # Check if the user who interacted is the invoker
         if interaction.user.id == self.invoker_id:
+            # Disable all buttons
             for item in self.view.children:
                 item.disabled = True
             # Acknowledge the interaction and update the message with disabled buttons
             await interaction.response.edit_message(view=self.view)
-            pass
+
+            # Fetch current user settings
+            user_settings = await self.cog_instance.config.user(self.ctx.author).all()
+            # Calculate new token count
+            new_token_count = user_settings.get('tokens', 0) + self.nations_count
+            # Update user settings with new token count
+            await self.cog_instance.config.user(self.ctx.author).tokens.set(new_token_count)
+            # Continue with running the next cycle
+            view = View()
+            await self.cog_instance.run_cycle(self.ctx, user_settings, view)
         else:
+            # If the user is not the invoker, send an error message
             await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
 
-
-        
-        # Fetch current user settings
-        user_settings = await self.cog_instance.config.user(self.ctx.author).all()
-        # Calculate new token count
-        new_token_count = user_settings.get('tokens', 0) + self.nations_count
-        # Update user settings with new token count
-        await self.cog_instance.config.user(self.ctx.author).tokens.set(new_token_count)
-        # Continue with running the next cycle
-        view = View()
-        await self.cog_instance.run_cycle(self.ctx, user_settings, view)
 
 
 
