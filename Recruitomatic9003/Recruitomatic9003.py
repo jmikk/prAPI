@@ -77,7 +77,7 @@ class Recruitomatic9003(commands.Cog):
         if not nations:
             view.add_item(ApproveButton("Approve", "approve", self, ctx))
             view.add_item(DoneButton("All Done", "done", self))
-            await ctx.send("No new nations found in this cycle.")
+            await ctx.send("No new nations found in this cycle.",view=view)
             return True
 
         grouped_nations = [nations[i:i + 8] for i in range(0, len(nations), 8)]
