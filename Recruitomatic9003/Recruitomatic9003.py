@@ -35,7 +35,7 @@ class DoneButton(Button):
         user_settings = await self.cog_instance.config.user(self.ctx.author).all()
         total_tokens = user_settings.get('tokens', 0)
         # Create an embed with the total tokens information
-        embed = Embed(title="Tokens Earned", description=f"You have earned a total of {total_tokens} tokens.", color=0x00ff00)
+        embed = Embed(title="Tokens Earned", description=f"You have a total of {total_tokens} tokens. Use [p]token_shop to access the token shop to spend them on cool things!", color=0x00ff00)
         # Respond with the embed
         await interaction.response.send_message(embed=embed)
 
