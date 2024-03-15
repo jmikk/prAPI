@@ -135,5 +135,13 @@ class Recruitomatic9003(commands.Cog):
 
         self.loop_running = False
 
-async def setup(bot):
-    bot.add_cog(Recruitomatic9003(bot))
+    @commands.command()
+    async def set_user_template(self, ctx, *, template: str):
+        """Sets the user's recruitment message template."""
+        # Ensure the template meets your requirements, e.g., starts and ends with %%
+        if template.startswith("%") and template.endswith("%"):
+            await self.config.user(ctx.author).template.set(template)
+            await ctx.send("Your recruitment template has been updated.")
+        else:
+            await ctx.send("Error: The template must start and end with %.")
+
