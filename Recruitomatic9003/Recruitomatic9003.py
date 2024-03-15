@@ -17,10 +17,7 @@ class ApproveButton(Button):
         user_settings = await self.cog_instance.config.user(self.ctx.author).all()
         view = View()
         success = await self.cog_instance.run_cycle(self.ctx, user_settings, view)
-        if success:
-            await interaction.followup.send("New cycle started!", ephemeral=True)
-        else:
-            await interaction.followup.send("Failed to start a new cycle.", ephemeral=True)
+
 
 class DoneButton(Button):
     def __init__(self, label: str, custom_id: str, cog_instance):
