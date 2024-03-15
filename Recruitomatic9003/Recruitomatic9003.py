@@ -194,9 +194,7 @@ class Recruitomatic9003(commands.Cog):
         data = []
         for member in members:
             member_data = await self.config.user(member).all()
-            #data.append((member.display_name, member_data.get("tokens", 0)))
-
-            data.append((f"<@{member.id}>", member_data.get("tokens", 0)))
+            data.append((member.display_name, member_data.get("tokens", 0)))
         data.sort(key=lambda x: x[1], reverse=True)
 
         
