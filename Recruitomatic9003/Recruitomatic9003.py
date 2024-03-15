@@ -74,6 +74,8 @@ class Recruitomatic9003(commands.Cog):
                 self.listed_nations.add(nation_name)  # Add to the set of already processed nations
 
         if not nations:
+            view.add_item(ApproveButton("Approve", "approve", self, ctx))
+            view.add_item(DoneButton("All Done", "done", self))
             await ctx.send("No new nations found in this cycle.")
             return True
 
