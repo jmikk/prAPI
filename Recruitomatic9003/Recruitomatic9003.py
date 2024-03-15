@@ -188,10 +188,13 @@ class Recruitomatic9003(commands.Cog):
 
     @commands.command()
     async def recruit_leaderboard(self, ctx):
+        guild = ctx.guild
+        members = guild.members
+    
         data = []
-        for member in ctx.guild.members:
-            tokens = await self.config.member(member).tokens()
-            data.append((member.id, tokens))  # Use member ID and tokens as a tuple
+        for member in members:
+            member_data = await self.config.user(member).token()
+            data.append((member.display_name, member_data.get(attribute, 0)))
         page = 0
 
         msg = await ctx.send(embed=self.get_leaderboard_embed(data, page))
