@@ -186,3 +186,47 @@ class Recruitomatic9003(commands.Cog):
         else:
             await ctx.send("Error: The template must start and end with %.")
 
+    @commands.command()
+    async def recruit_leaderboard(self, ctx):
+        data = []
+        for member in ctx.guild.members:
+            tokens = await self.config.member(member).tokens()
+            data.append((member.id, tokens))  # Use member ID and tokens as a tuple
+        page = 0
+
+        msg = await ctx.send(embed=self.get_leaderboard_embed(data, page))
+        await msg.add_reaction("⬅️")
+        await msg.add_reaction("➡️")
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["⬅️", "➡️"] and reaction.message.id == msg.id
+
+        while True:
+            try:
+                reaction, user = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+
+                if str(reaction.emoji) == "➡️" and page < len(data) // 10:
+                    page += 1
+                    await msg.edit(embed=self.get_leaderboard_embed(data, page))
+                    await msg.remove_reaction(reaction, user)
+
+                elif str(reaction.emoji) == "⬅️" and page > 0:
+                    page -= 1
+                    await msg.edit(embed=self.get_leaderboard_embed(data, page))
+                    await msg.remove_reaction(reaction, user)
+
+            except asyncio.TimeoutError:
+                await msg.clear_reactions()
+                break
+
+    def get_leaderboard_embed(self, data, page):
+        embed = Embed(title="Token Leaderboard")
+        start_index = page * 10
+        end_index = start_index + 10
+
+        for i, item in enumerate(data[start_index:end_index], start=start_index):
+            embed.add_field(name=f"{i + 1}. User {item[0]}", value=f"Tokens: {item[1]}", inline=False)
+
+        return embed
+
+
