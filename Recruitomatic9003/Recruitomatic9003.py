@@ -91,7 +91,7 @@ class Recruitomatic9003(commands.Cog):
                     return await response.text()
 
     async def run_cycle(self, ctx, user_settings, view):
-        excluded_regions = user_settings['excluded_regions']
+        excluded_regions = await self.config.guild(ctx.guild).excluded_regions()       
         user_agent = user_settings['user_agent']
 
         if not user_settings['template']:
@@ -241,4 +241,44 @@ class Recruitomatic9003(commands.Cog):
             embed.add_field(name=f"{i + 1}. {username}", value=f"Tokens: {tokens}", inline=False)
     
         return embed
+    
+    @commands.command()
+    @commands.has_permissions(manage_guild=True)  # Ensure only users with manage guild permissions can modify the list
+    async def add_excluded_region(self, ctx, *, region: str):
+        region = region.replace(" ","_").lower()
+        async with self.config.guild(ctx.guild).excluded_regions() as regions:
+            if region not in regions:
+                regions.append(region)
+                await ctx.send(f"Region '{region}' has been added to the excluded regions list.")
+            else:
+                await ctx.send(f"Region '{region}' is already in the excluded regions list.")
+    
+    @commands.command()
+    @commands.has_permissions(manage_guild=True)
+    async def remove_excluded_region(self, ctx, *, region: str):
+        region = region.replace(" ","_").lower()
+        async with self.config.guild(ctx.guild).excluded_regions() as regions:
+            if region in regions:
+                regions.remove(region)
+                await ctx.send(f"Region '{region}' has been removed from the excluded regions list.")
+            else:
+                await ctx.send(f"Region '{region}' is not in the excluded regions list.")
+
+    @commands.command()
+    async def view_excluded_regions(self, ctx):
+        # Fetch the excluded regions list from the guild's config
+        excluded_regions = await self.config.guild(ctx.guild).excluded_regions()
+    
+        if excluded_regions:
+            # If there are excluded regions, format them as a string and send
+            regions_str = ", ".join(excluded_regions)
+            message = f"Excluded regions for this server: {regions_str}"
+        else:
+            # If the list is empty, inform the user
+            message = "There are no excluded regions for this server."
+    
+        # Send the message to the context channel
+        await ctx.send(message)
+
+
 
