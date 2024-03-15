@@ -1,6 +1,6 @@
 from redbot.core import commands, Config
 import xml.etree.ElementTree as ET
-from discord import ButtonStyle
+from discord import Embed, ButtonStyle
 from discord.ui import View, Button
 import asyncio
 import aiohttp
@@ -16,8 +16,13 @@ class ApproveButton(Button):
         await interaction.response.defer()
         user_settings = await self.cog_instance.config.user(self.ctx.author).all()
         view = View()
+        tokens_earned = len(self.cog_instance.listed_nations)
+        await self.cog_instance.config.user(self.ctx.author).tokens.set(user_settings.get('tokens', 0) + tokens_earned)
         success = await self.cog_instance.run_cycle(self.ctx, user_settings, view)
-
+        if success:
+            await interaction.followup.send(f"New cycle started! You earned {tokens_earned} tokens.", ephemeral=True)
+        else:
+            await interaction.followup.send("Failed to start a new cycle.", ephemeral=True)
 
 class DoneButton(Button):
     def __init__(self, label: str, custom_id: str, cog_instance):
@@ -35,11 +40,12 @@ class Recruitomatic9003(commands.Cog):
         default_user_settings = {
             "template": None,
             "excluded_regions": ["the_wellspring"],
-            "user_agent": "YourUserAgentHere"
+            "user_agent": "YourUserAgentHere",
+            "tokens": 0
         }
         self.config.register_user(**default_user_settings)
         self.loop_running = False
-        self.listed_nations = set()  # Set to track nations already included in previous cycles
+        self.listed_nations = set()
 
     async def fetch_nation_details(self, user_agent):
         async with aiohttp.ClientSession() as session:
@@ -69,28 +75,21 @@ class Recruitomatic9003(commands.Cog):
         for new_nation in root.findall('./NEWNATIONDETAILS/NEWNATION'):
             nation_name = new_nation.get('name')
             region = new_nation.find('REGION').text
-            if region not in excluded_regions and nation_name not in self.listed_nations:
+            if region not in excluded_regions:
                 nations.append(nation_name)
-                self.listed_nations.add(nation_name)  # Add to the set of already processed nations
+                self.listed_nations.add(nation_name)
 
+        embed = Embed(title="Nation Recruitment", color=0x00ff00)
         view.clear_items()
         if not nations:
-            view.add_item(ApproveButton("Approve", "approve", self, ctx))
-            view.add_item(DoneButton("All Done", "done", self))
-            await ctx.send("No new nations found in this cycle.",view=view)
-            return True
-
-        grouped_nations = [nations[i:i + 8] for i in range(0, len(nations), 8)]
-
-        for i, group in enumerate(grouped_nations, start=1):
-            nations_str = ",".join(group)
-            url = f"https://www.nationstates.net/page=compose_telegram?tgto={nations_str}&message={template}"
-            view.add_item(Button(style=ButtonStyle.url, label=f"Batch {i}", url=url))
+            embed.description = "No new nations found in this cycle."
+        else:
+            nation_details = "\n".join([f"Batch {i+1}: {', '.join(group)}" for i, group in enumerate(nations)])
+            embed.description = f"Nations ready for recruitment:\n{nation_details}"
 
         view.add_item(ApproveButton("Approve", "approve", self, ctx))
         view.add_item(DoneButton("All Done", "done", self))
-
-        await ctx.send("Click on the buttons below or wait for the next cycle:", view=view)
+        await ctx.send(embed=embed, view=view)
         return True
 
     @commands.command()
