@@ -19,7 +19,12 @@ class ApproveButton(Button):
         self.nations_count = nations_count  # Number of processed nations
 
     async def callback(self, interaction):
-        await interaction.response.defer()
+        # First, disable all buttons
+        for item in self.view.children:
+            item.disabled = True
+        # Acknowledge the interaction and update the message with disabled buttons
+        await interaction.response.edit_message(view=self.view)
+
 
         
         # Fetch current user settings
@@ -41,22 +46,22 @@ class DoneButton(Button):
         self.ctx = ctx
 
     async def callback(self, interaction):
-        # Stop the recruitment loop
-        self.cog_instance.loop_running = False
-
-        # Fetch the total tokens earned by the user
-        user_settings = await self.cog_instance.config.user(self.ctx.author).all()
-        total_tokens = user_settings.get('tokens', 0)
-        # Create an embed with the total tokens information
-        embed = Embed(title="Tokens Earned", description=f"You have a total of {total_tokens} tokens. Use [p]token_shop to access the token shop to spend them on cool things!", color=0x00ff00)
-        # Respond with the embed
-        await interaction.response.send_message(embed=embed)
-        
+        # First, disable all buttons
         for item in self.view.children:
             item.disabled = True
         # Acknowledge the interaction and update the message with disabled buttons
         await interaction.response.edit_message(view=self.view)
-        self.processed_nations.clear()
+
+        # Stop the recruitment loop
+        self.cog_instance.loop_running = False
+        self.cog_instance.processed_nations.clear()  # Assuming this is intended to clear processed nations
+
+        # Fetch the total tokens and send a follow-up message with the embed
+        user_settings = await self.cog_instance.config.user(self.ctx.author).all()
+        total_tokens = user_settings.get('tokens', 0)
+        embed = Embed(title="Tokens Earned", description=f"You have a total of {total_tokens} tokens. Use [p]token_shop to access the token shop to spend them on cool things!", color=0x00ff00)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
 
 class Recruitomatic9003(commands.Cog):
     def __init__(self, bot):
