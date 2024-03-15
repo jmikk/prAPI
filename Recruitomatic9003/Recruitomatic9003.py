@@ -280,5 +280,9 @@ class Recruitomatic9003(commands.Cog):
         # Send the message to the context channel
         await ctx.send(message)
 
+    @commands.command()
+    async def Thanks_9003(self, ctx):
+        await ctx.send("Your appreacation is appreacated if this has been a useful tool please let 9003/9006 know by sending them a TG or a discord message. The wellspring starts on the exluded region list another way you can say thanks is by leaving it on there!")
+
 
 
