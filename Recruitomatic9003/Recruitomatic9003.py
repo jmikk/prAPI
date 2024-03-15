@@ -47,6 +47,7 @@ class DoneButton(Button):
         embed = Embed(title="Tokens Earned", description=f"You have a total of {total_tokens} tokens. Use [p]token_shop to access the token shop to spend them on cool things!", color=0x00ff00)
         # Respond with the embed
         await interaction.response.send_message(embed=embed)
+        self.processed_nations = set()
 
 class Recruitomatic9003(commands.Cog):
     def __init__(self, bot):
