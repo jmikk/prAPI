@@ -909,7 +909,7 @@ class cardMini(commands.Cog):
             conn.close()
             
 
-    @commands.command(name='chk_bank',aliases=["bank"])
+    @commands.command(name='chk_bank',aliases=["view_bank"])
     async def chk_bank(self,ctx):
         """Checks your current bank total"""
         server_id = str(ctx.guild.id)
