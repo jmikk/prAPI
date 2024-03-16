@@ -11,6 +11,24 @@ class BatchButton(Button):
     def __init__(self, label: str, url: str):
         super().__init__(style=ButtonStyle.url, label=label, url=url)
 
+class TimerButton(Button):
+    def __init__(self, label: str, custom_id: str, cog_instance, ctx):
+        super().__init__(style=ButtonStyle.secondary, label=label, custom_id=custom_id)
+        self.cog_instance = cog_instance
+        self.ctx = ctx
+
+    async def callback(self, interaction):
+        # Fetch the user's timer value
+        timer_seconds = await self.cog_instance.config.user(self.ctx.author).timer_seconds()
+
+        # Calculate the future time
+        future_time = datetime.now() + timedelta(seconds=timer_seconds)
+        future_timestamp = int(future_time.timestamp())
+
+        # Send an ephemeral message with the countdown
+        await interaction.response.send_message(f"Your timer is set! It will end <t:{future_timestamp}:R>.", ephemeral=True)
+
+
 class ApproveButton(Button):
     def __init__(self, label: str, custom_id: str, cog_instance, ctx, nations_count):
         super().__init__(style=ButtonStyle.success, label=label, custom_id=custom_id)
@@ -150,6 +168,8 @@ class Recruitomatic9003(commands.Cog):
                 view.add_item(BatchButton(label=f"Batch {i+1}", url=url))
             embed.description = "Nations ready for recruitment:"
         nations_count = len(nations)
+        
+        view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
         view.add_item(ApproveButton("Approve", "approve", self, ctx, nations_count))
         view.add_item(DoneButton("All Done", "done", self, ctx))
 
@@ -300,5 +320,17 @@ class Recruitomatic9003(commands.Cog):
         await ctx.send("Your appreacation is appreacated if this has been a useful tool please let 9003/9006 know by sending them a TG or a discord message. The wellspring starts on the exluded region list, another way you can say thanks is by leaving it on there!")
 
 
+
+
+    @commands.command()
+    async def set_timer(self, ctx, seconds: int):
+        """Sets your personal timer in seconds."""
+        if seconds <= 0:
+            await ctx.send("Please enter a positive number of seconds.")
+            return
+    
+        # Save the timer value in the user's config
+        await self.config.user(ctx.author).timer_seconds.set(seconds)
+        await ctx.send(f"Your personal timer has been set to {seconds} seconds.")
 
 
