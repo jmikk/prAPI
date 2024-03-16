@@ -156,7 +156,7 @@ class Recruitomatic9003(commands.Cog):
         view.clear_items()
         embed = Embed(title="Recruitment Cycle", color=0x00ff00)
         if not nations:
-            embed.description = "No new nations found in this cycle."
+            embed.description = "No new nations found in this cycle.\nI'll keep looking for you based on the number of minutes you put in before.  If you want to check for more eariler you can always approve this message!"
         else:
 
             if self.cycle_count == 0:
