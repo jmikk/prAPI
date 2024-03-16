@@ -214,13 +214,8 @@ class Recruitomatic9003(commands.Cog):
             cycles += 1
 
         self.loop_running = False
-        # Stop the recruitment loop
-        self.cog_instance.processed_nations.clear()  # Clear processed nations
-
         # Fetch the total tokens and send a follow-up message with the embed
-        user_settings = await self.cog_instance.config.user(self.ctx.author).all()
-        total_tokens = user_settings.get('tokens', 0)
-        embed = Embed(title="Tokens Earned", description=f"You have a total of {total_tokens} tokens. Use [p]token_shop to access the token shop to spend them on cool things!", color=0x00ff00)
+        embed = Embed(title="Tokens Earned", description=f"No approved messages for 10 minutes back to bed I go thanks!", color=0x00ff00)
         await interaction.followup.send(embed=embed)
 
     @commands.command()
