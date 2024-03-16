@@ -166,7 +166,7 @@ class Recruitomatic9003(commands.Cog):
                 nations_str = ",".join(group)
                 url = f"https://www.nationstates.net/page=compose_telegram?tgto={nations_str}&message={template}"
                 view.add_item(BatchButton(label=f"Batch {i+1}", url=url))
-            embed.description = "Please click each batch than the appove button to get credit and get the next set, When you are done click All done.  \nFor your convince I have a timer funciton you can use.  Just set it up by doing [p]set_timer {Num of Secounds}."
+            embed.description = "Please click each batch than the appove button to get credit and get the next set\nWhen you are all done recuriting for the day. click All done.  \nFor your convince I have a timer funciton you can use.  Just set it up by doing [p]set_timer {Num of Secounds}."
         nations_count = len(nations)
         
         view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
