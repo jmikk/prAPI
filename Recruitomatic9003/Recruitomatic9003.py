@@ -215,7 +215,7 @@ class Recruitomatic9003(commands.Cog):
 
         self.loop_running = False
         # Fetch the total tokens and send a follow-up message with the embed
-        embed = Embed(title="Tokens Earned", description=f"No approved messages for 10 minutes back to bed I go thanks!", color=0x00ff00)
+        embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recuriting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
         await ctx.send(embed=embed)
 
     @commands.command()
