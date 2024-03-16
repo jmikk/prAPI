@@ -296,9 +296,6 @@ class Recruitomatic9003(commands.Cog):
     async def Thanks_9003(self, ctx):
         await ctx.send("Your appreacation is appreacated if this has been a useful tool please let 9003/9006 know by sending them a TG or a discord message. The wellspring starts on the exluded region list, another way you can say thanks is by leaving it on there!")
 
-    @commands.command()
-    async def set_user_agent(self,ctx,useragent):
-        self.useragent
 
 
 
