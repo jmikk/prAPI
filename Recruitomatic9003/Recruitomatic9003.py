@@ -166,7 +166,7 @@ class Recruitomatic9003(commands.Cog):
                 nations_str = ",".join(group)
                 url = f"https://www.nationstates.net/page=compose_telegram?tgto={nations_str}&message={template}"
                 view.add_item(BatchButton(label=f"Batch {i+1}", url=url))
-            embed.description = "Nations ready for recruitment:"
+            embed.description = "Please click each batch than the appove button to get credit and get the next set, When you are done click All done.  \nFor your convince I have a timer funciton you can use.  Just set it up by doing [p]set_timer {Num of Secounds}."
         nations_count = len(nations)
         
         view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
@@ -184,7 +184,7 @@ class Recruitomatic9003(commands.Cog):
         # Now you can format this for Discord
         fancy_timestamp = f"<t:{new_unix_timestamp}:R>"
    
-        if embed.description == "No new nations found in this cycle.":
+        if embed.description == "No new nations found in this cycle.\nI'll keep looking for you based on the number of minutes you put in before.  If you want to check for more eariler you can always approve this message!":
             await ctx.send(content=fancy_timestamp,embed=embed, view=view)
         else:
             await ctx.send(content=ctx.author.mention+" "+fancy_timestamp,embed=embed, view=view)
