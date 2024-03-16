@@ -20,6 +20,8 @@ class ApproveButton(Button):
         self.invoker_id = ctx.author.id  # Store the ID of the user who invoked the command
 
     async def callback(self, interaction):
+        self.start_time = datetime.utcnow()
+
         # Check if the user who interacted is the invoker
         if interaction.user.id == self.invoker_id:
             # Disable all buttons
@@ -92,6 +94,7 @@ class Recruitomatic9003(commands.Cog):
             "excluded_regions": ["the_wellspring"],
         }
         self.config.register_guild(**default_guild_settings)
+        self.start_time = 0
         
 
     async def fetch_nation_details(self, user_agent):
@@ -177,16 +180,16 @@ class Recruitomatic9003(commands.Cog):
         self.loop_running = True
         timer = max(40, timer * 60)
         cycles = 0
-        start_time = datetime.utcnow()
+        self.start_time = datetime.utcnow()
 
         user_settings = await self.config.user(ctx.author).all()
-        while self.loop_running and cycles < 10 and (datetime.utcnow() - start_time).total_seconds() < 600:
+        while self.loop_running and (datetime.utcnow() - self.start_time).total_seconds() < 600:
             view = View()
 
             success = await self.run_cycle(ctx, user_settings, view)
             if not success:
                 break
-
+            
             await asyncio.sleep(timer)
             cycles += 1
 
