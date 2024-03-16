@@ -203,7 +203,7 @@ class Recruitomatic9003(commands.Cog):
         self.start_time = datetime.utcnow()
 
         user_settings = await self.config.user(ctx.author).all()
-        while self.loop_running and (datetime.utcnow() - self.start_time).total_seconds() < 600:
+        while self.loop_running and (datetime.utcnow() - self.start_time).total_seconds() < 6:
             view = View()
 
             success = await self.run_cycle(ctx, user_settings, view)
@@ -216,7 +216,7 @@ class Recruitomatic9003(commands.Cog):
         self.loop_running = False
         # Fetch the total tokens and send a follow-up message with the embed
         embed = Embed(title="Tokens Earned", description=f"No approved messages for 10 minutes back to bed I go thanks!", color=0x00ff00)
-        await interaction.followup.send(embed=embed)
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def set_user_template(self, ctx, *, template: str):
