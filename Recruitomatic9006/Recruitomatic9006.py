@@ -4,7 +4,7 @@ from discord.ui import Button, View
 import asyncio
 
 
-class MyCog(commands.Cog):
+class Recruitomatic9006(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.send_message_task = None
