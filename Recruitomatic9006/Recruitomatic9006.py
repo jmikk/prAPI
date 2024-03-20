@@ -38,6 +38,7 @@ class ApprovalView(discord.ui.View):
 
     async def on_timeout(self):
         self.cog_instance.continue_sending = False  # Stop the loop if timeout
+        await self.cog_instance.send_wrap_up_message(self.user, "Time has expired. Wrapping up.")
 
     @discord.ui.button(label="Approve", style=discord.ButtonStyle.green)
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -50,10 +51,15 @@ class ApprovalView(discord.ui.View):
     async def all_done(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user != self.user:
             return  # Ignore if the user is not the invoker
-
-        await interaction.response.edit_message(content="All done! Closing.", view=None)
+    
+        await self.cog_instance.send_wrap_up_message(interaction.user, "All done! Closing.")
         self.cog_instance.continue_sending = False  # Stop the loop
         self.stop()
+        
+    async def send_wrap_up_message(self, user, message):
+        channel = user.dm_channel or await user.create_dm()
+        await channel.send(message)
+
 
 async def setup(bot):
     bot.add_cog(MyCog(bot))
