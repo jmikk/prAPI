@@ -3,7 +3,7 @@ import discord
 from discord.ui import Button, View
 import asyncio
 
-class Recruitomatic9006(commands.Cog):
+class MyCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.send_message_task = None
@@ -29,6 +29,9 @@ class Recruitomatic9006(commands.Cog):
         embed = discord.Embed(title="Approval Needed", description="Please click Approve or All Done.", color=0x00ff00)
         await ctx.send(embed=embed, view=view)
 
+    async def send_wrap_up_message(self, user, message):
+        channel = user.dm_channel or await user.create_dm()
+        await channel.send(message)
 
 class ApprovalView(discord.ui.View):
     def __init__(self, cog_instance, user):
@@ -37,8 +40,8 @@ class ApprovalView(discord.ui.View):
         self.user = user
 
     async def on_timeout(self):
-        self.cog_instance.continue_sending = False  # Stop the loop if timeout
         await self.cog_instance.send_wrap_up_message(self.user, "Time has expired. Wrapping up.")
+        self.cog_instance.continue_sending = False  # Stop the loop
 
     @discord.ui.button(label="Approve", style=discord.ButtonStyle.green)
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -51,15 +54,15 @@ class ApprovalView(discord.ui.View):
     async def all_done(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user != self.user:
             return  # Ignore if the user is not the invoker
-    
+
+        # Acknowledge the interaction
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+        # Send the wrap-up message
         await self.cog_instance.send_wrap_up_message(interaction.user, "All done! Closing.")
         self.cog_instance.continue_sending = False  # Stop the loop
         self.stop()
-        
-    async def send_wrap_up_message(self, user, message):
-        channel = user.dm_channel or await user.create_dm()
-        await channel.send(message)
-
 
 async def setup(bot):
     bot.add_cog(MyCog(bot))
