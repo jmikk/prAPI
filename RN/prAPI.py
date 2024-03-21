@@ -85,7 +85,7 @@ class prAPI(commands.Cog):
             output = output.replace('"&gt;&lt;span class="smalltext"&gt;View your post.&lt;/span&gt;&lt;/a&gt;</SUCCESS>\n</NATION>',"")
 
 
-            await ctx.send(output)
+            await ctx.send("https://www.nationstates.net"+ output)
             
             #await ctx.send(r.text)
             await ctx.send(f"Posted on  {Region} RMB")
