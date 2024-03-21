@@ -6,6 +6,7 @@ import os
 import xml.etree.ElementTree as ET
 import requests
 import random
+import html
 
 
 def is_owner_overridable():
@@ -80,6 +81,18 @@ class prAPI(commands.Cog):
             data.update(mode="execute", token=rmbToken)
             r = await self.api_request(data=data)
             await ctx.send(r.text)
+            root = ET.fromstring(r.text)
+
+            # Unescape the HTML content
+            unescaped_html = html.unescape(root.text)
+            
+            # Manually extract the URL portion
+            # Assuming the structure is consistent, and the URL is always within quotes after href=
+            start = unescaped_html.find('href="') + 6  # 6 is the length of 'href="'
+            end = unescaped_html.find('"', start)
+            url = unescaped_html[start:end]
+            await ctx.send(url)
+            
             #await ctx.send(r.text)
             await ctx.send(f"Posted on  {Region} RMB")
             await asyncio.sleep(self.QOTDTime)
