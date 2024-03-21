@@ -76,16 +76,22 @@ class prAPI(commands.Cog):
                 "mode": "prepare",
             }
             r = await self.api_request(data=data)
-            await ctx.send(r.text)
             rmbToken = r.xml.find("SUCCESS").text
             data.update(mode="execute", token=rmbToken)
             r = await self.api_request(data=data)
-            await ctx.send(r.text)
             output = r.text.replace('<NATION id="warden_of_the_spring">\n<SUCCESS>Your message has been lodged! &lt;a href="',"")
             output = output.replace('"&gt;&lt;span class="smalltext"&gt;View your post.&lt;/span&gt;&lt;/a&gt;</SUCCESS>\n</NATION>',"")
 
-
-            await ctx.send("https://www.nationstates.net"+ output)
+            QOTD_id = 1115271309404942439
+            channel_id = 1099398125061406770  # The target channel ID
+            target_channel = self.bot.get_channel(channel_id)
+    
+            if target_channel:
+                await target_channel.send("https://www.nationstates.net"+ output + f"@&{QOTD_id}")
+            else:
+                await ctx.send("https://www.nationstates.net"+ output + f"@&{QOTD_id}")
+            
+            
             
             #await ctx.send(r.text)
             await ctx.send(f"Posted on  {Region} RMB")
