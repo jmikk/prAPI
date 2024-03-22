@@ -87,9 +87,9 @@ class prAPI(commands.Cog):
             target_channel = self.bot.get_channel(channel_id)
     
             if target_channel:
-                await target_channel.send("https://www.nationstates.net"+ output + f"@&<{QOTD_id}>")
+                await target_channel.send("https://www.nationstates.net"+ output + f"<@&{QOTD_id}>")
             else:
-                await ctx.send("https://www.nationstates.net"+ output + f"@&<{QOTD_id}>")
+                await ctx.send("https://www.nationstates.net"+ output + f"<@&{QOTD_id}>")
             
             
             
