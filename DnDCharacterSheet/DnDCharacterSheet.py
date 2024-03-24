@@ -14,6 +14,7 @@ class CharacterSheetModal(Modal):
         char_name = self.children[0].value
         ac = self.children[1].value
         # Process other fields...
+        
 
         # Save the data to the user's config
         user_data = {"name": char_name, "ac": ac}
