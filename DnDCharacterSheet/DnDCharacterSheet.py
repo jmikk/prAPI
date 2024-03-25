@@ -20,9 +20,11 @@ class DnDCharacterModal(Modal):
         attributes = [self.children[i].value for i in range(6)]
         await interaction.response.send_message(f"Character attributes: {attributes}", ephemeral=True)
 
-class MyBot(commands.Bot):
-    def __init__(self):
-        super().__init__(command_prefix="!", intents=discord.Intents.default())
+class DnDCharacterSheet(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
+        self.config.register_user(character_sheet={})
 
     async def setup_hook(self):
         self.tree.add_command(create_character)
