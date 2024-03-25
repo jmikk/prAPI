@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from discord.ui import Modal, TextInput
+from redbot.core import commands, Config
+
 
 class DnDCharacterModal(Modal):
     def __init__(self, *args, **kwargs):
