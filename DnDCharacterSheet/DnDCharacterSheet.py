@@ -150,5 +150,26 @@ class DnDCharacterSheet(commands.Cog):
         else:
             await ctx.send(f"{member.display_name} does not have an item named '{item_name}'.")
 
+    @dnd.command(name="eatitem")
+    async def eat_item(self, ctx, *, item_name: str):
+        """Eat an item from your inventory, deleting it and showing its first effect."""
+        user_inventory = await self.config.member(ctx.author).inventory()
+
+        if item_name in user_inventory:
+            item_effects = user_inventory[item_name]
+            if item_effects:
+                # Assuming item_effects is a list of effects and you want to show the first one
+                first_effect = item_effects[0]
+                await ctx.send(f"{ctx.author.display_name} eats the {item_name} and experiences: {first_effect}")
+            else:
+                await ctx.send(f"The {item_name} seems to have no effects.")
+
+            # Delete the item from the inventory after "eating" it
+            del user_inventory[item_name]
+            await self.config.member(ctx.author).inventory.set(user_inventory)
+        else:
+            await ctx.send(f"You don't have an item named '{item_name}' in your inventory.")
+
+
 
 
