@@ -22,6 +22,14 @@ class DnDCharacterSheet(commands.Cog):
         self.config.register_guild(**default_guild)
         self.config.register_member(**default_member)
 
+    # Command group for D&D related commands
+    @commands.group(name="D&D")
+    async def dnd(self, ctx):
+        """D&D Commands"""
+        if ctx.invoked_subcommand is None:
+            await ctx.send("Type `help D&D` for more information on D&D commands.")
+
+
     async def read_effects_tsv(self):
         effects = []
         # Construct the path to your effects.tsv file within the cog's data directory
@@ -39,7 +47,7 @@ class DnDCharacterSheet(commands.Cog):
                     })
         return effects
 
-    @commands.command()
+    @dnd.command(name="giveitem")
     @commands.has_role("Last Light (DM)")
     async def giveitem(self, ctx, member: discord.Member, item_name: str):
         """Gives a randomly effectuated item to a specified player"""
@@ -107,7 +115,7 @@ class DnDCharacterSheet(commands.Cog):
                 await message.clear_reactions()
                 break
 
-    @commands.command()
+    @dnd.command(name="viewinventory")
     async def viewinventory(self, ctx, member: discord.Member = None):
         """View the inventory of a specified user, or your own if no user is specified."""
 
