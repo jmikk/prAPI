@@ -1,6 +1,7 @@
 from redbot.core import commands, Config
 import random
 import discord
+import os
 
 class DnDCharacterSheet(commands.Cog):
     """Gives items to players with random effects"""
