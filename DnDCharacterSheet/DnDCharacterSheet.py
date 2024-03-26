@@ -76,10 +76,11 @@ class DnDCharacterSheet(commands.Cog):
         # Fetch the user's inventory from the config
         user_inventory = await self.config.member(member).inventory()
 
-        # Format the inventory for display
+        # Format the inventory for display, listing only item names
         if user_inventory:
-            inventory_list = '\n'.join(f"{item}" for item in user_inventory.items())
+            inventory_list = '\n'.join(item for item in user_inventory.keys())
             await ctx.send(f"**{member.display_name}'s Inventory:**\n{inventory_list}")
         else:
             await ctx.send(f"{member.display_name} has no items in their inventory.")
+
 
