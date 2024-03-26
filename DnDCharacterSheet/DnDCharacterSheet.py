@@ -22,9 +22,12 @@ class DnDCharacterSheet(commands.Cog):
         self.config.register_guild(**default_guild)
         self.config.register_member(**default_member)
 
-    async def read_effects_tsv(self, filepath):
+    async def read_effects_tsv(self):
         effects = []
-        with open(filepath, 'r') as file:
+        # Construct the path to your effects.tsv file within the cog's data directory
+        effects_filepath = os.path.join(data_manager.cog_data_path(self), 'effects.tsv')
+        
+        with open(effects_filepath, 'r') as file:
             for line in file:
                 parts = line.strip().split('\t')
                 if len(parts) == 4:  # Ensure there are exactly 4 columns
@@ -42,7 +45,6 @@ class DnDCharacterSheet(commands.Cog):
         """Gives a randomly effectuated item to a specified player"""
         
         # Read effects from TSV
-        effects_filepath = os.path.join(data_manager.cog_data_path(self), 'effects.tsv')  # Adjust the path to your effects.tsv file
         all_effects = await self.read_effects_tsv(effects_filepath)
 
         # Check if item already exists in guild config
