@@ -11,5 +11,3 @@ class DnDCharacterSheet(commands.Cog):
         """This command says hello world"""
         await ctx.send("Hello World!")
 
-def setup(bot):
-    bot.add_cog(HelloWorld(bot))
