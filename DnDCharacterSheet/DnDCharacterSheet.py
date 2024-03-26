@@ -78,7 +78,7 @@ class DnDCharacterSheet(commands.Cog):
 
         # Format the inventory for display
         if user_inventory:
-            inventory_list = '\n'.join(f"{item}: {details}" for item, details in user_inventory.items())
+            inventory_list = '\n'.join(f"{item}" for item in user_inventory.items())
             await ctx.send(f"**{member.display_name}'s Inventory:**\n{inventory_list}")
         else:
             await ctx.send(f"{member.display_name} has no items in their inventory.")
