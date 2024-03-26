@@ -44,7 +44,6 @@ class DnDCharacterSheet(commands.Cog):
     async def giveitem(self, ctx, member: discord.Member, item_name: str):
         """Gives a randomly effectuated item to a specified player"""
 
-        await ctx.send(os.path.join(data_manager.cog_data_path(self), 'effects.tsv'))
         # Read effects from TSV
         all_effects = await self.read_effects_tsv()
 
@@ -64,4 +63,4 @@ class DnDCharacterSheet(commands.Cog):
         user_inventory[item_name] = item_effects
         await self.config.member(member).inventory.set(user_inventory)
 
-        await ctx.send(f"{member.display_name} has been given the item: {item_name} with unique effects!")
+        await ctx.send(f"{member.display_name} has been given the item: {item_name} with {item_effects}!")
