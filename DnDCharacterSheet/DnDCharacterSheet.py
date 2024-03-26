@@ -45,7 +45,7 @@ class DnDCharacterSheet(commands.Cog):
         """Gives a randomly effectuated item to a specified player"""
         
         # Read effects from TSV
-        all_effects = await self.read_effects_tsv(effects_filepath)
+        all_effects = await self.read_effects_tsv()
 
         # Check if item already exists in guild config
         guild_items = await self.config.guild(ctx.guild).items.all()
