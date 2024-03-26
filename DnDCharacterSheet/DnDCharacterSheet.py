@@ -37,8 +37,8 @@ class DnDCharacterSheet(commands.Cog):
     @commands.guild_only()
     @commands.command()
     @commands.has_role("@Last Light (DM)")
-    async def giveitem(self, ctx, item_name: str):
-        """Gives a randomly effectuated item to a player"""
+    async def giveitem(self, ctx, member: discord.Member, item_name: str):
+        """Gives a randomly effectuated item to a specified player"""
         
         # Read effects from TSV
         effects_filepath = '/path/to/effects.tsv'  # Adjust the path to your effects.tsv file
@@ -55,12 +55,9 @@ class DnDCharacterSheet(commands.Cog):
             # Save the new item with its effects to the guild config
             await self.config.guild(ctx.guild).items.set_raw(item_name, value=item_effects)
 
-        # Add the item to the user's inventory
-        user_inventory = await self.config.member(ctx.author).inventory.all()
+        # Add the item to the specified user's inventory
+        user_inventory = await self.config.member(member).inventory.all()
         user_inventory[item_name] = item_effects
-        await self.config.member(ctx.author).inventory.set(user_inventory)
+        await self.config.member(member).inventory.set(user_inventory)
 
-        await ctx.send(f"{ctx.author.display_name}, you have been given the item: {item_name} with unique effects!")
-
-def setup(bot):
-    bot.add_cog(ItemGiver(bot))
+        await ctx.send(f"{member.display_name} has been given the item: {item_name} with unique effects!")
