@@ -65,21 +65,60 @@ class DnDCharacterSheet(commands.Cog):
 
         await ctx.send(f"{member.display_name} has been given the item: {item_name} with {item_effects}!")
 
+    
+    async def paginate_inventory(self, ctx, inventory, member):
+        """Sends paginated embeds of the inventory items."""
+        items_per_page = 10
+        pages = [inventory[i:i + items_per_page] for i in range(0, len(inventory), items_per_page)]
+
+        def get_embed(page_index):
+            embed = discord.Embed(title=f"{member.display_name}'s Inventory", color=discord.Color.blue())
+            page = pages[page_index]
+            for item in page:
+                embed.add_field(name=item, value="\u200b", inline=False)
+            embed.set_footer(text=f"Page {page_index + 1}/{len(pages)}")
+            return embed
+
+        current_page = 0
+        message = await ctx.send(embed=get_embed(current_page))
+
+        # Reaction controls
+        await message.add_reaction("◀️")
+        await message.add_reaction("▶️")
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["◀️", "▶️"] and reaction.message.id == message.id
+
+        while True:
+            try:
+                reaction, user = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+
+                if str(reaction.emoji) == "▶️" and current_page < len(pages) - 1:
+                    current_page += 1
+                    await message.edit(embed=get_embed(current_page))
+                    await message.remove_reaction(reaction, user)
+                elif str(reaction.emoji) == "◀️" and current_page > 0:
+                    current_page -= 1
+                    await message.edit(embed=get_embed(current_page))
+                    await message.remove_reaction(reaction, user)
+                else:
+                    await message.remove_reaction(reaction, user)
+            except asyncio.TimeoutError:
+                await message.clear_reactions()
+                break
+
     @commands.command()
     async def viewinventory(self, ctx, member: discord.Member = None):
         """View the inventory of a specified user, or your own if no user is specified."""
 
-        # If no member is specified, use the member who invoked the command
         if not member:
             member = ctx.author
 
-        # Fetch the user's inventory from the config
         user_inventory = await self.config.member(member).inventory()
 
-        # Format the inventory for display, listing only item names
         if user_inventory:
-            inventory_list = '\n'.join(item for item in user_inventory.keys())
-            await ctx.send(f"**{member.display_name}'s Inventory:**\n{inventory_list}")
+            inventory_list = list(user_inventory.keys())
+            await self.paginate_inventory(ctx, inventory_list, member)
         else:
             await ctx.send(f"{member.display_name} has no items in their inventory.")
 
