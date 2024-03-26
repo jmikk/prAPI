@@ -9,7 +9,7 @@ class DnDCharacterSheet(commands.Cog):
         self.config = Config.get_conf(self, identifier="9003s_guild_items", force_registration=True)
 
         default_guild = {
-            "items": {}
+            "items": {},
             "stash": {}
         }
 
