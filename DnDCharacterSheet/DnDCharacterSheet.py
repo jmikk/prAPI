@@ -131,4 +131,24 @@ class DnDCharacterSheet(commands.Cog):
         else:
             await ctx.send(f"{member.display_name} has no items in their inventory.")
 
+    @dnd.command(name="clearinventory")
+    @commands.is_owner()
+    async def clear_inventory(self, ctx, member: discord.Member):
+        """Clear the entire inventory of a specified player"""
+        await self.config.member(member).inventory.clear()
+        await ctx.send(f"{member.display_name}'s inventory has been cleared.")
+
+    @dnd.command(name="deleteitem")
+    @commands.is_owner()
+    async def delete_item(self, ctx, member: discord.Member, *, item_name: str):
+        """Delete a specific item from a player's inventory"""
+        user_inventory = await self.config.member(member).inventory()
+        if item_name in user_inventory:
+            del user_inventory[item_name]
+            await self.config.member(member).inventory.set(user_inventory)
+            await ctx.send(f"Item '{item_name}' has been removed from {member.display_name}'s inventory.")
+        else:
+            await ctx.send(f"{member.display_name} does not have an item named '{item_name}'.")
+
+
 
