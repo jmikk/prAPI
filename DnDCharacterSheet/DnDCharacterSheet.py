@@ -41,7 +41,7 @@ class DnDCharacterSheet(commands.Cog):
         """Gives a randomly effectuated item to a specified player"""
         
         # Read effects from TSV
-        effects_filepath = '/path/to/effects.tsv'  # Adjust the path to your effects.tsv file
+        effects_filepath = os.path.join(data_manager.cog_data_path(self), 'effects.tsv')  # Adjust the path to your effects.tsv file
         all_effects = await self.read_effects_tsv(effects_filepath)
 
         # Check if item already exists in guild config
