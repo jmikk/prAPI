@@ -35,7 +35,6 @@ class DnDCharacterSheet(commands.Cog):
                     })
         return effects
 
-    @commands.guild_only()
     @commands.command()
     @commands.has_role("@Last Light (DM)")
     async def giveitem(self, ctx, member: discord.Member, item_name: str):
