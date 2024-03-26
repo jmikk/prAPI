@@ -64,3 +64,22 @@ class DnDCharacterSheet(commands.Cog):
         await self.config.member(member).inventory.set(user_inventory)
 
         await ctx.send(f"{member.display_name} has been given the item: {item_name} with {item_effects}!")
+
+    @commands.command()
+    async def viewinventory(self, ctx, member: discord.Member = None):
+        """View the inventory of a specified user, or your own if no user is specified."""
+
+        # If no member is specified, use the member who invoked the command
+        if not member:
+            member = ctx.author
+
+        # Fetch the user's inventory from the config
+        user_inventory = await self.config.member(member).inventory()
+
+        # Format the inventory for display
+        if user_inventory:
+            inventory_list = '\n'.join(f"{item}: {details}" for item, details in user_inventory.items())
+            await ctx.send(f"**{member.display_name}'s Inventory:**\n{inventory_list}")
+        else:
+            await ctx.send(f"{member.display_name} has no items in their inventory.")
+
