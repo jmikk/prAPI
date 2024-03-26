@@ -43,7 +43,8 @@ class DnDCharacterSheet(commands.Cog):
     @commands.has_role("Last Light (DM)")
     async def giveitem(self, ctx, member: discord.Member, item_name: str):
         """Gives a randomly effectuated item to a specified player"""
-        
+
+        await ctx.send(os.path.join(data_manager.cog_data_path(self), 'effects.tsv'))
         # Read effects from TSV
         all_effects = await self.read_effects_tsv()
 
