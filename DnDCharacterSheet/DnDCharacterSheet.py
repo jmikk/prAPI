@@ -1,6 +1,6 @@
 from redbot.core import commands
 
-class HelloWorld(commands.Cog):
+class DnDCharacterSheet(commands.Cog):
     """A simple HelloWorld cog"""
 
     def __init__(self, bot):
