@@ -36,7 +36,7 @@ class DnDCharacterSheet(commands.Cog):
         return effects
 
     @commands.command()
-    @commands.has_role("@Last Light (DM)")
+    @commands.has_role("Last Light (DM)")
     async def giveitem(self, ctx, member: discord.Member, item_name: str):
         """Gives a randomly effectuated item to a specified player"""
         
