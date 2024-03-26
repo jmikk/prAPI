@@ -160,7 +160,7 @@ class DnDCharacterSheet(commands.Cog):
             if item_effects:
                 # Assuming item_effects is a list of effects and you want to show the first one
                 first_effect = item_effects[0]
-                await ctx.send(f"{ctx.author.display_name} eats the {item_name} and experiences: {first_effect['Name']}, {first_effect['Effect']}, for {first_effect['Duration']}, Notes: {first_effect['Notes']} ")
+                await ctx.send(f"{ctx.author.display_name} eats the {item_name} and experiences: {first_effect['Name']}, {first_effect['Effect']}, for {first_effect['Duration']} (when used in a potion), Notes: {first_effect['Notes']} ")
             else:
                 await ctx.send(f"The {item_name} seems to have no effects.")
 
