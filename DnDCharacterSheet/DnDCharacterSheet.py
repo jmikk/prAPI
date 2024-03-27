@@ -36,6 +36,18 @@ class StashView(View):
         self.current_potion_index = (self.current_potion_index + 1) % len(self.stash)
         await self.update_embed(interaction)
 
+    @discord.ui.button(label="Take from Stash", style=ButtonStyle.red, custom_id="take_from_stash")
+    async def take_from_stash_button(self, interaction: Interaction, button: Button):
+        potion_name, _ = self.stash[self.current_potion_index]
+        await self.cog.take_potion_from_stash(interaction, potion_name, self.guild, interaction.user)
+        # Update the view since the stash might have changed
+        self.stash.pop(self.current_potion_index)
+        self.current_potion_index = max(0, self.current_potion_index - 1)  # Adjust index if needed
+        await self.update_embed(interaction)
+        self.stop()  # Optionally stop the view to prevent further interaction
+
+
+
 
 
 class PotionView(View):
@@ -402,6 +414,7 @@ class DnDCharacterSheet(commands.Cog):
         if not guild_stash:
             await ctx.send("The guild stash is empty.")
             return
+            
     
         def get_stash_embed(page_index):
             potion_name, effects = list(guild_stash.items())[page_index]
