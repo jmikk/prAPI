@@ -446,7 +446,37 @@ class DnDCharacterSheet(commands.Cog):
         # Call get_stash_embed with the first potion's details
         await ctx.send(embed=get_stash_embed(0), view=view)
 
+    async def take_potion_from_stash(self, interaction: Interaction, potion_name: str, guild: discord.Guild, member: discord.Member):
+        # Load the current state of the guild's stash
+        guild_stash = await self.config.guild(guild).stash()
     
+        # Check if the potion is in the stash
+        if potion_name in guild_stash and guild_stash[potion_name]['Quantity'] > 0:
+            # Decrement the quantity of the potion in the stash
+            guild_stash[potion_name]['Quantity'] -= 1
+    
+            # If the quantity reaches zero, remove the potion from the stash
+            if guild_stash[potion_name]['Quantity'] == 0:
+                del guild_stash[potion_name]
+    
+            # Update the guild's stash configuration
+            await self.config.guild(guild).stash.set(guild_stash)
+    
+            # Optionally, add the potion to the member's personal inventory
+            member_potions = await self.config.member(member).potions()
+            if potion_name in member_potions:
+                member_potions[potion_name].append(guild_stash[potion_name]['Effects'])  # Assuming it's a list of effects
+            else:
+                member_potions[potion_name] = [guild_stash[potion_name]['Effects']]
+            await self.config.member(member).potions.set(member_potions)
+    
+            # Acknowledge the interaction with a response
+            await interaction.response.send_message(f"{potion_name} has been taken from the guild stash and added to your inventory.", ephemeral=True)
+        else:
+            # Potion not available in the stash
+            await interaction.response.send_message(f"{potion_name} is not available in the guild stash or is out of stock.", ephemeral=True)
+    
+        
 
 
         
