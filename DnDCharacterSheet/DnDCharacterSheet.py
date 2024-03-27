@@ -375,7 +375,8 @@ class DnDCharacterSheet(commands.Cog):
     async def give_potion_to_guild(self, interaction: Interaction, potion_name: str, guild: discord.Guild, member: discord.Member):
         guild_stash = await self.config.guild(guild).stash()
         member_potions = await self.config.member(member).potions()
-    
+        await interaction.response.send_message("here-1", ephemeral=True)
+
         if potion_name not in member_potions:
             await interaction.response.send_message("You don't have this potion.", ephemeral=True)
             return
