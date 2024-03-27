@@ -43,10 +43,6 @@ class PotionView(View):
     async def drink_button(self, interaction: Interaction, button: Button):
         potion_name, _ = self.potions[self.current_potion_index]
         await self.cog.drink_potion(interaction, potion_name, self.member)
-    @discord.ui.button(label="Drink", style=ButtonStyle.green, custom_id="drink_potion")
-    async def drink_button(self, interaction: Interaction, button: Button):
-        potion_name, _ = list(self.potions.items())[self.current_potion_index]
-        await self.cog.drink_potion(interaction, potion_name, self.member)
 
 
 
