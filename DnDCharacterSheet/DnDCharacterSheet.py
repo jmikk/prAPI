@@ -176,7 +176,7 @@ class DnDCharacterSheet(commands.Cog):
 
     @dnd.command(name="brew")
     async def brew(self, ctx, *item_names: str):
-        """Brew a potion using items from your inventory, showing their effects."""
+        """Brew a potion using items from your inventory, using the most shared effect."""
         user_inventory = await self.config.member(ctx.author).inventory()
     
         # Check if all specified items are in the user's inventory
@@ -191,27 +191,30 @@ class DnDCharacterSheet(commands.Cog):
             item_effects = user_inventory.get(item_name, [])
             for effect in item_effects:
                 # Assuming each effect is a dictionary with a 'name' key
-                effect_name = effect.get('Name', 'Unnamed Effect')
+                effect_name = effect.get('name', 'Unnamed Effect')
                 all_effect_names.append(effect_name)
     
             # Remove the used item from the inventory
-            #del user_inventory[item_name]
+            del user_inventory[item_name]
     
         # Save the updated inventory back to the config
-        #await self.config.member(ctx.author).inventory.set(user_inventory)
+        await self.config.member(ctx.author).inventory.set(user_inventory)
     
-        # Identify shared effects based on effect names
+        # Count the effects and find the most common one(s)
         effect_counts = Counter(all_effect_names)
-        shared_effects = [effect for effect, count in effect_counts.items() if count > 1]
+        most_common_effects = effect_counts.most_common()
+        highest_count = most_common_effects[0][1] if most_common_effects else 0
     
-        if shared_effects:
-            # Create a potion with the shared effects
-            potion_name = "Potion of " + " and ".join(shared_effects)
-            await ctx.send(f"Successfully brewed a potion with effects: {', '.join(shared_effects)}")
+        # Get all effects that share the highest count
+        final_effects = [effect for effect, count in most_common_effects if count == highest_count]
+    
+        if final_effects:
+            # Create a potion with the most shared effect(s)
+            potion_name = "Potion of " + " and ".join(final_effects)
+            await ctx.send(f"Successfully brewed a {potion_name} with effects: {', '.join(final_effects)}")
         else:
             await ctx.send("Brewing failed. The ingredients share no common effects.")
-    
-    
+
         
         
     
