@@ -399,21 +399,27 @@ class DnDCharacterSheet(commands.Cog):
     @dnd.command(name="viewstash")
     async def view_stash(self, ctx):
         guild_stash = await self.config.guild(ctx.guild).stash()
-
-        
+    
         if not guild_stash:
             await ctx.send("The guild stash is empty.")
             return
-            
     
-        def get_stash_embed(self, potion_name, effects, quantity):
-            embed = Embed(title=f"{potion_name} x{quantity}", color=discord.Color.gold())  # Include quantity in title
+        # Convert the stash dictionary to a list of items for easier access
+        potions_list = list(guild_stash.items())
+    
+        # Define the function to create an embed for a given potion
+        def get_stash_embed(page_index):
+            potion_name, potion_info = potions_list[page_index]
+            effects = potion_info.get('effects', [])
+            quantity = potion_info.get('quantity', 0)
+            embed = Embed(title=f"{potion_name} x{quantity}", color=discord.Color.gold())
             for effect in effects:
                 embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+            embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
             return embed
-
     
         view = StashView(self, ctx.guild, guild_stash)
+        # Call get_stash_embed with the first potion's details
         await ctx.send(embed=get_stash_embed(0), view=view)
 
     
