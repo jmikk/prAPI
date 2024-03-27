@@ -1,3 +1,4 @@
+Name	Effect Description	Duration	Additional Notes	
 Healing	Restores 2d4 + 2 hit points	Instant	N/A	
 Invisibility	Becomes invisible until you attack or cast a spell	1 hour	N/A	
 Giant Strength	Sets Strength score to 21 if it isn't higher	1 hour	N/A	
@@ -6,7 +7,7 @@ Speed	Gain the effect of the Haste spell	1 minute	N/A
 Arcane Sight	See magical auras within 120 feet	10 minutes	N/A	
 Water Breathing	Allows the user to breathe underwater	1 hour	N/A	
 Stone Skin	Grants resistance to non-magical bludgeoning, piercing, and slashing damage	1 hour	N/A	
-Mind Reading	Read the thoughts of certain creatures	10 minutes	Concentration required	
+Mind Reading	Read the thoughts of all creatures	10 minutes	Concentration required	
 Levitation	Rise vertically, up to 20 feet, and remain suspended there	10 minutes	N/A	
 Glibness	Your Charisma (Persuasion) checks can't be less than 15	1 hour	N/A	
 Frost Walk	Walk on water as if it were solid ground	1 hour	N/A	
@@ -17,7 +18,7 @@ Barkskin	Your skin has a rough, bark-like appearance, and your AC can't be less 
 Feather Fall	Slow your fall to 60 feet per round	1 minute	N/A	
 Heroism	Gain temporary hit points and become immune to being frightened	1 minute	N/A	
 Mirror Image	Three illusory duplicates of yourself appear, making it harder to hit you	1 minute	N/A	
-Pass without Trace	A veil of shadows and silence radiates from you, masking you and your companions from detection	1 hour	N/A	
+Pass without Trace	A veil of shadows and silence radiates from you, masking you 	1 hour	N/A	
 Protection from Poison	Neutralize poison, grant advantage on saving throws against being poisoned, and resistance to poison damage	1 hour	N/A	
 Speak with Animals	Gain the ability to comprehend and verbally communicate with beasts	10 minutes	N/A	
 Spider Climb	Gain the ability to move up, down, and across vertical surfaces and upside down along ceilings	1 hour	N/A	
@@ -25,43 +26,38 @@ False Life	Bolster yourself with a necromantic facsimile of life, gaining 1d4+4 
 Jump	Your jump distance is tripled	1 minute	N/A	
 Longstrider	Your speed increases by 10 feet	1 hour	N/A	
 Blur	Your body becomes blurred, shifting and wavering to all who can see you, making you harder to hit	1 minute	Concentration required	
-Detect Thoughts	Allow you to read the thoughts of certain creatures	1 minute	Concentration required	
-Enlarge/Reduce	Cause a creature or object you can see to grow larger or smaller for the duration	1 minute	Concentration required	
-Gaseous Form	You transform a willing creature you touch, along with everything it's wearing and carrying, into a misty cloud	1 hour	Concentration required	
-Haste	Choose a willing creature that sees you. Until the spell ends, the target's speed is doubled, it gains a +2 bonus to AC, it has advantage on Dexterity saving throws, and it gains an additional action on each of its turns	1 minute	Concentration required	
-Heal	Choose a creature that you can see within range. A surge of positive energy washes through the creature, causing it to regain 70 hit points. This spell also ends blindness, deafness, and any diseases affecting the target	Instant	N/A	
-Hold Person	Choose a humanoid that you can see within range. The target must succeed on a Wisdom saving throw or be paralyzed for the duration	1 minute	Concentration required	
+Love	If two people drink this with a twisty straw they will fall in love	1 minute	N/A	
+Enlarge	You become one size larger	10 minute	N/A	
+Gaseous Form	You along with everything you are wearing and carrying, turns into a misty cloud	1 hour	Concentration required	
+Shrink	You shrink one size.	10 minute	N/A	
+Cure	Cures blindness, deafness, and any diseases 	Instant	N/A	
+Paralyzed	You are paralyzed. 	1 minute	Concentration required	
 Invisibility	A creature you touch becomes invisible until the spell ends. Anything the target is wearing or carrying is invisible as long as it is on the target's person	1 hour	Concentration required	
-Knock	Choose an object that you can see within range. The object can be a door, a box, a chest, a set of manacles, a padlock, or another object that contains a mundane or magical means that prevents access	Instant	N/A	
-Mage Armor	Surround a creature with protective magical force	8 hours	N/A	
+Mage Armor	You become surrounded by a magical energy.	1 hours	N/A	
 Magic Weapon	A weapon becomes a +1 weapon for the purpose of attack and damage rolls	1 hour	Concentration required	
 Misty Step	Briefly surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space that you can see	Instant	N/A	
-Polymorph	Transform a creature that you can see into a new form	1 hour	Concentration required	
+Polymorph	You become a random creature	1 hour	Concentration required	
 Regenerate	Stimulate a creature's natural healing ability	1 hour	N/A	
-Sanctuary	Ward a creature against attack, forcing an attacker to choose a new target	1 minute	N/A	
+Sanctuary	You become warded against attacks, forcing an attacker to choose a new target ends in 1 minute or if you make an attack	1 minute	N/A	
 See Invisibility	See invisible creatures and objects as if they were visible	1 hour	N/A	
 Shield	An invisible barrier of magical force appears and protects you	1 round	N/A	
 Silence	No sound can be created within or pass through a 20-foot-radius sphere centered on a point you choose	10 minutes	Concentration required	
-Sleep	Send creatures into a magical slumber	1 minute	N/A	
-Slow	Alter time around up to six creatures of your choice in a 40-foot cube within range	1 minute	Concentration required	
-Stoneskin	The target gains resistance to nonmagical bludgeoning, piercing, and slashing damage	1 hour	Concentration required	
+Sleep	You are put to magical sleep	1 minute	N/A	
+Stoneskin	You gain resistance to nonmagical bludgeoning, piercing, and slashing damage	1 hour	Concentration required	
 Telekinesis	Gain the ability to move or manipulate creatures or objects by thought	10 minutes	Concentration required	
 Telepathy	Establish telepathic communication with a creature you are familiar with	24 hours	N/A	
-Teleport	Instantly transport yourself and up to eight willing creatures of your choice that you can see within range	Instant	N/A	
+Teleport	Instantly transport yourself up to 120 feet	Instant	N/A	
 Time Stop	You briefly stop the flow of time for everyone but yourself	Instant	N/A	
-True Seeing	Give a creature the ability to see things as they actually are	1 hour	N/A	
-Water Walking	The affected creatures gain the ability to move across any liquid surface	1 hour	N/A	
+True Seeing	You gain True Sight	1 hour	N/A	
+Water Walking	You gain the ability to move across any liquid surface	1 hour	N/A	
 Web	Conjure a mass of thick, sticky webbing at a point of your choice	1 hour	Concentration required	
-Zone of Truth	Create a magical zone that guards against deception	10 minutes	N/A	
-Aura of Life	Life-preserving energy radiates from you in an aura	10 minutes	Concentration required	
-Aura of Purity	Purifying energy radiates from you in an aura	10 minutes	Concentration required	
-Banishment	Send one creature to another plane of existence	1 minute	Concentration required	
+Truth Serum	You can not lie	10 minutes	N/A	
+Aura of Life	Life-preserving energy radiates from you in an aura everyone gets 1d4 healing at the start of your turn	10 minutes	Concentration required	
+Banishment	You are put under the effects of the banishment spell	1 minute	Concentration required	
 Beacon of Hope	Bestow hope and vitality	1 minute	Concentration required	
 Chain Lightning	Create a bolt of lightning that arcs toward a target of your choice	Instant	N/A	
-Circle of Death	A sphere of negative energy ripples out in a 60-foot-radius sphere	Instant	N/A	
 Control Weather	Take control of the weather within 5 miles of you	8 hours	Concentration required	
 Disintegrate	A thin green ray springs from your pointing finger to a target that you can see	Instant	N/A	
-Dominate Monster	Gain control over a creature you can see	1 hour	Concentration required	
 Earthquake	Intense tremor rips through the ground	1 minute	Concentration required	
 Potion of Excessive Politeness	You can't help but be extremely polite to everyone, even enemies	1 hour	N/A	
 Chatter Teeth	Your teeth chatter uncontrollably, making stealth nearly impossible	10 minutes	N/A	
