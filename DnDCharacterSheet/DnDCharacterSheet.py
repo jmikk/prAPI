@@ -333,30 +333,32 @@ class DnDCharacterSheet(commands.Cog):
 
     @dnd.command(name="viewpotions")
     async def view_potions(self, ctx, member: discord.Member = None):
-        member_stash = await self.config.guild(member).stash()
+        if member is None:
+            member = ctx.author  # Default to the command invoker if no member is specified
     
-        if not member_stash:
-            await ctx.send(f"{member}'s stash is empty.")
+        # Access the potions from the member's personal configuration
+        member_potions = await self.config.member(member).potions()
+    
+        if not member_potions:
+            await ctx.send(f"{member.display_name}'s potion stash is empty.")
             return
     
-        # Convert the stash dictionary to a list of items for easier access
-        potions_list = list(member_stash.items())
-
-        def get_stash_embed(page_index):
-            potion_name, potion_info = potions_list[page_index]
-            effects = potion_info['Effects']  # Corrected key to access effects list
-            quantity = potion_info['Quantity']  # Assuming 'Quantity' is the correct key for the quantity
-            embed = Embed(title=f"{potion_name} x{quantity}", color=discord.Color.blue())
+        # Convert the potions dictionary to a list of items for easier access
+        potions_list = list(member_potions.items())
+    
+        def get_potion_embed(page_index):
+            potion_name, effects = potions_list[page_index]
+            embed = Embed(title=potion_name, color=discord.Color.blue())
             for effect in effects:
                 embed.add_field(name=effect['name'], value=effect['text'], inline=False)
             embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
             return embed
-
-
     
-        view = PotionView(self, member, member_stash)
-        # Call get_stash_embed with the first potion's details
-        await ctx.send(embed=get_stash_embed(0), view=view)
+        # Initialize the view with the member's potions
+        view = PotionView(self, member, member_potions)
+        # Send the initial message with the first potion's details
+        await ctx.send(embed=get_potion_embed(0), view=view)
+
     
     async def drink_potion(self, interaction: Interaction, potion_name: str, guild: discord.Guild):
         # Fetch the guild's stash
