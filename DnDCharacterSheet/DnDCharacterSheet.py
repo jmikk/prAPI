@@ -174,7 +174,7 @@ class DnDCharacterSheet(commands.Cog):
 
 
 
-    @commands.command(name="viewpotions")
+    @dnd.command(name="viewpotions")
     async def view_potions(self, ctx, member: discord.Member = None):
         """View all potions a user has with pagination."""
         if not member:
