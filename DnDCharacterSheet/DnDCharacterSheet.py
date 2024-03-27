@@ -386,8 +386,8 @@ class DnDCharacterSheet(commands.Cog):
         name = []
         text = []
         for each in member_potions:
-            name.append(each['name']
-            text.append(each['text']
+            name.append(each['name'])
+            text.append(each['text'])
             
         potion_effects = member_potions[potion_name]['Effect']
         await interaction.response.send_message("here", ephemeral=True)
