@@ -208,7 +208,7 @@ class DnDCharacterSheet(commands.Cog):
         if shared_effects:
             # Create a potion with the shared effects
             potion_name = "Potion of " + " and ".join(shared_effects)
-            await ctx.send(f"Successfully brewed a {potion_name} with effects: {', '.join(shared_effects)}")
+            await ctx.send(f"Successfully brewed a potion with effects: {', '.join(shared_effects)}")
         else:
             await ctx.send("Brewing failed. The ingredients share no common effects.")
     
