@@ -207,6 +207,8 @@ class DnDCharacterSheet(commands.Cog):
     
         # Get all effects that share the highest count
         final_effects = [effect for effect, count in most_common_effects if count == highest_count]
+        if len(final_effects) > 3:
+            final_effects = random.sample(final_effects, 3)
     
         if final_effects:
             # Create a potion with the most shared effect(s)
