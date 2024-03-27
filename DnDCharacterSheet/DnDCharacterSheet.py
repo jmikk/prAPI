@@ -283,12 +283,38 @@ class DnDCharacterSheet(commands.Cog):
         view = PotionView(self, member, potions)
         # Send the initial message with the first potion's embed and the page count in the footer
         await ctx.send(embed=get_potion_embed(0), view=view)
-
+    
     async def drink_potion(self, interaction: Interaction, potion_name: str, member: discord.Member):
-        # This is a placeholder for the drink potion logic
-        # You should implement this method to handle potion consumption
-        # For example, remove the potion from the user's inventory and send an embed with the potion effects
-        await interaction.response.send_message(f"{member.display_name} drank {potion_name}!", ephemeral=True)
+        # Fetch the member's potions from the config
+        potions = await self.config.member(member).potions()
+    
+        # Check if the potion is in the member's inventory
+        if potion_name in potions:
+            potion_effects = potions[potion_name]  # Save the potion's effects for the embed
+            # Remove the potion from the inventory
+            del potions[potion_name]
+            
+            # Update the member's potions in the config to reflect the removal
+            await self.config.member(member).potions.set(potions)
+    
+            # Prepare the embed to show the potion's effects
+            embed = discord.Embed(title=f"{member.display_name} drank {potion_name}!", color=discord.Color.red())
+            embed.set_thumbnail(url="https://media.tenor.com/smbUZbX70jgAAAAM/drinking-a-potion-link.gif")
+            
+            # Loop through the saved potion's effects and add them to the embed
+            for effect in potion_effects:
+                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+            
+            # Send the embed as a follow-up to the interaction
+            await interaction.followup.send(embed=embed, ephemeral=False)  # Make the message visible to everyone
+    
+            # Optional: Update the original message if needed (e.g., remove the "Drink" button or indicate the potion has been consumed)
+            # await interaction.message.edit(...)  # Add your desired update logic here
+        else:
+            # If the potion isn't found in the user's inventory, send an error message
+            # Use interaction.response if it's the first time responding to the interaction, or interaction.followup for subsequent messages
+            await interaction.response.send_message(f"The potion '{potion_name}' is not in your inventory.", ephemeral=True)
+    
 
 
         
