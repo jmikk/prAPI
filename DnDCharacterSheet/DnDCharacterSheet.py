@@ -188,9 +188,9 @@ class DnDCharacterSheet(commands.Cog):
         all_effect_names = []
         # Loop through each specified item, collect its effects' names, and remove it from the inventory
         for item_name in item_names:
-            await ctx.send(item_name)
             item_effects = user_inventory.get(item_name, [])
             for effect in item_effects:
+                await ctx.send(effect)
                 # Assuming each effect is a dictionary with a 'name' key
                 effect_name = effect.get('Name', 'Unnamed Effect')
                 all_effect_names.append(effect_name)
