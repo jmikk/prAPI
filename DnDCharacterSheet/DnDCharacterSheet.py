@@ -281,25 +281,7 @@ class DnDCharacterSheet(commands.Cog):
             await self.config.member(ctx.author).set(user_data)
         else:
             await ctx.send("Brewing failed. The ingredients share no common effects.")
-    
-    async def drink_potion(self, interaction: Interaction, potion_name: str, member: discord.Member):
-        user_data = await self.config.member(member).all()
-        potions = user_data.get('potions', {})
 
-        if potion_name not in potions:
-            await interaction.response.send_message(f"This potion is no longer in your inventory.", ephemeral=True)
-            return
-
-        potion_effects = potions.pop(potion_name)
-        await self.config.member(member).potions.set(potions)
-
-        embed = discord.Embed(title=f"{member.display_name} drank the {potion_name}!", color=discord.Color.green())
-        embed.set_thumbnail(url="https://i5.walmartimages.com/asr/bd986b0e-62f6-4a72-9ebb-a30ebb67085e.36bd16ee9a01f035d5ded26929a5a9a4.jpeg")
-
-        for effect in potion_effects:
-            embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-
-        await interaction.response.edit_message(content=f"{member.display_name} drank the {potion_name}!", embed=embed, view=None)
 
 
         
