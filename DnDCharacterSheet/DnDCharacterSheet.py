@@ -271,6 +271,34 @@ class DnDCharacterSheet(commands.Cog):
         else:
             await ctx.send("Brewing failed. The ingredients share no common effects.")
 
+
+    @dnd.command(name="eatpotion")
+    async def eat_potion(self, ctx, *, potion_name: str):
+        """Eat a potion from your inventory, removing it and showing its effects."""
+        user_data = await self.config.member(ctx.author).all()
+        potions = user_data.get('potions', {})
+    
+        if potion_name not in potions:
+            await ctx.send(f"You don't have a potion named '{potion_name}'.")
+            return
+    
+        # Retrieve the potion and its effects
+        potion_effects = potions[potion_name]
+    
+        # Remove the potion from the inventory
+        del potions[potion_name]
+        await self.config.member(ctx.author).potions.set(potions)
+    
+        # Create an embed to display the potion effects
+        embed = discord.Embed(title=f"You ate the {potion_name}!", color=discord.Color.green())
+        embed.set_thumbnail(url="https://i5.walmartimages.com/asr/bd986b0e-62f6-4a72-9ebb-a30ebb67085e.36bd16ee9a01f035d5ded26929a5a9a4.jpeg")
+        
+        for effect in potion_effects:
+            # Assuming each effect is a dictionary with 'name' and 'text' keys
+            embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+    
+        await ctx.send(embed=embed)
+
         
         
     
