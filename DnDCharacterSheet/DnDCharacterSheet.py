@@ -201,7 +201,7 @@ class DnDCharacterSheet(commands.Cog):
             await ctx.send(f"{member.display_name} does not have an item named '{item_name}'.")
 
 
-    @dnd.command(name="clearinventory")
+    @dnd.command(name="clearpotions")
     @commands.is_owner()
     async def clear_potions(self, ctx, member: discord.Member):
         """Clear the entire inventory of a specified player"""
