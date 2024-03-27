@@ -47,7 +47,7 @@ class StashView(View):
             await self.update_embed(interaction)
             self.stop()  # Optionally stop the view to prevent further interaction
         except Exception as e:
-            await interaction.response.send_message(f"An error occurred while trying to take the potion from the stash. {e}", ephemeral=True)
+            await interaction.response.send_message(f"An super error occurred while trying to take the potion from the stash. {e}", ephemeral=True)
 
 
 
