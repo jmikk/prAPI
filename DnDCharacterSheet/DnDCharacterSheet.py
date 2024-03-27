@@ -176,17 +176,35 @@ class DnDCharacterSheet(commands.Cog):
     async def brew(self, ctx, *item_name: str):
         """Eat an item from your inventory, deleting it and showing its first effect."""
         user_inventory = await self.config.member(ctx.author).inventory()
-        for each in item_name:
-            if each not in user_inventory:
-                await ctx.send(f"Brewing failed, missing {each}")
-                return
+       
+        # Check if all specified items are in the user's inventory
+        missing_items = [item for item in item_names if item not in user_inventory]
+        if missing_items:
+            await ctx.send(f"Brewing failed, missing: {', '.join(missing_items)}")
+            return
                 
-        for each in item_name:
-            await ctx.send(each)    
-            # Delete the item from the inventory after "eating" it
-            del user_inventory[item_name]
-            await self.config.member(ctx.author).inventory.set(user_inventory)
-
-
-
-
+        # Loop through each specified item, show its effects, and remove it from the inventory
+        for item_name in item_names:
+            item_info = user_inventory.get(item_name, {})
+            
+            # Assuming the effects are stored as a list under 'effects' key in item_info
+            effects = item_info.get('effects', [])
+    
+            if effects:
+                effects_str = ', '.join(effects)
+                await ctx.send(f"Using {item_name}, which has the following effects: {effects_str}")
+            else:
+                await ctx.send(f"Using {item_name}, which has no effects.")
+    
+            # Remove the used item from the inventory
+            #del user_inventory[item_name]
+    
+        # Save the updated inventory back to the config
+        #await self.config.member(ctx.author).inventory.set(user_inventory)
+    
+        # Send a confirmation message
+        await ctx.send("Brewing complete!")
+    
+    
+    
+    
