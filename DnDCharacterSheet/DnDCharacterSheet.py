@@ -373,7 +373,6 @@ class DnDCharacterSheet(commands.Cog):
 
 
     async def give_potion_to_guild(self, interaction: Interaction, potion_name: str, guild: discord.Guild, member: discord.Member):
-        # Fetch the guild's stash and member's potions
         guild_stash = await self.config.guild(guild).stash()
         member_potions = await self.config.member(member).potions()
     
@@ -381,19 +380,21 @@ class DnDCharacterSheet(commands.Cog):
             await interaction.response.send_message("You don't have this potion.", ephemeral=True)
             return
     
-        # Transfer potion from member to guild stash
-        potion_details = member_potions.pop(potion_name)
-        if potion_name in guild_stash:
-            guild_stash[potion_name]['quantity'] += 1  # Increment quantity
-        else:
-            potion_details['quantity'] = 1  # New potion, set quantity to 1
-            guild_stash[potion_name] = potion_details
+        # Assuming each potion in member_potions has 'effects'
+        potion_effects = member_potions[potion_name]['effects']
     
-        # Update configurations
+        if potion_name in guild_stash:
+            guild_stash[potion_name]['quantity'] += 1
+        else:
+            guild_stash[potion_name] = {'effects': potion_effects, 'quantity': 1}
+    
+        del member_potions[potion_name]
+    
         await self.config.member(member).potions.set(member_potions)
         await self.config.guild(guild).stash.set(guild_stash)
     
         await interaction.response.send_message(f"{potion_name} has been added to the guild's stash.", ephemeral=False)
+
 
 
     @dnd.command(name="viewstash")
@@ -407,16 +408,16 @@ class DnDCharacterSheet(commands.Cog):
         # Convert the stash dictionary to a list of items for easier access
         potions_list = list(guild_stash.items())
     
-        # Define the function to create an embed for a given potion
         def get_stash_embed(page_index):
             potion_name, potion_info = potions_list[page_index]
-            effects = potion_info.get('effects', [])
-            quantity = potion_info.get('quantity', 0)
+            effects = potion_info['effects']  # Assuming effects is a list
+            quantity = potion_info['quantity']  # Assuming quantity is an int
             embed = Embed(title=f"{potion_name} x{quantity}", color=discord.Color.gold())
             for effect in effects:
                 embed.add_field(name=effect['name'], value=effect['text'], inline=False)
             embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
             return embed
+
     
         view = StashView(self, ctx.guild, guild_stash)
         # Call get_stash_embed with the first potion's details
