@@ -90,7 +90,7 @@ class PotionView(View):
     async def give_to_guild_button(self, interaction: Interaction, button: Button):
         try:
             potion_name, _ = self.potions[self.current_potion_index]
-            await self.cog.give_potion_to_guild(interaction, potion_name, self.member)
+            await self.cog.give_potion_to_guild(interaction, potion_name,self.guild, self.member)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred while trying to take the potion from the stash. {e}", ephemeral=True)
 
