@@ -203,15 +203,17 @@ class DnDCharacterSheet(commands.Cog):
         class PotionView(View):
             def __init__(self, *, timeout=180):
                 super().__init__(timeout=timeout)
+                        self.cog = cog
+                        self.potion_name = potion_name
+                        self.member = member
 
             async def interaction_check(self, interaction) -> bool:
                 return interaction.user == ctx.author  # Only the user who invoked the command can interact
 
             @discord.ui.button(label="Drink", style=ButtonStyle.green, custom_id="drink_potion")
-            async def drink_button(self, interaction, button):
-                potion_name, _ = potions_list[current_page[0]]
-                await self.cog.drink_potion(interaction, potion_name, member)  # Implement drink_potion accordingly
-                self.stop()
+            async def drink_button(self, interaction: Interaction, button: Button):
+                await self.cog.drink_potion(interaction, self.potion_name, self.member)
+                self.stop()  # Consider if you want to stop the view here
 
             @discord.ui.button(label="◀️", style=ButtonStyle.blurple, custom_id="prev_potion")
             async def prev_button(self, interaction, button):
