@@ -174,7 +174,7 @@ class DnDCharacterSheet(commands.Cog):
 
     @dnd.command(name="brew")
     async def brew(self, ctx, *item_names: str):
-        """Brew a potion using items from your inventory, showing their effects."""
+        """Brew a potion using items from your inventory, keeping shared effects to create a potion."""
         user_inventory = await self.config.member(ctx.author).inventory()
     
         # Check if all specified items are in the user's inventory
@@ -183,25 +183,31 @@ class DnDCharacterSheet(commands.Cog):
             await ctx.send(f"Brewing failed, missing: {', '.join(missing_items)}")
             return
     
-        # Loop through each specified item, show its effects, and remove it from the inventory
+        all_effects = []
+        # Loop through each specified item, collect its effects, and remove it from the inventory
         for item_name in item_names:
             item_effects = user_inventory.get(item_name, [])
-    
-            if item_effects:
-                # Assuming each effect is a dictionary and we want to display the 'name' key
-                effects_str = ', '.join(effect.get('Name', 'Unnamed Effect') for effect in item_effects)
-                await ctx.send(f"Using {item_name}, which has the following effects: {effects_str}")
-            else:
-                await ctx.send(f"Using {item_name}, which has no effects.")
+            all_effects.extend(item_effects)
     
             # Remove the used item from the inventory
-            #del user_inventory[item_name]
+            del user_inventory[item_name]
     
         # Save the updated inventory back to the config
-        #await self.config.member(ctx.author).inventory.set(user_inventory)
+        await self.config.member(ctx.author).inventory.set(user_inventory)
     
-        # Send a confirmation message
-        await ctx.send("Brewing complete!")
+        # Identify shared effects
+        effect_counts = Counter(all_effects)
+        shared_effects = [effect for effect, count in effect_counts.items() if count > 1]
+    
+        if shared_effects:
+            # Create a potion with the shared effects
+            potion_name = "Potion of " + " and ".join(shared_effects)
+            await ctx.send(f"Successfully brewed a {potion_name} with effects: {', '.join(shared_effects)}")
+            # Optionally, add this potion to the user's inventory or a global stash
+        else:
+            await ctx.send("Brewing failed. The ingredients share no common effects.")
+
+
 
 
     
