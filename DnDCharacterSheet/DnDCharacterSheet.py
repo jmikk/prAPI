@@ -380,13 +380,12 @@ class DnDCharacterSheet(commands.Cog):
             await interaction.response.send_message("You don't have this potion.", ephemeral=True)
             return
     
-        # Assuming each potion in member_potions has 'effects'
-        potion_effects = member_potions[potion_name]['effects']
+        potion_effects = member_potions[potion_name]['Effect']
     
         if potion_name in guild_stash:
-            guild_stash[potion_name]['quantity'] += 1
+            guild_stash[potion_name]['Quantity'] += 1
         else:
-            guild_stash[potion_name] = {'effects': potion_effects, 'quantity': 1}
+            guild_stash[potion_name] = {'Effect': potion_effects, 'Quantity': 1}
     
         del member_potions[potion_name]
     
