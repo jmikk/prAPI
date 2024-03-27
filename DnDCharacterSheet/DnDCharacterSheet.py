@@ -174,6 +174,58 @@ class DnDCharacterSheet(commands.Cog):
 
 
 
+    @commands.command(name="viewpotions")
+    async def view_potions(self, ctx, member: discord.Member = None):
+        """View all potions a user has with pagination."""
+        if not member:
+            member = ctx.author  # Default to the command invoker if no member is specified
+
+        user_data = await self.config.member(member).all()
+        potions = user_data.get('potions', {})
+
+        potions_list = list(potions.items())  # Convert potions to a list of (potion_name, effects) tuples
+
+        if not potions_list:
+            await ctx.send(f"{member.display_name} has no potions.")
+            return
+
+        current_page = 0
+
+        def get_potion_embed(page_index):
+            potion_name, effects = potions_list[page_index]
+            embed = discord.Embed(title=f"{potion_name}", description=f"Potion {page_index + 1} of {len(potions_list)}", color=discord.Color.blue())
+            for effect in effects:
+                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+            return embed
+
+        message = await ctx.send(embed=get_potion_embed(current_page))
+
+        # Reaction controls
+        await message.add_reaction("◀️")
+        await message.add_reaction("▶️")
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["◀️", "▶️"] and reaction.message.id == message.id
+
+        while True:
+            try:
+                reaction, user = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+
+                if str(reaction.emoji) == "▶️" and current_page < len(potions_list) - 1:
+                    current_page += 1
+                    await message.edit(embed=get_potion_embed(current_page))
+                    await message.remove_reaction(reaction, user)
+                elif str(reaction.emoji) == "◀️" and current_page > 0:
+                    current_page -= 1
+                    await message.edit(embed=get_potion_embed(current_page))
+                    await message.remove_reaction(reaction, user)
+                else:
+                    await message.remove_reaction(reaction, user)
+            except asyncio.TimeoutError:
+                await message.clear_reactions()
+                break
+
+    
     
     @dnd.command(name="brew")
     async def brew(self, ctx, *item_names: str):
