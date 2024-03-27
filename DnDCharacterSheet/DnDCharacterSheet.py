@@ -43,7 +43,15 @@ class PotionView(View):
     async def drink_button(self, interaction: Interaction, button: Button):
         potion_name, _ = self.potions[self.current_potion_index]
         await self.cog.drink_potion(interaction, potion_name, self.member)
+        self.stop()  # Optionally stop the view to prevent further interaction
 
+
+    @discord.ui.button(label="Give to Guild", style=ButtonStyle.gray, custom_id="give_to_guild")
+    async def give_to_guild_button(self, interaction: Interaction, button: Button):
+        potion_name, _ = self.potions[self.current_potion_index]
+        await self.cog.give_potion_to_guild(interaction, potion_name, self.member)
+
+    
 
 
 class DnDCharacterSheet(commands.Cog):
@@ -192,6 +200,26 @@ class DnDCharacterSheet(commands.Cog):
         else:
             await ctx.send(f"{member.display_name} does not have an item named '{item_name}'.")
 
+
+    @dnd.command(name="clearinventory")
+    @commands.is_owner()
+    async def clear_potions(self, ctx, member: discord.Member):
+        """Clear the entire inventory of a specified player"""
+        await self.config.member(member).potions.clear()
+        await ctx.send(f"{member.display_name}'s potions has been cleared.")
+
+    @dnd.command(name="deleteitem")
+    @commands.is_owner()
+    async def delete_potions(self, ctx, member: discord.Member, *, item_name: str):
+        """Delete a specific item from a player's inventory"""
+        user_inventory = await self.config.member(member).potions()
+        if item_name in user_inventory:
+            del user_inventory[item_name]
+            await self.config.member(member).potions.set(user_inventory)
+            await ctx.send(f"Item '{item_name}' has been removed from {member.display_name}'s potions.")
+        else:
+            await ctx.send(f"{member.display_name} does not have an item named '{item_name}'.")
+            
     @dnd.command(name="eatitem")
     async def eat_item(self, ctx, *, item_name: str):
         """Eat an item from your inventory, deleting it and showing its first effect."""
@@ -315,6 +343,30 @@ class DnDCharacterSheet(commands.Cog):
             # If the potion isn't found in the user's inventory, send an error message
             # Use interaction.response if it's the first time responding to the interaction, or interaction.followup for subsequent messages
             await interaction.response.send_message(f"The potion '{potion_name}' is not in your inventory.", ephemeral=True)
+
+    async def give_potion_to_guild(self, interaction: Interaction, potion_name: str, member: discord.Member):
+        # Fetch the member's potions
+        potions = await self.config.member(member).potions()
+    
+        # Ensure the potion is in the member's inventory
+        if potion_name not in potions:
+            await interaction.response.send_message(f"The potion '{potion_name}' is not in your inventory.", ephemeral=True)
+            return
+    
+        # Fetch the guild's stash
+        guild_stash = await self.config.guild(interaction.guild).stash()
+    
+        # Transfer the potion from the member's inventory to the guild's stash
+        guild_stash[potion_name] = potions[potion_name]
+        del potions[potion_name]
+    
+        # Update the configurations
+        await self.config.member(member).potions.set(potions)
+        await self.config.guild(interaction.guild).stash.set(guild_stash)
+    
+        # Confirm the transfer
+        await interaction.response.send_message(f"{member.display_name} gave the '{potion_name}' potion to the guild's stash.", ephemeral=False)
+
     
 
 
