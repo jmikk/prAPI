@@ -203,9 +203,9 @@ class DnDCharacterSheet(commands.Cog):
         class PotionView(View):
             def __init__(self, *, timeout=180):
                 super().__init__(timeout=timeout)
-                        self.cog = cog
-                        self.potion_name = potion_name
-                        self.member = member
+                    self.cog = cog
+                    self.potion_name = potion_name
+                    self.member = member
 
             async def interaction_check(self, interaction) -> bool:
                 return interaction.user == ctx.author  # Only the user who invoked the command can interact
