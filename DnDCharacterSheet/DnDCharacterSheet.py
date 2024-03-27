@@ -378,35 +378,27 @@ class DnDCharacterSheet(commands.Cog):
     async def give_potion_to_guild(self, interaction: Interaction, potion_name: str, guild: discord.Guild, member: discord.Member):
         guild_stash = await self.config.guild(guild).stash()
         member_potions = await self.config.member(member).potions()
-
+    
         if potion_name not in member_potions:
             await interaction.response.send_message("You don't have this potion.", ephemeral=True)
             return
-        name = []
-        text = []
-        await interaction.response.send_message(member_potions)
-
-        for each in member_potions:
-
-            name.append(each['name'])
-            text.append(each['text'])
-            
-        potion_effects = member_potions[potion_name]['Effect']
-        await interaction.response.send_message("here")
-
+    
+        potion_details = member_potions[potion_name]
+        potion_effects = potion_details.get('effects', [])  # Assuming the effects are stored under 'effects'
+    
         if potion_name in guild_stash:
-            guild_stash[potion_name]['Quantity'] += 1
+            guild_stash[potion_name]['Quantity'] += 1  # Assuming 'Quantity' is the correct key
         else:
-            guild_stash[potion_name] = {'Name': name,'Text': text, 'Quantity': 1}
-        await interaction.response.send_message("here2")
-
+            guild_stash[potion_name] = {'Effects': potion_effects, 'Quantity': 1}
+    
         del member_potions[potion_name]
     
         await self.config.member(member).potions.set(member_potions)
         await self.config.guild(guild).stash.set(guild_stash)
-        await interaction.response.send_message("here3")
+    
+        # Use followup.send for any messages after the initial response
+        await interaction.followup.send(f"{potion_name} has been added to the guild's stash.")
 
-        await interaction.response.send_message(f"{potion_name} has been added to the guild's stash.", ephemeral=False)
 
 
     @dnd.command(name="clearstash")
