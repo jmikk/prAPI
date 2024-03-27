@@ -6,6 +6,7 @@ import asyncio
 from collections import Counter 
 from discord.ui import Button, View
 from discord import ButtonStyle, Interaction
+from discord import Embed
 
 
 
