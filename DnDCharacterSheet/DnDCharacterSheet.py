@@ -173,7 +173,7 @@ class DnDCharacterSheet(commands.Cog):
 
 
     @dnd.command(name="brew")
-    async def brew(self, ctx, *item_name: str):
+    async def brew(self, ctx, *item_names: str):
         """Eat an item from your inventory, deleting it and showing its first effect."""
         user_inventory = await self.config.member(ctx.author).inventory()
        
