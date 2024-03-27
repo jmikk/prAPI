@@ -174,24 +174,22 @@ class DnDCharacterSheet(commands.Cog):
 
     @dnd.command(name="brew")
     async def brew(self, ctx, *item_names: str):
-        """Eat an item from your inventory, deleting it and showing its first effect."""
+        """Brew a potion using items from your inventory, showing their effects."""
         user_inventory = await self.config.member(ctx.author).inventory()
-       
+    
         # Check if all specified items are in the user's inventory
         missing_items = [item for item in item_names if item not in user_inventory]
         if missing_items:
             await ctx.send(f"Brewing failed, missing: {', '.join(missing_items)}")
             return
-                
+    
         # Loop through each specified item, show its effects, and remove it from the inventory
         for item_name in item_names:
-            item_info = user_inventory.get(item_name, {})
-            
-            # Assuming the effects are stored as a list under 'effects' key in item_info
-            effects = item_info.get('effects', [])
+            # Assuming item_info is directly a list of effects
+            item_effects = user_inventory.get(item_name, [])
     
-            if effects:
-                effects_str = ', '.join(effects)
+            if item_effects:
+                effects_str = ', '.join(item_effects)
                 await ctx.send(f"Using {item_name}, which has the following effects: {effects_str}")
             else:
                 await ctx.send(f"Using {item_name}, which has no effects.")
@@ -204,6 +202,7 @@ class DnDCharacterSheet(commands.Cog):
     
         # Send a confirmation message
         await ctx.send("Brewing complete!")
+
     
     
     
