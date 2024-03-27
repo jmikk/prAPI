@@ -407,7 +407,8 @@ class DnDCharacterSheet(commands.Cog):
     
         # Convert the stash dictionary to a list of items for easier access
         potions_list = guild_stash.items()
-    
+        await ctx.send(potions_list)
+
         def get_stash_embed(page_index):
             potion_name, potion_info = potions_list[page_index]
             effects = potion_info['effects']  # Assuming effects is a list
