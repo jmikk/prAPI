@@ -10,14 +10,43 @@ from discord import Embed
 from discord import Color
 
 
+class PotionView(View):
+    def __init__(self, cog, member, potions):
+        super().__init__(timeout=180)  # Set a timeout for the view, e.g., 3 minutes
+        self.cog = cog
+        self.member = member
+        self.potions = potions
+        self.current_potion_index = 0
+
+    async def update_embed(self, interaction: Interaction):
+        potion_name, effects = list(self.potions.items())[self.current_potion_index]
+        embed = Embed(title=potion_name, color=discord.Color.blue())
+        for effect in effects:
+            embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Previous", style=ButtonStyle.blurple, custom_id="previous_potion")
+    async def previous_button(self, interaction: Interaction, button: Button):
+        if self.current_potion_index > 0:
+            self.current_potion_index -= 1
+            await self.update_embed(interaction)
+
+    @discord.ui.button(label="Next", style=ButtonStyle.blurple, custom_id="next_potion")
+    async def next_button(self, interaction: Interaction, button: Button):
+        if self.current_potion_index < len(self.potions) - 1:
+            self.current_potion_index += 1
+            await self.update_embed(interaction)
+
+    @discord.ui.button(label="Drink", style=ButtonStyle.green, custom_id="drink_potion")
+    async def drink_button(self, interaction: Interaction, button: Button):
+        potion_name, _ = list(self.potions.items())[self.current_potion_index]
+        await self.cog.drink_potion(interaction, potion_name, self.member)
+        # Consider removing the potion from the list or marking it as 'drunk' and updating the embed accordingly.
+
+
 
 class DnDCharacterSheet(commands.Cog):
     """Gives items to players with random effects"""
-
-
-
-    
-
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier="9003s_guild_items", force_registration=True)
@@ -182,64 +211,6 @@ class DnDCharacterSheet(commands.Cog):
         else:
             await ctx.send(f"You don't have an item named '{item_name}' in your inventory.")
 
-
-
-    @dnd.command(name="viewpotions")
-    async def view_potions(self, ctx, member: discord.Member = None):
-        if not member:
-            member = ctx.author  # Default to the command invoker if no member is specified
-
-        user_data = await self.config.member(member).all()
-        potions = user_data.get('potions', {})
-
-        potions_list = list(potions.items())  # Convert potions to a list of (potion_name, effects) tuples
-
-        if not potions_list:
-            await ctx.send(f"{member.display_name} has no potions.")
-            return
-
-        current_page = [0]  # Use a list for current_page to allow modification in nested function
-
-        class PotionView(View):
-            def __init__(self, *, timeout=180):
-                super().__init__(timeout=timeout)
-                self.cog = cog
-                self.potion_name = potion_name
-                self.member = member
-
-            async def interaction_check(self, interaction) -> bool:
-                return interaction.user == ctx.author  # Only the user who invoked the command can interact
-
-            @discord.ui.button(label="Drink", style=ButtonStyle.green, custom_id="drink_potion")
-            async def drink_button(self, interaction: Interaction, button: Button):
-                await self.cog.drink_potion(interaction, self.potion_name, self.member)
-                self.stop()  # Consider if you want to stop the view here
-
-            @discord.ui.button(label="◀️", style=ButtonStyle.blurple, custom_id="prev_potion")
-            async def prev_button(self, interaction, button):
-                if current_page[0] > 0:
-                    current_page[0] -= 1
-                    await interaction.response.edit_message(embed=get_potion_embed(current_page[0]), view=self)
-
-            @discord.ui.button(label="▶️", style=ButtonStyle.blurple, custom_id="next_potion")
-            async def next_button(self, interaction, button):
-                if current_page[0] < len(potions_list) - 1:
-                    current_page[0] += 1
-                    await interaction.response.edit_message(embed=get_potion_embed(current_page[0]), view=self)
-
-        def get_potion_embed(page_index):
-            potion_name, effects = potions_list[page_index]
-            embed = Embed(title=f"{potion_name}", description=f"Potion {page_index + 1} of {len(potions_list)}", color=Color.blue())
-            for effect in effects:
-                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-            return embed
-
-        view = PotionView()
-        await ctx.send(embed=get_potion_embed(current_page[0]), view=view)
-
-
-    
-    
     @dnd.command(name="brew")
     async def brew(self, ctx, *item_names: str):
         """Brew a potion using items from your inventory, using up to three of the most shared effects, and add it to your potions with effect text."""
@@ -284,6 +255,32 @@ class DnDCharacterSheet(commands.Cog):
         else:
             await ctx.send("Brewing failed. The ingredients share no common effects.")
 
+
+    @dnd.command(name="viewpotions")
+    async def view_potions(self, ctx, member: discord.Member = None):
+        if member is None:
+            member = ctx.author
+
+        # Fetch user potions data
+        potions = await self.config.member(member).potions()
+
+        if not potions:
+            await ctx.send("No potions found in your inventory.")
+            return
+
+        view = PotionView(self, member, potions)
+        first_potion_name, first_effects = list(potions.items())[0]
+        embed = Embed(title=first_potion_name, color=discord.Color.blue())
+        for effect in first_effects:
+            embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+
+        await ctx.send(embed=embed, view=view)
+
+    async def drink_potion(self, interaction: Interaction, potion_name: str, member: discord.Member):
+        # This is a placeholder for the drink potion logic
+        # You should implement this method to handle potion consumption
+        # For example, remove the potion from the user's inventory and send an embed with the potion effects
+        await interaction.response.send_message(f"{member.display_name} drank {potion_name}!", ephemeral=True)
 
 
         
