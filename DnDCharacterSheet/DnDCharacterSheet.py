@@ -382,7 +382,6 @@ class DnDCharacterSheet(commands.Cog):
         if potion_name not in member_potions:
             await interaction.response.send_message("You don't have this potion.", ephemeral=True)
             return
-        await interaction.response.send_message(member_potions[potion_name], ephemeral=True)
         name = []
         text = []
         for each in member_potions:
@@ -390,19 +389,19 @@ class DnDCharacterSheet(commands.Cog):
             text.append(each['text'])
             
         potion_effects = member_potions[potion_name]['Effect']
-        await interaction.response.send_message("here", ephemeral=True)
+        await interaction.response.send_message("here")
 
         if potion_name in guild_stash:
             guild_stash[potion_name]['Quantity'] += 1
         else:
             guild_stash[potion_name] = {'Name': name,'Text': text, 'Quantity': 1}
-        await interaction.response.send_message("here2", ephemeral=True)
+        await interaction.response.send_message("here2")
 
         del member_potions[potion_name]
     
         await self.config.member(member).potions.set(member_potions)
         await self.config.guild(guild).stash.set(guild_stash)
-        await interaction.response.send_message("here3", ephemeral=True)
+        await interaction.response.send_message("here3")
 
         await interaction.response.send_message(f"{potion_name} has been added to the guild's stash.", ephemeral=False)
 
