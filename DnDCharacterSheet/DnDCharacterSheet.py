@@ -280,9 +280,9 @@ class DnDCharacterSheet(commands.Cog):
             embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
             return embed
 
-    view = PotionView(self, member, potions)
-    # Send the initial message with the first potion's embed and the page count in the footer
-    await ctx.send(embed=get_potion_embed(0), view=view)
+        view = PotionView(self, member, potions)
+        # Send the initial message with the first potion's embed and the page count in the footer
+        await ctx.send(embed=get_potion_embed(0), view=view)
 
     async def drink_potion(self, interaction: Interaction, potion_name: str, member: discord.Member):
         # This is a placeholder for the drink potion logic
