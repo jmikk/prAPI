@@ -3,6 +3,7 @@ import random
 import discord
 import os
 import asyncio
+from collections import Counter  # Make sure to add this line
 
 class DnDCharacterSheet(commands.Cog):
     """Gives items to players with random effects"""
