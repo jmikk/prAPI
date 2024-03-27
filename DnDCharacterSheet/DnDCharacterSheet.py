@@ -185,11 +185,11 @@ class DnDCharacterSheet(commands.Cog):
     
         # Loop through each specified item, show its effects, and remove it from the inventory
         for item_name in item_names:
-            # Assuming item_info is directly a list of effects
             item_effects = user_inventory.get(item_name, [])
     
             if item_effects:
-                effects_str = ', '.join(item_effects)
+                # Assuming each effect is a dictionary and we want to display the 'name' key
+                effects_str = ', '.join(effect.get('name', 'Unnamed Effect') for effect in item_effects)
                 await ctx.send(f"Using {item_name}, which has the following effects: {effects_str}")
             else:
                 await ctx.send(f"Using {item_name}, which has no effects.")
@@ -202,6 +202,7 @@ class DnDCharacterSheet(commands.Cog):
     
         # Send a confirmation message
         await ctx.send("Brewing complete!")
+
 
     
     
