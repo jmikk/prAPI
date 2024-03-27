@@ -38,13 +38,16 @@ class StashView(View):
 
     @discord.ui.button(label="Take from Stash", style=ButtonStyle.red, custom_id="take_from_stash")
     async def take_from_stash_button(self, interaction: Interaction, button: Button):
-        potion_name, _ = self.stash[self.current_potion_index]
-        await self.cog.take_potion_from_stash(interaction, potion_name, self.guild, interaction.user)
-        # Update the view since the stash might have changed
-        self.stash.pop(self.current_potion_index)
-        self.current_potion_index = max(0, self.current_potion_index - 1)  # Adjust index if needed
-        await self.update_embed(interaction)
-        self.stop()  # Optionally stop the view to prevent further interaction
+        try:
+            potion_name, _ = self.stash[self.current_potion_index]
+            await self.cog.take_potion_from_stash(interaction, potion_name, self.guild, interaction.user)
+            # Update the view since the stash might have changed
+            self.stash.pop(self.current_potion_index)
+            self.current_potion_index = max(0, self.current_potion_index - 1)  # Adjust index if needed
+            await self.update_embed(interaction)
+            self.stop()  # Optionally stop the view to prevent further interaction
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred while trying to take the potion from the stash. {e}", ephemeral=True)
 
 
 
