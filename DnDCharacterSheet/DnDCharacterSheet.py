@@ -10,6 +10,34 @@ from discord import Embed
 from discord import Color
 
 
+class StashView(View):
+    def __init__(self, cog, guild, stash):
+        super().__init__(timeout=180)  # Set a timeout for the view, e.g., 3 minutes
+        self.cog = cog
+        self.guild = guild
+        self.stash = list(stash.items())  # Convert stash to a list for easier indexing
+        self.current_potion_index = 0
+
+    async def update_embed(self, interaction: Interaction):
+        potion_name, effects = self.stash[self.current_potion_index]
+        embed = Embed(title=potion_name, color=discord.Color.gold())
+        for effect in effects:
+            embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+        embed.set_footer(text=f"Potion {self.current_potion_index + 1} of {len(self.stash)}")
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Previous", style=ButtonStyle.blurple, custom_id="prev_stash")
+    async def previous_button(self, interaction: Interaction, button: Button):
+        self.current_potion_index = (self.current_potion_index - 1) % len(self.stash)
+        await self.update_embed(interaction)
+
+    @discord.ui.button(label="Next", style=ButtonStyle.blurple, custom_id="next_stash")
+    async def next_button(self, interaction: Interaction, button: Button):
+        self.current_potion_index = (self.current_potion_index + 1) % len(self.stash)
+        await self.update_embed(interaction)
+
+
+
 class PotionView(View):
     def __init__(self, cog, member, potions):
         super().__init__(timeout=180)  # Set a timeout for the view, e.g., 3 minutes
@@ -366,6 +394,25 @@ class DnDCharacterSheet(commands.Cog):
     
         # Confirm the transfer
         await interaction.response.send_message(f"{member.display_name} gave the '{potion_name}' potion to the guild's stash.", ephemeral=False)
+
+    @dnd.command(name="viewstash")
+    async def view_stash(self, ctx):
+        guild_stash = await self.config.guild(ctx.guild).stash()
+    
+        if not guild_stash:
+            await ctx.send("The guild stash is empty.")
+            return
+    
+        def get_stash_embed(page_index):
+            potion_name, effects = list(guild_stash.items())[page_index]
+            embed = Embed(title=potion_name, color=discord.Color.gold())
+            for effect in effects:
+                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+            embed.set_footer(text=f"Potion {page_index + 1} of {len(guild_stash)}")
+            return embed
+    
+        view = StashView(self, ctx.guild, guild_stash)
+        await ctx.send(embed=get_stash_embed(0), view=view)
 
     
 
