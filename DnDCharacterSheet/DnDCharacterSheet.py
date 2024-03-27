@@ -172,4 +172,21 @@ class DnDCharacterSheet(commands.Cog):
 
 
 
+    @dnd.command(name="brew")
+    async def brew(self, ctx, *item_name: str):
+        """Eat an item from your inventory, deleting it and showing its first effect."""
+        user_inventory = await self.config.member(ctx.author).inventory()
+        for each in item_name:
+            if each not in user_inventory:
+                await ctx.send(f"Brewing failed, missing {each}")
+                return
+                
+        for each in item_name:
+            await ctx.send(each)    
+            # Delete the item from the inventory after "eating" it
+            del user_inventory[item_name]
+            await self.config.member(ctx.author).inventory.set(user_inventory)
+
+
+
 
