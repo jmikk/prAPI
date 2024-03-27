@@ -18,7 +18,8 @@ class DnDCharacterSheet(commands.Cog):
         }
 
         default_member = {
-            "inventory": {}
+            "inventory": {},
+            "potions":{}
         }
 
         self.config.register_guild(**default_guild)
