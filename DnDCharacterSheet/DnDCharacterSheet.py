@@ -191,7 +191,7 @@ class DnDCharacterSheet(commands.Cog):
             item_effects = user_inventory.get(item_name, [])
             for effect in item_effects:
                 # Assuming each effect is a dictionary with a 'name' key
-                effect_name = effect.get('name', 'Unnamed Effect')
+                effect_name = effect.get('Name', 'Unnamed Effect')
                 all_effect_names.append(effect_name)
     
             # Remove the used item from the inventory
