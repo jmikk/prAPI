@@ -196,10 +196,10 @@ class DnDCharacterSheet(commands.Cog):
                 all_effect_names.append(effect_name)
     
             # Remove the used item from the inventory
-            #del user_inventory[item_name]
+            del user_inventory[item_name]
     
         # Save the updated inventory back to the config
-        #await self.config.member(ctx.author).inventory.set(user_inventory)
+        await self.config.member(ctx.author).inventory.set(user_inventory)
     
         # Count the effects and find the most common one(s)
         effect_counts = Counter(all_effect_names)
