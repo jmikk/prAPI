@@ -184,7 +184,7 @@ class DnDCharacterSheet(commands.Cog):
 
 
 
-    @commands.command(name="viewpotions")
+    @dnd.command(name="viewpotions")
     async def view_potions(self, ctx, member: discord.Member = None):
         if not member:
             member = ctx.author  # Default to the command invoker if no member is specified
