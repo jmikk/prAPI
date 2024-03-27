@@ -429,13 +429,14 @@ class DnDCharacterSheet(commands.Cog):
 
         def get_stash_embed(page_index):
             potion_name, potion_info = potions_list[page_index]
-            effects = potion_info['text']  # Assuming effects is a list
-            quantity = potion_info['Quantity']  # Assuming quantity is an int
+            effects = potion_info['Effects']  # Corrected key to access effects list
+            quantity = potion_info['Quantity']  # Assuming 'Quantity' is the correct key for the quantity
             embed = Embed(title=f"{potion_name} x{quantity}", color=discord.Color.gold())
             for effect in effects:
                 embed.add_field(name=effect['name'], value=effect['text'], inline=False)
             embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
             return embed
+
 
     
         view = StashView(self, ctx.guild, guild_stash)
