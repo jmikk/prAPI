@@ -3,10 +3,19 @@ import random
 import discord
 import os
 import asyncio
-from collections import Counter  # Make sure to add this line
+from collections import Counter 
+from discord.ui import Button, View
+from discord import ButtonStyle, Interaction
+
+
+
 
 class DnDCharacterSheet(commands.Cog):
     """Gives items to players with random effects"""
+
+
+
+    
 
     def __init__(self, bot):
         self.bot = bot
@@ -189,6 +198,21 @@ class DnDCharacterSheet(commands.Cog):
             await ctx.send(f"{member.display_name} has no potions.")
             return
 
+        class PotionView(View):
+            def __init__(self, potion_name, member):
+                super().__init__()
+                self.add_item(Button(style=ButtonStyle.green, label="Drink Potion", custom_id="drink_potion"))
+
+                # Assigning the interaction check to only respond to the button click from the original user who invoked the command
+                self.interaction_check = lambda interaction: interaction.user == ctx.author
+
+                # Drink potion button callback
+                async def drink_callback(interaction: Interaction, button: Button):
+                    await self.cog.drink_potion(interaction, potion_name, member)
+
+                # Setting the callback for the button
+                self.children[0].callback = drink_callback
+
         current_page = 0
 
         def get_potion_embed(page_index):
@@ -203,6 +227,10 @@ class DnDCharacterSheet(commands.Cog):
         # Reaction controls
         await message.add_reaction("◀️")
         await message.add_reaction("▶️")
+
+        view = PotionView(potion_name=potion_name, member=member or ctx.author)
+        message = await ctx.send(embed=get_potion_embed(current_page), view=view)
+
 
         def check(reaction, user):
             return user == ctx.author and str(reaction.emoji) in ["◀️", "▶️"] and reaction.message.id == message.id
@@ -270,34 +298,26 @@ class DnDCharacterSheet(commands.Cog):
             await self.config.member(ctx.author).set(user_data)
         else:
             await ctx.send("Brewing failed. The ingredients share no common effects.")
-
-
-    @dnd.command(name="eatpotion")
-    async def eat_potion(self, ctx, *, potion_name: str):
-        """Eat a potion from your inventory, removing it and showing its effects."""
-        user_data = await self.config.member(ctx.author).all()
+    
+    async def drink_potion(self, interaction: Interaction, potion_name: str, member: discord.Member):
+        user_data = await self.config.member(member).all()
         potions = user_data.get('potions', {})
-    
+
         if potion_name not in potions:
-            await ctx.send(f"You don't have a potion named '{potion_name}'.")
+            await interaction.response.send_message(f"This potion is no longer in your inventory.", ephemeral=True)
             return
-    
-        # Retrieve the potion and its effects
-        potion_effects = potions[potion_name]
-    
-        # Remove the potion from the inventory
-        del potions[potion_name]
-        await self.config.member(ctx.author).potions.set(potions)
-    
-        # Create an embed to display the potion effects
-        embed = discord.Embed(title=f"You ate the {potion_name}!", color=discord.Color.green())
+
+        potion_effects = potions.pop(potion_name)
+        await self.config.member(member).potions.set(potions)
+
+        embed = discord.Embed(title=f"{member.display_name} drank the {potion_name}!", color=discord.Color.green())
         embed.set_thumbnail(url="https://i5.walmartimages.com/asr/bd986b0e-62f6-4a72-9ebb-a30ebb67085e.36bd16ee9a01f035d5ded26929a5a9a4.jpeg")
-        
+
         for effect in potion_effects:
-            # Assuming each effect is a dictionary with 'name' and 'text' keys
             embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-    
-        await ctx.send(embed=embed)
+
+        await interaction.response.edit_message(content=f"{member.display_name} drank the {potion_name}!", embed=embed, view=None)
+
 
         
         
