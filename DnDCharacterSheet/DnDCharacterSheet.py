@@ -184,7 +184,7 @@ class DnDCharacterSheet(commands.Cog):
 
 
 
-    @dnd.command(name="viewpotions")
+    @commands.command(name="viewpotions")
     async def view_potions(self, ctx, member: discord.Member = None):
         if not member:
             member = ctx.author  # Default to the command invoker if no member is specified
@@ -198,7 +198,32 @@ class DnDCharacterSheet(commands.Cog):
             await ctx.send(f"{member.display_name} has no potions.")
             return
 
-        current_page = 0
+        current_page = [0]  # Use a list for current_page to allow modification in nested function
+
+        class PotionView(View):
+            def __init__(self, *, timeout=180):
+                super().__init__(timeout=timeout)
+
+            async def interaction_check(self, interaction) -> bool:
+                return interaction.user == ctx.author  # Only the user who invoked the command can interact
+
+            @discord.ui.button(label="Drink", style=ButtonStyle.green, custom_id="drink_potion")
+            async def drink_button(self, interaction, button):
+                potion_name, _ = potions_list[current_page[0]]
+                await self.cog.drink_potion(interaction, potion_name, member)  # Implement drink_potion accordingly
+                self.stop()
+
+            @discord.ui.button(label="◀️", style=ButtonStyle.blurple, custom_id="prev_potion")
+            async def prev_button(self, interaction, button):
+                if current_page[0] > 0:
+                    current_page[0] -= 1
+                    await interaction.response.edit_message(embed=get_potion_embed(current_page[0]), view=self)
+
+            @discord.ui.button(label="▶️", style=ButtonStyle.blurple, custom_id="next_potion")
+            async def next_button(self, interaction, button):
+                if current_page[0] < len(potions_list) - 1:
+                    current_page[0] += 1
+                    await interaction.response.edit_message(embed=get_potion_embed(current_page[0]), view=self)
 
         def get_potion_embed(page_index):
             potion_name, effects = potions_list[page_index]
@@ -207,50 +232,8 @@ class DnDCharacterSheet(commands.Cog):
                 embed.add_field(name=effect['name'], value=effect['text'], inline=False)
             return embed
 
-        class PotionView(View):
-            def __init__(self, cog, potion_name, member):
-                super().__init__()
-                self.cog = cog
-                self.potion_name = potion_name
-                self.member = member
-        
-            @discord.ui.button(label="Drink Potion", style=ButtonStyle.green, custom_id="drink_potion")
-            async def drink_button(self, interaction: Interaction, button: Button):
-                # Defer the interaction if the response will take a while
-                await interaction.response.defer()
-                try:
-                    await self.cog.drink_potion(interaction, self.potion_name, self.member)
-                except Exception as e:
-                    # Log the error or send a response indicating the failure
-                    print(f"Error drinking potion: {e}")  # Consider using a logger
-                    await interaction.followup.send("Failed to drink the potion.", ephemeral=True)
-
-        message = await ctx.send(embed=get_potion_embed(current_page), view=PotionView(potions_list[current_page][0], member))
-
-        # Reaction controls
-        await message.add_reaction("◀️")
-        await message.add_reaction("▶️")
-
-        def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in ["◀️", "▶️"] and reaction.message.id == message.id
-
-        while True:
-            try:
-                reaction, user = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
-
-                if str(reaction.emoji) == "▶️" and current_page < len(potions_list) - 1:
-                    current_page += 1
-                    await message.edit(embed=get_potion_embed(current_page), view=PotionView(potions_list[current_page][0], member))
-                    await message.remove_reaction(reaction, user)
-                elif str(reaction.emoji) == "◀️" and current_page > 0:
-                    current_page -= 1
-                    await message.edit(embed=get_potion_embed(current_page), view=PotionView(potions_list[current_page][0], member))
-                    await message.remove_reaction(reaction, user)
-                else:
-                    await message.remove_reaction(reaction, user)
-            except asyncio.TimeoutError:
-                await message.clear_reactions()
-                break
+        view = PotionView()
+        await ctx.send(embed=get_potion_embed(current_page[0]), view=view)
 
 
     
