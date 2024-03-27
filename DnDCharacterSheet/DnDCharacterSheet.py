@@ -208,16 +208,22 @@ class DnDCharacterSheet(commands.Cog):
             return embed
 
         class PotionView(View):
-            def __init__(self, potion_name, member):
+            def __init__(self, cog, potion_name, member):
                 super().__init__()
-                self.add_item(Button(style=ButtonStyle.green, label="Drink Potion", custom_id="drink_potion"))
-
-                # Drink potion button callback
-                async def drink_callback(interaction: Interaction, button: Button):
-                    await self.cog.drink_potion(interaction, potion_name, member)
-
-                # Setting the callback for the button
-                self.children[0].callback = drink_callback
+                self.cog = cog
+                self.potion_name = potion_name
+                self.member = member
+        
+            @discord.ui.button(label="Drink Potion", style=ButtonStyle.green, custom_id="drink_potion")
+            async def drink_button(self, interaction: Interaction, button: Button):
+                # Defer the interaction if the response will take a while
+                await interaction.response.defer()
+                try:
+                    await self.cog.drink_potion(interaction, self.potion_name, self.member)
+                except Exception as e:
+                    # Log the error or send a response indicating the failure
+                    print(f"Error drinking potion: {e}")  # Consider using a logger
+                    await interaction.followup.send("Failed to drink the potion.", ephemeral=True)
 
         message = await ctx.send(embed=get_potion_embed(current_page), view=PotionView(potions_list[current_page][0], member))
 
