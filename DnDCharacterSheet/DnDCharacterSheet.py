@@ -384,9 +384,10 @@ class DnDCharacterSheet(commands.Cog):
             return
         name = []
         text = []
-        await interaction.response.send_message("here")
 
         for each in member_potions:
+            await interaction.response.send_message(each)
+
             name.append(each['name'])
             text.append(each['text'])
             
