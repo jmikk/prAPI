@@ -183,9 +183,8 @@ class DnDCharacterSheet(commands.Cog):
 
 
 
-    @dnd.command(name="viewpotions")
+    @commands.command(name="viewpotions")
     async def view_potions(self, ctx, member: discord.Member = None):
-        """View all potions a user has with pagination."""
         if not member:
             member = ctx.author  # Default to the command invoker if no member is specified
 
@@ -198,13 +197,19 @@ class DnDCharacterSheet(commands.Cog):
             await ctx.send(f"{member.display_name} has no potions.")
             return
 
+        current_page = 0
+
+        def get_potion_embed(page_index):
+            potion_name, effects = potions_list[page_index]
+            embed = Embed(title=f"{potion_name}", description=f"Potion {page_index + 1} of {len(potions_list)}", color=Color.blue())
+            for effect in effects:
+                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+            return embed
+
         class PotionView(View):
             def __init__(self, potion_name, member):
                 super().__init__()
                 self.add_item(Button(style=ButtonStyle.green, label="Drink Potion", custom_id="drink_potion"))
-
-                # Assigning the interaction check to only respond to the button click from the original user who invoked the command
-                self.interaction_check = lambda interaction: interaction.user == ctx.author
 
                 # Drink potion button callback
                 async def drink_callback(interaction: Interaction, button: Button):
@@ -213,24 +218,11 @@ class DnDCharacterSheet(commands.Cog):
                 # Setting the callback for the button
                 self.children[0].callback = drink_callback
 
-        current_page = 0
-
-        def get_potion_embed(page_index):
-            potion_name, effects = potions_list[page_index]
-            embed = discord.Embed(title=f"{potion_name}", description=f"Potion {page_index + 1} of {len(potions_list)}", color=discord.Color.blue())
-            for effect in effects:
-                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-            return embed
-
-        message = await ctx.send(embed=get_potion_embed(current_page))
+        message = await ctx.send(embed=get_potion_embed(current_page), view=PotionView(potions_list[current_page][0], member))
 
         # Reaction controls
         await message.add_reaction("◀️")
         await message.add_reaction("▶️")
-
-        view = PotionView(potion_name=potion_name, member=member or ctx.author)
-        message = await ctx.send(embed=get_potion_embed(current_page), view=view)
-
 
         def check(reaction, user):
             return user == ctx.author and str(reaction.emoji) in ["◀️", "▶️"] and reaction.message.id == message.id
@@ -241,17 +233,18 @@ class DnDCharacterSheet(commands.Cog):
 
                 if str(reaction.emoji) == "▶️" and current_page < len(potions_list) - 1:
                     current_page += 1
-                    await message.edit(embed=get_potion_embed(current_page))
+                    await message.edit(embed=get_potion_embed(current_page), view=PotionView(potions_list[current_page][0], member))
                     await message.remove_reaction(reaction, user)
                 elif str(reaction.emoji) == "◀️" and current_page > 0:
                     current_page -= 1
-                    await message.edit(embed=get_potion_embed(current_page))
+                    await message.edit(embed=get_potion_embed(current_page), view=PotionView(potions_list[current_page][0], member))
                     await message.remove_reaction(reaction, user)
                 else:
                     await message.remove_reaction(reaction, user)
             except asyncio.TimeoutError:
                 await message.clear_reactions()
                 break
+
 
     
     
