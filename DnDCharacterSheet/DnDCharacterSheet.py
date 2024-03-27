@@ -15,33 +15,38 @@ class PotionView(View):
         super().__init__(timeout=180)  # Set a timeout for the view, e.g., 3 minutes
         self.cog = cog
         self.member = member
-        self.potions = potions
+        self.potions = list(potions.items())  # Work with a list for easier indexing
         self.current_potion_index = 0
 
     async def update_embed(self, interaction: Interaction):
-        potion_name, effects = list(self.potions.items())[self.current_potion_index]
+        potion_name, effects = self.potions[self.current_potion_index]
         embed = Embed(title=potion_name, color=discord.Color.blue())
         for effect in effects:
             embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+        # Include page count in the footer
+        embed.set_footer(text=f"Potion {self.current_potion_index + 1} of {len(self.potions)}")
         await interaction.response.edit_message(embed=embed, view=self)
 
     @discord.ui.button(label="Previous", style=ButtonStyle.blurple, custom_id="previous_potion")
     async def previous_button(self, interaction: Interaction, button: Button):
-        if self.current_potion_index > 0:
-            self.current_potion_index -= 1
-            await self.update_embed(interaction)
+        # Loop to the last potion if currently viewing the first one
+        self.current_potion_index = (self.current_potion_index - 1) % len(self.potions)
+        await self.update_embed(interaction)
 
     @discord.ui.button(label="Next", style=ButtonStyle.blurple, custom_id="next_potion")
     async def next_button(self, interaction: Interaction, button: Button):
-        if self.current_potion_index < len(self.potions) - 1:
-            self.current_potion_index += 1
-            await self.update_embed(interaction)
+        # Loop to the first potion if currently viewing the last one
+        self.current_potion_index = (self.current_potion_index + 1) % len(self.potions)
+        await self.update_embed(interaction)
 
+    @discord.ui.button(label="Drink", style=ButtonStyle.green, custom_id="drink_potion")
+    async def drink_button(self, interaction: Interaction, button: Button):
+        potion_name, _ = self.potions[self.current_potion_index]
+        await self.cog.drink_potion(interaction, potion_name, self.member)
     @discord.ui.button(label="Drink", style=ButtonStyle.green, custom_id="drink_potion")
     async def drink_button(self, interaction: Interaction, button: Button):
         potion_name, _ = list(self.potions.items())[self.current_potion_index]
         await self.cog.drink_potion(interaction, potion_name, self.member)
-        # Consider removing the potion from the list or marking it as 'drunk' and updating the embed accordingly.
 
 
 
