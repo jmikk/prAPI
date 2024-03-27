@@ -396,6 +396,17 @@ class DnDCharacterSheet(commands.Cog):
         await interaction.response.send_message(f"{potion_name} has been added to the guild's stash.", ephemeral=False)
 
 
+    @dnd.command(name="clearstash")
+    @commands.guild_only()  # Ensure this command is only usable within a guild
+    @commands.has_permissions(administrator=True)  # Restrict to users with the Administrator permission
+    async def clear_stash(self, ctx):
+        # Set the guild's stash to an empty dictionary, effectively clearing it
+        await self.config.guild(ctx.guild).stash.set({})
+        
+        # Send a confirmation message
+        await ctx.send("The guild stash has been cleared.")
+
+    
 
     @dnd.command(name="viewstash")
     async def view_stash(self, ctx):
