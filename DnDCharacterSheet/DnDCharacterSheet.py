@@ -383,21 +383,23 @@ class DnDCharacterSheet(commands.Cog):
             await interaction.response.send_message("You don't have this potion.", ephemeral=True)
             return
     
-        potion_details = member_potions[potion_name]
-        potion_effects = potion_details.get('effects', [])  # Assuming the effects are stored under 'effects'
+        # Assuming member_potions[potion_name] is a list of effects
+        potion_effects = member_potions[potion_name]
     
         if potion_name in guild_stash:
-            guild_stash[potion_name]['Quantity'] += 1  # Assuming 'Quantity' is the correct key
+            guild_stash[potion_name]['Quantity'] += 1
         else:
+            # Assuming you want to store the list of effects under 'Effects' key and set initial 'Quantity' to 1
             guild_stash[potion_name] = {'Effects': potion_effects, 'Quantity': 1}
     
         del member_potions[potion_name]
-    
+        
         await self.config.member(member).potions.set(member_potions)
         await self.config.guild(guild).stash.set(guild_stash)
     
-        # Use followup.send for any messages after the initial response
-        await interaction.followup.send(f"{potion_name} has been added to the guild's stash.")
+        # Assuming this is the first message sent in response to the interaction
+        await interaction.response.send_message(f"{potion_name} has been added to the guild's stash.")
+
 
 
 
