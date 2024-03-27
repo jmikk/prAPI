@@ -88,8 +88,11 @@ class PotionView(View):
 
     @discord.ui.button(label="Give to Guild", style=ButtonStyle.gray, custom_id="give_to_guild")
     async def give_to_guild_button(self, interaction: Interaction, button: Button):
-        potion_name, _ = self.potions[self.current_potion_index]
-        await self.cog.give_potion_to_guild(interaction, potion_name, self.member)
+        try:
+            potion_name, _ = self.potions[self.current_potion_index]
+            await self.cog.give_potion_to_guild(interaction, potion_name, self.member)
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred while trying to take the potion from the stash. {e}", ephemeral=True)
 
     
 
