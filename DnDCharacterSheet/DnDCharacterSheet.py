@@ -410,7 +410,8 @@ class DnDCharacterSheet(commands.Cog):
     @dnd.command(name="viewstash")
     async def view_stash(self, ctx):
         guild_stash = await self.config.guild(ctx.guild).stash()
-    
+
+        
         if not guild_stash:
             await ctx.send("The guild stash is empty.")
             return
