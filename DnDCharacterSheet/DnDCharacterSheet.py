@@ -189,7 +189,7 @@ class DnDCharacterSheet(commands.Cog):
     
             if item_effects:
                 # Assuming each effect is a dictionary and we want to display the 'name' key
-                effects_str = ', '.join(effect.get('name', 'Unnamed Effect') for effect in item_effects)
+                effects_str = ', '.join(effect.get('Name', 'Unnamed Effect') for effect in item_effects)
                 await ctx.send(f"Using {item_name}, which has the following effects: {effects_str}")
             else:
                 await ctx.send(f"Using {item_name}, which has no effects.")
