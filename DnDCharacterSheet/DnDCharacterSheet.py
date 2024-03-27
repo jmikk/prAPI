@@ -190,7 +190,6 @@ class DnDCharacterSheet(commands.Cog):
         for item_name in item_names:
             item_effects = user_inventory.get(item_name, [])
             for effect in item_effects:
-                await ctx.send(effect)
                 # Assuming each effect is a dictionary with a 'name' key
                 effect_name = effect.get('Name', 'Unnamed Effect')
                 all_effect_names.append(effect_name)
