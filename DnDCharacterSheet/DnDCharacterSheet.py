@@ -447,34 +447,29 @@ class DnDCharacterSheet(commands.Cog):
         await ctx.send(embed=get_stash_embed(0), view=view)
 
     async def take_potion_from_stash(self, interaction: Interaction, potion_name: str, guild: discord.Guild, member: discord.Member):
-        # Load the current state of the guild's stash
         guild_stash = await self.config.guild(guild).stash()
+        member_potions = await self.config.member(member).potions()
     
-        # Check if the potion is in the stash
-        if potion_name in guild_stash and guild_stash[potion_name]['Quantity'] > 0:
-            # Decrement the quantity of the potion in the stash
-            guild_stash[potion_name]['Quantity'] -= 1
+        if potion_name not in guild_stash:
+            await interaction.response.send_message("The Guild doesn't have this potion.")
+            return
     
-            # If the quantity reaches zero, remove the potion from the stash
-            if guild_stash[potion_name]['Quantity'] == 0:
-                del guild_stash[potion_name]
+        # Assuming member_potions[potion_name] is a list of effects
+        potion_effects = guild_stash[potion_name]
     
-            # Update the guild's stash configuration
-            await self.config.guild(guild).stash.set(guild_stash)
-    
-            # Optionally, add the potion to the member's personal inventory
-            member_potions = await self.config.member(member).potions()
-            if potion_name in member_potions:
-                member_potions[potion_name].append(guild_stash[potion_name]['Effects'])  # Assuming it's a list of effects
-            else:
-                member_potions[potion_name] = [guild_stash[potion_name]['Effects']]
-            await self.config.member(member).potions.set(member_potions)
-    
-            # Acknowledge the interaction with a response
-            await interaction.response.send_message(f"{potion_name} has been taken from the guild stash and added to your inventory.", ephemeral=True)
+        if potion_name in member_potions:
+            member_potions[potion_name]['Quantity'] += 1
         else:
-            # Potion not available in the stash
-            await interaction.response.send_message(f"{potion_name} is not available in the guild stash or is out of stock.", ephemeral=True)
+            # Assuming you want to store the list of effects under 'Effects' key and set initial 'Quantity' to 1
+            member_potions[potion_name] = {'Effects': potion_effects, 'Quantity': 1}
+    
+        del guild_stash[potion_name]
+        
+        await self.config.member(member).potions.set(member_potions)
+        await self.config.guild(guild).stash.set(guild_stash)
+    
+        # Assuming this is the first message sent in response to the interaction
+        await interaction.response.send_message(f"{potion_name} has been added to your stash.")
     
         
 
