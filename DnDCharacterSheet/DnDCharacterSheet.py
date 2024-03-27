@@ -299,7 +299,7 @@ class DnDCharacterSheet(commands.Cog):
     
             # Prepare the embed to show the potion's effects
             embed = discord.Embed(title=f"{member.display_name} drank {potion_name}!", color=discord.Color.red())
-            embed.set_thumbnail(url="https://media.tenor.com/smbUZbX70jgAAAAM/drinking-a-potion-link.gif")
+            #embed.set_thumbnail(url="https://media.tenor.com/smbUZbX70jgAAAAM/drinking-a-potion-link.gif")
             
             # Loop through the saved potion's effects and add them to the embed
             for effect in potion_effects:
