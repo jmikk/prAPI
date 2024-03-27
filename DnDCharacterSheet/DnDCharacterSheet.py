@@ -261,21 +261,28 @@ class DnDCharacterSheet(commands.Cog):
     async def view_potions(self, ctx, member: discord.Member = None):
         if member is None:
             member = ctx.author
-
-        # Fetch user potions data
-        potions = await self.config.member(member).potions()
-
+    
+        user_data = await self.config.member(member).all()
+        potions = user_data.get('potions', {})
+    
         if not potions:
-            await ctx.send("No potions found in your inventory.")
+            await ctx.send(f"{member.display_name} has no potions.")
             return
+    
+        potions_list = list(potions.items())  # Convert potions to a list of (potion_name, effects) tuples
+    
+        def get_potion_embed(page_index):
+            potion_name, effects = potions_list[page_index]
+            embed = Embed(title=potion_name, color=discord.Color.blue())
+            for effect in effects:
+                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+            # Include page count in the footer of the embed
+            embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
+            return embed
 
-        view = PotionView(self, member, potions)
-        first_potion_name, first_effects = list(potions.items())[0]
-        embed = Embed(title=first_potion_name, color=discord.Color.blue())
-        for effect in first_effects:
-            embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-
-        await ctx.send(embed=embed, view=view)
+    view = PotionView(self, member, potions)
+    # Send the initial message with the first potion's embed and the page count in the footer
+    await ctx.send(embed=get_potion_embed(0), view=view)
 
     async def drink_potion(self, interaction: Interaction, potion_name: str, member: discord.Member):
         # This is a placeholder for the drink potion logic
