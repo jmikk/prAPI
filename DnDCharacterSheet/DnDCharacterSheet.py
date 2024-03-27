@@ -208,7 +208,7 @@ class DnDCharacterSheet(commands.Cog):
         await self.config.member(member).potions.clear()
         await ctx.send(f"{member.display_name}'s potions has been cleared.")
 
-    @dnd.command(name="deleteitem")
+    @dnd.command(name="deletepotion")
     @commands.is_owner()
     async def delete_potions(self, ctx, member: discord.Member, *, item_name: str):
         """Delete a specific item from a player's inventory"""
