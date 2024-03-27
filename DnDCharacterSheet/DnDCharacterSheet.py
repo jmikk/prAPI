@@ -352,60 +352,49 @@ class DnDCharacterSheet(commands.Cog):
         # Send the initial message with the first potion's embed and the page count in the footer
         await ctx.send(embed=get_potion_embed(0), view=view)
     
-    async def drink_potion(self, interaction: Interaction, potion_name: str, member: discord.Member):
-        # Fetch the member's potions from the config
-        potions = await self.config.member(member).potions()
+    async def drink_potion(self, interaction: Interaction, potion_name: str, guild: discord.Guild):
+        # Fetch the guild's stash
+        guild_stash = await self.config.guild(guild).stash()
     
-        # Check if the potion is in the member's inventory
-        if potion_name in potions:
-            potion_effects = potions[potion_name]  # Save the potion's effects for the embed
-            # Remove the potion from the inventory
-            del potions[potion_name]
-            
-            # Update the member's potions in the config to reflect the removal
-            await self.config.member(member).potions.set(potions)
-    
-            # Prepare the embed to show the potion's effects
-            embed = discord.Embed(title=f"{member.display_name} drank {potion_name}!", color=discord.Color.red())
-            embed.set_thumbnail(url="https://media.tenor.com/smbUZbX70jgAAAAM/drinking-a-potion-link.gif")
-            await interaction.response.send_message(f"here", ephemeral=True)
-
-            # Loop through the saved potion's effects and add them to the embed
-            for effect in potion_effects:
-                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-            
-            # Send the embed as a follow-up to the interaction
-            await interaction.followup.send(embed=embed, ephemeral=False)  # Make the message visible to everyone
-    
-            # Optional: Update the original message if needed (e.g., remove the "Drink" button or indicate the potion has been consumed)
-            # await interaction.message.edit(...)  # Add your desired update logic here
-        else:
-            # If the potion isn't found in the user's inventory, send an error message
-            # Use interaction.response if it's the first time responding to the interaction, or interaction.followup for subsequent messages
-            await interaction.response.send_message(f"The potion '{potion_name}' is not in your inventory.", ephemeral=True)
-
-    async def give_potion_to_guild(self, interaction: Interaction, potion_name: str, member: discord.Member):
-        # Fetch the member's potions
-        potions = await self.config.member(member).potions()
-    
-        # Ensure the potion is in the member's inventory
-        if potion_name not in potions:
-            await interaction.response.send_message(f"The potion '{potion_name}' is not in your inventory.", ephemeral=True)
+        if potion_name not in guild_stash or guild_stash[potion_name]['quantity'] == 0:
+            await interaction.response.send_message("This potion is no longer available.", ephemeral=True)
             return
     
-        # Fetch the guild's stash
-        guild_stash = await self.config.guild(interaction.guild).stash()
+        # Decrement potion quantity
+        guild_stash[potion_name]['quantity'] -= 1
+        if guild_stash[potion_name]['quantity'] <= 0:
+            del guild_stash[potion_name]  # Remove potion if quantity is zero
     
-        # Transfer the potion from the member's inventory to the guild's stash
-        guild_stash[potion_name] = potions[potion_name]
-        del potions[potion_name]
+        # Update guild stash
+        await self.config.guild(guild).stash.set(guild_stash)
     
-        # Update the configurations
-        await self.config.member(member).potions.set(potions)
-        await self.config.guild(interaction.guild).stash.set(guild_stash)
+        embed = self.get_stash_embed(potion_name, guild_stash[potion_name]['effects'], guild_stash[potion_name]['quantity'])
+        await interaction.response.send_message(embed=embed, ephemeral=False)
+
+
+    async def give_potion_to_guild(self, interaction: Interaction, potion_name: str, guild: discord.Guild, member: discord.Member):
+        # Fetch the guild's stash and member's potions
+        guild_stash = await self.config.guild(guild).stash()
+        member_potions = await self.config.member(member).potions()
     
-        # Confirm the transfer
-        await interaction.response.send_message(f"{member.display_name} gave the '{potion_name}' potion to the guild's stash.", ephemeral=False)
+        if potion_name not in member_potions:
+            await interaction.response.send_message("You don't have this potion.", ephemeral=True)
+            return
+    
+        # Transfer potion from member to guild stash
+        potion_details = member_potions.pop(potion_name)
+        if potion_name in guild_stash:
+            guild_stash[potion_name]['quantity'] += 1  # Increment quantity
+        else:
+            potion_details['quantity'] = 1  # New potion, set quantity to 1
+            guild_stash[potion_name] = potion_details
+    
+        # Update configurations
+        await self.config.member(member).potions.set(member_potions)
+        await self.config.guild(guild).stash.set(guild_stash)
+    
+        await interaction.response.send_message(f"{potion_name} has been added to the guild's stash.", ephemeral=False)
+
 
     @dnd.command(name="viewstash")
     async def view_stash(self, ctx):
@@ -417,13 +406,12 @@ class DnDCharacterSheet(commands.Cog):
             return
             
     
-        def get_stash_embed(page_index):
-            potion_name, effects = list(guild_stash.items())[page_index]
-            embed = Embed(title=potion_name, color=discord.Color.gold())
+        def get_stash_embed(self, potion_name, effects, quantity):
+            embed = Embed(title=f"{potion_name} x{quantity}", color=discord.Color.gold())  # Include quantity in title
             for effect in effects:
                 embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-            embed.set_footer(text=f"Potion {page_index + 1} of {len(guild_stash)}")
             return embed
+
     
         view = StashView(self, ctx.guild, guild_stash)
         await ctx.send(embed=get_stash_embed(0), view=view)
