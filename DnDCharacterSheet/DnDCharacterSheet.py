@@ -382,7 +382,8 @@ class DnDCharacterSheet(commands.Cog):
         if potion_name not in member_potions:
             await interaction.response.send_message("You don't have this potion.", ephemeral=True)
             return
-    
+        await interaction.response.send_message(member_potions[potion_name], ephemeral=True)
+
         potion_effects = member_potions[potion_name]['Effect']
         await interaction.response.send_message("here", ephemeral=True)
 
