@@ -174,47 +174,48 @@ class DnDCharacterSheet(commands.Cog):
 
 
 
-
+    
     @dnd.command(name="brew")
     async def brew(self, ctx, *item_names: str):
-        """Brew a potion using items from your inventory, using the most shared effect."""
-        user_inventory = await self.config.member(ctx.author).inventory()
+        """Brew a potion using items from your inventory, using up to three of the most shared effects, and add it to your potions with effect text."""
+        user_data = await self.config.member(ctx.author).all()
     
-        # Check if all specified items are in the user's inventory
-        missing_items = [item for item in item_names if item not in user_inventory]
+        if 'potions' not in user_data:
+            user_data['potions'] = {}
+    
+        missing_items = [item for item in item_names if item not in user_data.get('inventory', {})]
         if missing_items:
             await ctx.send(f"Brewing failed, missing: {', '.join(missing_items)}")
             return
     
-        all_effect_names = []
-        # Loop through each specified item, collect its effects' names, and remove it from the inventory
+        all_effects = []  # Store tuples of (effect_name, effect_text)
         for item_name in item_names:
-            item_effects = user_inventory.get(item_name, [])
+            item_effects = user_data.get('inventory', {}).get(item_name, [])
             for effect in item_effects:
-                # Assuming each effect is a dictionary with a 'name' key
                 effect_name = effect.get('Name', 'Unnamed Effect')
-                all_effect_names.append(effect_name)
+                effect_text = effect.get('Effect', 'Unnamed Effect')
+                all_effects.append((effect_name, effect_text))
     
-            # Remove the used item from the inventory
-            del user_inventory[item_name]
+            del user_data['inventory'][item_name]
     
-        # Save the updated inventory back to the config
-        await self.config.member(ctx.author).inventory.set(user_inventory)
-    
-        # Count the effects and find the most common one(s)
-        effect_counts = Counter(all_effect_names)
+        # Count the effects based on effect names and find the most common ones
+        effect_counts = Counter([effect_name for effect_name, _ in all_effects])
         most_common_effects = effect_counts.most_common()
         highest_count = most_common_effects[0][1] if most_common_effects else 0
     
-        # Get all effects that share the highest count
-        final_effects = [effect for effect, count in most_common_effects if count == highest_count]
+        # Get tuples of all effects that share the highest count
+        final_effects = [effect for effect in all_effects if effect_counts[effect[0]] == highest_count]
+    
         if len(final_effects) > 3:
             final_effects = random.sample(final_effects, 3)
     
         if final_effects:
-            # Create a potion with the most shared effect(s)
-            potion_name = "Potion of " + " and ".join(final_effects)
-            await ctx.send(f"Successfully brewed a potion with the following effects: {', '.join(final_effects)}")
+            potion_effects_data = [{'name': name, 'text': text} for name, text in final_effects]
+            potion_name = "Potion of " + " and ".join(name for name, _ in final_effects)
+            user_data['potions'][potion_name] = potion_effects_data
+    
+            await ctx.send(f"Successfully brewed a {potion_name} with effects: {', '.join(name for name, _ in final_effects)}")
+            await self.config.member(ctx.author).set(user_data)
         else:
             await ctx.send("Brewing failed. The ingredients share no common effects.")
 
