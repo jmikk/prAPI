@@ -395,7 +395,7 @@ class DnDCharacterSheet(commands.Cog):
         if potion_name in guild_stash:
             guild_stash[potion_name]['Quantity'] += 1
         else:
-            guild_stash[potion_name] = {'Name': name,'Text': text 'Quantity': 1}
+            guild_stash[potion_name] = {'Name': name,'Text': text, 'Quantity': 1}
         await interaction.response.send_message("here2", ephemeral=True)
 
         del member_potions[potion_name]
