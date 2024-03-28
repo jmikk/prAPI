@@ -58,9 +58,9 @@ class PotionView(View):
                 self.current_index = max(self.current_index - 1, 0)
 
             await self.cog.config.member(self.member).potions.set({potion_name: potion_details for potion_name, potion_details in self.potions})
-            
-            self.update_embed()
             await interaction.response.send_message(f"{potion_effects}")
+
+            self.update_embed()
 
             
             await interaction.response.edit_message(embed=self.embed, view=self)
