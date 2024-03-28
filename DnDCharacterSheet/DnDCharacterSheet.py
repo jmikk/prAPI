@@ -14,7 +14,7 @@ class PotionView(View):
         super().__init__()
         self.ctx = ctx
         self.member = member
-        self.potions = list(potions.items())
+        self.potions = potions
         self.current_index = 0
         self.update_embed()
 
