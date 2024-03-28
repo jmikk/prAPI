@@ -45,7 +45,9 @@ class PotionView(View):
     async def drink(self, interaction: Interaction, button: Button):
         try:
             potion_name, potion_details = self.potions[self.current_index]
-            await interaction.response.send_message(f"{potion_name}, {potion_details}", view=self)
+            potion_details = potion_details['quantity']
+            potion_effects = potion_details['effects']
+            await interaction.response.send_message(f"{potion_name}\n{potion_details}\n {potion_effects}", view=self)
 
             potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
             potion_details['quantity'] -= 1
