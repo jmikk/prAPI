@@ -45,7 +45,7 @@ class PotionView(View):
             await interaction.response.edit_message(embed=self.embed, view=self)
         except Exception as e:
             if not interaction.response.is_done():
-            await interaction.response.defer()
+                await interaction.response.defer()
             # Send the error message as a follow-up
             await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
     
@@ -57,7 +57,7 @@ class PotionView(View):
             await interaction.response.edit_message(embed=self.embed, view=self)
         except Exception as e:
             if not interaction.response.is_done():
-            await interaction.response.defer()
+                await interaction.response.defer()
             # Send the error message as a follow-up
             await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
 
