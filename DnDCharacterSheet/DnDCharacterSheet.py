@@ -8,6 +8,7 @@ from discord.ui import Button, View
 from discord import ButtonStyle, Interaction
 from discord import Embed
 from discord import Color
+from discord.utils import MISSING
 
 class PotionView(View):
     def __init__(self, cog, ctx, member, potions, message=None):
@@ -17,49 +18,48 @@ class PotionView(View):
         self.potions = potions
         self.current_index = 0
         self.cog = cog
-        self.embed = None
         self.message = message  # The original message reference
+        self.embed = MISSING  # Initialize the embed to MISSING
+        self.update_embed()  # Update the embed with the first potion's details
+
+        # Previous Button
+        self.previous_button = Button(label="Previous", style=discord.ButtonStyle.grey)
+        self.previous_button.callback = self.previous_potion
+        self.add_item(self.previous_button)
+
+        # Next Button
+        self.next_button = Button(label="Next", style=discord.ButtonStyle.grey)
+        self.next_button.callback = self.next_potion
+        self.add_item(self.next_button)
+
+    async def previous_potion(self, interaction):
+        # Decrement the index and update the embed
+        if self.current_index > 0:
+            self.current_index -= 1
+        else:
+            self.current_index = len(self.potions) - 1  # Loop back to the last potion
         self.update_embed()
 
+        # Update the original message with the new embed
+        await self.message.edit(embed=self.embed, view=self)
+
+    async def next_potion(self, interaction):
+        # Increment the index and update the embed
+        self.current_index = (self.current_index + 1) % len(self.potions)  # Loop back to the first potion
+        self.update_embed()
+
+        # Update the original message with the new embed
+        await self.message.edit(embed=self.embed, view=self)
+
     def update_embed(self):
+        if self.potions:
             potion_name, potion_details = self.potions[self.current_index]
-
-            quantity = potion_details['quantity'] 
-            
-            self.embed = Embed(title=f"{potion_name} (Quantity: {quantity})", color=discord.Color.blue())
-            for effect in potion_details['effects']:  # Assume potion details include an 'effects' list
-                self.embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+            effects_text = "\n".join(f"{effect['name']}: {effect['text']}" for effect in potion_details['effects'])
+            self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", description=effects_text, color=Color.blue())
             self.embed.set_footer(text=f"Potion {self.current_index + 1} of {len(self.potions)}")
+        else:
+            self.embed = Embed(title="No potions available", description="You currently have no potions in your stash.", color=Color.red())
 
-    async def send_or_edit_embed(self):
-        if self.message:
-            await self.message.edit(embed=self.embed)
-        # No else part needed; the initial message should always exist
-
-
-    @discord.ui.button(label="◀️", style=ButtonStyle.secondary)
-    async def previous_button_callback(self, button: Button, interaction: Interaction):
-        try:
-            self.current_index = (self.current_index - 1) % len(self.potions)
-            self.update_embed()
-            await interaction.response.edit_message(embed=self.embed, view=self)
-        except Exception as e:
-            if not interaction.response.is_done():
-                await interaction.response.defer()
-            # Send the error message as a follow-up
-            await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
-    
-    @discord.ui.button(label="▶️", style=ButtonStyle.secondary)
-    async def next_button_callback(self, button: Button, interaction: Interaction):
-        try:
-            self.current_index = (self.current_index + 1) % len(self.potions)
-            self.update_embed()
-            await interaction.response.edit_message(embed=self.embed, view=self)
-        except Exception as e:
-            if not interaction.response.is_done():
-                await interaction.response.defer()
-            # Send the error message as a follow-up
-            await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
 
 
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
