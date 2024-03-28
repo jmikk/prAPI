@@ -360,11 +360,10 @@ class DnDCharacterSheet(commands.Cog):
             return embed
     
         # Initialize the view with the member's potions
-        view = PotionView(self, member, potions_list)
         initial_embed = get_potion_embed(0) if potions_list else Embed(title="No potions available", description="You currently have no potions in your stash.", color=discord.Color.red())
     
         # Send the initial message with the first potion's details (or a default message)
-        await ctx.send(embed=initial_embed, view=view)
+        await ctx.send(embed=initial_embed)
 
 
 
