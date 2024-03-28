@@ -10,16 +10,16 @@ from discord import Embed
 from discord import Color
 
 class PotionView(View):
-    def __init__(self,cog, ctx, member, potions):
+    def __init__(self, cog, ctx, member, potions, message=None):
         super().__init__()
         self.ctx = ctx
         self.member = member
         self.potions = potions
         self.current_index = 0
-        self.update_embed()
         self.cog = cog
-        self.embed = None  # Initialize embed as None
-        self.message = None  # Track the message displaying the embed
+        self.embed = None
+        self.message = message  # The original message reference
+        self.update_embed()
 
     def update_embed(self):
             potion_name, potion_details = self.potions[self.current_index]
@@ -32,26 +32,22 @@ class PotionView(View):
             self.embed.set_footer(text=f"Potion {self.current_index + 1} of {len(self.potions)}")
 
     async def send_or_edit_embed(self):
-        await self.message.edit(embed=self.embed)
-
         if self.message:
             await self.message.edit(embed=self.embed)
-        else:
-            self.message = await self.ctx.send(embed=self.embed, view=self)
+        # No else part needed; the initial message should always exist
+
 
     @discord.ui.button(label="◀️", style=ButtonStyle.secondary)
     async def previous_button_callback(self, button: Button, interaction: Interaction):
-        self.current_index = (self.current_index - 1) % len(self.potions)  # Wrap around to the last item if at the first
+        self.current_index = (self.current_index - 1) % len(self.potions)
         self.update_embed()
-        await self.send_or_edit_embed()
-        await interaction.response.defer()
-
+        await interaction.response.edit_message(embed=self.embed, view=self)
+    
     @discord.ui.button(label="▶️", style=ButtonStyle.secondary)
     async def next_button_callback(self, button: Button, interaction: Interaction):
-        self.current_index = (self.current_index + 1) % len(self.potions)  # Wrap around to the first item if at the last
+        self.current_index = (self.current_index + 1) % len(self.potions)
         self.update_embed()
-        await self.send_or_edit_embed()
-        await interaction.response.defer()
+        await interaction.response.edit_message(embed=self.embed, view=self)
 
 
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
@@ -363,16 +359,26 @@ class DnDCharacterSheet(commands.Cog):
     @dnd.command(name="viewpotions")
     async def view_potions(self, ctx, member: discord.Member = None):
         if member is None:
-            member = ctx.author  # Default to the command invoker if no member is specified
+            member = ctx.author
     
-        # Access the potions from the member's personal configuration
         member_potions = await self.config.member(member).potions()
     
         if not member_potions:
             await ctx.send(f"{member.display_name}'s potion stash is empty.")
             return
-        # Convert the potions dictionary to a list of items for easier access
+    
         potions_list = list(member_potions.items())
+        initial_embed = get_potion_embed(0) if potions_list else Embed(title="No potions available", ...)
+        
+        # Send the initial message
+        message = await ctx.send(embed=initial_embed)
+        
+        # Instantiate PotionView with the message reference
+        view = PotionView(self, ctx, member, potions_list, message=message)
+        
+        # Update the view for the message to ensure it's linked
+        message.edit(view=view)
+
         
         # Function to create an embed for a given potion index
         def get_potion_embed(page_index):
