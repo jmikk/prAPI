@@ -34,13 +34,13 @@ class PotionView(View):
     async def previous(self, button: Button, interaction: Interaction):
         self.current_index = (self.current_index - 1) % len(self.potions)
         self.update_embed()
-        await self.send_current_embed()
+        #await self.send_current_embed()
 
     @discord.ui.button(label="▶️", style=ButtonStyle.secondary)
     async def next(self, button: Button, interaction: Interaction):
         self.current_index = (self.current_index + 1) % len(self.potions)
         self.update_embed()
-        await self.send_current_embed()
+        #await self.send_current_embed()
 
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
     async def drink(self, interaction: Interaction, button: Button):
