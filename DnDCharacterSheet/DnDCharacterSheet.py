@@ -368,7 +368,7 @@ class DnDCharacterSheet(commands.Cog):
             return
     
         potions_list = list(member_potions.items())
-        initial_embed = get_potion_embed(0) if potions_list else Embed(title="No potions available", ...)
+        initial_embed = get_potion_embed(0) if potions_list else Embed(title="No potions available")
         
         # Send the initial message
         message = await ctx.send(embed=initial_embed)
