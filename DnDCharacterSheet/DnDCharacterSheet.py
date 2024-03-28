@@ -328,7 +328,6 @@ class DnDCharacterSheet(commands.Cog):
             # Diagnostic logging to understand the current structure of the potion
             if potion_name in user_data['potions']:
                 current_structure = user_data['potions'][potion_name]
-                await ctx.send(f"Current structure for {potion_name}: {current_structure} (Type: {type(current_structure)})")
     
             # Check if the potion already exists and increase the quantity if it does
             if potion_name in user_data['potions'] and isinstance(user_data['potions'][potion_name], dict) and 'quantity' in user_data['potions'][potion_name]:
