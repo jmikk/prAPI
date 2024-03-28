@@ -323,6 +323,7 @@ class DnDCharacterSheet(commands.Cog):
     
         if final_effects:
             potion_effects_data = [{'name': name, 'text': text} for name, text in final_effects]
+            await ctx.send(potion_effects_data)
             potion_name = "Potion of " + " and ".join(name for name, _ in final_effects)
             
             # Check if the potion already exists and increase the quantity if it does
