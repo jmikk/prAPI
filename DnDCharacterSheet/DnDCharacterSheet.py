@@ -14,7 +14,7 @@ class PotionView(View):
         super().__init__()
         self.ctx = ctx
         self.member = member
-        self.potions = list(potions.items)
+        self.potions = potions
         self.current_index = 0
         self.update_embed()
 
@@ -366,6 +366,7 @@ class DnDCharacterSheet(commands.Cog):
     
         # Initialize the view with the member's potions
         initial_embed = get_potion_embed(0) if potions_list else Embed(title="No potions available", description="You currently have no potions in your stash.", color=discord.Color.red())
+        await ctx.send(type(member_potions)
         view = PotionView(ctx ,member, member_potions)
 
         # Send the initial message with the first potion's details (or a default message)
