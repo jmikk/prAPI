@@ -35,7 +35,7 @@ class PotionView(View):
         try:
             self.current_index = (self.current_index - 1) % len(self.potions)
             self.update_embed()
-            await self.send_current_embed()
+            #await self.send_current_embed()
         except Exception as e:
             await interaction.followup.send(f"An error occurred: {e}")
 
