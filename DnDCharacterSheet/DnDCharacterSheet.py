@@ -10,7 +10,7 @@ from discord import Embed
 from discord import Color
 
 class PotionView(View):
-    def __init__(self, ctx, member, potions):
+    def __init__(self,cog, ctx, member, potions):
         super().__init__()
         self.ctx = ctx
         self.member = member
@@ -57,7 +57,6 @@ class PotionView(View):
                 self.potions.pop(self.current_index)
                 self.current_index = max(self.current_index - 1, 0)
             await interaction.response.send_message(f"{potion_effects}")
-
             await self.cog.config.member(self.member).potions.set({potion_name: potion_details for potion_name, potion_details in self.potions})
 
             self.update_embed()
@@ -377,7 +376,7 @@ class DnDCharacterSheet(commands.Cog):
     
         # Initialize the view with the member's potions
         initial_embed = get_potion_embed(0) if potions_list else Embed(title="No potions available", description="You currently have no potions in your stash.", color=discord.Color.red())
-        view = PotionView(ctx ,member, list(member_potions.items()))
+        view = PotionView(self, ctx ,member, list(member_potions.items()))
 
         # Send the initial message with the first potion's details (or a default message)
         await ctx.send(embed=initial_embed, view=view)
