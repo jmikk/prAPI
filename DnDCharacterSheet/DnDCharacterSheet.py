@@ -17,6 +17,7 @@ class PotionView(View):
         self.potions = potions
         self.current_index = 0
         self.update_embed()
+        self.cog = cog
 
     def update_embed(self):
         potion_name, potion_details = self.potions[self.current_index]
