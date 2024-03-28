@@ -345,6 +345,37 @@ class DnDCharacterSheet(commands.Cog):
             await ctx.send("Brewing failed. The ingredients share no common effects.")
 
 
+    @dnd.command(name="viewpotions")
+    async def view_potions(self, ctx, member: discord.Member = None):
+        if member is None:
+            member = ctx.author  # Default to the command invoker if no member is specified
+    
+        # Access the potions from the member's personal configuration
+        member_potions = await self.config.member(member).potions()
+    
+        if not member_potions:
+            await ctx.send(f"{member.display_name}'s potion stash is empty.")
+            return
+    
+        # Convert the potions dictionary to a list of items for easier access
+        potions_list = list(member_potions.items())
+    
+        def get_potion_embed(page_index):
+            potion_name, potion_details = potions_list[page_index]
+            embed = Embed(title=potion_name, color=discord.Color.blue())
+            for effect in potion_details['effects']:
+                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+            # Include the quantity in the title or description
+            embed.description = f"Quantity: {potion_details['quantity']}"
+            embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
+            return embed
+    
+        # Initialize the view with the member's potions
+        view = PotionView(self, member, potions_list)  # Ensure the PotionView class can handle the potions_list structure
+        # Send the initial message with the first potion's details
+        await ctx.send(embed=get_potion_embed(0), view=view)
+
+    
     async def drink_potion(self, ctx, potion_name: str):
         # Access the member's potions
         member_potions = await self.config.member(ctx.author).potions()
