@@ -351,12 +351,12 @@ class DnDCharacterSheet(commands.Cog):
         potions_list = list(member_potions.items())
         
         # Function to create an embed for a given potion index
-        async def get_potion_embed(page_index):
+        def get_potion_embed(page_index):
             potion_name, potion_details = potions_list[page_index]
 
             quantity = 1
             
-            await ctx.send(potion_details)
+            return potion_details
             
             embed = Embed(title=f"{potion_name} (Quantity: {quantity})", color=discord.Color.blue())
             for effect in potion_details['effects']:  # Assume potion details include an 'effects' list
@@ -369,7 +369,8 @@ class DnDCharacterSheet(commands.Cog):
         view = PotionView(ctx ,member, member_potions)
 
         # Send the initial message with the first potion's details (or a default message)
-        await ctx.send(embed=initial_embed, view=view)
+        #await ctx.send(embed=initial_embed, view=view)
+        await ctx.send(initial_embed, view=view)
 
 
 
