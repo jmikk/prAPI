@@ -23,6 +23,7 @@ class PotionView(View):
         potion_name, potion_details = self.potions[self.current_index]
         effects_text = "\n".join(f"{effect['name']}: {effect['text']}" for effect in potion_details['effects'])
         self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", description=effects_text, color=Color.blue())
+        return True
 
     async def send_current_embed(self):
         if hasattr(self, 'message'):
