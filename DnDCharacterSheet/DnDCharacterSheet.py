@@ -324,10 +324,14 @@ class DnDCharacterSheet(commands.Cog):
         if final_effects:
             potion_effects_data = [{'name': name, 'text': text} for name, text in final_effects]
             potion_name = "Potion of " + " and ".join(name for name, _ in final_effects)
-            
-            # Check if the potion already exists and increase the quantity if it does
+    
+            # Diagnostic logging to understand the current structure of the potion
             if potion_name in user_data['potions']:
-                # Increment quantity, retain existing effects
+                current_structure = user_data['potions'][potion_name]
+                await ctx.send(f"Current structure for {potion_name}: {current_structure} (Type: {type(current_structure)})")
+    
+            # Check if the potion already exists and increase the quantity if it does
+            if potion_name in user_data['potions'] and isinstance(user_data['potions'][potion_name], dict) and 'quantity' in user_data['potions'][potion_name]:
                 user_data['potions'][potion_name]['quantity'] += 1
             else:
                 # New potion entry with effects and initial quantity
@@ -340,6 +344,7 @@ class DnDCharacterSheet(commands.Cog):
             await self.config.member(ctx.author).set(user_data)
         else:
             await ctx.send("Brewing failed. The ingredients share no common effects.")
+
 
 
 
