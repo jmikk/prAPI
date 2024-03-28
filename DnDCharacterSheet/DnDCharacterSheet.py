@@ -288,7 +288,7 @@ class DnDCharacterSheet(commands.Cog):
 
     @dnd.command(name="brew")
     async def brew(self, ctx, *item_names: str):
-        """Brew a potion using items from your inventory, using up to three of the most shared effects, and add it to your potions with effect text."""
+        """Brew a potion using items from your inventory, using up to three of the most shared effects, and add or update it in your potions with effect text and adjusted quantity."""
         user_data = await self.config.member(ctx.author).all()
     
         if 'potions' not in user_data:
@@ -307,6 +307,7 @@ class DnDCharacterSheet(commands.Cog):
                 effect_text = effect.get('Effect', 'Unnamed Effect')
                 all_effects.append((effect_name, effect_text))
     
+            # Remove the used ingredients from the inventory
             del user_data['inventory'][item_name]
     
         # Count the effects based on effect names and find the most common ones
@@ -323,12 +324,21 @@ class DnDCharacterSheet(commands.Cog):
         if final_effects:
             potion_effects_data = [{'name': name, 'text': text} for name, text in final_effects]
             potion_name = "Potion of " + " and ".join(name for name, _ in final_effects)
-            user_data['potions'][potion_name] = potion_effects_data
+            
+            # Check if the potion already exists and increase the quantity if it does
+            if potion_name in user_data['potions']:
+                user_data['potions'][potion_name]['quantity'] += 1
+            else:
+                user_data['potions'][potion_name] = {
+                    'effects': potion_effects_data,
+                    'quantity': 1  # Set the initial quantity for new potions
+                }
     
-            await ctx.send(f"Successfully brewed a {potion_name} with effects: {', '.join(name for name, _ in final_effects)}")
+            await ctx.send(f"Successfully brewed {user_data['potions'][potion_name]['quantity']}x {potion_name} with effects: {', '.join(name for name, _ in final_effects)}")
             await self.config.member(ctx.author).set(user_data)
         else:
             await ctx.send("Brewing failed. The ingredients share no common effects.")
+
 
 
     @dnd.command(name="viewpotions")
