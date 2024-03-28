@@ -355,17 +355,7 @@ class DnDCharacterSheet(commands.Cog):
         # Send a confirmation message
         await ctx.send("The guild stash has been cleared.")
 
-        # Function to create an embed for a given potion index
-    def get_potion_embed(page_index):
-            potion_name, potion_details = potions_list[page_index]
 
-            quantity = potion_details['quantity'] 
-            
-            embed = Embed(title=f"{potion_name} (Quantity: {quantity})", color=discord.Color.blue())
-            for effect in potion_details['effects']:  # Assume potion details include an 'effects' list
-                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-            embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
-            return embed  
     @dnd.command(name="viewpotions")
     async def view_potions(self, ctx, member: discord.Member = None):
         if member is None:
@@ -378,27 +368,24 @@ class DnDCharacterSheet(commands.Cog):
             return
     
         potions_list = list(member_potions.items())
-        initial_embed = get_potion_embed(0) if potions_list else Embed(title="No potions available")
-        
+    
+        # Check if there are potions in the list
+        if potions_list:
+            potion_name, potion_details = potions_list[0]  # Get the first potion's details
+            effects_text = "\n".join(f"{effect['name']}: {effect['text']}" for effect in potion_details['effects'])
+            initial_embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", description=effects_text, color=Color.blue())
+            initial_embed.set_footer(text=f"Potion 1 of {len(potions_list)}")
+        else:
+            # No potions available
+            initial_embed = Embed(title="No potions available", description="You currently have no potions in your stash.", color=Color.red())
+    
         # Send the initial message
         message = await ctx.send(embed=initial_embed)
-        
+    
         # Instantiate PotionView with the message reference
         view = PotionView(self, ctx, member, potions_list, message=message)
-        
-        # Update the view for the message to ensure it's linked
-        message.edit(view=view)
+        await message.edit(embed=initial_embed, view=view)  # Make sure the view is attached to the message
 
-        
-
-    
-        # Initialize the view with the member's potions
-        initial_embed = get_potion_embed(0) if potions_list else Embed(title="No potions available", description="You currently have no potions in your stash.", color=discord.Color.red())
-        view = PotionView(self, ctx ,member, list(member_potions.items()))
-
-        # Send the initial message with the first potion's details (or a default message)
-        PotionView.message = await ctx.send(embed=initial_embed, view=view)
-        #await ctx.send(initial_embed, view=view)
 
 
 
