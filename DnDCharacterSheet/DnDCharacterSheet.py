@@ -26,26 +26,26 @@ class PotionView(View):
         effects_text = "\n".join(f"{effect['name']}: {effect['text']}" for effect in potion_details['effects'])
         self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", description=effects_text, color=Color.blue())
 
-    async def send_current_embed(self):
-        if hasattr(self, 'message'):
-            await self.message.edit(embed=self.embed, view=self)
+    async def send_or_edit_embed(self):
+        if self.message:
+            await self.message.edit(embed=self.embed)
         else:
             self.message = await self.ctx.send(embed=self.embed, view=self)
 
     @discord.ui.button(label="◀️", style=ButtonStyle.secondary)
-    async def previous(self, button: Button, interaction: Interaction):
-        try:
-            self.current_index = (self.current_index - 1) % len(self.potions)
-            self.update_embed()
-            await self.send_current_embed()
-        except Exception as e:
-            await interaction.followup.send(f"An error occurred: {e}")
+    async def previous_button_callback(self, button: Button, interaction: Interaction):
+        self.current_index = (self.current_index - 1) % len(self.potions)  # Wrap around to the last item if at the first
+        self.update_embed()
+        await self.send_or_edit_embed()
+        await interaction.response.defer()
 
     @discord.ui.button(label="▶️", style=ButtonStyle.secondary)
-    async def next(self, button: Button, interaction: Interaction):
-        self.current_index = (self.current_index + 1) % len(self.potions)
+    async def next_button_callback(self, button: Button, interaction: Interaction):
+        self.current_index = (self.current_index + 1) % len(self.potions)  # Wrap around to the first item if at the last
         self.update_embed()
-        await self.send_current_embed()
+        await self.send_or_edit_embed()
+        await interaction.response.defer()
+
 
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
     async def drink(self, interaction: Interaction, button: Button):
