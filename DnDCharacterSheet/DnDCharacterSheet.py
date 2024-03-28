@@ -14,7 +14,7 @@ class PotionView(View):
         super().__init__()
         self.ctx = ctx
         self.member = member
-        self.potions = potions
+        self.potions = list(potions.items)
         self.current_index = 0
         self.update_embed()
 
@@ -44,6 +44,8 @@ class PotionView(View):
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
     async def drink(self, button: Button, interaction: Interaction):
         potion_name, potion_details = self.potions[self.current_index]
+        await interaction.followup.send(f"{potion_name}|\n|{potion_details}")
+
         potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
         potion_details['quantity'] -= 1
     
