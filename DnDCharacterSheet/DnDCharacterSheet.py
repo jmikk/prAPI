@@ -43,20 +43,23 @@ class PotionView(View):
 
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
     async def drink(self, button: Button, interaction: Interaction):
-        potion_name, potion_details = self.potions[self.current_index]
-        await interaction.followup.send(f"{potion_name}|\n|{potion_details}")
-
-        potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
-        potion_details['quantity'] -= 1
+        try:
+            potion_name, potion_details = self.potions[self.current_index]
+            await interaction.followup.send(f"{potion_name}|\n|{potion_details}")
     
-        if potion_details['quantity'] <= 0:
-            self.potions.pop(self.current_index)
-            self.current_index = max(self.current_index - 1, 0)
-    
-        await self.cog.config.member(self.member).potions.set(dict(self.potions))
-        self.update_embed()
-        await interaction.response.edit_message(embed=self.embed, view=self)
-        await interaction.followup.send(f"You drank {potion_name}!\nEffects:\n{potion_effects}")
+            potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
+            potion_details['quantity'] -= 1
+        
+            if potion_details['quantity'] <= 0:
+                self.potions.pop(self.current_index)
+                self.current_index = max(self.current_index - 1, 0)
+        
+            await self.cog.config.member(self.member).potions.set(dict(self.potions))
+            self.update_embed()
+            await interaction.response.edit_message(embed=self.embed, view=self)
+            await interaction.followup.send(f"You drank {potion_name}!\nEffects:\n{potion_effects}")
+        except Exception as e:
+            await interaction.followup.send(f"error {e}")
 
 
     @discord.ui.button(label="Give to Guild", style=ButtonStyle.blurple)
