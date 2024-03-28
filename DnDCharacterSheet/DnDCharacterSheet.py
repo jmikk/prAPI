@@ -18,6 +18,8 @@ class PotionView(View):
         self.current_index = 0
         self.update_embed()
         self.cog = cog
+        self.embed = None  # Initialize embed as None
+        self.message = None  # Track the message displaying the embed
 
     def update_embed(self):
         potion_name, potion_details = self.potions[self.current_index]
@@ -25,11 +27,10 @@ class PotionView(View):
         self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", description=effects_text, color=Color.blue())
 
     async def send_current_embed(self):
-        await self.message.edit(embed=self.embed, view=self)
-        #if hasattr(self, 'message'):
-        #    await self.message.edit(embed=self.embed, view=self)
-        #else:
-        #    self.message = await self.ctx.send(embed=self.embed, view=self)
+        if hasattr(self, 'message'):
+            await self.message.edit(embed=self.embed, view=self)
+        else:
+            self.message = await self.ctx.send(embed=self.embed, view=self)
 
     @discord.ui.button(label="◀️", style=ButtonStyle.secondary)
     async def previous(self, button: Button, interaction: Interaction):
