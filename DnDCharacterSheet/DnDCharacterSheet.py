@@ -50,7 +50,6 @@ class PotionView(View):
             #await interaction.response.send_message(f"{potion_name}\n{potion_details['effects']}\n {potion_effects}\n{potion_quantity}", view=self)
 
             potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
-            potion_effects = set(potion_effects)
             await interaction.response.send_message(f"{potion_effects}", view=self)
 
             potion_details['quantity'] -= 1
