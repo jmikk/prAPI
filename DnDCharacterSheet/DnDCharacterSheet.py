@@ -355,7 +355,17 @@ class DnDCharacterSheet(commands.Cog):
         # Send a confirmation message
         await ctx.send("The guild stash has been cleared.")
 
-    
+        # Function to create an embed for a given potion index
+    def get_potion_embed(page_index):
+            potion_name, potion_details = potions_list[page_index]
+
+            quantity = potion_details['quantity'] 
+            
+            embed = Embed(title=f"{potion_name} (Quantity: {quantity})", color=discord.Color.blue())
+            for effect in potion_details['effects']:  # Assume potion details include an 'effects' list
+                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+            embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
+            return embed  
     @dnd.command(name="viewpotions")
     async def view_potions(self, ctx, member: discord.Member = None):
         if member is None:
@@ -380,17 +390,7 @@ class DnDCharacterSheet(commands.Cog):
         message.edit(view=view)
 
         
-        # Function to create an embed for a given potion index
-        def get_potion_embed(page_index):
-            potion_name, potion_details = potions_list[page_index]
 
-            quantity = potion_details['quantity'] 
-            
-            embed = Embed(title=f"{potion_name} (Quantity: {quantity})", color=discord.Color.blue())
-            for effect in potion_details['effects']:  # Assume potion details include an 'effects' list
-                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-            embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
-            return embed
     
         # Initialize the view with the member's potions
         initial_embed = get_potion_embed(0) if potions_list else Embed(title="No potions available", description="You currently have no potions in your stash.", color=discord.Color.red())
