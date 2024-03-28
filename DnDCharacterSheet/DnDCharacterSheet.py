@@ -22,7 +22,7 @@ class PotionView(View):
         self.message = None  # Track the message displaying the embed
 
     def update_embed(self):
-            potion_name, potion_details = potions_list[self.current_index]
+            potion_name, potion_details = potions[self.current_index]
 
             quantity = potion_details['quantity'] 
             
