@@ -56,9 +56,9 @@ class PotionView(View):
             if potion_details['quantity'] <= 0:
                 self.potions.pop(self.current_index)
                 self.current_index = max(self.current_index - 1, 0)
+            await interaction.response.send_message(f"{potion_effects}")
 
             await self.cog.config.member(self.member).potions.set({potion_name: potion_details for potion_name, potion_details in self.potions})
-            await interaction.response.send_message(f"{potion_effects}")
 
             self.update_embed()
 
