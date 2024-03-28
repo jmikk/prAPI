@@ -28,8 +28,8 @@ class PotionView(View):
             
             self.embed = Embed(title=f"{potion_name} (Quantity: {quantity})", color=discord.Color.blue())
             for effect in potion_details['effects']:  # Assume potion details include an 'effects' list
-                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-            embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
+                self.embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+            self.embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
 
     async def send_or_edit_embed(self):
         if self.message:
