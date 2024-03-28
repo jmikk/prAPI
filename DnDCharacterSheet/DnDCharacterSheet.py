@@ -341,14 +341,32 @@ class DnDCharacterSheet(commands.Cog):
         if member is None:
             member = ctx.author  # Default to the command invoker if no member is specified
     
-        user_potions = await self.config.member(member).potions()
+        # Access the potions from the member's personal configuration
+        member_potions = await self.config.member(member).potions()
     
-        if not user_potions:
-            await ctx.send(f"{member.display_name} has no potions.")
+        if not member_potions:
+            await ctx.send(f"{member.display_name}'s potion stash is empty.")
             return
     
-        view = PotionView(self, ctx, member, user_potions)
-        await ctx.send("Use the buttons to navigate through your potions.", view=view)
+        # Convert the potions dictionary to a list of items for easier access
+        potions_list = list(member_potions.items())
+    
+        # Function to create an embed for a given potion index
+        def get_potion_embed(page_index):
+            potion_name, potion_details = potions_list[page_index]
+            embed = Embed(title=potion_name, color=discord.Color.blue())
+            for effect in potion_details['effects']:  # Assume potion details include an 'effects' list
+                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+            embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
+            return embed
+    
+        # Initialize the view with the member's potions
+        view = PotionView(self, member, potions_list)
+        initial_embed = get_potion_embed(0) if potions_list else Embed(title="No potions available", description="You currently have no potions in your stash.", color=discord.Color.red())
+    
+        # Send the initial message with the first potion's details (or a default message)
+        await ctx.send(embed=initial_embed, view=view)
+
 
 
 
