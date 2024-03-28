@@ -54,21 +54,22 @@ class StashView(View):
 
 
 class PotionView(View):
-    def __init__(self, cog, member, potions):
-        super().__init__(timeout=180)  # Set a timeout for the view, e.g., 3 minutes
+    def __init__(self, cog, member, potions_list):
+        super().__init__()
         self.cog = cog
         self.member = member
-        self.potions = list(potions.items())  # Work with a list for easier indexing
-        self.current_potion_index = 0
+        self.potions_list = potions_list  # Now directly using the list
+        self.current_index = 0
 
     async def update_embed(self, interaction: Interaction):
-        potion_name, effects = self.potions[self.current_potion_index]
+        potion_name, potion_details = self.potions_list[self.current_index]
         embed = Embed(title=potion_name, color=discord.Color.blue())
-        for effect in effects:
+        for effect in potion_details['effects']:
             embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-        # Include page count in the footer
-        embed.set_footer(text=f"Potion {self.current_potion_index + 1} of {len(self.potions)}")
+        embed.description = f"Quantity: {potion_details['quantity']}"
+        embed.set_footer(text=f"Potion {self.current_index + 1} of {len(self.potions_list)}")
         await interaction.response.edit_message(embed=embed, view=self)
+
 
     @discord.ui.button(label="Previous", style=ButtonStyle.blurple, custom_id="previous_potion")
     async def previous_button(self, interaction: Interaction, button: Button):
