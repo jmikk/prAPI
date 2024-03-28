@@ -345,36 +345,31 @@ class DnDCharacterSheet(commands.Cog):
             await ctx.send("Brewing failed. The ingredients share no common effects.")
 
 
+    async def drink_potion(self, ctx, potion_name: str):
+        # Access the member's potions
+        member_potions = await self.config.member(ctx.author).potions()
+    
+        # Check if the potion exists in the member's stash
+        if potion_name in member_potions:
+            potion = member_potions[potion_name]
+    
+            # Check if the potion has a 'quantity' key and reduce it by 1
+            if 'quantity' in potion and potion['quantity'] > 0:
+                potion['quantity'] -= 1
+                # If the quantity becomes 0, remove the potion from the stash
+                if potion['quantity'] == 0:
+                    del member_potions[potion_name]
+                
+                # Provide feedback to the user
+                await ctx.send(f"{ctx.author.display_name} drank a {potion_name}.")
+            else:
+                await ctx.send("This potion cannot be consumed.")
+        else:
+            await ctx.send("You don't have this potion in your stash.")
+    
+        # Save the updated potions data
+        await self.config.member(ctx.author).potions.set(member_potions)
 
-
-
-    @dnd.command(name="viewpotions")
-    async def view_potions(self, ctx, member: discord.Member = None):
-        if member is None:
-            member = ctx.author  # Default to the command invoker if no member is specified
-    
-        # Access the potions from the member's personal configuration
-        member_potions = await self.config.member(member).potions()
-    
-        if not member_potions:
-            await ctx.send(f"{member.display_name}'s potion stash is empty.")
-            return
-    
-        # Convert the potions dictionary to a list of items for easier access
-        potions_list = list(member_potions.items())
-    
-        def get_potion_embed(page_index):
-            potion_name, effects = potions_list[page_index]
-            embed = Embed(title=potion_name, color=discord.Color.blue())
-            for effect in effects:
-                embed.add_field(name=effect['name'], value=effect['text'], inline=False)
-            embed.set_footer(text=f"Potion {page_index + 1} of {len(potions_list)}")
-            return embed
-    
-        # Initialize the view with the member's potions
-        view = PotionView(self, member, member_potions)
-        # Send the initial message with the first potion's details
-        await ctx.send(embed=get_potion_embed(0), view=view)
 
     
     async def drink_potion(self, interaction: Interaction, potion_name: str, guild: discord.Guild):
