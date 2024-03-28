@@ -423,7 +423,7 @@ class DnDCharacterSheet(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=False)
 
 
-    async def give_potion_to_guild(self, interaction: Interaction, potion_name: str, guild: discord.Guild, member: discord.Member):
+    async def give_potion_to_guild(self, interaction: Interaction, potion_name: str, guild: discord.Guild, member: discord.Member, potion_details):
         guild_stash = await self.config.guild(guild).stash()
         member_potions = await self.config.member(member).potions()
     
