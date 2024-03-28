@@ -58,8 +58,8 @@ class PotionView(View):
         super().__init__()
         self.cog = cog
         self.member = member
-        self.potions_list = potions_list  # Now directly using the list
-        self.current_index = 0
+        self.potions_list = potions_list  # This stores the list of potions.
+        self.current_index = 0  # To keep track of the current potion being viewed.
 
     async def update_embed(self, interaction: Interaction):
         potion_name, potion_details = self.potions_list[self.current_index]
@@ -93,11 +93,10 @@ class PotionView(View):
     @discord.ui.button(label="Give to Guild", style=ButtonStyle.gray, custom_id="give_to_guild")
     async def give_to_guild_button(self, interaction: Interaction, button: Button):
         try:
-            potion_name, _ = self.potions[self.current_potion_index]
-            await self.cog.give_potion_to_guild(interaction, potion_name, interaction.guild, self.member)
+            potion_name, potion_details = self.potions_list[self.current_index]
+            await self.cog.give_potion_to_guild(interaction, potion_name, interaction.guild, self.member, potion_details)
         except Exception as e:
-            await interaction.response.send_message(f"An error occurred while trying to take the potion from the stash. {e}", ephemeral=True)
-
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
     
 
 
