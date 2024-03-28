@@ -26,10 +26,11 @@ class PotionView(View):
         self.send_current_embed()
 
     async def send_current_embed(self):
-        if hasattr(self, 'message'):
-            await self.message.edit(embed=self.embed, view=self)
-        else:
-            self.message = await self.ctx.send(embed=self.embed, view=self)
+        await self.message.edit(embed=self.embed, view=self)
+        #if hasattr(self, 'message'):
+        #    await self.message.edit(embed=self.embed, view=self)
+        #else:
+        #    self.message = await self.ctx.send(embed=self.embed, view=self)
 
     @discord.ui.button(label="◀️", style=ButtonStyle.secondary)
     async def previous(self, button: Button, interaction: Interaction):
