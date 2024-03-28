@@ -384,7 +384,7 @@ class DnDCharacterSheet(commands.Cog):
         view = PotionView(self, ctx ,member, list(member_potions.items()))
 
         # Send the initial message with the first potion's details (or a default message)
-        await ctx.send(embed=initial_embed, view=view)
+        PotionView.message = await ctx.send(embed=initial_embed, view=view)
         #await ctx.send(initial_embed, view=view)
 
 
