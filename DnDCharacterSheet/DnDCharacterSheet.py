@@ -32,6 +32,8 @@ class PotionView(View):
             self.embed.set_footer(text=f"Potion {self.current_index + 1} of {len(self.potions)}")
 
     async def send_or_edit_embed(self):
+        await self.message.edit(embed=self.embed)
+
         if self.message:
             await self.message.edit(embed=self.embed)
         else:
