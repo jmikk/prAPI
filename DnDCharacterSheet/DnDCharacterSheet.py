@@ -39,15 +39,27 @@ class PotionView(View):
 
     @discord.ui.button(label="◀️", style=ButtonStyle.secondary)
     async def previous_button_callback(self, button: Button, interaction: Interaction):
-        self.current_index = (self.current_index - 1) % len(self.potions)
-        self.update_embed()
-        await interaction.response.edit_message(embed=self.embed, view=self)
+        try:
+            self.current_index = (self.current_index - 1) % len(self.potions)
+            self.update_embed()
+            await interaction.response.edit_message(embed=self.embed, view=self)
+        except Exception as e:
+            if not interaction.response.is_done():
+            await interaction.response.defer()
+            # Send the error message as a follow-up
+            await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
     
     @discord.ui.button(label="▶️", style=ButtonStyle.secondary)
     async def next_button_callback(self, button: Button, interaction: Interaction):
-        self.current_index = (self.current_index + 1) % len(self.potions)
-        self.update_embed()
-        await interaction.response.edit_message(embed=self.embed, view=self)
+        try:
+            self.current_index = (self.current_index + 1) % len(self.potions)
+            self.update_embed()
+            await interaction.response.edit_message(embed=self.embed, view=self)
+        except Exception as e:
+            if not interaction.response.is_done():
+            await interaction.response.defer()
+            # Send the error message as a follow-up
+            await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
 
 
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
