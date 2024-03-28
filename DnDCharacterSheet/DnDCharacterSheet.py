@@ -45,7 +45,7 @@ class PotionView(View):
     async def drink(self, button: Button, interaction: Interaction):
         try:
             potion_name, potion_details = self.potions[self.current_index]
-            await interaction.followup.send(f"{potion_name}|\n|{potion_details}")
+            await interaction.response.send(f"{potion_name}|\n|{potion_details}")
     
             potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
             potion_details['quantity'] -= 1
@@ -59,7 +59,7 @@ class PotionView(View):
             await interaction.response.edit_message(embed=self.embed, view=self)
             await interaction.followup.send(f"You drank {potion_name}!\nEffects:\n{potion_effects}")
         except Exception as e:
-            await interaction.followup.send(f"error {e}")
+            await interaction.response.send(f"error {e}")
 
 
     @discord.ui.button(label="Give to Guild", style=ButtonStyle.blurple)
