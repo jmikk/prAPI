@@ -10,9 +10,8 @@ from discord import Embed
 from discord import Color
 
 class PotionView(View):
-    def __init__(self, cog, ctx, member, potions):
+    def __init__(self, ctx, member, potions):
         super().__init__()
-        self.cog = cog
         self.ctx = ctx
         self.member = member
         self.potions = list(potions.items())
