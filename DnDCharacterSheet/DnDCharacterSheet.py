@@ -359,7 +359,6 @@ class DnDCharacterSheet(commands.Cog):
         if not member_potions:
             await ctx.send(f"{member.display_name}'s potion stash is empty.")
             return
-        await ctx.send(member_potions)
         # Convert the potions dictionary to a list of items for easier access
         potions_list = list(member_potions.items())
         
