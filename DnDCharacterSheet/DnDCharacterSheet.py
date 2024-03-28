@@ -339,7 +339,7 @@ class DnDCharacterSheet(commands.Cog):
                     'quantity': 1
                 }
     
-            await ctx.send(f"Successfully brewed {user_data['potions'][potion_name]['quantity']}x {potion_name} with effects: {', '.join(name for name, _ in final_effects)}")
+            await ctx.send(f"Successfully brewed {potion_name} with effects: {', '.join(name for name, _ in final_effects)}")
             await self.config.member(ctx.author).set(user_data)
         else:
             await ctx.send("Brewing failed. The ingredients share no common effects.")
