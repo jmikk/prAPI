@@ -104,9 +104,11 @@ class PotionView(View):
     
             # Update the view
             self.update_embed()
-            await interaction.edit_original_response(embed=self.embed, view=self)
+            #await interaction.edit_original_response(embed=self.embed, view=self)
     
             # Send a follow-up message to confirm the action to the user
+            await interaction.response.edit_message(embed=self.embed, view=self)
+
             await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.")
     
         except Exception as e:
