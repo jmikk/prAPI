@@ -119,58 +119,72 @@ class PotionView(View):
 
 
     async def give_to_guild(self, interaction: discord.Interaction):
+        await interaction.response.defer()  # Defer the response to have more time for processing.
+
         try:
             potion_name, potion_details = self.potions[self.current_index]
-            potion_quantity = potion_details['quantity']
-            potion_effects = potion_details['effects']
-            #await interaction.response.send_message(f"{potion_name}\n{potion_details['effects']}\n {potion_effects}\n{potion_quantity}", view=self)
-
-            potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
-
+    
+            # Decrease potion quantity in the user's stash.
             potion_details['quantity'] -= 1
     
-            if potion_details['quantity'] <= 0:
-                self.potions.pop(self.current_index)
-                self.current_index = max(self.current_index - 1, 0)
-            #await interaction.response.send_message(f"{potion_effects}")
-            await self.cog.config.member(self.member).potions.set({potion_name: potion_details for potion_name, potion_details in self.potions})
-
-
-            potion_details['quantity'] += 2
-            await self.cog.config.guild(self.guild).stash.set({potion_name: potion_details for potion_name, potion_details in self.guild_potions})
-            
-            self.update_embed()
-
-            await interaction.response.edit_message(embed=self.embed, view=self)
-            await interaction.followup.send(f"{self.member.mention} gave {potion_name} to the guild.")
-        except Exception as e:
-            await interaction.followup.send(f"An error occurred: {e}")
-
-    @discord.ui.button(label="Drink", style=ButtonStyle.green)
-    async def drink(self, interaction: Interaction, button: Button):
-        try:
-            potion_name, potion_details = self.potions[self.current_index]
-            potion_quantity = potion_details['quantity']
-            potion_effects = potion_details['effects']
-            #await interaction.response.send_message(f"{potion_name}\n{potion_details['effects']}\n {potion_effects}\n{potion_quantity}", view=self)
-
-            potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
-
-            potion_details['quantity'] -= 1
+            # Fetch the current guild stash.
+            guild_stash = await self.cog.config.guild(interaction.guild).stash()
     
+            # Add or update the potion in the guild's stash.
+            if potion_name in guild_stash:
+                guild_stash[potion_name]['quantity'] += 1
+            else:
+                guild_stash[potion_name] = {'quantity': 1, 'effects': potion_details['effects']}
+    
+            # Update the guild's stash in the config.
+            await self.cog.config.guild(interaction.guild).stash.set(guild_stash)
+    
+            # If the potion's quantity has dropped to 0, remove it from the user's potions.
             if potion_details['quantity'] <= 0:
                 self.potions.pop(self.current_index)
-                self.current_index = max(self.current_index - 1, 0)
-            #await interaction.response.send_message(f"{potion_effects}")
-            await self.cog.config.member(self.member).potions.set({potion_name: potion_details for potion_name, potion_details in self.potions})
-
+                if self.current_index > 0:  # Adjust the index if necessary.
+                    self.current_index -= 1
+    
+            # Update the user's potions in the config.
+            await self.cog.config.member(interaction.user).potions.set({potion_name: potion_details for potion_name, potion_details in self.potions if potion_details['quantity'] > 0})
+    
+            # Update the embed to reflect changes.
             self.update_embed()
-
-            
-            await interaction.response.edit_message(embed=self.embed, view=self)
-            await interaction.followup.send(f"{self.member.mention} drank {potion_name}!\nEffects:\n{potion_effects}")
+    
+            # Confirm the action to the user.
+            await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.", ephemeral=True)
+    
+            # Edit the original message with the updated embed and view.
+            await interaction.edit_original_response(embed=self.embed, view=self)
+    
         except Exception as e:
-            await interaction.followup.send(f"An error occurred: {e}")
+            await interaction.followup.send(f"An error occurred: {str(e)}", ephemeral=True)
+    
+        @discord.ui.button(label="Drink", style=ButtonStyle.green)
+        async def drink(self, interaction: Interaction, button: Button):
+            try:
+                potion_name, potion_details = self.potions[self.current_index]
+                potion_quantity = potion_details['quantity']
+                potion_effects = potion_details['effects']
+                #await interaction.response.send_message(f"{potion_name}\n{potion_details['effects']}\n {potion_effects}\n{potion_quantity}", view=self)
+    
+                potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
+    
+                potion_details['quantity'] -= 1
+        
+                if potion_details['quantity'] <= 0:
+                    self.potions.pop(self.current_index)
+                    self.current_index = max(self.current_index - 1, 0)
+                #await interaction.response.send_message(f"{potion_effects}")
+                await self.cog.config.member(self.member).potions.set({potion_name: potion_details for potion_name, potion_details in self.potions})
+    
+                self.update_embed()
+    
+                
+                await interaction.response.edit_message(embed=self.embed, view=self)
+                await interaction.followup.send(f"{self.member.mention} drank {potion_name}!\nEffects:\n{potion_effects}")
+            except Exception as e:
+                await interaction.followup.send(f"An error occurred: {e}")
 
 
 
