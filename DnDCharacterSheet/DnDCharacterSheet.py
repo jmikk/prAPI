@@ -323,6 +323,8 @@ class DnDCharacterSheet(commands.Cog):
         
         if item_name in guild_items:
             item_effects = guild_items[item_name]
+            await ctx.send(item_effects)
+
         else:
             # Pick 4 unique random effects for the new item
             item_effects = random.sample(all_effects, 4)
