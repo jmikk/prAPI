@@ -40,16 +40,17 @@ class PotionView(View):
             self.current_index = len(self.potions) - 1  # Loop back to the last potion
         self.update_embed()
 
-        # Update the original message with the new embed
-        await self.message.edit(embed=self.embed, view=self)
+        # Respond to the interaction by updating the message with the new embed
+        await interaction.response.edit_message(embed=self.embed, view=self)
 
     async def next_potion(self, interaction):
         # Increment the index and update the embed
         self.current_index = (self.current_index + 1) % len(self.potions)  # Loop back to the first potion
         self.update_embed()
 
-        # Update the original message with the new embed
-        await self.message.edit(embed=self.embed, view=self)
+        # Respond to the interaction by updating the message with the new embed
+        await interaction.response.edit_message(embed=self.embed, view=self)
+
 
     def update_embed(self):
         if self.potions:
