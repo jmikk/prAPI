@@ -96,41 +96,46 @@ class PotionView(View):
 
 
     async def give_to_guild(self, button: discord.ui.Button, interaction: discord.Interaction):
-        try:
-            potion_name = self.potions[self.current_index]
+    await interaction.response.defer(ephemeral=True)  # Ensure interaction is acknowledged
 
-            user_potions = await self.config.member(user).potions()
-            guild_stash = await self.config.guild(guild).stash()    
-            
-            # Add the potion to the guild's stash
-            if potion_name in guild_stash:
-                guild_stash[potion_name]['quantity'] += 1
-            else:
-                guild_stash[potion_name] = {'quantity': 1, 'effects': user_potions[potion_name].get('effects', [])}
+    try:
+        potion_name, potion_details = self.potions[self.current_index]  # Corrected potion extraction
 
-    
-            #     Decrement the potion's quantity from the user's inventory
-            user_potions[potion_name]['quantity'] -= 1
-        
-            # If the potion quantity is 0, remove it from the inventory
-            if user_potions[potion_name]['quantity'] == 0:
-                del user_potions[potion_name]
-        
-                if self.current_index > 0:  # Adjust the index if necessary
-                    self.current_index -= 1
-    
-            # Save the updated stashes
-            await self.config.member(user).potions.set(user_potions)
-            await self.config.guild(guild).stash.set(guild_stash)
-    
-            # Update the view
-            self.update_embed()
-            
-            await interaction.edit_original_response(embed=self.embed, view=self)
-            # Send a follow-up message to confirm the action to the user
-            await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.", ephemeral=True)
-        except Exception as e:
-            await interaction.followup.send(f"An error occurred: {e}")
+        user = interaction.user  # Assuming the user who clicked is the one giving the potion
+        guild = interaction.guild  # The guild where the interaction happened
+
+        user_potions = await self.config.member(user).potions()
+        guild_stash = await self.config.guild(guild).stash()
+
+        # Add the potion to the guild's stash
+        if potion_name in guild_stash:
+            guild_stash[potion_name]['quantity'] += 1
+        else:
+            guild_stash[potion_name] = {'quantity': 1, 'effects': potion_details.get('effects', [])}
+
+        # Decrement the potion's quantity from the user's inventory
+        user_potions[potion_name]['quantity'] -= 1
+
+        # If the potion quantity is 0, remove it from the inventory
+        if user_potions[potion_name]['quantity'] == 0:
+            del user_potions[potion_name]
+            if self.current_index > 0:  # Adjust the index if necessary
+                self.current_index -= 1
+
+        # Save the updated stashes
+        await self.config.member(user).potions.set(user_potions)
+        await self.config.guild(guild).stash.set(guild_stash)
+
+        # Update the view
+        self.update_embed()
+        await interaction.edit_original_response(embed=self.embed, view=self)
+
+        # Send a follow-up message to confirm the action to the user
+        await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.", ephemeral=True)
+
+    except Exception as e:
+        await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
+
 
 
 class DnDCharacterSheet(commands.Cog):
