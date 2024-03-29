@@ -136,22 +136,11 @@ class PotionView(View):
             await self.cog.config.member(self.member).potions.set({potion_name: potion_details for potion_name, potion_details in self.potions})
 
 
-            potion_name, potion_details = self.guild_potions[self.current_index]
-            potion_quantity = potion_details['quantity']
-            potion_effects = potion_details['effects']
-            #await interaction.response.send_message(f"{potion_name}\n{potion_details['effects']}\n {potion_effects}\n{potion_quantity}", view=self)
-
-            potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
-
-            potion_details['quantity'] += 1
-    
-        
+            potion_details['quantity'] += 2
             await self.cog.config.guild(self.guild).stash.set({potion_name: potion_details for potion_name, potion_details in self.guild_potions})
-            
             
             self.update_embed()
 
-            
             await interaction.response.edit_message(embed=self.embed, view=self)
             await interaction.followup.send(f"{self.member.mention} gave {potion_name} to the guild.")
         except Exception as e:
