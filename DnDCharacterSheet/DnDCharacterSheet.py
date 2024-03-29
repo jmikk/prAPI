@@ -12,6 +12,7 @@ from discord.utils import MISSING
 from discord import ui
 
 
+
 class GuildStashView(ui.View):
     def __init__(self, cog, ctx, guild_stash):
         super().__init__()
