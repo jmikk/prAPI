@@ -99,8 +99,8 @@ class PotionView(View):
                     self.current_index -= 1
     
             # Save the updated stashes
-            await DnDCharacterSheet.config.member(user).potions.set(user_potions)
-            await DnDCharacterSheet.config.guild(guild).stash.set(guild_stash)
+            await self.cog.config.member(user).potions.set(user_potions)
+            await self.cog.config.guild(guild).stash.set(guild_stash)
     
             # Update the view
             self.update_embed()
