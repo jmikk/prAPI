@@ -385,21 +385,23 @@ class DnDCharacterSheet(commands.Cog):
             except asyncio.TimeoutError:
                 await message.clear_reactions()
                 break
-
+    
     @dnd.command(name="viewinventory")
     async def viewinventory(self, ctx, member: discord.Member = None):
         """View the inventory of a specified user, or your own if no user is specified."""
-
+    
         if not member:
             member = ctx.author
-
+    
         user_inventory = await self.config.member(member).inventory()
-
+    
         if user_inventory:
-            inventory_list = list(user_inventory.keys())
+            # Construct a list of strings with each item's name and quantity
+            inventory_list = [f"{item_name} (x{details['quantity']})" for item_name, details in user_inventory.items()]
             await self.paginate_inventory(ctx, inventory_list, member)
         else:
             await ctx.send(f"{member.display_name} has no items in their inventory.")
+
 
     @dnd.command(name="clearinventory")
     @commands.is_owner()
