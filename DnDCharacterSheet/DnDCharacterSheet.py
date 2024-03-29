@@ -41,7 +41,7 @@ class PotionView(View):
         log_channel = self.bot.get_channel(log_channel_id)
     
         if log_channel:  # Check if the channel was found
-            await log_channel.send(f"```{message}```")  # Using Markdown code blocks to format the message
+            await log_channel.send(f"```log: {message}```")  # Using Markdown code blocks to format the message
         else:
             print("Log channel not found.")
 
