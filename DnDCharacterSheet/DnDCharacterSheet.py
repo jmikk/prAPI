@@ -32,12 +32,16 @@ class GuildStashView(ui.View):
 
     @ui.button(label="Previous", style=ButtonStyle.grey)
     async def previous_button_callback(self, button, interaction):
-        if self.current_index > 0:
-            self.current_index -= 1
-        else:
-            self.current_index = len(self.guild_stash) - 1  # Loop to the end
-        self.update_embed()
-        await interaction.response.edit_message(embed=self.embed, view=self)
+        try:
+            if self.current_index > 0:
+                self.current_index -= 1
+            else:
+                self.current_index = len(self.guild_stash) - 1  # Loop to the end
+            self.update_embed()
+            await interaction.response.edit_message(embed=self.embed, view=self)
+        except Exception as e:
+            await interaction.followup.send(f"An error occurred: {e}")
+        
 
     @ui.button(label="Next", style=ButtonStyle.grey)
     async def next_button_callback(self, button, interaction):
