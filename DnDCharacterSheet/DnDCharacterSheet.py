@@ -39,7 +39,6 @@ class PotionView(View):
     async def log(self, message: str):
         await self.ctx.send(message)
 
-
     async def previous_potion(self, interaction):
         # Decrement the index and update the embe
         if self.current_index > 0:
@@ -81,8 +80,8 @@ class PotionView(View):
             user = interaction.user  # Assuming the user who clicked is the one giving the potion
             guild = interaction.guild  # The guild where the interaction happened
     
-            user_potions = await DnDCharacterSheet.config.member(user).potions()
-            guild_stash = await DnDCharacterSheet.config.guild(guild).stash()
+            user_potions = await self.cog.config.member(user).potions()
+            guild_stash = await self.cog.config.guild(guild).stash()
     
             # Add the potion to the guild's stash
             if potion_name in guild_stash:
