@@ -105,6 +105,7 @@ class PotionView(View):
         else:
             guild_stash[potion_name] = potion_details.copy()
             guild_stash[potion_name]['quantity'] = 1
+        await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.", ephemeral=True)
 
         # Update user's potion stash
         potion_details['quantity'] -= 1
