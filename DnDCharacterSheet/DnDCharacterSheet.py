@@ -11,11 +11,12 @@ from discord import Color
 from discord.utils import MISSING
 
 class PotionView(View):
-    def __init__(self, cog, ctx, member, potions, message=None):
+    def __init__(self, cog, ctx, member, potions,guild_potions, message=None):
         super().__init__()
         self.ctx = ctx
         self.member = member
         self.potions = potions
+        self.guild_potions = potions
         self.current_index = 0
         self.cog = cog
         self.message = message  # The original message reference
@@ -71,39 +72,6 @@ class PotionView(View):
 
     async def give_to_guild(self, interaction: discord.Interaction):
         try:
-
-            potion_name, potion_details = self.potions[self.current_index]  # Corrected potion extraction
-    
-            user = interaction.user  # Assuming the user who clicked is the one giving the potion
-            guild = interaction.guild  # The guild where the interaction happened
-    
-            user_potions = await self.cog.config.member(user).potions()
-            guild_stash = await self.cog.config.guild(guild).stash()
-    
-            # Add the potion to the guild's stash
-            if potion_name in guild_stash:
-                guild_stash[potion_name]['quantity'] += 1
-            else:
-                guild_stash[potion_name] = {'quantity': 1, 'effects': potion_details.get('effects', [])}
-    
-            # Decrement the potion's quantity from the user's inventory
-            user_potions[potion_name]['quantity'] -= 1
-    
-            # If the potion quantity is 0, remove it from the inventory
-            if user_potions[potion_name]['quantity'] <= 0:
-                user_potions.pop(self.current_index)
-                self.potions.pop(self.current_index)
-                self.current_index = max(self.current_index - 1, 0)
-
-                
-    
-            # Save the updated stashes
-            await self.cog.config.member(user).potions.set(user_potions)
-            await self.cog.config.guild(guild).stash.set(guild_stash)
-
-
-
-
             potion_name, potion_details = self.potions[self.current_index]
             potion_quantity = potion_details['quantity']
             potion_effects = potion_details['effects']
@@ -116,18 +84,30 @@ class PotionView(View):
             if potion_details['quantity'] <= 0:
                 self.potions.pop(self.current_index)
                 self.current_index = max(self.current_index - 1, 0)
+            #await interaction.response.send_message(f"{potion_effects}")
+            await self.cog.config.member(self.member).potions.set({potion_name: potion_details for potion_name, potion_details in self.potions})
+
+
+            potion_name, potion_details = self.guild_potions[self.current_index]
+            potion_quantity = potion_details['quantity']
+            potion_effects = potion_details['effects']
+            #await interaction.response.send_message(f"{potion_name}\n{potion_details['effects']}\n {potion_effects}\n{potion_quantity}", view=self)
+
+            potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
+
+            potion_details['quantity'] += 1
+    
+        
+            await self.cog.config.guild(self.guild).stash.set({potion_name: potion_details for potion_name, potion_details in self.guild_potions})
+            
+            
+            self.update_embed()
 
             
-            
-            # Update the view
-            self.update_embed()
-                        
-            # Send a follow-up message to confirm the action to the user
             await interaction.response.edit_message(embed=self.embed, view=self)
-            await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.")
-    
+            await interaction.followup.send(f"{self.member.mention} gave {potion_name} to the guild.")
         except Exception as e:
-            await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
+            await interaction.followup.send(f"An error occurred: {e}")
 
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
     async def drink(self, interaction: Interaction, button: Button):
@@ -418,8 +398,11 @@ class DnDCharacterSheet(commands.Cog):
     async def view_potions(self, ctx):
         
         member = ctx.author
+        guild = ctx.guild
     
         member_potions = await self.config.member(member).potions()
+        guild_potions = await self.config.guild(guild).potions()
+
     
         if not member_potions:
             await ctx.send(f"{member.display_name}'s potion stash is empty.")
@@ -436,12 +419,12 @@ class DnDCharacterSheet(commands.Cog):
         else:
             # No potions available
             initial_embed = Embed(title="No potions available", description="You currently have no potions in your stash.", color=Color.red())
-    
+        
         # Send the initial message
         message = await ctx.send(embed=initial_embed)
     
         # Instantiate PotionView with the message reference
-        view = PotionView(self, ctx, member, potions_list, message=message)
+        view = PotionView(self, ctx, member, potions_list, guild_potions, message=message)
         await message.edit(embed=initial_embed, view=view)  # Make sure the view is attached to the message
 
 
