@@ -33,7 +33,7 @@ class GuildStashView(ui.View):
     def update_embed(self):
         if self.potions:
             potion_name, potion_details = self.potions[self.current_index]
-            self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", color=Color.blue())
+            self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", color=Color.gold())
     
             # Iterate over each effect in the potion's details and add it as a field
             for effect in potion_details['effects']:
