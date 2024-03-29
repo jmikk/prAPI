@@ -314,6 +314,8 @@ class DnDCharacterSheet(commands.Cog):
     @commands.has_role("Last Light (DM)")
     async def giveitem(self, ctx, member: discord.Member, item_name: str):
         """Gives a randomly effectuated item to a specified player"""
+
+        item_name = item_name.lower()
     
         # Read effects from TSV
         all_effects = await self.read_effects_tsv()
@@ -478,6 +480,10 @@ class DnDCharacterSheet(commands.Cog):
     @dnd.command(name="brew")
     async def brew(self, ctx, *item_names: str):
         """Brew a potion using items from your inventory, using up to three of the most shared effects, and add or update it in your potions with effect text and adjusted quantity."""
+
+        # Convert all items in the list to lowercase
+        item_names = [item.lower() for item in item_names]
+        
         if len(item_names) < 1:
             await ctx.send("Can't make a potion with only one ingredent!")
             return
