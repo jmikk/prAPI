@@ -313,10 +313,10 @@ class DnDCharacterSheet(commands.Cog):
     @commands.has_role("Last Light (DM)")
     async def giveitem(self, ctx, member: discord.Member, item_name: str):
         """Gives a randomly effectuated item to a specified player"""
-
+    
         # Read effects from TSV
         all_effects = await self.read_effects_tsv()
-
+    
         # Check if item already exists in guild config
         guild_items = await self.config.guild(ctx.guild).items.all()
         
@@ -327,13 +327,22 @@ class DnDCharacterSheet(commands.Cog):
             item_effects = random.sample(all_effects, 4)
             # Save the new item with its effects to the guild config
             await self.config.guild(ctx.guild).items.set_raw(item_name, value=item_effects)
-
+    
         # Add the item to the specified user's inventory
         user_inventory = await self.config.member(member).inventory.all()
-        user_inventory[item_name] = item_effects
+    
+        if item_name in user_inventory:
+            # Item exists, increment the quantity
+            user_inventory[item_name]['quantity'] += 1
+        else:
+            # New item, add with a quantity of 1 and its effects
+            user_inventory[item_name] = {'quantity': 1, 'effects': item_effects}
+    
         await self.config.member(member).inventory.set(user_inventory)
+    
+        await ctx.send(f"{member.display_name} has been given the item: {item_name}!")
 
-        await ctx.send(f"{member.display_name} has been given the item: {item_name} with {item_effects}!")
+
 
     
     async def paginate_inventory(self, ctx, inventory, member):
