@@ -465,6 +465,10 @@ class DnDCharacterSheet(commands.Cog):
     @dnd.command(name="brew")
     async def brew(self, ctx, *item_names: str):
         """Brew a potion using items from your inventory, using up to three of the most shared effects, and add or update it in your potions with effect text and adjusted quantity."""
+        if len(item_names) < 1:
+            await ctx.send("Can't make a potion with only one ingredent!")
+            return
+        
         user_data = await self.config.member(ctx.author).all()
     
         # Ensure the potions key exists in user_data
@@ -479,7 +483,7 @@ class DnDCharacterSheet(commands.Cog):
         ]
     
         if missing_or_insufficient_items:
-            await ctx.send(f"Brewing failed, missing or insufficient: {', '.join(missing_or_insufficient_items)}")
+            await ctx.send(f"Brewing failed, missing: {', '.join(missing_or_insufficient_items)}")
             return
     
         all_effects = []  # Store tuples of (effect_name, effect_text)
