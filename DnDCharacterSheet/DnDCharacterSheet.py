@@ -325,6 +325,7 @@ class DnDCharacterSheet(commands.Cog):
         else:
             # Pick 4 unique random effects for the new item
             item_effects = random.sample(all_effects, 4)
+            await ctx.send(item_effects)
             # Save the new item with its effects to the guild config
             await self.config.guild(ctx.guild).items.set_raw(item_name, value=item_effects)
     
