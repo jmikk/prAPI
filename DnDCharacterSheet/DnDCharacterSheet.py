@@ -152,13 +152,13 @@ class PotionView(View):
             self.update_embed()
     
             # Confirm the action to the user.
-            await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.", ephemeral=True)
+            await interaction.followup.send(f"{self.memebr.mention} gave one {potion_name} to the guild's stash.")
     
             # Edit the original message with the updated embed and view.
             await interaction.edit_original_response(embed=self.embed, view=self)
     
         except Exception as e:
-            await interaction.followup.send(f"An error occurred: {str(e)}", ephemeral=True)
+            await interaction.followup.send(f"An error occurred: {str(e)}")
     
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
     async def drink(self, interaction: Interaction, button: Button):
