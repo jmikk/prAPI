@@ -160,31 +160,31 @@ class PotionView(View):
         except Exception as e:
             await interaction.followup.send(f"An error occurred: {str(e)}", ephemeral=True)
     
-        @discord.ui.button(label="Drink", style=ButtonStyle.green)
-        async def drink(self, interaction: Interaction, button: Button):
-            try:
-                potion_name, potion_details = self.potions[self.current_index]
-                potion_quantity = potion_details['quantity']
-                potion_effects = potion_details['effects']
+    @discord.ui.button(label="Drink", style=ButtonStyle.green)
+    async def drink(self, interaction: Interaction, button: Button):
+        try:
+            potion_name, potion_details = self.potions[self.current_index]
+            potion_quantity = potion_details['quantity']
+            potion_effects = potion_details['effects']
                 #await interaction.response.send_message(f"{potion_name}\n{potion_details['effects']}\n {potion_effects}\n{potion_quantity}", view=self)
     
-                potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
+            potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
     
-                potion_details['quantity'] -= 1
+            potion_details['quantity'] -= 1
         
-                if potion_details['quantity'] <= 0:
-                    self.potions.pop(self.current_index)
-                    self.current_index = max(self.current_index - 1, 0)
+            if potion_details['quantity'] <= 0:
+                self.potions.pop(self.current_index)
+                self.current_index = max(self.current_index - 1, 0)
                 #await interaction.response.send_message(f"{potion_effects}")
-                await self.cog.config.member(self.member).potions.set({potion_name: potion_details for potion_name, potion_details in self.potions})
+            await self.cog.config.member(self.member).potions.set({potion_name: potion_details for potion_name, potion_details in self.potions})
     
-                self.update_embed()
+            self.update_embed()
     
                 
-                await interaction.response.edit_message(embed=self.embed, view=self)
-                await interaction.followup.send(f"{self.member.mention} drank {potion_name}!\nEffects:\n{potion_effects}")
-            except Exception as e:
-                await interaction.followup.send(f"An error occurred: {e}")
+            await interaction.response.edit_message(embed=self.embed, view=self)
+            await interaction.followup.send(f"{self.member.mention} drank {potion_name}!\nEffects:\n{potion_effects}")
+        except Exception as e:
+            await interaction.followup.send(f"An error occurred: {e}")
 
 
 
