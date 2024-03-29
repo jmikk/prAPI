@@ -92,7 +92,6 @@ class PotionView(View):
             # If the potion quantity is 0, remove it from the inventory
             if user_potions[potion_name]['quantity'] <= 0:
                 user_potions.pop(self.current_index)
-                self.current_index = max(self.current_index - 1, 0)
                 self.potions.pop(self.current_index)
                 self.current_index = max(self.current_index - 1, 0)
 
