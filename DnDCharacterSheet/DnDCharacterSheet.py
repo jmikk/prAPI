@@ -579,11 +579,6 @@ class DnDCharacterSheet(commands.Cog):
     @commands.has_permissions(administrator=True)  # Ensure only administrators can run this
     async def clear_all_inventories(self, ctx):
         # Confirm before proceeding
-        confirmation = await ctx.prompt("Are you sure you want to clear ALL member inventories? This cannot be undone. Type 'yes' to confirm.")
-        if confirmation.lower() != 'yes':
-            await ctx.send("Operation cancelled.")
-            return
-    
         async with ctx.typing():
             for member in ctx.guild.members:
                 # Skip bots
