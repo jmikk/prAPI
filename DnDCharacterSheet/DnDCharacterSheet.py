@@ -400,9 +400,9 @@ class DnDCharacterSheet(commands.Cog):
 
 
     @dnd.command(name="viewpotions")
-    async def view_potions(self, ctx, member: discord.Member = None):
-        if member is None:
-            member = ctx.author
+    async def view_potions(self, ctx):
+        
+        member = ctx.author
     
         member_potions = await self.config.member(member).potions()
     
