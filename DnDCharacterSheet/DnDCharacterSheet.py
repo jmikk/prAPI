@@ -11,6 +11,30 @@ from discord import Color
 from discord.utils import MISSING
 from discord import ui
 
+from discord.ext import commands
+from discord.ui import Modal, TextInput
+
+
+class MyDataModal(Modal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Add text input fields for the data you want to collect
+        self.add_item(TextInput(label="First Piece of Data", placeholder="Enter the first piece of data here..."))
+        self.add_item(TextInput(label="Second Piece of Data", placeholder="Enter the second piece of data here..."))
+        # Add more fields as needed
+
+    async def callback(self, interaction: discord.Interaction):
+        # This method is called when the modal is submitted
+        first_data = self.children[0].value  # Access the value from the first input field
+        second_data = self.children[1].value  # Access the value from the second input field
+        # Process the data as needed, e.g., save to a database or respond to the user
+
+        await interaction.response.send_message(f"Data received! First data: {first_data}, Second data: {second_data}", ephemeral=True)
+
+
+
+
 
 
 class GuildStashView(ui.View):
@@ -632,7 +656,13 @@ class DnDCharacterSheet(commands.Cog):
             await ctx.send("All member inventories have been cleared.")
 
 
-
+    @dnd.command()
+    async def collect_data(self, ctx: commands.Context):
+        # Create an instance of your custom modal
+        modal = MyDataModal(title="Enter Your Data")
+        
+        # Show the modal to the user who invoked the command
+        await ctx.send_modal(modal)
 
 
 
