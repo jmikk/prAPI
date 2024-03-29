@@ -466,34 +466,28 @@ class DnDCharacterSheet(commands.Cog):
     async def brew(self, ctx, *item_names: str):
         """Brew a potion using items from your inventory, using up to three of the most shared effects, and add or update it in your potions with effect text and adjusted quantity."""
         user_data = await self.config.member(ctx.author).all()
-    
-        # Ensure the potions key exists in user_data
+        
         if 'potions' not in user_data:
             user_data['potions'] = {}
-    
-        # Check for missing or insufficient items
+        
         inventory = user_data.get('inventory', {})
         missing_or_insufficient_items = [
-            item for item in item_names
-            if item not in inventory or inventory[item]['quantity'] < 1
+            item for item in item_names if item not in inventory or inventory[item]['quantity'] < 1
         ]
     
         if missing_or_insufficient_items:
             await ctx.send(f"Brewing failed, missing or insufficient: {', '.join(missing_or_insufficient_items)}")
             return
     
-        all_effects = []  # Store tuples of (effect_name, effect_text)
+        all_effects = []
         for item_name in item_names:
             item_details = inventory.get(item_name, {})
             item_effects = item_details.get('effects', [])
-            for effect in item_effects:
-                effect_name = effect.get('Name', 'Unnamed Effect')
-                effect_text = effect.get('Effect', 'No description available')
-                all_effects.append((effect_name, effect_text))
+            all_effects.extend(item_effects)  # Assuming item_effects are strings
     
             # Decrement the used ingredient's quantity
             inventory[item_name]['quantity'] -= 1
-            # Remove the ingredient from the inventory if the quantity is now 0
+            # Remove the ingredient if quantity is 0
             if inventory[item_name]['quantity'] == 0:
                 del inventory[item_name]
     
