@@ -97,26 +97,31 @@ class PotionView(View):
 
     async def give_to_guild(self, button: discord.ui.Button, interaction: discord.Interaction):
         try:
-            potion_name, potion_details = self.potions[self.current_index]
-            guild_stash = await self.cog.config.guild(interaction.guild).stash()
-    
-            # Add potion to guild stash
+            potion_name = self.potions[self.current_index]
+
+            user_potions = await self.config.member(user).potions()
+            guild_stash = await self.config.guild(guild).stash()    
+            
+            # Add the potion to the guild's stash
             if potion_name in guild_stash:
                 guild_stash[potion_name]['quantity'] += 1
             else:
-                guild_stash[potion_name] = potion_details.copy()
-                guild_stash[potion_name]['quantity'] = 1
+                guild_stash[potion_name] = {'quantity': 1, 'effects': user_potions[potion_name].get('effects', [])}
+
     
-            # Update user's potion stash
-            potion_details['quantity'] -= 1
-            if potion_details['quantity'] <= 0:
-                self.potions.pop(self.current_index)
-                if self.current_index > 0:  # Adjust the index if necessary
-                    self.current_index -= 1
+            #     Decrement the potion's quantity from the user's inventory
+            user_potions[potion_name]['quantity'] -= 1
+        
+            # If the potion quantity is 0, remove it from the inventory
+            if user_potions[potion_name]['quantity'] == 0:
+                del user_potions[potion_name]
+        
+                        if self.current_index > 0:  # Adjust the index if necessary
+                            self.current_index -= 1
     
             # Save the updated stashes
-            await self.cog.config.member(self.member).potions.set({k: v for k, v in self.potions if v['quantity'] > 0})
-            await self.cog.config.guild(interaction.guild).stash.set(guild_stash)
+            await self.config.member(user).potions.set(user_potions)
+            await self.config.guild(guild).stash.set(guild_stash)
     
             # Update the view
             self.update_embed()
