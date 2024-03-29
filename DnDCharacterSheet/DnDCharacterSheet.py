@@ -93,11 +93,16 @@ class PotionView(View):
             if user_potions[potion_name]['quantity'] <= 0:
                 user_potions.pop(self.current_index)
                 self.current_index = max(self.current_index - 1, 0)
+                self.potions.pop(self.current_index)
+                self.current_index = max(self.current_index - 1, 0)
+
+                
     
             # Save the updated stashes
             await self.cog.config.member(user).potions.set(user_potions)
             await self.cog.config.guild(guild).stash.set(guild_stash)
-            self.potions = user_potions
+
+            
             # Update the view
             self.update_embed()
                         
