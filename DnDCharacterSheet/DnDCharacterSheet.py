@@ -96,8 +96,7 @@ class PotionView(View):
 
 
     async def give_to_guild(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.response.edit_message("here", view=self)
-
+        await interaction.response.defer(ephemeral=True)
         potion_name, potion_details = self.potions[self.current_index]
         guild_stash = await self.cog.config.guild(interaction.guild).stash()
 
@@ -121,8 +120,8 @@ class PotionView(View):
 
         # Update the view
         self.update_embed()
-        await interaction.response.edit_message(embed=self.embed, view=self)
-
+        
+        await interaction.edit_original_response(embed=self.embed, view=self)
         # Send a follow-up message to confirm the action to the user
         await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.", ephemeral=True)
 
