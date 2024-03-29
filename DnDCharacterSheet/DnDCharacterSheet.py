@@ -575,6 +575,27 @@ class DnDCharacterSheet(commands.Cog):
         view = GuildStashView(self, ctx, guild_stash)
         message = await ctx.send(embed=view.embed, view=view)
 
+    @dnd.command(name="clearallinventories")
+    @commands.has_permissions(administrator=True)  # Ensure only administrators can run this
+    async def clear_all_inventories(self, ctx):
+        # Confirm before proceeding
+        confirmation = await ctx.prompt("Are you sure you want to clear ALL member inventories? This cannot be undone. Type 'yes' to confirm.")
+        if confirmation.lower() != 'yes':
+            await ctx.send("Operation cancelled.")
+            return
+    
+        async with ctx.typing():
+            for member in ctx.guild.members:
+                # Skip bots
+                if member.bot:
+                    continue
+    
+                # Clear each member's inventory
+                await self.config.member(member).inventory.clear()
+    
+            await ctx.send("All member inventories have been cleared.")
+
+
 
 
 
