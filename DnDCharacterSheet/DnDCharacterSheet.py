@@ -50,6 +50,10 @@ class GuildStashView(ui.View):
 
 
     async def previous_potion(self, interaction):
+        if interaction.user != self.ctx.author:
+            # Respond with a message that only the command issuer can use this button
+            await interaction.response.send_message("You cannot use this button.", ephemeral=True)
+            return
         # Decrement the index and update the embe
         if self.current_index > 0:
             self.current_index -= 1
@@ -61,6 +65,10 @@ class GuildStashView(ui.View):
         await interaction.response.edit_message(embed=self.embed, view=self)
 
     async def next_potion(self, interaction):
+        if interaction.user != self.ctx.author:
+            # Respond with a message that only the command issuer can use this button
+            await interaction.response.send_message("You cannot use this button.", ephemeral=True)
+            return
         # Increment the index and update the embed
         self.current_index = (self.current_index + 1) % len(self.potions)  # Loop back to the first potion
         self.update_embed()
@@ -70,6 +78,10 @@ class GuildStashView(ui.View):
 
 
     async def take_from_stash(self, interaction: discord.Interaction):
+        if interaction.user != self.ctx.author:
+            # Respond with a message that only the command issuer can use this button
+            await interaction.response.send_message("You cannot use this button.", ephemeral=True)
+            return
         potion_name, potion_details = self.potions[self.current_index]
 
         # Remove one potion from the guild stash
@@ -133,6 +145,10 @@ class PotionView(View):
         await self.ctx.send(message)
 
     async def previous_potion(self, interaction):
+        if interaction.user != self.ctx.author:
+            # Respond with a message that only the command issuer can use this button
+            await interaction.response.send_message("You cannot use this button.", ephemeral=True)
+            return
         # Decrement the index and update the embe
         if self.current_index > 0:
             self.current_index -= 1
@@ -144,6 +160,10 @@ class PotionView(View):
         await interaction.response.edit_message(embed=self.embed, view=self)
 
     async def next_potion(self, interaction):
+        if interaction.user != self.ctx.author:
+            # Respond with a message that only the command issuer can use this button
+            await interaction.response.send_message("You cannot use this button.", ephemeral=True)
+            return
         # Increment the index and update the embed
         self.current_index = (self.current_index + 1) % len(self.potions)  # Loop back to the first potion
         self.update_embed()
@@ -167,6 +187,10 @@ class PotionView(View):
 
 
     async def give_to_guild(self, interaction: discord.Interaction):
+        if interaction.user != self.ctx.author:
+            # Respond with a message that only the command issuer can use this button
+            await interaction.response.send_message("You cannot use this button.", ephemeral=True)
+            return
         await interaction.response.defer()  # Defer the response to have more time for processing.
 
         try:
@@ -210,6 +234,10 @@ class PotionView(View):
     
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
     async def drink(self, interaction: Interaction, button: Button):
+        if interaction.user != self.ctx.author:
+            # Respond with a message that only the command issuer can use this button
+            await interaction.response.send_message("You cannot use this button.", ephemeral=True)
+            return
         try:
             potion_name, potion_details = self.potions[self.current_index]
             potion_quantity = potion_details['quantity']
