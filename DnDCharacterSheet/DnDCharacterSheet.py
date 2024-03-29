@@ -48,7 +48,12 @@ class PotionView(View):
 
     async def previous_potion(self, interaction):
         # Decrement the index and update the embed
-        await self.log("here")
+        try:
+            await self.log("here")
+        except Exception as e:
+            await interaction.response.edit_message(e, view=self)
+
+            
         if self.current_index > 0:
             self.current_index -= 1
         else:
