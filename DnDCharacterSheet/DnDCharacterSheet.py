@@ -34,7 +34,7 @@ class GuildStashView(ui.View):
         if self.potions:
             potion_name, potion_details = self.potions[self.current_index]
             effects_text = "\n".join(f"{effect['name']}: {effect['text']}" for effect in potion_details['effects'])
-            self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", description=effects_text, color=0x00ff00)
+            self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", description=effects_text, color=0xFFD700)
             self.embed.set_footer(text=f"Potion {self.current_index + 1} of {len(self.potions)}")
         else:
             self.embed = Embed(title="Guild Stash is Empty", description="There are no potions in the guild stash.", color=0xff0000)
