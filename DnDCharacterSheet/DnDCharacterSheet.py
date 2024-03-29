@@ -90,15 +90,14 @@ class PotionView(View):
             user_potions[potion_name]['quantity'] -= 1
     
             # If the potion quantity is 0, remove it from the inventory
-            if user_potions[potion_name]['quantity'] == 0:
-                del user_potions[potion_name]
-                if self.current_index > 0:  # Adjust the index if necessary
-                    self.current_index -= 1
+            if user_potions[potion_name]['quantity'] <= 0:
+                user_potions.pop(self.current_index)
+                self.current_index = max(self.current_index - 1, 0)
     
             # Save the updated stashes
             await self.cog.config.member(user).potions.set(user_potions)
             await self.cog.config.guild(guild).stash.set(guild_stash)
-    
+            self.potions = user_potions
             # Update the view
             self.update_embed()
                         
