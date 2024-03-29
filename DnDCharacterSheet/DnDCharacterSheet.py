@@ -101,6 +101,23 @@ class PotionView(View):
             await self.cog.config.member(user).potions.set(user_potions)
             await self.cog.config.guild(guild).stash.set(guild_stash)
 
+
+
+
+            potion_name, potion_details = self.potions[self.current_index]
+            potion_quantity = potion_details['quantity']
+            potion_effects = potion_details['effects']
+            #await interaction.response.send_message(f"{potion_name}\n{potion_details['effects']}\n {potion_effects}\n{potion_quantity}", view=self)
+
+            potion_effects = "\n".join([f"{effect['name']}: {effect['text']}" for effect in potion_details['effects']])
+
+            potion_details['quantity'] -= 1
+    
+            if potion_details['quantity'] <= 0:
+                self.potions.pop(self.current_index)
+                self.current_index = max(self.current_index - 1, 0)
+
+            
             
             # Update the view
             self.update_embed()
