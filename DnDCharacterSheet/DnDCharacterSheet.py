@@ -152,7 +152,7 @@ class PotionView(View):
             self.update_embed()
     
             # Confirm the action to the user.
-            await interaction.followup.send(f"{self.memebr.mention} gave one {potion_name} to the guild's stash.")
+            await interaction.followup.send(f"{self.member.mention} gave one {potion_name} to the guild's stash.")
     
             # Edit the original message with the updated embed and view.
             await interaction.edit_original_response(embed=self.embed, view=self)
