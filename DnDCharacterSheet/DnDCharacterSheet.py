@@ -37,17 +37,12 @@ class PotionView(View):
         self.add_item(self.give_to_guild_button)
 
     async def log(self, message: str):
-        log_channel_id = 1209532540885401620  # Replace with your channel's ID
-        log_channel = self.bot.get_channel(log_channel_id)
-    
-        if log_channel:  # Check if the channel was found
-            await log_channel.send(f"```log: {message}```")  # Using Markdown code blocks to format the message
-        else:
-            print("Log channel not found.")
+        await ctx.send(message)
 
 
     async def previous_potion(self, interaction):
         # Decrement the index and update the embe
+        await self.log("test")
         if self.current_index > 0:
             self.current_index -= 1
         else:
