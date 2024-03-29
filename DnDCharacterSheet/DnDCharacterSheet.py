@@ -462,7 +462,7 @@ class DnDCharacterSheet(commands.Cog):
         view = PotionView(self, ctx, member, potions_list, guild_potions, message=message)
         await message.edit(embed=initial_embed, view=view)  # Make sure the view is attached to the message
 
-    @commands.command(name="viewguildstash")
+    @D&D.command(name="viewguildstash")
     async def view_guild_stash(self, ctx):
         guild_stash = await self.config.guild(ctx.guild).stash()  # Fetch the guild stash
     
