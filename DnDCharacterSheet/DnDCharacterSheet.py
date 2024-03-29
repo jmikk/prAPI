@@ -97,7 +97,7 @@ class GuildStashView(ui.View):
 
         # Confirm the action to the user
         await interaction.response.edit_message(embed=self.embed, view=self)
-        await interaction.followup.send(f"You took one {potion_name} from the guild stash.", ephemeral=True)
+        await interaction.followup.send(f"{self.member.mention} took one {potion_name} from the guild stash.")
 
 
 
