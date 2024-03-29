@@ -37,7 +37,7 @@ class PotionView(View):
         self.add_item(self.give_to_guild_button)
 
     async def log(self, message: str):
-        await ctx.send(message)
+        await self.ctx.send(message)
 
 
     async def previous_potion(self, interaction):
