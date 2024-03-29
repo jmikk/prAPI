@@ -80,7 +80,6 @@ class PotionView(View):
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
     async def drink(self, interaction: Interaction, button: Button):
         try:
-            log("Here")
             potion_name, potion_details = self.potions[self.current_index]
             potion_quantity = potion_details['quantity']
             potion_effects = potion_details['effects']
@@ -107,7 +106,8 @@ class PotionView(View):
 
 
     async def give_to_guild(self, button: discord.ui.Button, interaction: discord.Interaction):
-    
+        self.log("Here")
+
         try:
             await interaction.response.defer(ephemeral=True)  # Ensure interaction is acknowledged
 
