@@ -107,7 +107,7 @@ class PotionView(View):
             await interaction.edit_original_response(embed=self.embed, view=self)
     
             # Send a follow-up message to confirm the action to the user
-            await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.", ephemeral=True)
+            await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.")
     
         except Exception as e:
             await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
