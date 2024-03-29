@@ -467,26 +467,40 @@ class DnDCharacterSheet(commands.Cog):
         """Brew a potion using items from your inventory, using up to three of the most shared effects, and add or update it in your potions with effect text and adjusted quantity."""
         user_data = await self.config.member(ctx.author).all()
     
+        # Ensure the potions key exists in user_data
         if 'potions' not in user_data:
             user_data['potions'] = {}
     
-        missing_items = [item for item in item_names if item not in user_data.get('inventory', {})]
-        if missing_items:
-            await ctx.send(f"Brewing failed, missing: {', '.join(missing_items)}")
+        # Check for missing or insufficient items
+        inventory = user_data.get('inventory', {})
+        missing_or_insufficient_items = [
+            item for item in item_names
+            if item not in inventory or inventory[item]['quantity'] < 1
+        ]
+    
+        if missing_or_insufficient_items:
+            await ctx.send(f"Brewing failed, missing or insufficient: {', '.join(missing_or_insufficient_items)}")
             return
     
         all_effects = []  # Store tuples of (effect_name, effect_text)
         for item_name in item_names:
-            item_effects = user_data.get('inventory', {}).get(item_name, [])
+            item_details = inventory.get(item_name, {})
+            item_effects = item_details.get('effects', [])
             for effect in item_effects:
                 effect_name = effect.get('Name', 'Unnamed Effect')
-                effect_text = effect.get('Effect', 'Unnamed Effect')
+                effect_text = effect.get('Effect', 'No description available')
                 all_effects.append((effect_name, effect_text))
     
-            # Remove the used ingredients from the inventory
-            del user_data['inventory'][item_name]
+            # Decrement the used ingredient's quantity
+            inventory[item_name]['quantity'] -= 1
+            # Remove the ingredient from the inventory if the quantity is now 0
+            if inventory[item_name]['quantity'] == 0:
+                del inventory[item_name]
     
-        # Count the effects based on effect names and find the most common ones
+        # Update the user's inventory after using items
+        user_data['inventory'] = inventory
+    
+        # Process effects to find the most common ones for the new potion
         effect_counts = Counter([effect_name for effect_name, _ in all_effects])
         most_common_effects = effect_counts.most_common()
         highest_count = most_common_effects[0][1] if most_common_effects else 0
@@ -494,6 +508,7 @@ class DnDCharacterSheet(commands.Cog):
         # Get tuples of all effects that share the highest count
         final_effects = [effect for effect in all_effects if effect_counts[effect[0]] == highest_count]
     
+        # Limit to the top 3 most common effects
         if len(final_effects) > 3:
             final_effects = random.sample(final_effects, 3)
     
@@ -501,24 +516,21 @@ class DnDCharacterSheet(commands.Cog):
             potion_effects_data = [{'name': name, 'text': text} for name, text in final_effects]
             potion_name = "Potion of " + " and ".join(name for name, _ in final_effects)
     
-            # Diagnostic logging to understand the current structure of the potion
+            # Update potion quantity or add a new potion
             if potion_name in user_data['potions']:
-                current_structure = user_data['potions'][potion_name]
-    
-            # Check if the potion already exists and increase the quantity if it does
-            if potion_name in user_data['potions'] and isinstance(user_data['potions'][potion_name], dict) and 'quantity' in user_data['potions'][potion_name]:
                 user_data['potions'][potion_name]['quantity'] += 1
             else:
-                # New potion entry with effects and initial quantity
                 user_data['potions'][potion_name] = {
                     'effects': potion_effects_data,
                     'quantity': 1
                 }
     
             await ctx.send(f"Successfully brewed {potion_name} with effects: {', '.join(name for name, _ in final_effects)}")
-            await self.config.member(ctx.author).set(user_data)
         else:
             await ctx.send("Brewing failed. The ingredients share no common effects.")
+    
+        # Save the updated user data
+        await self.config.member(ctx.author).set(user_data)
 
 
     @dnd.command(name="clearstash")
