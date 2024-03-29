@@ -32,6 +32,8 @@ class PotionView(View):
         self.next_button.callback = self.next_potion
         self.add_item(self.next_button)
 
+        self.add_item(discord.ui.Button(label="Give to Guild", style=discord.ButtonStyle.blurple, custom_id="give_to_guild"))
+
     async def previous_potion(self, interaction):
         # Decrement the index and update the embed
         if self.current_index > 0:
@@ -91,44 +93,35 @@ class PotionView(View):
 
 
 
-    @discord.ui.button(label="Give to Guild", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(custom_id="give_to_guild")  # Use the decorator with the matching custom_id
     async def give_to_guild(self, button: discord.ui.Button, interaction: discord.Interaction):
-        # Retrieve the current potion's details
-        try:
-            potion_name, potion_details = self.potions[self.current_index]
-            # Fetch the guild's stash from the configuration
-            guild_stash = await self.cog.config.guild(interaction.guild).stash()
-            # Add the potion to the guild's stash, incrementing quantity if it already exists
-            if potion_name in guild_stash:
-                guild_stash[potion_name]['quantity'] += 1
-            else:
-                # Copy potion_details to avoid modifying the original reference in self.potions
-                guild_stash[potion_name] = potion_details.copy()
-                guild_stash[potion_name]['quantity'] = 1
-        
-            # Decrement the potion's quantity in the user's stash
-            potion_details['quantity'] -= 1
-        
-            # If the potion's quantity drops to 0 or below, remove it from the user's stash
-            if potion_details['quantity'] <= 0:
-                self.potions.pop(self.current_index)
-                # Adjust the current index to stay within bounds
-                self.current_index = max(self.current_index - 1, 0)
-        
-            # Update the user's potion stash and the guild's stash in the configuration
-            await self.cog.config.member(self.member).potions.set({k: v for k, v in self.potions if v['quantity'] > 0})
-            await self.cog.config.guild(interaction.guild).stash.set(guild_stash)
-        
-            # Update the embed to reflect changes, especially if a potion was removed
-            self.update_embed()
-        
-            # Respond to the interaction by updating the message with the new embed and view
-            await interaction.response.edit_message(embed=self.embed, view=self)
-        
-            # Send a follow-up message to confirm the action to the user
-            await interaction.followup.send(f"You gave {potion_name} to the guild's stash.", ephemeral=True)
-        except Exception as e:
-            await interaction.followup.send(f"An error occurred: {e}")
+        potion_name, potion_details = self.potions[self.current_index]
+        guild_stash = await self.cog.config.guild(interaction.guild).stash()
+
+        # Add potion to guild stash
+        if potion_name in guild_stash:
+            guild_stash[potion_name]['quantity'] += 1
+        else:
+            guild_stash[potion_name] = potion_details.copy()
+            guild_stash[potion_name]['quantity'] = 1
+
+        # Update user's potion stash
+        potion_details['quantity'] -= 1
+        if potion_details['quantity'] <= 0:
+            self.potions.pop(self.current_index)
+            if self.current_index > 0:  # Adjust the index if necessary
+                self.current_index -= 1
+
+        # Save the updated stashes
+        await self.cog.config.member(self.member).potions.set({k: v for k, v in self.potions if v['quantity'] > 0})
+        await self.cog.config.guild(interaction.guild).stash.set(guild_stash)
+
+        # Update the view
+        self.update_embed()
+        await interaction.response.edit_message(embed=self.embed, view=self)
+
+        # Send a follow-up message to confirm the action to the user
+        await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.", ephemeral=True)
 
 
 class DnDCharacterSheet(commands.Cog):
