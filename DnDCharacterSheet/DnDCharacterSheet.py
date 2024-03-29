@@ -33,11 +33,16 @@ class GuildStashView(ui.View):
     def update_embed(self):
         if self.potions:
             potion_name, potion_details = self.potions[self.current_index]
-            effects_text = "\n".join(f"{effect['name']}: {effect['text']}" for effect in potion_details['effects'])
-            self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", description=effects_text, color=0xFFD700)
+            self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", color=Color.blue())
+    
+            # Iterate over each effect in the potion's details and add it as a field
+            for effect in potion_details['effects']:
+                self.embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+    
             self.embed.set_footer(text=f"Potion {self.current_index + 1} of {len(self.potions)}")
         else:
-            self.embed = Embed(title="Guild Stash is Empty", description="There are no potions in the guild stash.", color=0xff0000)
+            self.embed = Embed(title="No potions available", description="You currently have no potions in your stash.", color=Color.red())
+
 
     async def previous_potion(self, interaction):
         # Decrement the index and update the embe
@@ -457,7 +462,6 @@ class DnDCharacterSheet(commands.Cog):
     
         member_potions = await self.config.member(member).potions()
         guild_potions = await self.config.guild(guild).stash()
-
     
         if not member_potions:
             await ctx.send(f"{member.display_name}'s potion stash is empty.")
@@ -468,8 +472,12 @@ class DnDCharacterSheet(commands.Cog):
         # Check if there are potions in the list
         if potions_list:
             potion_name, potion_details = potions_list[0]  # Get the first potion's details
-            effects_text = "\n".join(f"{effect['name']}: {effect['text']}" for effect in potion_details['effects'])
-            initial_embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", description=effects_text, color=Color.blue())
+            initial_embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", color=Color.blue())
+    
+            # Add each effect as a separate field in the embed
+            for effect in potion_details['effects']:
+                initial_embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+    
             initial_embed.set_footer(text=f"Potion 1 of {len(potions_list)}")
         else:
             # No potions available
@@ -481,6 +489,7 @@ class DnDCharacterSheet(commands.Cog):
         # Instantiate PotionView with the message reference
         view = PotionView(self, ctx, member, potions_list, guild_potions, message=message)
         await message.edit(embed=initial_embed, view=view)  # Make sure the view is attached to the message
+
 
     @dnd.command(name="viewguildstash")
     async def view_guild_stash(self, ctx):
