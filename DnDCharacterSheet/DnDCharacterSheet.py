@@ -32,7 +32,7 @@ class PotionView(View):
         self.next_button.callback = self.next_potion
         self.add_item(self.next_button)
 
-        self.give_to_guild = Button(label="Give to Guild", style=discord.ButtonStyle.blurple))
+        self.give_to_guild = Button(label="Give to Guild", style=discord.ButtonStyle.blurple)
         self.next_button.callback = self.give_to_guild
         self.add_item(self.give_to_guild)
 
