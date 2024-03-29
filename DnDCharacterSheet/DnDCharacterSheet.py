@@ -36,6 +36,16 @@ class PotionView(View):
         self.give_to_guild_button.callback = self.give_to_guild
         self.add_item(self.give_to_guild_button)
 
+    async def log(self, message: str):
+        log_channel_id = 1209532540885401620  # Replace with your channel's ID
+        log_channel = self.bot.get_channel(log_channel_id)
+    
+        if log_channel:  # Check if the channel was found
+            await log_channel.send(f"```{message}```")  # Using Markdown code blocks to format the message
+        else:
+            print("Log channel not found.")
+
+
     async def previous_potion(self, interaction):
         # Decrement the index and update the embed
         if self.current_index > 0:
@@ -70,6 +80,7 @@ class PotionView(View):
     @discord.ui.button(label="Drink", style=ButtonStyle.green)
     async def drink(self, interaction: Interaction, button: Button):
         try:
+            log("Here")
             potion_name, potion_details = self.potions[self.current_index]
             potion_quantity = potion_details['quantity']
             potion_effects = potion_details['effects']
