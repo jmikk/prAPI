@@ -73,7 +73,7 @@ class PotionView(View):
         await self.log("Here")
 
         try:
-            await interaction.response.defer(ephemeral=True)  # Ensure interaction is acknowledged
+            #await interaction.response.defer(ephemeral=True)  # Ensure interaction is acknowledged
 
             potion_name, potion_details = self.potions[self.current_index]  # Corrected potion extraction
     
