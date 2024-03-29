@@ -85,7 +85,7 @@ class PotionView(View):
 
             
             await interaction.response.edit_message(embed=self.embed, view=self)
-            await interaction.followup.send(f"You drank {potion_name}!\nEffects:\n{potion_effects}")
+            await interaction.followup.send(f"{self.member.mention} drank {potion_name}!\nEffects:\n{potion_effects}")
         except Exception as e:
             await interaction.followup.send(f"An error occurred: {e}")
 
