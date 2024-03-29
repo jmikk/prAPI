@@ -480,7 +480,7 @@ class DnDCharacterSheet(commands.Cog):
         guild_stash = await self.config.guild(ctx.guild).stash()  # Fetch the guild stash
     
         # Initialize and send the GuildStashView
-        view = GuildStashView(self, ctx, guild_stash)
+        view = GuildStashView(self, cog, ctx, guild_stash)
         message = await ctx.send(embed=view.embed, view=view)
 
 
