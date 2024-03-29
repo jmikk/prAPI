@@ -32,7 +32,9 @@ class PotionView(View):
         self.next_button.callback = self.next_potion
         self.add_item(self.next_button)
 
-        self.add_item(discord.ui.Button(label="Give to Guild", style=discord.ButtonStyle.blurple, custom_id="give_to_guild"))
+        self.add_item(discord.ui.Button(label="Give to Guild", style=discord.ButtonStyle.blurple))
+        self.next_button.callback = self.give_to_guild
+        self.add_item(self.give_to_guild)
 
     async def previous_potion(self, interaction):
         # Decrement the index and update the embed
@@ -93,7 +95,6 @@ class PotionView(View):
 
 
 
-    @discord.ui.button(custom_id="give_to_guild")  # Use the decorator with the matching custom_id
     async def give_to_guild(self, button: discord.ui.Button, interaction: discord.Interaction):
         potion_name, potion_details = self.potions[self.current_index]
         guild_stash = await self.cog.config.guild(interaction.guild).stash()
