@@ -30,6 +30,11 @@ class GuildStashView(ui.View):
         self.next_button.callback = self.next_potion
         self.add_item(self.next_button)
 
+        # Take from Stash Button
+        self.take_button = Button(label="Take from Stash", style=discord.ButtonStyle.green)
+        self.take_button.callback = self.take_from_stash
+        self.add_item(self.take_button)
+
     def update_embed(self):
         if self.potions:
             potion_name, potion_details = self.potions[self.current_index]
@@ -62,6 +67,40 @@ class GuildStashView(ui.View):
 
         # Respond to the interaction by updating the message with the new embed
         await interaction.response.edit_message(embed=self.embed, view=self)
+
+
+    async def take_from_stash(self, interaction: discord.Interaction):
+        potion_name, potion_details = self.potions[self.current_index]
+
+        # Remove one potion from the guild stash
+        potion_details['quantity'] -= 1
+        if potion_details['quantity'] <= 0:
+            self.potions.pop(self.current_index)
+            if self.current_index > 0:
+                self.current_index -= 1
+
+        # Update the guild's stash in the config
+        await self.cog.config.guild(self.ctx.guild).stash.set({potion_name: potion_details for potion_name, potion_details in self.potions if potion_details['quantity'] > 0})
+
+        # Add the potion to the user's stash
+        user_potions = await self.cog.config.member(interaction.user).potions()
+        if potion_name in user_potions:
+            user_potions[potion_name]['quantity'] += 1
+        else:
+            user_potions[potion_name] = {'quantity': 1, 'effects': potion_details['effects']}
+
+        # Update the user's potions in the config
+        await self.cog.config.member(interaction.user).potions.set(user_potions)
+
+        # Update the embed to reflect changes
+        self.update_embed()
+
+        # Confirm the action to the user
+        await interaction.response.edit_message(embed=self.embed, view=self)
+        await interaction.followup.send(f"You took one {potion_name} from the guild stash.", ephemeral=True)
+
+
+
 
 class PotionView(View):
     def __init__(self, cog, ctx, member, potions,guild_potions, message=None):
