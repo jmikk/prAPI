@@ -401,7 +401,7 @@ class DnDCharacterSheet(commands.Cog):
         guild = ctx.guild
     
         member_potions = await self.config.member(member).potions()
-        guild_potions = await self.config.guild(guild).potions()
+        guild_potions = await self.config.guild(guild).stash()
 
     
         if not member_potions:
