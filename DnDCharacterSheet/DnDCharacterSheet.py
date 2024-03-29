@@ -70,7 +70,7 @@ class PotionView(View):
             self.embed = Embed(title="No potions available", description="You currently have no potions in your stash.", color=Color.red())
 
 
-    async def give_to_guild(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def give_to_guild(self, interaction: discord.Interaction):
         await self.log("Here")
 
         try:
