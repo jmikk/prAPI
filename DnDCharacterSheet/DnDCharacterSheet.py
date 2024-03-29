@@ -107,12 +107,16 @@ class PotionView(View):
         # Respond to the interaction by updating the message with the new embed
         await interaction.response.edit_message(embed=self.embed, view=self)
 
-
+    
     def update_embed(self):
         if self.potions:
             potion_name, potion_details = self.potions[self.current_index]
-            effects_text = "\n".join(f"{effect['name']}: {effect['text']}" for effect in potion_details['effects'])
-            self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", description=effects_text, color=Color.blue())
+            self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", color=Color.blue())
+    
+            # Iterate over each effect in the potion's details and add it as a field
+            for effect in potion_details['effects']:
+                self.embed.add_field(name=effect['name'], value=effect['text'], inline=False)
+    
             self.embed.set_footer(text=f"Potion {self.current_index + 1} of {len(self.potions)}")
         else:
             self.embed = Embed(title="No potions available", description="You currently have no potions in your stash.", color=Color.red())
