@@ -96,9 +96,10 @@ class PotionView(View):
 
 
     async def give_to_guild(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)  # Ensure interaction is acknowledged
     
         try:
+            await interaction.response.defer(ephemeral=True)  # Ensure interaction is acknowledged
+
             potion_name, potion_details = self.potions[self.current_index]  # Corrected potion extraction
     
             user = interaction.user  # Assuming the user who clicked is the one giving the potion
