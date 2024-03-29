@@ -98,7 +98,7 @@ class PotionView(View):
     async def give_to_guild(self, button: discord.ui.Button, interaction: discord.Interaction):
         potion_name, potion_details = self.potions[self.current_index]
         guild_stash = await self.cog.config.guild(interaction.guild).stash()
-        await interaction.followup.send(f"You gave one {potion_name} to the guild's stash.", ephemeral=True)
+        await interaction.followup.send(f"Here.", ephemeral=True)
 
         # Add potion to guild stash
         if potion_name in guild_stash:
