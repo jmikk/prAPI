@@ -10,8 +10,6 @@ from discord import Embed
 from discord import Color
 from discord.utils import MISSING
 from discord import ui
-
-from discord.ext import commands
 from discord.ui import Modal, TextInput
 
 
