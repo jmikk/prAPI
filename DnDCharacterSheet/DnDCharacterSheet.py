@@ -81,8 +81,8 @@ class PotionView(View):
             user = interaction.user  # Assuming the user who clicked is the one giving the potion
             guild = interaction.guild  # The guild where the interaction happened
     
-            user_potions = await self.config.member(user).potions()
-            guild_stash = await self.config.guild(guild).stash()
+            user_potions = await DnDCharacterSheet.config.member(user).potions()
+            guild_stash = await DnDCharacterSheet.config.guild(guild).stash()
     
             # Add the potion to the guild's stash
             if potion_name in guild_stash:
@@ -100,8 +100,8 @@ class PotionView(View):
                     self.current_index -= 1
     
             # Save the updated stashes
-            await self.config.member(user).potions.set(user_potions)
-            await self.config.guild(guild).stash.set(guild_stash)
+            await DnDCharacterSheet.config.member(user).potions.set(user_potions)
+            await DnDCharacterSheet.config.guild(guild).stash.set(guild_stash)
     
             # Update the view
             self.update_embed()
