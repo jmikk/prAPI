@@ -17,9 +17,18 @@ class GuildStashView(ui.View):
         super().__init__()
         self.cog = cog
         self.ctx = ctx
-        self.guild_stash = list(guild_stash.items())
+        self.potions = list(guild_stash.items())
         self.current_index = 0
         self.update_embed()
+        
+        self.previous_button = Button(label="Previous", style=discord.ButtonStyle.grey)
+        self.previous_button.callback = self.previous_potion
+        self.add_item(self.previous_button)
+
+        # Next Button
+        self.next_button = Button(label="Next", style=discord.ButtonStyle.grey)
+        self.next_button.callback = self.next_potion
+        self.add_item(self.next_button)
 
     def update_embed(self):
         if self.guild_stash:
@@ -30,23 +39,23 @@ class GuildStashView(ui.View):
         else:
             self.embed = Embed(title="Guild Stash is Empty", description="There are no potions in the guild stash.", color=0xff0000)
 
-    @ui.button(label="Previous", style=ButtonStyle.grey)
-    async def previous_button_callback(self, button, interaction):
-        try:
-            if self.current_index > 0:
-                self.current_index -= 1
-            else:
-                self.current_index = len(self.guild_stash) - 1  # Loop to the end
-            self.update_embed()
-            await interaction.response.edit_message(embed=self.embed, view=self)
-        except Exception as e:
-            await interaction.followup.send(f"An error occurred: {e}")
-        
-
-    @ui.button(label="Next", style=ButtonStyle.grey)
-    async def next_button_callback(self, button, interaction):
-        self.current_index = (self.current_index + 1) % len(self.guild_stash)
+    async def previous_potion(self, interaction):
+        # Decrement the index and update the embe
+        if self.current_index > 0:
+            self.current_index -= 1
+        else:
+            self.current_index = len(self.potions) - 1  # Loop back to the last potion
         self.update_embed()
+
+        # Respond to the interaction by updating the message with the new embed
+        await interaction.response.edit_message(embed=self.embed, view=self)
+
+    async def next_potion(self, interaction):
+        # Increment the index and update the embed
+        self.current_index = (self.current_index + 1) % len(self.potions)  # Loop back to the first potion
+        self.update_embed()
+
+        # Respond to the interaction by updating the message with the new embed
         await interaction.response.edit_message(embed=self.embed, view=self)
 
 class PotionView(View):
