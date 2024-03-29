@@ -116,8 +116,8 @@ class PotionView(View):
             if user_potions[potion_name]['quantity'] == 0:
                 del user_potions[potion_name]
         
-                        if self.current_index > 0:  # Adjust the index if necessary
-                            self.current_index -= 1
+                if self.current_index > 0:  # Adjust the index if necessary
+                    self.current_index -= 1
     
             # Save the updated stashes
             await self.config.member(user).potions.set(user_potions)
