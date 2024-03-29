@@ -512,6 +512,7 @@ class DnDCharacterSheet(commands.Cog):
         effect_counts = Counter([effect_name for effect_name, _ in all_effects])
         most_common_effects = effect_counts.most_common()
         highest_count = most_common_effects[0][1] if most_common_effects else 0
+        
     
         # Get tuples of all effects that share the highest count
         final_effects = [effect for effect in all_effects if effect_counts[effect[0]] == highest_count]
@@ -519,6 +520,8 @@ class DnDCharacterSheet(commands.Cog):
         # Limit to the top 3 most common effects
         if len(final_effects) > 3:
             final_effects = random.sample(final_effects, 3)
+        if highest_count < 2:
+            final_effects = None
     
         if final_effects:
             potion_effects_data = [{'name': name, 'text': text} for name, text in final_effects]
