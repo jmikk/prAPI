@@ -9,6 +9,41 @@ from discord import ButtonStyle, Interaction
 from discord import Embed
 from discord import Color
 from discord.utils import MISSING
+from discord import ui
+
+
+class GuildStashView(ui.View):
+    def __init__(self, cog, ctx, guild_stash):
+        super().__init__()
+        self.cog = cog
+        self.ctx = ctx
+        self.guild_stash = list(guild_stash.items())
+        self.current_index = 0
+        self.update_embed()
+
+    def update_embed(self):
+        if self.guild_stash:
+            potion_name, potion_details = self.guild_stash[self.current_index]
+            effects_text = "\n".join(f"{effect['name']}: {effect['text']}" for effect in potion_details['effects'])
+            self.embed = Embed(title=f"{potion_name} (Quantity: {potion_details['quantity']})", description=effects_text, color=0x00ff00)
+            self.embed.set_footer(text=f"Potion {self.current_index + 1} of {len(self.guild_stash)}")
+        else:
+            self.embed = Embed(title="Guild Stash is Empty", description="There are no potions in the guild stash.", color=0xff0000)
+
+    @ui.button(label="Previous", style=ButtonStyle.grey)
+    async def previous_button_callback(self, button, interaction):
+        if self.current_index > 0:
+            self.current_index -= 1
+        else:
+            self.current_index = len(self.guild_stash) - 1  # Loop to the end
+        self.update_embed()
+        await interaction.response.edit_message(embed=self.embed, view=self)
+
+    @ui.button(label="Next", style=ButtonStyle.grey)
+    async def next_button_callback(self, button, interaction):
+        self.current_index = (self.current_index + 1) % len(self.guild_stash)
+        self.update_embed()
+        await interaction.response.edit_message(embed=self.embed, view=self)
 
 class PotionView(View):
     def __init__(self, cog, ctx, member, potions,guild_potions, message=None):
@@ -426,6 +461,18 @@ class DnDCharacterSheet(commands.Cog):
         # Instantiate PotionView with the message reference
         view = PotionView(self, ctx, member, potions_list, guild_potions, message=message)
         await message.edit(embed=initial_embed, view=view)  # Make sure the view is attached to the message
+
+    @commands.command(name="viewguildstash")
+    async def view_guild_stash(self, ctx):
+        guild_stash = await self.config.guild(ctx.guild).stash()  # Fetch the guild stash
+    
+        # Initialize and send the GuildStashView
+        view = GuildStashView(self, ctx, guild_stash)
+        message = await ctx.send(embed=view.embed, view=view)
+
+
+
+
 
 
 
