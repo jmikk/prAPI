@@ -42,7 +42,6 @@ class PotionView(View):
 
     async def previous_potion(self, interaction):
         # Decrement the index and update the embe
-        await self.log("test")
         if self.current_index > 0:
             self.current_index -= 1
         else:
@@ -101,7 +100,7 @@ class PotionView(View):
 
 
     async def give_to_guild(self, button: discord.ui.Button, interaction: discord.Interaction):
-        self.log("Here")
+        await self.log("Here")
 
         try:
             await interaction.response.defer(ephemeral=True)  # Ensure interaction is acknowledged
