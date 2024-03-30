@@ -29,7 +29,7 @@ class CharacterSheetModal(Modal):
         race = self.children[2].value
         # Process additional fields as needed
 
-        await interaction.followup.send_message(f"Character Sheet Created:\nName: {character_name}\nClass & Level: {class_and_level}\nRace: {race}", ephemeral=True)
+        await interaction.response.send_message(f"Character Sheet Created:\nName: {character_name}\nClass & Level: {class_and_level}\nRace: {race}", ephemeral=True)
 
 class CharacterSheetView(View):
     def __init__(self, *args, **kwargs):
@@ -42,7 +42,7 @@ class CharacterSheetView(View):
             modal = CharacterSheetModal(title="D&D Character Sheet")
             await interaction.response.send_modal(modal)
         except Exception as e:
-            await interaction.followup.send(f"An error occurred: {str(e)}")
+            await interaction.response.send(f"An error occurred: {str(e)}")
 
 
 
