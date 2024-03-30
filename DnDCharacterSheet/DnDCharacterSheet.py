@@ -13,43 +13,37 @@ from discord import ui
 from discord.ui import Modal, TextInput
 
 
-class CharacterSheetModal(Modal):
-    def __init__(self, cog):
-        super().__init__()
+class MyModal(Modal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(title="My Modal", *args, **kwargs)
+
+        self.add_item(TextInput(label="First Input", custom_id="first_input"))
+        self.add_item(TextInput(label="Second Input", custom_id="second_input"))
+        self.add_item(TextInput(label="Third Input", custom_id="third_input"))
+
+    async def callback(self, interaction: Interaction):
+        # This method is called when the modal is submitted
+        # You can access the input data using self.children
+        first_input = self.children[0].value
+        second_input = self.children[1].value
+        third_input = self.children[2].value
         
-        self.add_item(TextInput(label="Character Name", custom_id="character_name", style=TextInputStyle.short))
-        self.add_item(TextInput(label="Class and Level", custom_id="class_level", style=TextInputStyle.short))
-        self.add_item(TextInput(label="Race", custom_id="race", style=TextInputStyle.short))
-        # Add more fields as needed
-    async def callback(self, interaction: discord.Interaction):
-            # Extracting the data from the modal
-            character_name = self.children[0].value
-            class_and_level = self.children[1].value
-            race = self.children[2].value
-            
-            # Confirming the data was saved
-            await interaction.response.send_message("Character sheet saved successfully!", ephemeral=True)
+        # Process the input data as needed
+        await interaction.response.send_message(f"First Input: {first_input}\nSecond Input: {second_input}\nThird Input: {third_input}", ephemeral=True)
 
 
-class CharacterSheetView(ui.View):
-    def __init__(self, cog):
-        super().__init__()
-        self.sheet_button = Button(label="New Character", style=discord.ButtonStyle.green)
-        self.sheet_button.callback = self.create_character_sheet_button
-        self.add_item(self.sheet_button)
+class MyView(View):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.add_item(Button(label="Open Modal", style=ButtonStyle.primary, custom_id="open_modal_button"))
 
-    async def create_character_sheet_button(self, interaction: discord.Interaction):
-        try:
-            await interaction.response.send(f"here")
-
-            #modal = CharacterSheetModal(self,cog,title="D&D Character Sheet")
-           # await interaction.response.send_modal(modal)
-            await interaction.followup.send_message(f"I work")
-
-        except Exception as e:
-            await interaction.response.send(f"An error occurred: {str(e)}")
-            await interaction.followup.send(f"An error occurred2: {str(e)}")
-
+    @discord.ui.button(label="Open Modal", style=ButtonStyle.primary, custom_id="open_modal_button")
+    async def button_callback(self, button: Button, interaction: Interaction):
+        # Instantiate your modal
+        modal = MyModal()
+        
+        # Send the modal to the user
+        await interaction.response.send_modal(modal)
 
 
 
@@ -671,12 +665,12 @@ class DnDCharacterSheet(commands.Cog):
     
             await ctx.send("All member inventories have been cleared.")
 
-    @dnd.command()
-    async def create_character(self, ctx: commands.Context):
-        """Sends a button to the user to create a new D&D character sheet."""
-        view = CharacterSheetView(ctx)
-        await ctx.send("Click the button below to create your D&D character sheet:", view=view)
 
+    @commands.command(name="open_modal")
+    async def open_modal(self, ctx):
+        """Sends a button to the user. When clicked, opens a modal."""
+        view = MyView()
+        await ctx.send("Click the button to open the modal:", view=view)
 
 
 
