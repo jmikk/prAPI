@@ -48,8 +48,10 @@ class MyModal(Modal):
 class MyView(View):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.add_item(Button(label="Open Modal", style=ButtonStyle.primary, custom_id="open_modal_button"))
-
+        
+        self.sheet = Button(label="sheet", style=discord.ButtonStyle.grey)
+        self.sheet.callback = self.button_callback
+        self.add_item(self.sheet)
     #@discord.ui.button(label="Open Modal", style=ButtonStyle.primary, custom_id="open_modal_button")
     async def button_callback(self, button: Button, interaction: Interaction):
         # Instantiate your modal
