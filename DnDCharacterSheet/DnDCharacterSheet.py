@@ -34,7 +34,10 @@ class CharacterSheetModal(Modal):
 class CharacterSheetView(View):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+        # Take from Stash Button
+        self.sheet_button = Button(label="New Character", style=discord.ButtonStyle.green)
+        self.sheet_button.callback = self.create_character_sheet_button
+        self.add_item(self.sheet_button)
 
     @discord.ui.button(label="Create Character Sheet", style=discord.ButtonStyle.green, custom_id="create_character_sheet")
     async def create_character_sheet_button(self, button: Button, interaction: discord.Interaction):
