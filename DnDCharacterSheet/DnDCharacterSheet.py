@@ -21,14 +21,14 @@ class CharacterSheetModal(Modal):
         self.add_item(TextInput(label="Class and Level", custom_id="class_level", style=TextInputStyle.short))
         self.add_item(TextInput(label="Race", custom_id="race", style=TextInputStyle.short))
         # Add more fields as needed
-    async def callback(self, interaction: discord.Interaction):
-            # Extracting the data from the modal
-            character_name = self.children[0].value
-            class_and_level = self.children[1].value
-            race = self.children[2].value
+    #async def callback(self, interaction: discord.Interaction):
+     #       # Extracting the data from the modal
+      #      character_name = self.children[0].value
+       #     class_and_level = self.children[1].value
+        #    race = self.children[2].value
             
             # Confirming the data was saved
-            await interaction.response.send_message("Character sheet saved successfully!", ephemeral=True)
+         #   await interaction.response.send_message("Character sheet saved successfully!", ephemeral=True)
 
 
 class CharacterSheetView(ui.View):
