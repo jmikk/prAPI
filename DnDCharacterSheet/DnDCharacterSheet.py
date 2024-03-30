@@ -13,7 +13,18 @@ from discord import ui
 from discord.ui import Modal, TextInput
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)  # Set the logging level
+
+# Create a file handler that logs messages to a file
+file_handler = logging.FileHandler(filename='bot.log', encoding='utf-8', mode='w')
+
+# Create a logging format
+log_format = logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s')
+file_handler.setFormatter(log_format)
+
+# Add the file handler to the logger
+logger.addHandler(file_handler)
 
 class MyModal(Modal):
     def __init__(self, *args, **kwargs):
