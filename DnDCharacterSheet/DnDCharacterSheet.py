@@ -42,8 +42,8 @@ class CharacterSheetView(ui.View):
         try:
             await interaction.response.send(f"here")
 
-            modal = CharacterSheetModal(self,cog,title="D&D Character Sheet")
-            await interaction.response.send_modal(modal)
+            #modal = CharacterSheetModal(self,cog,title="D&D Character Sheet")
+           # await interaction.response.send_modal(modal)
             await interaction.followup.send_message(f"I work")
 
         except Exception as e:
