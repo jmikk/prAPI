@@ -41,7 +41,7 @@ class CharacterSheetView(View):
         await interaction.response.defer()
         try:
             modal = CharacterSheetModal(title="D&D Character Sheet")
-            await interaction.response.send_modal(modal)
+            await interaction.followup.send_modal(modal)
         except Exception as e:
             await interaction.followup.send(f"An error occurred: {str(e)}")
 
