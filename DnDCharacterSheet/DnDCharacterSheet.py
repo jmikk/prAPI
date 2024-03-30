@@ -11,7 +11,9 @@ from discord import Color
 from discord.utils import MISSING
 from discord import ui
 from discord.ui import Modal, TextInput
+import logging
 
+logging.basicConfig(level=logging.DEBUG)
 
 class MyModal(Modal):
     def __init__(self, *args, **kwargs):
