@@ -39,7 +39,6 @@ class CharacterSheetView(View):
         self.sheet_button.callback = self.create_character_sheet_button
         self.add_item(self.sheet_button)
 
-    @discord.ui.button(label="Create Character Sheet", style=discord.ButtonStyle.green, custom_id="create_character_sheet")
     async def create_character_sheet_button(self, button: Button, interaction: discord.Interaction):
         try:
             #modal = CharacterSheetModal(title="D&D Character Sheet")
