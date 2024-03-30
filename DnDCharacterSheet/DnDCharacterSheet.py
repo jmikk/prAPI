@@ -11,56 +11,37 @@ from discord import Color
 from discord.utils import MISSING
 from discord import ui
 from discord.ui import Modal, TextInput
-import logging
 
-logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)  # Set the logging level
 
-# Create a file handler that logs messages to a file
-file_handler = logging.FileHandler(filename='bot.log', encoding='utf-8', mode='w')
 
-# Create a logging format
-log_format = logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s')
-file_handler.setFormatter(log_format)
-
-# Add the file handler to the logger
-logger.addHandler(file_handler)
-
+# Step 1: Define the Modal
 class MyModal(Modal):
     def __init__(self, *args, **kwargs):
-        super().__init__(title="My Modal", *args, **kwargs)
-        await interaction.response.send_message(f"First Input: {first_input}\nSecond Input: {second_input}\nThird Input: {third_input}", ephemeral=True)
+        super().__init__(*args, **kwargs)
 
-        self.add_item(TextInput(label="First Input", custom_id="first_input"))
-        self.add_item(TextInput(label="Second Input", custom_id="second_input"))
-        self.add_item(TextInput(label="Third Input", custom_id="third_input"))
+        # You can add multiple TextInput components for different pieces of information
+        self.add_item(TextInput(label='Your Name'))
+        self.add_item(TextInput(label='Your Favorite Color', style=discord.TextInputStyle.short))
 
-    async def callback(self, interaction: Interaction):
-        # This method is called when the modal is submitted
-        # You can access the input data using self.children
-        first_input = self.children[0].value
-        second_input = self.children[1].value
-        third_input = self.children[2].value
-        
-        # Process the input data as needed
-        await interaction.response.send_message(f"First Input: {first_input}\nSecond Input: {second_input}\nThird Input: {third_input}", ephemeral=True)
+    async def callback(self, interaction: discord.Interaction):
+        # This method is called when the user submits the modal
+        # You can access the input data using self.children (which are the TextInput components)
+        name = self.children[0].value
+        color = self.children[1].value
 
+        # Respond back to the user with the information they provided (just an example)
+        await interaction.response.send_message(f'Hello {name}, your favorite color is {color}!', ephemeral=True)
 
+# Step 2: Create the View with a button to open the modal
 class MyView(View):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
-        self.sheet = Button(label="sheet", style=discord.ButtonStyle.grey)
-        self.sheet.callback = self.button_callback
-        self.add_item(self.sheet)
-    #@discord.ui.button(label="Open Modal", style=ButtonStyle.primary, custom_id="open_modal_button")
-    async def button_callback(self, button: Button, interaction: Interaction):
-        # Instantiate your modal
-        modal = MyModal()
-        
-        # Send the modal to the user
-        await interaction.response.send_modal(modal)
+        self.add_item(Button(label='Open Modal', style=discord.ButtonStyle.primary))
 
+    @discord.ui.button(label="Open Modal", style=discord.ButtonStyle.primary)
+    async def open_modal_button(self, interaction: discord.Interaction, button: Button):
+        # Open the modal when the button is clicked
+        await interaction.response.send_modal(MyModal(title="Enter Your Details"))
 
 
 class GuildStashView(ui.View):
@@ -681,13 +662,11 @@ class DnDCharacterSheet(commands.Cog):
     
             await ctx.send("All member inventories have been cleared.")
 
-
-    @commands.command(name="open_modal")
-    async def open_modal(self, ctx):
+    @command(name='open_modal')
+    async def open_modal_command(self, ctx):
         """Sends a button to the user. When clicked, opens a modal."""
         view = MyView()
         await ctx.send("Click the button to open the modal:", view=view)
-
 
 
 
