@@ -40,6 +40,7 @@ class CharacterSheetView(View):
     async def create_character_sheet_button(self, button: Button, interaction: discord.Interaction):
         await interaction.response.defer()
         try:
+            1/0
             modal = CharacterSheetModal(title="D&D Character Sheet")
             await interaction.followup.send_modal(modal)
         except Exception as e:
