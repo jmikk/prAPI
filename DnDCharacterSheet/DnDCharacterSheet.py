@@ -13,12 +13,6 @@ from discord import ui
 from discord.ui import Modal, TextInput
 
 class CharacterSheetModal(Modal):
-    async def on_error(self, event_method, *args, **kwargs):
-        # Log the error or send it to a developer console if needed
-        channel = self.get_channel(1209532540885401620)  # Replace with your channel ID
-        if channel:
-            await channel.send(f"An error occurred in {event_method}")
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -41,20 +35,12 @@ class CharacterSheetView(View):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-    async def on_error(self, event_method, *args, **kwargs):
-        # Log the error or send it to a developer console if needed
-        channel = self.get_channel(1209532540885401620)  # Replace with your channel ID
-        if channel:
-            await channel.send(f"An error occurred in {event_method}")
-
 
     @discord.ui.button(label="Create Character Sheet", style=discord.ButtonStyle.green, custom_id="create_character_sheet")
-    async def create_character_sheet_button(self, button: Button, interaction: discord.Interaction, ctx):
+    async def create_character_sheet_button(self, button: Button, interaction: discord.Interaction):
         try:
-            await ctx.send("HERE")
-            await interaction.response.send_message("Testing interaction response.", ephemeral=True)
             modal = CharacterSheetModal(title="D&D Character Sheet")
-            await interaction.followup.send_modal(modal)
+            await interaction.response.send_modal(modal)
         except Exception as e:
             await interaction.followup.send(f"An error occurred: {str(e)}")
 
