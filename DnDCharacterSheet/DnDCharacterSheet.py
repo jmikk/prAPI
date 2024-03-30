@@ -40,6 +40,12 @@ class CharacterSheetModal(Modal):
 class CharacterSheetView(View):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+    async def on_error(self, event_method, *args, **kwargs):
+        # Log the error or send it to a developer console if needed
+        channel = self.get_channel(1209532540885401620)  # Replace with your channel ID
+        if channel:
+            await channel.send(f"An error occurred in {event_method}")
 
 
     @discord.ui.button(label="Create Character Sheet", style=discord.ButtonStyle.green, custom_id="create_character_sheet")
