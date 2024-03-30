@@ -35,7 +35,6 @@ class CharacterSheetView(View):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.add_item(Button(label="Create Character Sheet", style=discord.ButtonStyle.green, custom_id="create_character_sheet"))
 
     @discord.ui.button(label="Create Character Sheet", style=discord.ButtonStyle.green, custom_id="create_character_sheet")
     async def create_character_sheet_button(self, button: Button, interaction: discord.Interaction):
