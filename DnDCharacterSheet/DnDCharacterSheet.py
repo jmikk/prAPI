@@ -672,7 +672,7 @@ class DnDCharacterSheet(commands.Cog):
         view = CharacterSheetView()
         await ctx.send("Click the button below to create your D&D character sheet:", view=view)
 
-    @bot.event
+    @dnd.event
     async def on_command_error(ctx, error):
         if isinstance(error, commands.CommandInvokeError):
             await ctx.send(f"An error occurred during the invocation of a command: {error}")
