@@ -27,15 +27,6 @@ class CharacterSheetModal(Modal):
             class_and_level = self.children[1].value
             race = self.children[2].value
             
-            # Saving the data to the user's data store
-            # Assuming self.cog is your Cog instance and it has a Config instance named config
-            user_data = {
-                "character_name": character_name,
-                "class_and_level": class_and_level,
-                "race": race
-            }
-            await self.cog.config.member(interaction.user).character_sheet.set(user_data)
-            
             # Confirming the data was saved
             await interaction.response.send_message("Character sheet saved successfully!", ephemeral=True)
 
