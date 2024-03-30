@@ -38,8 +38,11 @@ class CharacterSheetView(View):
 
     @discord.ui.button(label="Create Character Sheet", style=discord.ButtonStyle.green, custom_id="create_character_sheet")
     async def create_character_sheet_button(self, button: Button, interaction: discord.Interaction):
-        modal = CharacterSheetModal(title="D&D Character Sheet")
-        await interaction.response.send_modal(modal)
+        try:
+            modal = CharacterSheetModal(title="D&D Character Sheet")
+            await interaction.response.send_modal(modal)
+        except Exception as e:
+            await interaction.followup.send(f"An error occurred: {str(e)}")
 
 
 
