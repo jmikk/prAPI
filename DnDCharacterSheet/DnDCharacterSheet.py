@@ -12,17 +12,44 @@ from discord.utils import MISSING
 from discord import ui
 from discord.ui import Modal, TextInput
 
+
+class CharacterSheetModal(Modal):
+    def __init__(self, cog):
+        super().__init__()
+        
+        self.add_item(TextInput(label="Character Name", custom_id="character_name", style=TextInputStyle.short))
+        self.add_item(TextInput(label="Class and Level", custom_id="class_level", style=TextInputStyle.short))
+        self.add_item(TextInput(label="Race", custom_id="race", style=TextInputStyle.short))
+        # Add more fields as needed
+    async def callback(self, interaction: discord.Interaction):
+            # Extracting the data from the modal
+            character_name = self.children[0].value
+            class_and_level = self.children[1].value
+            race = self.children[2].value
+            
+            # Saving the data to the user's data store
+            # Assuming self.cog is your Cog instance and it has a Config instance named config
+            user_data = {
+                "character_name": character_name,
+                "class_and_level": class_and_level,
+                "race": race
+            }
+            await self.cog.config.member(interaction.user).character_sheet.set(user_data)
+            
+            # Confirming the data was saved
+            await interaction.response.send_message("Character sheet saved successfully!", ephemeral=True)
+
+
 class CharacterSheetView(ui.View):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Take from Stash Button
+    def __init__(self, cog):
+        super().__init__()
         self.sheet_button = Button(label="New Character", style=discord.ButtonStyle.green)
         self.sheet_button.callback = self.create_character_sheet_button
         self.add_item(self.sheet_button)
 
     async def create_character_sheet_button(self, interaction: discord.Interaction):
         try:
-            modal = CharacterSheetModal(title="D&D Character Sheet")
+            modal = CharacterSheetModal(self,cog,title="D&D Character Sheet")
             await interaction.response.send_modal(modal)
             await interaction.followup.send_message(f"I work")
 
@@ -654,7 +681,7 @@ class DnDCharacterSheet(commands.Cog):
     @dnd.command()
     async def create_character(self, ctx: commands.Context):
         """Sends a button to the user to create a new D&D character sheet."""
-        view = CharacterSheetView()
+        view = CharacterSheetView(self, cog)
         await ctx.send("Click the button below to create your D&D character sheet:", view=view)
 
 
