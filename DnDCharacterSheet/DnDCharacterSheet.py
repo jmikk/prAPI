@@ -29,6 +29,7 @@ logger.addHandler(file_handler)
 class MyModal(Modal):
     def __init__(self, *args, **kwargs):
         super().__init__(title="My Modal", *args, **kwargs)
+        await interaction.response.send_message(f"First Input: {first_input}\nSecond Input: {second_input}\nThird Input: {third_input}", ephemeral=True)
 
         self.add_item(TextInput(label="First Input", custom_id="first_input"))
         self.add_item(TextInput(label="Second Input", custom_id="second_input"))
