@@ -12,25 +12,35 @@ from discord.utils import MISSING
 from discord import ui
 from discord.ui import Modal, TextInput
 
-
-class MyDataModal(Modal):
+class CharacterSheetModal(Modal):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
-        # Add text input fields for the data you want to collect
-        self.add_item(TextInput(label="First Piece of Data", placeholder="Enter the first piece of data here..."))
-        self.add_item(TextInput(label="Second Piece of Data", placeholder="Enter the second piece of data here..."))
-        # Add more fields as needed
+
+        self.add_item(TextInput(label="Character Name", placeholder="Enter your character's name..."))
+        self.add_item(TextInput(label="Class and Level", placeholder="Enter your character's class and level..."))
+        self.add_item(TextInput(label="Race", placeholder="Enter your character's race..."))
+        # Add more fields as needed for your D&D character sheet
 
     async def callback(self, interaction: discord.Interaction):
         # This method is called when the modal is submitted
-        first_data = self.children[0].value  # Access the value from the first input field
-        second_data = self.children[1].value  # Access the value from the second input field
-        # Process the data as needed, e.g., save to a database or respond to the user
+        # Process and save the character sheet details here
+        character_name = self.children[0].value
+        class_and_level = self.children[1].value
+        race = self.children[2].value
+        # Process additional fields as needed
 
-        await interaction.response.send_message(f"Data received! First data: {first_data}, Second data: {second_data}", ephemeral=True)
+        await interaction.response.send_message(f"Character Sheet Created:\nName: {character_name}\nClass & Level: {class_and_level}\nRace: {race}", ephemeral=True)
 
+class CharacterSheetView(View):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
+        self.add_item(Button(label="Create Character Sheet", style=discord.ButtonStyle.green, custom_id="create_character_sheet"))
+
+    @discord.ui.button(label="Create Character Sheet", style=discord.ButtonStyle.green, custom_id="create_character_sheet")
+    async def create_character_sheet_button(self, button: Button, interaction: discord.Interaction):
+        modal = CharacterSheetModal(title="D&D Character Sheet")
+        await interaction.response.send_modal(modal)
 
 
 
@@ -653,14 +663,11 @@ class DnDCharacterSheet(commands.Cog):
     
             await ctx.send("All member inventories have been cleared.")
 
-
     @dnd.command()
-    async def collect_data(self, ctx: commands.Context):
-        # Create an instance of your custom modal
-        modal = MyDataModal(title="Enter Your Data")
-        
-        # Show the modal to the user who invoked the command
-        await ctx.send_modal(modal)
+    async def create_character(self, ctx: commands.Context):
+        """Sends a button to the user to create a new D&D character sheet."""
+        view = CharacterSheetView()
+        await ctx.send("Click the button below to create your D&D character sheet:", view=view)
 
 
 
