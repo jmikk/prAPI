@@ -12,26 +12,7 @@ from discord.utils import MISSING
 from discord import ui
 from discord.ui import Modal, TextInput
 
-class CharacterSheetModal(Modal):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.add_item(TextInput(label="Character Name", placeholder="Enter your character's name..."))
-        self.add_item(TextInput(label="Class and Level", placeholder="Enter your character's class and level..."))
-        self.add_item(TextInput(label="Race", placeholder="Enter your character's race..."))
-        # Add more fields as needed for your D&D character sheet
-
-    async def callback(self, interaction: discord.Interaction):
-        # This method is called when the modal is submitted
-        # Process and save the character sheet details here
-        character_name = self.children[0].value
-        class_and_level = self.children[1].value
-        race = self.children[2].value
-        # Process additional fields as needed
-
-        await interaction.response.send_message(f"Character Sheet Created:\nName: {character_name}\nClass & Level: {class_and_level}\nRace: {race}", ephemeral=True)
-
-class CharacterSheetView(View):
+class CharacterSheetView(ui.View):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Take from Stash Button
@@ -39,7 +20,7 @@ class CharacterSheetView(View):
         self.sheet_button.callback = self.create_character_sheet_button
         self.add_item(self.sheet_button)
 
-    async def create_character_sheet_button(self, button: Button, interaction: discord.Interaction):
+    async def create_character_sheet_button(self, interaction: discord.Interaction):
         try:
             #modal = CharacterSheetModal(title="D&D Character Sheet")
             #await interaction.response.send_modal(modal)
