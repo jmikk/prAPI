@@ -38,7 +38,6 @@ class MyView(View):
         super().__init__(*args, **kwargs)
         self.add_item(Button(label='Open Modal', style=discord.ButtonStyle.primary))
 
-    @discord.ui.button(label="Open Modal", style=discord.ButtonStyle.primary)
     async def open_modal_button(self, interaction: discord.Interaction, button: Button):
         # Open the modal when the button is clicked
         await interaction.response.send_modal(MyModal(title="Enter Your Details"))
