@@ -681,7 +681,7 @@ class DnDCharacterSheet(commands.Cog):
     @dnd.command()
     async def create_character(self, ctx: commands.Context):
         """Sends a button to the user to create a new D&D character sheet."""
-        view = CharacterSheetView(self, cog)
+        view = CharacterSheetView(self, ctx)
         await ctx.send("Click the button below to create your D&D character sheet:", view=view)
 
 
