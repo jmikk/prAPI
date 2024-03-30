@@ -662,7 +662,7 @@ class DnDCharacterSheet(commands.Cog):
     
             await ctx.send("All member inventories have been cleared.")
 
-    @command(name='open_modal')
+    @dnd.command(name='open_modal')
     async def open_modal_command(self, ctx):
         """Sends a button to the user. When clicked, opens a modal."""
         view = MyView()
