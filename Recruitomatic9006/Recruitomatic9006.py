@@ -44,7 +44,7 @@ class Recruitomatic9006(commands.Cog):
                     print(f"Failed to fetch data: {response.status}")
                     return response.status
 
-    def parse_nations(self, xml_data):
+   async def parse_nations(self, xml_data):
         """Parses nation details from XML, filtering out excluded regions."""
         nations = []
         await self.target_channel.send("xml_data")
