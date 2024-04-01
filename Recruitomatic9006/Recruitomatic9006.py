@@ -37,6 +37,10 @@ class Recruitomatic9006(commands.Cog):
         
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
+                await self.target_channel.send("data")
+                await self.target_channel.send(response)
+
+
                 if response.status == 200:
                     text = await response.text()
                     return text
