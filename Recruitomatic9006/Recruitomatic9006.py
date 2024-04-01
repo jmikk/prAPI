@@ -2,7 +2,7 @@ from redbot.core import commands
 import discord
 import asyncio
 
-class RecruitCog(commands.Cog):
+class Recruitomatic9006(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.target_channel = None  # The channel to send messages to
@@ -12,6 +12,16 @@ class RecruitCog(commands.Cog):
     def cog_unload(self):
         if self.embed_send_task:
             self.embed_send_task.cancel()  # Cancel the embed sending task if the cog is unloaded
+
+    @commands.command()
+    async def stoprecruit(self, ctx):
+        """Force stops the recruit loop."""
+        if self.embed_send_task:
+            self.embed_send_task.cancel()  # Cancel the embed sending task
+            self.embed_send_task = None  # Reset the task to None
+            await ctx.send("Recruit loop has been forcibly stopped.")
+        else:
+            await ctx.send("Recruit loop is not running.")
 
     @commands.command()
     async def recruit2(self, ctx, minutes: int):
