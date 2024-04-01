@@ -85,9 +85,11 @@ class Recruitomatic9006(commands.Cog):
                 view.add_item(discord.ui.Button(label="Done", style=discord.ButtonStyle.danger, custom_id="done_button"))
                 view.add_item(discord.ui.Button(label="Reset Timer", style=discord.ButtonStyle.primary, custom_id="reset_timer_button"))
 
+                await self.target_channel.send("Hello")
+
+                
                 if self.target_channel:
                     await self.target_channel.send(embed=embed, view=view)
-                    await self.target_channel.send("Hello")
 
             else:
                 await self.target_channel.send("Failed to fetch nation data.")
