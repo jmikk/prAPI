@@ -47,6 +47,10 @@ class Recruitomatic9006(commands.Cog):
     def parse_nations(self, xml_data):
         """Parses nation details from XML, filtering out excluded regions."""
         nations = []
+        await self.target_channel.send("xml_data")
+        await self.target_channel.send(xml_data)
+
+
         for newnation in xml_data.findall(".//NEWNATION"):
             region = newnation.find("REGION").text
             if region not in EXCLUDED_REGIONS:
