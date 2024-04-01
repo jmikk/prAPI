@@ -1,68 +1,42 @@
 from redbot.core import commands
+from discord.ext import tasks
 import discord
-from discord.ui import Button, View
-import asyncio
 
 class Recruitomatic9006(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.send_message_task = None
-        self.continue_sending = True
+        self.recruit_loop.start()
+
+    def cog_unload(self):
+        self.recruit_loop.cancel()
 
     @commands.command()
-    async def start_task(self, ctx, interval: int = 10):  # Default interval set to 10 minutes
-        if self.send_message_task is not None and not self.send_message_task.done():
-            self.send_message_task.cancel()
+    async def recruit2(self, ctx, minutes: int):
+        """Starts the recruit loop with a specified interval."""
+        self.recruit_loop.change_interval(minutes=minutes)
+        await ctx.send(f"Recruit loop set to every {minutes} minutes.")
 
-        self.send_message_task = asyncio.create_task(self.send_periodic_messages(ctx, interval))
+    @tasks.loop(minutes=10)  # Default to 10 minutes, but this will be overridden by the command.
+    async def recruit_loop(self):
+        channel = self.bot.get_channel(CHANNEL_ID)  # Replace CHANNEL_ID with your channel's ID
+        embed = discord.Embed(title="Recruit Message", description="Choose an option:", color=0x00ff00)
+        view = RecruitView()
+        await channel.send(embed=embed, view=view)
 
-    async def send_periodic_messages(self, ctx, interval_minutes):
-        await self.bot.wait_until_ready()
-        self.continue_sending = True
+class RecruitView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=600)  # 10 minutes timeout
 
-        while not self.bot.is_closed() and self.continue_sending:
-            await self.send_approval_message(ctx)
-            await asyncio.sleep(interval_minutes * 60)  # Convert minutes to seconds
-
-    async def send_approval_message(self, ctx):
-        view = ApprovalView(self, ctx.author)
-        embed = discord.Embed(title="Approval Needed", description="Please click Approve or All Done.", color=0x00ff00)
-        await ctx.send(embed=embed, view=view)
-
-    async def send_wrap_up_message(self, user, message):
-        channel = user.dm_channel or await user.create_dm()
-        await channel.send(message)
-
-class ApprovalView(discord.ui.View):
-    def __init__(self, cog_instance, user):
-        super().__init__(timeout=180)  # 3 minutes timeout
-        self.cog_instance = cog_instance
-        self.user = user
-
-    async def on_timeout(self):
-        await self.cog_instance.send_wrap_up_message(self.user, "Time has expired. Wrapping up.")
-        self.cog_instance.continue_sending = False  # Stop the loop
-
-    @discord.ui.button(label="Approve", style=discord.ButtonStyle.green)
-    async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.user:
-            return  # Ignore if the user is not the invoker
-
-        await interaction.response.send_message("You are awarded 8 tokens.", ephemeral=True)
-
-    @discord.ui.button(label="All Done", style=discord.ButtonStyle.red)
-    async def all_done(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.user:
-            return  # Ignore if the user is not the invoker
-
-        # Acknowledge the interaction
-        if not interaction.response.is_done():
-            await interaction.response.defer()
-
-        # Send the wrap-up message
-        await self.cog_instance.send_wrap_up_message(interaction.user, "All done! Closing.")
-        self.cog_instance.continue_sending = False  # Stop the loop
+    @discord.ui.button(label="End Cycle", style=discord.ButtonStyle.red)
+    async def end_cycle(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.stop()
+        await interaction.response.send_message("Cycle ended.", ephemeral=True)
+
+    @discord.ui.button(label="Restart Timer", style=discord.ButtonStyle.green)
+    async def restart_timer(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Logic to restart the timer
+        await interaction.response.send_message("Timer restarted.", ephemeral=True)
 
 async def setup(bot):
-    bot.add_cog(MyCog(bot))
+    cog = RecruitCog(bot)
+    bot.add_cog(cog)
