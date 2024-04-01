@@ -66,7 +66,14 @@ class Recruitomatic9006(commands.Cog):
     async def send_embed_periodically(self, interval_minutes):
         """Sends an embed with recruitment telegram URLs periodically."""
         await self.target_channel.send("here1")
+        await self.target_channel.send(discord.utils.utcnow())
+        await self.target_channel.send(self.last_interaction)
+        await self.target_channel.send(discord.utils.utcnow() - self.last_interaction)
+        await self.target_channel.send(discord.utils.utcnow() - self.last_interaction > discord.utils.timedelta(minutes=10))
 
+
+
+    
         while True:
             if discord.utils.utcnow() - self.last_interaction > discord.utils.timedelta(minutes=10):
                 await self.target_channel.send("No interactions for 10 minutes. Stopping the recruitment messages.")
