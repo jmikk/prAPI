@@ -3,6 +3,8 @@ import xml.etree.ElementTree as ET
 from redbot.core import commands
 import discord
 import asyncio
+from datetime import datetime, timedelta
+
 
 EXCLUDED_REGIONS = {"excluded_region1", "excluded_region2"}  # Update with your excluded regions
 
@@ -66,11 +68,14 @@ class Recruitomatic9006(commands.Cog):
     async def send_embed_periodically(self, interval_minutes):
         """Sends an embed with recruitment telegram URLs periodically."""
         await self.target_channel.send("here1")
-        self.last_interaction = datetime.utcnow() 
+        
+        self.last_interaction = datetime.utcnow()
+        await self.target_channel.send(datetime.utcnow() - self.last_interaction > timedelta(minutes=10))
+
         while True:
             await self.target_channel.send("here2")
 
-            if discord.utils.utcnow() - self.last_interaction > discord.utils.timedelta(minutes=10):
+            if datetime.utcnow() - self.last_interaction > timedelta(minutes=10):
                 await self.target_channel.send("No interactions for 10 minutes. Stopping the recruitment messages.")
                 self.embed_send_task.cancel()
                 break
