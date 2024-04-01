@@ -156,7 +156,7 @@ class Recruitomatic9003(commands.Cog):
         view.clear_items()
         embed = Embed(title="Recruitment Cycle", color=0x00ff00)
         if not nations:
-            embed.description = "No new nations found in this cycle.\nI'll keep looking for you based on the number of minutes you put in before.  If you want to check for more eariler you can always approve this message!"
+            embed.description = "No new nations found in this cycle.\nI'll keep looking for you based on the number of minutes you put in before.  If you want to check for more earlier, you can always approve this message!"
         else:
 
             if self.cycle_count == 0:
@@ -166,7 +166,7 @@ class Recruitomatic9003(commands.Cog):
                 nations_str = ",".join(group)
                 url = f"https://www.nationstates.net/page=compose_telegram?tgto={nations_str}&message={template}"
                 view.add_item(BatchButton(label=f"Batch {i+1}", url=url))
-            embed.description = "Please click each batch than the appove button to get credit and get the next set\nWhen you are all done recuriting for the day. click All done.  \nFor your convince I have a timer funciton you can use.  Just set it up by doing [p]set_timer {Num of Secounds}."
+            embed.description = "Please click each batch, then the approve button, to get credit and get the next set.\nWhen you are all done recruiting for the day, click \'All done\'.  \nFor your convenience, I have a timer function you can use.  Just set it up by doing [p]set_timer {Num of Seconds}."
         nations_count = len(nations)
         
         view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
@@ -184,7 +184,7 @@ class Recruitomatic9003(commands.Cog):
         # Now you can format this for Discord
         fancy_timestamp = f"<t:{new_unix_timestamp}:R>"
    
-        if embed.description == "No new nations found in this cycle.\nI'll keep looking for you based on the number of minutes you put in before.  If you want to check for more eariler you can always approve this message!":
+        if embed.description == "No new nations found in this cycle.\nI'll keep looking for you based on the number of minutes you put in before.  If you want to check for more earlier, you can always approve this message!":
             await ctx.send(content=fancy_timestamp,embed=embed, view=view)
         else:
             await ctx.send(content=ctx.author.mention+" "+fancy_timestamp,embed=embed, view=view)
@@ -215,7 +215,7 @@ class Recruitomatic9003(commands.Cog):
 
         self.loop_running = False
         # Fetch the total tokens and send a follow-up message with the embed
-        embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recuriting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
+        embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recruiting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -320,7 +320,7 @@ class Recruitomatic9003(commands.Cog):
 
     @commands.command()
     async def Thanks_9003(self, ctx):
-        await ctx.send("Your appreacation is appreacated if this has been a useful tool please let 9003/9006 know by sending them a TG or a discord message. The wellspring starts on the exluded region list, another way you can say thanks is by leaving it on there!")
+        await ctx.send("Your appreciation is appreciated! If this has been a useful tool, please let 9003/9006 know by sending them a TG or a discord message. The wellspring starts on the excluded region list, another way you can say thanks is by leaving it on there!")
 
 
 
