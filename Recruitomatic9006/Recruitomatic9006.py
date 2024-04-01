@@ -34,18 +34,12 @@ class Recruitomatic9006(commands.Cog):
         """Fetches new nation details from the NationStates API."""
         url = "https://www.nationstates.net/cgi-bin/api.cgi?q=newnationdetails"
         headers = {"User-Agent": "Recruitomatic9006, written by 9003, nswa9002@gmail.com (discord: 9003) V 2"}
-        await self.target_channel.send("data1")
 
         async with aiohttp.ClientSession() as session:
-            await self.target_channel.send("data2")
             async with session.get(url, headers=headers) as response:
-                await self.target_channel.send("data")
-                await self.target_channel.send(response)
-
-
                 if response.status == 200:
                     text = await response.text()
-                    return text
+                    return ET.fromstring(text)
                 else:
                     print(f"Failed to fetch data: {response.status}")
                     return response.status
