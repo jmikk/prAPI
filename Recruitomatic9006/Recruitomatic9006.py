@@ -72,7 +72,8 @@ class Recruitomatic9006(commands.Cog):
                 await self.target_channel.send("No interactions for 10 minutes. Stopping the recruitment messages.")
                 self.embed_send_task.cancel()
                 break
-            
+                
+            await self.target_channel.send("here3 ")
             xml_data = await self.fetch_nation_data()
             await self.target_channel.send("here2 "+xml_data)
 
