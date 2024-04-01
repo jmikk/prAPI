@@ -40,7 +40,7 @@ class Recruitomatic9006(commands.Cog):
                     return ET.fromstring(text)
                 else:
                     print(f"Failed to fetch data: {response.status}")
-                    return None
+                    return response.status
 
     def parse_nations(self, xml_data):
         """Parses nation details from XML, filtering out excluded regions."""
@@ -65,13 +65,18 @@ class Recruitomatic9006(commands.Cog):
 
     async def send_embed_periodically(self, interval_minutes):
         """Sends an embed with recruitment telegram URLs periodically."""
+        await self.target_channel.send("here1")
+
         while True:
             if discord.utils.utcnow() - self.last_interaction > discord.utils.timedelta(minutes=10):
                 await self.target_channel.send("No interactions for 10 minutes. Stopping the recruitment messages.")
                 self.embed_send_task.cancel()
                 break
-
+            
             xml_data = await self.fetch_nation_data()
+            await self.target_channel.send("here2 "+xml_data)
+
+            
             if xml_data:
                 nations = self.parse_nations(xml_data)
                 telegram_urls = self.generate_telegram_urls(nations)
