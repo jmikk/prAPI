@@ -67,22 +67,17 @@ class Recruitomatic9006(commands.Cog):
 
     async def send_embed_periodically(self, interval_minutes):
         """Sends an embed with recruitment telegram URLs periodically."""
-        await self.target_channel.send("here1")
         
         self.last_interaction = datetime.utcnow()
-        await self.target_channel.send(datetime.utcnow() - self.last_interaction > timedelta(minutes=10))
 
         while True:
-            await self.target_channel.send("here2")
-
             if datetime.utcnow() - self.last_interaction > timedelta(minutes=10):
                 await self.target_channel.send("No interactions for 10 minutes. Stopping the recruitment messages.")
                 self.embed_send_task.cancel()
                 break
                 
-            await self.target_channel.send("here3 ")
             xml_data = await self.fetch_nation_data()
-            await self.target_channel.send("here2 "+xml_data)
+            await self.target_channel.send("here_data "+xml_data)
 
             
             if xml_data:
