@@ -114,3 +114,13 @@ class Recruitomatic9006(commands.Cog):
     async def reset_timer_button_callback(self, button, interaction):
         self.last_interaction = discord.utils.utcnow()
         await interaction.response.send_message("Timer reset. Waiting for the next interaction or timeout.", ephemeral=True)
+
+    @commands.command()
+    async def stoprecruitment(self, ctx):
+        """Immediately stops the recruitment loop."""
+        if self.embed_send_task and not self.embed_send_task.cancelled():
+            self.embed_send_task.cancel()  # Cancel the running task
+            self.embed_send_task = None  # Reset the task to None
+            await ctx.send("Recruitment loop has been stopped.")
+        else:
+            await ctx.send("Recruitment loop is not currently running.")
