@@ -1,12 +1,12 @@
-import aiohttp  # Make sure to install aiohttp with pip
+import aiohttp  # Ensure aiohttp is installed in your environment
 import xml.etree.ElementTree as ET
 from redbot.core import commands
 import discord
 import asyncio
 
-EXCLUDED_REGIONS = {"excluded_region1", "excluded_region2"}  # Add your excluded regions here
+EXCLUDED_REGIONS = {"excluded_region1", "excluded_region2"}  # Update with your excluded regions
 
-class RecruitCog(commands.Cog):
+class Recruitomatic9006(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.target_channel = None
@@ -16,8 +16,9 @@ class RecruitCog(commands.Cog):
         if self.embed_send_task:
             self.embed_send_task.cancel()
 
-    @commands.command()
-    async def recruit(self, ctx, minutes: int):
+    @commands.command(name="recruit2")
+    async def recruit2(self, ctx, minutes: int):
+        """Starts sending the recruit embed in the current channel every X minutes."""
         if self.embed_send_task:
             self.embed_send_task.cancel()
 
@@ -27,6 +28,7 @@ class RecruitCog(commands.Cog):
         await ctx.send(f"Will send recruit embed every {minutes} minutes in this channel.")
 
     async def fetch_nation_data(self):
+        """Fetches new nation details from the NationStates API."""
         url = "https://www.nationstates.net/cgi-bin/api.cgi?q=newnationdetails"
         headers = {"User-Agent": "Recruitomatic9006, written by 9003, nswa9002@gmail.com (discord: 9003) V 2"}
         
@@ -40,6 +42,7 @@ class RecruitCog(commands.Cog):
                     return None
 
     def parse_nations(self, xml_data):
+        """Parses nation details from XML, filtering out excluded regions."""
         nations = []
         for newnation in xml_data.findall(".//NEWNATION"):
             region = newnation.find("REGION").text
@@ -48,6 +51,7 @@ class RecruitCog(commands.Cog):
         return nations
 
     def generate_telegram_urls(self, nations):
+        """Generates URLs for sending telegrams to nations, in chunks of 8."""
         urls = []
         base_url = "https://www.nationstates.net/page=compose_telegram?tgto="
         template = "&message=%25TEMPLATE-29841116%25"
@@ -59,6 +63,7 @@ class RecruitCog(commands.Cog):
         return urls
 
     async def send_embed_periodically(self, interval_minutes):
+        """Sends an embed with recruitment telegram URLs periodically."""
         while True:
             xml_data = await self.fetch_nation_data()
             if xml_data:
@@ -74,4 +79,4 @@ class RecruitCog(commands.Cog):
             else:
                 await self.target_channel.send("Failed to fetch nation data.")
 
-            await asyncio.sleep(interval_minutes * 60)
+            await asyncio.sleep(interval_minutes * 60)  # Wait for the specified interval before repeating
