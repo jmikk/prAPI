@@ -68,6 +68,8 @@ class Recruitomatic9006(commands.Cog):
         await self.target_channel.send("here1")
         self.last_interaction = datetime.utcnow() 
         while True:
+            await self.target_channel.send("here2")
+
             if discord.utils.utcnow() - self.last_interaction > discord.utils.timedelta(minutes=10):
                 await self.target_channel.send("No interactions for 10 minutes. Stopping the recruitment messages.")
                 self.embed_send_task.cancel()
