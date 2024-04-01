@@ -87,7 +87,7 @@ class Recruitomatic9006(commands.Cog):
 
                 if self.target_channel:
                     await self.target_channel.send(embed=embed, view=view)
-                    await self.target_channel.send("Hello", view=view)
+                    await self.target_channel.send("Hello")
 
             else:
                 await self.target_channel.send("Failed to fetch nation data.")
