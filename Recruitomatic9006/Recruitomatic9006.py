@@ -1,16 +1,17 @@
-import aiohttp  # Ensure aiohttp is installed in your environment
+import aiohttp
 import xml.etree.ElementTree as ET
 from redbot.core import commands
 import discord
 import asyncio
 
-EXCLUDED_REGIONS = {"excluded_region1", "the_wellspring"}  # Update with your excluded regions
+EXCLUDED_REGIONS = {"excluded_region1", "excluded_region2"}  # Update with your excluded regions
 
 class Recruitomatic9006(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.target_channel = None
         self.embed_send_task = None
+        self.last_interaction = discord.utils.utcnow()  # Track the last interaction
 
     def cog_unload(self):
         if self.embed_send_task:
@@ -65,18 +66,39 @@ class Recruitomatic9006(commands.Cog):
     async def send_embed_periodically(self, interval_minutes):
         """Sends an embed with recruitment telegram URLs periodically."""
         while True:
+            if discord.utils.utcnow() - self.last_interaction > discord.utils.timedelta(minutes=10):
+                await self.target_channel.send("No interactions for 10 minutes. Stopping the recruitment messages.")
+                self.embed_send_task.cancel()
+                break
+
             xml_data = await self.fetch_nation_data()
             if xml_data:
                 nations = self.parse_nations(xml_data)
                 telegram_urls = self.generate_telegram_urls(nations)
 
-                embed = discord.Embed(title="Recruit Message", description="Choose an option:", color=0x00ff00)
+                embed = discord.Embed(title="Recruit Message", description="Recruitment Telegrams:", color=0x00ff00)
+                view = discord.ui.View()
+
                 for url in telegram_urls:
-                    embed.add_field(name="Recruitment Telegram", value=f"[Send Telegram]({url})", inline=False)
+                    view.add_item(discord.ui.Button(label="Recruitment Telegram", url=url, style=discord.ButtonStyle.url))
+
+                view.add_item(discord.ui.Button(label="Done", style=discord.ButtonStyle.danger, custom_id="done_button"))
+                view.add_item(discord.ui.Button(label="Reset Timer", style=discord.ButtonStyle.primary, custom_id="reset_timer_button"))
 
                 if self.target_channel:
-                    await self.target_channel.send(embed=embed)
+                    await self.target_channel.send(embed=embed, view=view)
             else:
                 await self.target_channel.send("Failed to fetch nation data.")
 
             await asyncio.sleep(interval_minutes * 60)  # Wait for the specified interval before repeating
+
+    @discord.ui.button(custom_id="done_button", style=discord.ButtonStyle.danger, label="Done")
+    async def done_button_callback(self, button, interaction):
+        if self.embed_send_task:
+            self.embed_send_task.cancel()
+            await interaction.response.send_message("Recruitment messages stopped.", ephemeral=True)
+
+    @discord.ui.button(custom_id="reset_timer_button", style=discord.ButtonStyle.primary, label="Reset Timer")
+    async def reset_timer_button_callback(self, button, interaction):
+        self.last_interaction = discord.utils.utcnow()
+        await interaction.response.send_message("Timer reset. Waiting for the next interaction or timeout.", ephemeral=True)
