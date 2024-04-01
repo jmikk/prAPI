@@ -4,7 +4,7 @@ from redbot.core import commands
 import discord
 import asyncio
 
-EXCLUDED_REGIONS = {"excluded_region1", "excluded_region2"}  # Update with your excluded regions
+EXCLUDED_REGIONS = {"excluded_region1", "the_wellspring"}  # Update with your excluded regions
 
 class Recruitomatic9006(commands.Cog):
     def __init__(self, bot):
