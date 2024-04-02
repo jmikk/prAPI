@@ -222,7 +222,7 @@ class Recruitomatic9006(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def set_user_template(self, ctx, *, template: str):
+    async def set_user_template2(self, ctx, *, template: str):
         """Sets the user's recruitment message template."""
         # Ensure the template meets your requirements, e.g., starts and ends with %%
         if template.startswith("%") and template.endswith("%"):
@@ -232,7 +232,7 @@ class Recruitomatic9006(commands.Cog):
             await ctx.send("Error: The template must start and end with %.")
 
     @commands.command()
-    async def recruit_leaderboard(self, ctx):
+    async def recruit_leaderboard2(self, ctx):
         guild = ctx.guild
         members = guild.members
     
@@ -285,7 +285,7 @@ class Recruitomatic9006(commands.Cog):
     
     @commands.command()
     @commands.has_permissions(manage_guild=True)  # Ensure only users with manage guild permissions can modify the list
-    async def add_excluded_region(self, ctx, *, region: str):
+    async def add_excluded_region2(self, ctx, *, region: str):
         region = region.replace(" ","_").lower()
         async with self.config.guild(ctx.guild).excluded_regions() as regions:
             if region not in regions:
@@ -296,7 +296,7 @@ class Recruitomatic9006(commands.Cog):
     
     @commands.command()
     @commands.has_permissions(manage_guild=True)
-    async def remove_excluded_region(self, ctx, *, region: str):
+    async def remove_excluded_region2(self, ctx, *, region: str):
         region = region.replace(" ","_").lower()
         async with self.config.guild(ctx.guild).excluded_regions() as regions:
             if region in regions:
@@ -306,7 +306,7 @@ class Recruitomatic9006(commands.Cog):
                 await ctx.send(f"Region '{region}' is not in the excluded regions list.")
 
     @commands.command()
-    async def view_excluded_regions(self, ctx):
+    async def view_excluded_regions2(self, ctx):
         # Fetch the excluded regions list from the guild's config
         excluded_regions = await self.config.guild(ctx.guild).excluded_regions()
     
@@ -322,21 +322,21 @@ class Recruitomatic9006(commands.Cog):
         await ctx.send(message)
 
     @commands.command()
-    async def Thanks_9003(self, ctx):
+    async def Thanks_9006(self, ctx):
         await ctx.send("Your appreciation is appreciated! If this has been a useful tool, please let 9003/9006 know by sending them a TG or a discord message. The wellspring starts on the excluded region list, another way you can say thanks is by leaving it on there!")
 
 
 
 
     @commands.command()
-    async def set_timer(self, ctx, seconds: int):
+    async def set_timer2(self, ctx, seconds: int):
         """Sets your personal timer in seconds."""
         if seconds <= 0:
             await ctx.send("Please enter a positive number of seconds.")
             return
 
     @commands.command()
-    async def end_loop(self, ctx):
+    async def end_loop2(self, ctx):
         self.loop_running = False
         await ctx.send("ending loop")
     
