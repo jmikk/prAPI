@@ -40,7 +40,7 @@ class Recruitomatic9006(commands.Cog):
                 if response.status == 200:
                     text = await response.text()
                     #return ET.fromstring(text)
-                    return ET.fromstring(text)
+                    return text
 
                 else:
                     print(f"Failed to fetch data: {response.status}")
