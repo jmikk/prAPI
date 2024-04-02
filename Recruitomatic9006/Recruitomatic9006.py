@@ -105,9 +105,9 @@ class Recruitomatic9006(commands.Cog):
         self.config = Config.get_conf(self, identifier=1234567890)
         default_user_settings = {
             "template": None,
-            "user_agent": f"Recruitomatic9003 written by 9003, nswa9002@gmail.com (discord: 9003)     V 1"
+            "user_agent": f"Recruitomatic9006 written by 9003, nswa9002@gmail.com (discord: 9003)     V 2"
         }
-        self.last_interaction = discord.utils.utcnow()
+        self.last_interaction = datetime.utcnow()
         self.config.register_user(**default_user_settings)
         self.loop_running = False
         self.processed_nations = set()  # Track already processed nations
@@ -204,7 +204,7 @@ class Recruitomatic9006(commands.Cog):
         self.loop_running = True
         timer = max(40, timer * 60)
         cycles = 0
-        self.start_time = datetime.utcnow()
+        self.last_interaction = datetime.utcnow()
 
         user_settings = await self.config.user(ctx.author).all()
 
