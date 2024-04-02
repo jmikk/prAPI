@@ -59,7 +59,9 @@ class ApproveButton(Button):
             await self.cog_instance.config.user(self.ctx.author).tokens.set(new_token_count)
             # Continue with running the next cycle
             view = View()
-            embed = discord.Embed(title="Approved collecting the next set.",description="Yummy Telegrams.",color=0x00ff00)  # Green color for the embed, you can choose any color you like
+            embed = discord.Embed(title="Approved collecting the next set.",description="Yummy Telegrams.",color=0x00ff00)
+            await interaction.response.send_message(embed=embed)
+
         else:
             # If the user is not the invoker, send an error message
             await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
