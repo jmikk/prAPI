@@ -38,7 +38,7 @@ class Recruitomatic9006(commands.Cog):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
                 if response.status == 200:
-                    text = response.text()
+                    text = await response.text()
                     #return ET.fromstring(text)
                     return text
 
