@@ -59,8 +59,18 @@ class ApproveButton(Button):
             await self.cog_instance.config.user(self.ctx.author).tokens.set(new_token_count)
             # Continue with running the next cycle
             view = View()
-            embed = discord.Embed(title="Approved collecting the next set.",description="Yummy Telegrams.",color=0x00ff00)
-            await interaction.response.send_message(embed=embed,view=view)
+             # Feedback embed
+            embed = discord.Embed(title="Action Approved", description="Choose your next action:", color=0x00ff00)
+    
+            # Creating a new view for the feedback message
+            view = View()
+        
+            view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
+            view.add_item(ApproveButton("Approve", "approve", self, ctx, 0))
+            view.add_item(DoneButton("All Done", "done", self, ctx))
+    
+            # Send the feedback embed with the new view as a follow-up
+            await interaction.followup.send(embed=embed, view=view)
 
         else:
             # If the user is not the invoker, send an error message
