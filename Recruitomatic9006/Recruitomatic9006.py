@@ -59,7 +59,7 @@ class Recruitomatic9006(commands.Cog):
                 nations.append(newnation.get("name"))
         return nations
 
-   async def generate_telegram_urls(self, nations):
+    async def generate_telegram_urls(self, nations):
         """Generates URLs for sending telegrams to nations, in chunks of 8."""
         urls = []
         base_url = "https://www.nationstates.net/page=compose_telegram?tgto="
