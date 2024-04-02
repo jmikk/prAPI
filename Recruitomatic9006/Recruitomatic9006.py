@@ -39,6 +39,10 @@ class Recruitomatic9006(commands.Cog):
             async with session.get(url, headers=headers) as response:
                 if response.status == 200:
                     text = await response.text()
+                    await self.target_channel.send(response.status)
+                    await self.target_channel.send(await response.text())
+
+
                     #return ET.fromstring(text)
                     return text
 
