@@ -40,7 +40,7 @@ class Recruitomatic9006(commands.Cog):
                 if response.status == 200:
                     text = await response.text()
                     await self.target_channel.send(response.status)
-                    await self.target_channel.send(await response.text())
+                    await self.target_channel.send(await response.text()[:1900])
 
 
                     #return ET.fromstring(text)
