@@ -38,11 +38,7 @@ class Recruitomatic9006(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
                     if response.status == 200:
-                        text = await response.text()
-                        await self.target_channel.send(response.status)
-                        await self.target_channel.send(text[:1900])
-    
-    
+                        text = await response.text()    
                         return ET.fromstring(text)
                         #return text
     
@@ -56,8 +52,6 @@ class Recruitomatic9006(commands.Cog):
         """Parses nation details from XML, filtering out excluded regions."""
         nations = []
         await self.target_channel.send("xml_data")
-        await self.target_channel.send(xml_data)
-
 
         for newnation in xml_data.findall(".//NEWNATION"):
             region = newnation.find("REGION").text
@@ -87,11 +81,14 @@ class Recruitomatic9006(commands.Cog):
                 await self.target_channel.send("No interactions for 10 minutes. Stopping the recruitment messages.")
                 self.embed_send_task.cancel()
                 break
-                
+            
+            await self.target_channel.send("fetch_nation_data")
             xml_data = await self.fetch_nation_data()
             
             if xml_data:
+                await self.target_channel.send("parse_nations")
                 nations = self.parse_nations(xml_data)
+                await self.target_channel.send("generate_telegram_urls")
                 telegram_urls = self.generate_telegram_urls(nations)
 
                 embed = discord.Embed(title="Recruit Message", description="Recruitment Telegrams:", color=0x00ff00)
