@@ -64,9 +64,9 @@ class Recruitomatic9006(commands.Cog):
         urls = []
         base_url = "https://www.nationstates.net/page=compose_telegram?tgto="
         template = "&message=%25TEMPLATE-29841116%25"
+        await self.target_channel.send(len(nations))
 
         for i in range(0, len(nations), 8):
-            await self.target_channel.send("loop")
             nation_chunk = nations[i:i+8]
             urls.append(base_url + ",".join(nation_chunk) + template)
 
