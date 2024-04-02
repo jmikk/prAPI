@@ -55,8 +55,6 @@ class Recruitomatic9006(commands.Cog):
             region = newnation.find("REGION").text
             if region not in EXCLUDED_REGIONS:
                 nations.append(newnation.get("name"))
-        await self.target_channel.send(len(nations))
-
         return nations
 
     async def generate_telegram_urls(self, nations):
@@ -86,11 +84,11 @@ class Recruitomatic9006(commands.Cog):
             xml_data = await self.fetch_nation_data()
             
             if xml_data:
-                await self.target_channel.send("pre")
                 nations = await self.parse_nations(xml_data)
-                await self.target_channel.send("post")
 
                 telegram_urls = self.generate_telegram_urls(nations)
+                await self.target_channel.send(len(telegram_urls))
+
                 embed = discord.Embed(title="Recruit Message", description="Recruitment Telegrams:", color=0x00ff00)
                 view = discord.ui.View()
                 
