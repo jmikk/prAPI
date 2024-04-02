@@ -333,6 +333,11 @@ class Recruitomatic9006(commands.Cog):
         if seconds <= 0:
             await ctx.send("Please enter a positive number of seconds.")
             return
+
+    @commands.command()
+    async def end_loop(self, ctx):
+        self.loop_running = False
+        await ctx.send("ending loop")
     
         # Save the timer value in the user's config
         await self.config.user(ctx.author).timer_seconds.set(seconds)
