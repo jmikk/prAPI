@@ -70,7 +70,7 @@ class ApproveButton(Button):
             view.add_item(DoneButton("All Done", "done", self, ctx))
     
             # Send the feedback embed with the new view as a follow-up
-            await interaction.followup.send("here", view=view)
+            await interaction.followup.send("here")
 
             await interaction.followup.send(embed=embed, view=view)
 
