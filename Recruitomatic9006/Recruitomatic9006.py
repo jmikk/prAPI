@@ -34,21 +34,23 @@ class Recruitomatic9006(commands.Cog):
         """Fetches new nation details from the NationStates API."""
         url = "https://www.nationstates.net/cgi-bin/api.cgi?q=newnationdetails"
         headers = {"User-Agent": "Recruitomatic9006, written by 9003, nswa9002@gmail.com (discord: 9003) V 2"}
-
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as response:
-                if response.status == 200:
-                    text = await response.text()
-                    await self.target_channel.send(response.status)
-                    await self.target_channel.send(await response.text()[:1900])
-
-
-                    #return ET.fromstring(text)
-                    return text
-
-                else:
-                    print(f"Failed to fetch data: {response.status}")
-                    return response.status
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        text = await response.text()
+                        await self.target_channel.send(response.status)
+                        await self.target_channel.send(await response.text()[:1900])
+    
+    
+                        #return ET.fromstring(text)
+                        return text
+    
+                    else:
+                        print(f"Failed to fetch data: {response.status}")
+                        return response.status
+        except Exception as e:
+            await self.target_channel.send(e)
 
     async def parse_nations(self, xml_data):
         """Parses nation details from XML, filtering out excluded regions."""
