@@ -87,7 +87,7 @@ class Recruitomatic9006(commands.Cog):
             
             if xml_data:
                 await self.target_channel.send("pre")
-                nations = self.parse_nations(xml_data)
+                nations = await self.parse_nations(xml_data)
                 await self.target_channel.send("post")
 
                 telegram_urls = self.generate_telegram_urls(nations)
