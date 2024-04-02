@@ -89,12 +89,6 @@ class Recruitomatic9006(commands.Cog):
                 break
                 
             xml_data = await self.fetch_nation_data()
-         
-            await self.target_channel.send("pre")
-            await self.target_channel.send(xml_data)
-            await self.target_channel.send("post2")
-
-
             
             if xml_data:
                 nations = self.parse_nations(xml_data)
