@@ -60,7 +60,7 @@ class ApproveButton(Button):
             # Continue with running the next cycle
             view = View()
             embed = discord.Embed(title="Approved collecting the next set.",description="Yummy Telegrams.",color=0x00ff00)
-            await interaction.response.send_message(embed=embed)
+            await interaction.response.send_message(embed=embed,view=view)
 
         else:
             # If the user is not the invoker, send an error message
