@@ -40,7 +40,7 @@ class ApproveButton(Button):
 
     async def callback(self, interaction):
         self.start_time = datetime.utcnow()
-        Recruitomatic9006.last_interaction = discord.utils.utcnow()
+        Recruitomatic9006.last_interaction = datetime.utcnow()
 
 
         # Check if the user who interacted is the invoker
