@@ -43,8 +43,8 @@ class Recruitomatic9006(commands.Cog):
                         await self.target_channel.send(text[:1900])
     
     
-                        #return ET.fromstring(text)
-                        return text
+                        return ET.fromstring(text)
+                        #return text
     
                     else:
                         print(f"Failed to fetch data: {response.status}")
