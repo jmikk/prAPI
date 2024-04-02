@@ -90,10 +90,12 @@ class Recruitomatic9006(commands.Cog):
                 nations = self.parse_nations(xml_data)
                 await self.target_channel.send("generate_telegram_urls")
                 telegram_urls = self.generate_telegram_urls(nations)
-
+              
+                await self.target_channel.send("build emebed")
                 embed = discord.Embed(title="Recruit Message", description="Recruitment Telegrams:", color=0x00ff00)
                 view = discord.ui.View()
-
+                
+                await self.target_channel.send("add buttons")
                 for url in telegram_urls:
                     view.add_item(discord.ui.Button(label="Recruitment Telegram", url=url, style=discord.ButtonStyle.url))
 
@@ -104,6 +106,8 @@ class Recruitomatic9006(commands.Cog):
 
                 
                 if self.target_channel:
+                    await self.target_channel.send("sending emebed")
+
                     await self.target_channel.send(embed=embed, view=view)
 
             else:
