@@ -82,12 +82,10 @@ class Recruitomatic9006(commands.Cog):
                 self.embed_send_task.cancel()
                 break
                 
-            await self.target_channel.send("pre")
             xml_data = await self.fetch_nation_data()
-            await self.target_channel.send("post")
-
-            
-            await self.target_channel.send("here_data "+xml_data)
+         
+            await self.target_channel.send("pre")
+            await self.target_channel.send(xml_data)
             await self.target_channel.send("post2")
 
 
