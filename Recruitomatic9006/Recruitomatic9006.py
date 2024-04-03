@@ -7,6 +7,9 @@ import aiohttp
 from datetime import datetime
 from datetime import datetime, timedelta
 import discord
+import os
+
+nations_tged=[]
 
 class BatchButton(Button):
     def __init__(self, label: str, url: str):
@@ -31,12 +34,14 @@ class TimerButton(Button):
 
 
 class ApproveButton(Button):
-    def __init__(self, label: str, custom_id: str, cog_instance, ctx, nations_count):
+    def __init__(self, label: str, custom_id: str, cog_instance, ctx, nations_count,nations):
         super().__init__(style=ButtonStyle.success, label=label, custom_id=custom_id)
         self.cog_instance = cog_instance
         self.ctx = ctx
         self.nations_count = nations_count  # Number of processed nations
         self.invoker_id = ctx.author.id  # Store the ID of the user who invoked the command
+        self.nations_list = nations
+        
 
     async def callback(self, interaction):
         self.start_time = datetime.utcnow()
@@ -67,6 +72,8 @@ class ApproveButton(Button):
             view.add_item(DoneButton("All Done", "done", self, ctx))
 
             # Send the feedback embed with the new view as a follow-up
+            for each in self.nations_list
+                nations_tged.append(each)
             await interaction.followup.send(embed=embed, view=view)
 
         else:
@@ -95,6 +102,7 @@ class DoneButton(Button):
             # Stop the recruitment loop
             self.cog_instance.loop_running = False
             self.cog_instance.processed_nations.clear()  # Clear processed nations
+            Recruitomatic9006.send_nations_file()
 
             # Fetch the total tokens and send a follow-up message with the embed
         else:
@@ -179,7 +187,7 @@ class Recruitomatic9006(commands.Cog):
         nations_count = len(nations)
         
         view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
-        view.add_item(ApproveButton("Approve", "approve", self, ctx, nations_count))
+        view.add_item(ApproveButton("Approve", "approve", self, ctx, nations_count,nations))
         view.add_item(DoneButton("All Done", "done", self, ctx))
 
 
@@ -227,6 +235,8 @@ class Recruitomatic9006(commands.Cog):
         # Fetch the total tokens and send a follow-up message with the embed
         embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recruiting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
         await ctx.send(embed=embed)
+        self.send_nations_file()
+
 
     @commands.command()
     async def set_user_template2(self, ctx, *, template: str):
@@ -341,12 +351,29 @@ class Recruitomatic9006(commands.Cog):
         if seconds <= 0:
             await ctx.send("Please enter a positive number of seconds.")
             return
+    
+        # Save the timer value in the user's config
+        await self.config.user(ctx.author).timer_seconds.set(seconds)
+        await ctx.send(f"Your personal timer has been set to {seconds} seconds.")\
 
     @commands.command()
     async def end_loop2(self, ctx):
         self.loop_running = False
         await ctx.send("ending loop")
-    
-        # Save the timer value in the user's config
-        await self.config.user(ctx.author).timer_seconds.set(seconds)
-        await ctx.send(f"Your personal timer has been set to {seconds} seconds.")
+        self.send_nations_file()
+
+    async def send_nations_file(self, ctx):
+        # Specify the filename
+        filename = "nations_list.txt"
+
+        # Write the nations to the file
+        with open(filename, "w") as file:
+            for nation in nations_tged:
+                file.write(f"{nation}\n")
+
+        # Send the file in a Discord message
+        with open(filename, "rb") as file:
+            await ctx.send("Here's the list of all nations that earned tokens:", file=discord.File(file, filename))
+
+        # Clean up by deleting the file after sending it
+        os.remove(filename)
