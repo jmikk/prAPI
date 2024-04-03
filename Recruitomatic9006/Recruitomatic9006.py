@@ -60,22 +60,13 @@ class ApproveButton(Button):
             # Continue with running the next cycle
             view = View()
              # Feedback embed
-            await interaction.followup.send("here1")
 
             embed = discord.Embed(title="Action Approved", description="Choose your next action:", color=0x00ff00)
-            await interaction.followup.send("here2")
-
             # Creating a new view for the feedback message        
             view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
-            await interaction.followup.send("here3")
-
             view.add_item(DoneButton("All Done", "done", self, ctx))
-            await interaction.followup.send("here4")
 
-    
             # Send the feedback embed with the new view as a follow-up
-            await interaction.followup.send("here")
-
             await interaction.followup.send(embed=embed, view=view)
 
         else:
