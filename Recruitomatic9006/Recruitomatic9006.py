@@ -74,10 +74,9 @@ class ApproveButton(Button):
             # Send the feedback embed with the new view as a follow-up
             for each in self.nations_list:
                 nations_tged.append(each)
-            await ctx.send("here", ephemeral=True)
-
-            await ctx.send(nations_tged, view=view)
-            await ctx.send(embed=embed, view=view)
+            await interaction.followup.send("here")
+            await ctx.send(nations_tged)
+            await ctx.send(embed=embed)
 
         else:
             # If the user is not the invoker, send an error message
