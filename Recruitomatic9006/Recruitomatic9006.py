@@ -102,7 +102,7 @@ class DoneButton(Button):
             # Stop the recruitment loop
             self.cog_instance.loop_running = False
             self.cog_instance.processed_nations.clear()  # Clear processed nations
-            Recruitomatic9006.send_nations_file(self.ctx)
+            await Recruitomatic9006.send_nations_file(self.ctx)
 
             # Fetch the total tokens and send a follow-up message with the embed
         else:
@@ -235,7 +235,7 @@ class Recruitomatic9006(commands.Cog):
         # Fetch the total tokens and send a follow-up message with the embed
         embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recruiting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
         await ctx.send(embed=embed)
-        self.send_nations_file(ctx)
+        await self.send_nations_file(ctx)
 
 
     @commands.command()
@@ -360,7 +360,7 @@ class Recruitomatic9006(commands.Cog):
     async def end_loop2(self, ctx):
         self.loop_running = False
         await ctx.send("ending loop")
-        self.send_nations_file(ctx)
+        await self.send_nations_file(ctx)
 
     async def send_nations_file(self, ctx):
         # Specify the filename
