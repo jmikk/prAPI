@@ -72,7 +72,7 @@ class ApproveButton(Button):
             view.add_item(DoneButton("All Done", "done", self, ctx))
 
             # Send the feedback embed with the new view as a follow-up
-            for each in self.nations_list
+            for each in self.nations_list:
                 nations_tged.append(each)
             await interaction.followup.send(embed=embed, view=view)
 
