@@ -364,7 +364,6 @@ class Recruitomatic9006(commands.Cog):
 
     async def send_nations_file(self, ctx):
         # Specify the filename
-        await ctx.send("HeeRE")
         filename = "nations_list.txt"
 
         # Write the nations to the file
