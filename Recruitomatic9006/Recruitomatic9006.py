@@ -74,6 +74,7 @@ class ApproveButton(Button):
             # Send the feedback embed with the new view as a follow-up
             for each in self.nations_list:
                 nations_tged.append(each)
+            await interaction.followup.send(nations_tged, view=view)
             await interaction.followup.send(embed=embed, view=view)
 
         else:
