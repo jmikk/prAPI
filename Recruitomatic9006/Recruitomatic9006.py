@@ -83,7 +83,7 @@ class ApproveButton(Button):
                 # If the user is not the invoker, send an error message
                 await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
         except Exception as e:
-                await interaction.followup.send("here")
+                await interaction.followup.send(f"here {e}")
 
             
 
