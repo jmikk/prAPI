@@ -77,7 +77,7 @@ class ApproveButton(Button):
                 view.add_item(DoneButton("All Done", "done", self, self.ctx))
                 await interaction.followup.send("here2")
     
-                nations_tged = nations_tged + nations
+                nations_tged = nations_tged + self.nations_list
                 await interaction.followup.send(embed=embed,view=view)
 
     
