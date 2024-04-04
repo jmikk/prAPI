@@ -236,6 +236,8 @@ class Recruitomatic9006(commands.Cog):
                 break
             
             await asyncio.sleep(timer)
+
+            
             cycles += 1
 
         self.loop_running = False
