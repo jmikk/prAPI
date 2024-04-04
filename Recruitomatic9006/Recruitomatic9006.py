@@ -44,43 +44,48 @@ class ApproveButton(Button):
         
 
     async def callback(self, interaction):
-        self.start_time = datetime.utcnow()
-        Recruitomatic9006.last_interaction = datetime.utcnow()
+        try: 
+            self.start_time = datetime.utcnow()
+            Recruitomatic9006.last_interaction = datetime.utcnow()
+    
+    
+            # Check if the user who interacted is the invoker
+            if interaction.user.id == self.invoker_id:
+                # Disable all buttons
+                for item in self.view.children:
+                    item.disabled = True
+                # Acknowledge the interaction and update the message with disabled buttons
+                await interaction.response.edit_message(view=self.view)
+    
+                # Fetch current user settings
+                user_settings = await self.cog_instance.config.user(self.ctx.author).all()
+                # Calculate new token count
+                new_token_count = user_settings.get('tokens', 0) + self.nations_count
+                # Update user settings with new token count
+                await self.cog_instance.config.user(self.ctx.author).tokens.set(new_token_count)
+                # Continue with running the next cycle
+                view = View()
+                 # Feedback embed
+    
+                embed = discord.Embed(title="Action Approved", description="Choose your next action:", color=0x00ff00)
+                # Creating a new view for the feedback message        
+                view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
+                view.add_item(DoneButton("All Done", "done", self, ctx))
+                await interaction.followup.send("here2")
+    
+                # Send the feedback embed with the new view as a follow-up
+                await interaction.followup.send(f"here1 {self.nations_list}")
+                await interaction.followup.send("here")
+                await ctx.send(nations_tged)
+                await ctx.send(embed=embed)
+    
+            else:
+                # If the user is not the invoker, send an error message
+                await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
+        except Exception as e:
+                await interaction.followup.send("here")
 
-
-        # Check if the user who interacted is the invoker
-        if interaction.user.id == self.invoker_id:
-            # Disable all buttons
-            for item in self.view.children:
-                item.disabled = True
-            # Acknowledge the interaction and update the message with disabled buttons
-            await interaction.response.edit_message(view=self.view)
-
-            # Fetch current user settings
-            user_settings = await self.cog_instance.config.user(self.ctx.author).all()
-            # Calculate new token count
-            new_token_count = user_settings.get('tokens', 0) + self.nations_count
-            # Update user settings with new token count
-            await self.cog_instance.config.user(self.ctx.author).tokens.set(new_token_count)
-            # Continue with running the next cycle
-            view = View()
-             # Feedback embed
-
-            embed = discord.Embed(title="Action Approved", description="Choose your next action:", color=0x00ff00)
-            # Creating a new view for the feedback message        
-            view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
-            view.add_item(DoneButton("All Done", "done", self, ctx))
-            await interaction.followup.send("here2")
-
-            # Send the feedback embed with the new view as a follow-up
-            await interaction.followup.send(f"here1 {self.nations_list}")
-            await interaction.followup.send("here")
-            await ctx.send(nations_tged)
-            await ctx.send(embed=embed)
-
-        else:
-            # If the user is not the invoker, send an error message
-            await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
+            
 
 
 
