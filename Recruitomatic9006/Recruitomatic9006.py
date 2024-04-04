@@ -70,6 +70,7 @@ class ApproveButton(Button):
             # Creating a new view for the feedback message        
             view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
             view.add_item(DoneButton("All Done", "done", self, ctx))
+            await interaction.followup.send("here2")
 
             # Send the feedback embed with the new view as a follow-up
             await interaction.followup.send(f"here1 {self.nations_list}")
