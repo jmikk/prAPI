@@ -38,6 +38,7 @@ class ApproveButton(Button):
         super().__init__(style=ButtonStyle.success, label=label, custom_id=custom_id)
         self.cog_instance = cog_instance
         self.ctx = ctx
+        self.author = ctx.author
         self.nations_count = nations_count  # Number of processed nations
         self.invoker_id = ctx.author.id  # Store the ID of the user who invoked the command
         self.nations_list = nations
@@ -58,11 +59,11 @@ class ApproveButton(Button):
                 await interaction.response.edit_message(view=self.view)
     
                 # Fetch current user settings
-                user_settings = await self.cog_instance.config.user(self.ctx.author).all()
+                user_settings = await self.cog_instance.config.user(self.author).all()
                 # Calculate new token count
                 new_token_count = user_settings.get('tokens', 0) + self.nations_count
                 # Update user settings with new token count
-                await self.cog_instance.config.user(self.ctx.author).tokens.set(new_token_count)
+                await self.cog_instance.config.user(self.author).tokens.set(new_token_count)
                 # Continue with running the next cycle
                 view = View()
                  # Feedback embed
