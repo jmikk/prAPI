@@ -9,7 +9,9 @@ from datetime import datetime, timedelta
 import discord
 import os
 
-global nations_tged=[]
+global nations_tged
+nations_tged=[]
+
 
 class BatchButton(Button):
     def __init__(self, label: str, url: str):
