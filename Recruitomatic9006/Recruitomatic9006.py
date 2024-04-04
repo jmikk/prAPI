@@ -74,11 +74,9 @@ class ApproveButton(Button):
                 view.add_item(DoneButton("All Done", "done", self, self.ctx))
                 await interaction.followup.send("here2")
     
-                # Send the feedback embed with the new view as a follow-up
-                await interaction.followup.send(f"here1 {self.nations_list}")
-                await interaction.followup.send("here")
-                await ctx.send(nations_tged)
-                await ctx.send(embed=embed)
+
+                await interaction.followup.send(embed=embed,view=view)
+
     
             else:
                 # If the user is not the invoker, send an error message
