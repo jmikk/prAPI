@@ -59,19 +59,19 @@ class ApproveButton(Button):
                 await interaction.response.edit_message(view=self.view)
     
                 # Fetch current user settings
-                user_settings = await self.cog_instance.config.user(self.author).all()
+                user_settings = await self.cog_instance.config.user(self.ctx.author).all()
                 # Calculate new token count
                 new_token_count = user_settings.get('tokens', 0) + self.nations_count
                 # Update user settings with new token count
-                await self.cog_instance.config.user(self.author).tokens.set(new_token_count)
+                await self.cog_instance.config.user(self.ctx.author).tokens.set(new_token_count)
                 # Continue with running the next cycle
                 view = View()
                  # Feedback embed
     
                 embed = discord.Embed(title="Action Approved", description="Choose your next action:", color=0x00ff00)
                 # Creating a new view for the feedback message        
-                view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
-                view.add_item(DoneButton("All Done", "done", self, ctx))
+                view.add_item(TimerButton("Start Timer", "start_timer", self, self.ctx))
+                view.add_item(DoneButton("All Done", "done", self, self.ctx))
                 await interaction.followup.send("here2")
     
                 # Send the feedback embed with the new view as a follow-up
