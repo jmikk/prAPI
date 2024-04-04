@@ -34,7 +34,7 @@ class TimerButton(Button):
 
 
 class ApproveButton(Button):
-    def __init__(self, label: str, custom_id: str, cog_instance, ctx, nations_count,nations):
+    def __init__(self, label: str, custom_id: str, cog_instance, ctx, nations_count, nations):
         super().__init__(style=ButtonStyle.success, label=label, custom_id=custom_id)
         self.cog_instance = cog_instance
         self.ctx = ctx
@@ -72,8 +72,7 @@ class ApproveButton(Button):
             view.add_item(DoneButton("All Done", "done", self, ctx))
 
             # Send the feedback embed with the new view as a follow-up
-            for each in self.nations_list:
-                nations_tged.append(each)
+            await interaction.followup.send(f"here1 {self.nations_list}")
             await interaction.followup.send("here")
             await ctx.send(nations_tged)
             await ctx.send(embed=embed)
