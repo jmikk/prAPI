@@ -370,6 +370,7 @@ class Recruitomatic9006(commands.Cog):
         await self.send_nations_file(ctx)
 
     async def send_nations_file(self, ctx):
+        global nations_tged
         # Specify the filename
         filename = "nations_list.txt"
 
