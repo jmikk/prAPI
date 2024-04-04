@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import discord
 import os
 
-nations_tged=[]
+global nations_tged=[]
 
 class BatchButton(Button):
     def __init__(self, label: str, url: str):
@@ -45,6 +45,7 @@ class ApproveButton(Button):
         
 
     async def callback(self, interaction):
+        global nations_tged
         try: 
             self.start_time = datetime.utcnow()
             Recruitomatic9006.last_interaction = datetime.utcnow()
