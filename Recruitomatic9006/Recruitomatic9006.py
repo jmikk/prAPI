@@ -245,10 +245,11 @@ class Recruitomatic9006(commands.Cog):
             cycles += 1
 
         self.loop_running = False
-        # Fetch the total tokens and send a follow-up message with the embed
-        embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recruiting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
-        await ctx.send(embed=embed)
-        await self.send_nations_file(ctx)        
+        if await self.send_nations_file(ctx):  
+            # Fetch the total tokens and send a follow-up message with the embed
+            embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recruiting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
+            await ctx.send(embed=embed)
+              
 
 
     @commands.command()
@@ -377,7 +378,10 @@ class Recruitomatic9006(commands.Cog):
 
     async def send_nations_file(self, ctx):
         global nations_tged
+        if not nations_tged:
+            return False
         self.processed_nations.clear() # Track already processed nations
+        
     
         # Specify the filename
         filename = "nations_list.txt"
@@ -394,4 +398,5 @@ class Recruitomatic9006(commands.Cog):
         # Clean up by deleting the file after sending it
         os.remove(filename)
         nations_tged = []
+        return True
         
