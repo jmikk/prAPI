@@ -75,7 +75,7 @@ class ApproveButton(Button):
                 # Continue with running the next cycle
                 view = View()
                  # Feedback embed
-                embed = discord.Embed(title="Tokens Earned", description=f"I'll clean up thanks for recruiting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
+                embed = discord.Embed(title="Thank you!", description=f"I'll start that paperwork.", color=0x00ff00)
 
                 # Creating a new view for the feedback message        
                 view.add_item(TimerButton("Start Timer", "start_timer", self, self.ctx))
