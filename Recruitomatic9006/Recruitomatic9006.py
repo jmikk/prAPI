@@ -376,7 +376,7 @@ class Recruitomatic9006(commands.Cog):
         await ctx.send("ending loop")
         await self.send_nations_file()
 
-    async def send_nations_file(self):
+    async def send_nations_file():
         global nations_tged
         if not nations_tged:
             return False
