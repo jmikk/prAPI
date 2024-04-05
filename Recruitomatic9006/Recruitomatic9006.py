@@ -217,6 +217,7 @@ class Recruitomatic9006(commands.Cog):
 
     @commands.command()
     async def recruit2(self, ctx, timer: int):
+        global nations_tged
         if self.loop_running:
             await ctx.send("A recruitment loop is already running.")
             return
@@ -245,6 +246,8 @@ class Recruitomatic9006(commands.Cog):
         embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recruiting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
         await ctx.send(embed=embed)
         await self.send_nations_file(ctx)
+        nations_tged=[""]
+        
 
 
     @commands.command()
@@ -387,3 +390,5 @@ class Recruitomatic9006(commands.Cog):
 
         # Clean up by deleting the file after sending it
         os.remove(filename)
+        nations_tged = []
+        
