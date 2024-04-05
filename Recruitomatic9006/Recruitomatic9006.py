@@ -402,7 +402,7 @@ class Recruitomatic9006(commands.Cog):
 
         # Send the file in a Discord message
         with open(filename, "rb") as file:
-            await ctx.send("Here's the list of all nations that earned tokens:", file=discord.File(file, filename))
+            await ctx.send(f"Here's the list of all nations that earned tokens, you earned: {len(nations_tged)}", file=discord.File(file, filename))
 
         # Clean up by deleting the file after sending it
         os.remove(filename)
