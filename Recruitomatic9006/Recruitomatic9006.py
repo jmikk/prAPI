@@ -14,7 +14,8 @@ nations_tged=[]
 global processed_nations
 processed_nations = set()
 
-global loop_running = False
+global loop_running
+loop_running = False
 
 
 class BatchButton(Button):
