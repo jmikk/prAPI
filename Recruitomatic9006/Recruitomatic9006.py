@@ -109,7 +109,7 @@ class DoneButton(Button):
     
                 # Stop the recruitment loop
                 self.cog_instance.loop_running = False
-                await Recruitomatic9006.send_nations_file()
+                await Recruitomatic9006.send_nations_file(self.ctx)
     
                 # Fetch the total tokens and send a follow-up message with the embed
             else:
@@ -136,7 +136,6 @@ class Recruitomatic9006(commands.Cog):
 
         default_guild_settings = {
             "excluded_regions": ["the_wellspring"],
-            "log_channel":None
         }
         self.config.register_guild(**default_guild_settings)
         self.start_time = 0
@@ -245,7 +244,7 @@ class Recruitomatic9006(commands.Cog):
             cycles += 1
 
         self.loop_running = False
-        if await self.send_nations_file():  
+        if await self.send_nations_file(ctx):  
             # Fetch the total tokens and send a follow-up message with the embed
             embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recruiting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
             await ctx.send(embed=embed)
@@ -374,44 +373,29 @@ class Recruitomatic9006(commands.Cog):
     async def end_loop2(self, ctx):
         self.loop_running = False
         await ctx.send("ending loop")
-        await self.send_nations_file()
+        await self.send_nations_file(ctx)
 
-    async def send_nations_file():
+    async def send_nations_file(self, ctx):
         global nations_tged
         if not nations_tged:
             return False
         self.processed_nations.clear() # Track already processed nations
-
-        log_channel_id = await self.config.guild(ctx.guild).log_channel()
-        if log_channel_id is None:
-            return
-
-        log_channel = self.bot.get_channel(log_channel_id)
-        if log_channel:
         
     
-            # Specify the filename
-            filename = "nations_list.txt"
-    
-            # Write the nations to the file
-            with open(filename, "w") as file:
-                for nation in nations_tged:
-                    file.write(f"{nation}\n")
-    
-            # Send the file in a Discord message
-            with open(filename, "rb") as file:
-                await log_channel.send("Here's the list of all nations that earned tokens:", file=discord.File(file, filename))
-    
-            # Clean up by deleting the file after sending it
-            os.remove(filename)
-            nations_tged = []
-        return True
+        # Specify the filename
+        filename = "nations_list.txt"
 
-    @commands.guild_only()
-    @commands.has_permissions(manage_guild=True)
-    @commands.command()
-    async def setlogchannel(self, ctx, channel: discord.TextChannel):
-        """Sets the log channel for the server."""
-        await self.config.guild(ctx.guild).log_channel.set(channel.id)
-        await ctx.send(f"Log channel set to {channel.mention}")
+        # Write the nations to the file
+        with open(filename, "w") as file:
+            for nation in nations_tged:
+                file.write(f"{nation}\n")
+
+        # Send the file in a Discord message
+        with open(filename, "rb") as file:
+            await ctx.send("Here's the list of all nations that earned tokens:", file=discord.File(file, filename))
+
+        # Clean up by deleting the file after sending it
+        os.remove(filename)
+        nations_tged = []
+        return True
         
