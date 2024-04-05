@@ -110,7 +110,7 @@ class DoneButton(Button):
                 # Stop the recruitment loop
                 self.cog_instance.loop_running = False
                 #await Recruitomatic9006.send_nations_file(self.ctx)
-    
+                Recruitomatic9006.stop_flag.set()
                 # Fetch the total tokens and send a follow-up message with the embed
             else:
                 # If the user is not the invoker, send an error message
@@ -122,6 +122,7 @@ class DoneButton(Button):
 
 class Recruitomatic9006(commands.Cog):
     def __init__(self, bot):
+        self.stop_flag = asyncio.Event()
         self.cycle_count = 0  # Initialize the cycle counter
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -238,8 +239,13 @@ class Recruitomatic9006(commands.Cog):
             if not success:
                 break
             
-            await asyncio.sleep(timer)
-
+            elapsed = 0
+            while elapsed < timer:
+                if self.stop_flag.is_set():  # Assuming stop_flag is an asyncio.Event
+                    print("Stopping early!")
+                    break
+                await asyncio.sleep(min(10, timer - elapsed))
+                elapsed += check_interval
             
             cycles += 1
 
