@@ -109,7 +109,6 @@ class DoneButton(Button):
     
                 # Stop the recruitment loop
                 self.cog_instance.loop_running = False
-                self.cog_instance.processed_nations.clear()  # Clear processed nations
                 await Recruitomatic9006.send_nations_file(self.ctx)
     
                 # Fetch the total tokens and send a follow-up message with the embed
