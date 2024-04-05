@@ -11,6 +11,8 @@ import os
 
 global nations_tged
 nations_tged=[]
+global processed_nations
+processed_nations = set()
 
 
 class BatchButton(Button):
@@ -132,7 +134,6 @@ class Recruitomatic9006(commands.Cog):
         self.last_interaction = datetime.utcnow()
         self.config.register_user(**default_user_settings)
         self.loop_running = False
-        self.processed_nations = set()  # Track already processed nations
 
         default_guild_settings = {
             "excluded_regions": ["the_wellspring"],
@@ -172,12 +173,13 @@ class Recruitomatic9006(commands.Cog):
             return False
 
         nations = []
+        global processed_nations
         for new_nation in root.findall('./NEWNATIONDETAILS/NEWNATION'):
             nation_name = new_nation.get('name')
             region = new_nation.find('REGION').text
-            if region not in excluded_regions and nation_name not in self.processed_nations:
+            if region not in excluded_regions and nation_name not in processed_nations:
                 nations.append(nation_name)
-                self.processed_nations.add(nation_name)  # Add to the set of already processed nations
+                processed_nations.add(nation_name)  # Add to the set of already processed nations
 
         view.clear_items()
         embed = Embed(title="Recruitment Cycle", color=0x00ff00)
@@ -377,9 +379,10 @@ class Recruitomatic9006(commands.Cog):
 
     async def send_nations_file(self, ctx):
         global nations_tged
+        global processed_nations
         if not nations_tged:
             return False
-        self.processed_nations.clear() # Track already processed nations
+        processed_nations.clear() # Track already processed nations
         
     
         # Specify the filename
