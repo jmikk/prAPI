@@ -109,7 +109,7 @@ class DoneButton(Button):
     
                 # Stop the recruitment loop
                 self.cog_instance.loop_running = False
-                await Recruitomatic9006.send_nations_file(self, self.ctx)
+                await Recruitomatic9006.send_nations_file(Recruitomatic9006, self.ctx)
                 # Fetch the total tokens and send a follow-up message with the embed
             else:
                 # If the user is not the invoker, send an error message
