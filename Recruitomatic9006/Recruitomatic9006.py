@@ -245,9 +245,7 @@ class Recruitomatic9006(commands.Cog):
         # Fetch the total tokens and send a follow-up message with the embed
         embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recruiting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
         await ctx.send(embed=embed)
-        await self.send_nations_file(ctx)
-        nations_tged=[""]
-        
+        await self.send_nations_file(ctx)        
 
 
     @commands.command()
