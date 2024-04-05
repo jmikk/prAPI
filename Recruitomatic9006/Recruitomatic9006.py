@@ -377,7 +377,7 @@ class Recruitomatic9006(commands.Cog):
 
     async def send_nations_file(self, ctx):
         global nations_tged
-        self.processed_nations.clear # Track already processed nations
+        self.processed_nations.clear() # Track already processed nations
     
         # Specify the filename
         filename = "nations_list.txt"
