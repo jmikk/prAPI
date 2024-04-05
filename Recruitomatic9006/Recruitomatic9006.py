@@ -14,6 +14,8 @@ nations_tged=[]
 global processed_nations
 processed_nations = set()
 
+global loop_running = False
+
 
 class BatchButton(Button):
     def __init__(self, label: str, url: str):
@@ -133,7 +135,7 @@ class Recruitomatic9006(commands.Cog):
         }
         self.last_interaction = datetime.utcnow()
         self.config.register_user(**default_user_settings)
-        self.loop_running = False
+        loop_running = False
 
         default_guild_settings = {
             "excluded_regions": ["the_wellspring"],
@@ -222,18 +224,19 @@ class Recruitomatic9006(commands.Cog):
     @commands.command()
     async def recruit2(self, ctx, timer: int):
         global nations_tged
-        if self.loop_running:
+        global loop_running
+        if loop_running:
             await ctx.send("A recruitment loop is already running.")
             return
 
-        self.loop_running = True
+        loop_running = True
         timer = max(40, timer * 60)
         cycles = 0
         self.last_interaction = datetime.utcnow()
 
         user_settings = await self.config.user(ctx.author).all()
 
-        while self.loop_running and datetime.utcnow() - self.last_interaction < timedelta(minutes=10):
+        while loop_running and datetime.utcnow() - self.last_interaction < timedelta(minutes=10):
             view = View()
 
             success = await self.run_cycle(ctx, user_settings, view)
@@ -245,7 +248,7 @@ class Recruitomatic9006(commands.Cog):
             
             cycles += 1
 
-        self.loop_running = False
+        loop_running = False
         global processed_nations
         if processed_nations:  
             # Fetch the total tokens and send a follow-up message with the embed
@@ -381,6 +384,8 @@ class Recruitomatic9006(commands.Cog):
     async def send_nations_file(self, ctx):
         global nations_tged
         global processed_nations
+        global loop_running
+        
         if not nations_tged:
             return False
         processed_nations.clear() # Track already processed nations
@@ -401,5 +406,6 @@ class Recruitomatic9006(commands.Cog):
         # Clean up by deleting the file after sending it
         os.remove(filename)
         nations_tged = []
+        loop_running = False
         return True
         
