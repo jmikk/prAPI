@@ -98,23 +98,26 @@ class DoneButton(Button):
         self.invoker_id = ctx.author.id  # Store the ID of the user who invoked the command
 
     async def callback(self, interaction):
-        # Check if the user who interacted is the invoker
-        if interaction.user.id == self.invoker_id:
-            # Disable all buttons
-            for item in self.view.children:
-                item.disabled = True
-            # Acknowledge the interaction and update the message with disabled buttons
-            await interaction.response.edit_message(view=self.view)
-
-            # Stop the recruitment loop
-            self.cog_instance.loop_running = False
-            self.cog_instance.processed_nations.clear()  # Clear processed nations
-            await Recruitomatic9006.send_nations_file(self.ctx)
-
-            # Fetch the total tokens and send a follow-up message with the embed
-        else:
-            # If the user is not the invoker, send an error message
-            await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
+        try:
+            # Check if the user who interacted is the invoker
+            if interaction.user.id == self.invoker_id:
+                # Disable all buttons
+                for item in self.view.children:
+                    item.disabled = True
+                # Acknowledge the interaction and update the message with disabled buttons
+                await interaction.response.edit_message(view=self.view)
+    
+                # Stop the recruitment loop
+                self.cog_instance.loop_running = False
+                self.cog_instance.processed_nations.clear()  # Clear processed nations
+                await Recruitomatic9006.send_nations_file(self.ctx)
+    
+                # Fetch the total tokens and send a follow-up message with the embed
+            else:
+                # If the user is not the invoker, send an error message
+                await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
+        except Exception as e:
+                await interaction.followup.send(f"here {e}")
 
 
 
