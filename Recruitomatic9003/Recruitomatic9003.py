@@ -6,6 +6,17 @@ import asyncio
 import aiohttp
 from datetime import datetime
 from datetime import datetime, timedelta
+import discord
+import os
+
+global nations_tged
+nations_tged=[]
+global processed_nations
+processed_nations = set()
+
+global loop_running
+loop_running = False
+
 
 class BatchButton(Button):
     def __init__(self, label: str, url: str):
@@ -30,36 +41,56 @@ class TimerButton(Button):
 
 
 class ApproveButton(Button):
-    def __init__(self, label: str, custom_id: str, cog_instance, ctx, nations_count):
+    def __init__(self, label: str, custom_id: str, cog_instance, ctx, nations_count, nations):
         super().__init__(style=ButtonStyle.success, label=label, custom_id=custom_id)
         self.cog_instance = cog_instance
         self.ctx = ctx
+        self.author = ctx.author
         self.nations_count = nations_count  # Number of processed nations
         self.invoker_id = ctx.author.id  # Store the ID of the user who invoked the command
+        self.nations_list = nations
+        
 
     async def callback(self, interaction):
-        self.start_time = datetime.utcnow()
+        global nations_tged
+        try: 
+            self.start_time = datetime.utcnow()
+            Recruitomatic9003.last_interaction = datetime.utcnow()
+    
+    
+            # Check if the user who interacted is the invoker
+            if interaction.user.id == self.invoker_id:
+                # Disable all buttons
+                for item in self.view.children:
+                    item.disabled = True
+                # Acknowledge the interaction and update the message with disabled buttons
+                await interaction.response.edit_message(view=self.view)
+    
+                # Fetch current user settings
+                user_settings = await self.cog_instance.config.user(self.ctx.author).all()
+                # Calculate new token count
+                new_token_count = user_settings.get('tokens', 0) + self.nations_count
+                # Update user settings with new token count
+                await self.cog_instance.config.user(self.ctx.author).tokens.set(new_token_count)
+                # Continue with running the next cycle
+                view = View()
+                 # Feedback embed
+                embed = discord.Embed(title="Thank you!", description=f"I'll start that paperwork.", color=0x00ff00)
 
-        # Check if the user who interacted is the invoker
-        if interaction.user.id == self.invoker_id:
-            # Disable all buttons
-            for item in self.view.children:
-                item.disabled = True
-            # Acknowledge the interaction and update the message with disabled buttons
-            await interaction.response.edit_message(view=self.view)
+                # Creating a new view for the feedback message        
+                view.add_item(TimerButton("Start Timer", "start_timer", self, self.ctx))
+                view.add_item(DoneButton("All Done", "done", self, self.ctx))    
+                nations_tged = nations_tged + self.nations_list
+                await interaction.followup.send(embed=embed,view=view)
 
-            # Fetch current user settings
-            user_settings = await self.cog_instance.config.user(self.ctx.author).all()
-            # Calculate new token count
-            new_token_count = user_settings.get('tokens', 0) + self.nations_count
-            # Update user settings with new token count
-            await self.cog_instance.config.user(self.ctx.author).tokens.set(new_token_count)
-            # Continue with running the next cycle
-            view = View()
-            await self.cog_instance.run_cycle(self.ctx, user_settings, view)
-        else:
-            # If the user is not the invoker, send an error message
-            await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
+    
+            else:
+                # If the user is not the invoker, send an error message
+                await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
+        except Exception as e:
+                await interaction.followup.send(f"here {e}")
+
+            
 
 
 
@@ -72,41 +103,40 @@ class DoneButton(Button):
         self.invoker_id = ctx.author.id  # Store the ID of the user who invoked the command
 
     async def callback(self, interaction):
-        # Check if the user who interacted is the invoker
-        if interaction.user.id == self.invoker_id:
-            # Disable all buttons
-            for item in self.view.children:
-                item.disabled = True
-            # Acknowledge the interaction and update the message with disabled buttons
-            await interaction.response.edit_message(view=self.view)
-
-            # Stop the recruitment loop
-            self.cog_instance.loop_running = False
-            self.cog_instance.processed_nations.clear()  # Clear processed nations
-
-            # Fetch the total tokens and send a follow-up message with the embed
-            user_settings = await self.cog_instance.config.user(self.ctx.author).all()
-            total_tokens = user_settings.get('tokens', 0)
-            embed = Embed(title="Tokens Earned", description=f"You have a total of {total_tokens} tokens. Use [p]token_shop to access the token shop to spend them on cool things!", color=0x00ff00)
-            await interaction.followup.send(embed=embed)
-        else:
-            # If the user is not the invoker, send an error message
-            await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
+        try:
+            # Check if the user who interacted is the invoker
+            if interaction.user.id == self.invoker_id:
+                # Disable all buttons
+                for item in self.view.children:
+                    item.disabled = True
+                # Acknowledge the interaction and update the message with disabled buttons
+                await interaction.response.edit_message(view=self.view)
+    
+                # Stop the recruitment loop
+                self.cog_instance.loop_running = False
+                await Recruitomatic9003.send_nations_file(Recruitomatic9003, self.ctx)
+                # Fetch the total tokens and send a follow-up message with the embed
+            else:
+                # If the user is not the invoker, send an error message
+                await interaction.response.send_message("You are not allowed to use this button.", ephemeral=True)
+        except Exception as e:
+                await interaction.followup.send(f"here {e}")
 
 
 
 class Recruitomatic9003(commands.Cog):
     def __init__(self, bot):
+        self.stop_flag = asyncio.Event()
         self.cycle_count = 0  # Initialize the cycle counter
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
         default_user_settings = {
             "template": None,
-            "user_agent": f"Recruitomatic9003 written by 9003, nswa9002@gmail.com (discord: 9003)     V 1"
+            "user_agent": f"Recruitomatic9003 written by 9003, nswa9002@gmail.com (discord: 9003)     V 2"
         }
+        self.last_interaction = datetime.utcnow()
         self.config.register_user(**default_user_settings)
-        self.loop_running = False
-        self.processed_nations = set()  # Track already processed nations
+        loop_running = False
 
         default_guild_settings = {
             "excluded_regions": ["the_wellspring"],
@@ -146,12 +176,13 @@ class Recruitomatic9003(commands.Cog):
             return False
 
         nations = []
+        global processed_nations
         for new_nation in root.findall('./NEWNATIONDETAILS/NEWNATION'):
             nation_name = new_nation.get('name')
             region = new_nation.find('REGION').text
-            if region not in excluded_regions and nation_name not in self.processed_nations:
+            if region not in excluded_regions and nation_name not in processed_nations:
                 nations.append(nation_name)
-                self.processed_nations.add(nation_name)  # Add to the set of already processed nations
+                processed_nations.add(nation_name)  # Add to the set of already processed nations
 
         view.clear_items()
         embed = Embed(title="Recruitment Cycle", color=0x00ff00)
@@ -170,7 +201,7 @@ class Recruitomatic9003(commands.Cog):
         nations_count = len(nations)
         
         view.add_item(TimerButton("Start Timer", "start_timer", self, ctx))
-        view.add_item(ApproveButton("Approve", "approve", self, ctx, nations_count))
+        view.add_item(ApproveButton("Approve", "approve", self, ctx, nations_count,nations))
         view.add_item(DoneButton("All Done", "done", self, ctx))
 
 
@@ -193,30 +224,39 @@ class Recruitomatic9003(commands.Cog):
 
     @commands.command()
     async def recruit(self, ctx, timer: int):
-        if self.loop_running:
+        global nations_tged
+        global loop_running
+        if loop_running:
             await ctx.send("A recruitment loop is already running.")
             return
 
-        self.loop_running = True
+        loop_running = True
         timer = max(40, timer * 60)
         cycles = 0
-        self.start_time = datetime.utcnow()
+        self.last_interaction = datetime.utcnow()
 
         user_settings = await self.config.user(ctx.author).all()
-        while self.loop_running and (datetime.utcnow() - self.start_time).total_seconds() < 600:
+
+        while loop_running and datetime.utcnow() - self.last_interaction < timedelta(minutes=10):
             view = View()
 
             success = await self.run_cycle(ctx, user_settings, view)
             if not success:
                 break
             
+           
             await asyncio.sleep(timer)
+            
             cycles += 1
 
-        self.loop_running = False
-        # Fetch the total tokens and send a follow-up message with the embed
-        embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recruiting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
-        await ctx.send(embed=embed)
+        loop_running = False
+        global processed_nations
+        if processed_nations:  
+            # Fetch the total tokens and send a follow-up message with the embed
+            embed = Embed(title="Tokens Earned", description=f"I'll clean up thanks for recruiting! check out the recruit_leaderboard to see your ranking!", color=0x00ff00)
+            await ctx.send(embed=embed)
+              
+
 
     @commands.command()
     async def set_user_template(self, ctx, *, template: str):
@@ -319,7 +359,7 @@ class Recruitomatic9003(commands.Cog):
         await ctx.send(message)
 
     @commands.command()
-    async def Thanks_9003(self, ctx):
+    async def Thanks_9006(self, ctx):
         await ctx.send("Your appreciation is appreciated! If this has been a useful tool, please let 9003/9006 know by sending them a TG or a discord message. The wellspring starts on the excluded region list, another way you can say thanks is by leaving it on there!")
 
 
@@ -334,6 +374,39 @@ class Recruitomatic9003(commands.Cog):
     
         # Save the timer value in the user's config
         await self.config.user(ctx.author).timer_seconds.set(seconds)
-        await ctx.send(f"Your personal timer has been set to {seconds} seconds.")
+        await ctx.send(f"Your personal timer has been set to {seconds} seconds.")\
 
+    @commands.command()
+    async def end_loop(self, ctx):
+        self.loop_running = False
+        await ctx.send("ending loop")
+        await self.send_nations_file(ctx)
 
+    async def send_nations_file(self, ctx):
+        global nations_tged
+        global processed_nations
+        global loop_running
+        
+        if not nations_tged:
+            return False
+        processed_nations.clear() # Track already processed nations
+        
+    
+        # Specify the filename
+        filename = "nations_list.txt"
+
+        # Write the nations to the file
+        with open(filename, "w") as file:
+            for nation in nations_tged:
+                file.write(f"{nation}\n")
+
+        # Send the file in a Discord message
+        with open(filename, "rb") as file:
+            await ctx.send(f"Here's the list of all nations that earned tokens, you earned: {len(nations_tged)} tokens", file=discord.File(file, filename))
+
+        # Clean up by deleting the file after sending it
+        os.remove(filename)
+        nations_tged = []
+        loop_running = False
+        return True
+        
