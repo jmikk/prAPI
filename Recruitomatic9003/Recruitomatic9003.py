@@ -55,7 +55,7 @@ class ApproveButton(Button):
         global nations_tged
         try: 
             self.start_time = datetime.utcnow()
-            Recruitomatic9003.last_interaction = datetime.utcnow()
+            self.cog_instance.last_interaction = datetime.utcnow()
     
     
             # Check if the user who interacted is the invoker
