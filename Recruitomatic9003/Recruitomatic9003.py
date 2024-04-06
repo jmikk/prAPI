@@ -237,7 +237,7 @@ class Recruitomatic9003(commands.Cog):
 
         user_settings = await self.config.user(ctx.author).all()
 
-        while loop_running and datetime.utcnow() - self.last_interaction < timedelta(minutes=10):
+        while loop_running:
             view = View()
 
             success = await self.run_cycle(ctx, user_settings, view)
@@ -246,6 +246,8 @@ class Recruitomatic9003(commands.Cog):
             
            
             await asyncio.sleep(timer)
+            if not datetime.utcnow() - self.last_interaction < timedelta(minutes=10):
+                loop_running = False
             
             cycles += 1
 
