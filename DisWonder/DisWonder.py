@@ -60,7 +60,8 @@ class DisWonder(commands.Cog):
         if user_items is None:
             # If user_items doesn't exist, initialize it with default_items
             await self.config.user(user).items.set(self.default_items)
-
+            
+    @commands.command()
     async def buy_random(self, ctx, tokens: int):
         # Ensure the user has the items initialized in their config
         await self.ensure_user_items(ctx.author)
