@@ -13,12 +13,9 @@ def is_owner_overridable():
 
 class DisWonder(commands.Cog):
     """My custom cog"""
-    self.bot = self
-    self.config = Config.get_conf(None, identifier=1234567890)
-
-
     def __init__(self, bot):
         self.bot = bot
+        self.config = Config.get_conf(None, identifier=1234567890)
 
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
