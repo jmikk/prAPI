@@ -16,7 +16,7 @@ class DisWonder(commands.Cog):
     """My custom cog"""
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(None, identifier=1234567890)
+        self.config = Config.get_conf(self, identifier=1234567890,force_registration=True)
 
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
