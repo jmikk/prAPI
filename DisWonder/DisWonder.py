@@ -13,7 +13,7 @@ def is_owner_overridable():
 
 class DisWonder(commands.Cog):
     """My custom cog"""
-    self.bot = bot
+    self.bot = self
     self.config = Config.get_conf(None, identifier=1234567890)
 
 
