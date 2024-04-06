@@ -28,10 +28,19 @@ class DisWonder(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def myCom1(self, ctx):
-        user_settings = await self.config.user(ctx.author).all()
-        guild_settings = await self.config.guild(ctx.guild).all()
+        recruitomatic_cog = self.bot.get_cog("Recruitomatic9003")
+        if recruitomatic_cog is None:
+            await ctx.send("Recruitomatic9003 cog is not loaded.")
+            return
+
+        # Access the config from the other cog
+        user_settings = await recruitomatic_cog.config.user(ctx.author).all()
+        guild_settings = await recruitomatic_cog.config.guild(ctx.guild).all()
+
+        # Send the fetched data
         await ctx.send("I work")
-        await ctx.send(user_settings)
+        await ctx.send(f"User Settings: {user_settings}")
+        await ctx.send(f"Guild Settings: {guild_settings}")
 
     @commands.command()
     @is_owner_overridable()
