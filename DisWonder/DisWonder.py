@@ -13,6 +13,9 @@ def is_owner_overridable():
 
 class DisWonder(commands.Cog):
     """My custom cog"""
+    self.bot = bot
+    self.config = Config.get_conf(None, identifier=1234567890)
+
 
     def __init__(self, bot):
         self.bot = bot
@@ -27,7 +30,10 @@ class DisWonder(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def myCom1(self, ctx):
+        user_settings = await self.config.user(user).all()
+        guild_settings = await self.config.guild(guild).all()
         await ctx.send("I work")
+        await ctx.send(user_settings)
 
     @commands.command()
     @is_owner_overridable()
