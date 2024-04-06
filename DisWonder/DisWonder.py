@@ -28,7 +28,7 @@ class DisWonder(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def myCom1(self, ctx):
-        user_settings = await self.config.user(ctx.author).tokens()
+        user_settings = await self.config.user(ctx.author).all()
         guild_settings = await self.config.guild(ctx.guild).all()
         await ctx.send("I work")
         await ctx.send(user_settings)
