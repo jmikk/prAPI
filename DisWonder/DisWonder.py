@@ -17,6 +17,17 @@ class DisWonder(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890,force_registration=True)
+                # Define the default items structure
+        self.default_items = {
+            "Logistics": 0,
+            "Knowledge": 0,
+            "Chemicals": 0,
+            "Textiles": 0,
+            "Food": 0,
+            "Metal": 0,
+            "Wood": 0,
+            "Stone": 0
+        }
 
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
@@ -42,7 +53,31 @@ class DisWonder(commands.Cog):
         await ctx.send(f"User Settings: {user_settings}")
         await ctx.send(f"Guild Settings: {guild_settings}")
 
-    @commands.command()
-    @is_owner_overridable()
-    async def myCom2(self, ctx):
-        await ctx.send("I still work!")
+    async def ensure_user_items(self, user):
+        # Try to get the user's items; if not set, this will be None
+        user_items = await self.config.user(user).get_raw("items", default=None)
+
+        if user_items is None:
+            # If user_items doesn't exist, initialize it with default_items
+            await self.config.user(user).items.set(self.default_items)
+
+    async def buy_random(self, ctx, tokens: int):
+        # Ensure the user has the items initialized in their config
+        await self.ensure_user_items(ctx.author)
+
+        # Now proceed with your command, knowing the user has the items dictionary initialized
+        user_items = await self.config.user(ctx.author).items()
+        await ctx.send(user_items)
+
+        # Example logic for modifying item quantities
+        if tokens > 0:
+            # Select a random item to increment
+            random_item = random.choice(list(user_items.keys()))
+            user_items[random_item] += tokens  # Increment by the number of tokens spent
+
+            # Save the updated items back to the user's config
+            await self.config.user(ctx.author).items.set(user_items)
+
+            await ctx.send(f"You spent {tokens} tokens and received {tokens} units of {random_item}.")
+        else:
+            await ctx.send("You must spend at least 1 token.")
