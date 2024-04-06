@@ -1,5 +1,5 @@
-from .Farmland import Farmland
+from .DisWonder import DisWonder
 
 
 async def setup(bot):
-    await bot.add_cog(Farmland(bot))
+    await bot.add_cog(DisWonder(bot))
