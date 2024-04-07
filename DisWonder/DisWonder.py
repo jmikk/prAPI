@@ -102,5 +102,5 @@ class DisWonder(commands.Cog):
             emed_pager(stuff,ctx) 
             return
         else:
-            await ctx.send("Try with Basic, Common, Rare, Epic, Legendary"
+            await ctx.send("Try with Basic, Common, Rare, Epic, Legendary")
 
