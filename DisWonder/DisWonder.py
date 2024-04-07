@@ -35,7 +35,7 @@ class ItemSelect(Select):
             self.view.values.append(self.values[0])  # Store selected value
             if len(self.view.values) == 2:  # If both dropdowns have been used
                 await interaction.response.edit_message(content="Combining your items...", view=None)
-                result_message = await self.view.bot.craft_items(self.view.values, self.view.ctx.author, self.view.recipes)
+                result_message = await DisWonder.craft_items(self.view.values, self.view.ctx.author, self.view.recipes)
                 await interaction.followup.send(result_message, ephemeral=True)
             else:
                 await interaction.response.send_message(f"You selected {self.values[0]}. Select another item.", ephemeral=True)
