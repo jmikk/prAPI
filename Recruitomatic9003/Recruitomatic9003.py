@@ -78,7 +78,6 @@ class ApproveButton(Button):
                 embed = discord.Embed(title="Thank you!", description=f"I'll start that paperwork.", color=0x00ff00)
 
                 # Creating a new view for the feedback message        
-                view.add_item(TimerButton("Start Timer", "start_timer", self, self.ctx))
                 view.add_item(DoneButton("All Done", "done", self, self.ctx))    
                 nations_tged = nations_tged + self.nations_list
                 await interaction.followup.send(embed=embed,view=view)
