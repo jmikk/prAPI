@@ -57,6 +57,7 @@ class DisWonder(commands.Cog):
     async def buy_basic(self, ctx):
         basic_items = ["Logistics", "Knowledge", "Chemicals", "Textiles", "Food", "Metal", "Wood", "Stone"]
         chosen_item = random.choice(basic_items)
+        await ctx.send("HERE")
         await ctx.send(self.config.user(ctx.author).all())
 
         
