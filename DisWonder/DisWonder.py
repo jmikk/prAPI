@@ -55,7 +55,7 @@ class DisWonder(commands.Cog):
 
     async def ensure_user_items(self, user):
         # Try to get the user's items; if not set, this will be None
-        user_items = await self.config.user(user).get_raw("items", default=None)
+        user_items = await self.config.user(user).get("default_items")
 
         if user_items is None:
             # If user_items doesn't exist, initialize it with default_items
@@ -77,7 +77,7 @@ class DisWonder(commands.Cog):
             user_items[random_item] += tokens  # Increment by the number of tokens spent
 
             # Save the updated items back to the user's config
-            await self.config.user(ctx.author).items.set(user_items)
+            await self.config.user(ctx.author).default_items.set(user_items)
 
             await ctx.send(f"You spent {tokens} tokens and received {tokens} units of {random_item}.")
         else:
