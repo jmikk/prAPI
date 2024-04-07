@@ -54,15 +54,19 @@ class DisWonder(commands.Cog):
         self.config.register_user(**default_user)
 
     @commands.command()
-    async def buy_basic(self, ctx):
+    async def buy_basic(self, ctx, tokens=1):
         basic_items = ["Logistics", "Knowledge", "Chemicals", "Textiles", "Food", "Metal", "Wood", "Stone"]
         chosen_item = random.choice(basic_items)
         await ctx.send("HERE")
         async with self.config.user(ctx.author).all() as user_data:
             await ctx.send(user_data)
 
-
-        
+        user_tokens = self.get_user_tokens(self, ctx.author)
+        await ctx.send(user_tokens)
+        if user_tokens < tokens:
+            await ctx.send("Go earn more tokens doing some recuritment!")
+            return
+            
         # Example logic for modifying item quantities
         if tokens > 0:
             # Select a random item to increment
@@ -90,6 +94,20 @@ class DisWonder(commands.Cog):
         await ctx.send("Select items to combine:", view=view)
         user_items = await self.config.user(ctx.author).default_items()
         await ctx.send(user_items)
+
+    async def get_user_tokens(self, user):
+        tokens_cog = self.bot.get_cog("Recruitomatic9003")
+        if tokens_cog:
+            return await tokens_cog.get_tokens(user)
+        else:
+            return 0  # or handle the absence of TokensCog appropriately
+
+    async def remove_tokens(self, user, amount):
+        # Ensure we don't deduct below 0
+        current_tokens = get_user_tokens(user) 
+        new_tokens = max(current_tokens - amount, 0)
+        await self.config.user(user).tokens.set(new_tokens)
+        return new_tokens
 
 
 
