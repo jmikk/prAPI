@@ -99,16 +99,19 @@ class DisWonder(commands.Cog):
             return 0  # or handle the absence of TokensCog appropriately
 
     async def use_tokens(self, ctx, amount):
-        await ctx.send("HERE")
-        tokens_cog = self.bot.get_cog("Recruitomatic9003")
-        if tokens_cog:
-            new_token_balance = await tokens_cog.remove_tokens(ctx.author, amount)
-            await ctx.send(f"{ctx.author.display_name}, you've used {amount} tokens. Your new balance is {new_token_balance} tokens.")
-        else:
-            await ctx.send("Token management is currently unavailable.")
+        try:
+            await ctx.send("HERE")
+            tokens_cog = self.bot.get_cog("Recruitomatic9003")
+            if tokens_cog:
+                new_token_balance = await tokens_cog.remove_tokens(ctx.author, amount)
+                await ctx.send(f"{ctx.author.display_name}, you've used {amount} tokens. Your new balance is {new_token_balance} tokens.")
+            else:
+                await ctx.send("Token management is currently unavailable.")
+        except Exemption e:
+            await ctx.send(e)
 
 
-
+    
 
 
 
