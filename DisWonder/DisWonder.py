@@ -97,7 +97,7 @@ class DisWonder(commands.Cog):
     @commands.command()
     async def view_items(self,ctx,rarity="no"):
         rarity = rarity.lower()
-        if rarity = "no":
+        if rarity == "no":
             stuff = await self.config.user(ctx.author).default_items.set(user_items)
             emed_pager(stuff,ctx) 
             return
