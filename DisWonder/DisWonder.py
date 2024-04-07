@@ -58,7 +58,9 @@ class DisWonder(commands.Cog):
         basic_items = ["Logistics", "Knowledge", "Chemicals", "Textiles", "Food", "Metal", "Wood", "Stone"]
         chosen_item = random.choice(basic_items)
         await ctx.send("HERE")
-        await ctx.send(self.config.user(ctx.author).all())
+        async with self.config.user(ctx.author).all() as user_data:
+            await ctx.send(user_data)
+
 
         
         # Example logic for modifying item quantities
