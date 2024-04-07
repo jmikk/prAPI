@@ -415,7 +415,8 @@ class Recruitomatic9003(commands.Cog):
         return await self.config.user(user).tokens()
 
     async def remove_tokens(self, user, amount):
-        tokens_cog = self.bot.get_cog("TokensCog")
-        if tokens_cog:
-            new_token_balance = await tokens_cog.remove_tokens(user, amount)
-            return new_token_balance      
+        # Ensure we don't deduct below 0
+        current_tokens = await self.config.user(user).tokens()
+        new_tokens = max(current_tokens - amount, 0)
+        await self.config.user(user).tokens.set(new_tokens)
+        return new_tokens    
