@@ -18,15 +18,23 @@ class DisWonder(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890,force_registration=True)
                 # Define the default items structure
+
+        # Define default user settings structure
+        default_user = {
+            "default_items": {
+                "Logistics": 0,
+                "Knowledge": 0,
+                "Chemicals": 0,
+                "Textiles": 0,
+                "Food": 0,
+                "Metal": 0,
+                "Wood": 0,
+                "Stone": 0
+                # Add the rest of your items here...
+            }
+    }        
         self.default_items = {
-            "Logistics": 0,
-            "Knowledge": 0,
-            "Chemicals": 0,
-            "Textiles": 0,
-            "Food": 0,
-            "Metal": 0,
-            "Wood": 0,
-            "Stone": 0
+            
         }
         self.config.register_user(**default_user)
 
