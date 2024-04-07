@@ -99,6 +99,7 @@ class DisWonder(commands.Cog):
             return 0  # or handle the absence of TokensCog appropriately
 
     async def remove_tokens(self, ctx, amount):
+        await ctx.send("HERE")
         tokens_cog = self.bot.get_cog("Recruitomatic9003")
         if tokens_cog:
             new_token_balance = await tokens_cog.remove_tokens(ctx.author, amount)
