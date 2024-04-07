@@ -39,7 +39,9 @@ class ItemSelect(Select):
                 await interaction.followup.send(result_message, ephemeral=True)
             else:
                 await interaction.response.send_message(f"You selected {self.values[0]}. Select another item.", ephemeral=True)
-        except Exception as e::
+        except Exception as e:
+            await interaction.followup.send(e)
+ 
             
 
 
