@@ -118,7 +118,7 @@ class DisWonder(commands.Cog):
         rarity = rarity.lower()
         if rarity == "no":
             stuff = await self.config.user(ctx.author).default_items()
-            stuff = stuff await self.config.user(ctx.author).common_items()
+            stuff = stuff +  await self.config.user(ctx.author).common_items()
             # Filter out items with a count of 0
             stuff = {item: count for item, count in stuff.items() if count > 0}
             # Convert the filtered dictionary to a list of (key, value) tuples    
