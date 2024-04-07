@@ -57,14 +57,15 @@ class DisWonder(commands.Cog):
     async def buy_basic(self, ctx, tokens=1):
         basic_items = ["Logistics", "Knowledge", "Chemicals", "Textiles", "Food", "Metal", "Wood", "Stone"]
         chosen_item = random.choice(basic_items)
-        async with self.config.user(ctx.author).all() as user_data:
-            await ctx.send(user_data)
+        user_data = await self.config.user(ctx.author).all()
+        await ctx.send(user_data)
 
         user_tokens = await self.get_user_tokens(ctx.author)
         await ctx.send(user_tokens)
         if user_tokens < tokens:
             await ctx.send("Go earn more tokens doing some recuritment!")
             return
+        remove_tokens(user,tokens)
             
         # Example logic for modifying item quantities
         if tokens > 0:
