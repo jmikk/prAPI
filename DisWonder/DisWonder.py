@@ -87,8 +87,20 @@ class DisWonder(commands.Cog):
             user_items[random_item] += tokens  # Increment by the number of tokens spent
 
             # Save the updated items back to the user's config
-            await self.config.user(ctx.author).default_items.set(user_items)
-
             await ctx.send(f"You spent {tokens} tokens and received {tokens} units of {random_item}.")
         else:
             await ctx.send("You must spend at least 1 token.")
+
+    def emed_pager(message,ctx,count=10):
+        return message
+
+    @commands.command()
+    async def view_items(self,ctx,rarity="no"):
+        rarity = rarity.lower()
+        if rarity = "no":
+            stuff = await self.config.user(ctx.author).default_items.set(user_items)
+            emed_pager(stuff,ctx) 
+            return
+        else:
+            await ctx.send("Try with Basic, Common, Rare, Epic, Legendary"
+
