@@ -91,15 +91,15 @@ class DisWonder(commands.Cog):
         else:
             await ctx.send("You must spend at least 1 token.")
 
-    def emed_pager(message,ctx,count=10):
-        return message
+    async def emed_pager(message,ctx,count=10):
+        await ctx.send(message)
 
     @commands.command()
     async def view_items(self,ctx,rarity="no"):
         rarity = rarity.lower()
         if rarity == "no":
             stuff = await self.config.user(ctx.author).default_items()
-            self.emed_pager(stuff,ctx) 
+            await self.emed_pager(stuff,ctx) 
             return
         else:
             await ctx.send("Try with Basic, Common, Rare, Epic, Legendary")
