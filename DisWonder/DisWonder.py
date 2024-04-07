@@ -27,6 +27,7 @@ class ItemSelect(Select):
         options = [
             discord.SelectOption(label=item, description=f"You have {count}") for item, count in user_items.items() if count > 0
         ]
+        kwargs.pop('placeholder', None)
         super().__init__(placeholder='Choose an item...', min_values=1, max_values=1, options=options, **kwargs)
 
     async def callback(self, interaction):
