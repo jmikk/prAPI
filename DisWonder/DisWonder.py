@@ -4,7 +4,7 @@ import discord
 from discord.ui import Select, View
 import json
 import os
-
+import asyncio
 
 class CraftView(View):
     def __init__(self, user_items, bot, ctx, recipes, parent_cog):
