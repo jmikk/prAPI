@@ -92,7 +92,7 @@ class DisWonder(commands.Cog):
         else:
             await ctx.send("You must spend at least 1 token.")
 
-    async def embed_pager(self, items, ctx, count=1):
+    async def embed_pager(self, items, ctx, count=10):
         # Convert dictionary items to a list of (key, value) tuples
         items_list = list(items.items())
     
