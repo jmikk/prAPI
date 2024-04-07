@@ -118,6 +118,7 @@ class DisWonder(commands.Cog):
         rarity = rarity.lower()
         if rarity == "no":
             stuff = await self.config.user(ctx.author).default_items()
+            stuff = stuff await self.config.user(ctx.author).common_items()
             # Filter out items with a count of 0
             stuff = {item: count for item, count in stuff.items() if count > 0}
             # Convert the filtered dictionary to a list of (key, value) tuples    
@@ -150,7 +151,6 @@ class DisWonder(commands.Cog):
         # Convert dictionary items to a list of (key, value) tuples
         items_list = list(items.items())
         
-    
         # Split items into pages
         pages = [items_list[i:i + count] for i in range(0, len(items_list), count)]
     
