@@ -28,6 +28,7 @@ class DisWonder(commands.Cog):
             "Wood": 0,
             "Stone": 0
         }
+        self.config.register_user(**default_user)
 
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
