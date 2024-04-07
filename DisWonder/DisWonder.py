@@ -60,7 +60,7 @@ class DisWonder(commands.Cog):
         async with self.config.user(ctx.author).all() as user_data:
             await ctx.send(user_data)
 
-        user_tokens = self.get_user_tokens(ctx.author)
+        user_tokens = await self.get_user_tokens(ctx.author)
         await ctx.send(user_tokens)
         if user_tokens < tokens:
             await ctx.send("Go earn more tokens doing some recuritment!")
