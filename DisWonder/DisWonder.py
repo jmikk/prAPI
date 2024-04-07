@@ -118,11 +118,13 @@ class DisWonder(commands.Cog):
         rarity = rarity.lower()
         if rarity == "no":
             stuff = await self.config.user(ctx.author).default_items()
-            for each in stuff:
-                await ctx.send(each)
+            # Filter out items with a count of 0
+            stuff = {item: count for item, count in stuff.items() if count > 0}
+            # Convert the filtered dictionary to a list of (key, value) tuples    
             await self.embed_pager(stuff, ctx)  # Use embed_pager here
         else:
             await ctx.send("Try with Basic, Common, Rare, Epic, Legendary")
+
 
     @commands.command()
     async def buy_random(self, ctx, tokens: int):
@@ -147,6 +149,7 @@ class DisWonder(commands.Cog):
     async def embed_pager(self, items, ctx, count=10):
         # Convert dictionary items to a list of (key, value) tuples
         items_list = list(items.items())
+        
     
         # Split items into pages
         pages = [items_list[i:i + count] for i in range(0, len(items_list), count)]
