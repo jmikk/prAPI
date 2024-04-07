@@ -7,15 +7,16 @@ from discord.ui import Select, View
 
 
 class CraftView(View):
-    def __init__(self, user_items, bot, ctx, recipes):
+    def __init__(self, user_items, bot, ctx, recipes,parent_cog):
         super().__init__()
         self.bot = bot
         self.ctx = ctx
         self.recipes = recipes
+        self.parent_cog = parent_cog  # Store the DisWonder instance
         # Add the first dropdown
-        self.add_item(ItemSelect(placeholder='Choose your first item...', user_items=user_items, custom_id='first_item'))
+        self.add_item(ItemSelect(placeholder='Choose your first item...', user_items=user_items, parent_cog=parent_cog, custom_id='first_item'))
         # Add the second dropdown
-        self.add_item(ItemSelect(placeholder='Choose your second item...', user_items=user_items, custom_id='second_item'))
+        self.add_item(ItemSelect(placeholder='Choose your second item...', user_items=user_items, parent_cog=parent_cog, custom_id='second_item'))
         self.values = []
 
     async def interaction_check(self, interaction):
@@ -23,7 +24,7 @@ class CraftView(View):
         return interaction.user == self.ctx.author
 
 class ItemSelect(Select):
-    def __init__(self, user_items, **kwargs):
+    def __init__(self, user_items, parent_cog, **kwargs):
         options = [
             discord.SelectOption(label=item, description=f"You have {count}") for item, count in user_items.items() if count > 0
         ]
@@ -35,7 +36,7 @@ class ItemSelect(Select):
             self.view.values.append(self.values[0])  # Store selected value
             if len(self.view.values) == 2:  # If both dropdowns have been used
                 await interaction.response.edit_message(content="Combining your items...", view=None)
-                result_message = await DisWonder.craft_items(self, self.view.values, self.view.ctx.author)
+                result_message = await self.parent_cog.craft_items( self.view.values, self.view.ctx.author)
                 await interaction.followup.send(result_message, ephemeral=True)
             else:
                 await interaction.response.send_message(f"You selected {self.values[0]}. Select another item.", ephemeral=True)
@@ -203,7 +204,7 @@ class DisWonder(commands.Cog):
     @commands.command()
     async def build(self, ctx):
         user_items = await self.config.user(ctx.author).default_items()  # Assuming this returns a dict of items and their counts
-        await ctx.send("Select items to combine:", view=CraftView(user_items, self.bot, ctx, self.recipes))
+        await ctx.send("Select items to combine:", view=CraftView(user_items, self.bot, ctx, self.recipes,self))
 
     async def craft_items(self, selected_items, user):
         # Sort the items to ensure consistent order for recipe lookup
