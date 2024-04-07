@@ -92,7 +92,7 @@ class DisWonder(commands.Cog):
         else:
             await ctx.send("You must spend at least 1 token.")
 
-    async def embed_pager(self, items, ctx, count=10):
+    async def embed_pager(self, items, ctx, count=1):
         # Convert dictionary items to a list of (key, value) tuples
         items_list = list(items.items())
     
@@ -152,7 +152,6 @@ class DisWonder(commands.Cog):
         rarity = rarity.lower()
         if rarity == "no":
             stuff = await self.config.user(ctx.author).default_items()
-            await ctx.send("HERE")
             await self.embed_pager(stuff, ctx)  # Use embed_pager here
         else:
             await ctx.send("Try with Basic, Common, Rare, Epic, Legendary")
