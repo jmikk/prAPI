@@ -118,6 +118,8 @@ class DisWonder(commands.Cog):
         rarity = rarity.lower()
         if rarity == "no":
             stuff = await self.config.user(ctx.author).default_items()
+            for each in stuff:
+                await ctx.send(each)
             await self.embed_pager(stuff, ctx)  # Use embed_pager here
         else:
             await ctx.send("Try with Basic, Common, Rare, Epic, Legendary")
