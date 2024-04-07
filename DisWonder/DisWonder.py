@@ -1,6 +1,7 @@
 from redbot.core import commands
 import asyncio
 from redbot.core import commands, Config
+import random
 
 
 def is_owner_overridable():
