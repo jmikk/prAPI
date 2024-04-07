@@ -205,7 +205,7 @@ class DisWonder(commands.Cog):
         user_items = await self.config.user(ctx.author).default_items()  # Assuming this returns a dict of items and their counts
         await ctx.send("Select items to combine:", view=CraftView(user_items, self.bot, ctx, self.recipes))
 
-    async def craft_items(self, selected_items, user):
+    async def craft_items(selected_items, user):
         # Sort the items to ensure consistent order for recipe lookup
         selected_items.sort()
         item_tuple = tuple(selected_items)  # Convert to tuple for recipe lookup
