@@ -65,7 +65,7 @@ class DisWonder(commands.Cog):
         if user_tokens < tokens:
             await ctx.send("Go earn more tokens doing some recuritment!")
             return
-        self.remove_tokens(user,tokens)
+        self.remove_tokens(ctx.author,tokens)
             
         # Example logic for modifying item quantities
         if tokens > 0:
