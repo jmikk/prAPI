@@ -93,14 +93,17 @@ class DisWonder(commands.Cog):
             await ctx.send("You must spend at least 1 token.")
 
     async def embed_pager(self, items, ctx, count=10):
+        # Convert dictionary items to a list of (key, value) tuples
+        items_list = list(items.items())
+    
         # Split items into pages
-        pages = [items[i:i + count] for i in range(0, len(items), count)]
+        pages = [items_list[i:i + count] for i in range(0, len(items_list), count)]
     
         # Function to create an embed from a list of items
         def get_embed(page_items, page, total_pages):
             embed = discord.Embed(title="Items", color=discord.Color.blue())
-            for item in page_items:
-                embed.add_field(name=item, value=page_items[item], inline=False)
+            for key, value in page_items:
+                embed.add_field(name=key, value=str(value), inline=False)
             embed.set_footer(text=f"Page {page+1}/{total_pages}")
             return embed
     
@@ -142,6 +145,7 @@ class DisWonder(commands.Cog):
     
         # Optionally clear the reactions after the timeout
         await message.clear_reactions()
+
 
     @commands.command()
     async def view_items(self, ctx, rarity="no"):
