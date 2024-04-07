@@ -49,7 +49,7 @@ class MyDropdownView(discord.ui.View):
 class DisWonder(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
+        self.config = Config.get_conf(self, identifier=1234567891, force_registration=True)
         default_user = {"Logistics": 0, "Knowledge": 0, "Chemicals": 0, "Textiles": 0, "Food": 0, "Metal": 0, "Wood": 0, "Stone": 0}
         self.config.register_user(**default_user)
 
@@ -70,16 +70,11 @@ class DisWonder(commands.Cog):
         # Example logic for modifying item quantities
         if tokens > 0:
             # Select a random item to increment
-            user_items[chosen_item] += tokens  # Increment by the number of tokens spent
+            user_data[chosen_item] += tokens  # Increment by the number of tokens spent
             # Save the updated items back to the user's config
             await ctx.send(f"You spent {tokens} tokens and received {tokens} units of {random_item}.")
         else:
             await ctx.send("You must spend at least 1 token.")
-
-        
-        async with self.config.user(ctx.author).all() as user_data:
-            user_data[chosen_item] += 1
-            await ctx.send(f"{ctx.author.mention}, you have acquired 1 {chosen_item}!")
 
         # Assuming 1 point per basic item, update points
         points = sum(value for key, value in user_data.items())
