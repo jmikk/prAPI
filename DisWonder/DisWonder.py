@@ -3,6 +3,41 @@ import asyncio
 from redbot.core import commands, Config
 import random
 import discord
+from discord.ui import Select, View
+
+
+class CraftView(View):
+    def __init__(self, user_items, bot, ctx, recipes):
+        super().__init__()
+        self.bot = bot
+        self.ctx = ctx
+        self.recipes = recipes
+        # Add the first dropdown
+        self.add_item(ItemSelect(placeholder='Choose your first item...', user_items=user_items, custom_id='first_item'))
+        # Add the second dropdown
+        self.add_item(ItemSelect(placeholder='Choose your second item...', user_items=user_items, custom_id='second_item'))
+        self.values = []
+
+    async def interaction_check(self, interaction):
+        # Ensure that only the user who invoked the command can use the dropdowns
+        return interaction.user == self.ctx.author
+
+class ItemSelect(Select):
+    def __init__(self, user_items, **kwargs):
+        options = [
+            discord.SelectOption(label=item, description=f"You have {count}") for item, count in user_items.items() if count > 0
+        ]
+        super().__init__(placeholder='Choose an item...', min_values=1, max_values=1, options=options, **kwargs)
+
+    async def callback(self, interaction):
+        self.view.values.append(self.values[0])  # Store selected value
+        if len(self.view.values) == 2:  # If both dropdowns have been used
+            await interaction.response.edit_message(content="Combining your items...", view=None)
+            result_message = await self.view.bot.craft_items(self.view.values, self.view.ctx.author, self.view.recipes)
+            await interaction.followup.send(result_message, ephemeral=True)
+        else:
+            await interaction.response.send_message(f"You selected {self.values[0]}. Select another item.", ephemeral=True)
+
 
 
 def is_owner_overridable():
@@ -17,6 +52,11 @@ def is_owner_overridable():
 class DisWonder(commands.Cog):
     """My custom cog"""
     def __init__(self, bot):
+        self.recipes = {
+            ('stone', 'stone'): {'result': 'stone wall', 'remove': ['stone', 'stone']},
+            ('wood', 'stone'): {'result': 'failed', 'remove': ['wood']}
+            # Add more recipes as needed
+        }
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890,force_registration=True)
                 # Define the default items structure
@@ -155,4 +195,61 @@ class DisWonder(commands.Cog):
             await self.embed_pager(stuff, ctx)  # Use embed_pager here
         else:
             await ctx.send("Try with Basic, Common, Rare, Epic, Legendary")
+
+    @commands.command()
+    async def build(self, ctx):
+        user_items = await self.config.user(ctx.author).default_items()  # Assuming this returns a dict of items and their counts
+        await ctx.send("Select items to combine:", view=CraftView(user_items, self.bot, ctx, self.recipes))
+
+    async def craft_items(self, selected_items, user, recipes):
+        # Sort the items to ensure the order matches with the recipe keys
+        selected_items.sort()
+    
+        # Convert the list of selected items to a tuple for recipe lookup
+        item_tuple = tuple(selected_items)
+    
+        # Fetch the user's current inventory
+        user_items = await self.config.user(user).default_items()
+    
+        # Check if the combination exists in the recipes
+        if item_tuple in recipes:
+            recipe = recipes[item_tuple]
+    
+            # Check if the user has enough items to craft
+            can_craft = all(user_items.get(item, 0) > 0 for item in recipe['remove'])
+            if can_craft:
+                # Remove the used items from the user's inventory
+                for item in recipe['remove']:
+                    user_items[item] -= 1
+                    if user_items[item] <= 0:
+                        del user_items[item]
+    
+                if recipe['result'] != 'failed':
+                    user_items[recipe['result']] = user_items.get(recipe['result'], 0) + 1
+                    result_message = f"Success! Crafted a {recipe['result']}."
+                else:
+                    # If crafting fails, remove a random selected ingredient
+                    result_message = self.remove_random_ingredient(selected_items, user_items)
+    
+                # Save the updated items back to the user's config
+                await self.config.user(user).default_items.set(user_items)
+            else:
+                result_message = "You don't have enough items to craft this."
+        else:
+            # If the recipe is invalid, remove a random selected ingredient
+            result_message = self.remove_random_ingredient(selected_items, user_items)
+            await self.config.user(user).default_items.set(user_items)
+    
+        return result_message
+    
+    def remove_random_ingredient(self, selected_items, user_items):
+        # Randomly select one of the used ingredients to remove
+        removed_item = random.choice(selected_items)
+        user_items[removed_item] -= 1
+        if user_items[removed_item] <= 0:
+            del user_items[removed_item]
+        result_message = f"Failed to craft. {removed_item} was lost in the process."
+        return result_message
+
+
 
