@@ -54,9 +54,7 @@ class DisWonder(commands.Cog):
     """My custom cog"""
     def __init__(self, bot):
         self.recipes = {
-            ('stone', 'stone'): {'result': 'stone wall', 'remove': ['stone', 'stone']},
-            ('wood', 'stone'): {'result': 'failed', 'remove': ['wood']}
-            # Add more recipes as needed
+            ('stone', 'stone'): {'result': 'stone wall'},
         }
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890,force_registration=True)
@@ -202,46 +200,37 @@ class DisWonder(commands.Cog):
         user_items = await self.config.user(ctx.author).default_items()  # Assuming this returns a dict of items and their counts
         await ctx.send("Select items to combine:", view=CraftView(user_items, self.bot, ctx, self.recipes))
 
-    async def craft_items(self, selected_items, user, recipes):
-        # Sort the items to ensure the order matches with the recipe keys
+    async def craft_items(self, selected_items, user):
+        # Sort the items to ensure consistent order for recipe lookup
         selected_items.sort()
+        item_tuple = tuple(selected_items)  # Convert to tuple for recipe lookup
     
-        # Convert the list of selected items to a tuple for recipe lookup
-        item_tuple = tuple(selected_items)
+        user_items = await self.config.user(user).default_items()  # Fetch user's current inventory
     
-        # Fetch the user's current inventory
-        user_items = await self.config.user(user).default_items()
+        if item_tuple in self.recipes:  # Check if the combination exists in the recipes
+            result_item = self.recipes[item_tuple]['result']
+            user_items[result_item] = user_items.get(result_item, 0) + 1  # Add the result item to inventory
     
-        # Check if the combination exists in the recipes
-        if item_tuple in recipes:
-            recipe = recipes[item_tuple]
+            # Remove both ingredients used in crafting
+            for item in selected_items:
+                user_items[item] -= 1
+                if user_items[item] <= 0:
+                    del user_items[item]  # Remove the item if count falls to 0
     
-            # Check if the user has enough items to craft
-            can_craft = all(user_items.get(item, 0) > 0 for item in recipe['remove'])
-            if can_craft:
-                # Remove the used items from the user's inventory
-                for item in recipe['remove']:
-                    user_items[item] -= 1
-                    if user_items[item] <= 0:
-                        del user_items[item]
+            result_message = f"Success! Crafted a {result_item}."
+        else:  # Crafting attempt failed due to an invalid recipe
+            removed_item = random.choice(selected_items)
+            user_items[removed_item] -= 1
+            if user_items[removed_item] <= 0:
+                del user_items[removed_item]  # Remove the item if count falls to 0
     
-                if recipe['result'] != 'failed':
-                    user_items[recipe['result']] = user_items.get(recipe['result'], 0) + 1
-                    result_message = f"Success! Crafted a {recipe['result']}."
-                else:
-                    # If crafting fails, remove a random selected ingredient
-                    result_message = self.remove_random_ingredient(selected_items, user_items)
+            result_message = f"Failed to craft. {removed_item} was lost in the process."
     
-                # Save the updated items back to the user's config
-                await self.config.user(user).default_items.set(user_items)
-            else:
-                result_message = "You don't have enough items to craft this."
-        else:
-            # If the recipe is invalid, remove a random selected ingredient
-            result_message = self.remove_random_ingredient(selected_items, user_items)
-            await self.config.user(user).default_items.set(user_items)
+        # Save the updated inventory back to the user's config
+        await self.config.user(user).default_items.set(user_items)
     
         return result_message
+
     
     def remove_random_ingredient(self, selected_items, user_items):
         # Randomly select one of the used ingredients to remove
