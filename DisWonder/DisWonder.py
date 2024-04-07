@@ -91,7 +91,7 @@ class DisWonder(commands.Cog):
         else:
             await ctx.send("You must spend at least 1 token.")
 
-    async def emed_pager(message,ctx,count=10):
+    async def emed_pager(self,message,ctx,count=10):
         await ctx.send(message)
 
     @commands.command()
