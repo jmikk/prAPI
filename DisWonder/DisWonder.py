@@ -72,7 +72,7 @@ class DisWonder(commands.Cog):
             # Select a random item to increment
             user_data[chosen_item] += tokens  # Increment by the number of tokens spent
             # Save the updated items back to the user's config
-            await ctx.send(f"You spent {tokens} tokens and received {tokens} units of {random_item}.")
+            await ctx.send(f"You spent {tokens} tokens and received {tokens} units of {chosen_item}.")
         else:
             await ctx.send("You must spend at least 1 token.")
 
