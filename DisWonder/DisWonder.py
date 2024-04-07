@@ -107,7 +107,7 @@ class DisWonder(commands.Cog):
                 await ctx.send(f"{ctx.author.display_name}, you've used {amount} tokens. Your new balance is {new_token_balance} tokens.")
             else:
                 await ctx.send("Token management is currently unavailable.")
-        except Exemption e:
+        except Exption e:
             await ctx.send(e)
 
 
