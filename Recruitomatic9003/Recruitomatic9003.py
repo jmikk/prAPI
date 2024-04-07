@@ -410,4 +410,7 @@ class Recruitomatic9003(commands.Cog):
         nations_tged = []
         loop_running = False
         return True
+
+    async def get_tokens(self, user):
+        return await self.config.user(user).tokens()
         
