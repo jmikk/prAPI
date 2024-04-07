@@ -143,13 +143,13 @@ class DisWonder(commands.Cog):
         # Optionally clear the reactions after the timeout
         await message.clear_reactions()
 
-@commands.command()
-async def view_items(self, ctx, rarity="no"):
-    rarity = rarity.lower()
-    if rarity == "no":
-        stuff = await self.config.user(ctx.author).default_items()
-        await ctx.send("HERE")
-        await self.embed_pager(stuff, ctx)  # Use embed_pager here
-    else:
-        await ctx.send("Try with Basic, Common, Rare, Epic, Legendary")
+    @commands.command()
+    async def view_items(self, ctx, rarity="no"):
+        rarity = rarity.lower()
+        if rarity == "no":
+            stuff = await self.config.user(ctx.author).default_items()
+            await ctx.send("HERE")
+            await self.embed_pager(stuff, ctx)  # Use embed_pager here
+        else:
+            await ctx.send("Try with Basic, Common, Rare, Epic, Legendary")
 
