@@ -59,7 +59,7 @@ class DisWonder(commands.Cog):
 
         if user_items is None:
             # If user_items doesn't exist, initialize it with default_items
-            await self.config.user(user).items.set(self.default_items)
+            await self.config.user(user).default_items.set(self.default_items)
             
     @commands.command()
     async def buy_random(self, ctx, tokens: int):
@@ -67,7 +67,7 @@ class DisWonder(commands.Cog):
         await self.ensure_user_items(ctx.author)
 
         # Now proceed with your command, knowing the user has the items dictionary initialized
-        user_items = await self.config.user(ctx.author).items()
+        user_items = await self.config.user(ctx.author).default_items()
         await ctx.send(user_items)
 
         # Example logic for modifying item quantities
