@@ -2,6 +2,9 @@ from redbot.core import commands, Config
 import random
 import discord
 from discord.ui import Select, View
+import json
+import os
+
 
 class CraftView(View):
     def __init__(self, user_items, bot, ctx, recipes, parent_cog):
@@ -48,19 +51,24 @@ class DisWonder(commands.Cog):
         self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
 
         # Define default user settings structure
-        default_user = {
-            "default_items": {
-                "Logistics": 0,
-                "Knowledge": 0,
-                "Chemicals": 0,
-                "Textiles": 0,
-                "Food": 0,
-                "Metal": 0,
-                "Wood": 0,
-                "Stone": 0
-            }
-        }
+        default_user = self.read_starting_gear()
         self.config.register_user(**default_user)
+
+    def read_starting_gear(self):
+        # Make sure to use the correct path where your starting_gear.txt is located
+        file_path = os.path.join("path", "to", "your", "starting_gear.txt")
+
+        # Read the file and parse the JSON
+        try:
+            with open(file_path, 'r') as file:
+                starting_gear = json.load(file)
+            return starting_gear
+        except FileNotFoundError:
+            print(f"The file {file_path} was not found.")
+            return {}
+        except json.JSONDecodeError:
+            print(f"There was an error decoding the JSON from the file {file_path}.")
+            return {}
 
     @commands.command()
     async def build(self, ctx):
