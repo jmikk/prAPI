@@ -55,7 +55,7 @@ class DisWonder(commands.Cog):
 
     async def ensure_user_items(self, user):
         # Try to get the user's items; if not set, this will be None
-        user_items = await self.config.user(user).get("default_items")
+        user_items = await self.config.user(user).default_items()
 
         if user_items is None:
             # If user_items doesn't exist, initialize it with default_items
