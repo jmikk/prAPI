@@ -103,8 +103,6 @@ class DisWonder(commands.Cog):
         await self.config.user(user).default_items.set(user_items)
 
         return result_message
-
-    # Other methods and commands as previously defined...
     
     def remove_random_ingredient(self, selected_items, user_items):
         # Randomly select one of the used ingredients to remove
@@ -115,5 +113,97 @@ class DisWonder(commands.Cog):
         result_message = f"Failed to craft. {removed_item} was lost in the process."
         return result_message
 
+    @commands.command()
+    async def view_items(self, ctx, rarity="no"):
+        rarity = rarity.lower()
+        if rarity == "no":
+            stuff = await self.config.user(ctx.author).default_items()
+            await self.embed_pager(stuff, ctx)  # Use embed_pager here
+        else:
+            await ctx.send("Try with Basic, Common, Rare, Epic, Legendary")
+
+    @commands.command()
+    async def buy_random(self, ctx, tokens: int):
+        # Ensure the user has the items initialized in their config
+        await self.ensure_user_items(ctx.author)
+
+        # Now proceed with your command, knowing the user has the items dictionary initialized
+        user_items = await self.config.user(ctx.author).default_items()
+        await ctx.send(user_items)
+
+        # Example logic for modifying item quantities
+        if tokens > 0:
+            # Select a random item to increment
+            random_item = random.choice(list(user_items.keys()))
+            user_items[random_item] += tokens  # Increment by the number of tokens spent
+
+            # Save the updated items back to the user's config
+            await ctx.send(f"You spent {tokens} tokens and received {tokens} units of {random_item}.")
+        else:
+            await ctx.send("You must spend at least 1 token.")
+
+    async def embed_pager(self, items, ctx, count=10):
+        # Convert dictionary items to a list of (key, value) tuples
+        items_list = list(items.items())
+    
+        # Split items into pages
+        pages = [items_list[i:i + count] for i in range(0, len(items_list), count)]
+    
+        # Function to create an embed from a list of items
+        def get_embed(page_items, page, total_pages):
+            embed = discord.Embed(title="Items", color=discord.Color.blue())
+            for key, value in page_items:
+                embed.add_field(name=key, value=str(value), inline=False)
+            embed.set_footer(text=f"Page {page+1}/{total_pages}")
+            return embed
+    
+        total_pages = len(pages)
+        current_page = 0
+    
+        # Send the initial message with the first page
+        message = await ctx.send(embed=get_embed(pages[current_page], current_page, total_pages))
+    
+        # Add reactions to the message for pagination controls
+        await message.add_reaction("◀️")
+        await message.add_reaction("▶️")
+    
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["◀️", "▶️"]
+    
+        while True:
+            try:
+                # Wait for a reaction to be added that passes the check
+                reaction, user = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+    
+                # Previous page
+                if str(reaction.emoji) == "◀️" and current_page > 0:
+                    current_page -= 1
+                    await message.edit(embed=get_embed(pages[current_page], current_page, total_pages))
+                    await message.remove_reaction(reaction, user)
+    
+                # Next page
+                elif str(reaction.emoji) == "▶️" and current_page < total_pages - 1:
+                    current_page += 1
+                    await message.edit(embed=get_embed(pages[current_page], current_page, total_pages))
+                    await message.remove_reaction(reaction, user)
+    
+                else:
+                    await message.remove_reaction(reaction, user)
+    
+            except asyncio.TimeoutError:
+                break  # End the loop if no reaction within the timeout period
+    
+        # Optionally clear the reactions after the timeout
+        await message.clear_reactions()
+
+
+    @commands.command()
+    async def view_items(self, ctx, rarity="no"):
+        rarity = rarity.lower()
+        if rarity == "no":
+            stuff = await self.config.user(ctx.author).default_items()
+            await self.embed_pager(stuff, ctx)  # Use embed_pager here
+        else:
+            await ctx.send("Try with Basic, Common, Rare, Epic, Legendary")
 
 
