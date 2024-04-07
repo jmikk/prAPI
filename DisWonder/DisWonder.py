@@ -97,8 +97,6 @@ class DisWonder(commands.Cog):
         return result_message
 
     # Other methods and commands as previously defined...
-
-
     
     def remove_random_ingredient(self, selected_items, user_items):
         # Randomly select one of the used ingredients to remove
