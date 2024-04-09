@@ -84,6 +84,7 @@ class DisWonder(commands.Cog):
     @commands.command()
     async def build(self, ctx):
         user_data = await self.config.user(ctx.author).all()
+        await ctx.send(user_data)
         view = MyDropdownView(self, user_data)
 
         
@@ -98,17 +99,6 @@ class DisWonder(commands.Cog):
         else:
             return 0  # or handle the absence of TokensCog appropriately
 
-    async def use_tokens(self, ctx, amount):
-        try:
-            await ctx.send("HERE")
-            tokens_cog = self.bot.get_cog("Recruitomatic9003")
-            if tokens_cog:
-                new_token_balance = await tokens_cog.remove_tokens(ctx.author, amount)
-                await ctx.send(f"{ctx.author.display_name}, you've used {amount} tokens. Your new balance is {new_token_balance} tokens.")
-            else:
-                await ctx.send("Token management is currently unavailable.")
-        except Exception as e:
-            await ctx.send(e)
 
 
     
