@@ -55,7 +55,7 @@ class DisWonder(commands.Cog):
 
     @commands.command()
     async def clear_config(self,ctx,user):
-        await self.config.user(ctx.author).set()
+        await self.config.user(ctx.author).set("")
 
         
 
