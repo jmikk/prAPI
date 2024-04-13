@@ -49,15 +49,21 @@ class MyDropdownView(discord.ui.View):
 class DisWonder(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567891, force_registration=True)
+        self.config = Config.get_conf(self, identifier="DisWonder", force_registration=True)
         default_user = {}
         self.config.register_user(**default_user)
+
+    @commands.command()
+    async def clear_config(self,ctx,user):
+        await self.config.user(ctx.author).set()
+
+        
 
     @commands.command()
     async def buy_basic(self, ctx, tokens=1):
         tokens=1
         
-        basic_items = ["Logistics", "Knowledge", "Chemicals", "Textiles", "Food", "Metal", "Wood", "Stone"]
+        basic_items = [("Logistics","basic"), ("Knowledge","basic"), ("Chemicals","basic"), ("Textiles","basic"), ("Food","basic"),("Metal","basic"),("Wood","basic"),("Stone","basic")]
         chosen_item = random.choice(basic_items)
         user_data = await self.config.user(ctx.author).all()
         await ctx.send(user_data)
@@ -100,6 +106,8 @@ class DisWonder(commands.Cog):
             return await tokens_cog.get_tokens(user)
         else:
             return 0  # or handle the absence of TokensCog appropriately
+
+
 
 
 
