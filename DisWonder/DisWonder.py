@@ -32,12 +32,12 @@ class Dropdown(discord.ui.Select):
                     return
             
             # Add the new common item here
-            # user_data[recipe_result] += 1  # Assuming you add common items to the config
+            user_data[recipe_result] = user_data.get(recipe_result, 0) + 1
 
             await self.view.cog.config.user(interaction.user).set(user_data)
-            await interaction.response.send_message(f"Crafted {recipe_result}!", ephemeral=True)
+            await interaction.response.send_message(f"Crafted {recipe_result}!"
         else:
-            await interaction.response.send_message("Invalid recipe combination.", ephemeral=True)
+            await interaction.response.send_message("Invalid recipe combination.")
 
 class MyDropdownView(discord.ui.View):
     def __init__(self, cog, user_data):
@@ -50,23 +50,25 @@ class DisWonder(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567891, force_registration=True)
-        default_user = {"Logistics": 0, "Knowledge": 0, "Chemicals": 0, "Textiles": 0, "Food": 0, "Metal": 0, "Wood": 0, "Stone": 0}
+        default_user = {}
         self.config.register_user(**default_user)
 
     @commands.command()
     async def buy_basic(self, ctx, tokens=1):
+        tokens=1
+        
         basic_items = ["Logistics", "Knowledge", "Chemicals", "Textiles", "Food", "Metal", "Wood", "Stone"]
         chosen_item = random.choice(basic_items)
         user_data = await self.config.user(ctx.author).all()
         await ctx.send(user_data)
 
-        user_tokens = await self.get_user_tokens(ctx.author)
-        await ctx.send(user_tokens)
-        if user_tokens < tokens:
-            await ctx.send("Go earn more tokens doing some recuritment!")
-            return
+        #user_tokens = await self.get_user_tokens(ctx.author)
+        #await ctx.send(user_tokens)
+        #if user_tokens < tokens:
+        #    await ctx.send("Go earn more tokens doing some recuritment!")
+        #    return
             
-        self.use_tokens(ctx,tokens)
+        #self.use_tokens(ctx,tokens)
             
         # Example logic for modifying item quantities
         if tokens > 0:
@@ -77,9 +79,7 @@ class DisWonder(commands.Cog):
         else:
             await ctx.send("You must spend at least 1 token.")
 
-        # Assuming 1 point per basic item, update points
-        points = sum(value for key, value in user_data.items())
-        await ctx.send(f"Your total points are now: {points}")
+
     
     @commands.command()
     async def build(self, ctx):
