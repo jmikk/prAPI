@@ -73,7 +73,7 @@ class DisWonder(commands.Cog):
         # Example logic for modifying item quantities
         if tokens > 0:
             # Select a random item to increment
-            user_data[chosen_item[0]+chosen_item[1]] += tokens  # Increment by the number of tokens spent
+            user_data[recipe_result] = user_data.get(recipe_result, 0) + 1
             # Save the updated items back to the user's config
             await ctx.send(f"You spent {tokens} tokens and received {tokens} units of {chosen_item}.")
             await self.config.user(ctx.author).set(user_data)
