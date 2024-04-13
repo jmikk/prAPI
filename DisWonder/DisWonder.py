@@ -76,6 +76,8 @@ class DisWonder(commands.Cog):
             user_data[chosen_item] += tokens  # Increment by the number of tokens spent
             # Save the updated items back to the user's config
             await ctx.send(f"You spent {tokens} tokens and received {tokens} units of {chosen_item}.")
+            await self.config.user(ctx.author).set(user_data)
+
         else:
             await ctx.send("You must spend at least 1 token.")
 
