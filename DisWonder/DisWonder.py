@@ -51,13 +51,7 @@ class DisWonder(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier="DisWonder", force_registration=True)
         default_user = {}
-        self.config.register_user(**default_user)
-
-    @commands.command()
-    async def clear_config(self,ctx,user):
-        await self.config.user(ctx.author).set("")
-
-        
+        self.config.register_user(**default_user)        
 
     @commands.command()
     async def buy_basic(self, ctx, tokens=1):
@@ -79,7 +73,7 @@ class DisWonder(commands.Cog):
         # Example logic for modifying item quantities
         if tokens > 0:
             # Select a random item to increment
-            user_data[chosen_item] += tokens  # Increment by the number of tokens spent
+            user_data[chosen_item[0]+chosen_item[1]] += tokens  # Increment by the number of tokens spent
             # Save the updated items back to the user's config
             await ctx.send(f"You spent {tokens} tokens and received {tokens} units of {chosen_item}.")
             await self.config.user(ctx.author).set(user_data)
