@@ -35,7 +35,7 @@ class Dropdown(discord.ui.Select):
             user_data[recipe_result] = user_data.get(recipe_result, 0) + 1
 
             await self.view.cog.config.user(interaction.user).set(user_data)
-            await interaction.response.send_message(f"Crafted {recipe_result}!"
+            await interaction.response.send_message(f"Crafted {recipe_result}!")
         else:
             await interaction.response.send_message("Invalid recipe combination.")
 
