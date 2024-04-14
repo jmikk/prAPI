@@ -32,6 +32,13 @@ class ItemSelect(discord.ui.Select):
             for item in items if items[item] > 0
         ]
         super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options, custom_id=custom_id)
+        self.update_options()
+
+    def update_options(self):
+        self.options = [
+            discord.SelectOption(label=item.split("_")[0], description=f"You have {self.items[item]} of these", value=item)
+            for item in self.items if self.items[item] > 0
+        ]
 
     async def callback(self, interaction: discord.Interaction):
         # Save the selection to the view's state
@@ -64,6 +71,13 @@ class CraftingView(discord.ui.View):
             asyncio.create_task(ctx.send("No items available to craft this type of product."))
 
 
+    async def refresh_dropdowns(self):
+        self.item_select_1.items = self.user_data
+        self.item_select_1.update_options()
+        self.item_select_2.items = self.user_data
+        self.item_select_2.update_options()
+        await self.ctx.edit_original_message(view=self)
+        
     async def callback(self, interaction: discord.Interaction):
         item1 = self.values.get("item1")
         item2 = self.values.get("item2")
@@ -93,6 +107,7 @@ class CraftingView(discord.ui.View):
             user_data[item2_old] -= 1
             user_data[recipe_result] = user_data.get(recipe_result, 0) + 1
             await self.cog.config.user(user).set(user_data)
+            await self.refresh_dropdowns()
             return f"Crafted a {recipe_result}!"
         elif recipe_result:
             return "You don't have enough items to craft this."
@@ -100,6 +115,7 @@ class CraftingView(discord.ui.View):
             removed_item = random.choice([item1_old, item2_old])
             user_data[removed_item] = max(user_data.get(removed_item, 1) - 1, 0)
             await self.cog.config.user(user).set(user_data)
+            await self.refresh_dropdowns()
             return f"No recipe found. Removed one {removed_item}."
 
 
