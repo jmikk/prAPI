@@ -1,5 +1,5 @@
-from .Farmland import Farmland
+from .sheets import sheets
 
 
 async def setup(bot):
-    await bot.add_cog(Farmland(bot))
+    await bot.add_cog(sheets(bot))
