@@ -5,33 +5,14 @@ import json
 from redbot.core.data_manager import cog_data_path
 import os
 import asyncio
-
-class CraftButton(discord.ui.Button):
-    def __init__(self, label="Craft"):
-        super().__init__(label=label, style=discord.ButtonStyle.green)
-
-    async def callback(self, interaction: discord.Interaction):
-        view = self.view  # Access the view to which this button belongs
-
-        # Ensure that the necessary items have been selected
-        item1 = view.values.get("item1")
-        item2 = view.values.get("item2")
-        if not item1 or not item2:
-            await interaction.response.send_message("Please select two items to craft.", ephemeral=True)
-            return
-
-        # Start the crafting process
-        result = await view.process_crafting(item1, item2, interaction.user)
-        await interaction.response.send_message(result, ephemeral=True)
-
+import discord
+import asyncio
+import json
+from redbot.core.data_manager import cog_data_path
 
 class ItemSelect(discord.ui.Select):
     def __init__(self, items, placeholder="Choose an item...", custom_id=None):
-        options = [
-            discord.SelectOption(label=item.split("_")[0], description=f"You have {items[item]} of these", value=item)
-            for item in items if items[item] > 0
-        ]
-        super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options, custom_id=custom_id)
+        super().__init__(placeholder=placeholder, custom_id=custom_id)
         self.items = items
         self.update_options()
 
@@ -42,17 +23,31 @@ class ItemSelect(discord.ui.Select):
         ]
 
     async def callback(self, interaction: discord.Interaction):
-        # Save the selection to the view's state
         self.view.values[self.custom_id] = self.values[0]
         await interaction.response.send_message(f"You selected: {self.values[0].split('_')[0]}", ephemeral=True)
+
+class CraftButton(discord.ui.Button):
+    def __init__(self, label="Craft"):
+        super().__init__(label=label, style=discord.ButtonStyle.green)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        item1 = view.values.get("item1")
+        item2 = view.values.get("item2")
+        if not item1 or not item2:
+            await interaction.response.send_message("Please select two items to craft.", ephemeral=True)
+            return
+        result = await view.process_crafting(item1, item2, interaction.user)
+        await interaction.followup.send(result, ephemeral=True)  # Use followup if needed
 
 class CraftingView(discord.ui.View):
     def __init__(self, item_type, user_data, cog, ctx):
         super().__init__()
         self.cog = cog
         self.ctx = ctx
-        self.values = {}  # Stores selected items
+        self.values = {}
         self.item_type = item_type
+        self.user_data = user_data  # Ensure this is always updated
 
         tier_mapping = {
             "common": "basic",
@@ -65,59 +60,51 @@ class CraftingView(discord.ui.View):
         filtered_items = {k: v for k, v in user_data.items() if k.lower().endswith(mini_item_type) and v > 0}
 
         if filtered_items:
-            self.add_item(ItemSelect(filtered_items, custom_id="item1"))
-            self.add_item(ItemSelect(filtered_items, custom_id="item2"))
-            self.add_item(CraftButton())  # Add the craft button to the view
+            self.item_select_1 = ItemSelect(filtered_items, custom_id="item1")
+            self.item_select_2 = ItemSelect(filtered_items, custom_id="item2")
+            self.add_item(self.item_select_1)
+            self.add_item(self.item_select_2)
+            self.add_item(CraftButton())
         else:
             asyncio.create_task(ctx.send("No items available to craft this type of product."))
 
-
     async def refresh_dropdowns(self):
+        # This function needs to actually update the items based on possibly changed user_data
         self.item_select_1.items = self.user_data
         self.item_select_1.update_options()
         self.item_select_2.items = self.user_data
         self.item_select_2.update_options()
+        # Consider using edit_original_message here if this function is called after an interaction
         await self.ctx.edit_original_message(view=self)
-        
-    async def callback(self, interaction: discord.Interaction):
-        item1 = self.values.get("item1")
-        item2 = self.values.get("item2")
-        result = await self.process_crafting(item1, item2, interaction.user)
-        await interaction.response.send_message(result, ephemeral=True)
 
     async def process_crafting(self, item1, item2, user):
-        base_path = cog_data_path()
-        file_path = base_path / f"CogManager/cogs/DisWonder/{self.item_type.lower()}_recipes.json"
+        base_path = cog_data_path(self.cog)
+        file_path = base_path / f"{self.item_type.lower()}_recipes.json"
         
         try:
             with open(file_path, "r") as file:
                 recipes = json.load(file)
-        except (FileNotFoundError, json.JSONDecodeError) as e:
+        except Exception as e:  # Broader exception handling for safety
             return f"Failed to load recipes: {str(e)}"
-        item1_old = item1
-        item2_old = item2
-        item1 = item1.split("_")[0].lower()
-        item2 = item2.split("_")[0].lower()
-
-        recipe_key = ','.join(sorted([item1, item2]))
-        recipe_result = recipes.get(recipe_key)
-        user_data = await self.cog.config.user(user).all()
         
-        if recipe_result and user_data.get(item1_old, 0) > 0 and user_data.get(item2_old, 0) > 0:
-            user_data[item1_old] -= 1
-            user_data[item2_old] -= 1
-            user_data[recipe_result] = user_data.get(recipe_result, 0) + 1
-            await self.cog.config.user(user).set(user_data)
+        recipe_key = ','.join(sorted([item1.split("_")[0].lower(), item2.split("_")[0].lower()]))
+        recipe_result = recipes.get(recipe_key)
+        if recipe_result and self.user_data.get(item1, 0) > 0 and self.user_data.get(item2, 0) > 0:
+            self.user_data[item1] -= 1
+            self.user_data[item2] -= 1
+            self.user_data[recipe_result] = self.user_data.get(recipe_result, 0) + 1
+            await self.cog.config.user(user).set(self.user_data)
             await self.refresh_dropdowns()
             return f"Crafted a {recipe_result}!"
         elif recipe_result:
             return "You don't have enough items to craft this."
         else:
-            removed_item = random.choice([item1_old, item2_old])
-            user_data[removed_item] = max(user_data.get(removed_item, 1) - 1, 0)
-            await self.cog.config.user(user).set(user_data)
+            removed_item = random.choice([item1, item2])
+            self.user_data[removed_item] = max(self.user_data.get(removed_item, 1) - 1, 0)
+            await self.cog.config.user(user).set(self.user_data)
             await self.refresh_dropdowns()
             return f"No recipe found. Removed one {removed_item}."
+
 
 
 
