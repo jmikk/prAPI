@@ -32,6 +32,7 @@ class ItemSelect(discord.ui.Select):
             for item in items if items[item] > 0
         ]
         super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options, custom_id=custom_id)
+        self.items = items
         self.update_options()
 
     def update_options(self):
