@@ -119,6 +119,7 @@ class DisWonder(commands.Cog):
     async def build(self, ctx, item_type: str):
         item_type = item_type.lower()
         user_data = await self.config.user(ctx.author).all()
+        await ctx.send(user_data)
         view = CraftingView(item_type, user_data, self)
         
         if view.is_finished():
