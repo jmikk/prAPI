@@ -8,15 +8,22 @@ import asyncio
 
 class ItemSelect(discord.ui.Select):
     def __init__(self, items):
-        super().__init__(placeholder="Choose an item...", min_values=1, max_values=1, options=[
-            discord.SelectOption(label=item.split("_")[0], description=f"You have {items[item]} of these", value=str(item))
+        options = [
+            discord.SelectOption(label=item.split("_")[0], description=f"You have {items[item]} of these", value=item)
             for item in items if items[item] > 0
-        ])
+        ]
+        super().__init__(placeholder="Choose an item...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        # This is where you handle what happens after an option is selected
+        self.view.values[self.custom_id] = self.values[0]
+        await interaction.response.send_message(f"You selected: {self.values[0]}", ephemeral=True)
 
 class CraftingView(discord.ui.View):
     def __init__(self, item_type, user_data, cog, ctx):
         super().__init__()
         self.cog = cog
+        self.ctx = ctx
         self.values = {}
         self.item_type = item_type
 
@@ -31,34 +38,22 @@ class CraftingView(discord.ui.View):
         
         # Get the item type to show in the select menus
         mini_item_type = tier_mapping.get(item_type, "")
-        # Filter items that the user has which match the required type for crafting
-        filtered_items = {}
-        for k, v in user_data.items():
-            # Convert key to lowercase and check if it ends with the mini_item_type
-            if k.lower().endswith(mini_item_type) and v > 0:
-                filtered_items[k] = v
+        filtered_items = {k: v for k, v in user_data.items() if k.lower().endswith(mini_item_type) and v > 0}
 
         if filtered_items:
-            self.add_item(ItemSelect(filtered_items))
-            self.add_item(ItemSelect(filtered_items))
+            self.add_item(ItemSelect(filtered_items, custom_id="item1"))
+            self.add_item(ItemSelect(filtered_items, custom_id="item2"))
         else:
-            self.stop()
+            asyncio.create_task(ctx.send("No items available to craft this type of product."))
 
     async def callback(self, interaction: discord.Interaction):
-        try:
-            item1 = self.values.get("item1")
-            item2 = self.values.get("item2")
-            result = await self.process_crafting(item1, item2, interaction.user)
-            await interaction.response.send_message(result, ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(e, ephemeral=True)
-
-    
-
+        item1 = self.values.get("item1")
+        item2 = self.values.get("item2")
+        result = await self.process_crafting(item1, item2, interaction.user)
+        await interaction.response.send_message(result, ephemeral=True)
 
     async def process_crafting(self, item1, item2, user):
         base_path = cog_data_path(self.cog)
-        # Use the specified item type to find the right recipe file
         file_path = base_path / f"{self.item_type.lower()}_recipes.json"
         
         try:
@@ -67,10 +62,7 @@ class CraftingView(discord.ui.View):
         except (FileNotFoundError, json.JSONDecodeError) as e:
             return f"Failed to load recipes: {str(e)}"
         
-        # Sort and join the item names to form the key
         recipe_key = ','.join(sorted([item1, item2]))
-        
-        # Look up the recipe result using the sorted key
         recipe_result = recipes.get(recipe_key)
         user_data = await self.cog.config.user(user).all()
         
@@ -84,9 +76,10 @@ class CraftingView(discord.ui.View):
             return "You don't have enough items to craft this."
         else:
             removed_item = random.choice([item1, item2])
-            user_data[removed_item] = max(user_data.get(removed_item, 1) - 1, 0)  # Ensure no negative counts
+            user_data[removed_item] = max(user_data.get(removed_item, 1) - 1, 0)
             await self.cog.config.user(user).set(user_data)
             return f"No recipe found. Removed one {removed_item}."
+
 
 
 
