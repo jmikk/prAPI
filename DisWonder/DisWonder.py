@@ -9,7 +9,7 @@ import asyncio
 class ItemSelect(discord.ui.Select):
     def __init__(self, items):
         super().__init__(placeholder="Choose an item...", min_values=1, max_values=1, options=[
-            discord.SelectOption(label=item.split(",")[0], description=f"You have {items[item]} of these", value=str(item))
+            discord.SelectOption(label=item.split("_")[0], description=f"You have {items[item]} of these", value=str(item))
             for item in items if items[item] > 0
         ])
 
