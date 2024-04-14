@@ -30,10 +30,8 @@ class CraftingView(discord.ui.View):
         }
         # Get the item type to show in the select menus
         mini_item_type = tier_mapping.get(item_type, "")
-        await ctx.send("HERE")
         # Filter items that the user has which match the required type for crafting
         filtered_items = {k: v for k, v in user_data.items() if k.lower().endswith(mini_item_type) and v > 0}
-        await ctx.send("HERE2")
 
         if filtered_items:
             self.add_item(ItemSelect(filtered_items))
