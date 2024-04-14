@@ -79,8 +79,8 @@ class CraftingView(discord.ui.View):
                 recipes = json.load(file)
         except (FileNotFoundError, json.JSONDecodeError) as e:
             return f"Failed to load recipes: {str(e)}"
-        item1 = item1.split("_")[0]
-        item2 = item2.split("_")[0]
+        item1 = item1.split("_")[0].lower()
+        item2 = item2.split("_")[0].lower()
 
         recipe_key = ','.join(sorted([item1, item2]))
         recipe_result = recipes.get(recipe_key)
