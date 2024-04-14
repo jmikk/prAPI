@@ -1,5 +1,5 @@
 {
-    "chemicals,textiles": "item1,common",
-    "logistics,knowledge": "item2,common",
-    "metal,wood": "item3,common"
+    "chemicals,textiles": "item1_common",
+    "logistics,knowledge": "item2_common",
+    "metal,wood": "item3_common"
 }
