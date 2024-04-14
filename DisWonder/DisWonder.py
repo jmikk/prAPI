@@ -97,7 +97,7 @@ class CraftingView(discord.ui.View):
         elif recipe_result:
             return "You don't have enough items to craft this."
         else:
-            removed_item = random.choice([item1, item2])
+            removed_item = random.choice([item1_old, item2_old])
             user_data[removed_item] = max(user_data.get(removed_item, 1) - 1, 0)
             await self.cog.config.user(user).set(user_data)
             return f"No recipe found. Removed one {removed_item}."
