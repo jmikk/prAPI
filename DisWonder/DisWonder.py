@@ -12,10 +12,6 @@ class ItemSelect(discord.ui.Select):
             for item in items if items[item] > 0
         ])
 
-    async def callback(self, interaction: discord.Interaction):
-        self.view.values[self.custom_id] = self.values[0]
-        await interaction.response.send_message(f"You selected: {self.values[0]}", ephemeral=True)
-
 class CraftingView(discord.ui.View):
     def __init__(self, item_type, user_data, cog):
         super().__init__()
@@ -23,14 +19,22 @@ class CraftingView(discord.ui.View):
         self.values = {}
         self.item_type = item_type
         filtered_items = {k: v for k, v in user_data.items() if k.endswith(item_type)}
-        self.add_item(ItemSelect(filtered_items, custom_id="item1"))
-        self.add_item(ItemSelect(filtered_items, custom_id="item2"))
+        
+        # Create two ItemSelect instances and add them to the view
+        item_select1 = ItemSelect(filtered_items)
+        item_select1.custom_id = "item1"  # Set custom_id after creation if needed
+        self.add_item(item_select1)
+        
+        item_select2 = ItemSelect(filtered_items)
+        item_select2.custom_id = "item2"  # Set custom_id after creation if needed
+        self.add_item(item_select2)
 
     async def on_submit(self, interaction: discord.Interaction):
         item1 = self.values.get("item1")
         item2 = self.values.get("item2")
         result = await self.process_crafting(item1, item2, interaction.user)
         await interaction.response.send_message(result, ephemeral=True)
+
 
     async def process_crafting(self, item1, item2, user):
         base_path = cog_data_path(self.cog)
