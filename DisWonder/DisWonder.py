@@ -52,7 +52,7 @@ class CraftingView(discord.ui.View):
     async def process_crafting(self, item1, item2, user):
         base_path = cog_data_path(self.cog)
         # Use the specified item type to find the right recipe file
-        file_path = base_path / f"{self.item_type}_recipes.json"
+        file_path = base_path / f"{self.item_type.lower()}_recipes.json"
         
         try:
             with open(file_path, "r") as file:
