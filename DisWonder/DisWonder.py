@@ -18,18 +18,27 @@ class CraftingView(discord.ui.View):
         self.cog = cog
         self.values = {}
         self.item_type = item_type
-        if item_type == "common":
-            mini_item_type = "basic"
-        filtered_items = {k: v for k, v in user_data.items() if k.endswith(mini_item_type)}
-        
-        # Create two ItemSelect instances and add them to the view
-        item_select1 = ItemSelect(filtered_items)
-        item_select1.custom_id = "item1"  # Set custom_id after creation if needed
-        self.add_item(item_select1)
-        
-        item_select2 = ItemSelect(filtered_items)
-        item_select2.custom_id = "item2"  # Set custom_id after creation if needed
-        self.add_item(item_select2)
+
+        # Determine the item type to show based on the crafting target
+        tier_mapping = {
+            "common": "basic",
+            "uncommon": "common",
+            "rare": "uncommon",
+            "epic": "rare",
+            "legendary": "epic"
+        }
+        # Get the item type to show in the select menus
+        mini_item_type = tier_mapping.get(item_type, "")
+
+        # Filter items that the user has which match the required type for crafting
+        filtered_items = {k: v for k, v in user_data.items() if k.endswith(mini_item_type) and v > 0}
+
+        if filtered_items:
+            self.add_item(ItemSelect(filtered_items))
+            self.add_item(ItemSelect(filtered_items))
+        else:
+            # If no items available, inform the user and stop the view
+            self.stop()
 
     async def on_submit(self, interaction: discord.Interaction):
         item1 = self.values.get("item1")
@@ -38,8 +47,10 @@ class CraftingView(discord.ui.View):
         await interaction.response.send_message(result, ephemeral=True)
 
 
+
     async def process_crafting(self, item1, item2, user):
         base_path = cog_data_path(self.cog)
+        # Use the specified item type to find the right recipe file
         file_path = base_path / f"{self.item_type}_recipes.json"
         
         try:
@@ -47,14 +58,14 @@ class CraftingView(discord.ui.View):
                 recipes = json.load(file)
         except (FileNotFoundError, json.JSONDecodeError) as e:
             return f"Failed to load recipes: {str(e)}"
-    
+        
         # Sort and join the item names to form the key
         recipe_key = ','.join(sorted([item1, item2]))
-    
+        
         # Look up the recipe result using the sorted key
         recipe_result = recipes.get(recipe_key)
         user_data = await self.cog.config.user(user).all()
-    
+        
         if recipe_result and user_data.get(item1, 0) > 0 and user_data.get(item2, 0) > 0:
             user_data[item1] -= 1
             user_data[item2] -= 1
@@ -68,6 +79,7 @@ class CraftingView(discord.ui.View):
             user_data[removed_item] = max(user_data.get(removed_item, 1) - 1, 0)  # Ensure no negative counts
             await self.cog.config.user(user).set(user_data)
             return f"No recipe found. Removed one {removed_item}."
+
 
 
 
@@ -97,8 +109,12 @@ class DisWonder(commands.Cog):
     async def build(self, ctx, item_type: str):
         item_type = item_type.lower()
         user_data = await self.config.user(ctx.author).all()
-        view = CraftingView(item_type, user_data,self)
-        await ctx.send("Select two items to combine:", view=view)
+        view = CraftingView(item_type, user_data, self)
+        
+        if view.is_finished():
+            await ctx.send("No items available to craft this type of product.")
+        else:
+            await ctx.send("Select two items to combine:", view=view)
 
 
 
