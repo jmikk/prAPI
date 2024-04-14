@@ -71,8 +71,8 @@ class CraftingView(discord.ui.View):
         await interaction.response.send_message(result, ephemeral=True)
 
     async def process_crafting(self, item1, item2, user):
-        base_path = cog_data_path("DisWonder")
-        file_path = base_path / f"{self.item_type.lower()}_recipes.json"
+        base_path = cog_data_path()
+        file_path = base_path / f"DisWonder/{self.item_type.lower()}_recipes.json"
         
         try:
             with open(file_path, "r") as file:
