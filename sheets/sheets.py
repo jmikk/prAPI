@@ -1,5 +1,5 @@
 from redbot.core import commands
-from discord import Embed, Interaction, SelectOption, ui
+from discord import Embed, Interaction, ui, TextInputStyle
 
 class sheets(commands.Cog):
     def __init__(self, bot):
@@ -7,30 +7,43 @@ class sheets(commands.Cog):
 
     @commands.command()
     async def createembed(self, ctx):
-        """Starts the embed creation process."""
-        # Launch the menu to select embed properties
-        await ctx.send("Please choose options for the embed.", view=self.EmbedCreationMenu())
+        """Triggers a modal to create a custom embed."""
+        modal = self.CreateEmbedModal(title="Create Your Custom Embed")
+        await ctx.send_modal(modal)
 
-    class EmbedCreationMenu(ui.View):
-        def __init__(self):
-            super().__init__(timeout=180)  # Timeout for menu interaction
-
-        @ui.select(
-            placeholder="Choose the embed color",
-            options=[
-                SelectOption(label="Red", description="Set the embed color to red", value="red"),
-                SelectOption(label="Green", description="Set the embed color to green", value="green"),
-                SelectOption(label="Blue", description="Set the embed color to blue", value="blue"),
-            ]
+    class CreateEmbedModal(ui.Modal, title="Custom Embed Creation"):
+        title_input = ui.TextInput(
+            label="Embed Title",
+            style=TextInputStyle.short,
+            placeholder="Enter the title for the embed...",
+            required=True,
+            max_length=100
         )
-        async def select_callback(self, select, interaction: Interaction):
-            color_map = {
-                "red": 0xFF0000,
-                "green": 0x00FF00,
-                "blue": 0x0000FF
-            }
-            color = color_map[select.values[0]]
-            embed = Embed(title="Custom Embed", description="Here is your custom embed!", color=color)
+        description_input = ui.TextInput(
+            label="Embed Description",
+            style=TextInputStyle.paragraph,
+            placeholder="Enter the description for the embed...",
+            required=True
+        )
+        color_input = ui.TextInput(
+            label="Embed Color (Hex Code)",
+            style=TextInputStyle.short,
+            placeholder="Enter a hex color code, e.g., #FF5733",
+            required=True,
+            max_length=7
+        )
+
+        async def on_submit(self, interaction: Interaction):
+            try:
+                color = int(self.color_input.value.strip("#"), 16)
+            except ValueError:
+                return await interaction.response.send_message("Invalid color code. Please use a valid hex code, e.g., #FF5733.", ephemeral=True)
+            
+            embed = Embed(
+                title=self.title_input.value,
+                description=self.description_input.value,
+                color=color
+            )
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def setup(bot):
