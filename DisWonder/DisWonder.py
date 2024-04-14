@@ -41,11 +41,14 @@ class CraftingView(discord.ui.View):
                 recipes = json.load(file)
         except (FileNotFoundError, json.JSONDecodeError) as e:
             return f"Failed to load recipes: {str(e)}"
-
-        recipe_key = json.dumps(sorted([item1, item2]))  # Use a consistent key format
+    
+        # Sort and join the item names to form the key
+        recipe_key = ','.join(sorted([item1, item2]))
+    
+        # Look up the recipe result using the sorted key
         recipe_result = recipes.get(recipe_key)
         user_data = await self.cog.config.user(user).all()
-
+    
         if recipe_result and user_data.get(item1, 0) > 0 and user_data.get(item2, 0) > 0:
             user_data[item1] -= 1
             user_data[item2] -= 1
@@ -59,6 +62,7 @@ class CraftingView(discord.ui.View):
             user_data[removed_item] = max(user_data.get(removed_item, 1) - 1, 0)  # Ensure no negative counts
             await self.cog.config.user(user).set(user_data)
             return f"No recipe found. Removed one {removed_item}."
+
 
 
 
