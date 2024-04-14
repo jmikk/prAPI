@@ -123,7 +123,7 @@ class DisWonder(commands.Cog):
     async def build(self, ctx, item_type: str):
         item_type = item_type.lower()
         user_data = await self.config.user(ctx.author).all()
-        view = await CraftingView(item_type, user_data, self,ctx)
+        view = CraftingView(item_type, user_data, self,ctx)
         
         if view.is_finished():
             await ctx.send("No items available to craft this type of product.")
