@@ -79,6 +79,8 @@ class CraftingView(discord.ui.View):
                 recipes = json.load(file)
         except (FileNotFoundError, json.JSONDecodeError) as e:
             return f"Failed to load recipes: {str(e)}"
+        item1_old = item1
+        item2_old = item2
         item1 = item1.split("_")[0].lower()
         item2 = item2.split("_")[0].lower()
 
@@ -86,9 +88,9 @@ class CraftingView(discord.ui.View):
         recipe_result = recipes.get(recipe_key)
         user_data = await self.cog.config.user(user).all()
         
-        if recipe_result and user_data.get(item1, 0) > 0 and user_data.get(item2, 0) > 0:
-            user_data[item1] -= 1
-            user_data[item2] -= 1
+        if recipe_result and user_data.get(item1_old, 0) > 0 and user_data.get(item2_old, 0) > 0:
+            user_data[item1_old] -= 1
+            user_data[item2_old] -= 1
             user_data[recipe_result] = user_data.get(recipe_result, 0) + 1
             await self.cog.config.user(user).set(user_data)
             return f"Crafted a {recipe_result}!"
