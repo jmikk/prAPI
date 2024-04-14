@@ -1,5 +1,5 @@
 from redbot.core import commands
-from discord import Embed, Interaction, ui, TextInputStyle
+from discord import Embed, Interaction, ui
 
 class sheets(commands.Cog):
     def __init__(self, bot):
