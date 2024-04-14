@@ -90,7 +90,7 @@ class DisWonder(commands.Cog):
     @commands.command()
     async def build(self, ctx, item_type: str):
         user_data = await self.config.user(ctx.author).all()
-        view = CraftingView(item_type, user_data)
+        view = CraftingView(item_type, user_data,self)
         await ctx.send("Select two items to combine:", view=view)
 
 
