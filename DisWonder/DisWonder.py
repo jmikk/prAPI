@@ -6,28 +6,46 @@ from redbot.core.data_manager import cog_data_path
 import os
 import asyncio
 
+class CraftButton(discord.ui.Button):
+    def __init__(self, label="Craft"):
+        super().__init__(label=label, style=discord.ButtonStyle.green)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view  # Access the view to which this button belongs
+
+        # Ensure that the necessary items have been selected
+        item1 = view.values.get("item1")
+        item2 = view.values.get("item2")
+        if not item1 or not item2:
+            await interaction.response.send_message("Please select two items to craft.", ephemeral=True)
+            return
+
+        # Start the crafting process
+        result = await view.process_crafting(item1, item2, interaction.user)
+        await interaction.response.send_message(result, ephemeral=True)
+
+
 class ItemSelect(discord.ui.Select):
-    def __init__(self, items):
+    def __init__(self, items, placeholder="Choose an item...", custom_id=None):
         options = [
             discord.SelectOption(label=item.split("_")[0], description=f"You have {items[item]} of these", value=item)
             for item in items if items[item] > 0
         ]
-        super().__init__(placeholder="Choose an item...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options, custom_id=custom_id)
 
     async def callback(self, interaction: discord.Interaction):
-        # This is where you handle what happens after an option is selected
+        # Save the selection to the view's state
         self.view.values[self.custom_id] = self.values[0]
-        await interaction.response.send_message(f"You selected: {self.values[0]}", ephemeral=True)
+        await interaction.response.send_message(f"You selected: {self.values[0].split('_')[0]}", ephemeral=True)
 
 class CraftingView(discord.ui.View):
     def __init__(self, item_type, user_data, cog, ctx):
         super().__init__()
         self.cog = cog
         self.ctx = ctx
-        self.values = {}
+        self.values = {}  # Stores selected items
         self.item_type = item_type
 
-        # Determine the item type to show based on the crafting target
         tier_mapping = {
             "common": "basic",
             "uncommon": "common",
@@ -35,16 +53,16 @@ class CraftingView(discord.ui.View):
             "epic": "rare",
             "legendary": "epic"
         }
-        
-        # Get the item type to show in the select menus
         mini_item_type = tier_mapping.get(item_type, "")
         filtered_items = {k: v for k, v in user_data.items() if k.lower().endswith(mini_item_type) and v > 0}
 
         if filtered_items:
-            self.add_item(ItemSelect(filtered_items))
-            self.add_item(ItemSelect(filtered_items))
+            self.add_item(ItemSelect(filtered_items, custom_id="item1"))
+            self.add_item(ItemSelect(filtered_items, custom_id="item2"))
+            self.add_item(CraftButton())  # Add the craft button to the view
         else:
             asyncio.create_task(ctx.send("No items available to craft this type of product."))
+
 
     async def callback(self, interaction: discord.Interaction):
         item1 = self.values.get("item1")
