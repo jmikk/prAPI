@@ -18,7 +18,9 @@ class CraftingView(discord.ui.View):
         self.cog = cog
         self.values = {}
         self.item_type = item_type
-        filtered_items = {k: v for k, v in user_data.items() if k.endswith(item_type)}
+        if item_type == "common":
+            mini_item_type = "basic"
+        filtered_items = {k: v for k, v in user_data.items() if k.endswith(mini_item_type)}
         
         # Create two ItemSelect instances and add them to the view
         item_select1 = ItemSelect(filtered_items)
@@ -93,6 +95,7 @@ class DisWonder(commands.Cog):
 
     @commands.command()
     async def build(self, ctx, item_type: str):
+        item_type = item_type.lower()
         user_data = await self.config.user(ctx.author).all()
         view = CraftingView(item_type, user_data,self)
         await ctx.send("Select two items to combine:", view=view)
