@@ -185,4 +185,10 @@ class DisWonder(commands.Cog):
             await message.add_reaction("⏮️")
             await message.add_reaction("⏭️")
 
+    @commands.command()
+    async def reset_user_config(self, ctx):
+        """Resets the user's configuration data to default values."""
+        await self.config.user(ctx.author).set(self.config.defaults["USER"])
+        await ctx.send(f"Configuration data has been reset to default values for {ctx.author.name}.")
+
 
