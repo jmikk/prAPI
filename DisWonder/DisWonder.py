@@ -94,16 +94,26 @@ class DisWonder(commands.Cog):
     @commands.command()
     async def buy_basic(self, ctx, tokens=1):
         basic_items = [("Logistics", "basic"), ("Knowledge", "basic"), ("Chemicals", "basic"), ("Textiles", "basic"), ("Food", "basic"), ("Metal", "basic"), ("Wood", "basic"), ("Stone", "basic")]
-        chosen_item = random.choice(basic_items)
-        user_data = await self.config.user(ctx.author).all()
-
-        if tokens > 0:
-            chosen_item_key = str(chosen_item)
-            user_data[chosen_item_key] = user_data.get(chosen_item_key, 0) + 1
-            await self.config.user(ctx.author).set(user_data)
-            await ctx.send(f"You spent {tokens} tokens and received {tokens} units of {chosen_item}.")
-        else:
+        chosen_item, category = random.choice(basic_items)  # Unpack the tuple directly
+    
+        if tokens <= 0:  # Check if tokens are less than or equal to zero first
             await ctx.send("You must spend at least 1 token.")
+            return
+    
+        user_data = await self.config.user(ctx.author).all()
+    
+        # Simplify key by using only the item name or a combination like "itemname_category"
+        chosen_item_key = f"{chosen_item}_{category}"  # E.g., "Logistics_basic"
+    
+        # Increment the item count
+        user_data[chosen_item_key] = user_data.get(chosen_item_key, 0) + 1
+    
+        # Save the updated data back to the user's config
+        await self.config.user(ctx.author).set(user_data)
+    
+        # Inform the user of their purchase
+        await ctx.send(f"You spent {tokens} tokens and received {tokens} unit(s) of {chosen_item}.")
+
 
     @commands.command()
     async def build(self, ctx, item_type: str):
