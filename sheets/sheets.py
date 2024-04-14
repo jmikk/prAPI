@@ -1,35 +1,37 @@
 from redbot.core import commands
-import asyncio
+from discord import Embed, Interaction, SelectOption, ui
 
-
-def is_owner_overridable():
-    # Similar to @commands.is_owner()
-    # Unlike that, however, this check can be overridden with core Permissions
-    def predicate(ctx):
-        return False
-
-    return commands.permissions_check(predicate)
-
-
-class sheets(commands.Cog):
-    """My custom cog"""
-
+class sheet(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    def cog_unload(self):
-        asyncio.create_task(self.client.aclose())
-
-    # great once your done messing with the bot.
-    #   async def cog_command_error(self, ctx, error):
-    #       await ctx.send(" ".join(error.args))
-
     @commands.command()
-    @commands.is_owner()
-    async def myCom1(self, ctx):
-        await ctx.send("I work")
+    async def createembed(self, ctx):
+        """Starts the embed creation process."""
+        # Launch the menu to select embed properties
+        await ctx.send("Please choose options for the embed.", view=self.EmbedCreationMenu())
 
-    @commands.command()
-    @is_owner_overridable()
-    async def myCom2(self, ctx):
-        await ctx.send("I still work!")
+    class EmbedCreationMenu(ui.View):
+        def __init__(self):
+            super().__init__(timeout=180)  # Timeout for menu interaction
+
+        @ui.select(
+            placeholder="Choose the embed color",
+            options=[
+                SelectOption(label="Red", description="Set the embed color to red", value="red"),
+                SelectOption(label="Green", description="Set the embed color to green", value="green"),
+                SelectOption(label="Blue", description="Set the embed color to blue", value="blue"),
+            ]
+        )
+        async def select_callback(self, select, interaction: Interaction):
+            color_map = {
+                "red": 0xFF0000,
+                "green": 0x00FF00,
+                "blue": 0x0000FF
+            }
+            color = color_map[select.values[0]]
+            embed = Embed(title="Custom Embed", description="Here is your custom embed!", color=color)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+async def setup(bot):
+    bot.add_cog(sheet(bot))
