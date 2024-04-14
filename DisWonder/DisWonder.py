@@ -1,45 +1,66 @@
 from redbot.core import commands, Config
 import discord
 import random
+import json
+from redbot.core.data_manager import cog_data_path
+import os
 
-class Dropdown(discord.ui.Select):
-    def __init__(self, items, user_data):
-        # Filtering items based on user_data counts converted to string keys
-        options = [
-            discord.SelectOption(label=item[0], description=f"You have {user_data[str(item)]} of these")
-            for item in items if user_data.get(str(item), 0) > 0
-        ]
-        super().__init__(placeholder="Choose two items to combine...", min_values=2, max_values=2, options=options)
+class ItemSelect(discord.ui.Select):
+    def __init__(self, items):
+        super().__init__(placeholder="Choose an item...", min_values=1, max_values=1, options=[
+            discord.SelectOption(label=item[0], description=f"You have {items[item]} of these", value=str(item))
+            for item in items if items[item] > 0
+        ])
 
     async def callback(self, interaction: discord.Interaction):
-        recipes = {
-            ("Logistics", "Knowledge"): "Common Item 1",
-            ("Chemicals", "Textiles"): "Common Item 2",
-        }
-        user_data = await self.view.cog.config.user(interaction.user).all()
-        chosen_items = tuple(sorted(self.values))
-        recipe_result = recipes.get(chosen_items)
+        self.view.values[self.custom_id] = self.values[0]
+        await interaction.response.send_message(f"You selected: {self.values[0]}", ephemeral=True)
 
-        if recipe_result:
-            for item in chosen_items:
-                item_key = str(eval(item))  # Safely convert string back to tuple
-                if user_data[item_key] > 0:
-                    user_data[item_key] -= 1
-                else:
-                    await interaction.response.send_message("You don't have enough items to craft this.", ephemeral=True)
-                    return
-            
-            user_data[recipe_result] = user_data.get(recipe_result, 0) + 1
-            await self.view.cog.config.user(interaction.user).set(user_data)
-            await interaction.response.send_message(f"Crafted {recipe_result}!")
-        else:
-            await interaction.response.send_message("Invalid recipe combination.")
-
-class MyDropdownView(discord.ui.View):
-    def __init__(self, cog, user_data):
+class CraftingView(discord.ui.View):
+    def __init__(self, item_type, user_data, cog):
         super().__init__()
         self.cog = cog
-        self.add_item(Dropdown(cog.basic_items, user_data))
+        self.values = {}
+        self.item_type = item_type
+        filtered_items = {k: v for k, v in user_data.items() if k.endswith(item_type)}
+        self.add_item(ItemSelect(filtered_items, custom_id="item1"))
+        self.add_item(ItemSelect(filtered_items, custom_id="item2"))
+
+    async def on_submit(self, interaction: discord.Interaction):
+        item1 = self.values.get("item1")
+        item2 = self.values.get("item2")
+        result = await self.process_crafting(item1, item2, interaction.user)
+        await interaction.response.send_message(result, ephemeral=True)
+
+    async def process_crafting(self, item1, item2, user):
+        base_path = cog_data_path(self.cog)
+        file_path = base_path / f"{self.item_type}_recipes.json"
+        
+        try:
+            with open(file_path, "r") as file:
+                recipes = json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            return f"Failed to load recipes: {str(e)}"
+
+        recipe_key = json.dumps(sorted([item1, item2]))  # Use a consistent key format
+        recipe_result = recipes.get(recipe_key)
+        user_data = await self.cog.config.user(user).all()
+
+        if recipe_result and user_data.get(item1, 0) > 0 and user_data.get(item2, 0) > 0:
+            user_data[item1] -= 1
+            user_data[item2] -= 1
+            user_data[recipe_result] = user_data.get(recipe_result, 0) + 1
+            await self.cog.config.user(user).set(user_data)
+            return f"Crafted a {recipe_result}!"
+        elif recipe_result:
+            return "You don't have enough items to craft this."
+        else:
+            removed_item = random.choice([item1, item2])
+            user_data[removed_item] = max(user_data.get(removed_item, 1) - 1, 0)  # Ensure no negative counts
+            await self.cog.config.user(user).set(user_data)
+            return f"No recipe found. Removed one {removed_item}."
+
+
 
 class DisWonder(commands.Cog):
     def __init__(self, bot):
@@ -63,10 +84,12 @@ class DisWonder(commands.Cog):
             await ctx.send("You must spend at least 1 token.")
 
     @commands.command()
-    async def build(self, ctx):
+    async def build(self, ctx, item_type: str):
         user_data = await self.config.user(ctx.author).all()
-        view = MyDropdownView(self, user_data)
-        await ctx.send("Select items to combine:", view=view)
+        view = CraftingView(item_type, user_data)
+        await ctx.send("Select two items to combine:", view=view)
+
+
 
     async def get_user_tokens(self, user):
         tokens_cog = self.bot.get_cog("Recruitomatic9003")
