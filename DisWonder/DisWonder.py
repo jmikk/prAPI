@@ -50,7 +50,7 @@ class CraftingView(discord.ui.View):
             item2 = self.values.get("item2")
             result = await self.process_crafting(item1, item2, interaction.user)
             await interaction.response.send_message(result, ephemeral=True)
-        except Exception e:
+        except Exception as e:
             await interaction.response.send_message(e, ephemeral=True)
 
     
