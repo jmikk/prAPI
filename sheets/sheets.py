@@ -1,7 +1,7 @@
 from redbot.core import commands
 from discord import Embed, Interaction, SelectOption, ui
 
-class sheet(commands.Cog):
+class sheets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -34,4 +34,4 @@ class sheet(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def setup(bot):
-    bot.add_cog(sheet(bot))
+    bot.add_cog(sheets(bot))
