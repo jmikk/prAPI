@@ -45,11 +45,15 @@ class CraftingView(discord.ui.View):
             self.stop()
 
     async def on_submit(self, interaction: discord.Interaction):
-        item1 = self.values.get("item1")
-        item2 = self.values.get("item2")
-        result = await self.process_crafting(item1, item2, interaction.user)
-        await interaction.response.send_message(result, ephemeral=True)
+        try:
+            item1 = self.values.get("item1")
+            item2 = self.values.get("item2")
+            result = await self.process_crafting(item1, item2, interaction.user)
+            await interaction.response.send_message(result, ephemeral=True)
+        except Exception e:
+            await interaction.response.send_message(e, ephemeral=True)
 
+    
 
 
     async def process_crafting(self, item1, item2, user):
