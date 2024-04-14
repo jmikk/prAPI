@@ -44,7 +44,7 @@ class CraftingView(discord.ui.View):
         else:
             self.stop()
 
-    async def on_submit(self, interaction: discord.Interaction):
+    async def callback(self, interaction: discord.Interaction):
         try:
             item1 = self.values.get("item1")
             item2 = self.values.get("item2")
