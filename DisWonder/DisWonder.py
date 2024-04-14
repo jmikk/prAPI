@@ -21,7 +21,7 @@ class CraftingView(discord.ui.View):
 
         # Determine the item type to show based on the crafting target
         tier_mapping = {
-            "common": "basic",
+            "basic": "common",
             "uncommon": "common",
             "rare": "uncommon",
             "epic": "rare",
