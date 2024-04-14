@@ -14,7 +14,7 @@ class ItemSelect(discord.ui.Select):
         ])
 
 class CraftingView(discord.ui.View):
-    def __init__(self, item_type, user_data, cog):
+    def __init__(self, item_type, user_data, cog, ctx):
         super().__init__()
         self.cog = cog
         self.values = {}
@@ -30,9 +30,10 @@ class CraftingView(discord.ui.View):
         }
         # Get the item type to show in the select menus
         mini_item_type = tier_mapping.get(item_type, "")
-
+        await ctx.send("HERE")
         # Filter items that the user has which match the required type for crafting
         filtered_items = {k: v for k, v in user_data.items() if k.lower().endswith(mini_item_type) and v > 0}
+        await ctx.send("HERE2")
 
         if filtered_items:
             self.add_item(ItemSelect(filtered_items))
@@ -121,7 +122,7 @@ class DisWonder(commands.Cog):
         item_type = item_type.lower()
         user_data = await self.config.user(ctx.author).all()
         await ctx.send(user_data)
-        view = CraftingView(item_type, user_data, self)
+        view = CraftingView(item_type, user_data, self,ctx)
         
         if view.is_finished():
             await ctx.send("No items available to craft this type of product.")
