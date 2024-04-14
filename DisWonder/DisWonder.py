@@ -136,6 +136,7 @@ class DisWonder(commands.Cog):
 
     @commands.command()
     async def build(self, ctx, item_type: str):
+        await ctx.send{cog_data_path(self) / "recipes")
         item_type = item_type.lower()
         user_data = await self.config.user(ctx.author).all()
         view = CraftingView(item_type, user_data, self,ctx)
