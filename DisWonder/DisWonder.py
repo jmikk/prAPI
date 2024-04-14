@@ -22,10 +22,10 @@ class CraftingView(discord.ui.View):
         # Determine the item type to show based on the crafting target
         tier_mapping = {
             "basic": "common",
-            "uncommon": "common",
-            "rare": "uncommon",
-            "epic": "rare",
-            "legendary": "epic"
+            "common": "uncommon",
+            "uncommon": "rare",
+            "rare": "epic",
+            "epic": "legendary"
         }
         # Get the item type to show in the select menus
         mini_item_type = tier_mapping.get(item_type, "")
