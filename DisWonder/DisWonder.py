@@ -125,3 +125,54 @@ class DisWonder(commands.Cog):
         else:
             return 0
 
+    @commands.command()
+    async def view_inventory(self, ctx):
+        """Displays the user's inventory with pagination."""
+        user_data = await self.config.user(ctx.author).all()
+        items = [(item, qty) for item, qty in user_data.items() if qty > 0]
+
+        if not items:
+            await ctx.send("Your inventory is empty.")
+            return
+
+        pages = self.chunk_items(items, 10)  # Split items into pages, 10 items per page
+        message = await ctx.send(embed=self.create_inventory_embed(pages[0], 1, len(pages)))
+        await self.add_pagination_reactions(message, len(pages))
+
+        def check(reaction, user):
+            return user == ctx.author and reaction.message.id == message.id and str(reaction.emoji) in ["⏮️", "⏭️"]
+
+        current_page = 1
+        while True:
+            try:
+                reaction, user = await self.bot.wait_for("reaction_add", check=check, timeout=60.0)
+            except asyncio.TimeoutError:
+                await message.clear_reactions()
+                break
+            else:
+                if str(reaction.emoji) == "⏮️" and current_page > 1:
+                    current_page -= 1
+                elif str(reaction.emoji) == "⏭️" and current_page < len(pages):
+                    current_page += 1
+                await message.edit(embed=self.create_inventory_embed(pages[current_page - 1], current_page, len(pages)))
+                await message.remove_reaction(reaction, user)
+
+    def chunk_items(self, items, items_per_page):
+        """Helper function to divide the items into manageable pages."""
+        return [items[i:i + items_per_page] for i in range(0, len(items), items_per_page)]
+
+    def create_inventory_embed(self, items, page_number, total_pages):
+        """Helper function to create an inventory embed."""
+        embed = discord.Embed(title="Inventory", color=discord.Color.blue())
+        embed.set_footer(text=f"Page {page_number} of {total_pages}")
+        for item, quantity in items:
+            embed.add_field(name=item, value=f"Quantity: {quantity}", inline=False)
+        return embed
+
+    async def add_pagination_reactions(self, message, num_pages):
+        """Adds pagination reactions to the message if there are multiple pages."""
+        if num_pages > 1:
+            await message.add_reaction("⏮️")
+            await message.add_reaction("⏭️")
+
+
