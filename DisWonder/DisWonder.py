@@ -92,8 +92,10 @@ class CraftingView(discord.ui.View):
 
     async def process_crafting(self, item1, item2, user, quantity):
         base_path = cog_data_path(self.cog)
-        file_path = base_path / f"CogManager/cogs/{self.item_type.lower()}_recipes.json"
-        
+        #/home/pi/.local/share/Red-DiscordBot/data/Gob/cogs/DisWonder/
+        #/home/pi/.local/share/Red-DiscordBot/data/Gob/cogs/CogManager/cogs/DisWonder/common_recipes.json
+        #/home/pi/.local/share/Red-DiscordBot/data/Gob/cogs/DisWonder/CogManager/cogs/common_recipes.json    CURRENTLY pointint at
+        file_path = base_path / f"CogManager/cogs/DisWonder/{self.item_type.lower()}_recipes.json"        
         try:
             with open(file_path, "r") as file:
                 recipes = json.load(file)
