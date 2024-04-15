@@ -23,7 +23,7 @@ class CraftButton(discord.ui.Button):
         self.disabled = True
         try:
             await interaction.response.edit_message(content=result, view=view)
-        except Exeption as e:
+        except Exception as e:
             await interaction.send_message(content=e)
 
         # Start the crafting process
