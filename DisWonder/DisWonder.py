@@ -8,7 +8,7 @@ import asyncio
 
 class CraftButton(discord.ui.Button):
     def __init__(self, label="Craft"):
-        super().__init__(label=label, style=discord.ButtonStyle.green, disabled=False)
+        super().__init__(label=label, style=discord.ButtonStyle.green)
 
     async def callback(self, interaction: discord.Interaction):
         view = self.view  # Access the view to which this button belongs
