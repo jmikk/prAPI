@@ -9,8 +9,9 @@ import asyncio
 
 
 
+
 class CraftButton(discord.ui.Button):
-    def __init__(self, label,quantity):
+    def __init__(self, label, quantity):
         super().__init__(label=label, style=discord.ButtonStyle.green)
         self.quantity = quantity  # The quantity to craft when this button is pressed
 
