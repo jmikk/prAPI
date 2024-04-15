@@ -14,13 +14,6 @@ class ItemSelect(discord.ui.Select):
     def __init__(self, items, placeholder="Choose an item...", custom_id=None):
         super().__init__(placeholder=placeholder, custom_id=custom_id)
         self.items = items
-        self.update_options()
-
-    def update_options(self):
-        self.options = [
-            discord.SelectOption(label=item.split("_")[0], description=f"You have {self.items[item]} of these", value=item)
-            for item in self.items if self.items[item] > 0
-        ]
 
     async def callback(self, interaction: discord.Interaction):
         self.view.values[self.custom_id] = self.values[0]
