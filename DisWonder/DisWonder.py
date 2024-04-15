@@ -260,9 +260,7 @@ class DisWonder(commands.Cog):
         'mythic': 29160
     }
 
-
-        
-        total_points = sum(point_values.get(item.split('_')[0].lower(), 0) * qty for item, qty in items)
+        total_points = sum(point_values.get(item.split('_')[1].lower(), 0) * qty for item, qty in items)
         title = "Inventory" if not rarity else f"Inventory - {rarity.title()} Items"
         embed = discord.Embed(title=title, color=discord.Color.blue())
         embed.set_footer(text=f"Page {page_number} of {total_pages} - Total Points: {total_points}")
