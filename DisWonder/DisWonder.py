@@ -59,6 +59,7 @@ class ItemSelect(discord.ui.Select):
 class CraftingView(discord.ui.View):
     def __init__(self, item_type, user_data, cog, ctx):
         super().__init__()
+        self.invoker = ctx.author  # Store the user who invoked the command
         self.cog = cog
         self.ctx = ctx
         self.values = {}  # Stores selected items
@@ -91,6 +92,9 @@ class CraftingView(discord.ui.View):
 
 
     async def callback(self, interaction: discord.Interaction):
+        if interaction.user != self.view.invoker:
+            await interaction.response.send_message("You are not authorized to use these buttons.", ephemeral=True)
+            return
         item1 = self.values.get("item1")
         item2 = self.values.get("item2")
         result = await self.process_crafting(item1, item2, interaction.user, self.rarity)
