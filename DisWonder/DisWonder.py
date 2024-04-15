@@ -106,7 +106,6 @@ class CraftingView(discord.ui.View):
         
         recipe_key = ','.join(sorted([item1.split("_")[0].lower(), item2.split("_")[0].lower()]))
         recipe_result = recipes.get(recipe_key)
-        return recipe_key
         if recipe_result:
             available_item1 = self.user_data.get(item1, 0)
             available_item2 = self.user_data.get(item2, 0)
