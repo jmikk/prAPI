@@ -11,6 +11,8 @@ class CraftButton(discord.ui.Button):
         super().__init__(label=label, style=discord.ButtonStyle.green)
 
     async def callback(self, interaction: discord.Interaction):
+        try:
+
         view = self.view  # Access the view to which this button belongs
 
         # Ensure that the necessary items have been selected
@@ -21,7 +23,6 @@ class CraftButton(discord.ui.Button):
             return
         # Disable the button after it's been clicked
         self.disabled = True
-        try:
             await interaction.response.edit_message(content=result, view=view)
         except Exception as e:
             await interaction.send_message(content=e)
