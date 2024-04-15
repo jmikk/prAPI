@@ -212,7 +212,7 @@ class DisWonder(commands.Cog):
         items = [(item, qty) for item, qty in user_data.items() if qty > 0]
     
         if rarity:
-            items = [(item, qty) for item, qty in items if item.lower().startswith(rarity.lower())]
+            items = [(item, qty) for item, qty in items if item.lower().endswith(rarity.lower())]
             if not items:
                 await ctx.send(f"No items of rarity '{rarity}' found in your inventory.")
                 return
