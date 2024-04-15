@@ -73,9 +73,9 @@ class CraftingView(discord.ui.View):
         }
         mini_item_type = tier_mapping.get(item_type, "")
         self.rarity = mini_item_type
-        asyncio.create_task(ctx.send(user_data.items()))
+        asyncio.create_task(ctx.send(f"1-{user_data.items()}"))
         filtered_items = {k: v for k, v in user_data.items() if k.lower().endswith(mini_item_type) and v > 0}
-        asyncio.create_task(ctx.send(filtered_items))
+        asyncio.create_task(ctx.send(f"2-{filtered_items}"))
 
         if filtered_items:
             self.add_item(ItemSelect(filtered_items, custom_id="item1"))
