@@ -93,15 +93,15 @@ class CraftingView(discord.ui.View):
     async def process_crafting(self, item1, item2, user, quantity):
         rarity = item1.split("_")[1]
         if rarity == "basic":
-            recipes = await self.config.common()
+            recipes = await cog.config.common()
         if rarity == "common":
-            recipes = await self.config.uncommon()        
+            recipes = await cog.config.uncommon()        
         if rarity == "uncommon":
-            recipes = await self.config.rare()
+            recipes = await cog.config.rare()
         if rarity == "rare":
-            recipes = await self.config.epic()
+            recipes = await cog.config.epic()
         if rarity == "epic":
-            recipes = await self.config.legendary()
+            recipes = await cog.config.legendary()
         
         recipe_key = ','.join(sorted([item1.split("_")[0].lower(), item2.split("_")[0].lower()]))
         recipe_result = recipes.get(recipe_key)
