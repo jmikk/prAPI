@@ -247,7 +247,6 @@ class DisWonder(commands.Cog):
         await ctx.send(f"Configuration data has been reset to default values for {ctx.author.name}.")
 
     @commands.command(name="loadrecipes")
-    @commands.is_owner()  # Ensures only the bot owner can run this command
     async def load_recipes(self, ctx, rarity):
         """Loads recipes from an attached JSON file into the bot's global config."""
         if not ctx.message.attachments:
