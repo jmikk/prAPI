@@ -27,8 +27,9 @@ class CraftButton(discord.ui.Button):
             # Start the crafting process
             result = await view.process_crafting(item1, item2, interaction.user, self.quantity)
 
-            # Disable the button after it's been clicked
-            self.disabled = True
+            for item in self.view.children:
+                if isinstance(item, discord.ui.Button):
+                    item.disabled = True
             
             # Since this is likely the first response, use `interaction.response.edit_message`
             await interaction.response.edit_message(content=result, view=view)
