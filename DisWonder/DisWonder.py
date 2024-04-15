@@ -9,11 +9,15 @@ import asyncio
 
 
 class CraftButton(discord.ui.Button):
-    def __init__(self, label, quantity):
+    def __init__(self, label, quantity, ctx):
         super().__init__(label=label, style=discord.ButtonStyle.green)
+        self.invoker = ctx.author
         self.quantity = quantity  # The quantity to craft when this button is pressed
 
     async def callback(self, interaction: discord.Interaction):
+        if interaction.user != self.view.invoker:
+            await interaction.response.send_message("You are not authorized to use these buttons.", ephemeral=True)
+            return
         try:
             view = self.view  # Access the view to which this button belongs
     
@@ -59,7 +63,6 @@ class ItemSelect(discord.ui.Select):
 class CraftingView(discord.ui.View):
     def __init__(self, item_type, user_data, cog, ctx):
         super().__init__()
-        self.invoker = ctx.author  # Store the user who invoked the command
         self.cog = cog
         self.ctx = ctx
         self.values = {}  # Stores selected items
@@ -81,20 +84,17 @@ class CraftingView(discord.ui.View):
             self.add_item(ItemSelect(filtered_items, custom_id="item1"))
             self.add_item(ItemSelect(filtered_items, custom_id="item2"))
             #self.add_item(CraftButton())  # Add the craft button to the view
-            self.add_item(CraftButton(label='Craft 1', quantity=1))
-            self.add_item(CraftButton(label='Craft 2', quantity=2))
-            self.add_item(CraftButton(label='Craft 4', quantity=4))
-            self.add_item(CraftButton(label='Craft 6', quantity=6))
-            self.add_item(CraftButton(label='Craft 10', quantity=10))
-            self.add_item(CraftButton(label='Craft Max', quantity='max'))
+            self.add_item(CraftButton(label='Craft 1', quantity=1, ctx=ctx))
+            self.add_item(CraftButton(label='Craft 2', quantity=2, ctx=ctx))
+            self.add_item(CraftButton(label='Craft 4', quantity=4, ctx=ctx))
+            self.add_item(CraftButton(label='Craft 6', quantity=6, ctx=ctx))
+            self.add_item(CraftButton(label='Craft 10', quantity=10, ctx=ctx))
+            self.add_item(CraftButton(label='Craft Max', quantity='max', ctx=ctx))
         else:
             asyncio.create_task(ctx.send("No items available to craft this type of product."))
 
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.view.invoker:
-            await interaction.response.send_message("You are not authorized to use these buttons.", ephemeral=True)
-            return
         item1 = self.values.get("item1")
         item2 = self.values.get("item2")
         result = await self.process_crafting(item1, item2, interaction.user, self.rarity)
