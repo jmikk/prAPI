@@ -268,7 +268,7 @@ class DisWonder(commands.Cog):
         embed = discord.Embed(title=title, color=discord.Color.blue())
         embed.set_footer(text=f"Page {page_number} of {total_pages} - Total Points: {total_points}")
         for item, quantity in items:
-            embed.add_field(name=item.replace("_",": "), value=f"Quantity: {quantity}", inline=False)
+            embed.add_field(name=item.replace("_",": ").capitalize(), value=f"Quantity: {quantity}", inline=False)
         return embed
 
 
