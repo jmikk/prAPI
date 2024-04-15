@@ -8,6 +8,7 @@ import asyncio
 
 
 
+
 class CraftButton(discord.ui.Button):
     def __init__(self, label="Craft"):
         super().__init__(label=label, style=discord.ButtonStyle.green)
