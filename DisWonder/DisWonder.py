@@ -80,6 +80,7 @@ class CraftingView(discord.ui.View):
             self.add_item(ItemSelect(filtered_items, custom_id="item2"))
             #self.add_item(CraftButton())  # Add the craft button to the view
             self.add_item(CraftButton(label='Craft 1', quantity=1))
+            self.add_item(CraftButton(label='Craft 2', quantity=2))
             self.add_item(CraftButton(label='Craft 4', quantity=4))
             self.add_item(CraftButton(label='Craft 6', quantity=6))
             self.add_item(CraftButton(label='Craft 10', quantity=10))
