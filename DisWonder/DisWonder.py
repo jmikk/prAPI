@@ -68,15 +68,6 @@ class CraftingView(discord.ui.View):
         else:
             asyncio.create_task(ctx.send("No items available to craft this type of product."))
 
-    async def refresh_dropdowns(self):
-        # This function needs to actually update the items based on possibly changed user_data
-        self.item_select_1.items = self.user_data
-        self.item_select_1.update_options()
-        self.item_select_2.items = self.user_data
-        self.item_select_2.update_options()
-        # Consider using edit_original_message here if this function is called after an interaction
-        await self.ctx.edit_original_message(view=self)
-
     async def process_crafting(self, item1, item2, user):
         base_path = cog_data_path(self.cog)
         file_path = base_path / f"{self.item_type.lower()}_recipes.json"
@@ -94,7 +85,6 @@ class CraftingView(discord.ui.View):
             self.user_data[item2] -= 1
             self.user_data[recipe_result] = self.user_data.get(recipe_result, 0) + 1
             await self.cog.config.user(user).set(self.user_data)
-            await self.refresh_dropdowns()
             return f"Crafted a {recipe_result}!"
         elif recipe_result:
             return "You don't have enough items to craft this."
@@ -102,7 +92,6 @@ class CraftingView(discord.ui.View):
             removed_item = random.choice([item1, item2])
             self.user_data[removed_item] = max(self.user_data.get(removed_item, 1) - 1, 0)
             await self.cog.config.user(user).set(self.user_data)
-            await self.refresh_dropdowns()
             return f"No recipe found. Removed one {removed_item}."
 
 
