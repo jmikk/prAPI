@@ -282,15 +282,15 @@ class DisWonder(commands.Cog):
     @commands.command()
     async def view_recipes(self,ctx,rarity):
         if rarity == "common":
-            recipes = await self.cog.config.common()
+            recipes = await self.config.common()
         if rarity == "uncommon":
-            recipes = await self.cog.config.uncommon()        
+            recipes = await self.config.uncommon()        
         if rarity == "rare":
-            recipes = await self.cog.config.rare()
+            recipes = await self.config.rare()
         if rarity == "epic":
-            recipes = await self.cog.config.epic()
+            recipes = await self.config.epic()
         if rarity == "legendary":
-            recipes = await self.cog.config.legendary()
+            recipes = await self.config.legendary()
         await ctx.send(recipes)
 
 
