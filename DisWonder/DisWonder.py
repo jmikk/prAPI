@@ -66,10 +66,10 @@ class CraftingView(discord.ui.View):
 
         tier_mapping = {
             "common": "basic",
-            "uncommon": "common",
-            "rare": "uncommon",
+            "rare": "common",
             "epic": "rare",
-            "legendary": "epic"
+            "legendary": "epic",
+            "legendary": "mythic",
         }
         mini_item_type = tier_mapping.get(item_type, "")
         self.rarity = mini_item_type
@@ -99,9 +99,9 @@ class CraftingView(discord.ui.View):
             return f"Sorry you can't make super {item1.split('_')[0]} by combining two of them together,"
         if rarity == "basic":
             recipes = await self.cog.config.common()
+        if rarity == "mythic":
+            recipes = await self.cog.config.mythic()        
         if rarity == "common":
-            recipes = await self.cog.config.uncommon()        
-        if rarity == "uncommon":
             recipes = await self.cog.config.rare()
         if rarity == "rare":
             recipes = await self.cog.config.epic()
@@ -143,10 +143,10 @@ class DisWonder(commands.Cog):
         self.config.register_user(**default_user)
         default_global = {
             "common": {},
-            "uncommon":{},
             "rare":{},
             "epic":{},
-            "legendary":{}
+            "legendary":{},
+            "mythic":{}
         }
         self.config.register_global(**default_global)
 
@@ -270,8 +270,8 @@ class DisWonder(commands.Cog):
             # Set the data into the global config
             if rarity == "common":
                 await self.config.common.set(data)
-            if rarity == "uncommon":
-                await self.config.ucommon.set(data)
+            if rarity == "mythic":
+                await self.config.mythic.set(data)
             if rarity == "epic":
                 await self.config.epic.set(data)
             if rarity == "legendary":
@@ -287,8 +287,8 @@ class DisWonder(commands.Cog):
     async def view_recipes(self,ctx,rarity):
         if rarity == "common":
             recipes = await self.config.common()
-        if rarity == "uncommon":
-            recipes = await self.config.uncommon()        
+        if rarity == "mythic":
+            recipes = await self.config.mythic()        
         if rarity == "rare":
             recipes = await self.config.rare()
         if rarity == "epic":
