@@ -208,6 +208,9 @@ class DisWonder(commands.Cog):
     @commands.command()
     async def view_inventory(self, ctx, rarity: str = None):
         """Displays the user's inventory with pagination, optionally filtered by item rarity."""
+        if not rarity:
+            await ctx.send("You can also specifiy a rarity to just search for those items")
+            
         user_data = await self.config.user(ctx.author).all()
         items = [(item, qty) for item, qty in user_data.items() if qty > 0]
     
