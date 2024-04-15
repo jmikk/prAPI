@@ -91,7 +91,7 @@ class CraftingView(discord.ui.View):
         result = await self.process_crafting(item1, item2, interaction.user, self.rarity)
         await interaction.response.send_message(result, ephemeral=True)
 
-    async def process_crafting(self, item1, item2, user, quantity, rarity):
+    async def process_crafting(self, item1, item2, user, quantity):
         rarity = item1.split("_")[1]
         if rarity == "basic":
             recipes = await self.cog.config.common()
