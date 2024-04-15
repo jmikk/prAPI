@@ -24,7 +24,7 @@ class CraftButton(discord.ui.Button):
         try:
             await interaction.response.edit_message(content=result, view=view)
         except Exeption as e:
-            await interaction.send_message.edit_message(content=result, view=view)
+            await interaction.send_message(content=e)
 
         # Start the crafting process
         result = await view.process_crafting(item1, item2, interaction.user)
