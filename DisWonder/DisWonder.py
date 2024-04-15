@@ -61,6 +61,7 @@ class CraftingView(discord.ui.View):
         self.ctx = ctx
         self.values = {}  # Stores selected items
         self.item_type = item_type
+        self.user_data=user_data
 
         tier_mapping = {
             "common": "basic",
