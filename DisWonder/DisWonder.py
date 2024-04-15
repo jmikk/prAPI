@@ -6,9 +6,12 @@ from redbot.core.data_manager import cog_data_path
 import os
 import asyncio
 
+
+
 class CraftButton(discord.ui.Button):
     def __init__(self, label="Craft"):
         super().__init__(label=label, style=discord.ButtonStyle.green)
+                self.quantity = quantity  # The quantity to craft when this button is pressed
 
     async def callback(self, interaction: discord.Interaction):
         try:
@@ -22,7 +25,7 @@ class CraftButton(discord.ui.Button):
                 return
             
             # Start the crafting process
-            result = await view.process_crafting(item1, item2, interaction.user)
+            result = await view.process_crafting(item1, item2, interaction.user, self.quantity)
 
             # Disable the button after it's been clicked
             self.disabled = True
@@ -73,7 +76,11 @@ class CraftingView(discord.ui.View):
         if filtered_items:
             self.add_item(ItemSelect(filtered_items, custom_id="item1"))
             self.add_item(ItemSelect(filtered_items, custom_id="item2"))
-            self.add_item(CraftButton())  # Add the craft button to the view
+            #self.add_item(CraftButton())  # Add the craft button to the view
+            self.add_item(CraftButton(label='Craft 1', quantity=1))
+            self.add_item(CraftButton(label='Craft 10', quantity=10))
+            self.add_item(CraftButton(label='Craft 100', quantity=100))
+            self.add_item(CraftButton(label='Craft Max', quantity='max'))
         else:
             asyncio.create_task(ctx.send("No items available to craft this type of product."))
 
@@ -84,37 +91,38 @@ class CraftingView(discord.ui.View):
         result = await self.process_crafting(item1, item2, interaction.user)
         await interaction.response.send_message(result, ephemeral=True)
 
-    async def process_crafting(self, item1, item2, user):
-        base_path = cog_data_path()
-        file_path = base_path / f"CogManager/cogs/DisWonder/{self.item_type.lower()}_recipes.json"
+    async def process_crafting(self, item1, item2, user, quantity):
+        base_path = cog_data_path(self.cog)
+        file_path = base_path / f"{self.item_type.lower()}_recipes.json"
         
         try:
             with open(file_path, "r") as file:
                 recipes = json.load(file)
-        except (FileNotFoundError, json.JSONDecodeError) as e:
+        except Exception as e:
             return f"Failed to load recipes: {str(e)}"
-        item1_old = item1
-        item2_old = item2
-        item1 = item1.split("_")[0].lower()
-        item2 = item2.split("_")[0].lower()
-
-        recipe_key = ','.join(sorted([item1, item2]))
-        recipe_result = recipes.get(recipe_key)
-        user_data = await self.cog.config.user(user).all()
         
-        if recipe_result and user_data.get(item1_old, 0) > 0 and user_data.get(item2_old, 0) > 0:
-            user_data[item1_old] -= 1
-            user_data[item2_old] -= 1
-            user_data[recipe_result] = user_data.get(recipe_result, 0) + 1
-            await self.cog.config.user(user).set(user_data)
-            return f"Crafted a {recipe_result}!"
-        elif recipe_result:
-            return "You don't have enough items to craft this."
+        recipe_key = ','.join(sorted([item1.split("_")[0].lower(), item2.split("_")[0].lower()]))
+        recipe_result = recipes.get(recipe_key)
+        
+        if recipe_result:
+            available_item1 = self.user_data.get(item1, 0)
+            available_item2 = self.user_data.get(item2, 0)
+    
+            # Calculate maximum if quantity is 'max'
+            if quantity == 'max':
+                quantity = min(available_item1, available_item2)
+    
+            if available_item1 >= quantity and available_item2 >= quantity:
+                self.user_data[item1] -= quantity
+                self.user_data[item2] -= quantity
+                self.user_data[recipe_result] = self.user_data.get(recipe_result, 0) + quantity
+                await self.cog.config.user(user).set(self.user_data)
+                return f"Crafted {quantity} of {recipe_result}!"
+            else:
+                return f"You do not have enough items to craft {quantity}."
         else:
-            removed_item = random.choice([item1_old, item2_old])
-            user_data[removed_item] = max(user_data.get(removed_item, 1) - 1, 0)
-            await self.cog.config.user(user).set(user_data)
-            return f"No recipe found. Removed one {removed_item}."
+            return "No valid recipe found."
+
 
 
 
