@@ -13,16 +13,16 @@ class CraftButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         try:
 
-        view = self.view  # Access the view to which this button belongs
-
-        # Ensure that the necessary items have been selected
-        item1 = view.values.get("item1")
-        item2 = view.values.get("item2")
-        if not item1 or not item2:
-            await interaction.response.send_message("Please select two items to craft.", ephemeral=True)
-            return
-        # Disable the button after it's been clicked
-        self.disabled = True
+            view = self.view  # Access the view to which this button belongs
+    
+            # Ensure that the necessary items have been selected
+            item1 = view.values.get("item1")
+            item2 = view.values.get("item2")
+            if not item1 or not item2:
+                await interaction.response.send_message("Please select two items to craft.", ephemeral=True)
+                return
+            # Disable the button after it's been clicked
+            self.disabled = True
             await interaction.response.edit_message(content=result, view=view)
         except Exception as e:
             await interaction.send_message(content=e)
