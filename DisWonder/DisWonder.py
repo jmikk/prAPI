@@ -138,10 +138,10 @@ class DisWonder(commands.Cog):
         default_user = {}
         self.config.register_user(**default_user)
         default_global = {
-            "common": {}
-            "uncommon":{}
-            "rare":{}
-            "epic":{}
+            "common": {},
+            "uncommon":{},
+            "rare":{},
+            "epic":{},
             "legendary":{}
         }
         self.config.register_global(**default_global)
