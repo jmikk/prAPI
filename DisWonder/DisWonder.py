@@ -11,7 +11,7 @@ import json
 from redbot.core.data_manager import cog_data_path
 
 class ItemSelect(discord.ui.Select):
-    def __init__(self, items, placeholder="Choose an item..."):
+    def __init__(self, items, placeholder="Choose an item...",custom_id="items"):
         super().__init__(placeholder=placeholder, custom_id=custom_id)
         self.items = items
 
