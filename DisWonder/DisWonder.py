@@ -94,6 +94,8 @@ class CraftingView(discord.ui.View):
 
     async def process_crafting(self, item1, item2, user, quantity):
         rarity = item1.split("_")[1]
+        if item1 == item2:
+            return f"Sorry you can't make super {item1.split('_')[0]} by combining two of them together,"
         if rarity == "basic":
             recipes = await self.cog.config.common()
         if rarity == "common":
