@@ -8,7 +8,7 @@ import asyncio
 
 class CraftButton(discord.ui.Button):
     def __init__(self, label="Craft"):
-        super().__init__(label=label, style=discord.ButtonStyle.green)
+        super().__init__(label=label, style=discord.ButtonStyle.green, disabled=False)
 
     async def callback(self, interaction: discord.Interaction):
         view = self.view  # Access the view to which this button belongs
@@ -19,10 +19,12 @@ class CraftButton(discord.ui.Button):
         if not item1 or not item2:
             await interaction.response.send_message("Please select two items to craft.", ephemeral=True)
             return
-
+        # Disable the button after it's been clicked
+        self.disabled = True
+        await interaction.response.edit_message(content=result, view=view)
         # Start the crafting process
         result = await view.process_crafting(item1, item2, interaction.user)
-        await interaction.response.send_message(result, ephemeral=True)
+        await interaction.followup.send_message(result)
 
 
 class ItemSelect(discord.ui.Select):
