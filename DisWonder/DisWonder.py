@@ -91,16 +91,17 @@ class CraftingView(discord.ui.View):
         await interaction.response.send_message(result, ephemeral=True)
 
     async def process_crafting(self, item1, item2, user, quantity):
-        base_path = cog_data_path(self.cog)
-        #/home/pi/.local/share/Red-DiscordBot/data/Gob/cogs/DisWonder/
-        #/home/pi/.local/share/Red-DiscordBot/data/Gob/cogs/CogManager/cogs/DisWonder/common_recipes.json
-        #/home/pi/.local/share/Red-DiscordBot/data/Gob/cogs/DisWonder/CogManager/cogs/common_recipes.json    CURRENTLY pointint at
-        file_path = base_path / f"CogManager/cogs/DisWonder/{self.item_type.lower()}_recipes.json"        
-        try:
-            with open(file_path, "r") as file:
-                recipes = json.load(file)
-        except Exception as e:
-            return f"Failed to load recipes: {str(e)}"
+        rarity = item1.split("_")[1]
+        if rarity == "basic":
+            recipes = await self.config.common()
+        if rarity == "common":
+            recipes = await self.config.uncommon()        
+        if rarity == "uncommon":
+            recipes = await self.config.rare()
+        if rarity == "rare":
+            recipes = await self.config.epic()
+        if rarity == "epic":
+            recipes = await self.config.legendary()
         
         recipe_key = ','.join(sorted([item1.split("_")[0].lower(), item2.split("_")[0].lower()]))
         recipe_result = recipes.get(recipe_key)
@@ -136,6 +137,14 @@ class DisWonder(commands.Cog):
         self.config = Config.get_conf(self, identifier="DisWonder", force_registration=True)
         default_user = {}
         self.config.register_user(**default_user)
+        default_global = {
+            "common": {}
+            "uncommon":{}
+            "rare":{}
+            "epic":{}
+            "legendary":{}
+        }
+        self.config.register_global(**default_global)
 
     @commands.command()
     async def buy_basic(self, ctx, tokens=1):
@@ -236,3 +245,37 @@ class DisWonder(commands.Cog):
         """Resets the user's configuration data to default values."""
         await self.config.user(ctx.author).set(self.config.defaults["USER"])
         await ctx.send(f"Configuration data has been reset to default values for {ctx.author.name}.")
+
+    @commands.command(name="loadrecipes")
+    @commands.is_owner()  # Ensures only the bot owner can run this command
+    async def load_recipes(self, ctx, rarity):
+        """Loads recipes from an attached JSON file into the bot's global config."""
+        if not ctx.message.attachments:
+            await ctx.send("Please attach a JSON file with the recipes.")
+            return
+
+        attachment = ctx.message.attachments[0]  # Get the first attachment
+        if not attachment.filename.endswith('.json'):
+            await ctx.send("Please make sure the file is a JSON file.")
+            return
+
+        try:
+            # Download the attachment
+            file_content = await attachment.read()
+            # Load JSON data from the file content
+            data = json.loads(file_content.decode('utf-8'))  # decode bytes to string
+            # Set the data into the global config
+            if rarity == "common":
+                await self.config.common.set(data)
+            if rarity == "uncommon":
+                await self.config.ucommon.set(data)
+            if rarity == "epic":
+                await self.config.epic.set(data)
+            if rarity == "legendary":
+                await self.config.legendary.set(data)
+
+            await ctx.send("Recipes successfully updated globally.")
+        except json.JSONDecodeError:
+            await ctx.send("The provided file contains invalid JSON.")
+        except Exception as e:
+            await ctx.send(f"Failed to load recipes: {str(e)}")
