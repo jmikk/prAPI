@@ -37,9 +37,9 @@ class CraftButton(discord.ui.Button):
         except Exception as e:
             # Properly handle the exception by using interaction.response or followup based on the state
             if interaction.response.is_done():
-                await interaction.followup.send_message(str(e), ephemeral=True)
+                await interaction.followup.send_message(str(e))
             else:
-                await interaction.response.send_message(str(e), ephemeral=True)
+                await interaction.response.send_message(str(e))
 
 
 
@@ -54,7 +54,6 @@ class ItemSelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         # Save the selection to the view's state
         self.view.values[self.custom_id] = self.values[0]
-        await interaction.response.send_message(f"You selected: {self.values[0].split('_')[0]}", ephemeral=True)
 
 class CraftingView(discord.ui.View):
     def __init__(self, item_type, user_data, cog, ctx):
