@@ -21,7 +21,11 @@ class CraftButton(discord.ui.Button):
             return
         # Disable the button after it's been clicked
         self.disabled = True
-        await interaction.response.edit_message(content=result, view=view)
+        try:
+            await interaction.response.edit_message(content=result, view=view)
+        except Exeption as e:
+            await interaction.send_message.edit_message(content=result, view=view)
+
         # Start the crafting process
         result = await view.process_crafting(item1, item2, interaction.user)
         await interaction.followup.send_message(result)
