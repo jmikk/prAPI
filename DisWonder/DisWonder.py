@@ -48,15 +48,19 @@ class CraftButton(discord.ui.Button):
 
 
 class ItemSelect(discord.ui.Select):
-    def __init__(self, items, placeholder="Choose an item...", custom_id=None):
+    def __init__(self, items, placeholder="Choose an item...", custom_id=None,ctx):
         options = [
             discord.SelectOption(label=item.split("_")[0], description=f"You have {items[item]} of these", value=item)
             for item in items if items[item] > 0
         ]
         super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options, custom_id=custom_id)
+        self.invoker = ctx.author
 
     async def callback(self, interaction: discord.Interaction):
         # Save the selection to the view's state
+        if interaction.user != self.invoker:
+            await interaction.response.send_message("You are not authorized to use these buttons.", ephemeral=True)
+            return
         self.view.values[self.custom_id] = self.values[0]
         await interaction.response.send_message(f"You selected: {self.values[0].split('_')[0]}", ephemeral=True)
 
@@ -81,8 +85,8 @@ class CraftingView(discord.ui.View):
         filtered_items = {k: v for k, v in user_data.items() if k.lower().endswith(mini_item_type) and v > 0}
 
         if filtered_items:
-            self.add_item(ItemSelect(filtered_items, custom_id="item1"))
-            self.add_item(ItemSelect(filtered_items, custom_id="item2"))
+            self.add_item(ItemSelect(filtered_items, custom_id="item1",ctx=ctx))
+            self.add_item(ItemSelect(filtered_items, custom_id="item2",ctx=ctx))
             #self.add_item(CraftButton())  # Add the craft button to the view
             self.add_item(CraftButton(label='Craft 1', quantity=1, ctx=ctx))
             self.add_item(CraftButton(label='Craft 2', quantity=2, ctx=ctx))
