@@ -223,7 +223,20 @@ class DisWonder(commands.Cog):
         if not items:
             await ctx.send("Your inventory is empty.")
             return
-    
+        def replace_suffix(item):
+            for suffix in ["_basic", "_common", "_rare", "_epic", "_legendary", "_mythic"]:
+                if item.endswith(suffix):
+                    return item.replace(suffix, f"({suffix[1:]})")
+            return item
+
+        items = [replace_suffix(item) for item in items]
+
+        for suffix in ["_basic", "_common", "_rare", "_epic", "_legendary", "_mythic"]:
+            if item.endswith(suffix):
+                # Replace the underscore and suffix with the desired format
+                return item.replace(suffix, f"({suffix[1:]})")
+            return item    
+        
         pages = self.chunk_items(items, 10)  # Split items into pages, 10 items per page
         message = await ctx.send(embed=self.create_inventory_embed(pages[0], 1, len(pages), rarity))
         await self.add_pagination_reactions(message, len(pages))
