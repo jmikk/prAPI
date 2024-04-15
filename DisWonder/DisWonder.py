@@ -70,6 +70,7 @@ class CraftingView(discord.ui.View):
             "legendary": "epic"
         }
         mini_item_type = tier_mapping.get(item_type, "")
+        self.rarity = mini_item_type
         filtered_items = {k: v for k, v in user_data.items() if k.lower().endswith(mini_item_type) and v > 0}
 
         if filtered_items:
@@ -87,10 +88,10 @@ class CraftingView(discord.ui.View):
     async def callback(self, interaction: discord.Interaction):
         item1 = self.values.get("item1")
         item2 = self.values.get("item2")
-        result = await self.process_crafting(item1, item2, interaction.user)
+        result = await self.process_crafting(item1, item2, interaction.user, self.rarity)
         await interaction.response.send_message(result, ephemeral=True)
 
-    async def process_crafting(self, item1, item2, user, quantity):
+    async def process_crafting(self, item1, item2, user, quantity, rarity):
         rarity = item1.split("_")[1]
         if rarity == "basic":
             recipes = await self.cog.config.common()
