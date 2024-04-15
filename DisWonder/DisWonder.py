@@ -250,6 +250,18 @@ class DisWonder(commands.Cog):
 
     def create_inventory_embed(self, items, page_number, total_pages, rarity=None):
         """Helper function to create an inventory embed."""
+
+        point_values = {
+        'basic': 1,
+        'common': 3,
+        'rare': 18,
+        'epic': 162,
+        'legendary': 1944,
+        'mythic': 29160
+    }
+
+
+        
         total_points = sum(point_values.get(item.split('_')[0].lower(), 0) * qty for item, qty in items)
         title = "Inventory" if not rarity else f"Inventory - {rarity.title()} Items"
         embed = discord.Embed(title=title, color=discord.Color.blue())
