@@ -15,7 +15,7 @@ class CraftButton(discord.ui.Button):
         self.quantity = quantity  # The quantity to craft when this button is pressed
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.view.invoker:
+        if interaction.user != self.invoker:
             await interaction.response.send_message("You are not authorized to use these buttons.", ephemeral=True)
             return
         try:
