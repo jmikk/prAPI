@@ -341,7 +341,7 @@ class DisWonder(commands.Cog):
         except Exception as e:
             await ctx.send(f"Failed to load recipes: {str(e)}")
         
-    @commands.command(name="loadrecipes")
+    @commands.command()
     async def throw_trash(self,ctx, trash_amount, target: discord.Member = None):
         user_data = await self.config.user(ctx.author).all()
 
