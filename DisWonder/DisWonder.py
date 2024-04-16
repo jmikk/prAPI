@@ -183,6 +183,11 @@ class DisWonder(commands.Cog):
             "mythic":{},
             "trash":{}
         }
+        default_guild = {
+            "last_claimed": datetime.datetime.utcnow().isoformat(),
+            "multiplier": 1.0
+        }
+        self.config.register_guild(**default_guild)
         self.config.register_global(**default_global)
 
     @commands.command()
@@ -437,21 +442,38 @@ class DisWonder(commands.Cog):
             await ctx.send(f"You threw away {trash_amount} trash!")
 
     @commands.command(name="grab")
-    @commands.cooldown(1, 60, commands.BucketType.guild)
-    async def work(self, ctx, resource: str):
-        """Work to gather a specified resource. Usage: !work [resource]"""
+    @commands.cooldown(1, 600, commands.BucketType.guild)  # Cooldown of 1 hour per guild
+    async def grab(self, ctx):
+        """Steal the pot."""
         valid_resources = ["logistics", "knowledge", "chemicals", "textiles", "food", "metal", "wood", "stone"]
-        resource = resource.lower()
-        if resource not in valid_resources:
-            await ctx.send(f"Invalid resource specified. Please choose from {', '.join(self.valid_resources)}.")
-            return
-        
-        # Process to add the resource to user's inventory
+        guild_data = await self.config.guild(ctx.guild).all()
+
+        last_claimed_time = datetime.datetime.fromisoformat(guild_data["last_claimed"])
+        current_time = datetime.datetime.utcnow()
+        hours_passed = (current_time - last_claimed_time).total_seconds() / 3600
+
+        # Calculate the new multiplier based on the hours passed
+        if hours_passed >= 1:
+            guild_data["multiplier"] *= 1.5 ** int(hours_passed)  # Multiply by 1.5 for each full hour passed
+
+        resource = random.choice(valid_resources)
+        base_reward = 10
+        reward = int(base_reward * guild_data["multiplier"])
+
+        # Update user's inventory
         user_data = await self.config.user(ctx.author).all()
-        resource_key = f"{resource}_basic"  # Assuming all resources are of type 'basic'
-        user_data[resource_key] = user_data.get(resource_key, 0) + 1
+        resource_key = f"{resource}_basic"
+        user_data[resource_key] = user_data.get(resource_key, 0) + reward
         await self.config.user(ctx.author).set(user_data)
-        await ctx.send(f"You've successfully gathered 1 unit of {resource.capitalize()}.")
+
+        # Reset the last claimed time and multiplier
+        guild_data["last_claimed"] = datetime.datetime.utcnow().isoformat()
+        guild_data["multiplier"] = 1.0  # Reset multiplier
+        await self.config.guild(ctx.guild).set(guild_data)
+
+        await ctx.send(f"You've successfully gathered {reward} units of {resource.capitalize()}.")
+
+
 
 
             
