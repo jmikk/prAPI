@@ -349,14 +349,15 @@ class DisWonder(commands.Cog):
         if user_data["trash_trash"] < trash_amount:
             await ctx.send("You don't have that much trash good job!")
             return
+            
         user_data["trash_trash"] = user_data.get("trash_trash", 0) - trash_amount
         # Save the updated data back to the user's config
         await self.config.user(ctx.author).set(user_data)
 
         if target:
-            user_data = await self.config.user(target).all()
-            user_data["trash_trash"] = user_data.get("trash_trash", 0) + trash_amount
-            await self.config.user(ctx.author).set(user_data)
+            target = await self.config.user(target).all()
+            target["trash_trash"] = target.get("trash_trash", 0) + trash_amount
+            await self.config.user(target).set(target)
 
         # Inform the user of their purchase
         await ctx.send(f"You threw {trash_amount} enjoy a cleaner life!")
