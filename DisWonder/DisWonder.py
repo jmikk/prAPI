@@ -358,7 +358,7 @@ class DisWonder(commands.Cog):
             await self.config.user(ctx.author).set(user_data)
 
         # Inform the user of their purchase
-        await ctx.send(f"You spent {tokens} tokens and received {tokens} unit(s) of {chosen_item}.")
+        await ctx.send(f"You threw {trash_amount} enjoy a cleaner life!")
         
 
 
