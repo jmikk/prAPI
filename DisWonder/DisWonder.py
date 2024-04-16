@@ -230,7 +230,7 @@ class DisWonder(commands.Cog):
             return 0
 
     @commands.command()
-    async def leaderboard(self, ctx):
+    async def DisWonder_leaderboard(self, ctx):
         """Displays a leaderboard of user points in the server."""
         members = ctx.guild.members  # Get list of members in the guild
         user_points = []
