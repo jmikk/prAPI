@@ -318,6 +318,7 @@ class DisWonder(commands.Cog):
             await ctx.send(f"Failed to load recipes: {str(e)}")
 
     @commands.command()
+    @commands.is_owner()
     async def view_recipes(self,ctx,rarity):
         if rarity == "common":
             recipes = await self.config.common()
