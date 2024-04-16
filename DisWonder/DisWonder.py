@@ -435,6 +435,69 @@ class DisWonder(commands.Cog):
             await ctx.send(f"You threw {trash_amount} trash at {target.display_name}!")
         else:
             await ctx.send(f"You threw away {trash_amount} trash!")
+
+    @commands.group()
+    async def work(self, ctx):
+        """A group of commands for working to acquire basic materials."""
+        if ctx.invoked_subcommand is None:
+            await ctx.send("Use one of the specific work commands to gather materials. Try `!work logistics`, `!work knowledge`, etc.")
+
+    @work.command(name="logistics")
+    @commands.cooldown(1, 60, commands.BucketType.user)
+    async def work_logistics(self, ctx):
+        """Work to gather logistics."""
+        await self.gather_material(ctx, "Logistics", "basic")
+
+    @work.command(name="knowledge")
+    @commands.cooldown(1, 60, commands.BucketType.user)
+    async def work_knowledge(self, ctx):
+        """Work to gather knowledge."""
+        await self.gather_material(ctx, "Knowledge", "basic")
+
+    @work.command(name="chemicals")
+    @commands.cooldown(1, 60, commands.BucketType.user)
+    async def work_chemicals(self, ctx):
+        """Work to gather chemicals."""
+        await self.gather_material(ctx, "Chemicals", "basic")
+
+    @work.command(name="textiles")
+    @commands.cooldown(1, 60, commands.BucketType.user)
+    async def work_textiles(self, ctx):
+        """Work to gather textiles."""
+        await self.gather_material(ctx, "Textiles", "basic")
+
+    @work.command(name="food")
+    @commands.cooldown(1, 60, commands.BucketType.user)
+    async def work_textiles(self, ctx):
+        """Work to gather textiles."""
+        await self.gather_material(ctx, "food", "basic")
+
+    @work.command(name="metal")
+    @commands.cooldown(1, 60, commands.BucketType.user)
+    async def work_textiles(self, ctx):
+        """Work to gather textiles."""
+        await self.gather_material(ctx, "metal", "basic")
+
+    @work.command(name="wood")
+    @commands.cooldown(1, 60, commands.BucketType.user)
+    async def work_textiles(self, ctx):
+        """Work to gather textiles."""
+        await self.gather_material(ctx, "wood", "basic")
+
+    @work.command(name="stone")
+    @commands.cooldown(1, 60, commands.BucketType.user)
+    async def work_textiles(self, ctx):
+        """Work to gather textiles."""
+        await self.gather_material(ctx, "stone", "basic")
+
+
+    async def gather_material(self, ctx, material, category):
+        """A helper function to award materials."""
+        user_data = await self.config.user(ctx.author).all()
+        material_key = f"{material}_{category}"
+        user_data[material_key] = user_data.get(material_key, 0) + 1
+        await self.config.user(ctx.author).set(user_data)
+        await ctx.send(f"You've successfully gathered 1 unit of {material}.")
     
             
     
