@@ -437,7 +437,7 @@ class DisWonder(commands.Cog):
             await ctx.send(f"You threw away {trash_amount} trash!")
 
     @commands.group()
-    async def work(self, ctx):
+    async def work_in(self, ctx):
         """A group of commands for working to acquire basic materials."""
         if ctx.invoked_subcommand is None:
             await ctx.send("Use one of the specific work commands to gather materials. Try `!work logistics`, `!work knowledge`, etc.")
