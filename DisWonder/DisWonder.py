@@ -134,7 +134,7 @@ class CraftingView(discord.ui.View):
                 self.user_data[item2] -= quantity
                 self.user_data[recipe_result] = self.user_data.get(recipe_result, 0) + quantity
                 await self.cog.config.user(user).set(self.user_data)
-                return f"Crafted {quantity} of {recipe_result}!"
+                return f"Crafted {quantity} of {recipe_result.replace("_"," ").capitilze()}!"
             else:
                 return f"You do not have enough items to craft {quantity}."
         else:
