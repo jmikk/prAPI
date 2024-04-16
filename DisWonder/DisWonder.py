@@ -144,14 +144,15 @@ class CraftingView(discord.ui.View):
             else:
                 return f"You do not have enough items to craft {quantity}."
         else:
-            if available_item1 >= quantity and available_item2 >= quantity:
-                available_item1 = self.user_data.get(item1, 0)
-                available_item2 = self.user_data.get(item2, 0)
+            available_item1 = self.user_data.get(item1, 0)
+            available_item2 = self.user_data.get(item2, 0)
     
                 # Calculate maximum if quantity is 'max'
-                if quantity == 'max':
-                    quantity = min(available_item1, available_item2)
+            if quantity == 'max':
+                quantity = min(available_item1, available_item2)
                     
+            if available_item1 >= quantity and available_item2 >= quantity:
+    
                 self.user_data[item1] -= quantity
                 self.user_data[item2] -= quantity
                 self.user_data["trash"] = self.user_data.get("trash", 0) + quantity * repMod
