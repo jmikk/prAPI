@@ -351,7 +351,7 @@ class DisWonder(commands.Cog):
         # Save the updated data back to the user's config
         await self.config.user(ctx.author).set(user_data)
 
-        if target not None:
+        if target:
             user_data = await self.config.user(target).all()
             user_data["trash_trash"] = user_data.get("trash_trash", 0) + trash_amount
             await self.config.user(ctx.author).set(user_data)
