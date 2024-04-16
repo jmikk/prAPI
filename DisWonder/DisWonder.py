@@ -339,3 +339,25 @@ class DisWonder(commands.Cog):
             await ctx.send("The provided file contains invalid JSON.")
         except Exception as e:
             await ctx.send(f"Failed to load recipes: {str(e)}")
+        
+    @commands.command(name="loadrecipes")
+    async def throw_trash(self,ctx, trash_amount, target: discord.Member = None):
+        user_data = await self.config.user(ctx.author).all()
+
+        if user_data < trash_amount:
+            await ctx.send("You don't have that much trash good job!")
+            return
+        user_data["trash_trash"] = user_data.get("trash_trash", 0) - trash_amount
+        # Save the updated data back to the user's config
+        await self.config.user(ctx.author).set(user_data)
+
+        if target not None:
+            user_data = await self.config.user(target).all()
+            user_data["trash_trash"] = user_data.get("trash_trash", 0) + trash_amount
+            await self.config.user(ctx.author).set(user_data)
+
+        # Inform the user of their purchase
+        await ctx.send(f"You spent {tokens} tokens and received {tokens} unit(s) of {chosen_item}.")
+        
+
+
