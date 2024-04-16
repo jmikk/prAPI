@@ -343,24 +343,33 @@ class DisWonder(commands.Cog):
             await ctx.send(f"Failed to load recipes: {str(e)}")
         
     @commands.command()
-    async def throw_trash(self,ctx, trash_amount: int, target: discord.Member = None):
+    async def throw_trash(self, ctx, trash_amount: int, target: discord.Member = None):
+        # Fetch the user data safely
         user_data = await self.config.user(ctx.author).all()
-
-        if user_data["trash_trash"] < trash_amount:
-            await ctx.send("You don't have that much trash good job!")
+        current_trash = user_data.get("trash_trash", 0)  # Default to 0 if not set
+    
+        # Check if the user has enough trash to throw
+        if current_trash < trash_amount:
+            await ctx.send("You don't have that much trash to throw!")
             return
-            
-        user_data["trash_trash"] = user_data.get("trash_trash", 0) - trash_amount
-        # Save the updated data back to the user's config
+    
+        # Deduct the trash from the sender
+        user_data["trash_trash"] = current_trash - trash_amount
         await self.config.user(ctx.author).set(user_data)
-
+    
+        # If a target is specified, add trash to their total
         if target:
-            target = await self.config.user(target).all()
-            target["trash_trash"] = target.get("trash_trash", 0) + trash_amount
-            await self.config.user(target).set(target)
-
-        # Inform the user of their purchase
-        await ctx.send(f"You threw {trash_amount} enjoy a cleaner life!")
-        
-
-
+            target_data = await self.config.user(target).all()
+            target_trash = target_data.get("trash_trash", 0)
+            target_data["trash_trash"] = target_trash + trash_amount
+            await self.config.user(target).set(target_data)
+    
+        # Send a confirmation message
+        if target:
+            await ctx.send(f"You threw {trash_amount} trash at {target.display_name}!")
+        else:
+            await ctx.send(f"You threw away {trash_amount} trash!")
+    
+            
+    
+    
