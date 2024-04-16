@@ -442,7 +442,7 @@ class DisWonder(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send("Use one of the specific work commands to gather materials. Try `!work logistics`, `!work knowledge`, etc.")
 
-    @work.command(name="logistics")
+    @work_in.command(name="logistics")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def work_logistics(self, ctx):
         """Work to gather logistics."""
