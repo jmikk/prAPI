@@ -436,8 +436,8 @@ class DisWonder(commands.Cog):
         else:
             await ctx.send(f"You threw away {trash_amount} trash!")
 
-    @commands.command(name="buy_item")
-    @commands.cooldown(8, 60, commands.BucketType.user)
+    @commands.command(name="grab")
+    @commands.cooldown(1, 10, commands.BucketType.guild)
     async def work(self, ctx, resource: str):
         """Work to gather a specified resource. Usage: !work [resource]"""
         valid_resources = ["logistics", "knowledge", "chemicals", "textiles", "food", "metal", "wood", "stone"]
