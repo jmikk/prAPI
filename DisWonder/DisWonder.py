@@ -251,7 +251,7 @@ class DisWonder(commands.Cog):
                 user_data = await self.config.user(member).all()
                 items = [(item, qty) for item, qty in user_data.items() if qty > 0]
                 points = sum(point_values.get(item.split('_')[1].lower(), 0) * qty for item, qty in items)
-                if points = 0:
+                if points == 0:
                     continue
                 user_points.append((member.display_name, points))
     
