@@ -157,7 +157,6 @@ class CraftingView(discord.ui.View):
                 self.user_data[item2] -= quantity
                 self.user_data["trash"] = self.user_data.get("trash", 0) + quantity * repMod
                 await self.cog.config.user(user).set(self.user_data)
-                return f"Crafted {quantity} of {recipe_result.replace('_', ' ').capitalize()}!"
                 await self.cog.config.user(user).set(self.user_data)
                 return f"No vaild recipe found but you did make a nice pile of {self.user_data.get('trash', 0) + quantity * repMod} trash!"
             return "No valid recipe found."
