@@ -316,18 +316,3 @@ class DisWonder(commands.Cog):
             await ctx.send("The provided file contains invalid JSON.")
         except Exception as e:
             await ctx.send(f"Failed to load recipes: {str(e)}")
-
-    @commands.command()
-    @commands.is_owner()
-    async def view_recipes(self,ctx,rarity):
-        if rarity == "common":
-            recipes = await self.config.common()
-        if rarity == "mythic":
-            recipes = await self.config.mythic()        
-        if rarity == "rare":
-            recipes = await self.config.rare()
-        if rarity == "epic":
-            recipes = await self.config.epic()
-        if rarity == "legendary":
-            recipes = await self.config.legendary()
-        await ctx.send(recipes)
