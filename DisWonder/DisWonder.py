@@ -230,6 +230,70 @@ class DisWonder(commands.Cog):
             return 0
 
     @commands.command()
+    async def leaderboard(self, ctx):
+        """Displays a leaderboard of user points in the server."""
+        members = ctx.guild.members  # Get list of members in the guild
+        user_points = []
+
+        point_values = {
+        'trash': -1,
+        'basic': 1,
+        'common': 3,
+        'rare': 18,
+        'epic': 162,
+        'legendary': 1944,
+        'mythic': 29160
+    }
+    
+        # Loop through each member and get their points
+        for member in members:
+            if not member.bot:  # Skip bots
+                user_data = await self.config.user(member).all()
+                items = [(item, qty) for item, qty in user_data.items() if qty > 0]
+                points = sum(point_values.get(item.split('_')[1].lower(), 0) * qty for item, qty in items)
+                user_points.append((member.display_name, points))
+    
+        # Sort the list by points in descending order
+        user_points.sort(key=lambda x: x[1], reverse=True)
+    
+        # Chunk the sorted user points list into pages, 10 users per page
+        pages = self.chunk_items(user_points, 10)
+    
+        # Send the first page and add reactions for pagination
+        if pages:
+            message = await ctx.send(embed=self.create_leaderboard_embed(pages[0], 1, len(pages)))
+            await self.add_pagination_reactions(message, len(pages))
+    
+            def check(reaction, user):
+                return user == ctx.author and reaction.message.id == message.id and str(reaction.emoji) in ["⏮️", "⏭️"]
+    
+            current_page = 1
+            while True:
+                try:
+                    reaction, user = await self.bot.wait_for("reaction_add", check=check, timeout=60.0)
+                except asyncio.TimeoutError:
+                    await message.clear_reactions()
+                    break
+                else:
+                    if str(reaction.emoji) == "⏮️" and current_page > 1:
+                        current_page -= 1
+                    elif str(reaction.emoji) == "⏭️" and current_page < len(pages):
+                        current_page += 1
+                    await message.edit(embed=self.create_leaderboard_embed(pages[current_page - 1], current_page, len(pages)))
+                    await message.remove_reaction(reaction, user)
+        else:
+            await ctx.send("No points data available to display.")
+    
+    def create_leaderboard_embed(self, user_points, page_number, total_pages):
+        """Helper function to create an embed for the leaderboard page."""
+        embed = discord.Embed(title="Leaderboard", color=discord.Color.gold())
+        embed.set_footer(text=f"Page {page_number} of {total_pages}")
+        for name, points in user_points:
+            embed.add_field(name=name, value=f"Points: {points}", inline=False)
+        return embed
+
+
+    @commands.command()
     async def view_inventory(self, ctx, rarity: str = None):
         """Displays the user's inventory with pagination, optionally filtered by item rarity."""
         if not rarity:
