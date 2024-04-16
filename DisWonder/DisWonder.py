@@ -277,7 +277,7 @@ class DisWonder(commands.Cog):
         """Helper function to create an inventory embed."""
 
         point_values = {
-        'trash': -1
+        'trash': -1,
         'basic': 1,
         'common': 3,
         'rare': 18,
