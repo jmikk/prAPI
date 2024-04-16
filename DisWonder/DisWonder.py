@@ -106,17 +106,23 @@ class CraftingView(discord.ui.View):
 
     async def process_crafting(self, item1, item2, user, quantity):
         rarity = item1.split("_")[1]
+        repMod = 1
         if item1 == item2:
             return f"Sorry you can't make super {item1.split('_')[0]} by combining two of them together,"
         if rarity == "basic":
+            repMod = 2
             recipes = await self.cog.config.common()
-        if rarity == "mythic":
+        if rarity == "legendary":
+            repMod = 32
             recipes = await self.cog.config.mythic()        
         if rarity == "common":
+            repMod = 4
             recipes = await self.cog.config.rare()
         if rarity == "rare":
+            repMod = 8
             recipes = await self.cog.config.epic()
         if rarity == "epic":
+            repMod = 16
             recipes = await self.cog.config.legendary()
         
         recipe_key = ','.join(sorted([item1.split("_")[0].lower(), item2.split("_")[0].lower()]))
@@ -138,6 +144,21 @@ class CraftingView(discord.ui.View):
             else:
                 return f"You do not have enough items to craft {quantity}."
         else:
+            if available_item1 >= quantity and available_item2 >= quantity:
+                available_item1 = self.user_data.get(item1, 0)
+                available_item2 = self.user_data.get(item2, 0)
+    
+                # Calculate maximum if quantity is 'max'
+                if quantity == 'max':
+                    quantity = min(available_item1, available_item2)
+                    
+                self.user_data[item1] -= quantity
+                self.user_data[item2] -= quantity
+                self.user_data["trash"] = self.user_data.get("trash", 0) + quantity * repMod
+                await self.cog.config.user(user).set(self.user_data)
+                return f"Crafted {quantity} of {recipe_result.replace('_', ' ').capitalize()}!"
+                await self.cog.config.user(user).set(self.user_data)
+                return f"No vaild recipe found but you did make a nice pile of {self.user_data.get("trash", 0) + quantity * repMod} trash!"
             return "No valid recipe found."
 
 
@@ -158,6 +179,7 @@ class DisWonder(commands.Cog):
             "epic":{},
             "legendary":{},
             "mythic":{}
+            "trash":{}
         }
         self.config.register_global(**default_global)
 
