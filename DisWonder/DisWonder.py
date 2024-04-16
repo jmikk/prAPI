@@ -345,7 +345,7 @@ class DisWonder(commands.Cog):
     async def throw_trash(self,ctx, trash_amount, target: discord.Member = None):
         user_data = await self.config.user(ctx.author).all()
 
-        if user_data < trash_amount:
+        if user_data["trash_trash"] < trash_amount:
             await ctx.send("You don't have that much trash good job!")
             return
         user_data["trash_trash"] = user_data.get("trash_trash", 0) - trash_amount
