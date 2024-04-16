@@ -448,43 +448,43 @@ class DisWonder(commands.Cog):
         """Work to gather logistics."""
         await self.gather_material(ctx, "Logistics", "basic")
 
-    @work.command(name="knowledge")
+    @work_in.command(name="knowledge")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def work_knowledge(self, ctx):
         """Work to gather knowledge."""
         await self.gather_material(ctx, "Knowledge", "basic")
 
-    @work.command(name="chemicals")
+    @work_in.command(name="chemicals")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def work_chemicals(self, ctx):
         """Work to gather chemicals."""
         await self.gather_material(ctx, "Chemicals", "basic")
 
-    @work.command(name="textiles")
+    @work_in.command(name="textiles")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def work_textiles(self, ctx):
         """Work to gather textiles."""
         await self.gather_material(ctx, "Textiles", "basic")
 
-    @work.command(name="food")
+    @work_in.command(name="food")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def work_textiles(self, ctx):
         """Work to gather textiles."""
         await self.gather_material(ctx, "food", "basic")
 
-    @work.command(name="metal")
+    @work_in.command(name="metal")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def work_textiles(self, ctx):
         """Work to gather textiles."""
         await self.gather_material(ctx, "metal", "basic")
 
-    @work.command(name="wood")
+    @work_in.command(name="wood")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def work_textiles(self, ctx):
         """Work to gather textiles."""
         await self.gather_material(ctx, "wood", "basic")
 
-    @work.command(name="stone")
+    @work_in.command(name="stone")
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def work_textiles(self, ctx):
         """Work to gather textiles."""
