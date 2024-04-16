@@ -178,7 +178,7 @@ class DisWonder(commands.Cog):
             "rare":{},
             "epic":{},
             "legendary":{},
-            "mythic":{}
+            "mythic":{},
             "trash":{}
         }
         self.config.register_global(**default_global)
