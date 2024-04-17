@@ -196,7 +196,7 @@ class DisWonder(commands.Cog):
     @commands.command()
     @commands.cooldown(1, 2, commands.BucketType.user)  # Cooldown of 1 hour per guild
     async def buy_basic(self, ctx, tokens=1):
-        basic_items = [("Logistics", "basic"), ("Knowledge", "basic"), ("Chemicals", "basic"), ("Textiles", "basic"), ("Food", "basic"), ("Metal", "basic"), ("Wood", "basic"), ("Stone", "basic")]
+        basic_items = [("logistics", "basic"), ("knowledge", "basic"), ("chemicals", "basic"), ("textiles", "basic"), ("food", "basic"), ("metal", "basic"), ("wood", "basic"), ("stone", "basic")]
         chosen_item, category = random.choice(basic_items)  # Unpack the tuple directly
     
         if tokens <= 0:  # Check if tokens are less than or equal to zero first
