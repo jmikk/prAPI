@@ -194,6 +194,7 @@ class DisWonder(commands.Cog):
         self.config.register_global(**default_global)
 
     @commands.command()
+    @commands.cooldown(1, 2, commands.BucketType.user)  # Cooldown of 1 hour per guild
     async def buy_basic(self, ctx, tokens=1):
         basic_items = [("Logistics", "basic"), ("Knowledge", "basic"), ("Chemicals", "basic"), ("Textiles", "basic"), ("Food", "basic"), ("Metal", "basic"), ("Wood", "basic"), ("Stone", "basic")]
         chosen_item, category = random.choice(basic_items)  # Unpack the tuple directly
