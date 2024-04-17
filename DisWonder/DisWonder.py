@@ -118,6 +118,7 @@ class CraftingView(discord.ui.View):
             repMod = 32
             recipes = await self.cog.config.mythic()        
         if rarity == "common":
+            return "here"
             repMod = 4
             recipes = await self.cog.config.rare()
         if rarity == "rare":
