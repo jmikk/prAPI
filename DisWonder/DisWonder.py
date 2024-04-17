@@ -108,7 +108,6 @@ class CraftingView(discord.ui.View):
 
     async def process_crafting(self, item1, item2, user, quantity):
         rarity = item1.split("_")[1]
-        return rarity
         repMod = 1
         if item1 == item2:
             return f"Sorry you can't make super {item1.split('_')[0]} by combining two of them together,"
