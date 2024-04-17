@@ -501,11 +501,14 @@ class DisWonder(commands.Cog):
             if member.bot:
                 continue  # Skip bot accounts
 
-            user_data = await self.config.user(ctx.author).all()
+            user_data = await self.config.user(member).all()
+            await ctx.send(user_data)
 
             filtered_inventory = {item: count for item, count in user_data.items() if not item.endswith('_common')}
+            await ctx.send(filtered_inventory)
 
-            await self.config.user(ctx.author).set(user_data)
+
+            await self.config.user(member).set(filtered_inventory)
 
 
 
