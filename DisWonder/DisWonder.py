@@ -9,6 +9,7 @@ import datetime
 
 
 
+
 class CraftButton(discord.ui.Button):
     def __init__(self, label, quantity, ctx):
         super().__init__(label=label, style=discord.ButtonStyle.green)
