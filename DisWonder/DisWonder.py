@@ -478,9 +478,9 @@ class DisWonder(commands.Cog):
     async def view_recipe(self,ctx):
         await ctx.send(await self.config.common())
         await ctx.send(await self.config.rare())
-        await ctx.send(await self.config.epic())
-        await ctx.send(await self.config.legendary())
-        await ctx.send(await self.config.mythic())
+        await ctx.send(await self.config.epic()[0:100])
+        await ctx.send(await self.config.legendary()[0:100])
+        await ctx.send(await self.config.mythic()[0:100])
 
 
 
