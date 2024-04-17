@@ -473,6 +473,14 @@ class DisWonder(commands.Cog):
 
         await ctx.send(f"You've successfully gathered {reward} units of {resource.capitalize()}.")
 
+    @commands.command()
+    @commands.is_owner()
+    async def view_recipe(self,ctx):
+        await ctx.send(await self.cog.config.rare())
+
+
+
+
 
 
 
