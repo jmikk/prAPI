@@ -476,7 +476,7 @@ class DisWonder(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def view_recipe(self,ctx):
-        await ctx.send(await self.cog.config.rare())
+        await ctx.send(await self.config.rare())
 
 
 
