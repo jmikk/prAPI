@@ -406,6 +406,8 @@ class DisWonder(commands.Cog):
                 await self.config.epic.set(data)
             if rarity == "legendary":
                 await self.config.legendary.set(data)
+            if rarity == "rare":
+                await self.config.rare.set(data)
 
             await ctx.send("Recipes successfully updated globally.")
         except json.JSONDecodeError:
