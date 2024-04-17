@@ -214,7 +214,8 @@ class DisWonder(commands.Cog):
         await self.config.user(ctx.author).set(user_data)
     
         # Inform the user of their purchase
-        await ctx.send(f"You spent {tokens} tokens and received {tokens} unit(s) of {chosen_item}.")
+        #await ctx.send(f"You spent {tokens} tokens and received {tokens} unit(s) of {chosen_item}.")
+        await ctx.send(f"You received 1 unit of {chosen_item}.")
 
 
     @commands.command()
@@ -486,6 +487,30 @@ class DisWonder(commands.Cog):
         await ctx.send(len(await self.config.epic()))
         await ctx.send(len(await self.config.legendary()))
         await ctx.send(len(await self.config.mythic()))
+
+
+    @commands.command()
+    @commands.is_owner()
+    async def reset_commons(self,ctx):
+        guild = ctx.guild  # Gets the guild where the command was called
+        if not guild:
+            await ctx.send("This command can only be used within a server.")
+            return
+    
+        for member in guild.members:
+            if member.bot:
+                continue  # Skip bot accounts
+
+            user_data = await self.config.user(ctx.author).all()
+
+            filtered_inventory = {item: count for item, count in user_data.items() if not item.endswith('_common')}
+
+            await self.config.user(ctx.author).set(user_data)
+
+
+
+
+
 
 
 
