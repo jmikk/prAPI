@@ -148,6 +148,7 @@ class CraftingView(discord.ui.View):
             else:
                 return f"You do not have enough items to craft {quantity}."
         else:
+            return recipe_key
             available_item1 = self.user_data.get(item1, 0)
             available_item2 = self.user_data.get(item2, 0)
     
