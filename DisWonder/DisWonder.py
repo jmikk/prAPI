@@ -466,6 +466,8 @@ class DisWonder(commands.Cog):
         resource = random.choice(valid_resources)
         base_reward = 10
         reward = int(base_reward * guild_data["multiplier"])
+        if reward > 1000:
+            reward = 1000
 
         # Update user's inventory
         user_data = await self.config.user(ctx.author).all()
