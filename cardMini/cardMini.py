@@ -1229,8 +1229,11 @@ class cardMini(commands.Cog):
                 user = self.bot.get_user(card[0])
 
                 card_rarity = card[3]
-                await ctx.send(user)
-                embed = discord.Embed(title=user.name)
+                try:
+                    title_card = user.name
+                except AttributeError as e:
+                    title_card = user
+                embed = discord.Embed(title=title_card)
                 if card_rarity == "Mythic":
                     embed.color = 0xC30F0D
                 elif card_rarity == "Legendary":
