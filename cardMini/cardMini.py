@@ -1259,7 +1259,10 @@ class cardMini(commands.Cog):
 
                 # Add fields to the embed
 
-                embed.add_field(name="Name", value=user.mention, inline=True)
+                try:
+                    embed.add_field(name="Name", value=user.mention, inline=True)
+                except AttributeError:
+                    await ctx.send(user)
                 embed.add_field(name="Season", value=card[2], inline=True)
                 embed.add_field(name="Rarity", value=card[3], inline=True)
                 embed.add_field(name="MV", value=round(float(card[4]),2), inline=True)
