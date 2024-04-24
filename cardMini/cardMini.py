@@ -1071,7 +1071,7 @@ class cardMini(commands.Cog):
         steal_chance = float(self.steal_mod)/100
 
         evil_num = random.random()
-        if evil_num < float(self.get_off_season_chance())/100:
+        if evil_num < steal_chance:
             # Connect to the SQLite database for the server
             # Get the server ID
             server_id = str(ctx.guild.id)
