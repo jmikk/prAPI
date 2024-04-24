@@ -479,7 +479,6 @@ class DisWonder(commands.Cog):
         guild_data["last_claimed"] = datetime.datetime.utcnow().isoformat()
         guild_data["multiplier"] = 1.0  # Reset multiplier
         await self.config.guild(ctx.guild).set(guild_data)
-
         await ctx.send(f"You've successfully gathered {reward} units of {resource.capitalize()}.")
 
     @commands.command()
@@ -510,6 +509,19 @@ class DisWonder(commands.Cog):
 
             await self.config.user(member).set(filtered_inventory)
         await ctx.send("All Done")
+
+    @commands.command()
+    @commands.is_owner()
+    async def cheat(self,ctx)
+        valid_resources = ["logistics", "knowledge", "chemicals", "textiles", "food", "metal", "wood", "stone"]
+
+        user_data = await self.config.user(ctx.author).all()
+        for resource in valid_resources:
+            resource_key = f"{resource}_basic"
+            user_data[resource_key] = user_data.get(resource_key, 0) + 100000
+            await self.config.user(ctx.author).set(user_data)
+
+        await ctx.send("Done adding 100000")
 
 
 
