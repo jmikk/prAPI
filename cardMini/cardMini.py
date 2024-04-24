@@ -990,7 +990,10 @@ class cardMini(commands.Cog):
                 for row in paginated_rows[current_page]:
                     # Customize how you want to display each row in the embed
                     user = self.bot.get_user(row[0])
-                    name = user.name
+                    try:
+                        name = user.name
+                    except AttributeError:
+                        name = user
 
                     # Use a parameterized query to retrieve all elements from the table
                     cursor.execute(f'SELECT * FROM {row[1]} WHERE userID = ?',(row[0],))                    
