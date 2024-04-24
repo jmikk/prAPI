@@ -512,7 +512,7 @@ class DisWonder(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def cheat(self,ctx)
+    async def cheat(self,ctx):
         valid_resources = ["logistics", "knowledge", "chemicals", "textiles", "food", "metal", "wood", "stone"]
 
         user_data = await self.config.user(ctx.author).all()
