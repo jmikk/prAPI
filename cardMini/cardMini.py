@@ -1067,7 +1067,7 @@ class cardMini(commands.Cog):
     async def random_user(self, ctx):
         """Select a random user from the specified series and add their ID to the user's deck."""
 
-        event_type = random.randint(1, 2)
+        event_type = random.randint(1, 3)
         steal_chance = float(self.steal_mod)/100
 
         evil_num = random.random()
