@@ -164,7 +164,7 @@ class CraftingView(discord.ui.View):
                 self.user_data["trash_trash"] = trashed
                 await self.cog.config.user(user).set(self.user_data)
                 await self.cog.config.user(user).set(self.user_data)
-                return f"No vaild recipe found but you did make a nice pile of {trashed} trash!"
+                return f"No vaild recipe but you now have a nice pile of {trashed} trash in total!"
             return "No valid recipe found."
 
 
