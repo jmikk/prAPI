@@ -521,6 +521,8 @@ class DisWonder(commands.Cog):
             resource_key = f"{resource}_basic"
             user_data[resource_key] = user_data.get(resource_key, 0) + 100000
             await self.config.user(ctx.author).set(user_data)
+        user_data["trash_trash"] = user_data.get(resource_key, 0) + 200000
+        await self.config.user(ctx.author).set(user_data)
 
         await ctx.send("Done adding 100000")
 
