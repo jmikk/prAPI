@@ -92,11 +92,12 @@ class CraftingView(discord.ui.View):
             self.add_item(ItemSelect(filtered_items, custom_id="item2",ctx=ctx))
             #self.add_item(CraftButton())  # Add the craft button to the view
             self.add_item(CraftButton(label='Craft 1', quantity=1, ctx=ctx))
-            self.add_item(CraftButton(label='Craft 2', quantity=2, ctx=ctx))
-            self.add_item(CraftButton(label='Craft 4', quantity=4, ctx=ctx))
-            self.add_item(CraftButton(label='Craft 6', quantity=6, ctx=ctx))
             self.add_item(CraftButton(label='Craft 10', quantity=10, ctx=ctx))
+            self.add_item(CraftButton(label='Craft 25', quantity=25, ctx=ctx))
+            self.add_item(CraftButton(label='Craft 50', quantity=50, ctx=ctx))
+            self.add_item(CraftButton(label='Craft 100', quantity=100, ctx=ctx))
             self.add_item(CraftButton(label='Craft Max', quantity='max', ctx=ctx))
+            self.add_item(CraftButton(label='Craft Random?', quantity='random', ctx=ctx))
         else:
             asyncio.create_task(ctx.send("No items available to craft this type of product."))
 
@@ -137,6 +138,9 @@ class CraftingView(discord.ui.View):
             # Calculate maximum if quantity is 'max'
             if quantity == 'max':
                 quantity = min(available_item1, available_item2)
+            if quantity == 'random':
+                top = min(available_item1, available_item2)
+                quantity = random.randint(1,top)
     
             if available_item1 >= quantity and available_item2 >= quantity:
                 self.user_data[item1] -= quantity
