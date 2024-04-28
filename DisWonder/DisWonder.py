@@ -52,7 +52,7 @@ class CraftButton(discord.ui.Button):
 
 class ItemSelect(discord.ui.Select):
     def __init__(self, items, ctx, placeholder="Choose an item...", custom_id=None):
-        items.sort()
+        items = dict(sorted(items.items()))        
         options = [
             discord.SelectOption(label=item.split("_")[0], description=f"You have {items[item]} of these", value=item)
             for item in items if items[item] > 0
