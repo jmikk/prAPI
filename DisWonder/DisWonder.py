@@ -140,7 +140,7 @@ class CraftingView(discord.ui.View):
                 quantity = min(available_item1, available_item2)
             if quantity == 'random':
                 top = min(available_item1, available_item2)
-                quantity = random.randint(1,top)
+                quantity = int(random.randint(1,top))
     
             if available_item1 >= quantity and available_item2 >= quantity:
                 self.user_data[item1] -= quantity
