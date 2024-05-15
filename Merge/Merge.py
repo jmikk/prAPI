@@ -31,17 +31,12 @@ class Merge(commands.Cog):
     def cog_unload(self):
         asyncio.create_task(self.client.aclose())
 
-    @commands.command()
-    @commands.is_owner()
-    async def myCom1(self, ctx):
-        await ctx.send("I work")
+    @commands.group()
+    async def merge(self, ctx):
+        """Merge game commands"""
+        pass
 
-    @commands.command()
-    @is_owner_overridable()
-    async def myCom2(self, ctx):
-        await ctx.send("I still work!")
-
-    @commands.command()
+    @merge.command()
     async def assign(self, ctx, resource: str, num_workers: int):
         """Assign villagers to collect a resource (wood, stone, or food)."""
         user = ctx.author
@@ -62,7 +57,7 @@ class Merge(commands.Cog):
         await self.config.member(user).set(player_data)
         await ctx.send(f"Assigned {num_workers} villagers to collect {resource}.")
 
-    @commands.command()
+    @merge.command()
     async def view_workers(self, ctx):
         """View the status of your workers."""
         user = ctx.author
@@ -85,7 +80,7 @@ class Merge(commands.Cog):
             f"Food: {workers['food']['count']} workers (Elapsed time: {elapsed_food:.2f} hours)"
         )
 
-    @commands.command()
+    @merge.command()
     async def collect(self, ctx, resource: str = None, num_workers: int = None):
         """Collect resources and unassign workers."""
         user = ctx.author
@@ -152,7 +147,7 @@ class Merge(commands.Cog):
 
         await self.config.member(user).set(player_data)
 
-    @commands.command()
+    @merge.command()
     async def storage(self, ctx):
         """View your inventory."""
         user = ctx.author
