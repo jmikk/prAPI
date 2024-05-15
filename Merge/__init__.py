@@ -1,5 +1,5 @@
-from .prAPI import prAPI
+from .Merge import Merge
 
 
 async def setup(bot):
-    await bot.add_cog(prAPI(bot))
+    await bot.add_cog(Merge(bot))
