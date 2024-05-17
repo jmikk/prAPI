@@ -44,7 +44,7 @@ class sheets(commands.Cog):
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info;cardid={card_id};season=3"
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
-                await ctx.send(response.text)
+                await ctx.send(response)
                 await handle_rate_limit(response)
                 if response.status != 200:
                     await ctx.send("Failed to fetch card info.")
