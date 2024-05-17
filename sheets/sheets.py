@@ -50,15 +50,16 @@ class sheets(commands.Cog):
                     await ctx.send(f"Failed to fetch card info. Status code: {response.status}")
                     return
                 xml_content = await response.text()
+                await ctx.send(xml_content)
                 await ctx.send("Parsing card info...")
-                card_info = await self.parse_card_info(ctx,xml_content)
+                card_info = await self.parse_card_info(ctx, xml_content)
                 if card_info:
                     await ctx.send(embed=card_info)
                 else:
                     await ctx.send("Failed to parse card info.")
                     await ctx.send(f"Raw XML content:\n```xml\n{xml_content}\n```")
 
-    async def parse_card_info(self,ctx, xml_content):
+    async def parse_card_info(self, ctx, xml_content):
         
         try:
             root = ET.fromstring(xml_content)
