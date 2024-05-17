@@ -36,5 +36,9 @@ class sheets(commands.Cog):
     async def my_command(self, ctx):
         await ctx.send("This command has a role-based cooldown!")
 
+    async def my_com11(self, ctx):
+        await ctx.send("This command does not have a role-based cooldown!")
+
+
 def setup(bot):
     bot.add_cog(sheets(bot))
