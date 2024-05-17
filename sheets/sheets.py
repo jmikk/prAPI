@@ -66,6 +66,7 @@ class sheets(commands.Cog):
                 return None
 
             # Extract card details
+            await ctx.send("made it")
             card_id = card.find('CARDID').text
             await ctx.send(card_id)
             category = card.find('CATEGORY').text
