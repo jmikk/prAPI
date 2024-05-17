@@ -2,7 +2,7 @@ from redbot.core import commands
 from redbot.core.commands import BucketType, CommandOnCooldown
 import time
 
-class Sheets(commands.Cog):
+class sheets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.cooldowns = {}
@@ -49,5 +49,5 @@ class Sheets(commands.Cog):
         await ctx.send("This command has a role-based cooldown!")
 
 def setup(bot):
-    bot.add_cog(Sheets(bot))
+    bot.add_cog(sheets(bot))
 
