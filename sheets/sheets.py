@@ -47,7 +47,9 @@ class sheets(commands.Cog):
             async with session.get(url, headers=headers) as response:
                 #await ctx.send(await response.text())
                 response = await response
-                await handle_rate_limit( response)
+                await ctx.send("here2")
+                await handle_rate_limit(response)
+                await ctx.send("here3")
                 if response.status != 200:
                     await ctx.send("Failed to fetch card info.")
                     return
