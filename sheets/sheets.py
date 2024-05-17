@@ -51,14 +51,14 @@ class sheets(commands.Cog):
                     return
                 xml_content = await response.text()
                 await ctx.send("Parsing card info...")
-                card_info = self.parse_card_info(ctx,xml_content)
+                card_info = await self.parse_card_info(ctx,xml_content)
                 if card_info:
                     await ctx.send(embed=card_info)
                 else:
                     await ctx.send("Failed to parse card info.")
                     await ctx.send(f"Raw XML content:\n```xml\n{xml_content}\n```")
 
-    def parse_card_info(self,ctx, xml_content):
+    async def parse_card_info(self,ctx, xml_content):
         try:
             root = ET.fromstring(xml_content)
             card = root.find('CARD')
