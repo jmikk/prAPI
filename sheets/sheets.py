@@ -18,21 +18,6 @@ async def handle_rate_limit(response):
         print(f"Rate limit nearly reached. Sleeping for {wait_time} seconds...")
         await asyncio.sleep(wait_time)
 
-def dynamic_cooldown(ctx):
-    user_roles = [role.id for role in ctx.author.roles]
-
-    # Default cooldown: 1 use per week (7 days)
-    cooldown_period = 7 * 24 * 3600  # 7 days in seconds
-    rate = 1
-
-    # Adjust cooldown based on roles
-    if 1098646004250726420 in user_roles:  # Role A
-        rate = 2
-    if 1098673767858843648 in user_roles:  # Role B
-        rate = 3
-
-    return Cooldown(rate=rate, per=cooldown_period)
-
 class sheets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -47,7 +32,6 @@ class sheets(commands.Cog):
             async with session.get(url, headers=headers) as response:
                 # Debug statement to print response text
                 # await ctx.send(await response.text())
-                await handle_rate_limit(await response)
                 if response.status != 200:
                     await ctx.send(f"Failed to fetch card info. Status code: {response.status}")
                     return
