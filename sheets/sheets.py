@@ -2,7 +2,7 @@ from redbot.core import commands
 from redbot.core.commands import BucketType, CommandOnCooldown
 import time
 
-class sheets(commands.Cog):
+class Sheets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.cooldowns = {}
@@ -14,7 +14,7 @@ class sheets(commands.Cog):
         
         user_cooldowns = self.cooldowns[user_id]
         if role_id in user_cooldowns and user_cooldowns[role_id] > now:
-            raise CommandOnCooldown(commands.Cooldown(rate=1, per=user_cooldowns[role_id] - now, type=BucketType.user))
+            raise CommandOnCooldown(cooldown=Cooldown(rate=1, per=user_cooldowns[role_id] - now, type=BucketType.user), retry_after=user_cooldowns[role_id] - now)
         else:
             return now
 
@@ -49,5 +49,4 @@ class sheets(commands.Cog):
         await ctx.send("This command has a role-based cooldown!")
 
 def setup(bot):
-    bot.add_cog(sheets(bot))
-
+    bot.add_cog(Sheets(bot))
