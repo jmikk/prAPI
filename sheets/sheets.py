@@ -54,6 +54,7 @@ class sheets(commands.Cog):
                     await ctx.send(embed=card_info)
                 else:
                     await ctx.send("Failed to parse card info.")
+                    await ctx.send(card_info)
 
     def parse_card_info(self, xml_content):
         root = ET.fromstring(xml_content)
