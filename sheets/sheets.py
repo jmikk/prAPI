@@ -51,14 +51,14 @@ class sheets(commands.Cog):
                     return
                 xml_content = await response.text()
                 await ctx.send("Parsing card info...")
-                card_info = self.parse_card_info(xml_content)
+                card_info = self.parse_card_info(ctx,xml_content)
                 if card_info:
                     await ctx.send(embed=card_info)
                 else:
                     await ctx.send("Failed to parse card info.")
                     await ctx.send(f"Raw XML content:\n```xml\n{xml_content}\n```")
 
-    def parse_card_info(self, xml_content):
+    def parse_card_info(self,ctx, xml_content):
         try:
             root = ET.fromstring(xml_content)
             card = root.find('CARD')
@@ -67,11 +67,17 @@ class sheets(commands.Cog):
 
             # Extract card details
             card_id = card.find('CARDID').text
+            await ctx.send(card_id)
             category = card.find('CATEGORY').text
+            await ctx.send(category)
             flag = card.find('FLAG').text
+            await ctx.send(flag)
             market_value = card.find('MARKET_VALUE').text
+            await ctx.send(market_value)
             name = card.find('NAME').text
+            await ctx.send(name)
             season = card.find('SEASON').text
+            await ctx.send(season)
 
             # Create an embed with the card details
             embed = discord.Embed(title=f"Card Info: {name}", color=discord.Color.blue())
