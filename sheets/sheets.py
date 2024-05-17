@@ -24,7 +24,7 @@ def role_based_cooldown(cooldown_mapping):
         return wrapped
     return decorator
 
-class Sheets(commands.Cog):
+class sheets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -37,4 +37,4 @@ class Sheets(commands.Cog):
         await ctx.send("This command has a role-based cooldown!")
 
 def setup(bot):
-    bot.add_cog(Sheets(bot))
+    bot.add_cog(sheets(bot))
