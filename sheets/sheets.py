@@ -4,32 +4,37 @@ import datetime
 
 def role_based_cooldown(cooldown_mapping):
     def decorator(func):
-        async def predicate(ctx):
-            user_roles = [role.id for role in ctx.author.roles]
-            for role_id, cooldown in cooldown_mapping.items():
+        async def wrapped(ctx, *args, **kwargs):
+            user_roles = {role.id for role in ctx.author.roles}
+            cooldown = Cooldown(rate=1, per=7*24*3600, type=BucketType.user)  # Default cooldown: 1 use per week
+            
+            # Check for specific roles and set the most permissive cooldown
+            for role_id, cd in cooldown_mapping.items():
                 if role_id in user_roles:
-                    return Cooldown(rate=cooldown[0], per=cooldown[1], type=BucketType.user)
-            return Cooldown(rate=1, per=7*24*3600, type=BucketType.user)  # Default cooldown if no role matches
+                    rate, per = cd
+                    if rate > cooldown.rate:
+                        cooldown = Cooldown(rate=rate, per=per, type=BucketType.user)
+            
+            # Apply cooldown
+            func.__commands_cooldown__ = CooldownMapping.from_cooldown(
+                rate=cooldown.rate, per=cooldown.per, type=BucketType.user
+            )
+            return await func(ctx, *args, **kwargs)
         
-        func.__commands_cooldown__ = CooldownMapping.from_cooldown(
-            rate=predicate, per=1, type=BucketType.user)
-        return func
+        return wrapped
     return decorator
 
-class sheets(commands.Cog):
+class Sheets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @role_based_cooldown({
-        1098646004250726420: (2, 7*24*3600),  # Role ID 123456789012345678 has a cooldown of 2 uses per 30 seconds
-        1098673767858843648: (3, 7*24*3600),  # Role ID 234567890123456789 has a cooldown of 5 uses per 60 seconds
+        1098646004250726420: (2, 7*24*3600),  # Role ID 1098646004250726420: 2 uses per week
+        1098673767858843648: (3, 7*24*3600),  # Role ID 1098673767858843648: 3 uses per week
     })
     @commands.command()
     async def my_command(self, ctx):
         await ctx.send("This command has a role-based cooldown!")
 
-
-
-
-
-
+def setup(bot):
+    bot.add_cog(Sheets(bot))
