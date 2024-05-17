@@ -1,12 +1,12 @@
 from redbot.core import commands
-from redbot.core.commands import BucketType, Cooldown
-import time
+from redbot.core.commands import BucketType, Cooldown, CommandOnCooldown
+import discord
 
 def dynamic_cooldown(ctx):
     user_roles = [role.id for role in ctx.author.roles]
 
-    # Default cooldown: 1 use per week
-    cooldown_period = 7 * 24 * 3600
+    # Default cooldown: 1 use per week (7 days)
+    cooldown_period = 7 * 24 * 3600  # 7 days in seconds
     rate = 1
 
     # Adjust cooldown based on roles
@@ -15,7 +15,7 @@ def dynamic_cooldown(ctx):
     if 1098673767858843648 in user_roles:  # Role B
         rate = 3
 
-    return Cooldown(rate=rate, per=cooldown_period, type=BucketType.user)
+    return Cooldown(rate=rate, per=cooldown_period)
 
 class sheets(commands.Cog):
     def __init__(self, bot):
@@ -25,6 +25,17 @@ class sheets(commands.Cog):
     @commands.command()
     async def my_command(self, ctx):
         await ctx.send("This command has a role-based cooldown!")
+
+    @my_command.error
+    async def my_command_error(self, ctx, error):
+        if isinstance(error, CommandOnCooldown):
+            retry_after = int(error.retry_after)
+            hours, remainder = divmod(retry_after, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            cooldown_message = f"You can use this command again in {hours} hours, {minutes} minutes, and {seconds} seconds."
+            await ctx.send(cooldown_message)
+        else:
+            raise error
 
 def setup(bot):
     bot.add_cog(sheets(bot))
