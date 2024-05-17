@@ -45,7 +45,7 @@ class sheets(commands.Cog):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
                 #await ctx.send(await response.text())
-               response = await response
+                response = await response
                 await handle_rate_limit( response)
                 if response.status != 200:
                     await ctx.send("Failed to fetch card info.")
