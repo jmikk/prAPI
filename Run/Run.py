@@ -1,6 +1,7 @@
 from redbot.core import commands, Config
 import discord
 import random
+import os
 
 class Run(commands.Cog):
     def __init__(self, bot):
@@ -41,3 +42,44 @@ class Run(commands.Cog):
         
         # Send the leaderboard
         await ctx.send(leaderboard)
+
+
+    @commands.command()
+    @commands.is_owner()
+    async def save_file(self, ctx):
+        if not ctx.message.attachments:
+            await ctx.send("Please upload a file.")
+            return
+
+        attachment = ctx.message.attachments[0]
+        if not attachment.filename.endswith('.txt'):
+            await ctx.send("Only text files are allowed.")
+            return
+
+        file_path = f"/home/pi/RMBad/ads/{attachment.filename}"
+        await attachment.save(file_path)
+        await ctx.send(f"File `{attachment.filename}` has been saved.")
+
+    @commands.command()
+    @commands.is_owner()
+    async def list_files(self, ctx):
+        ads_folder = "/home/pi/RMBad/ads"
+        files = os.listdir(ads_folder)
+        if not files:
+            await ctx.send("No files found in the ads folder.")
+        else:
+            file_list = "\n".join(files)
+            await ctx.send(f"Files in the ads folder:\n```\n{file_list}\n```")
+
+    @commands.command()
+    @commands.is_owner()
+    async def delete_file(self, ctx, filename: str):
+        file_path = f"/home/pi/RMBad/ads/{filename}"
+        if not os.path.exists(file_path):
+            await ctx.send(f"No such file: `{filename}`")
+        else:
+            os.remove(file_path)
+            await ctx.send(f"File `{filename}` has been deleted.")
+
+
+
