@@ -1,5 +1,6 @@
 from redbot.core import commands
-from redbot.core.commands import Cooldown, BucketType
+from redbot.core.commands import Cooldown, BucketType, CooldownMapping
+import datetime
 
 def role_based_cooldown(cooldown_mapping):
     def decorator(func):
