@@ -51,14 +51,15 @@ class Run(commands.Cog):
             await ctx.send("Please upload a file.")
             return
 
-        attachment = ctx.message.attachments[0]
-        if not attachment.filename.endswith('.txt'):
-            await ctx.send("Only text files are allowed.")
-            return
-
-        file_path = f"/home/pi/RMBad/ads/{attachment.filename}"
-        await attachment.save(file_path)
-        await ctx.send(f"File `{attachment.filename}` has been saved.")
+        attachments = ctx.message.attachments
+        for attachment in attachments:
+            if not attachment.filename.endswith('.txt'):
+                await ctx.send("Only text files are allowed.")
+                return
+    
+            file_path = f"/home/pi/RMBad/ads/{attachment.filename}"
+            await attachment.save(file_path)
+            await ctx.send(f"File `{attachment.filename}` has been saved.")
 
     @commands.command()
     @commands.is_owner()
