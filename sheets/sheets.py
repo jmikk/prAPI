@@ -1,6 +1,7 @@
 from redbot.core import commands
 from redbot.core.commands import BucketType, Cooldown, CommandOnCooldown
 import discord
+import time
 
 def dynamic_cooldown(ctx):
     user_roles = [role.id for role in ctx.author.roles]
@@ -30,12 +31,12 @@ class sheets(commands.Cog):
     async def my_command_error(self, ctx, error):
         if isinstance(error, CommandOnCooldown):
             retry_after = int(error.retry_after)
-            hours, remainder = divmod(retry_after, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            cooldown_message = f"You can use this command again in {hours} hours, {minutes} minutes, and {seconds} seconds."
+            timestamp = int(time.time() + retry_after)
+            cooldown_message = f"You can use this command again <t:{timestamp}:R>."
             await ctx.send(cooldown_message)
         else:
             raise error
 
 def setup(bot):
     bot.add_cog(sheets(bot))
+
