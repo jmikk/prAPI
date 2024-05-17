@@ -61,11 +61,8 @@ class sheets(commands.Cog):
     async def parse_card_info(self,ctx, xml_content):
         
         try:
-            await ctx.send("made it")
             root = ET.fromstring(xml_content)
-            await ctx.send("made it2")
             card = root.find('CARD')
-            await ctx.send("made it3")
 
             if card is None:
                 return None
