@@ -65,6 +65,7 @@ class sheets(commands.Cog):
             card = root.find('CARD')
 
             if card is None:
+                await ctx.send("No info found")
                 return None
 
             # Extract card details
