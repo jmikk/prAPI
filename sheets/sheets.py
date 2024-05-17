@@ -24,7 +24,7 @@ class sheets(commands.Cog):
 
     @commands.dynamic_cooldown(dynamic_cooldown, type=BucketType.user)
     @commands.command()
-    async def my_command(self, ctx):
+    async def my_command(self, ctx, card_id):
                # Fetch card info from the NationStates API
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info;cardid={card_id};season=3"
         async with aiohttp.ClientSession() as session:
