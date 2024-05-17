@@ -79,8 +79,9 @@ class prAPI(commands.Cog):
             rmbToken = r.xml.find("SUCCESS").text
             data.update(mode="execute", token=rmbToken)
             r = await self.api_request(data=data)
-            output = r.text.replace('<NATION id="warden_of_the_spring">\n<SUCCESS>Your message has been lodged! &lt;a href="',"")
-            output = output.replace('"&gt;&lt;span class="smalltext"&gt;View your post.&lt;/span&gt;&lt;/a&gt;</SUCCESS>\n</NATION>',"")
+            if "region=the_wellspring" in r.text:
+                output = r.text.replace('<NATION id="warden_of_the_spring">\n<SUCCESS>Your message has been lodged! &lt;a href="',"")
+                output = output.replace('"&gt;&lt;span class="smalltext"&gt;View your post.&lt;/span&gt;&lt;/a&gt;</SUCCESS>\n</NATION>',"")
 
         QOTD_id = 1115271309404942439
         channel_id = 1099398125061406770  # The target channel ID
