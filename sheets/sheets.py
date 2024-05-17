@@ -1,19 +1,22 @@
+import aiohttp
+import xml.etree.ElementTree as ET
 from redbot.core import commands
 from redbot.core.commands import BucketType, Cooldown, CommandOnCooldown
 import discord
 import time
+import asyncio
 
 user_agent = "9003"
 headers = {"User-Agent": user_agent}
 
-def handle_rate_limit(response):
+async def handle_rate_limit(response):
     remaining = int(response.headers.get("Ratelimit-Remaining", 10))
     reset_time = int(response.headers.get("Ratelimit-Reset", 30))
 
     if remaining < 20:  # Threshold for remaining requests
         wait_time = reset_time / max(remaining, 1)
         print(f"Rate limit nearly reached. Sleeping for {wait_time} seconds...")
-        time.sleep(wait_time)
+        await asyncio.sleep(wait_time)
 
 def dynamic_cooldown(ctx):
     user_roles = [role.id for role in ctx.author.roles]
@@ -36,13 +39,12 @@ class sheets(commands.Cog):
 
     @commands.dynamic_cooldown(dynamic_cooldown, type=BucketType.user)
     @commands.command()
-    async def my_command(self, ctx, card_id):
-        await ctx.send("Here")
-               # Fetch card info from the NationStates API
+    async def my_command(self, ctx, card_id: int):
+        # Fetch card info from the NationStates API
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info;cardid={card_id};season=3"
         async with aiohttp.ClientSession() as session:
-            async with session.get(url,headers=headers) as response:
-                handle_rate_limit(response)
+            async with session.get(url, headers=headers) as response:
+                await handle_rate_limit(response)
                 if response.status != 200:
                     await ctx.send("Failed to fetch card info.")
                     return
