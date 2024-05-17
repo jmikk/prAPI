@@ -1,5 +1,5 @@
 from redbot.core import commands
-from redbot.core.commands import BucketType, CommandOnCooldown
+from redbot.core.commands import BucketType, CommandOnCooldown, Cooldown
 import time
 
 class sheets(commands.Cog):
