@@ -47,7 +47,7 @@ class sheets(commands.Cog):
             async with session.get(url, headers=headers) as response:
                 # Debug statement to print response text
                 # await ctx.send(await response.text())
-                await handle_rate_limit(response)
+                await handle_rate_limit(await response)
                 if response.status != 200:
                     await ctx.send(f"Failed to fetch card info. Status code: {response.status}")
                     return
@@ -58,7 +58,6 @@ class sheets(commands.Cog):
                     await ctx.send(embed=card_info)
                 else:
                     await ctx.send("Failed to parse card info.")
-                    await ctx.send(xml_content)  # Debug output for the raw XML content
 
     def parse_card_info(self, xml_content):
         try:
@@ -71,24 +70,16 @@ class sheets(commands.Cog):
             card_id = card.find('CARDID').text
             category = card.find('CATEGORY').text
             flag = card.find('FLAG').text
-            govt = card.find('GOVT').text
             market_value = card.find('MARKET_VALUE').text
             name = card.find('NAME').text
-            region = card.find('REGION').text
             season = card.find('SEASON').text
-            slogan = card.find('SLOGAN').text
-            card_type = card.find('TYPE').text
 
             # Create an embed with the card details
             embed = discord.Embed(title=f"Card Info: {name}", color=discord.Color.blue())
             embed.add_field(name="Card ID", value=card_id, inline=True)
             embed.add_field(name="Category", value=category, inline=True)
-            embed.add_field(name="Government", value=govt, inline=True)
             embed.add_field(name="Market Value", value=market_value, inline=True)
-            embed.add_field(name="Region", value=region, inline=True)
             embed.add_field(name="Season", value=season, inline=True)
-            embed.add_field(name="Slogan", value=slogan, inline=True)
-            embed.add_field(name="Type", value=card_type, inline=True)
             embed.set_thumbnail(url=f"https://www.nationstates.net/{flag}")
 
             return embed
