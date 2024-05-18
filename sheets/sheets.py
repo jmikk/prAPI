@@ -101,7 +101,7 @@ class sheets(commands.Cog):
         # Append to the TSV file
         with open(tsv_file, 'a', newline='') as file:
             writer = csv.writer(file, delimiter='\t')
-            writer.writerow([destination, card_id, season, "n/a", datetime.now().strftime('%Y-%m-%d')], MV)
+            writer.writerow([destination, card_id, season, "n/a", datetime.now().strftime('%Y-%m-%d'), MV])
 
     @commands.command()
     async def view_report(self, ctx):
