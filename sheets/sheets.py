@@ -99,7 +99,7 @@ class sheets(commands.Cog):
             embed.add_field(name="Category", value=category, inline=True)
             embed.add_field(name="Market Value", value=market_value, inline=True)
             embed.add_field(name="Season", value=season, inline=True)
-            embed.set_thumbnail(url=f"https://www.nationstates.net/{flag}")
+            embed.set_thumbnail(url=f"https://www.nationstates.net/images/cards/s3/{flag}")
 
             return embed
         except ET.ParseError as e:
