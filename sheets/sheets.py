@@ -9,8 +9,7 @@ import csv
 import os
 from datetime import datetime
 
-user_agent = "9003"
-headers = {"User-Agent": user_agent}
+
 tsv_file = "report.tsv"
 nation_password = None  # Global variable to store the nation password
 
@@ -45,6 +44,8 @@ class sheets(commands.Cog):
     @commands.dynamic_cooldown(dynamic_cooldown, type=BucketType.user)
     @commands.command()
     async def my_command(self, ctx, card_id: int, destination: str):
+        user_agent = "9003"
+        headers = {"User-Agent": user_agent}
         global nation_password
         if not nation_password:
             await ctx.send("Please set the nation password using the `set_password` command.")
