@@ -59,10 +59,12 @@ def gift(cardID,destination):
                 # Second request using updated data and headers
                 response = requests.post(url, headers=headers, data=data)
                 handle_rate_limit(response)
+                return None
             else:
                 print(
                     "Failed to authenticate or parse XML:", response.status_code, response.text
-                )# replace with your actual password
+                )
+                    return response.text# replace with your actual password
 
 
 async def handle_rate_limit(response):
@@ -109,11 +111,12 @@ class sheets(commands.Cog):
                 await ctx.send("Parsing card info...")
                 card_info, MV = await self.parse_card_info(ctx, xml_content)
                 if card_info:
-                    if gift(card_id, destination):
+                    gifted = gift(card_id, destination)
+                    if not gifted:
                         await ctx.send(embed=card_info)
                         await self.add_to_tsv(destination, card_id, 3, MV)
                     else:
-                        await ctx.send("Error gifting card")
+                        await ctx.send(f"Error gifting card {gifted}")
                 else:
                     await ctx.send("Failed to parse card info.")
                     await ctx.send(f"Raw XML content:\n```xml\n{xml_content}\n```")
