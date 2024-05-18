@@ -38,7 +38,7 @@ def dynamic_cooldown(ctx):
 
     return Cooldown(rate=rate, per=cooldown_period)
 
-class GiftCard(commands.Cog):
+class sheets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -200,4 +200,4 @@ class GiftCard(commands.Cog):
             await ctx.send(error)
 
 def setup(bot):
-    bot.add_cog(GiftCard(bot))
+    bot.add_cog(sheets(bot))
