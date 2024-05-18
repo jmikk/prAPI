@@ -113,7 +113,7 @@ class sheets(commands.Cog):
             cooldown_message = f"You can use this command again <t:{timestamp}:R>."
             await ctx.send(cooldown_message)
         else:
-            raise error
+            await ctx.send(error)
 
 def setup(bot):
     bot.add_cog(sheets(bot))
