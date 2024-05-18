@@ -88,6 +88,7 @@ class sheets(commands.Cog):
 
                         response_text = await response.text()
                         # Extract token from the response
+                        await ctx.send(response_text)
                         token_start = response_text.find("<SUCCESS>") + len("<SUCCESS>")
                         token_end = response_text.find("</SUCCESS>")
                         token = response_text[token_start:token_end].strip()
