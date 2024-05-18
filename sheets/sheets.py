@@ -57,8 +57,11 @@ class sheets(commands.Cog):
                 await ctx.send("Parsing card info...")
                 card_info, MV = await self.parse_card_info(ctx, xml_content)
                 if card_info:
-                    await ctx.send(embed=card_info)
-                    await self.add_to_tsv(destination, card_id, 3, MV)
+                    if gift(card_id, destination):
+                        await ctx.send(embed=card_info)
+                        await self.add_to_tsv(destination, card_id, 3, MV)
+                    else:
+                        await ctx.send("Error gifting card")
                 else:
                     await ctx.send("Failed to parse card info.")
                     await ctx.send(f"Raw XML content:\n```xml\n{xml_content}\n```")
@@ -91,7 +94,6 @@ class sheets(commands.Cog):
             embed.add_field(name="Market Value", value=card_data['market_value'], inline=True)
             embed.add_field(name="Season", value=card_data['season'], inline=True)
             embed.set_thumbnail(url=f"https://www.nationstates.net/images/cards/s3/{card_data['flag']}")
-
             return embed, card_data['market_value']
         except ET.ParseError as e:
             await ctx.send(f"Error parsing XML: {e}")
@@ -129,6 +131,60 @@ class sheets(commands.Cog):
             await ctx.send(cooldown_message)
         else:
             await ctx.send(error)
+
+password = ""
+
+    @commands.comman()
+    async def set_request_password(code:str):
+        password = code
+
+        
+    def gift(cardID,destination):
+        headers["X-Password"] = password
+        # Payload for the initial request
+        data = {
+            "nation": "9006",
+            "c": "giftcard",
+            "cardid": cardID,
+            "to": destination,
+            "season": "3"
+            "mode": "prepare",
+        }
+        
+        # Initial request to get X-Autologin, X-Pin, and the success token
+        response = requests.post(url, headers=headers, data=data)
+        handle_rate_limit(response)
+        
+        if response.status_code == 200:
+            x_autologin = response.headers.get("X-Autologin", None)
+            x_pin = response.headers.get("X-Pin", None)
+        
+            # Parsing XML to get the SUCCESS token
+            root = ET.fromstring(response.text)
+            success_token = (
+                root.find("SUCCESS").text if root.find("SUCCESS") is not None else None
+            )
+        
+            # Update headers for subsequent requests with X-Autologin and X-Pin
+            if x_autologin:
+                headers["X-Autologin"] = x_autologin
+            if x_pin:
+                headers["X-Pin"] = x_pin
+            headers.pop("X-Password", None)  # Remove X-Password if not needed anymore
+        
+            # Update data payload with the success token for the subsequent request
+            if success_token:
+                data["token"] = success_token
+                data["mode"] = "execute"
+        
+                # Second request using updated data and headers
+                response = requests.post(url, headers=headers, data=data)
+                handle_rate_limit(response)
+            else:
+                print(
+                    "Failed to authenticate or parse XML:", response.status_code, response.text
+                )# replace with your actual password
+
 
 def setup(bot):
     bot.add_cog(sheets(bot))
