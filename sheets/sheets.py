@@ -15,6 +15,53 @@ tsv_file = "report.tsv"
 password = ""
 
 
+def gift(cardID,destination):
+        headers["X-Password"] = password
+        # Payload for the initial request
+        data = {
+            "nation": "9006",
+            "c": "giftcard",
+            "cardid": cardID,
+            "to": destination,
+            "season": "3",
+            "mode": "prepare",
+        }
+        
+        # Initial request to get X-Autologin, X-Pin, and the success token
+        response = requests.post(url, headers=headers, data=data)
+        handle_rate_limit(response)
+        
+        if response.status_code == 200:
+            x_autologin = response.headers.get("X-Autologin", None)
+            x_pin = response.headers.get("X-Pin", None)
+        
+            # Parsing XML to get the SUCCESS token
+            root = ET.fromstring(response.text)
+            success_token = (
+                root.find("SUCCESS").text if root.find("SUCCESS") is not None else None
+            )
+        
+            # Update headers for subsequent requests with X-Autologin and X-Pin
+            if x_autologin:
+                headers["X-Autologin"] = x_autologin
+            if x_pin:
+                headers["X-Pin"] = x_pin
+            headers.pop("X-Password", None)  # Remove X-Password if not needed anymore
+        
+            # Update data payload with the success token for the subsequent request
+            if success_token:
+                data["token"] = success_token
+                data["mode"] = "execute"
+        
+                # Second request using updated data and headers
+                response = requests.post(url, headers=headers, data=data)
+                handle_rate_limit(response)
+            else:
+                print(
+                    "Failed to authenticate or parse XML:", response.status_code, response.text
+                )# replace with your actual password
+
+
 async def handle_rate_limit(response):
     remaining = int(response.headers.get("Ratelimit-Remaining", 10))
     reset_time = int(response.headers.get("Ratelimit-Reset", 30))
@@ -140,51 +187,7 @@ class sheets(commands.Cog):
         password = code
 
         
-    def gift(cardID,destination):
-        headers["X-Password"] = password
-        # Payload for the initial request
-        data = {
-            "nation": "9006",
-            "c": "giftcard",
-            "cardid": cardID,
-            "to": destination,
-            "season": "3",
-            "mode": "prepare",
-        }
-        
-        # Initial request to get X-Autologin, X-Pin, and the success token
-        response = requests.post(url, headers=headers, data=data)
-        handle_rate_limit(response)
-        
-        if response.status_code == 200:
-            x_autologin = response.headers.get("X-Autologin", None)
-            x_pin = response.headers.get("X-Pin", None)
-        
-            # Parsing XML to get the SUCCESS token
-            root = ET.fromstring(response.text)
-            success_token = (
-                root.find("SUCCESS").text if root.find("SUCCESS") is not None else None
-            )
-        
-            # Update headers for subsequent requests with X-Autologin and X-Pin
-            if x_autologin:
-                headers["X-Autologin"] = x_autologin
-            if x_pin:
-                headers["X-Pin"] = x_pin
-            headers.pop("X-Password", None)  # Remove X-Password if not needed anymore
-        
-            # Update data payload with the success token for the subsequent request
-            if success_token:
-                data["token"] = success_token
-                data["mode"] = "execute"
-        
-                # Second request using updated data and headers
-                response = requests.post(url, headers=headers, data=data)
-                handle_rate_limit(response)
-            else:
-                print(
-                    "Failed to authenticate or parse XML:", response.status_code, response.text
-                )# replace with your actual password
+
 
 
 def setup(bot):
