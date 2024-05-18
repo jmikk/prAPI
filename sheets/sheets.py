@@ -92,7 +92,7 @@ class sheets(commands.Cog):
             embed.add_field(name="Season", value=card_data['season'], inline=True)
             embed.set_thumbnail(url=f"https://www.nationstates.net/images/cards/s3/{card_data['flag']}")
 
-            return embed, MV
+            return embed, card_data['market_value']
         except ET.ParseError as e:
             await ctx.send(f"Error parsing XML: {e}")
             return None
