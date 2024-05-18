@@ -93,7 +93,7 @@ class sheets(commands.Cog):
 
 
             # Create an embed with the card details
-            embed = discord.Embed(title=f"Card Info: {name}", color=discord.Color.blue())
+            embed = discord.Embed(title=f"{name}", color=discord.Color.blue())
             embed.add_field(name="Card ID", value=card_id, inline=True)
             embed.add_field(name="Category", value=category, inline=True)
             embed.add_field(name="Market Value", value=market_value, inline=True)
