@@ -14,6 +14,8 @@ user_agent = "9003"
 headers = {"User-Agent": user_agent}
 tsv_file = "report.tsv"
 password = ""
+url = "https://www.nationstates.net/cgi-bin/api.cgi"
+
 
 
 def gift(cardID,destination):
