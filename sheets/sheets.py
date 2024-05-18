@@ -62,7 +62,7 @@ class sheets(commands.Cog):
     async def parse_card_info(self, ctx, xml_content):
         
         try:
-            xml_list = await xml_content.split("\n")
+            xml_list = xml_content.split("\n")
             await ctx.send(xml_list)
             for each in xml_list:
                 await ctx.send(each)
