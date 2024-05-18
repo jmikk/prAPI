@@ -117,6 +117,10 @@ class sheets(commands.Cog):
                             if response.status != 200:
                                 await ctx.send(f"Failed to execute gift. Status code: {response.status}")
                                 return
+                            if "<ERROR>" in await response.text():
+                                await ctx.send(await response.text())
+                                return
+                                
 
                             await ctx.send(f"Successfully gifted card {card_id} to {destination}!")
                 else:
