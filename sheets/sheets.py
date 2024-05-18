@@ -136,7 +136,7 @@ class sheets(commands.Cog):
                     card_data['category'] = each.replace("</CATEGORY>", "").replace("<CATEGORY>", "")
                     if card_data['category'] == "legendary":
                         await ctx.send("Sorry you can't request legendarys!")
-                        raise RarityErrors
+                        raise "RarityErrors"
                 if each.startswith("<FLAG>"):
                     card_data['flag'] = each.replace("</FLAG>", "").replace("<FLAG>", "")
                 if each.startswith("<MARKET_VALUE>"):
