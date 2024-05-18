@@ -62,10 +62,9 @@ class sheets(commands.Cog):
                     return
                 xml_content = await response.text()
                 await ctx.send("Parsing card info...")
-                card_info = await self.parse_card_info(ctx, xml_content)
+                card_info, MV = await self.parse_card_info(ctx, xml_content)
                 if card_info:
                     await ctx.send(embed=card_info)
-                    await self.add_to_tsv(destination, card_id, 3)
 
                     # Gifting the card
                     nation = "9006"  
@@ -121,7 +120,7 @@ class sheets(commands.Cog):
                                 await ctx.send(await response.text())
                                 return
                                 
-
+                            await self.add_to_tsv(destination, card_id, 3 , MV)
                             await ctx.send(f"Successfully gifted card {card_id} to {destination}!")
                 else:
                     await ctx.send("Failed to parse card info.")
@@ -159,16 +158,16 @@ class sheets(commands.Cog):
             embed.add_field(name="Season", value=card_data['season'], inline=True)
             embed.set_thumbnail(url=f"https://www.nationstates.net/images/cards/s3/{card_data['flag']}")
 
-            return embed
+            return embed, card_data['market_value']
         except ET.ParseError as e:
             await ctx.send(f"Error parsing XML: {e}")
             return None
 
-    async def add_to_tsv(self, destination, card_id, season):
+    async def add_to_tsv(self, destination, card_id, season, MV):
         # Append to the TSV file
         with open(tsv_file, 'a', newline='') as file:
             writer = csv.writer(file, delimiter='\t')
-            writer.writerow([destination, card_id, season, datetime.now().strftime('%Y-%m-%d')])
+            writer.writerow([destination, card_id, season, datetime.now().strftime('%Y-%m-%d'], MV)
 
     @commands.command()
     async def view_report(self, ctx):
