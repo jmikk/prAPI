@@ -69,7 +69,7 @@ class sheets(commands.Cog):
                     each = each.replace("</CARDID>","")
                     each = each.replace("<CARDID>","")
                     card_id = each
-                if each.startswith("<CARDID>"):
+                if each.startswith("<CATEGORY>"):
                     each = each.replace("</CATEGORY>","")
                     each = each.replace("<CATEGORY>","")
                     category = each
