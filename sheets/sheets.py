@@ -69,7 +69,7 @@ class sheets(commands.Cog):
                         await self.add_to_tsv(destination, card_id, 3)
                     else:
                         await ctx.send("Error Gifting!")
-                        await ctx.send(did_it_work)
+                        await ctx.send(await did_it_work)
                 else:
                     await ctx.send("Failed to parse card info.")
                     await ctx.send(f"Raw XML content:\n```xml\n{xml_content}\n```")
