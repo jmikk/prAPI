@@ -134,7 +134,7 @@ class sheets(commands.Cog):
 
 password = ""
 
-    @commands.comman()
+    @commands.command()
     async def set_request_password(code:str):
         password = code
 
