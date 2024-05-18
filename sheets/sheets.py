@@ -63,9 +63,10 @@ class sheets(commands.Cog):
         
         try:
             xml_list = xml_content.split()
-            await ctx.send("HERE")
 
             for each in xml_list:
+                await ctx.send(each)
+
                 if each.startsWith("<CARDID>"):
                     each = each.replace("</CARDID>","")
                     each = each.replace("<CARDID>","")
