@@ -83,7 +83,7 @@ class sheets(commands.Cog):
                     async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", headers=headers, data=prepare_data) as response:
                         await handle_rate_limit(response)
                         if response.status != 200:
-                            await ctx.send(f"Failed to prepare gift. Status code: {response.status}")
+                            await ctx.send(f"Failed to prepare gift. Status code: {response.status} {response.text}")
                             return
 
                         response_text = await response.text()
