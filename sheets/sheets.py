@@ -64,7 +64,7 @@ class sheets(commands.Cog):
                 card_info = await self.parse_card_info(ctx, xml_content)
                 if card_info:
                     error_message = await self.request_card(ctx, "9006", card_id, 3, destination)
-                    if error_message:
+                    if not error_message:
                         await ctx.send(f"Error Gifting: {error_message}")
                     else:
                         await ctx.send(embed=card_info)
@@ -111,7 +111,7 @@ class sheets(commands.Cog):
         # Append to the TSV file
         with open(tsv_file, 'a', newline='') as file:
             writer = csv.writer(file, delimiter='\t')
-            writer.writerow([destination, card_id, season, datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+            writer.writerow([destination, card_id, season, datetime.now().strftime('%Y-%m-%d')])
 
     @commands.command()
     async def view_report(self, ctx):
