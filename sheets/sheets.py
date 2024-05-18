@@ -148,7 +148,7 @@ class sheets(commands.Cog):
             "c": "giftcard",
             "cardid": cardID,
             "to": destination,
-            "season": "3"
+            "season": "3",
             "mode": "prepare",
         }
         
