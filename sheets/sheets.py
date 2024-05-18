@@ -64,7 +64,7 @@ def gift(cardID,destination):
                 print(
                     "Failed to authenticate or parse XML:", response.status_code, response.text
                 )
-                    return response.text# replace with your actual password
+                return response.text# replace with your actual password
 
 
 async def handle_rate_limit(response):
