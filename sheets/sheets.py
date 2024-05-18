@@ -190,8 +190,8 @@ class sheets(commands.Cog):
         nation_password = password
         await ctx.send("Nation password has been set.")
 
-    @my_command.error
-    async def my_command_error(self, ctx, error):
+    @request_card.error
+    async def request_card_error(self, ctx, error):
         if isinstance(error, CommandOnCooldown):
             retry_after = int(error.retry_after)
             timestamp = int(time.time() + retry_after)
