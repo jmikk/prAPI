@@ -49,7 +49,7 @@ class sheets(commands.Cog):
         headers = {"User-Agent": user_agent}
         global nation_password
         if not nation_password:
-            await ctx.send("Please set the nation password using the `set_password` command.")
+            await ctx.send("Please tell 9003 to set the nation password using the `set_password` command.")
             return
         # Fetch card info from the NationStates API
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info;cardid={card_id};season=3"
