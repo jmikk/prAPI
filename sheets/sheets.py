@@ -44,14 +44,13 @@ class sheets(commands.Cog):
     @commands.dynamic_cooldown(dynamic_cooldown, type=BucketType.user)
     @commands.command()
     async def my_command(self, ctx, card_id: int, destination: str):
+        await ctx.send("Lets see if I can find that card one secound!")
         user_agent = "9003"
         headers = {"User-Agent": user_agent}
         global nation_password
         if not nation_password:
             await ctx.send("Please set the nation password using the `set_password` command.")
             return
-
-        await ctx.send("Fetching card info...")
         # Fetch card info from the NationStates API
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info;cardid={card_id};season=3"
         async with aiohttp.ClientSession() as session:
@@ -61,7 +60,6 @@ class sheets(commands.Cog):
                     await ctx.send(f"Failed to fetch card info. Status code: {response.status}")
                     return
                 xml_content = await response.text()
-                await ctx.send("Parsing card info...")
                 card_info, MV = await self.parse_card_info(ctx, xml_content)
                 if card_info:
                     await ctx.send(embed=card_info)
