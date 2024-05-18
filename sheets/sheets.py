@@ -63,7 +63,7 @@ class sheets(commands.Cog):
                 await ctx.send("Parsing card info...")
                 card_info = await self.parse_card_info(ctx, xml_content)
                 if card_info:
-                    did_it_work = request_card(ctx, "9006", card_id, 3, destination)
+                    did_it_work = self.request_card(ctx, "9006", card_id, 3, destination)
                     if not did_it_work:
                         await ctx.send(embed=card_info)
                         await self.add_to_tsv(destination, card_id, 3)
