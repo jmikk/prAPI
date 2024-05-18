@@ -103,7 +103,7 @@ class sheets(commands.Cog):
 
             return embed
         except ET.ParseError as e:
-            print(f"Error parsing XML: {e}")
+            await ctx.send(f"Error parsing XML: {e}")
             return None
 
     @my_command.error
