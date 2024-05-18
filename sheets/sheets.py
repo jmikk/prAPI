@@ -68,8 +68,8 @@ class sheets(commands.Cog):
                     await self.add_to_tsv(destination, card_id, 3)
 
                     # Gifting the card
-                    nation = "testlandia"  # Assuming the nation is "testlandia", adjust as necessary
-                    season = 1
+                    nation = "9006"  
+                    season = 3
                     headers["X-Password"] = nation_password
                     prepare_data = {
                         "nation": nation,
