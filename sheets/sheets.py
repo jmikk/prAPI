@@ -63,8 +63,13 @@ class sheets(commands.Cog):
                 await ctx.send("Parsing card info...")
                 card_info = await self.parse_card_info(ctx, xml_content)
                 if card_info:
-                    await ctx.send(embed=card_info)
-                    await self.add_to_tsv(destination, card_id, 3)
+                    did_it_work = request_card(ctx, "9006", card_id, 3, destination):
+                    if not did_it_work:
+                        await ctx.send(embed=card_info)
+                        await self.add_to_tsv(destination, card_id, 3)
+                    else:
+                        await ctx.send("Error Gifting!")
+                        await ctx.send(did_it_work)
                 else:
                     await ctx.send("Failed to parse card info.")
                     await ctx.send(f"Raw XML content:\n```xml\n{xml_content}\n```")
@@ -132,7 +137,6 @@ class sheets(commands.Cog):
         nation_password = password
         await ctx.send("Nation password has been set.")
 
-    @commands.command()
     async def request_card(self, ctx, nation: str, card_id: int, season: int, recipient: str):
         global nation_password
         if not nation_password:
@@ -166,8 +170,7 @@ class sheets(commands.Cog):
                 # Extract pin from headers
                 x_pin = response.headers.get("X-Pin")
                 if not token or not x_pin:
-                    await ctx.send("Failed to retrieve token or pin.")
-                    return
+                    return "Failed to retrieve token or pin"
 
                 # Execute the gift
                 headers = {"User-Agent": user_agent, "X-Pin": x_pin}
@@ -184,8 +187,7 @@ class sheets(commands.Cog):
                 async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", headers=headers, data=execute_data) as response:
                     await handle_rate_limit(response)
                     if response.status != 200:
-                        await ctx.send(f"Failed to execute gift. Status code: {response.status}")
-                        return
+                        return f"Failed to execute gift. Status code: {response.status}"
 
                     await ctx.send(f"Successfully gifted card {card_id} to {recipient}!")
 
