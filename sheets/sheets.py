@@ -140,8 +140,7 @@ class sheets(commands.Cog):
     async def request_card(self, ctx, nation: str, card_id: int, season: int, recipient: str):
         global nation_password
         if not nation_password:
-            await ctx.send("Please set the nation password using the `set_password` command.")
-            return
+            return "Please set the nation password using the `set_password` command."
 
         headers = {"User-Agent": user_agent, "X-Password": nation_password}
         prepare_data = {
@@ -158,8 +157,7 @@ class sheets(commands.Cog):
             async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", headers=headers, data=prepare_data) as response:
                 await handle_rate_limit(response)
                 if response.status != 200:
-                    await ctx.send(f"Failed to prepare gift. Status code: {response.status}")
-                    return
+                    return f"Failed to prepare gift. Status code: {response.status}"
 
                 response_text = await response.text()
                 # Extract token from the response
@@ -190,6 +188,7 @@ class sheets(commands.Cog):
                         return f"Failed to execute gift. Status code: {response.status}"
 
                     await ctx.send(f"Successfully gifted card {card_id} to {recipient}!")
+                    return
 
     @my_command.error
     async def my_command_error(self, ctx, error):
