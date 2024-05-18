@@ -133,7 +133,7 @@ class sheets(commands.Cog):
         await ctx.send("Nation password has been set.")
 
     @commands.command()
-    async def gift_card(self, ctx, nation: str, card_id: int, season: int, recipient: str):
+    async def request_card(self, ctx, nation: str, card_id: int, season: int, recipient: str):
         global nation_password
         if not nation_password:
             await ctx.send("Please set the nation password using the `set_password` command.")
