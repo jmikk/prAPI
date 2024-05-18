@@ -63,12 +63,13 @@ class sheets(commands.Cog):
                 await ctx.send("Parsing card info...")
                 card_info = await self.parse_card_info(ctx, xml_content)
                 if card_info:
-                    error_message = await self.request_card(ctx, "9006", card_id, 3, destination)
-                    if not error_message:
-                        await ctx.send(f"Error Gifting: {error_message}")
-                    else:
+                    did_it_work = self.request_card(ctx, "9006", card_id, 3, destination)
+                    if not did_it_work:
                         await ctx.send(embed=card_info)
                         await self.add_to_tsv(destination, card_id, 3)
+                    else:
+                        await ctx.send("Error Gifting!")
+                        await ctx.send(await did_it_work)
                 else:
                     await ctx.send("Failed to parse card info.")
                     await ctx.send(f"Raw XML content:\n```xml\n{xml_content}\n```")
@@ -111,7 +112,7 @@ class sheets(commands.Cog):
         # Append to the TSV file
         with open(tsv_file, 'a', newline='') as file:
             writer = csv.writer(file, delimiter='\t')
-            writer.writerow([destination, card_id, season, datetime.now().strftime('%Y-%m-%d')])
+            writer.writerow([destination, card_id, season, datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
 
     @commands.command()
     async def view_report(self, ctx):
@@ -187,7 +188,7 @@ class sheets(commands.Cog):
                         return f"Failed to execute gift. Status code: {response.status}"
 
                     await ctx.send(f"Successfully gifted card {card_id} to {recipient}!")
-                    return None
+                    return False
 
     @my_command.error
     async def my_command_error(self, ctx, error):
