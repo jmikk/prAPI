@@ -50,7 +50,6 @@ class sheets(commands.Cog):
                     await ctx.send(f"Failed to fetch card info. Status code: {response.status}")
                     return
                 xml_content = await response.text()
-                await ctx.send(xml_content)
                 await ctx.send("Parsing card info...")
                 card_info = await self.parse_card_info(ctx, xml_content)
                 if card_info:
