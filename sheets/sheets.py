@@ -62,27 +62,33 @@ class sheets(commands.Cog):
     async def parse_card_info(self, ctx, xml_content):
         
         try:
-            root = ET.fromstring(xml_content)
-            card = root.find('CARD')
+            xml_list = xml_content.split()
+            for each in xml_list:
+                if each.startsWith("<CARDID>"):
+                    each = each.replace("</CARDID>","")
+                    each = each.replace("<CARDID>","")
+                    card_id = each
+                if each.startsWith("<CARDID>"):
+                    each = each.replace("</CATEGORY>","")
+                    each = each.replace("<CATEGORY>","")
+                    category = each
+                if each.startsWith("<FLAG>"):
+                    each = each.replace("</FLAG>","")
+                    each = each.replace("<FLAG>","")
+                    flag = each
+                if each.startsWith("<MARKET_VALUE>"):
+                    each = each.replace("</MARKET_VALUE>","")
+                    each = each.replace("<MARKET_VALUE>","")
+                    market_value = each
+                if each.startsWith("<NAME>"):
+                    each = each.replace("</NAME>","")
+                    each = each.replace("<NAME>","")
+                    name = each
+                if each.startsWith("<SEASON>"):
+                    each = each.replace("</SEASON>","")
+                    each = each.replace("<SEASON>","")
+                    season = each
 
-            if card is None:
-                await ctx.send("No info found")
-                return None
-
-            # Extract card details
-            await ctx.send("made it")
-            card_id = card.find('CARDID').text
-            await ctx.send(card_id)
-            category = card.find('CATEGORY').text
-            await ctx.send(category)
-            flag = card.find('FLAG').text
-            await ctx.send(flag)
-            market_value = card.find('MARKET_VALUE').text
-            await ctx.send(market_value)
-            name = card.find('NAME').text
-            await ctx.send(name)
-            season = card.find('SEASON').text
-            await ctx.send(season)
 
             # Create an embed with the card details
             embed = discord.Embed(title=f"Card Info: {name}", color=discord.Color.blue())
