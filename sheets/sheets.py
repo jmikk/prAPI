@@ -12,6 +12,8 @@ from datetime import datetime
 user_agent = "9003"
 headers = {"User-Agent": user_agent}
 tsv_file = "report.tsv"
+password = ""
+
 
 async def handle_rate_limit(response):
     remaining = int(response.headers.get("Ratelimit-Remaining", 10))
@@ -132,7 +134,6 @@ class sheets(commands.Cog):
         else:
             await ctx.send(error)
 
-password = ""
 
     @commands.command()
     async def set_request_password(code:str):
