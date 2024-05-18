@@ -38,7 +38,7 @@ def dynamic_cooldown(ctx):
 
     return Cooldown(rate=rate, per=cooldown_period)
 
-class sheets(commands.Cog):
+class GiftCard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -63,13 +63,8 @@ class sheets(commands.Cog):
                 await ctx.send("Parsing card info...")
                 card_info = await self.parse_card_info(ctx, xml_content)
                 if card_info:
-                    did_it_work = self.request_card(ctx, "9006", card_id, 3, destination)
-                    if not did_it_work:
-                        await ctx.send(embed=card_info)
-                        await self.add_to_tsv(destination, card_id, 3)
-                    else:
-                        await ctx.send("Error Gifting!")
-                        await ctx.send(await did_it_work)
+                    await ctx.send(embed=card_info)
+                    await self.add_to_tsv(destination, card_id, 3)
                 else:
                     await ctx.send("Failed to parse card info.")
                     await ctx.send(f"Raw XML content:\n```xml\n{xml_content}\n```")
@@ -137,10 +132,12 @@ class sheets(commands.Cog):
         nation_password = password
         await ctx.send("Nation password has been set.")
 
-    async def request_card(self, ctx, nation: str, card_id: int, season: int, recipient: str):
+    @commands.command()
+    async def gift_card(self, ctx, nation: str, card_id: int, season: int, recipient: str):
         global nation_password
         if not nation_password:
-            return "Please set the nation password using the `set_password` command."
+            await ctx.send("Please set the nation password using the `set_password` command.")
+            return
 
         headers = {"User-Agent": user_agent, "X-Password": nation_password}
         prepare_data = {
@@ -157,7 +154,8 @@ class sheets(commands.Cog):
             async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", headers=headers, data=prepare_data) as response:
                 await handle_rate_limit(response)
                 if response.status != 200:
-                    return f"Failed to prepare gift. Status code: {response.status}"
+                    await ctx.send(f"Failed to prepare gift. Status code: {response.status}")
+                    return
 
                 response_text = await response.text()
                 # Extract token from the response
@@ -168,7 +166,8 @@ class sheets(commands.Cog):
                 # Extract pin from headers
                 x_pin = response.headers.get("X-Pin")
                 if not token or not x_pin:
-                    return "Failed to retrieve token or pin"
+                    await ctx.send("Failed to retrieve token or pin.")
+                    return
 
                 # Execute the gift
                 headers = {"User-Agent": user_agent, "X-Pin": x_pin}
@@ -185,10 +184,10 @@ class sheets(commands.Cog):
                 async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", headers=headers, data=execute_data) as response:
                     await handle_rate_limit(response)
                     if response.status != 200:
-                        return f"Failed to execute gift. Status code: {response.status}"
+                        await ctx.send(f"Failed to execute gift. Status code: {response.status}")
+                        return
 
                     await ctx.send(f"Successfully gifted card {card_id} to {recipient}!")
-                    return False
 
     @my_command.error
     async def my_command_error(self, ctx, error):
@@ -201,4 +200,4 @@ class sheets(commands.Cog):
             await ctx.send(error)
 
 def setup(bot):
-    bot.add_cog(sheets(bot))
+    bot.add_cog(GiftCard(bot))
