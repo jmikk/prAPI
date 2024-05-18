@@ -62,7 +62,7 @@ class sheets(commands.Cog):
         
         try:
             xml_list = xml_content.split("\n")
-            for each in xml_list:
+            for each in xml_list[:-1]:
                 await ctx.send(each)
                 if each.startswith("<CARDID>"):
                     each = each.replace("</CARDID>","")
