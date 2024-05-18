@@ -62,8 +62,9 @@ class sheets(commands.Cog):
     async def parse_card_info(self, ctx, xml_content):
         
         try:
-            await ctx.send("HERE")
             xml_list = xml_content.split()
+            await ctx.send("HERE")
+
             for each in xml_list:
                 if each.startsWith("<CARDID>"):
                     each = each.replace("</CARDID>","")
