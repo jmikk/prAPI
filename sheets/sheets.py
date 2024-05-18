@@ -89,6 +89,8 @@ class sheets(commands.Cog):
                     each = each.replace("</SEASON>","")
                     each = each.replace("<SEASON>","")
                     season = each
+                if each.startswith("</CARD>"):
+                    break
 
 
             # Create an embed with the card details
