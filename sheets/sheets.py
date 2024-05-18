@@ -43,7 +43,7 @@ class sheets(commands.Cog):
 
     @commands.dynamic_cooldown(dynamic_cooldown, type=BucketType.user)
     @commands.command()
-    async def my_command(self, ctx, card_id: int, destination: str):
+    async def request_card(self, ctx, card_id: int, destination: str):
         await ctx.send("Lets see if I can find that card one secound!")
         user_agent = "9003"
         headers = {"User-Agent": user_agent}
