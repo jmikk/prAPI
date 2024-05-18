@@ -8,6 +8,7 @@ import asyncio
 import csv
 import os
 from datetime import datetime
+import requests
 
 user_agent = "9003"
 headers = {"User-Agent": user_agent}
