@@ -63,7 +63,7 @@ class sheets(commands.Cog):
         
         try:
             xml_list = xml_content.split("\n")
-
+            await ctx.send(xml_list)
             for each in xml_list:
                 await ctx.send(each)
 
