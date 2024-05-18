@@ -132,13 +132,16 @@ class sheets(commands.Cog):
         nation_password = password
         await ctx.send("Nation password has been set.")
 
+    
+    @commands.dynamic_cooldown(dynamic_cooldown, type=BucketType.user)
     @commands.command()
-    async def gift_card(self, ctx, nation: str, card_id: int, season: int, recipient: str):
+    async def request_card(self, ctx, card_id: int, recipient: str):
         global nation_password
         if not nation_password:
             await ctx.send("Please set the nation password using the `set_password` command.")
             return
-
+        nation = 9006
+        season = 3 
         headers = {"User-Agent": user_agent, "X-Password": nation_password}
         prepare_data = {
             "nation": nation,
