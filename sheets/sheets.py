@@ -67,27 +67,27 @@ class sheets(commands.Cog):
             for each in xml_list:
                 await ctx.send(each)
 
-                if each.startsWith("<CARDID>"):
+                if each.startswith("<CARDID>"):
                     each = each.replace("</CARDID>","")
                     each = each.replace("<CARDID>","")
                     card_id = each
-                if each.startsWith("<CARDID>"):
+                if each.startswith("<CARDID>"):
                     each = each.replace("</CATEGORY>","")
                     each = each.replace("<CATEGORY>","")
                     category = each
-                if each.startsWith("<FLAG>"):
+                if each.startswith("<FLAG>"):
                     each = each.replace("</FLAG>","")
                     each = each.replace("<FLAG>","")
                     flag = each
-                if each.startsWith("<MARKET_VALUE>"):
+                if each.startswith("<MARKET_VALUE>"):
                     each = each.replace("</MARKET_VALUE>","")
                     each = each.replace("<MARKET_VALUE>","")
                     market_value = each
-                if each.startsWith("<NAME>"):
+                if each.startswith("<NAME>"):
                     each = each.replace("</NAME>","")
                     each = each.replace("<NAME>","")
                     name = each
-                if each.startsWith("<SEASON>"):
+                if each.startswith("<SEASON>"):
                     each = each.replace("</SEASON>","")
                     each = each.replace("<SEASON>","")
                     season = each
