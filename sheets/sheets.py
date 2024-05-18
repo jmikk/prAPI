@@ -188,7 +188,7 @@ class sheets(commands.Cog):
                         return f"Failed to execute gift. Status code: {response.status}"
 
                     await ctx.send(f"Successfully gifted card {card_id} to {recipient}!")
-                    return
+                    return None
 
     @my_command.error
     async def my_command_error(self, ctx, error):
