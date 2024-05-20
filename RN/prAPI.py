@@ -79,6 +79,7 @@ class prAPI(commands.Cog):
             rmbToken = r.xml.find("SUCCESS").text
             data.update(mode="execute", token=rmbToken)
             r = await self.api_request(data=data)
+            output = "oopsie doodle"
             if "region=the_wellspring" in r.text:
                 output = r.text.replace('<NATION id="warden_of_the_spring">\n<SUCCESS>Your message has been lodged! &lt;a href="',"")
                 output = output.replace('"&gt;&lt;span class="smalltext"&gt;View your post.&lt;/span&gt;&lt;/a&gt;</SUCCESS>\n</NATION>',"")
