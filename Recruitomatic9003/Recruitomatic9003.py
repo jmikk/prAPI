@@ -178,7 +178,8 @@ class Recruitomatic9003(commands.Cog):
         nations = []
         global processed_nations
         for new_nation in root.findall('./NEWNATIONDETAILS/NEWNATION'):
-            if bool(re.search(r'\d$', new_nation)):
+            nation_name = new_nation.get('name')
+            if bool(re.search(r'\d$', nation_name)):
                 continue
             nation_name = new_nation.get('name')
             region = new_nation.find('REGION').text
