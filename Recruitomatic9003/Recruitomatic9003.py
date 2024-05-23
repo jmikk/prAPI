@@ -8,6 +8,7 @@ from datetime import datetime
 from datetime import datetime, timedelta
 import discord
 import os
+import re
 
 global nations_tged
 nations_tged=[]
@@ -177,6 +178,8 @@ class Recruitomatic9003(commands.Cog):
         nations = []
         global processed_nations
         for new_nation in root.findall('./NEWNATIONDETAILS/NEWNATION'):
+            if bool(re.search(r'\d$', new_nation)):
+                continue
             nation_name = new_nation.get('name')
             region = new_nation.find('REGION').text
             if region not in excluded_regions and nation_name not in processed_nations:
