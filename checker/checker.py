@@ -8,7 +8,7 @@ import os
 
 APPROVED_NATIONS_FILE = "approved_nations.json"
 
-class Checker(commands.Cog):
+class checker(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.load_approved_nations()
