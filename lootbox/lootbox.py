@@ -183,6 +183,7 @@ class lootbox(commands.Cog):
                         if execute_response.status == 200:
                             await ctx.send(f"Successfully gifted the card to {recipient}!")
                         else:
+                            await ctx.send(execute_response.status)
                             await ctx.send("Failed to execute the gift.")
 
     @commands.command()
