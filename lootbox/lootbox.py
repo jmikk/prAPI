@@ -209,7 +209,7 @@ class lootbox(commands.Cog):
 
     def parse_token(self, xml_data):
         root = ET.fromstring(xml_data)
-        token = root.find("TOKEN")
+        token = root.find("SUCCESS")
         return token.text if token is not None else None
 
     def get_embed_color(self, category):
