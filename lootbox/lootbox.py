@@ -74,9 +74,10 @@ class lootbox(commands.Cog):
         await ctx.send(f"Password set to {password}")
 
     @commands.command()
-    async def openlootbox(self, ctx, nationname: str, recipient: str):
+    async def openlootbox(self, ctx, recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
         season = await self.config.season()
+        nationname = await self.config.nationName()
         categories = await self.config.categories()
         useragent = await self.config.useragent()
         cooldown = await self.config.cooldown()
