@@ -71,6 +71,7 @@ class lootbox(commands.Cog):
     async def resetrequests(self, ctx):
         """Set the User-Agent header for the requests."""
         await self.config.uses.set(0)
+        await self.config.last_used.set(0)
         await ctx.send(f"uses set to 0")
 
     @commands.dm_only()
