@@ -3,8 +3,9 @@ import random
 import xml.etree.ElementTree as ET
 from redbot.core import commands, Config
 from redbot.core.bot import Red
+from discord import Embed
 
-class lootbox(commands.Cog):
+class Lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -34,7 +35,7 @@ class lootbox(commands.Cog):
     @cardset.command()
     async def categories(self, ctx, *categories: str):
         """Set the categories to filter cards."""
-        categories=categories.upper()
+        categories = [category.upper() for category in categories]
         await self.config.categories.set(categories)
         await ctx.send(f"Categories set to {', '.join(categories)}")
 
@@ -58,29 +59,11 @@ class lootbox(commands.Cog):
         await ctx.send(f"Password set to {password}")
 
     @commands.command()
-    async def getcard(self, ctx):
-        """Fetch a random card from the specified nation's deck based on season and category."""
+    async def openlootbox(self, ctx, nationname: str):
+        """Open a loot box and fetch a random card for the specified nation."""
         season = await self.config.season()
-        if not season:
-            await ctx.send("Please set a password with cardset season {season}.")
-            return
-        nationname = await self.config.nationName()
-        if not nationname:
-            await ctx.send("Please set a nationname with cardset nationname {nationname}.")
-            return
-        password = await self.config.user(ctx.author).password()
-        if not password:
-            await ctx.send("Please set a password with cardset password {password}.")
-            return
         categories = await self.config.categories()
-        if not categories:
-            await ctx.send("Please set a password with cardset categories {categories}.")
-            return
         useragent = await self.config.useragent()
-        if not useragent:
-            await ctx.send("Please set a password with cardset useragent {useragent}")
-            return
-        
 
         headers = {"User-Agent": useragent}
 
@@ -102,8 +85,13 @@ class lootbox(commands.Cog):
                     return
 
                 random_card = random.choice(cards)
-                card_info = f"ID: {random_card['id']}, Season: {random_card['season']}, Category: {random_card['category']}"
-                await ctx.send(card_info)
+                embed = Embed(title="Loot Box Opened!", description="You received a card!", color=0x00ff00)
+                embed.add_field(name="Card ID", value=random_card['id'], inline=True)
+                embed.add_field(name="Season", value=random_card['season'], inline=True)
+                embed.add_field(name="Category", value=random_card['category'], inline=True)
+                embed.set_footer(text="Gifting feature coming soon!")
+
+                await ctx.send(embed=embed)
 
     def parse_cards(self, xml_data, season, categories):
         root = ET.fromstring(xml_data)
