@@ -50,7 +50,7 @@ class lootbox(commands.Cog):
     async def password(self, ctx, *, password: str):
         """Set the password for the loot box prizes."""
         await self.config.useragent.set(password)
-        await ctx.send(f"User-Agent set to {password}")
+        await ctx.send(f"password set to {password}")
 
     @commands.command()
     async def getcard(self, ctx):
