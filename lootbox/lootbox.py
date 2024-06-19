@@ -5,8 +5,13 @@ from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 from discord import Embed
 import time
+import csv
+import os
+from datetime import datetime
 
-class lootbox(commands.Cog):
+tsv_file = "report.tsv"
+
+class Lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -144,7 +149,7 @@ class lootbox(commands.Cog):
                     card_info = self.parse_card_info(card_info_data)
 
                     embed_color = self.get_embed_color(random_card['category'])
-                    embed = Embed(title="Loot Box Opened!", color=embed_color)
+                    embed = Embed(title="Loot Box Opened!", description="You received a card!", color=embed_color)
                     embed.add_field(name="Card Name", value=card_info['name'], inline=True)
                     embed.add_field(name="Card ID", value=random_card['id'], inline=True)
                     embed.add_field(name="Season", value=random_card['season'], inline=True)
@@ -195,7 +200,7 @@ class lootbox(commands.Cog):
 
                     async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
                         if execute_response.status == 200:
-                            async def add_to_tsv(self, recipient, random_card['id'], random_card['season'], card_info['market_value']):
+                            await self.add_to_tsv(recipient, random_card['id'], random_card['season'], card_info['market_value'])
                             await ctx.send(f"Successfully gifted the card to {recipient}!")
                         else:
                             await ctx.send("Failed to execute the gift.")
@@ -249,8 +254,6 @@ class lootbox(commands.Cog):
         with open(tsv_file, 'a', newline='') as file:
             writer = csv.writer(file, delimiter='\t')
             writer.writerow([destination, card_id, season, datetime.now().strftime('%Y-%m-%d'), MV])
-
-
 
 def setup(bot):
     bot.add_cog(Lootbox(bot))
