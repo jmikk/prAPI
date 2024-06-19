@@ -6,7 +6,7 @@ from redbot.core.bot import Red
 from discord import Embed
 import time
 
-class lootbox(commands.Cog):
+class Lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -74,12 +74,11 @@ class lootbox(commands.Cog):
         await ctx.send(f"Password set to {password}")
 
     @commands.command()
-    async def openlootbox(self, ctx, recipient: str):
+    async def openlootbox(self, ctx, nationname: str, recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
         season = await self.config.season()
         categories = await self.config.categories()
         useragent = await self.config.useragent()
-        nationname = await self.config.nationName()
         cooldown = await self.config.cooldown()
 
         now = ctx.message.created_at.timestamp()
@@ -155,15 +154,14 @@ class lootbox(commands.Cog):
                 async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
                     if prepare_response.status != 200:
                         await ctx.send("Failed to prepare the gift.")
-                        await ctx.send(prepare_response.status)
                         return
 
                     prepare_response_data = await prepare_response.text()
                     token = self.parse_token(prepare_response_data)
+                    x_pin = prepare_response.headers.get("X-Pin")
 
-                    if not token:
-                        await ctx.send(prepare_response_data)
-                        await ctx.send("Failed to retrieve the token for gift execution.")
+                    if not token or not x_pin:
+                        await ctx.send("Failed to retrieve the token or X-Pin for gift execution.")
                         return
 
                     # Execute the gift
@@ -177,14 +175,14 @@ class lootbox(commands.Cog):
                         "token": token
                     }
                     execute_headers = {
-                        "User-Agent": useragent
+                        "User-Agent": useragent,
+                        "X-Pin": x_pin
                     }
 
                     async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
                         if execute_response.status == 200:
                             await ctx.send(f"Successfully gifted the card to {recipient}!")
                         else:
-                            await ctx.send(execute_response.status)
                             await ctx.send("Failed to execute the gift.")
 
     @commands.command()
@@ -210,7 +208,7 @@ class lootbox(commands.Cog):
 
     def parse_token(self, xml_data):
         root = ET.fromstring(xml_data)
-        token = root.find("SUCCESS")
+        token = root.find("TOKEN")
         return token.text if token is not None else None
 
     def get_embed_color(self, category):
