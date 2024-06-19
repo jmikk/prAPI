@@ -2,24 +2,27 @@ import aiohttp
 import random
 import xml.etree.ElementTree as ET
 from redbot.core import commands, Config
+from redbot.core.bot import Red
 
-
-class lootbox(commands.Cog):
-    def __init__(self, bot):
+class Lootbox(commands.Cog):
+    def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
         default_global = {
             "season": 1,
             "categories": ["common", "rare", "ultra-rare"],
             "useragent": "9006",
-            "nationName": "9006",
-            "password": "",
+            "nationName": "9006"
+        }
+        default_user = {
+            "password": ""
         }
         self.config.register_global(**default_global)
+        self.config.register_user(**default_user)
 
     @commands.group()
     async def cardset(self, ctx):
-        """Group of commands to set season, categories, and user-agent."""
+        """Group of commands to set season, categories, user-agent, and nationName."""
         pass
 
     @cardset.command()
@@ -41,25 +44,26 @@ class lootbox(commands.Cog):
         await ctx.send(f"User-Agent set to {useragent}")
     
     @cardset.command()
-    async def nationName(self, ctx, *, nationName: str):
+    async def nationname(self, ctx, *, nationname: str):
         """Set the nationName for the loot box prizes."""
-        await self.config.useragent.set(nationName)
-        await ctx.send(f"User-Agent set to {nationName}")
-    
+        await self.config.nationName.set(nationname)
+        await ctx.send(f"Nation Name set to {nationname}")
+
+    @commands.dm_only()
     @cardset.command()
     async def password(self, ctx, *, password: str):
-        """Set the password for the loot box prizes."""
-        await self.config.useragent.set(password)
-        await ctx.send(f"password set to {password}")
+        """Set the password for the loot box prizes in DM."""
+        await self.config.user(ctx.author).password.set(password)
+        await ctx.send(f"Password set to {password}")
 
     @commands.command()
     async def getcard(self, ctx):
         """Fetch a random card from the specified nation's deck based on season and category."""
         season = await self.config.season()
         nationname = await self.config.nationName()
-        password = await self.config.password()
+        password = await self.config.user(ctx.author).password()
         if not password:
-            await ctx.send("Please set a password with cardset password {password}")
+            await ctx.send("Please set a password with cardset password {password} in DM.")
             return
         categories = await self.config.categories()
         useragent = await self.config.useragent()
@@ -102,4 +106,4 @@ class lootbox(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(NationStatesCards(bot))
+    bot.add_cog(Lootbox(bot))
