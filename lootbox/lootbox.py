@@ -195,6 +195,7 @@ class lootbox(commands.Cog):
 
                     async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
                         if execute_response.status == 200:
+                            async def add_to_tsv(self, recipient, random_card['id'], random_card['season'], card_info['market_value']):
                             await ctx.send(f"Successfully gifted the card to {recipient}!")
                         else:
                             await ctx.send("Failed to execute the gift.")
@@ -242,6 +243,13 @@ class lootbox(commands.Cog):
             "LEGENDARY": 0xFFFF00     # Yellow
         }
         return colors.get(category.upper(), 0xFFFFFF)  # Default to white if not found
+
+    async def add_to_tsv(self, destination, card_id, season, MV):
+        # Append to the TSV file
+        with open(tsv_file, 'a', newline='') as file:
+            writer = csv.writer(file, delimiter='\t')
+            writer.writerow([destination, card_id, season, datetime.now().strftime('%Y-%m-%d'), MV])
+
 
 
 def setup(bot):
