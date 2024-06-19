@@ -6,7 +6,7 @@ from redbot.core.bot import Red
 from discord import Embed
 import time
 
-class lootbox(commands.Cog):
+class Lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -131,12 +131,25 @@ class lootbox(commands.Cog):
                     return
 
                 random_card = random.choice(cards)
-                embed_color = self.get_embed_color(random_card['category'])
-                embed = Embed(title="Loot Box Opened!", description="You received a card!", color=embed_color)
-                embed.add_field(name="Card ID", value=random_card['id'], inline=True)
-                embed.add_field(name="Season", value=random_card['season'], inline=True)
-                embed.add_field(name="Category", value=random_card['category'], inline=True)
-                await ctx.send(embed=embed)
+
+                # Fetch card details
+                async with session.get(
+                    f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info;cardid={random_card['id']};season={random_card['season']}"
+                ) as card_info_response:
+                    if card_info_response.status != 200:
+                        await ctx.send("Failed to fetch card details from NationStates API.")
+                        return
+
+                    card_info_data = await card_info_response.text()
+                    card_info = self.parse_card_info(card_info_data)
+
+                    embed_color = self.get_embed_color(random_card['category'])
+                    embed = Embed(title="Loot Box Opened!", description="You received a card!", color=embed_color)
+                    embed.add_field(name="Card Name", value=card_info['name'], inline=True)
+                    embed.add_field(name="Card ID", value=random_card['id'], inline=True)
+                    embed.add_field(name="Season", value=random_card['season'], inline=True)
+                    embed.add_field(name="Market Value", value=card_info['market_value'], inline=True)
+                    await ctx.send(embed=embed)
 
                 # Prepare the gift
                 prepare_data = {
@@ -206,6 +219,13 @@ class lootbox(commands.Cog):
                     {"id": card_id, "season": card_season, "category": card_category}
                 )
         return cards
+
+    def parse_card_info(self, xml_data):
+        root = ET.fromstring(xml_data)
+        return {
+            "name": root.find("NAME").text,
+            "market_value": root.find("MARKET_VALUE").text
+        }
 
     def parse_token(self, xml_data):
         root = ET.fromstring(xml_data)
