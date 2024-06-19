@@ -11,7 +11,7 @@ from datetime import datetime
 
 tsv_file = "report.tsv"
 
-class Lootbox(commands.Cog):
+class lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
