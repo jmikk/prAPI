@@ -11,8 +11,8 @@ class lootbox(commands.Cog):
         default_global = {
             "season": 1,
             "categories": ["common", "rare", "ultra-rare"],
-            "useragent": "9006",
-            "nationName": "9006"
+            "useragent": "",
+            "nationName": ""
         }
         default_user = {
             "password": ""
