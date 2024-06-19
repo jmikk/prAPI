@@ -144,7 +144,7 @@ class lootbox(commands.Cog):
                     card_info = self.parse_card_info(card_info_data)
 
                     embed_color = self.get_embed_color(random_card['category'])
-                    embed = Embed(title="Loot Box Opened!", description="You received a card!", color=embed_color)
+                    embed = Embed(title="Loot Box Opened!", color=embed_color)
                     embed.add_field(name="Card Name", value=card_info['name'], inline=True)
                     embed.add_field(name="Card ID", value=random_card['id'], inline=True)
                     embed.add_field(name="Season", value=random_card['season'], inline=True)
