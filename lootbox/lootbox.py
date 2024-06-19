@@ -1,11 +1,11 @@
 import aiohttp
 import random
 import xml.etree.ElementTree as ET
-from redbot.core import commands, Config
+from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 from discord import Embed
 
-class lootbox(commands.Cog):
+class Lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -13,26 +13,31 @@ class lootbox(commands.Cog):
             "season": 1,
             "categories": ["common", "rare", "ultra-rare"],
             "useragent": "",
-            "nationName": ""
+            "nationName": "",
+            "cooldown": 3600  # Default cooldown is 1 hour
         }
         default_user = {
-            "password": ""
+            "password": "",
+            "last_used": 0,
+            "uses": 0
         }
         self.config.register_global(**default_global)
         self.config.register_user(**default_user)
 
     @commands.group()
     async def cardset(self, ctx):
-        """Group of commands to set season, categories, user-agent, and nationName."""
+        """Group of commands to set season, categories, user-agent, nationName, and cooldown."""
         pass
 
     @cardset.command()
+    @checks.admin_or_permissions(manage_guild=True)
     async def season(self, ctx, season: int):
         """Set the season to filter cards."""
         await self.config.season.set(season)
         await ctx.send(f"Season set to {season}")
 
     @cardset.command()
+    @checks.admin_or_permissions(manage_guild=True)
     async def categories(self, ctx, *categories: str):
         """Set the categories to filter cards."""
         categories = [category.upper() for category in categories]
@@ -40,16 +45,25 @@ class lootbox(commands.Cog):
         await ctx.send(f"Categories set to {', '.join(categories)}")
 
     @cardset.command()
+    @checks.admin_or_permissions(manage_guild=True)
     async def useragent(self, ctx, *, useragent: str):
         """Set the User-Agent header for the requests."""
         await self.config.useragent.set(useragent)
         await ctx.send(f"User-Agent set to {useragent}")
     
     @cardset.command()
+    @checks.admin_or_permissions(manage_guild=True)
     async def nationname(self, ctx, *, nationname: str):
         """Set the nationName for the loot box prizes."""
         await self.config.nationName.set(nationname)
         await ctx.send(f"Nation Name set to {nationname}")
+
+    @cardset.command()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def cooldown(self, ctx, cooldown: int):
+        """Set the cooldown period for the loot box command in seconds."""
+        await self.config.cooldown.set(cooldown)
+        await ctx.send(f"Cooldown set to {cooldown} seconds")
 
     @commands.dm_only()
     @cardset.command()
@@ -64,6 +78,34 @@ class lootbox(commands.Cog):
         season = await self.config.season()
         categories = await self.config.categories()
         useragent = await self.config.useragent()
+        cooldown = await self.config.cooldown()
+
+        now = ctx.message.created_at.timestamp()
+        user_data = await self.config.user(ctx.author).all()
+        last_used = user_data["last_used"]
+        uses = user_data["uses"]
+
+        if now - last_used < cooldown:
+            # Check role limits
+            max_uses = 1
+            if ctx.guild:
+                member = ctx.guild.get_member(ctx.author.id)
+                if member:
+                    if 1098646004250726420 in [role.id for role in member.roles]:
+                        max_uses = 2
+                    if 1098673767858843648 in [role.id for role in member.roles]:
+                        max_uses = 3
+            if uses >= max_uses:
+                remaining_time = cooldown - (now - last_used)
+                await ctx.send(f"Please wait {int(remaining_time)} seconds before opening another loot box.")
+                return
+        else:
+            # Reset uses after cooldown
+            uses = 0
+
+        # Update user's last used time and uses
+        await self.config.user(ctx.author).last_used.set(now)
+        await self.config.user(ctx.author).uses.set(uses + 1)
 
         headers = {"User-Agent": useragent}
 
