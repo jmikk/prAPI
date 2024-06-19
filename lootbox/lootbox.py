@@ -6,7 +6,7 @@ from redbot.core.bot import Red
 from discord import Embed
 import time
 
-class lootbox(commands.Cog):
+class Lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -129,7 +129,8 @@ class lootbox(commands.Cog):
                     return
 
                 random_card = random.choice(cards)
-                embed = Embed(title="Loot Box Opened!", description="You received a card!", color=0x00ff00)
+                embed_color = self.get_embed_color(random_card['category'])
+                embed = Embed(title="Loot Box Opened!", description="You received a card!", color=embed_color)
                 embed.add_field(name="Card ID", value=random_card['id'], inline=True)
                 embed.add_field(name="Season", value=random_card['season'], inline=True)
                 embed.add_field(name="Category", value=random_card['category'], inline=True)
@@ -149,6 +150,17 @@ class lootbox(commands.Cog):
                     {"id": card_id, "season": card_season, "category": card_category}
                 )
         return cards
+
+    def get_embed_color(self, category):
+        colors = {
+            "COMMON": 0x808080,       # Grey
+            "UNCOMMON": 0x00FF00,     # Green
+            "RARE": 0x0000FF,         # Blue
+            "ULTRA-RARE": 0x800080,   # Purple
+            "EPIC": 0xFFA500,         # Orange
+            "LEGENDARY": 0xFFFF00     # Yellow
+        }
+        return colors.get(category.upper(), 0xFFFFFF)  # Default to white if not found
 
 
 def setup(bot):
