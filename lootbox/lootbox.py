@@ -12,6 +12,8 @@ class lootbox(commands.Cog):
             "season": 1,
             "categories": ["common", "rare", "ultra-rare"],
             "useragent": "9006",
+            "nationName": "9006",
+            "password": "",
         }
         self.config.register_global(**default_global)
 
@@ -37,11 +39,28 @@ class lootbox(commands.Cog):
         """Set the User-Agent header for the requests."""
         await self.config.useragent.set(useragent)
         await ctx.send(f"User-Agent set to {useragent}")
+    
+    @cardset.command()
+    async def nationName(self, ctx, *, nationName: str):
+        """Set the nationName for the loot box prizes."""
+        await self.config.useragent.set(nationName)
+        await ctx.send(f"User-Agent set to {nationName}")
+    
+    @cardset.command()
+    async def password(self, ctx, *, password: str):
+        """Set the password for the loot box prizes."""
+        await self.config.useragent.set(password)
+        await ctx.send(f"User-Agent set to {password}")
 
     @commands.command()
-    async def getcard(self, ctx, nationname: str):
+    async def getcard(self, ctx):
         """Fetch a random card from the specified nation's deck based on season and category."""
         season = await self.config.season()
+        nationname = await self.config.nationName()
+        password = await self.config.password()
+        if not password:
+            await ctx.send("Please set a password with cardset password {password}")
+            return
         categories = await self.config.categories()
         useragent = await self.config.useragent()
 
