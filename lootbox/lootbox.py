@@ -34,6 +34,7 @@ class lootbox(commands.Cog):
     @cardset.command()
     async def categories(self, ctx, *categories: str):
         """Set the categories to filter cards."""
+        categories=categories.upper()
         await self.config.categories.set(categories)
         await ctx.send(f"Categories set to {', '.join(categories)}")
 
@@ -60,13 +61,26 @@ class lootbox(commands.Cog):
     async def getcard(self, ctx):
         """Fetch a random card from the specified nation's deck based on season and category."""
         season = await self.config.season()
+        if not season:
+            await ctx.send("Please set a password with cardset season {season}.")
+            return
         nationname = await self.config.nationName()
+        if not nationname:
+            await ctx.send("Please set a nationname with cardset nationname {nationname}.")
+            return
         password = await self.config.user(ctx.author).password()
         if not password:
-            await ctx.send("Please set a password with cardset password {password} in DM.")
+            await ctx.send("Please set a password with cardset password {password}.")
             return
         categories = await self.config.categories()
+        if not categories:
+            await ctx.send("Please set a password with cardset categories {categories}.")
+            return
         useragent = await self.config.useragent()
+        if not useragent:
+            await ctx.send("Please set a password with cardset useragent {useragent}")
+            return
+        
 
         headers = {"User-Agent": useragent}
 
