@@ -4,8 +4,9 @@ import xml.etree.ElementTree as ET
 from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 from discord import Embed
+import time
 
-class lootbox(commands.Cog):
+class Lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -97,7 +98,8 @@ class lootbox(commands.Cog):
                         max_uses = 3
             if uses >= max_uses:
                 remaining_time = cooldown - (now - last_used)
-                await ctx.send(f"Please wait {int(remaining_time)} seconds before opening another loot box.")
+                timestamp = int(time.time() + remaining_time)
+                await ctx.send(f"Please wait until <t:{timestamp}:R> before opening another loot box.")
                 return
         else:
             # Reset uses after cooldown
