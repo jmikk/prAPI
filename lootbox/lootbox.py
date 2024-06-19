@@ -66,6 +66,13 @@ class lootbox(commands.Cog):
         await self.config.cooldown.set(cooldown)
         await ctx.send(f"Cooldown set to {cooldown} seconds")
 
+    @cardset.command()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def resetrequests(self, ctx):
+        """Set the User-Agent header for the requests."""
+        await self.config.uses.set(0)
+        await ctx.send(f"uses set to 0")
+
     @commands.dm_only()
     @cardset.command()
     async def password(self, ctx, *, password: str):
