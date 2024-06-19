@@ -6,7 +6,7 @@ from redbot.core.bot import Red
 from discord import Embed
 import time
 
-class lootbox(commands.Cog):
+class Lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -66,14 +66,6 @@ class lootbox(commands.Cog):
         await self.config.cooldown.set(cooldown)
         await ctx.send(f"Cooldown set to {cooldown} seconds")
 
-    @cardset.command()
-    @checks.admin_or_permissions(manage_guild=True)
-    async def resetrequests(self, ctx):
-        """Set the User-Agent header for the requests."""
-        await self.config.uses.set(0)
-        await self.config.last_used.set(0)
-        await ctx.send(f"uses set to 0")
-
     @commands.dm_only()
     @cardset.command()
     async def password(self, ctx, *, password: str):
@@ -82,7 +74,7 @@ class lootbox(commands.Cog):
         await ctx.send(f"Password set to {password}")
 
     @commands.command()
-    async def openlootbox(self, ctx, nationname: str):
+    async def openlootbox(self, ctx, nationname: str, recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
         season = await self.config.season()
         categories = await self.config.categories()
@@ -118,6 +110,7 @@ class lootbox(commands.Cog):
         await self.config.user(ctx.author).uses.set(uses + 1)
 
         headers = {"User-Agent": useragent}
+        password = await self.config.user(ctx.author).password()
 
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(
@@ -142,9 +135,61 @@ class lootbox(commands.Cog):
                 embed.add_field(name="Card ID", value=random_card['id'], inline=True)
                 embed.add_field(name="Season", value=random_card['season'], inline=True)
                 embed.add_field(name="Category", value=random_card['category'], inline=True)
-                embed.set_footer(text="Gifting feature coming soon!")
-
                 await ctx.send(embed=embed)
+
+                # Prepare the gift
+                prepare_data = {
+                    "nation": nationname,
+                    "c": "giftcard",
+                    "cardid": random_card['id'],
+                    "season": random_card['season'],
+                    "to": recipient,
+                    "mode": "prepare"
+                }
+                prepare_headers = {
+                    "User-Agent": useragent,
+                    "X-Password": password
+                }
+
+                async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
+                    if prepare_response.status != 200:
+                        await ctx.send("Failed to prepare the gift.")
+                        return
+
+                    prepare_response_data = await prepare_response.text()
+                    token = self.parse_token(prepare_response_data)
+
+                    if not token:
+                        await ctx.send("Failed to retrieve the token for gift execution.")
+                        return
+
+                    # Execute the gift
+                    execute_data = {
+                        "nation": nationname,
+                        "c": "giftcard",
+                        "cardid": random_card['id'],
+                        "season": random_card['season'],
+                        "to": recipient,
+                        "mode": "execute",
+                        "token": token
+                    }
+                    execute_headers = {
+                        "User-Agent": useragent
+                    }
+
+                    async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
+                        if execute_response.status == 200:
+                            await ctx.send(f"Successfully gifted the card to {recipient}!")
+                        else:
+                            await ctx.send("Failed to execute the gift.")
+
+    @commands.command()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def resetrequests(self, ctx, user: commands.UserConverter):
+        """Reset a user's requests, allowing them to open more loot boxes."""
+        await self.config.user(user).last_used.set(0)
+        await self.config.user(user).uses.set(0)
+        await ctx.send(f"{user.display_name}'s requests have been reset.")
 
     def parse_cards(self, xml_data, season, categories):
         root = ET.fromstring(xml_data)
@@ -158,6 +203,11 @@ class lootbox(commands.Cog):
                     {"id": card_id, "season": card_season, "category": card_category}
                 )
         return cards
+
+    def parse_token(self, xml_data):
+        root = ET.fromstring(xml_data)
+        token = root.find("TOKEN")
+        return token.text if token is not None else None
 
     def get_embed_color(self, category):
         colors = {
