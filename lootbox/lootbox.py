@@ -162,6 +162,7 @@ class lootbox(commands.Cog):
                     token = self.parse_token(prepare_response_data)
 
                     if not token:
+                        await ctx.send(prepare_response.text)
                         await ctx.send("Failed to retrieve the token for gift execution.")
                         return
 
