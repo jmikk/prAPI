@@ -11,7 +11,7 @@ from datetime import datetime
 
 tsv_file = "report.tsv"
 
-class lootbox(commands.Cog):
+class Lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -212,6 +212,15 @@ class lootbox(commands.Cog):
         await self.config.user(user).last_used.set(0)
         await self.config.user(user).uses.set(0)
         await ctx.send(f"{user.display_name}'s requests have been reset.")
+
+    @commands.command()
+    async def view_report(self, ctx):
+        # Read and send the contents of the TSV file
+        if not os.path.exists(tsv_file) or os.path.getsize(tsv_file) == 0:
+            await ctx.send("The report file is empty.")
+            return
+
+        await ctx.send(file=discord.File(tsv_file))
 
     def parse_cards(self, xml_data, season, categories):
         root = ET.fromstring(xml_data)
