@@ -175,9 +175,7 @@ class sheets(commands.Cog):
             await ctx.send("The report file is empty.")
             return
 
-        with open(tsv_file, 'r') as file:
-            content = file.read()
-            await ctx.send(f"```\n{content}\n```")
+        await ctx.send(file=File(tsv_file))
 
     @commands.command()
     async def clear_report(self, ctx):
