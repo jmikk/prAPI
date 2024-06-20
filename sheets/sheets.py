@@ -8,6 +8,7 @@ import asyncio
 import csv
 import os
 from datetime import datetime
+from discord import Embed, File
 
 
 tsv_file = "report.tsv"
