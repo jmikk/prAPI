@@ -46,7 +46,7 @@ class lootbox(commands.Cog):
     @checks.admin_or_permissions(manage_guild=True)
     async def categories(self, ctx, *categories: str):
         """Set the categories to filter cards."""
-        categories = [category.upper() for category in categories]
+        categories = [category for category in categories]
         await self.config.categories.set(categories)
         await ctx.send(f"Categories set to {', '.join(categories)}")
 
