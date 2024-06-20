@@ -50,6 +50,16 @@ class lootbox(commands.Cog):
         await self.config.categories.set(categories)
         await ctx.send(f"Categories set to {', '.join(categories)}")
 
+        
+    @cardset.command()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def view_c(self, ctx):
+        """Set the categories to filter cards."""
+        
+        await ctx.send(await self.config.categories.get(categories))
+
+
+
     @cardset.command()
     @checks.admin_or_permissions(manage_guild=True)
     async def useragent(self, ctx, *, useragent: str):
