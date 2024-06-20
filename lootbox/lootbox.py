@@ -56,7 +56,7 @@ class lootbox(commands.Cog):
     async def view_c(self, ctx):
         """Set the categories to filter cards."""
         
-        await ctx.send(await self.config.categories.get(categories))
+        await ctx.send(await self.config.categories())
 
 
 
