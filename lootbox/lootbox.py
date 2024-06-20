@@ -17,7 +17,7 @@ class lootbox(commands.Cog):
         self.config = Config.get_conf(self, identifier=1234567890)
         default_global = {
             "season": 1,
-            "categories": ["common", "rare", "ultra-rare"],
+            "categories": ["common","uncommon", "rare", "ultra-rare","epic"],
             "useragent": "",
             "nationName": "",
             "cooldown": 3600  # Default cooldown is 1 hour
