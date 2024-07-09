@@ -89,7 +89,7 @@ class lootbox(commands.Cog):
         await ctx.send(f"Password set to {password}")
 
     @commands.command()
-    async def openlootbox(self, ctx, recipient*: str):
+    async def openlootbox(self, ctx, *, recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
         recipient = recipient.replace(" ","_")
         await ctx.send(recipient)
