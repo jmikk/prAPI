@@ -186,6 +186,11 @@ class lootbox(commands.Cog):
 
                 async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
                     if prepare_response.status != 200:
+                        if prepare_response.status == 409:
+                            await ctx.send("Try again in a few secounds")
+                            await self.config.user(ctx.author).uses.set(uses - 1)
+
+                            
                         await ctx.send(prepare_response.text)
                         await ctx.send("Failed to prepare the gift.")
                         return
