@@ -98,6 +98,8 @@ class lootbox(commands.Cog):
         categories = await self.config.categories()
         useragent = await self.config.useragent()
         cooldown = await self.config.cooldown()
+        if cooldown > 86400:
+            cooldown = 86400
 
         now = ctx.message.created_at.timestamp()
         user_data = await self.config.user(ctx.author).all()
