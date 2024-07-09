@@ -16,7 +16,7 @@ class lootbox(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
         default_global = {
-            "season": 1,
+            "season": 3,
             "categories": ["common","uncommon", "rare", "ultra-rare","epic"],
             "useragent": "",
             "nationName": "",
@@ -85,7 +85,7 @@ class lootbox(commands.Cog):
     @cardset.command()
     async def password(self, ctx, *, password: str):
         """Set the password for the loot box prizes in DM."""
-        await self.config.global.password.set(password)
+        await self.config.password.set(password)
         await ctx.send(f"Password set to {password}")
 
     @commands.command()
