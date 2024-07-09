@@ -21,9 +21,9 @@ class lootbox(commands.Cog):
             "useragent": "",
             "nationName": "",
             "cooldown": 3600  # Default cooldown is 1 hour
+            "password": "",
         }
         default_user = {
-            "password": "",
             "last_used": 0,
             "uses": 0
         }
@@ -85,7 +85,7 @@ class lootbox(commands.Cog):
     @cardset.command()
     async def password(self, ctx, *, password: str):
         """Set the password for the loot box prizes in DM."""
-        await self.config.user(ctx.author).password.set(password)
+        await self.config.global.password.set(password)
         await ctx.send(f"Password set to {password}")
 
     @commands.command()
