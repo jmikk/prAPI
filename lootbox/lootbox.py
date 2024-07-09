@@ -189,6 +189,7 @@ class lootbox(commands.Cog):
                         if prepare_response.status == 409:
                             await ctx.send("Try again in a few secounds")
                             await self.config.user(ctx.author).uses.set(uses - 1)
+                            return
 
                             
                         await ctx.send(prepare_response.text)
