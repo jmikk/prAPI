@@ -130,7 +130,7 @@ class lootbox(commands.Cog):
         await self.config.user(ctx.author).uses.set(uses + 1)
 
         headers = {"User-Agent": useragent}
-        password = await self.config.user(ctx.author).password()
+        password = await self.config.password()
 
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(
