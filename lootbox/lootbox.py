@@ -91,8 +91,7 @@ class lootbox(commands.Cog):
     @commands.command()
     async def openlootbox(self, ctx, *, recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
-        recipient =  "".join(recipient)
-        recipient = recipient.replace(" ","_")
+        recipient =  "_".join(recipient)
         await ctx.send(recipient)
         season = await self.config.season()
         nationname = await self.config.nationName()
