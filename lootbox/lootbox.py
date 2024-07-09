@@ -20,7 +20,7 @@ class lootbox(commands.Cog):
             "categories": ["common","uncommon", "rare", "ultra-rare","epic"],
             "useragent": "",
             "nationName": "",
-            "cooldown": 3600  # Default cooldown is 1 hour
+            "cooldown": 3600,  # Default cooldown is 1 hour
             "password": "",
         }
         default_user = {
