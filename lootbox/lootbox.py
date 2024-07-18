@@ -89,6 +89,7 @@ class lootbox(commands.Cog):
         await ctx.send(f"Password set to {password}")
 
     @commands.command()
+    @commands.cooldown(1, 60, commands.BucketType.default)  # 1 use per 60 seconds
     async def openlootbox(self, ctx, *recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
         recipient =  "_".join(recipient)
