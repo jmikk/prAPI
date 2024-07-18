@@ -92,6 +92,9 @@ class lootbox(commands.Cog):
     @commands.cooldown(1, 60, commands.BucketType.default)  # 1 use per 60 seconds
     async def openlootbox(self, ctx, *recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
+        if len(recipient) < 1:
+            await ctx.send("Make sure to put your nation in after openlootbox")
+            return
         recipient =  "_".join(recipient)
         await ctx.send(recipient)
         season = await self.config.season()
