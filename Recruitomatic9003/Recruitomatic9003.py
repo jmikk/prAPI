@@ -10,6 +10,7 @@ import discord
 import os
 import re
 
+
 global nations_tged
 nations_tged=[]
 global processed_nations
