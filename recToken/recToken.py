@@ -182,6 +182,7 @@ class recToken(commands.Cog):
         @checks.is_owner()
         async def showcredits(self, ctx):
             """Display the content of the leaderboards.txt file."""
+            await ctx.send("here")
             lbPath = await self.CheckPath(ctx, "tokens.txt")
             
             if not os.path.exists(lbPath):
