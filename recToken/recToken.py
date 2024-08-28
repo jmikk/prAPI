@@ -132,20 +132,32 @@ class recToken(commands.Cog):
     
         await ctx.send(embed=discord.Embed(description=f"Project '{project}' has been removed.", color=discord.Color.green()))
 
-
     @commands.command()
     @checks.is_owner()
-    async def addproject(self, ctx, project: str, required_credits: int):
-        """Add a new project to the kingdom."""
+    async def addproject(self, ctx, project: str, required_credits: int, *required_items: str):
+        """Add a new project to the kingdom with required credits and items."""
         async with self.config.guild(ctx.guild).projects() as projects:
+            # Parse required items
+            items_dict = {}
+            for item in required_items:
+                try:
+                    name, quantity = item.split(":")
+                    items_dict[name.strip()] = int(quantity.strip())
+                except ValueError:
+                    return await ctx.send(embed=discord.Embed(description=f"Invalid item format: '{item}'. Use 'item:quantity'.", color=discord.Color.red()))
+    
             projects[project] = {
                 "required_credits": required_credits,
                 "current_credits": 0,
                 "donated_items": [],
                 "thumbnail": "",
-                "description": ""
+                "description": "",
+                "required_items": items_dict  # Store the required items and their quantities
             }
-        await ctx.send(embed=discord.Embed(description=f"Project '{project}' added with {required_credits} credits needed.", color=discord.Color.green()))
+    
+        required_items_str = ", ".join([f"{name}: {quantity}" for name, quantity in items_dict.items()])
+        await ctx.send(embed=discord.Embed(description=f"Project '{project}' added with {required_credits} credits needed and items: {required_items_str}.", color=discord.Color.green()))
+    
 
     @commands.command()
     @checks.is_owner()
