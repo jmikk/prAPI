@@ -1,4 +1,5 @@
 import discord
+import asyncio
 from redbot.core import commands, Config, checks
 
 class recToken(commands.Cog):
@@ -52,12 +53,18 @@ class recToken(commands.Cog):
                     await message.edit(embed=new_embed)
                     await message.remove_reaction(reaction.emoji, user)
 
-                except discord.TimeoutError:
+                except asyncio.TimeoutError:  # Correct exception to catch
                     break
 
     def create_embed(self, projects, project_names, index):
         project_name = project_names[index]
         project = projects[project_name]
+
+        # Calculate the completion percentage
+        if project["required_credits"] > 0:
+            percent_complete = (project["current_credits"] / project["required_credits"]) * 100
+        else:
+            percent_complete = 100  # If no credits are required, it's already complete
 
         embed = discord.Embed(
             title=f"Project: {project_name}",
@@ -70,13 +77,18 @@ class recToken(commands.Cog):
             inline=False
         )
         embed.add_field(
+            name="% Complete",
+            value=f"{percent_complete:.2f}% complete",  # Display percentage with two decimal places
+            inline=False
+        )
+        embed.add_field(
             name="Donated Items",
             value=", ".join(project['donated_items']) or "None",
             inline=False
         )
         if project["thumbnail"]:
             embed.set_thumbnail(url=project["thumbnail"])
-        
+
         return embed
 
     @commands.command()
@@ -143,20 +155,19 @@ class recToken(commands.Cog):
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
                 return await ctx.send(embed=discord.Embed(description=f"Project '{project}' not found.", color=discord.Color.red()))
-    
+
             user_credits = await self.config.user(ctx.author).credits()
             if user_credits < amount:
                 return await ctx.send(embed=discord.Embed(description="You don't have enough credits.", color=discord.Color.red()))
-    
+
             # Update the project's credits
             projects[project]["current_credits"] += amount
-    
+
             # Update the user's credits
             new_credits = user_credits - amount
             await self.config.user(ctx.author).credits.set(new_credits)
-    
-        await ctx.send(embed=discord.Embed(description=f"{amount} credits donated to '{project}'.", color=discord.Color.green()))
 
+        await ctx.send(embed=discord.Embed(description=f"{amount} credits donated to '{project}'.", color=discord.Color.green()))
 
     @commands.command()
     async def donateitem(self, ctx, project: str, item: str):
@@ -164,16 +175,15 @@ class recToken(commands.Cog):
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
                 return await ctx.send(embed=discord.Embed(description=f"Project '{project}' not found.", color=discord.Color.red()))
-    
+
             async with self.config.user(ctx.author).items() as items:
                 if item not in items:
                     return await ctx.send(embed=discord.Embed(description="You don't have this item.", color=discord.Color.red()))
                 items.remove(item)
-    
-            projects[project]["donated_items"].append(item)
-    
-        await ctx.send(embed=discord.Embed(description=f"Item '{item}' donated to '{project}'.", color=discord.Color.green()))
 
+            projects[project]["donated_items"].append(item)
+
+        await ctx.send(embed=discord.Embed(description=f"Item '{item}' donated to '{project}'.", color=discord.Color.green()))
 
 def setup(bot):
     bot.add_cog(recToken(bot))
