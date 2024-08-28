@@ -264,6 +264,7 @@ class prAPI(commands.Cog):
             "mode": "prepare",
         }
         r = await self.api_request(data=data)
+        await ctx.send(r)
         rmbToken = r.xml.find("SUCCESS").text
         data.update(mode="execute", token=rmbToken)
         r = await self.api_request(data=data)
