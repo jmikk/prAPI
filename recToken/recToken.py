@@ -3,94 +3,6 @@ from redbot.core import commands
 from redbot.core import Config, checks
 from discord.ui import Button, View
 
-class recToken(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
-        
-        default_user = {
-            "credits": 0,
-            "items": []
-        }
-
-        default_guild = {
-            "items": {},  # {"emoji": {"name": "item_name", "price": price}}
-            "projects": {}  # {"project_name": {"required_credits": int, "current_credits": int, "donated_items": [], "thumbnail": "", "description": ""}}
-        }
-        
-        self.config.register_user(**default_user)
-        self.config.register_guild(**default_guild)
-
-    @commands.command()
-    @checks.is_owner()
-    async def givecredits(self, ctx, user: discord.User, amount: int):
-        """Manually give credits to a user."""
-        current_credits = await self.config.user(user).credits()  # Retrieve current credits
-        new_credits = current_credits + amount  # Update the credits
-        await self.config.user(user).credits.set(new_credits)  # Set the new value
-        await ctx.send(embed=discord.Embed(description=f"{amount} credits given to {user.name}.", color=discord.Color.green()))
-
-    @commands.command()
-    @checks.is_owner()
-    async def giveitem(self, ctx, user: discord.User, emoji: str):
-        """Manually give an item to a user."""
-        async with self.config.guild(ctx.guild).items() as store_items:
-            if emoji not in store_items:
-                return await ctx.send(embed=discord.Embed(description="This item does not exist.", color=discord.Color.red()))
-
-        async with self.config.user(user).items() as items:
-            items.append(emoji)
-        await ctx.send(embed=discord.Embed(description=f"{store_items[emoji]['name']} given to {user.name}.", color=discord.Color.green()))
-
-    @commands.command()
-    @checks.is_owner()
-    async def additem(self, ctx, emoji: str, name: str, price: int):
-        """Add a new item to the store."""
-        async with self.config.guild(ctx.guild).items() as items:
-            items[emoji] = {"name": name, "price": price}
-        await ctx.send(embed=discord.Embed(description=f"Item {name} added to the store for {price} credits.", color=discord.Color.green()))
-
-    @commands.command()
-    @checks.is_owner()
-    async def addproject(self, ctx, project: str, required_credits: int):
-        """Add a new project to the kingdom."""
-        async with self.config.guild(ctx.guild).projects() as projects:
-            projects[project] = {
-                "required_credits": required_credits,
-                "current_credits": 0,
-                "donated_items": [],
-                "thumbnail": "",
-                "description": ""
-            }
-        await ctx.send(embed=discord.Embed(description=f"Project {project} added with {required_credits} credits needed.", color=discord.Color.green()))
-
-    @commands.command()
-    @checks.is_owner()
-    async def editproject(self, ctx, project: str, thumbnail: str = None, description: str = None):
-        """Edit a project's thumbnail and description."""
-        async with self.config.guild(ctx.guild).projects() as projects:
-            if project not in projects:
-                return await ctx.send(embed=discord.Embed(description="Project not found.", color=discord.Color.red()))
-            
-            if thumbnail:
-                projects[project]["thumbnail"] = thumbnail
-            if description:
-                projects[project]["description"] = description
-
-        await ctx.send(embed=discord.Embed(description=f"Project {project} updated.", color=discord.Color.green()))
-
-    @commands.command()
-    async def viewprojects(self, ctx):
-        """View ongoing projects and their progress with scrolling embeds."""
-        projects = await self.config.guild(ctx.guild).projects()
-        if not projects:
-            await ctx.send(embed=discord.Embed(description="No ongoing projects.", color=discord.Color.red()))
-        else:
-            project_names = list(projects.keys())
-            view = ProjectScrollView(ctx, projects, project_names, self.config)
-            embed = view.create_embed(0)
-            await ctx.send(embed=embed, view=view)
-
 class ProjectScrollView(View):
     def __init__(self, ctx, projects, project_names, config):
         super().__init__(timeout=60)
@@ -208,6 +120,95 @@ class CustomDonationModal(discord.ui.Modal):
             await interaction.response.send_message(f"{amount} credits donated to {self.project_name}.", ephemeral=True)
             embed = ProjectScrollView(self.ctx, self.project, self.project_name, self.config).create_embed(0)
             await interaction.message.edit(embed=embed)
+
+
+class recToken(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
+        
+        default_user = {
+            "credits": 0,
+            "items": []
+        }
+
+        default_guild = {
+            "items": {},  # {"emoji": {"name": "item_name", "price": price}}
+            "projects": {}  # {"project_name": {"required_credits": int, "current_credits": int, "donated_items": [], "thumbnail": "", "description": ""}}
+        }
+        
+        self.config.register_user(**default_user)
+        self.config.register_guild(**default_guild)
+
+    @commands.command()
+    @checks.is_owner()
+    async def givecredits(self, ctx, user: discord.User, amount: int):
+        """Manually give credits to a user."""
+        current_credits = await self.config.user(user).credits()  # Retrieve current credits
+        new_credits = current_credits + amount  # Update the credits
+        await self.config.user(user).credits.set(new_credits)  # Set the new value
+        await ctx.send(embed=discord.Embed(description=f"{amount} credits given to {user.name}.", color=discord.Color.green()))
+
+    @commands.command()
+    @checks.is_owner()
+    async def giveitem(self, ctx, user: discord.User, emoji: str):
+        """Manually give an item to a user."""
+        async with self.config.guild(ctx.guild).items() as store_items:
+            if emoji not in store_items:
+                return await ctx.send(embed=discord.Embed(description="This item does not exist.", color=discord.Color.red()))
+
+        async with self.config.user(user).items() as items:
+            items.append(emoji)
+        await ctx.send(embed=discord.Embed(description=f"{store_items[emoji]['name']} given to {user.name}.", color=discord.Color.green()))
+
+    @commands.command()
+    @checks.is_owner()
+    async def additem(self, ctx, emoji: str, name: str, price: int):
+        """Add a new item to the store."""
+        async with self.config.guild(ctx.guild).items() as items:
+            items[emoji] = {"name": name, "price": price}
+        await ctx.send(embed=discord.Embed(description=f"Item {name} added to the store for {price} credits.", color=discord.Color.green()))
+
+    @commands.command()
+    @checks.is_owner()
+    async def addproject(self, ctx, project: str, required_credits: int):
+        """Add a new project to the kingdom."""
+        async with self.config.guild(ctx.guild).projects() as projects:
+            projects[project] = {
+                "required_credits": required_credits,
+                "current_credits": 0,
+                "donated_items": [],
+                "thumbnail": "",
+                "description": ""
+            }
+        await ctx.send(embed=discord.Embed(description=f"Project {project} added with {required_credits} credits needed.", color=discord.Color.green()))
+
+    @commands.command()
+    @checks.is_owner()
+    async def editproject(self, ctx, project: str, thumbnail: str = None, description: str = None):
+        """Edit a project's thumbnail and description."""
+        async with self.config.guild(ctx.guild).projects() as projects:
+            if project not in projects:
+                return await ctx.send(embed=discord.Embed(description="Project not found.", color=discord.Color.red()))
+            
+            if thumbnail:
+                projects[project]["thumbnail"] = thumbnail
+            if description:
+                projects[project]["description"] = description
+
+        await ctx.send(embed=discord.Embed(description=f"Project {project} updated.", color=discord.Color.green()))
+
+    @commands.command()
+    async def viewprojects(self, ctx):
+        """View ongoing projects and their progress with scrolling embeds."""
+        projects = await self.config.guild(ctx.guild).projects()
+        if not projects:
+            await ctx.send(embed=discord.Embed(description="No ongoing projects.", color=discord.Color.red()))
+        else:
+            project_names = list(projects.keys())
+            view = ProjectScrollView(ctx, projects, project_names, self.config)
+            embed = view.create_embed(0)
+            await ctx.send(embed=embed, view=view)
 
 def setup(bot):
     bot.add_cog(Storefront(bot))
