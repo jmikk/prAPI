@@ -149,25 +149,35 @@ class recToken(commands.Cog):
         await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' updated.", color=discord.Color.green()))
 
     @commands.command()
-    async def donatecredits(self, ctx, project: str, amount: int):
-        """Donate a specified amount of credits to a project."""
+    async def donatecredits(self, ctx, project: str, amount: str):
+        """Donate a specified amount of credits to a project, or all credits if 'all' is specified."""
         project = self.normalize_project_name(project)
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
                 return await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()))
-
+    
             user_credits = await self.config.user(ctx.author).credits()
-            if user_credits < amount:
+    
+            if amount.lower() == "all":
+                amount_to_donate = user_credits
+            else:
+                try:
+                    amount_to_donate = int(amount)
+                except ValueError:
+                    return await ctx.send(embed=discord.Embed(description="Please specify a valid number of credits or 'all'.", color=discord.Color.red()))
+    
+            if amount_to_donate > user_credits:
                 return await ctx.send(embed=discord.Embed(description="You don't have enough credits.", color=discord.Color.red()))
-
+    
             # Update the project's credits
-            projects[project]["current_credits"] += amount
-
+            projects[project]["current_credits"] += amount_to_donate
+    
             # Update the user's credits
-            new_credits = user_credits - amount
+            new_credits = user_credits - amount_to_donate
             await self.config.user(ctx.author).credits.set(new_credits)
-
-        await ctx.send(embed=discord.Embed(description=f"{amount} credits donated to '{self.display_project_name(project)}'.", color=discord.Color.green()))
+    
+        await ctx.send(embed=discord.Embed(description=f"{amount_to_donate} credits donated to '{self.display_project_name(project)}'.", color=discord.Color.green()))
+    
 
 def setup(bot):
     bot.add_cog(recToken(bot))
