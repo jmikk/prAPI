@@ -18,6 +18,14 @@ class recToken(commands.Cog):
         self.config.register_user(**default_user)
         self.config.register_guild(**default_guild)
 
+    def normalize_project_name(self, project: str) -> str:
+        """Normalize the project name for consistent storage and retrieval."""
+        return project.lower()
+
+    def display_project_name(self, project: str) -> str:
+        """Format the project name for display in title case."""
+        return project.title()
+
     @commands.command()
     async def viewprojects(self, ctx):
         """View ongoing projects and navigate using emoji reactions."""
@@ -65,7 +73,7 @@ class recToken(commands.Cog):
             percent_complete = 100  # If no credits are required, it's already complete
     
         embed = discord.Embed(
-            title=f"Project: {project_name}",
+            title=f"Project: {self.display_project_name(project_name)}",
             description=project["description"] or "No description available.",
             color=discord.Color.blue()
         )
@@ -84,7 +92,6 @@ class recToken(commands.Cog):
     
         return embed
 
-
     @commands.command()
     @checks.is_owner()
     async def givecredits(self, ctx, user: discord.User, amount: int):
@@ -98,18 +105,20 @@ class recToken(commands.Cog):
     @checks.is_owner()
     async def removeproject(self, ctx, project: str):
         """Remove a project from the kingdom."""
+        project = self.normalize_project_name(project)
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
-                return await ctx.send(embed=discord.Embed(description=f"Project '{project}' not found.", color=discord.Color.red()))
+                return await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()))
     
             del projects[project]  # Remove the project from the dictionary
     
-        await ctx.send(embed=discord.Embed(description=f"Project '{project}' has been removed.", color=discord.Color.green()))
+        await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' has been removed.", color=discord.Color.green()))
 
     @commands.command()
     @checks.is_owner()
     async def addproject(self, ctx, project: str, required_credits: int, emoji: str = "💰"):
         """Add a new project to the kingdom with required credits and an optional emoji."""
+        project = self.normalize_project_name(project)
         async with self.config.guild(ctx.guild).projects() as projects:
             projects[project] = {
                 "required_credits": required_credits,
@@ -119,16 +128,16 @@ class recToken(commands.Cog):
                 "emoji": emoji  # Store the emoji representing credits
             }
     
-        await ctx.send(embed=discord.Embed(description=f"Project '{project}' added with {required_credits} credits needed.", color=discord.Color.green()))
-    
+        await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' added with {required_credits} credits needed.", color=discord.Color.green()))
 
     @commands.command()
     @checks.is_owner()
     async def editproject(self, ctx, project: str, description: str = None, thumbnail: str = None, emoji: str = None):
         """Edit a project's thumbnail, description, and emoji."""
+        project = self.normalize_project_name(project)
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
-                return await ctx.send(embed=discord.Embed(description="Project not found.", color=discord.Color.red()))
+                return await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()))
             
             if thumbnail:
                 projects[project]["thumbnail"] = thumbnail
@@ -137,14 +146,15 @@ class recToken(commands.Cog):
             if emoji:
                 projects[project]["emoji"] = emoji
 
-        await ctx.send(embed=discord.Embed(description=f"Project '{project}' updated.", color=discord.Color.green()))
+        await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' updated.", color=discord.Color.green()))
 
     @commands.command()
     async def donatecredits(self, ctx, project: str, amount: int):
         """Donate a specified amount of credits to a project."""
+        project = self.normalize_project_name(project)
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
-                return await ctx.send(embed=discord.Embed(description=f"Project '{project}' not found.", color=discord.Color.red()))
+                return await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()))
 
             user_credits = await self.config.user(ctx.author).credits()
             if user_credits < amount:
@@ -157,7 +167,7 @@ class recToken(commands.Cog):
             new_credits = user_credits - amount
             await self.config.user(ctx.author).credits.set(new_credits)
 
-        await ctx.send(embed=discord.Embed(description=f"{amount} credits donated to '{project}'.", color=discord.Color.green()))
+        await ctx.send(embed=discord.Embed(description=f"{amount} credits donated to '{self.display_project_name(project)}'.", color=discord.Color.green()))
 
 def setup(bot):
     bot.add_cog(recToken(bot))
