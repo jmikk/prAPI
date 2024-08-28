@@ -3,7 +3,7 @@ from discord.ext import commands
 from redbot.core import Config, checks
 from redbot.core.commands.context import Context
 
-class Storefront(commands.Cog):
+class recToken(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=87654345678765, force_registration=True)
