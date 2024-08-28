@@ -126,7 +126,7 @@ class ProjectScrollView(View):
 
     @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary)
     async def previous_button(self, button: Button, interaction: discord.Interaction):
-        await ctx.send("here")
+        await interaction.response.send_message("Button pressed!", ephemeral=True)  # Temporary for debugging 
         if self.current_index > 0:
             self.current_index -= 1
         else:
