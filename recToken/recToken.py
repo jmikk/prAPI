@@ -6,7 +6,7 @@ from redbot.core.commands.context import Context
 class Storefront(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
+        self.config = Config.get_conf(self, identifier=87654345678765, force_registration=True)
         
         default_user = {
             "credits": 0,
