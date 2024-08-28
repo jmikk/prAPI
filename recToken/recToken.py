@@ -174,12 +174,12 @@ class ProjectScrollView(View):
                 credits -= amount
             async with self.config.guild(self.ctx.guild).projects() as projects:
                 projects[project_name]["current_credits"] += amount
-            await interaction.response.send_message(f"{amount} credits donated to {project_name}.", ephemeral=True)
             embed = self.create_embed(self.current_index)
-            await interaction.message.edit(embed=embed)
+            await interaction.response.edit_message(embed=embed, view=self)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user == self.ctx.author
+
 
 class CustomDonationModal(discord.ui.Modal):
     def __init__(self, ctx, project, config, project_name):
