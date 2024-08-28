@@ -9,12 +9,10 @@ class recToken(commands.Cog):
         
         default_user = {
             "credits": 0,
-            "items": []
         }
 
         default_guild = {
-            "items": {},  # {"emoji": {"name": "item_name", "price": price}}
-            "projects": {}  # {"project_name": {"required_credits": int, "current_credits": int, "donated_items": [], "thumbnail": "", "description": ""}}
+            "projects": {}  # {"project_name": {"required_credits": int, "current_credits": int, "thumbnail": "", "description": "", "emoji": ""}}
         }
         
         self.config.register_user(**default_user)
@@ -66,35 +64,19 @@ class recToken(commands.Cog):
         else:
             percent_complete = 100  # If no credits are required, it's already complete
     
-        # Prepare the required items string
-        if "required_items" in project and project["required_items"]:
-            required_items_str = "\n".join([f"{item}: {quantity}" for item, quantity in project["required_items"].items()])
-        else:
-            required_items_str = "None"
-    
         embed = discord.Embed(
             title=f"Project: {project_name}",
             description=project["description"] or "No description available.",
             color=discord.Color.blue()
         )
         embed.add_field(
-            name="Credits",
+            name=f"Credits {project.get('emoji', '💰')}",
             value=f"{project['current_credits']}/{project['required_credits']} credits",
             inline=False
         )
         embed.add_field(
             name="% Complete",
             value=f"{percent_complete:.2f}% complete",
-            inline=False
-        )
-        embed.add_field(
-            name="Required Items",
-            value=required_items_str,
-            inline=False
-        )
-        embed.add_field(
-            name="Donated Items",
-            value=", ".join(project['donated_items']) or "None",
             inline=False
         )
         if project["thumbnail"]:
@@ -114,26 +96,6 @@ class recToken(commands.Cog):
 
     @commands.command()
     @checks.is_owner()
-    async def giveitem(self, ctx, user: discord.User, emoji: str):
-        """Manually give an item to a user."""
-        async with self.config.guild(ctx.guild).items() as store_items:
-            if emoji not in store_items:
-                return await ctx.send(embed=discord.Embed(description="This item does not exist.", color=discord.Color.red()))
-
-        async with self.config.user(user).items() as items:
-            items.append(emoji)
-        await ctx.send(embed=discord.Embed(description=f"{store_items[emoji]['name']} given to {user.name}.", color=discord.Color.green()))
-
-    @commands.command()
-    @checks.is_owner()
-    async def additem(self, ctx, emoji: str, name: str, price: int):
-        """Add a new item to the store."""
-        async with self.config.guild(ctx.guild).items() as items:
-            items[emoji] = {"name": name, "price": price}
-        await ctx.send(embed=discord.Embed(description=f"Item {name} added to the store for {price} credits.", color=discord.Color.green()))
-
-    @commands.command()
-    @checks.is_owner()
     async def removeproject(self, ctx, project: str):
         """Remove a project from the kingdom."""
         async with self.config.guild(ctx.guild).projects() as projects:
@@ -146,35 +108,24 @@ class recToken(commands.Cog):
 
     @commands.command()
     @checks.is_owner()
-    async def addproject(self, ctx, project: str, required_credits: int, *required_items: str):
-        """Add a new project to the kingdom with required credits and items."""
+    async def addproject(self, ctx, project: str, required_credits: int, emoji: str = "💰"):
+        """Add a new project to the kingdom with required credits and an optional emoji."""
         async with self.config.guild(ctx.guild).projects() as projects:
-            # Parse required items
-            items_dict = {}
-            for item in required_items:
-                try:
-                    name, quantity = item.split(":")
-                    items_dict[name.strip()] = int(quantity.strip())
-                except ValueError:
-                    return await ctx.send(embed=discord.Embed(description=f"Invalid item format: '{item}'. Use 'item:quantity'.", color=discord.Color.red()))
-    
             projects[project] = {
                 "required_credits": required_credits,
                 "current_credits": 0,
-                "donated_items": [],
                 "thumbnail": "",
                 "description": "",
-                "required_items": items_dict  # Store the required items and their quantities
+                "emoji": emoji  # Store the emoji representing credits
             }
     
-        required_items_str = ", ".join([f"{name}: {quantity}" for name, quantity in items_dict.items()])
-        await ctx.send(embed=discord.Embed(description=f"Project '{project}' added with {required_credits} credits needed and items: {required_items_str}.", color=discord.Color.green()))
+        await ctx.send(embed=discord.Embed(description=f"Project '{project}' added with {required_credits} credits needed.", color=discord.Color.green()))
     
 
     @commands.command()
     @checks.is_owner()
-    async def editproject(self, ctx, project: str, description: str = None, thumbnail: str = None,):
-        """Edit a project's thumbnail and description."""
+    async def editproject(self, ctx, project: str, description: str = None, thumbnail: str = None, emoji: str = None):
+        """Edit a project's thumbnail, description, and emoji."""
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
                 return await ctx.send(embed=discord.Embed(description="Project not found.", color=discord.Color.red()))
@@ -183,6 +134,8 @@ class recToken(commands.Cog):
                 projects[project]["thumbnail"] = thumbnail
             if description:
                 projects[project]["description"] = description
+            if emoji:
+                projects[project]["emoji"] = emoji
 
         await ctx.send(embed=discord.Embed(description=f"Project '{project}' updated.", color=discord.Color.green()))
 
@@ -205,22 +158,6 @@ class recToken(commands.Cog):
             await self.config.user(ctx.author).credits.set(new_credits)
 
         await ctx.send(embed=discord.Embed(description=f"{amount} credits donated to '{project}'.", color=discord.Color.green()))
-
-    @commands.command()
-    async def donateitem(self, ctx, project: str, item: str):
-        """Donate an item to a project."""
-        async with self.config.guild(ctx.guild).projects() as projects:
-            if project not in projects:
-                return await ctx.send(embed=discord.Embed(description=f"Project '{project}' not found.", color=discord.Color.red()))
-
-            async with self.config.user(ctx.author).items() as items:
-                if item not in items:
-                    return await ctx.send(embed=discord.Embed(description="You don't have this item.", color=discord.Color.red()))
-                items.remove(item)
-
-            projects[project]["donated_items"].append(item)
-
-        await ctx.send(embed=discord.Embed(description=f"Item '{item}' donated to '{project}'.", color=discord.Color.green()))
 
 def setup(bot):
     bot.add_cog(recToken(bot))
