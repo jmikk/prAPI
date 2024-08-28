@@ -30,42 +30,48 @@ class recToken(commands.Cog):
             project_names = list(projects.keys())
             initial_embed = self.create_embed(projects, project_names, 0)
             message = await ctx.send(embed=initial_embed)
-
+    
             # Add reaction buttons
             await message.add_reaction("⬅️")
             await message.add_reaction("➡️")
-
+    
             def check(reaction, user):
                 return user == ctx.author and str(reaction.emoji) in ["⬅️", "➡️"] and reaction.message.id == message.id
-
+    
             current_index = 0
-
+    
             while True:
                 try:
                     reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-
+    
                     if str(reaction.emoji) == "➡️":
                         current_index = (current_index + 1) % len(project_names)
                     elif str(reaction.emoji) == "⬅️":
                         current_index = (current_index - 1) % len(project_names)
-
+    
                     new_embed = self.create_embed(projects, project_names, current_index)
                     await message.edit(embed=new_embed)
                     await message.remove_reaction(reaction.emoji, user)
-
-                except asyncio.TimeoutError:  # Correct exception to catch
+    
+                except asyncio.TimeoutError:
                     break
-
+    
     def create_embed(self, projects, project_names, index):
         project_name = project_names[index]
         project = projects[project_name]
-
+    
         # Calculate the completion percentage
         if project["required_credits"] > 0:
             percent_complete = (project["current_credits"] / project["required_credits"]) * 100
         else:
             percent_complete = 100  # If no credits are required, it's already complete
-
+    
+        # Prepare the required items string
+        if "required_items" in project and project["required_items"]:
+            required_items_str = "\n".join([f"{item}: {quantity}" for item, quantity in project["required_items"].items()])
+        else:
+            required_items_str = "None"
+    
         embed = discord.Embed(
             title=f"Project: {project_name}",
             description=project["description"] or "No description available.",
@@ -78,7 +84,12 @@ class recToken(commands.Cog):
         )
         embed.add_field(
             name="% Complete",
-            value=f"{percent_complete:.2f}% complete",  # Display percentage with two decimal places
+            value=f"{percent_complete:.2f}% complete",
+            inline=False
+        )
+        embed.add_field(
+            name="Required Items",
+            value=required_items_str,
             inline=False
         )
         embed.add_field(
@@ -88,8 +99,9 @@ class recToken(commands.Cog):
         )
         if project["thumbnail"]:
             embed.set_thumbnail(url=project["thumbnail"])
-
+    
         return embed
+
 
     @commands.command()
     @checks.is_owner()
