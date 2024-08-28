@@ -143,16 +143,20 @@ class recToken(commands.Cog):
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
                 return await ctx.send(embed=discord.Embed(description=f"Project '{project}' not found.", color=discord.Color.red()))
-
+    
             user_credits = await self.config.user(ctx.author).credits()
             if user_credits < amount:
                 return await ctx.send(embed=discord.Embed(description="You don't have enough credits.", color=discord.Color.red()))
-
+    
+            # Update the project's credits
             projects[project]["current_credits"] += amount
-            async with self.config.user(ctx.author).credits() as credits:
-                credits -= amount
-
+    
+            # Update the user's credits
+            new_credits = user_credits - amount
+            await self.config.user(ctx.author).credits.set(new_credits)
+    
         await ctx.send(embed=discord.Embed(description=f"{amount} credits donated to '{project}'.", color=discord.Color.green()))
+
 
     @commands.command()
     async def donateitem(self, ctx, project: str, item: str):
@@ -160,15 +164,16 @@ class recToken(commands.Cog):
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
                 return await ctx.send(embed=discord.Embed(description=f"Project '{project}' not found.", color=discord.Color.red()))
-
+    
             async with self.config.user(ctx.author).items() as items:
                 if item not in items:
                     return await ctx.send(embed=discord.Embed(description="You don't have this item.", color=discord.Color.red()))
                 items.remove(item)
-
+    
             projects[project]["donated_items"].append(item)
-
+    
         await ctx.send(embed=discord.Embed(description=f"Item '{item}' donated to '{project}'.", color=discord.Color.green()))
+
 
 def setup(bot):
     bot.add_cog(recToken(bot))
