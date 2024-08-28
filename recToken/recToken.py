@@ -11,7 +11,7 @@ def is_owner_overridable():
     return commands.permissions_check(predicate)
 
 
-class myCog(commands.Cog):
+class recToken(commands.Cog):
     """My custom cog"""
 
     def __init__(self, bot):
