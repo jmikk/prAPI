@@ -26,8 +26,9 @@ class recToken(commands.Cog):
     @checks.is_owner()
     async def givecredits(self, ctx, user: discord.User, amount: int):
         """Manually give credits to a user."""
-        async with self.config.user(user).credits() as credits:
-            credits += amount
+        current_credits = await self.config.user(user).credits()  # Retrieve current credits
+        new_credits = current_credits + amount  # Update the credits
+        await self.config.user(user).credits.set(new_credits)  # Set the new value
         await ctx.send(embed=discord.Embed(description=f"{amount} credits given to {user.name}.", color=discord.Color.green()))
 
     @commands.command()
