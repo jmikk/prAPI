@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from redbot.core import Config, checks
 from redbot.core.commands.context import Context
+from redbot.core import commands, Config
 
 class recToken(commands.Cog):
     def __init__(self, bot):
