@@ -122,6 +122,19 @@ class recToken(commands.Cog):
 
     @commands.command()
     @checks.is_owner()
+    async def removeproject(self, ctx, project: str):
+        """Remove a project from the kingdom."""
+        async with self.config.guild(ctx.guild).projects() as projects:
+            if project not in projects:
+                return await ctx.send(embed=discord.Embed(description=f"Project '{project}' not found.", color=discord.Color.red()))
+    
+            del projects[project]  # Remove the project from the dictionary
+    
+        await ctx.send(embed=discord.Embed(description=f"Project '{project}' has been removed.", color=discord.Color.green()))
+
+
+    @commands.command()
+    @checks.is_owner()
     async def addproject(self, ctx, project: str, required_credits: int):
         """Add a new project to the kingdom."""
         async with self.config.guild(ctx.guild).projects() as projects:
@@ -136,7 +149,7 @@ class recToken(commands.Cog):
 
     @commands.command()
     @checks.is_owner()
-    async def editproject(self, ctx, project: str, thumbnail: str = None, description: str = None):
+    async def editproject(self, ctx, project: str, description: str = None, thumbnail: str = None,):
         """Edit a project's thumbnail and description."""
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
