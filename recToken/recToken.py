@@ -3,7 +3,7 @@ from redbot.core import commands
 from redbot.core import Config, checks
 from discord.ui import Button, View
 
-class RecToken(commands.Cog):
+class recToken(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
