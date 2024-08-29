@@ -1,7 +1,7 @@
 import discord
 import asyncio
 from redbot.core import commands, Config, checks
-from scroll import Scroll
+import os
 
 class recToken(commands.Cog):
     def __init__(self, bot):
