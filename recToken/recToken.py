@@ -1,7 +1,7 @@
 import discord
 import asyncio
 from redbot.core import commands, Config, checks
-from Scroll import CheckPath
+from scroll import CheckPath
 
 class recToken(commands.Cog):
     def __init__(self, bot):
