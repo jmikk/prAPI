@@ -8,10 +8,6 @@ class recToken(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(none, identifier=23456789648)
         
-        default_user = {
-            "credits": 0,
-        }
-
         default_guild = {
             "projects": {}  # {"project_name": {"required_credits": int, "current_credits": int, "thumbnail": "", "description": "", "emoji": ""}}
         }
