@@ -175,30 +175,19 @@ class recToken(commands.Cog):
         await ctx.send(embed=discord.Embed(description=f"{amount_to_donate} credits donated to '{self.display_project_name(project)}'.", color=discord.Color.green()))
     
     @commands.command()
-    async def showcredits(self, ctx):
-        """Display the content of the tokens.txt file."""
-        scroll_cog = ctx.bot.get_cog("Scroll")  # Access the Scroll cog
-    
-        if scroll_cog is None:
-            return await ctx.send(embed=discord.Embed(description="Scroll cog is not loaded or available.", color=discord.Color.red()))
-    
-        try:
-            lbPath = await scroll_cog.CheckPath(ctx, "tokens.txt")  # Use the method from Scroll cog
-            lbPath = str(lbPath[1])
-            if not os.path.exists(lbPath):
-                return await ctx.send(embed=discord.Embed(description="The tokens file does not exist.", color=discord.Color.red()))
-    
-            with open(lbPath, "r") as file:
-                content = file.read()
-    
-            if len(content) > 2000:  # Discord message limit
-                await ctx.send(embed=discord.Embed(description="The tokens file is too large to display.", color=discord.Color.red()))
-            else:
-                await ctx.send(f"**Tokens Content:**\n```{content}```")
-    
-        except Exception as e:
-            await ctx.send(embed=discord.Embed(description=f"An error occurred while reading the file: {e}", color=discord.Color.red()))
+    async def checkcredits(self, ctx):
+        """Check and display your current credits."""
+        user_id = ctx.author.id  # Get the ID of the user who invoked the command
+        credits = await self.config.user_from_id(user_id).credits()  # Retrieve the user's credits
 
+        # Create and send an embed message showing the credits
+        embed = discord.Embed(
+            title="Your Credits",
+            description=f"You currently have **{credits}** credits.",
+            color=discord.Color.green()
+        )
+
+        await ctx.send(embed=embed)
 
     
 
