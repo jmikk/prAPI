@@ -5,7 +5,7 @@ from redbot.core import commands, Config, checks
 class recToken(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
+        self.config = Config.get_conf(self, identifier=23456789648, force_registration=True)
         
         default_user = {
             "credits": 0,
@@ -178,27 +178,27 @@ class recToken(commands.Cog):
     
         await ctx.send(embed=discord.Embed(description=f"{amount_to_donate} credits donated to '{self.display_project_name(project)}'.", color=discord.Color.green()))
     
-        @commands.command()
-        @checks.is_owner()
-        async def showcredits(self, ctx):
-            """Display the content of the leaderboards.txt file."""
-            await ctx.send("here")
-            lbPath = await self.CheckPath(ctx, "tokens.txt")
+    @commands.command()
+    @checks.is_owner()
+    async def showcredits(self, ctx):
+        """Display the content of the leaderboards.txt file."""
+        await ctx.send("here")
+        lbPath = await self.CheckPath(ctx, "tokens.txt")
             
-            if not os.path.exists(lbPath):
-                return await ctx.send(embed=discord.Embed(description="The leaderboard file does not exist.", color=discord.Color.red()))
+        if not os.path.exists(lbPath):
+            return await ctx.send(embed=discord.Embed(description="The leaderboard file does not exist.", color=discord.Color.red()))
             
-            try:
-                with open(lbPath, "r") as file:
-                    content = file.read()
+        try:
+            with open(lbPath, "r") as file:
+                content = file.read()
     
-                if len(content) > 2000:  # Discord message limit
-                    await ctx.send(embed=discord.Embed(description="The leaderboard file is too large to display.", color=discord.Color.red()))
-                else:
-                    await ctx.send(f"**Leaderboard Content:**\n```{content}```")
+            if len(content) > 2000:  # Discord message limit
+                await ctx.send(embed=discord.Embed(description="The leaderboard file is too large to display.", color=discord.Color.red()))
+            else:
+                await ctx.send(f"**Leaderboard Content:**\n```{content}```")
     
-            except Exception as e:
-                await ctx.send(embed=discord.Embed(description=f"An error occurred while reading the file: {e}", color=discord.Color.red()))
+        except Exception as e:
+            await ctx.send(embed=discord.Embed(description=f"An error occurred while reading the file: {e}", color=discord.Color.red()))
 
     
 
