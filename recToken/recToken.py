@@ -12,7 +12,6 @@ class recToken(commands.Cog):
             "projects": {}  # {"project_name": {"required_credits": int, "current_credits": int, "thumbnail": "", "description": "", "emoji": ""}}
         }
         
-        self.config.register_user(**default_user)
         self.config.register_guild(**default_guild)
 
     def normalize_project_name(self, project: str) -> str:
