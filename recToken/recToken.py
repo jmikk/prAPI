@@ -6,7 +6,7 @@ import os
 class recToken(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(none, identifier=23456789648, force_registration=True)
+        self.config = Config.get_conf(none, identifier=23456789648)
         
         default_user = {
             "credits": 0,
