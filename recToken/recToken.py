@@ -189,7 +189,7 @@ class recToken(commands.Cog):
     
         try:
             lbPath = await scroll_cog.CheckPath(ctx, "tokens.txt")  # Use the method from Scroll cog
-    
+            lbPath = str(lbPath[1])
             if not os.path.exists(lbPath):
                 return await ctx.send(embed=discord.Embed(description="The tokens file does not exist.", color=discord.Color.red()))
     
