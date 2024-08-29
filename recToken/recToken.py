@@ -1,7 +1,7 @@
 import discord
 import asyncio
 from redbot.core import commands, Config, checks
-from scroll import CheckPath
+from scroll import Scroll
 
 class recToken(commands.Cog):
     def __init__(self, bot):
@@ -185,7 +185,7 @@ class recToken(commands.Cog):
         """Display the content of the leaderboards.txt file."""
         await ctx.send("here")
         
-        lbPath = await CheckPath(ctx, "tokens.txt")            
+        lbPath = await Scroll().CheckPath(ctx, "tokens.txt")            
         if not os.path.exists(lbPath):
             return await ctx.send(embed=discord.Embed(description="The leaderboard file does not exist.", color=discord.Color.red()))
             
