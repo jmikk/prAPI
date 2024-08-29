@@ -180,26 +180,30 @@ class recToken(commands.Cog):
         await ctx.send(embed=discord.Embed(description=f"{amount_to_donate} credits donated to '{self.display_project_name(project)}'.", color=discord.Color.green()))
     
     @commands.command()
-    @checks.is_owner()
     async def showcredits(self, ctx):
-        """Display the content of the leaderboards.txt file."""
-        await ctx.send("here")
-        
-        lbPath = await Scroll().CheckPath(ctx, "tokens.txt")            
-        if not os.path.exists(lbPath):
-            return await ctx.send(embed=discord.Embed(description="The leaderboard file does not exist.", color=discord.Color.red()))
-            
+        """Display the content of the tokens.txt file."""
+        scroll_cog = ctx.bot.get_cog("Scroll")  # Access the Scroll cog
+    
+        if scroll_cog is None:
+            return await ctx.send(embed=discord.Embed(description="Scroll cog is not loaded or available.", color=discord.Color.red()))
+    
         try:
+            lbPath = await scroll_cog.CheckPath(ctx, "tokens.txt")  # Use the method from Scroll cog
+    
+            if not os.path.exists(lbPath):
+                return await ctx.send(embed=discord.Embed(description="The tokens file does not exist.", color=discord.Color.red()))
+    
             with open(lbPath, "r") as file:
                 content = file.read()
     
             if len(content) > 2000:  # Discord message limit
-                await ctx.send(embed=discord.Embed(description="The leaderboard file is too large to display.", color=discord.Color.red()))
+                await ctx.send(embed=discord.Embed(description="The tokens file is too large to display.", color=discord.Color.red()))
             else:
-                await ctx.send(f"**Leaderboard Content:**\n```{content}```")
+                await ctx.send(f"**Tokens Content:**\n```{content}```")
     
         except Exception as e:
             await ctx.send(embed=discord.Embed(description=f"An error occurred while reading the file: {e}", color=discord.Color.red()))
+
 
     
 
