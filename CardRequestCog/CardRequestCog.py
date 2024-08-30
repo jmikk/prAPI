@@ -95,13 +95,13 @@ class CardRequestCog(commands.Cog):
         user_agent = await self.config.user_agent()
         headers = {"User-Agent": user_agent}
 
-        response = requests.get("https://www.nationstates.net/cgi-bin/api.cgi", params=data, auth=(claim_nation, password), headers=headers)
+        response = requests.post("https://www.nationstates.net/cgi-bin/api.cgi", params=data, auth=(claim_nation, password), headers=headers)
         root = ET.fromstring(response.content)
         gift_token = root.find("SUCCESS").text
 
         # Execute the card gift
         data.update(mode="execute", token=gift_token)
-        response = requests.get("https://www.nationstates.net/cgi-bin/api.cgi", params=data, auth=(claim_nation, password), headers=headers)
+        response = requests.post("https://www.nationstates.net/cgi-bin/api.cgi", params=data, auth=(claim_nation, password), headers=headers)
 
         # Log the request
         requests[user_id] = {"month": current_month, "card_id": card_id, "nation": giftie}
