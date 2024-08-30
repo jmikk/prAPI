@@ -4,6 +4,8 @@ import xml.etree.ElementTree as ET
 import requests
 import random
 from datetime import datetime, timedelta
+import sans
+
 
 class CardRequestCog(commands.Cog):
     """Cog for managing card requests and sending cards"""
@@ -11,24 +13,30 @@ class CardRequestCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
+        self.password = ""
         default_global = {
             "claim_nations": [],
-            "password": "",
-            "user_agent": "RedbotCardRequestCog/1.0",
+            "user_agent": "RedbotCardRequestCog/1.0 written by 9003 for Luc-Oliver",
             "request_log_channel": None,
             "requests": {},
             "last_reset": None,
         }
+        self.auth = sans.NSAuth()
+
         self.config.register_global(**default_global)
         self.password = ""
 
+    async def api_request(self, data) -> sans.Response:
+        response = await self.client.get(sans.World(**data), auth=self.auth)
+        response.raise_for_status()
+        return response
+
     @commands.command()
     @commands.is_owner()
-    async def set_claim_password(self, ctx, *, password: str):
-        """Sets the password shared by all nations from which cards can be claimed"""
-        await self.config.password.set(password)
-        self.password = password
-        await ctx.send("Password set successfully.")
+    async def set_claim_nation_password(self, ctx, *, password2):
+        self.password=password2
+        self.auth = sans.NSAuth(password=self.password)
+        await ctx.send(f"Set regional nation password for {self.RegionalNation}.")
 
     @commands.command()
     @commands.is_owner()
@@ -45,10 +53,10 @@ class CardRequestCog(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def set_user_agent(self, ctx, *, user_agent: str):
-        """Sets the User-Agent header for API requests"""
-        await self.config.user_agent.set(user_agent)
-        await ctx.send(f"User-Agent set to {user_agent}.")
+    async def CRC_agent(self, ctx, *,agent):
+        sans.set_agent(agent, _force=True)
+        await ctx.send("Agent set.")
+        self.UA=agent
 
     @commands.command()
     @commands.is_owner()
@@ -60,6 +68,11 @@ class CardRequestCog(commands.Cog):
     @commands.command()
     async def request_card2(self, ctx, card_id: str, season: str, destiNATION: str, gifter: str):
         """Request a card from a nation"""
+
+        self.auth = sans.NSAuth(password=self.password)
+
+
+        
         user_id = str(ctx.author.id)
         current_month = datetime.utcnow().month
         requests = await self.config.requests()
@@ -80,29 +93,26 @@ class CardRequestCog(commands.Cog):
             return
 
         giftie = destiNATION.lower().replace(" ", "_")
-        claim_nation = gifter
 
-        # Prepare the API request to gift the card
+        await self.reauth()
+        await ctx.send(
+            f"Attempting to gift {cardid} to {giftie} from {gifter}"
+        )
         data = {
-            "nation": claim_nation,
-            "cardid": card_id,
+            "nation": gifter,
+            "cardid": cardid,
             "season": season,
             "to": giftie,
             "mode": "prepare",
             "c": "giftcard",
         }
-        password = await self.config.password()
-        user_agent = await self.config.user_agent()
-        headers = {"User-Agent": user_agent}
-
-        response = requests.post("https://www.nationstates.net/cgi-bin/api.cgi", params=data, auth=(claim_nation, password), headers=headers)
-        root = ET.fromstring(response.content)
-        gift_token = root.find("SUCCESS").text
-
-        # Execute the card gift
-        data.update(mode="execute", token=gift_token)
-        response = requests.post("https://www.nationstates.net/cgi-bin/api.cgi", params=data, auth=(claim_nation, password), headers=headers)
-
+        r = await self.api_request(data)
+        giftToken = r.xml.find("SUCCESS").text
+        # await ctx.send(r.headers)
+        data.update(mode="execute", token=giftToken)
+        await self.api_request(data=data)
+        # await ctx.send(z2.content)
+        await ctx.send(f"Gifted {cardid}, season {season} to {giftie}")
         # Log the request
         requests[user_id] = {"month": current_month, "card_id": card_id, "nation": giftie}
         await self.config.requests.set(requests)
@@ -131,3 +141,4 @@ class CardRequestCog(commands.Cog):
             await self.config.last_reset.set(current_date.strftime("%Y-%m-%d"))
             return True
         return True
+
