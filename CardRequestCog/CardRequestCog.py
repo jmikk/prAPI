@@ -121,9 +121,9 @@ class CardRequestCog(commands.Cog):
         log_channel_id = await self.config.request_log_channel()
         log_channel = self.bot.get_channel(log_channel_id)
         if log_channel:
-            await log_channel.send(f"Card {card_id} (Season {season}) sent to {giftie} from {claim_nation}.")
+            await log_channel.send(f"Card {card_id} (Season {season}) sent to {giftie} from {gifter}.")
 
-        await ctx.send(f"Card {card_id} (Season {season}) has been sent to {giftie} from {claim_nation}.")
+        await ctx.send(f"Card {card_id} (Season {season}) has been sent to {giftie} from {gifter}.")
 
     @commands.command()
     @commands.is_owner()
