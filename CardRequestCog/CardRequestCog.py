@@ -67,16 +67,33 @@ class CardRequestCog(commands.Cog):
 
     @commands.command()
     @is_admin()
-    async def add_claim_nation(self, ctx, *, nation: str):
-        """Adds a nation from which cards can be claimed"""
+    async def add_claim_nations(self, ctx, *, nations: str):
+        """Adds multiple nations from which cards can be claimed. Separate nation names with a comma."""
         claim_nations = await self.config.claim_nations()
-        nation = "_".join(nation.lower().split())
-        if nation not in claim_nations:
-            claim_nations.append(nation)
-            await self.config.claim_nations.set(claim_nations)
-            await ctx.send(f"Nation {nation} added to the claim list.")
-        else:
-            await ctx.send(f"Nation {nation} is already in the claim list.")
+        added_nations = []
+        already_in_list = []
+    
+        # Split the input string by commas and process each nation
+        for nation in nations.split(","):
+            nation = "_".join(nation.strip().lower().split())
+            if nation not in claim_nations:
+                claim_nations.append(nation)
+                added_nations.append(nation)
+            else:
+                already_in_list.append(nation)
+    
+        # Save the updated list
+        await self.config.claim_nations.set(claim_nations)
+    
+        # Create a response message
+        response = []
+        if added_nations:
+            response.append(f"Added nations: {', '.join(added_nations)}")
+        if already_in_list:
+            response.append(f"Already in the list: {', '.join(already_in_list)}")
+    
+        await ctx.send("\n".join(response) if response else "No nations were added.")
+
 
     @commands.command()
     @is_admin()
