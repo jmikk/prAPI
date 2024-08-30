@@ -94,7 +94,6 @@ class CardRequestCog(commands.Cog):
 
         giftie = destiNATION.lower().replace(" ", "_")
 
-        await self.reauth()
         await ctx.send(
             f"Attempting to gift {cardid} to {giftie} from {gifter}"
         )
