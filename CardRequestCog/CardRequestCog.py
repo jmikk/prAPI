@@ -75,7 +75,7 @@ class CardRequestCog(commands.Cog):
             await ctx.send("No nations available for claiming cards.")
             return
 
-        if gifter not in claim_nations"
+        if gifter not in claim_nations:
             await ctx.send("No Nation not found: Error in the Gifter name please double check it")
             return
 
