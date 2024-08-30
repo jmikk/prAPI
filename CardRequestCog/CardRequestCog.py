@@ -58,7 +58,7 @@ class CardRequestCog(commands.Cog):
         await ctx.send(f"Log channel set to {channel_id}.")
 
     @commands.command()
-    async def request_card2(self, ctx, card_id: str, season: str, *, nation: str):
+    async def request_card2(self, ctx, card_id: str, season: str, destiNATION: str, gifter: str):
         """Request a card from a nation"""
         user_id = str(ctx.author.id)
         current_month = datetime.utcnow().month
@@ -75,8 +75,12 @@ class CardRequestCog(commands.Cog):
             await ctx.send("No nations available for claiming cards.")
             return
 
-        giftie = nation.lower().replace(" ", "_")
-        claim_nation = random.choice(claim_nations)
+        if gifter not in claim_nations"
+            await ctx.send("No Nation not found: Error in the Gifter name please double check it")
+            return
+
+        giftie = destiNATION.lower().replace(" ", "_")
+        claim_nation = gifter
 
         # Prepare the API request to gift the card
         data = {
