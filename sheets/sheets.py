@@ -46,7 +46,7 @@ class sheets(commands.Cog):
     @commands.command()
     async def request_card(self, ctx, card_id: int, *destination: str):
         destination = " ".join(destination)
-        await ctx.send("Lets see if I can find that card one secound!")
+        await ctx.send("Lets see if I can find that card one second!")
         user_agent = "9003"
         headers = {"User-Agent": user_agent}
         global nation_password
