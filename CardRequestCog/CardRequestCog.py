@@ -113,7 +113,6 @@ class CardRequestCog(commands.Cog):
         data.update(mode="execute", token=giftToken)
         await self.api_request(data=data)
         # await ctx.send(z2.content)
-        await ctx.send(f"Gifted {card_id}, season {season} to {giftie}")
         # Log the request
         requests[user_id] = {"month": current_month, "card_id": card_id, "nation": giftie}
         await self.config.requests.set(requests)
