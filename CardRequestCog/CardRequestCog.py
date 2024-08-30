@@ -38,7 +38,7 @@ class CardRequestCog(commands.Cog):
     async def set_claim_nation_password(self, ctx, *, password2):
         self.password=password2
         self.auth = sans.NSAuth(password=self.password)
-        await ctx.send(f"Set regional nation password for {self.RegionalNation}.")
+        await ctx.send(f"Set regional nation password.")
 
     @commands.command()
     @commands.is_owner()
