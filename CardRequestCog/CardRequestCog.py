@@ -35,6 +35,19 @@ class CardRequestCog(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
+    async def remove_claim_nation(self, ctx, *, nation: str):
+        """Removes a nation from which cards can be claimed"""
+        claim_nations = await self.config.claim_nations()
+        nation = "_".join(nation.lower().split())
+        if nation in claim_nations:
+            claim_nations.remove(nation)
+            await self.config.claim_nations.set(claim_nations)
+            await ctx.send(f"Nation {nation} removed from the claim list.")
+        else:
+            await ctx.send(f"Nation {nation} is not in the claim list.")
+
+    @commands.command()
+    @commands.is_owner()
     async def set_claim_nation_password(self, ctx, *, password2):
         self.password=password2
         self.auth = sans.NSAuth(password=self.password)
