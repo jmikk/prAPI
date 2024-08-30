@@ -58,7 +58,7 @@ class CardRequestCog(commands.Cog):
         await ctx.send(f"Log channel set to {channel_id}.")
 
     @commands.command()
-    async def request_card(self, ctx, card_id: str, season: str, *, nation: str):
+    async def request_card2(self, ctx, card_id: str, season: str, *, nation: str):
         """Request a card from a nation"""
         user_id = str(ctx.author.id)
         current_month = datetime.utcnow().month
