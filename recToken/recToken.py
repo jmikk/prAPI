@@ -1,30 +1,98 @@
 import discord
-import asyncio
-from redbot.core import commands, Config, checks
-import os
+from discord.ext import commands
+from redbot.core import Config
 
 class recToken(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=23456789648)
-        
+
         default_guild = {
             "projects": {}  # {"project_name": {"required_credits": int, "current_credits": int, "thumbnail": "", "description": "", "emoji": ""}}
         }
         
         self.config.register_guild(**default_guild)
+        self.config.register_user(credits=0)  # Ensure users have a credits field
 
     def normalize_project_name(self, project: str) -> str:
-        """Normalize the project name for consistent storage and retrieval."""
         return project.lower()
 
     def display_project_name(self, project: str) -> str:
-        """Format the project name for display in title case."""
         return project.title()
 
     @commands.command()
+    async def menu(self, ctx):
+        """Show a menu with available commands and buttons to execute them."""
+        embed = discord.Embed(
+            title="Command Menu",
+            description="Here are the available commands and what they do. You can use the buttons below or the traditional text commands.",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="View Projects",
+            value="Use `/viewprojects` to see ongoing projects.",
+            inline=False
+        )
+        embed.add_field(
+            name="Submit Project",
+            value="Use `/submitproject <project_name> [description] [thumbnail] [emoji]` to submit a new project for 1000 credits.",
+            inline=False
+        )
+        embed.add_field(
+            name="Donate Credits",
+            value="Use `/donatecredits <project_name> <amount>` to donate credits to a project.",
+            inline=False
+        )
+        embed.add_field(
+            name="Check Credits",
+            value="Use `/checkcredits` to check your current credit balance.",
+            inline=False
+        )
+        embed.add_field(
+            name="Add Project (Owner Only)",
+            value="Use `/addproject <project_name> <required_credits> [emoji]` to add a new project (Owner only).",
+            inline=False
+        )
+        embed.add_field(
+            name="Remove Project (Owner Only)",
+            value="Use `/removeproject <project_name>` to remove a project (Owner only).",
+            inline=False
+        )
+        embed.add_field(
+            name="Edit Project (Owner Only)",
+            value="Use `/editproject <project_name> [description] [thumbnail] [emoji]` to edit a project's details (Owner only).",
+            inline=False
+        )
+
+        # Create buttons
+        buttons = [
+            discord.ui.Button(label="View Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary),
+            discord.ui.Button(label="Submit Project", custom_id="submitproject", style=discord.ButtonStyle.success),
+            discord.ui.Button(label="Donate Credits", custom_id="donatecredits", style=discord.ButtonStyle.secondary),
+            discord.ui.Button(label="Check Credits", custom_id="checkcredits", style=discord.ButtonStyle.secondary)
+        ]
+
+        view = discord.ui.View()
+        for button in buttons:
+            view.add_item(button)
+
+        await ctx.send(embed=embed, view=view)
+
+    @commands.Cog.listener()
+    async def on_interaction(self, interaction: discord.Interaction):
+        """Handle button interactions for the menu."""
+        if interaction.custom_id == "viewprojects":
+            await self.viewprojects(interaction)
+        elif interaction.custom_id == "submitproject":
+            await interaction.response.send_message("Please use the `/submitproject` command to submit a project.", ephemeral=True)
+        elif interaction.custom_id == "donatecredits":
+            await interaction.response.send_message("Please use the `/donatecredits` command to donate credits to a project.", ephemeral=True)
+        elif interaction.custom_id == "checkcredits":
+            await self.checkcredits(interaction)
+
+    @commands.command()
     async def viewprojects(self, ctx):
-        """View ongoing projects and navigate using emoji reactions."""
         projects = await self.config.guild(ctx.guild).projects()
         if not projects:
             await ctx.send(embed=discord.Embed(description="No ongoing projects.", color=discord.Color.red()))
@@ -33,7 +101,6 @@ class recToken(commands.Cog):
             initial_embed = self.create_embed(projects, project_names, 0)
             message = await ctx.send(embed=initial_embed)
     
-            # Add reaction buttons
             await message.add_reaction("⬅️")
             await message.add_reaction("➡️")
     
@@ -62,11 +129,10 @@ class recToken(commands.Cog):
         project_name = project_names[index]
         project = projects[project_name]
     
-        # Calculate the completion percentage
         if project["required_credits"] > 0:
             percent_complete = (project["current_credits"] / project["required_credits"]) * 100
         else:
-            percent_complete = 100  # If no credits are required, it's already complete
+            percent_complete = 100
     
         embed = discord.Embed(
             title=f"Project: {self.display_project_name(project_name)}",
@@ -89,31 +155,28 @@ class recToken(commands.Cog):
         return embed
 
     @commands.command()
-    @checks.is_owner()
+    @commands.is_owner()
     async def givecredits(self, ctx, user: discord.User, amount: int):
-        """Manually give credits to a user."""
-        current_credits = await self.config.user(user).credits()  # Retrieve current credits
-        new_credits = current_credits + amount  # Update the credits
-        await self.config.user(user).credits.set(new_credits)  # Set the new value
+        current_credits = await self.config.user(user).credits()
+        new_credits = current_credits + amount
+        await self.config.user(user).credits.set(new_credits)
         await ctx.send(embed=discord.Embed(description=f"{amount} credits given to {user.name}.", color=discord.Color.green()))
 
     @commands.command()
-    @checks.is_owner()
+    @commands.is_owner()
     async def removeproject(self, ctx, project: str):
-        """Remove a project from the kingdom."""
         project = self.normalize_project_name(project)
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
                 return await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()))
     
-            del projects[project]  # Remove the project from the dictionary
+            del projects[project]
     
         await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' has been removed.", color=discord.Color.green()))
 
     @commands.command()
-    @checks.is_owner()
+    @commands.is_owner()
     async def addproject(self, ctx, project: str, required_credits: int, emoji: str = "💰"):
-        """Add a new project to the kingdom with required credits and an optional emoji."""
         project = self.normalize_project_name(project)
         async with self.config.guild(ctx.guild).projects() as projects:
             projects[project] = {
@@ -121,15 +184,14 @@ class recToken(commands.Cog):
                 "current_credits": 0,
                 "thumbnail": "",
                 "description": "",
-                "emoji": emoji  # Store the emoji representing credits
+                "emoji": emoji
             }
     
         await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' added with {required_credits} credits needed.", color=discord.Color.green()))
 
     @commands.command()
-    @checks.is_owner()
+    @commands.is_owner()
     async def editproject(self, ctx, project: str, description: str = None, thumbnail: str = None, emoji: str = None):
-        """Edit a project's thumbnail, description, and emoji."""
         project = self.normalize_project_name(project)
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
@@ -146,7 +208,6 @@ class recToken(commands.Cog):
 
     @commands.command()
     async def donatecredits(self, ctx, project: str, amount: str):
-        """Donate a specified amount of credits to a project, or all credits if 'all' is specified."""
         project = self.normalize_project_name(project)
         async with self.config.guild(ctx.guild).projects() as projects:
             if project not in projects:
@@ -165,22 +226,18 @@ class recToken(commands.Cog):
             if amount_to_donate > user_credits:
                 return await ctx.send(embed=discord.Embed(description="You don't have enough credits.", color=discord.Color.red()))
     
-            # Update the project's credits
             projects[project]["current_credits"] += amount_to_donate
     
-            # Update the user's credits
             new_credits = user_credits - amount_to_donate
             await self.config.user(ctx.author).credits.set(new_credits)
     
         await ctx.send(embed=discord.Embed(description=f"{amount_to_donate} credits donated to '{self.display_project_name(project)}'.", color=discord.Color.green()))
-    
+
     @commands.command()
     async def checkcredits(self, ctx):
-        """Check and display your current credits."""
-        user_id = ctx.author.id  # Get the ID of the user who invoked the command
-        credits = await self.config.user_from_id(user_id).credits()  # Retrieve the user's credits
+        user_id = ctx.author.id
+        credits = await self.config.user_from_id(user_id).credits()
 
-        # Create and send an embed message showing the credits
         embed = discord.Embed(
             title="Your Credits",
             description=f"You currently have **{credits}** credits.",
@@ -189,7 +246,30 @@ class recToken(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    
+    @commands.command()
+    async def submitproject(self, ctx, project: str, description: str = None, thumbnail: str = None, emoji: str = "💰"):
+        user_credits = await self.config.user(ctx.author).credits()
+
+        if user_credits < 1000:
+            return await ctx.send(embed=discord.Embed(description="You don't have enough credits to submit a project. You need 1000 credits.", color=discord.Color.red()))
+        
+        project = self.normalize_project_name(project)
+        async with self.config.guild(ctx.guild).projects() as projects:
+            if project in projects:
+                return await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' already exists.", color=discord.Color.red()))
+
+            await self.config.user(ctx.author).credits.set(user_credits - 1000)
+
+            projects[project] = {
+                "required_credits": 1000,
+                "current_credits": 0,
+                "thumbnail": thumbnail or "",
+                "description": description or "No description available.",
+                "emoji": emoji
+            }
+
+        await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' has been submitted for 1000 credits.", color=discord.Color.green()))
+
 
 def setup(bot):
     bot.add_cog(recToken(bot))
