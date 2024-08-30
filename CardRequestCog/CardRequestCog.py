@@ -6,6 +6,12 @@ import random
 from datetime import datetime, timedelta
 import sans
 
+def is_admin():
+    async def predicate(ctx):
+        # Check if the user has a role named "Admin"
+        return any(role.name == "Admin" for role in ctx.author.roles)
+    return commands.check(predicate)
+
 
 class CardRequestCog(commands.Cog):
     """Cog for managing card requests and sending cards"""
@@ -34,7 +40,7 @@ class CardRequestCog(commands.Cog):
         return response
 
     @commands.command()
-    @commands.is_owner()
+    @is_admin()
     async def remove_claim_nation(self, ctx, *, nation: str):
         """Removes a nation from which cards can be claimed"""
         claim_nations = await self.config.claim_nations()
@@ -47,14 +53,14 @@ class CardRequestCog(commands.Cog):
             await ctx.send(f"Nation {nation} is not in the claim list.")
 
     @commands.command()
-    @commands.is_owner()
+    @is_admin()
     async def set_claim_nation_password(self, ctx, *, password2):
         self.password=password2
         self.auth = sans.NSAuth(password=self.password)
         await ctx.send(f"Set regional nation password.")
 
     @commands.command()
-    @commands.is_owner()
+    @is_admin()
     async def add_claim_nation(self, ctx, *, nation: str):
         """Adds a nation from which cards can be claimed"""
         claim_nations = await self.config.claim_nations()
@@ -67,14 +73,14 @@ class CardRequestCog(commands.Cog):
             await ctx.send(f"Nation {nation} is already in the claim list.")
 
     @commands.command()
-    @commands.is_owner()
+    @is_admin()
     async def CRC_agent(self, ctx, *,agent):
         sans.set_agent(agent, _force=True)
         await ctx.send("Agent set.")
         self.UA=agent
 
     @commands.command()
-    @commands.is_owner()
+    @is_admin()
     async def set_log_channel(self, ctx, channel_id: int):
         """Sets the log channel where card transactions will be logged"""
         await self.config.request_log_channel.set(channel_id)
@@ -138,7 +144,7 @@ class CardRequestCog(commands.Cog):
         await ctx.send(f"Card {card_id} (Season {season}) has been sent to {giftie} from {gifter}.")
 
     @commands.command()
-    @commands.is_owner()
+    @is_admin()
     async def reset_requests(self, ctx):
         """Manually resets all requests"""
         await self.config.requests.set({})
