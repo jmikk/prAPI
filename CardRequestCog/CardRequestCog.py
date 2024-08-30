@@ -12,7 +12,7 @@ def is_admin():
         return any(role.name == "Admin" for role in ctx.author.roles)
     return commands.check(predicate)
 
-def giveaway():
+def is_giveaway():
     async def predicate(ctx):
         # Check if the user has a role named "Admin"
         return any(role.name == "Giveaway" for role in ctx.author.roles)
