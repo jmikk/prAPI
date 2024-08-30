@@ -95,11 +95,11 @@ class CardRequestCog(commands.Cog):
         giftie = destiNATION.lower().replace(" ", "_")
 
         await ctx.send(
-            f"Attempting to gift {cardid} to {giftie} from {gifter}"
+            f"Attempting to gift {card_id} to {giftie} from {gifter}"
         )
         data = {
             "nation": gifter,
-            "cardid": cardid,
+            "cardid": card_id,
             "season": season,
             "to": giftie,
             "mode": "prepare",
