@@ -14,6 +14,8 @@ class CardRequestCog(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
         self.password = ""
+        self.client = sans.AsyncClient()
+
         default_global = {
             "claim_nations": [],
             "user_agent": "RedbotCardRequestCog/1.0 written by 9003 for Luc-Oliver",
