@@ -93,12 +93,12 @@ class recToken(commands.Cog):
         embed.add_field(
             name=f"Credits {project.get('emoji', '💰')}",
             value=f"{project['current_credits']}/{project['required_credits']} credits",
-            inline=False
+            inline=True
         )
         embed.add_field(
             name="% Complete",
             value=f"{percent_complete:.2f}% complete",
-            inline=False
+            inline=True
         )
         if project["thumbnail"]:
             embed.set_thumbnail(url=project["thumbnail"])
