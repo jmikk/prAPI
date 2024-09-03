@@ -25,30 +25,17 @@ class recToken(commands.Cog):
         """Show a menu with available commands and buttons to execute them."""
         embed = discord.Embed(
             title="Command Menu",
-            description="Here are the available commands and what they do. You can use the buttons below or the traditional text commands.",
+            description="Use the buttons below to view projects or check your credits.",
             color=discord.Color.blue()
-        )
-        
-        embed.add_field(
-            name="View Projects",
-            value="Use `/viewprojects` to see ongoing projects.",
-            inline=False
-        )
-        embed.add_field(
-            name="Check Credits",
-            value="Use `/checkcredits` to check your current credit balance.",
-            inline=False
         )
 
         # Create buttons
-        buttons = [
-            discord.ui.Button(label="View Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary),
-            discord.ui.Button(label="Check Credits", custom_id="checkcredits", style=discord.ButtonStyle.success),
-        ]
+        view_projects_button = discord.ui.Button(label="View Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary)
+        check_credits_button = discord.ui.Button(label="Check Credits", custom_id="checkcredits", style=discord.ButtonStyle.success)
 
         view = discord.ui.View()
-        for button in buttons:
-            view.add_item(button)
+        view.add_item(view_projects_button)
+        view.add_item(check_credits_button)
 
         await ctx.send(embed=embed, view=view)
 
@@ -57,52 +44,35 @@ class recToken(commands.Cog):
         """Handle button interactions for the menu."""
         custom_id = interaction.data['custom_id']
 
-        if custom_id.startswith("donate_"):
-            project_name = custom_id.split("_", 1)[1]
-            await interaction.response.defer()
-            await self.donatecredits(interaction, project_name, "all")
-        elif custom_id == "viewprojects":
+        if custom_id == "viewprojects":
             await interaction.response.defer()
             await self.viewprojects(interaction)
         elif custom_id == "checkcredits":
             await interaction.response.defer()
-            await self.checkcredits()
-            
+            await self.checkcredits(interaction)
+
     async def viewprojects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
         if not projects:
             await interaction.followup.send(embed=discord.Embed(description="No ongoing projects.", color=discord.Color.red()), ephemeral=True)
         else:
             project_names = list(projects.keys())
-            initial_embed = self.create_embed(projects, project_names, 0)
-            view = self.create_project_view(project_names[0])  # Create view with donate button
+            initial_index = 0
+            initial_embed = self.create_embed(projects, project_names, initial_index)
+            view = self.create_project_view(project_names, initial_index)  # Create view with navigation and donate buttons
 
-            message = await interaction.followup.send(embed=initial_embed, view=view)
-    
-            await message.add_reaction("⬅️")
-            await message.add_reaction("➡️")
-    
-            def check(reaction, user):
-                return user == interaction.user and str(reaction.emoji) in ["⬅️", "➡️"] and reaction.message.id == message.id
-    
-            current_index = 0
-    
-            while True:
-                try:
-                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-    
-                    if str(reaction.emoji) == "➡️":
-                        current_index = (current_index + 1) % len(project_names)
-                    elif str(reaction.emoji) == "⬅️":
-                        current_index = (current_index - 1) % len(project_names)
-    
-                    new_embed = self.create_embed(projects, project_names, current_index)
-                    view = self.create_project_view(project_names[current_index])  # Update view with the new project
-                    await message.edit(embed=new_embed, view=view)
-                    await message.remove_reaction(reaction.emoji, user)
-    
-                except asyncio.TimeoutError:
-                    break
+            await interaction.followup.send(embed=initial_embed, view=view)
+
+    async def checkcredits(self, interaction: discord.Interaction):
+        credits = await self.config.user(interaction.user).credits()
+
+        embed = discord.Embed(
+            title="Your Credits",
+            description=f"You currently have **{credits}** credits.",
+            color=discord.Color.green()
+        )
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     def create_embed(self, projects, project_names, index):
         project_name = project_names[index]
@@ -133,27 +103,36 @@ class recToken(commands.Cog):
     
         return embed
 
-    def create_project_view(self, project_name):
+    def create_project_view(self, project_names, index):
+        current_project_name = project_names[index]
         view = discord.ui.View()
+
+        # Add navigation buttons
+        view.add_item(
+            discord.ui.Button(
+                label="⬅️ Previous",
+                custom_id=f"navigate_previous_{current_project_name}",
+                style=discord.ButtonStyle.secondary
+            )
+        )
+        view.add_item(
+            discord.ui.Button(
+                label="Next ➡️",
+                custom_id=f"navigate_next_{current_project_name}",
+                style=discord.ButtonStyle.secondary
+            )
+        )
+
+        # Add donate button
         view.add_item(
             discord.ui.Button(
                 label="Donate Credits",
-                custom_id=f"donate_{project_name}",
+                custom_id=f"donate_{current_project_name}",
                 style=discord.ButtonStyle.primary
             )
         )
+
         return view
-
-    async def checkcredits(self, interaction: discord.Interaction):
-        credits = await self.config.user(interaction.user).credits()
-
-        embed = discord.Embed(
-            title="Your Credits",
-            description=f"You currently have **{credits}** credits.",
-            color=discord.Color.green()
-        )
-
-        await interaction.followup.send(embed=embed, ephemeral=True)
 
     @commands.command()
     @commands.is_owner()
