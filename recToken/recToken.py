@@ -66,7 +66,7 @@ class recToken(commands.Cog):
         projects = await self.config.guild(interaction.guild).projects()
         project_names = list(projects.keys())
 
-        current_project_name = interaction.custom_id.split("_", 2)[-1]
+        current_project_name = interaction.data['custom_id'].split("_", 2)[-1]  # Correct splitting here
         current_index = project_names.index(current_project_name)
 
         if direction == "previous":
@@ -225,30 +225,11 @@ class recToken(commands.Cog):
     
         await ctx_or_interaction.send(embed=discord.Embed(description=f"{amount_to_donate} credits donated to '{self.display_project_name(project)}'.", color=discord.Color.green()))
 
-    @commands.command()
-    async def submitproject(self, ctx, project: str, description: str = None, thumbnail: str = None, emoji: str = "💰"):
-        user_credits = await self.config.user(ctx.author).credits()
+    def display_project_name(self, project: str) -> str:
+        return project.replace("_", " ").title()
 
-        if user_credits < 1000:
-            return await ctx.send(embed=discord.Embed(description="You don't have enough credits to submit a project. You need 1000 credits.", color=discord.Color.red()))
-        
-        project = self.normalize_project_name(project)
-        async with self.config.guild(ctx.guild).projects() as projects:
-            if project in projects:
-                return await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' already exists.", color=discord.Color.red()))
-
-            await self.config.user(ctx.author).credits.set(user_credits - 1000)
-
-            projects[project] = {
-                "required_credits": 1000,
-                "current_credits": 0,
-                "thumbnail": thumbnail or "",
-                "description": description or "No description available.",
-                "emoji": emoji
-            }
-
-        await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' has been submitted for 1000 credits.", color=discord.Color.green()))
-
+    def normalize_project_name(self, project: str) -> str:
+        return project.replace(" ", "_").lower()
 
 def setup(bot):
     bot.add_cog(recToken(bot))
