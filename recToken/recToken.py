@@ -8,28 +8,20 @@ class recToken(commands.Cog):
         self.config = Config.get_conf(None, identifier=23456789648)
 
         default_guild = {
-            "projects": {}  # {"project_name": {"required_credits": int, "current_credits": int, "thumbnail": "", "description": "", "emoji": ""}}
+            "projects": {}
         }
         
         self.config.register_guild(**default_guild)
-        self.config.register_user(credits=0)  # Ensure users have a credits field
-
-    def normalize_project_name(self, project: str) -> str:
-        return project.lower()
-
-    def display_project_name(self, project: str) -> str:
-        return project.title()
+        self.config.register_user(credits=0)
 
     @commands.command()
     async def menu(self, ctx):
-        """Show a menu with available commands and buttons to execute them."""
         embed = discord.Embed(
             title="Command Menu",
             description="Use the buttons below to view projects or check your credits.",
             color=discord.Color.blue()
         )
 
-        # Create buttons
         view_projects_button = discord.ui.Button(label="View Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary)
         check_credits_button = discord.ui.Button(label="Check Credits", custom_id="checkcredits", style=discord.ButtonStyle.success)
 
@@ -41,7 +33,6 @@ class recToken(commands.Cog):
 
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
-        """Handle button interactions for the menu."""
         custom_id = interaction.data['custom_id']
 
         if custom_id == "viewprojects":
@@ -67,7 +58,7 @@ class recToken(commands.Cog):
             project_names = list(projects.keys())
             initial_index = 0
             initial_embed = self.create_embed(projects, project_names, initial_index)
-            view = self.create_project_view(project_names, initial_index)  # Create view with navigation and donate buttons
+            view = self.create_project_view(project_names, initial_index)
 
             await interaction.followup.send(embed=initial_embed, view=view)
 
@@ -75,11 +66,9 @@ class recToken(commands.Cog):
         projects = await self.config.guild(interaction.guild).projects()
         project_names = list(projects.keys())
 
-        # Find the current project index
         current_project_name = interaction.custom_id.split("_", 2)[-1]
         current_index = project_names.index(current_project_name)
 
-        # Navigate to the previous or next project
         if direction == "previous":
             new_index = (current_index - 1) % len(project_names)
         else:  # direction == "next"
@@ -90,25 +79,11 @@ class recToken(commands.Cog):
 
         await interaction.response.edit_message(embed=new_embed, view=view)
 
-    async def checkcredits(self, interaction: discord.Interaction):
-        credits = await self.config.user(interaction.user).credits()
-
-        embed = discord.Embed(
-            title="Your Credits",
-            description=f"You currently have **{credits}** credits.",
-            color=discord.Color.green()
-        )
-
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
     def create_embed(self, projects, project_names, index):
         project_name = project_names[index]
         project = projects[project_name]
     
-        if project["required_credits"] > 0:
-            percent_complete = (project["current_credits"] / project["required_credits"]) * 100
-        else:
-            percent_complete = 100
+        percent_complete = (project["current_credits"] / project["required_credits"]) * 100 if project["required_credits"] > 0 else 100
     
         embed = discord.Embed(
             title=f"Project: {self.display_project_name(project_name)}",
@@ -134,7 +109,6 @@ class recToken(commands.Cog):
         current_project_name = project_names[index]
         view = discord.ui.View()
 
-        # Add navigation buttons
         view.add_item(
             discord.ui.Button(
                 label="⬅️ Previous",
@@ -143,7 +117,6 @@ class recToken(commands.Cog):
             )
         )
 
-        # Add donate button
         view.add_item(
             discord.ui.Button(
                 label="Donate Credits",
@@ -151,6 +124,7 @@ class recToken(commands.Cog):
                 style=discord.ButtonStyle.primary
             )
         )
+
         view.add_item(
             discord.ui.Button(
                 label="Next ➡️",
@@ -160,6 +134,17 @@ class recToken(commands.Cog):
         )
 
         return view
+
+    async def checkcredits(self, interaction: discord.Interaction):
+        credits = await self.config.user(interaction.user).credits()
+
+        embed = discord.Embed(
+            title="Your Credits",
+            description=f"You currently have **{credits}** credits.",
+            color=discord.Color.green()
+        )
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     @commands.command()
     @commands.is_owner()
@@ -267,4 +252,3 @@ class recToken(commands.Cog):
 
 def setup(bot):
     bot.add_cog(recToken(bot))
-
