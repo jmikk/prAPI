@@ -49,14 +49,8 @@ class recToken(commands.Cog):
             project_name = custom_id.split("_", 1)[1]
             await interaction.response.defer()
             await self.ask_donation_amount(interaction, project_name)
-        elif custom_id.startswith("edit_project_"):
-            project_name = custom_id.split("_", 2)[-1]
-            await interaction.response.defer()
-            await self.edit_project(interaction, project_name)
-        elif custom_id.startswith("remove_project_"):
-            project_name = custom_id.split("_", 2)[-1]
-            await interaction.response.defer()
-            await self.remove_project(interaction, project_name)
+        elif custom_id.startswith("edit_project_") or custom_id.startswith("remove_project_"):
+            await self.admin_panel(interaction, custom_id)
 
     async def viewprojects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
@@ -69,6 +63,10 @@ class recToken(commands.Cog):
             view = self.create_project_view(project_names, initial_index, interaction.user)
 
             await interaction.followup.send(embed=initial_embed, view=view)
+
+            # Check if the user has the "Admin" role and show the Admin Panel
+            if any(role.name == "Admin" for role in interaction.user.roles):
+                await self.send_admin_panel(interaction, project_names[initial_index])
 
     async def navigate_projects(self, interaction: discord.Interaction, direction: str):
         projects = await self.config.guild(interaction.guild).projects()
@@ -86,6 +84,10 @@ class recToken(commands.Cog):
         view = self.create_project_view(project_names, new_index, interaction.user)
 
         await interaction.response.edit_message(embed=new_embed, view=view)
+
+        # Check if the user has the "Admin" role and update the Admin Panel
+        if any(role.name == "Admin" for role in interaction.user.roles):
+            await self.send_admin_panel(interaction, project_names[new_index])
 
     def create_embed(self, projects, project_names, index, user):
         project_name = project_names[index]
@@ -143,25 +145,42 @@ class recToken(commands.Cog):
             )
         )
 
-        # Check if the user has the "Admin" role
-        if any(role.name == "Admin" for role in user.roles):
-            view.add_item(
-                discord.ui.Button(
-                    label="Edit Project",
-                    custom_id=f"edit_project_{current_project_name}",
-                    style=discord.ButtonStyle.success
-                )
-            )
-
-            view.add_item(
-                discord.ui.Button(
-                    label="Remove Project",
-                    custom_id=f"remove_project_{current_project_name}",
-                    style=discord.ButtonStyle.danger
-                )
-            )
-
         return view
+
+    async def send_admin_panel(self, interaction: discord.Interaction, project_name: str):
+        view = discord.ui.View()
+
+        view.add_item(
+            discord.ui.Button(
+                label="Edit Project",
+                custom_id=f"edit_project_{project_name}",
+                style=discord.ButtonStyle.success
+            )
+        )
+
+        view.add_item(
+            discord.ui.Button(
+                label="Remove Project",
+                custom_id=f"remove_project_{project_name}",
+                style=discord.ButtonStyle.danger
+            )
+        )
+
+        embed = discord.Embed(
+            title="Admin Panel",
+            description=f"Manage the project: {self.display_project_name(project_name)}",
+            color=discord.Color.gold()
+        )
+
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+
+    async def admin_panel(self, interaction: discord.Interaction, custom_id: str):
+        if custom_id.startswith("edit_project_"):
+            project_name = custom_id.split("_", 2)[-1]
+            await self.edit_project(interaction, project_name)
+        elif custom_id.startswith("remove_project_"):
+            project_name = custom_id.split("_", 2)[-1]
+            await self.remove_project(interaction, project_name)
 
     async def ask_donation_amount(self, interaction: discord.Interaction, project_name: str):
         def check(message):
