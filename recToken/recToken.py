@@ -35,33 +35,8 @@ class recToken(commands.Cog):
             inline=False
         )
         embed.add_field(
-            name="Submit Project",
-            value="Use `/submitproject <project_name> [description] [thumbnail] [emoji]` to submit a new project for 1000 credits.",
-            inline=False
-        )
-        embed.add_field(
-            name="Donate Credits",
-            value="Use `/donatecredits <project_name> <amount>` to donate credits to a project.",
-            inline=False
-        )
-        embed.add_field(
             name="Check Credits",
             value="Use `/checkcredits` to check your current credit balance.",
-            inline=False
-        )
-        embed.add_field(
-            name="Add Project (Owner Only)",
-            value="Use `/addproject <project_name> <required_credits> [emoji]` to add a new project (Owner only).",
-            inline=False
-        )
-        embed.add_field(
-            name="Remove Project (Owner Only)",
-            value="Use `/removeproject <project_name>` to remove a project (Owner only).",
-            inline=False
-        )
-        embed.add_field(
-            name="Edit Project (Owner Only)",
-            value="Use `/editproject <project_name> [description] [thumbnail] [emoji]` to edit a project's details (Owner only).",
             inline=False
         )
 
@@ -69,8 +44,6 @@ class recToken(commands.Cog):
         buttons = [
             discord.ui.Button(label="View Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary),
             discord.ui.Button(label="Submit Project", custom_id="submitproject", style=discord.ButtonStyle.success),
-            discord.ui.Button(label="Donate Credits", custom_id="donatecredits", style=discord.ButtonStyle.secondary),
-            discord.ui.Button(label="Check Credits", custom_id="checkcredits", style=discord.ButtonStyle.secondary)
         ]
 
         view = discord.ui.View()
@@ -84,16 +57,15 @@ class recToken(commands.Cog):
         """Handle button interactions for the menu."""
         custom_id = interaction.data['custom_id']
 
-        if custom_id == "viewprojects":
+        if custom_id.startswith("donate_"):
+            project_name = custom_id.split("_", 1)[1]
+            await interaction.response.defer()
+            await self.donatecredits(interaction, project_name, "all")
+        elif custom_id == "viewprojects":
             await interaction.response.defer()
             await self.viewprojects(interaction)
         elif custom_id == "submitproject":
             await interaction.response.send_message("Please use the `/submitproject` command to submit a project.", ephemeral=True)
-        elif custom_id == "donatecredits":
-            await interaction.response.send_message("Please use the `/donatecredits` command to donate credits to a project.", ephemeral=True)
-        elif custom_id == "checkcredits":
-            await interaction.response.defer()
-            await self.checkcredits(interaction)
 
     async def viewprojects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
@@ -102,7 +74,9 @@ class recToken(commands.Cog):
         else:
             project_names = list(projects.keys())
             initial_embed = self.create_embed(projects, project_names, 0)
-            message = await interaction.followup.send(embed=initial_embed)
+            view = self.create_project_view(project_names[0])  # Create view with donate button
+
+            message = await interaction.followup.send(embed=initial_embed, view=view)
     
             await message.add_reaction("⬅️")
             await message.add_reaction("➡️")
@@ -122,7 +96,8 @@ class recToken(commands.Cog):
                         current_index = (current_index - 1) % len(project_names)
     
                     new_embed = self.create_embed(projects, project_names, current_index)
-                    await message.edit(embed=new_embed)
+                    view = self.create_project_view(project_names[current_index])  # Update view with the new project
+                    await message.edit(embed=new_embed, view=view)
                     await message.remove_reaction(reaction.emoji, user)
     
                 except asyncio.TimeoutError:
@@ -156,6 +131,17 @@ class recToken(commands.Cog):
             embed.set_thumbnail(url=project["thumbnail"])
     
         return embed
+
+    def create_project_view(self, project_name):
+        view = discord.ui.View()
+        view.add_item(
+            discord.ui.Button(
+                label="Donate Credits",
+                custom_id=f"donate_{project_name}",
+                style=discord.ButtonStyle.primary
+            )
+        )
+        return view
 
     async def checkcredits(self, interaction: discord.Interaction):
         credits = await self.config.user(interaction.user).credits()
@@ -221,13 +207,13 @@ class recToken(commands.Cog):
         await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' updated.", color=discord.Color.green()))
 
     @commands.command()
-    async def donatecredits(self, ctx, project: str, amount: str):
+    async def donatecredits(self, ctx_or_interaction, project: str, amount: str):
         project = self.normalize_project_name(project)
-        async with self.config.guild(ctx.guild).projects() as projects:
+        async with self.config.guild(ctx_or_interaction.guild).projects() as projects:
             if project not in projects:
-                return await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()))
+                return await ctx_or_interaction.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()))
     
-            user_credits = await self.config.user(ctx.author).credits()
+            user_credits = await self.config.user(ctx_or_interaction.author).credits()
     
             if amount.lower() == "all":
                 amount_to_donate = user_credits
@@ -235,17 +221,17 @@ class recToken(commands.Cog):
                 try:
                     amount_to_donate = int(amount)
                 except ValueError:
-                    return await ctx.send(embed=discord.Embed(description="Please specify a valid number of credits or 'all'.", color=discord.Color.red()))
+                    return await ctx_or_interaction.send(embed=discord.Embed(description="Please specify a valid number of credits or 'all'.", color=discord.Color.red()))
     
             if amount_to_donate > user_credits:
-                return await ctx.send(embed=discord.Embed(description="You don't have enough credits.", color=discord.Color.red()))
+                return await ctx_or_interaction.send(embed=discord.Embed(description="You don't have enough credits.", color=discord.Color.red()))
     
             projects[project]["current_credits"] += amount_to_donate
     
             new_credits = user_credits - amount_to_donate
-            await self.config.user(ctx.author).credits.set(new_credits)
+            await self.config.user(ctx_or_interaction.author).credits.set(new_credits)
     
-        await ctx.send(embed=discord.Embed(description=f"{amount_to_donate} credits donated to '{self.display_project_name(project)}'.", color=discord.Color.green()))
+        await ctx_or_interaction.send(embed=discord.Embed(description=f"{amount_to_donate} credits donated to '{self.display_project_name(project)}'.", color=discord.Color.green()))
 
     @commands.command()
     async def submitproject(self, ctx, project: str, description: str = None, thumbnail: str = None, emoji: str = "💰"):
