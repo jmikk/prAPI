@@ -87,7 +87,7 @@ class recToken(commands.Cog):
 
         # Check if the user has the "Admin" role and update the Admin Panel
         if any(role.name == "Admin" for role in interaction.user.roles):
-            await self.send_admin_panel(interaction, project_names[new_index])
+            await self.edit_admin_panel(interaction, project_names[new_index])
 
     def create_embed(self, projects, project_names, index, user):
         project_name = project_names[index]
@@ -172,7 +172,39 @@ class recToken(commands.Cog):
             color=discord.Color.gold()
         )
 
-        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        message = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        await self.store_admin_message(interaction, message)
+
+    async def store_admin_message(self, interaction: discord.Interaction, message: discord.Message):
+        # Store the admin panel message so it can be edited later
+        self.admin_message = message
+
+    async def edit_admin_panel(self, interaction: discord.Interaction, project_name: str):
+        view = discord.ui.View()
+
+        view.add_item(
+            discord.ui.Button(
+                label="Edit Project",
+                custom_id=f"edit_project_{project_name}",
+                style=discord.ButtonStyle.success
+            )
+        )
+
+        view.add_item(
+            discord.ui.Button(
+                label="Remove Project",
+                custom_id=f"remove_project_{project_name}",
+                style=discord.ButtonStyle.danger
+            )
+        )
+
+        embed = discord.Embed(
+            title="Admin Panel",
+            description=f"Manage the project: {self.display_project_name(project_name)}",
+            color=discord.Color.gold()
+        )
+
+        await self.admin_message.edit(embed=embed, view=view)
 
     async def admin_panel(self, interaction: discord.Interaction, custom_id: str):
         if custom_id.startswith("edit_project_"):
