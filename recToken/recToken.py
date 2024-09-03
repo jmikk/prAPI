@@ -49,6 +49,14 @@ class recToken(commands.Cog):
             project_name = custom_id.split("_", 1)[1]
             await interaction.response.defer()
             await self.ask_donation_amount(interaction, project_name)
+        elif custom_id.startswith("edit_project_"):
+            project_name = custom_id.split("_", 2)[-1]
+            await interaction.response.defer()
+            await self.edit_project(interaction, project_name)
+        elif custom_id.startswith("remove_project_"):
+            project_name = custom_id.split("_", 2)[-1]
+            await interaction.response.defer()
+            await self.remove_project(interaction, project_name)
 
     async def viewprojects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
@@ -57,8 +65,8 @@ class recToken(commands.Cog):
         else:
             project_names = list(projects.keys())
             initial_index = 0
-            initial_embed = self.create_embed(projects, project_names, initial_index)
-            view = self.create_project_view(project_names, initial_index)
+            initial_embed = self.create_embed(projects, project_names, initial_index, interaction.user)
+            view = self.create_project_view(project_names, initial_index, interaction.user)
 
             await interaction.followup.send(embed=initial_embed, view=view)
 
@@ -74,12 +82,12 @@ class recToken(commands.Cog):
         else:  # direction == "next"
             new_index = (current_index + 1) % len(project_names)
 
-        new_embed = self.create_embed(projects, project_names, new_index)
-        view = self.create_project_view(project_names, new_index)
+        new_embed = self.create_embed(projects, project_names, new_index, interaction.user)
+        view = self.create_project_view(project_names, new_index, interaction.user)
 
         await interaction.response.edit_message(embed=new_embed, view=view)
 
-    def create_embed(self, projects, project_names, index):
+    def create_embed(self, projects, project_names, index, user):
         project_name = project_names[index]
         project = projects[project_name]
     
@@ -93,12 +101,12 @@ class recToken(commands.Cog):
         embed.add_field(
             name=f"Credits {project.get('emoji', '💰')}",
             value=f"{project['current_credits']}/{project['required_credits']} credits",
-            inline=True
+            inline=False
         )
         embed.add_field(
             name="% Complete",
             value=f"{percent_complete:.2f}% complete",
-            inline=True
+            inline=False
         )
         if project["thumbnail"]:
             embed.set_thumbnail(url=project["thumbnail"])
@@ -107,7 +115,7 @@ class recToken(commands.Cog):
     
         return embed
 
-    def create_project_view(self, project_names, index):
+    def create_project_view(self, project_names, index, user):
         current_project_name = project_names[index]
         view = discord.ui.View()
 
@@ -134,6 +142,23 @@ class recToken(commands.Cog):
                 style=discord.ButtonStyle.secondary
             )
         )
+
+        if user.id == self.bot.owner_id:  # Only show these buttons to the bot owner
+            view.add_item(
+                discord.ui.Button(
+                    label="Edit Project",
+                    custom_id=f"edit_project_{current_project_name}",
+                    style=discord.ButtonStyle.success
+                )
+            )
+
+            view.add_item(
+                discord.ui.Button(
+                    label="Remove Project",
+                    custom_id=f"remove_project_{current_project_name}",
+                    style=discord.ButtonStyle.danger
+                )
+            )
 
         return view
 
@@ -186,6 +211,20 @@ class recToken(commands.Cog):
         )
 
         await interaction.followup.send(embed=embed, ephemeral=True)
+
+    async def edit_project(self, interaction: discord.Interaction, project_name: str):
+        await interaction.followup.send(embed=discord.Embed(description=f"Editing project: {self.display_project_name(project_name)}", color=discord.Color.yellow()), ephemeral=True)
+        # Implement your editing logic here
+
+    async def remove_project(self, interaction: discord.Interaction, project_name: str):
+        project = self.normalize_project_name(project_name)
+        async with self.config.guild(interaction.guild).projects() as projects:
+            if project not in projects:
+                return await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()), ephemeral=True)
+    
+            del projects[project]
+
+        await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project_name)}' has been removed.", color=discord.Color.green()), ephemeral=False)
 
     @commands.command()
     @commands.is_owner()
