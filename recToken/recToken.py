@@ -50,6 +50,14 @@ class recToken(commands.Cog):
         elif custom_id == "checkcredits":
             await interaction.response.defer()
             await self.checkcredits(interaction)
+        elif custom_id.startswith("navigate_previous_"):
+            await self.navigate_projects(interaction, "previous")
+        elif custom_id.startswith("navigate_next_"):
+            await self.navigate_projects(interaction, "next")
+        elif custom_id.startswith("donate_"):
+            project_name = custom_id.split("_", 1)[1]
+            await interaction.response.defer()
+            await self.donatecredits(interaction, project_name, "all")
 
     async def viewprojects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
@@ -62,6 +70,25 @@ class recToken(commands.Cog):
             view = self.create_project_view(project_names, initial_index)  # Create view with navigation and donate buttons
 
             await interaction.followup.send(embed=initial_embed, view=view)
+
+    async def navigate_projects(self, interaction: discord.Interaction, direction: str):
+        projects = await self.config.guild(interaction.guild).projects()
+        project_names = list(projects.keys())
+
+        # Find the current project index
+        current_project_name = interaction.custom_id.split("_", 2)[-1]
+        current_index = project_names.index(current_project_name)
+
+        # Navigate to the previous or next project
+        if direction == "previous":
+            new_index = (current_index - 1) % len(project_names)
+        else:  # direction == "next"
+            new_index = (current_index + 1) % len(project_names)
+
+        new_embed = self.create_embed(projects, project_names, new_index)
+        view = self.create_project_view(project_names, new_index)
+
+        await interaction.response.edit_message(embed=new_embed, view=view)
 
     async def checkcredits(self, interaction: discord.Interaction):
         credits = await self.config.user(interaction.user).credits()
@@ -115,13 +142,6 @@ class recToken(commands.Cog):
                 style=discord.ButtonStyle.secondary
             )
         )
-        view.add_item(
-            discord.ui.Button(
-                label="Next ➡️",
-                custom_id=f"navigate_next_{current_project_name}",
-                style=discord.ButtonStyle.secondary
-            )
-        )
 
         # Add donate button
         view.add_item(
@@ -129,6 +149,13 @@ class recToken(commands.Cog):
                 label="Donate Credits",
                 custom_id=f"donate_{current_project_name}",
                 style=discord.ButtonStyle.primary
+            )
+        )
+        view.add_item(
+            discord.ui.Button(
+                label="Next ➡️",
+                custom_id=f"navigate_next_{current_project_name}",
+                style=discord.ButtonStyle.secondary
             )
         )
 
