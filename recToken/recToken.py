@@ -143,7 +143,8 @@ class recToken(commands.Cog):
             )
         )
 
-        if user.id == self.bot.owner_id:  # Only show these buttons to the bot owner
+        # Check if the user has the "Admin" role
+        if any(role.name == "Admin" for role in user.roles):
             view.add_item(
                 discord.ui.Button(
                     label="Edit Project",
