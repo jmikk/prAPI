@@ -43,7 +43,7 @@ class recToken(commands.Cog):
         # Create buttons
         buttons = [
             discord.ui.Button(label="View Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary),
-            discord.ui.Button(label="Submit Project", custom_id="submitproject", style=discord.ButtonStyle.success),
+            discord.ui.Button(label="Check Credits", custom_id="checkcredits", style=discord.ButtonStyle.success),
         ]
 
         view = discord.ui.View()
@@ -64,9 +64,10 @@ class recToken(commands.Cog):
         elif custom_id == "viewprojects":
             await interaction.response.defer()
             await self.viewprojects(interaction)
-        elif custom_id == "submitproject":
-            await interaction.response.send_message("Please use the `/submitproject` command to submit a project.", ephemeral=True)
-
+        elif custom_id == "checkcredits":
+            await interaction.response.defer()
+            await self.checkcredits()
+            
     async def viewprojects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
         if not projects:
