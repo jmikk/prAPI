@@ -82,30 +82,33 @@ class recToken(commands.Cog):
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
         """Handle button interactions for the menu."""
-        if interaction.custom_id == "viewprojects":
+        custom_id = interaction.data['custom_id']
+
+        if custom_id == "viewprojects":
+            await interaction.response.defer()
             await self.viewprojects(interaction)
-        elif interaction.custom_id == "submitproject":
+        elif custom_id == "submitproject":
             await interaction.response.send_message("Please use the `/submitproject` command to submit a project.", ephemeral=True)
-        elif interaction.custom_id == "donatecredits":
+        elif custom_id == "donatecredits":
             await interaction.response.send_message("Please use the `/donatecredits` command to donate credits to a project.", ephemeral=True)
-        elif interaction.custom_id == "checkcredits":
+        elif custom_id == "checkcredits":
+            await interaction.response.defer()
             await self.checkcredits(interaction)
 
-    @commands.command()
-    async def viewprojects(self, ctx):
-        projects = await self.config.guild(ctx.guild).projects()
+    async def viewprojects(self, interaction: discord.Interaction):
+        projects = await self.config.guild(interaction.guild).projects()
         if not projects:
-            await ctx.send(embed=discord.Embed(description="No ongoing projects.", color=discord.Color.red()))
+            await interaction.followup.send(embed=discord.Embed(description="No ongoing projects.", color=discord.Color.red()), ephemeral=True)
         else:
             project_names = list(projects.keys())
             initial_embed = self.create_embed(projects, project_names, 0)
-            message = await ctx.send(embed=initial_embed)
+            message = await interaction.followup.send(embed=initial_embed)
     
             await message.add_reaction("⬅️")
             await message.add_reaction("➡️")
     
             def check(reaction, user):
-                return user == ctx.author and str(reaction.emoji) in ["⬅️", "➡️"] and reaction.message.id == message.id
+                return user == interaction.user and str(reaction.emoji) in ["⬅️", "➡️"] and reaction.message.id == message.id
     
             current_index = 0
     
@@ -124,7 +127,7 @@ class recToken(commands.Cog):
     
                 except asyncio.TimeoutError:
                     break
-    
+
     def create_embed(self, projects, project_names, index):
         project_name = project_names[index]
         project = projects[project_name]
@@ -153,6 +156,17 @@ class recToken(commands.Cog):
             embed.set_thumbnail(url=project["thumbnail"])
     
         return embed
+
+    async def checkcredits(self, interaction: discord.Interaction):
+        credits = await self.config.user(interaction.user).credits()
+
+        embed = discord.Embed(
+            title="Your Credits",
+            description=f"You currently have **{credits}** credits.",
+            color=discord.Color.green()
+        )
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     @commands.command()
     @commands.is_owner()
@@ -232,19 +246,6 @@ class recToken(commands.Cog):
             await self.config.user(ctx.author).credits.set(new_credits)
     
         await ctx.send(embed=discord.Embed(description=f"{amount_to_donate} credits donated to '{self.display_project_name(project)}'.", color=discord.Color.green()))
-
-    @commands.command()
-    async def checkcredits(self, ctx):
-        user_id = ctx.author.id
-        credits = await self.config.user_from_id(user_id).credits()
-
-        embed = discord.Embed(
-            title="Your Credits",
-            description=f"You currently have **{credits}** credits.",
-            color=discord.Color.green()
-        )
-
-        await ctx.send(embed=embed)
 
     @commands.command()
     async def submitproject(self, ctx, project: str, description: str = None, thumbnail: str = None, emoji: str = "💰"):
