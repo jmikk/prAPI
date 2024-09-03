@@ -6,6 +6,7 @@ class recToken(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=23456789648)
+        self.admin_messages = {}  # Store admin panel messages
 
         default_guild = {
             "projects": {}
@@ -173,11 +174,7 @@ class recToken(commands.Cog):
         )
 
         message = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        await self.store_admin_message(interaction, message)
-
-    async def store_admin_message(self, interaction: discord.Interaction, message: discord.Message):
-        # Store the admin panel message so it can be edited later
-        self.admin_message = message
+        self.admin_messages[interaction.user.id] = message  # Store message per user
 
     async def edit_admin_panel(self, interaction: discord.Interaction, project_name: str):
         view = discord.ui.View()
@@ -204,7 +201,9 @@ class recToken(commands.Cog):
             color=discord.Color.gold()
         )
 
-        await self.admin_message.edit(embed=embed, view=view)
+        if interaction.user.id in self.admin_messages:
+            message = self.admin_messages[interaction.user.id]
+            await message.edit(embed=embed, view=view)
 
     async def admin_panel(self, interaction: discord.Interaction, custom_id: str):
         if custom_id.startswith("edit_project_"):
