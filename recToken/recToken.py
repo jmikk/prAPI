@@ -7,13 +7,15 @@ class recToken(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=23456789648)
         self.admin_messages = {}  # Store admin panel messages
-
+    
         default_guild = {
-            "projects": {}
+            "projects": {},
+            "completed_projects": {}  # Add this line to initialize completed projects
         }
         
         self.config.register_guild(**default_guild)
         self.config.register_user(credits=0)
+
 
     @commands.command()
     async def menu(self, ctx):
@@ -320,31 +322,40 @@ class recToken(commands.Cog):
         async with self.config.guild(interaction.guild).projects() as projects:
             if project not in projects:
                 return await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()), ephemeral=True)
-    
+        
             user_credits = await self.config.user(interaction.user).credits()
             current_credits = projects[project]["current_credits"]
             required_credits = projects[project]["required_credits"]
-
+    
             # Calculate the maximum amount that can be donated
             max_donatable = required_credits - current_credits
-
+    
             # If the user tries to donate more than what is needed, adjust the donation amount
             if amount_to_donate > max_donatable:
                 amount_to_donate = max_donatable
-
+    
             if amount_to_donate > user_credits:
                 return await interaction.followup.send(embed=discord.Embed(description="You don't have enough credits.", color=discord.Color.red()), ephemeral=True)
-    
+        
             projects[project]["current_credits"] += amount_to_donate
-    
+        
             new_credits = user_credits - amount_to_donate
             await self.config.user(interaction.user).credits.set(new_credits)
-
+    
             await interaction.followup.send(embed=discord.Embed(description=f"{interaction.user.name} donated {amount_to_donate} credits to '{self.display_project_name(project)}'.", color=discord.Color.green()), ephemeral=False)
-
+    
             # Check if the project is now complete
             if projects[project]["current_credits"] >= required_credits:
                 await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' is now fully funded!", color=discord.Color.gold()), ephemeral=False)
+    
+                # Move the project from in-progress to completed
+                async with self.config.guild(interaction.guild).completed_projects() as completed_projects:
+                    completed_projects[project] = projects[project]
+    
+                # Remove the project from the in-progress list
+                del projects[project]
+    
+                await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' has been moved to the completed projects list.", color=discord.Color.green()), ephemeral=False)
 
     async def checkcredits(self, interaction: discord.Interaction):
         credits = await self.config.user(interaction.user).credits()
