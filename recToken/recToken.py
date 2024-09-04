@@ -553,6 +553,22 @@ class recToken(commands.Cog):
     
         await ctx.send(embed=embed)
 
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def deletecompletedproject(self, ctx, project: str):
+        project = self.normalize_project_name(project)
+        
+        async with self.config.guild(ctx.guild).completed_projects() as completed_projects:
+            if project not in completed_projects:
+                await ctx.send(embed=discord.Embed(description=f"Completed project '{self.display_project_name(project)}' not found.", color=discord.Color.red()))
+                return
+            
+            # Delete the project
+            del completed_projects[project]
+    
+        await ctx.send(embed=discord.Embed(description=f"Completed project '{self.display_project_name(project)}' has been successfully deleted.", color=discord.Color.green()))
+    
+
 
 def setup(bot):
     bot.add_cog(recToken(bot))
