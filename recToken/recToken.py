@@ -83,7 +83,7 @@ class recToken(commands.Cog):
                 inline=False
             )
 
-    await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def viewprojects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
