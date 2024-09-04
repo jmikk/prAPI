@@ -24,9 +24,9 @@ class recToken(commands.Cog):
             color=discord.Color.blue()
         )
 
-        view_projects_button = discord.ui.Button(label="View Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary)
-        check_credits_button = discord.ui.Button(label="Check Credits", custom_id="checkcredits", style=discord.ButtonStyle.success)
-        view_completed_button = discord.ui.Button(label="View Completed Projects", custom_id="viewcompletedprojects", style=discord.ButtonStyle.secondary)
+        view_projects_button = discord.ui.Button(label="View Projects", custom_id="view_projects", style=discord.ButtonStyle.primary)
+        check_credits_button = discord.ui.Button(label="Check Credits", custom_id="check_credits", style=discord.ButtonStyle.success)
+        view_completed_button = discord.ui.Button(label="View Completed Projects", custom_id="view_completed_projects", style=discord.ButtonStyle.secondary)
 
         view = discord.ui.View()
         view.add_item(view_projects_button)
@@ -39,91 +39,76 @@ class recToken(commands.Cog):
     async def on_interaction(self, interaction: discord.Interaction):
         custom_id = interaction.data['custom_id']
 
-        if custom_id == "viewprojects":
+        if custom_id == "view_projects":
             await interaction.response.defer()
-            await self.viewprojects(interaction)
-        elif custom_id == "checkcredits":
+            await self.view_projects(interaction)
+        elif custom_id == "check_credits":
             await interaction.response.defer()
-            await self.checkcredits(interaction)
-        elif custom_id == "viewcompletedprojects":
+            await self.check_credits(interaction)
+        elif custom_id == "view_completed_projects":
             await interaction.response.defer()
-            await self.viewcompletedprojects(interaction)
-        elif custom_id.startswith("navigate_previous_"):
-            await self.navigate_projects(interaction, "previous")
-        elif custom_id.startswith("navigate_next_"):
-            await self.navigate_projects(interaction, "next")
+            await self.view_completed_projects(interaction)
+        elif custom_id.startswith("navigate_"):
+            direction, project_name, project_type = custom_id.split("_")[1:]
+            await self.navigate_projects(interaction, direction, project_name, project_type)
         elif custom_id.startswith("donate_"):
-            project_name = custom_id.split("_", 1)[1]
+            project_name = custom_id.split("_")[1]
             await interaction.response.defer()
             await self.ask_donation_amount(interaction, project_name)
         elif custom_id.startswith("edit_project_"):
-            project_name = custom_id.split("_", 2)[-1]
+            project_name = custom_id.split("_")[2]
             await self.send_edit_menu(interaction, project_name)
         elif custom_id.startswith("remove_project_"):
-            project_name = custom_id.split("_", 2)[-1]
+            project_name = custom_id.split("_")[2]
             await self.remove_project(interaction, project_name)
         elif custom_id.startswith("edit_field_"):
             field, project_name = custom_id.split("_")[2:]
             await self.prompt_edit_field(interaction, project_name, field)
 
-    async def viewprojects(self, interaction: discord.Interaction):
+    async def view_projects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
         if not projects:
             await interaction.followup.send(embed=discord.Embed(description="No ongoing projects.", color=discord.Color.red()), ephemeral=True)
         else:
             project_names = list(projects.keys())
             initial_index = 0
-            initial_embed = self.create_embed(projects, project_names, initial_index, interaction.user)
-            view = self.create_project_view(project_names, initial_index, interaction.user)
+            initial_embed = self.create_embed(projects, project_names, initial_index, ongoing=True)
+            view = self.create_project_view(project_names, initial_index, ongoing=True)
 
             await interaction.followup.send(embed=initial_embed, view=view)
 
-            # Check if the user has the "Admin" role and show the Admin Panel
-            if any(role.name == "Admin" for role in interaction.user.roles):
-                await self.send_admin_panel(interaction, project_names[initial_index])
-
-    async def viewcompletedprojects(self, interaction: discord.Interaction):
+    async def view_completed_projects(self, interaction: discord.Interaction):
         completed_projects = await self.config.guild(interaction.guild).completed_projects()
         if not completed_projects:
             await interaction.followup.send(embed=discord.Embed(description="No completed projects.", color=discord.Color.red()), ephemeral=True)
         else:
             project_names = list(completed_projects.keys())
             initial_index = 0
-            initial_embed = self.create_embed(completed_projects, project_names, initial_index, interaction.user, completed=True)
-            view = self.create_project_view(project_names, initial_index, interaction.user, completed=True)
+            initial_embed = self.create_embed(completed_projects, project_names, initial_index, ongoing=False)
+            view = self.create_project_view(project_names, initial_index, ongoing=False)
 
             await interaction.followup.send(embed=initial_embed, view=view)
 
-            # Check if the user has the "Admin" role and show the Admin Panel
-            if any(role.name == "Admin" for role in interaction.user.roles):
-                await self.send_admin_panel(interaction, project_names[initial_index], completed=True)
-
-    async def navigate_projects(self, interaction: discord.Interaction, direction: str):
-        if "completed" in interaction.data['custom_id']:
-            projects = await self.config.guild(interaction.guild).completed_projects()
-        else:
+    async def navigate_projects(self, interaction: discord.Interaction, direction: str, project_name: str, project_type: str):
+        if project_type == "ongoing":
             projects = await self.config.guild(interaction.guild).projects()
-        
-        project_names = list(projects.keys())
+        else:
+            projects = await self.config.guild(interaction.guild).completed_projects()
 
-        current_project_name = interaction.data['custom_id'].split("_", 2)[-1]
-        current_index = project_names.index(current_project_name)
+        project_names = list(projects.keys())
+        current_index = project_names.index(project_name)
 
         if direction == "previous":
             new_index = (current_index - 1) % len(project_names)
         else:  # direction == "next"
             new_index = (current_index + 1) % len(project_names)
 
-        new_embed = self.create_embed(projects, project_names, new_index, interaction.user)
-        view = self.create_project_view(project_names, new_index, interaction.user)
+        new_embed = self.create_embed(projects, project_names, new_index, ongoing=(project_type == "ongoing"))
+        view = self.create_project_view(project_names, new_index, ongoing=(project_type == "ongoing"))
 
         await interaction.response.edit_message(embed=new_embed, view=view)
 
-        # Check if the user has the "Admin" role and update the Admin Panel
-        if any(role.name == "Admin" for role in interaction.user.roles):
-            await self.edit_admin_panel(interaction, project_names[new_index])
-
-    def create_embed(self, projects, project_names, index, user, completed=False):
+    def create_embed(self, projects, project_names, index, ongoing=True):
         project_name = project_names[index]
         project = projects[project_name]
     
@@ -132,7 +117,7 @@ class recToken(commands.Cog):
         embed = discord.Embed(
             title=f"Project: {self.display_project_name(project_name)}",
             description=project["description"] or "No description available.",
-            color=discord.Color.green() if completed else discord.Color.blue()
+            color=discord.Color.green() if not ongoing else discord.Color.blue()
         )
         embed.add_field(
             name=f"Credits {project.get('emoji', '💰')}",
@@ -151,19 +136,19 @@ class recToken(commands.Cog):
     
         return embed
 
-    def create_project_view(self, project_names, index, user, completed=False):
+    def create_project_view(self, project_names, index, ongoing=True):
         current_project_name = project_names[index]
         view = discord.ui.View()
 
         view.add_item(
             discord.ui.Button(
                 label="⬅️ Previous",
-                custom_id=f"navigate_previous_{'completed' if completed else 'ongoing'}_{current_project_name}",
+                custom_id=f"navigate_previous_{current_project_name}_{'ongoing' if ongoing else 'completed'}",
                 style=discord.ButtonStyle.secondary
             )
         )
 
-        if not completed:
+        if ongoing:
             view.add_item(
                 discord.ui.Button(
                     label="Donate Credits",
@@ -175,71 +160,12 @@ class recToken(commands.Cog):
         view.add_item(
             discord.ui.Button(
                 label="Next ➡️",
-                custom_id=f"navigate_next_{'completed' if completed else 'ongoing'}_{current_project_name}",
+                custom_id=f"navigate_next_{current_project_name}_{'ongoing' if ongoing else 'completed'}",
                 style=discord.ButtonStyle.secondary
             )
         )
 
         return view
-
-    async def send_admin_panel(self, interaction: discord.Interaction, project_name: str, completed=False):
-        view = discord.ui.View()
-
-        view.add_item(
-            discord.ui.Button(
-                label="Edit Project",
-                custom_id=f"edit_project_{project_name}",
-                style=discord.ButtonStyle.success,
-                disabled=completed
-            )
-        )
-
-        view.add_item(
-            discord.ui.Button(
-                label="Remove Project",
-                custom_id=f"remove_project_{project_name}",
-                style=discord.ButtonStyle.danger
-            )
-        )
-
-        embed = discord.Embed(
-            title="Admin Panel",
-            description=f"Manage the project: {self.display_project_name(project_name)}",
-            color=discord.Color.gold()
-        )
-
-        message = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        self.admin_messages[interaction.user.id] = message  # Store message per user
-
-    async def edit_admin_panel(self, interaction: discord.Interaction, project_name: str, completed=False):
-        view = discord.ui.View()
-
-        view.add_item(
-            discord.ui.Button(
-                label="Edit Project",
-                custom_id=f"edit_project_{project_name}",
-                style=discord.ButtonStyle.success,
-                disabled=completed
-            )
-        )
-
-        view.add_item(
-            discord.ui.Button(
-                label="Remove Project",
-                custom_id=f"remove_project_{project_name}",
-                style=discord.ButtonStyle.danger
-            )
-        )
-
-        embed = discord.Embed(
-            title="Admin Panel",
-            description=f"Manage the project: {self.display_project_name(project_name)}",
-            color=discord.Color.gold()
-        )
-
-        if interaction.user.id in self.admin_messages:
-            message = self.admin_messages[interaction.user.id]
-            await message.edit(embed=embed, view=view)
 
     async def donatecredits(self, interaction: discord.Interaction, project_name: str, amount_to_donate: int):
         project = self.normalize_project_name(project_name)
@@ -251,10 +177,8 @@ class recToken(commands.Cog):
             current_credits = projects[project]["current_credits"]
             required_credits = projects[project]["required_credits"]
 
-            # Calculate the maximum amount that can be donated
             max_donatable = required_credits - current_credits
 
-            # Adjust the donation amount if it exceeds what is needed
             if amount_to_donate > max_donatable:
                 amount_to_donate = max_donatable
 
@@ -268,7 +192,6 @@ class recToken(commands.Cog):
 
             await interaction.followup.send(embed=discord.Embed(description=f"{interaction.user.name} donated {amount_to_donate} credits to '{self.display_project_name(project)}'.", color=discord.Color.green()), ephemeral=False)
 
-            # Check if the project is now complete
             if projects[project]["current_credits"] >= required_credits:
                 await self.complete_project(interaction, project_name)
 
@@ -280,7 +203,7 @@ class recToken(commands.Cog):
 
         await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project_name)}' is now fully funded and has been moved to completed projects!", color=discord.Color.gold()), ephemeral=False)
 
-    async def checkcredits(self, interaction: discord.Interaction):
+    async def check_credits(self, interaction: discord.Interaction):
         credits = await self.config.user(interaction.user).credits()
 
         embed = discord.Embed(
@@ -334,58 +257,6 @@ class recToken(commands.Cog):
             del projects[project]
 
         await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project_name)}' has been removed.", color=discord.Color.green()), ephemeral=False)
-
-    @commands.command()
-    @commands.is_owner()
-    async def givecredits(self, ctx, user: discord.User, amount: int):
-        current_credits = await self.config.user(user).credits()
-        new_credits = current_credits + amount
-        await self.config.user(user).credits.set(new_credits)
-        await ctx.send(embed=discord.Embed(description=f"{amount} credits given to {user.name}.", color=discord.Color.green()))
-
-    @commands.command()
-    @commands.is_owner()
-    async def removeproject(self, ctx, project: str):
-        project = self.normalize_project_name(project)
-        async with self.config.guild(ctx.guild).projects() as projects:
-            if project not in projects:
-                return await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()))
-    
-            del projects[project]
-    
-        await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' has been removed.", color=discord.Color.green()))
-
-    @commands.command()
-    @commands.is_owner()
-    async def addproject(self, ctx, project: str, required_credits: int, emoji: str = "💰"):
-        project = self.normalize_project_name(project)
-        async with self.config.guild(ctx.guild).projects() as projects:
-            projects[project] = {
-                "required_credits": required_credits,
-                "current_credits": 0,
-                "thumbnail": "",
-                "description": "",
-                "emoji": emoji
-            }
-    
-        await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' added with {required_credits} credits needed.", color=discord.Color.green()))
-
-    @commands.command()
-    @commands.is_owner()
-    async def editproject(self, ctx, project: str, description: str = None, thumbnail: str = None, emoji: str = None):
-        project = self.normalize_project_name(project)
-        async with self.config.guild(ctx.guild).projects() as projects:
-            if project not in projects:
-                return await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()))
-            
-            if thumbnail:
-                projects[project]["thumbnail"] = thumbnail
-            if description:
-                projects[project]["description"] = description
-            if emoji:
-                projects[project]["emoji"] = emoji
-
-        await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' updated.", color=discord.Color.green()))
 
     def display_project_name(self, project: str) -> str:
         return project.replace("_", " ").title()
