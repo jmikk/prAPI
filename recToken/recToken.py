@@ -363,13 +363,46 @@ class recToken(commands.Cog):
 
     async def remove_project(self, interaction: discord.Interaction, project_name: str):
         project = self.normalize_project_name(project_name)
+        
+        # Fetch the current projects
         async with self.config.guild(interaction.guild).projects() as projects:
             if project not in projects:
-                return await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()), ephemeral=True)
+                # Respond if the project is not found
+                await interaction.response.send_message(
+                    embed=discord.Embed(
+                        description=f"Project '{self.display_project_name(project)}' not found.",
+                        color=discord.Color.red()
+                    ),
+                    ephemeral=True
+                )
+                return
     
+            # Remove the project
             del projects[project]
-
-        await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project_name)}' has been removed.", color=discord.Color.green()), ephemeral=False)
+    
+        # Send a confirmation message that the project was removed
+        await interaction.response.send_message(
+            embed=discord.Embed(
+                description=f"Project '{self.display_project_name(project_name)}' has been removed.",
+                color=discord.Color.green()
+            ),
+            ephemeral=True
+        )
+    
+        # Update the admin panel or indicate that there are no more projects left
+        remaining_projects = await self.config.guild(interaction.guild).projects()
+        if remaining_projects:
+            first_project_name = next(iter(remaining_projects))
+            await self.edit_admin_panel(interaction, first_project_name)
+        else:
+            # If no projects are left, update the admin panel to indicate that
+            if interaction.user.id in self.admin_messages:
+                message = self.admin_messages[interaction.user.id]
+                await message.edit(embed=discord.Embed(
+                    title="Admin Panel",
+                    description="No projects left to manage.",
+                    color=discord.Color.gold()
+                ), view=None)
 
     @commands.command()
     @commands.is_owner()
