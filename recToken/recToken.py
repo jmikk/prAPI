@@ -143,7 +143,6 @@ class recToken(commands.Cog):
             if any(role.name == "Admin" for role in interaction.user.roles):
                 await self.send_admin_panel(interaction, project_names[initial_index])
    
-    # Navigation for in-progress projects
     async def navigate_projects(self, interaction: discord.Interaction, direction: str):
         projects = await self.config.guild(interaction.guild).projects()
         project_names = list(projects.keys())
@@ -159,11 +158,13 @@ class recToken(commands.Cog):
         new_embed = self.create_embed(projects, project_names, new_index, interaction.user)
         view = self.create_project_view(project_names, new_index, interaction.user)
     
+        # Update the main project view
         await interaction.response.edit_message(embed=new_embed, view=view)
     
-        # Check if the user has the "Admin" role and update the Admin Panel
+        # Update the admin panel if the user has the Admin role
         if any(role.name == "Admin" for role in interaction.user.roles):
             await self.edit_admin_panel(interaction, project_names[new_index], completed=False)
+
 
 
     def create_embed(self, projects, project_names, index, user):
@@ -252,34 +253,39 @@ class recToken(commands.Cog):
         message = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
         self.admin_messages[interaction.user.id] = message  # Store message per user
 
-    async def edit_admin_panel(self, interaction: discord.Interaction, project_name: str):
+    async def edit_admin_panel(self, interaction: discord.Interaction, project_name: str, completed: bool = False):
         view = discord.ui.View()
-
+    
         view.add_item(
             discord.ui.Button(
                 label="Edit Project",
-                custom_id=f"edit_project_{project_name}",
+                custom_id=f"edit_project_{project_name}_{'completed' if completed else 'inprogress'}",
                 style=discord.ButtonStyle.success
             )
         )
-
+    
         view.add_item(
             discord.ui.Button(
                 label="Remove Project",
-                custom_id=f"remove_project_{project_name}",
+                custom_id=f"remove_project_{project_name}_{'completed' if completed else 'inprogress'}",
                 style=discord.ButtonStyle.danger
             )
         )
-
+    
         embed = discord.Embed(
             title="Admin Panel",
             description=f"Manage the project: {self.display_project_name(project_name)}",
             color=discord.Color.gold()
         )
-
+    
+        # Find and update the existing admin panel message
         if interaction.user.id in self.admin_messages:
             message = self.admin_messages[interaction.user.id]
             await message.edit(embed=embed, view=view)
+        else:
+            # If there's no existing message, create one
+            message = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+            self.admin_messages[interaction.user.id] = message  # Store message per user
 
     async def send_edit_menu(self, interaction: discord.Interaction, project_name: str):
         view = discord.ui.View()
