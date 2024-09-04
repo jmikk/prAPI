@@ -16,7 +16,6 @@ class recToken(commands.Cog):
         self.config.register_guild(**default_guild)
         self.config.register_user(credits=0)
 
-
     @commands.command()
     async def menu(self, ctx):
         embed = discord.Embed(
@@ -36,6 +35,7 @@ class recToken(commands.Cog):
     
         await ctx.send(embed=embed, view=view)
 
+
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
         custom_id = interaction.data['custom_id']
@@ -49,10 +49,10 @@ class recToken(commands.Cog):
         elif custom_id == "viewcompletedprojects":
             await interaction.response.defer()
             await self.view_completed_projects_interaction(interaction)
-        elif custom_id.startswith("navigate_previous_"):
-            await self.navigate_projects(interaction, "previous")
-        elif custom_id.startswith("navigate_next_"):
-            await self.navigate_projects(interaction, "next")
+        elif custom_id.startswith("navigate_completed_previous_"):
+            await self.navigate_completed_projects(interaction, "previous")
+        elif custom_id.startswith("navigate_completed_next_"):
+            await self.navigate_completed_projects(interaction, "next")
         elif custom_id.startswith("donate_"):
             project_name = custom_id.split("_", 1)[1]
             await interaction.response.defer()
@@ -67,6 +67,7 @@ class recToken(commands.Cog):
             field, project_name = custom_id.split("_")[2:]
             await self.prompt_edit_field(interaction, project_name, field)
 
+
     async def view_completed_projects_interaction(self, interaction: discord.Interaction):
         completed_projects = await self.config.guild(interaction.guild).completed_projects()
     
@@ -74,16 +75,53 @@ class recToken(commands.Cog):
             await interaction.followup.send(embed=discord.Embed(description="No completed projects yet.", color=discord.Color.red()), ephemeral=True)
             return
     
-        embed = discord.Embed(title="Completed Projects", color=discord.Color.blue())
-        
-        for project_name, project_details in completed_projects.items():
-            embed.add_field(
-                name=self.display_project_name(project_name),
-                value=f"Credits: {project_details['current_credits']}/{project_details['required_credits']}",
-                inline=False
+        project_names = list(completed_projects.keys())
+        initial_index = 0
+        initial_embed = self.create_embed(completed_projects, project_names, initial_index, interaction.user)
+        view = self.create_completed_project_view(project_names, initial_index, interaction.user)
+    
+        await interaction.followup.send(embed=initial_embed, view=view, ephemeral=True)
+    
+    def create_completed_project_view(self, project_names, index, user):
+        current_project_name = project_names[index]
+        view = discord.ui.View()
+    
+        view.add_item(
+            discord.ui.Button(
+                label="⬅️ Previous",
+                custom_id=f"navigate_completed_previous_{current_project_name}",
+                style=discord.ButtonStyle.secondary
             )
+        )
+    
+        view.add_item(
+            discord.ui.Button(
+                label="Next ➡️",
+                custom_id=f"navigate_completed_next_{current_project_name}",
+                style=discord.ButtonStyle.secondary
+            )
+        )
+    
+        return view
 
-        await interaction.followup.send(embed=embed, ephemeral=True)
+    async def navigate_completed_projects(self, interaction: discord.Interaction, direction: str):
+        completed_projects = await self.config.guild(interaction.guild).completed_projects()
+        project_names = list(completed_projects.keys())
+    
+        current_project_name = interaction.data['custom_id'].split("_", 3)[-1]
+        current_index = project_names.index(current_project_name)
+    
+        if direction == "previous":
+            new_index = (current_index - 1) % len(project_names)
+        else:  # direction == "next"
+            new_index = (current_index + 1) % len(project_names)
+    
+        new_embed = self.create_embed(completed_projects, project_names, new_index, interaction.user)
+        view = self.create_completed_project_view(project_names, new_index, interaction.user)
+    
+        await interaction.response.edit_message(embed=new_embed, view=view)
+
+
 
     async def viewprojects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
