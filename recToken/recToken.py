@@ -284,18 +284,31 @@ class recToken(commands.Cog):
     async def ask_donation_amount(self, interaction: discord.Interaction, project_name: str):
         def check(message):
             return message.author == interaction.user and message.channel == interaction.channel
-
+    
         await interaction.followup.send(embed=discord.Embed(description="Please enter the amount of credits you would like to donate or type 'all' to donate all your credits.", color=discord.Color.blue()), ephemeral=True)
-
+    
         try:
             msg = await self.bot.wait_for('message', check=check, timeout=60.0)
             amount = msg.content.lower()
-
+    
+            user_credits = await self.config.user(interaction.user).credits()
+            project = self.normalize_project_name(project_name)
+            projects = await self.config.guild(interaction.guild).projects()
+            if project not in projects:
+                return await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()), ephemeral=True)
+    
+            current_credits = projects[project]["current_credits"]
+            required_credits = projects[project]["required_credits"]
+    
+            max_donatable = required_credits - current_credits
+    
             if amount == 'all':
-                amount_to_donate = await self.config.user(interaction.user).credits()
+                amount_to_donate = min(user_credits, max_donatable)
             else:
                 amount_to_donate = int(amount)
-
+                if amount_to_donate > max_donatable:
+                    amount_to_donate = max_donatable
+    
             await self.donatecredits(interaction, project_name, amount_to_donate)
         except ValueError:
             await interaction.followup.send(embed=discord.Embed(description="Invalid amount entered. Please try again.", color=discord.Color.red()), ephemeral=True)
@@ -307,18 +320,31 @@ class recToken(commands.Cog):
         async with self.config.guild(interaction.guild).projects() as projects:
             if project not in projects:
                 return await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()), ephemeral=True)
-    
+        
             user_credits = await self.config.user(interaction.user).credits()
+            current_credits = projects[project]["current_credits"]
+            required_credits = projects[project]["required_credits"]
+    
+            # Calculate the maximum amount that can be donated
+            max_donatable = required_credits - current_credits
+    
+            # If the user tries to donate more than what is needed, adjust the donation amount
+            if amount_to_donate > max_donatable:
+                amount_to_donate = max_donatable
     
             if amount_to_donate > user_credits:
                 return await interaction.followup.send(embed=discord.Embed(description="You don't have enough credits.", color=discord.Color.red()), ephemeral=True)
-    
+        
             projects[project]["current_credits"] += amount_to_donate
-    
+        
             new_credits = user_credits - amount_to_donate
             await self.config.user(interaction.user).credits.set(new_credits)
-
+    
             await interaction.followup.send(embed=discord.Embed(description=f"{interaction.user.name} donated {amount_to_donate} credits to '{self.display_project_name(project)}'.", color=discord.Color.green()), ephemeral=False)
+    
+            # Check if the project is now complete
+            if projects[project]["current_credits"] >= required_credits:
+                await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' is now fully funded!", color=discord.Color.gold()), ephemeral=False)
 
     async def checkcredits(self, interaction: discord.Interaction):
         credits = await self.config.user(interaction.user).credits()
