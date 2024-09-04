@@ -43,6 +43,10 @@ class recToken(commands.Cog):
         if custom_id == "viewprojects":
             await interaction.response.defer()
             await self.viewprojects(interaction)
+        elif custom_id.startswith("navigate_previous_"):
+            await self.navigate_projects(interaction, "previous")
+        elif custom_id.startswith("navigate_next_"):
+            await self.navigate_projects(interaction, "next")
         elif custom_id == "checkcredits":
             await interaction.response.defer()
             await self.checkcredits(interaction)
@@ -138,27 +142,29 @@ class recToken(commands.Cog):
             # Check if the user has the "Admin" role and show the Admin Panel
             if any(role.name == "Admin" for role in interaction.user.roles):
                 await self.send_admin_panel(interaction, project_names[initial_index])
-
+   
+    # Navigation for in-progress projects
     async def navigate_projects(self, interaction: discord.Interaction, direction: str):
         projects = await self.config.guild(interaction.guild).projects()
         project_names = list(projects.keys())
-
+    
         current_project_name = interaction.data['custom_id'].split("_", 2)[-1]
         current_index = project_names.index(current_project_name)
-
+    
         if direction == "previous":
             new_index = (current_index - 1) % len(project_names)
         else:  # direction == "next"
             new_index = (current_index + 1) % len(project_names)
-
+    
         new_embed = self.create_embed(projects, project_names, new_index, interaction.user)
         view = self.create_project_view(project_names, new_index, interaction.user)
-
+    
         await interaction.response.edit_message(embed=new_embed, view=view)
-
+    
         # Check if the user has the "Admin" role and update the Admin Panel
         if any(role.name == "Admin" for role in interaction.user.roles):
-            await self.edit_admin_panel(interaction, project_names[new_index])
+            await self.edit_admin_panel(interaction, project_names[new_index], completed=False)
+
 
     def create_embed(self, projects, project_names, index, user):
         project_name = project_names[index]
@@ -191,7 +197,7 @@ class recToken(commands.Cog):
     def create_project_view(self, project_names, index, user):
         current_project_name = project_names[index]
         view = discord.ui.View()
-
+    
         view.add_item(
             discord.ui.Button(
                 label="⬅️ Previous",
@@ -199,7 +205,7 @@ class recToken(commands.Cog):
                 style=discord.ButtonStyle.secondary
             )
         )
-
+    
         view.add_item(
             discord.ui.Button(
                 label="Donate Credits",
@@ -207,7 +213,7 @@ class recToken(commands.Cog):
                 style=discord.ButtonStyle.primary
             )
         )
-
+    
         view.add_item(
             discord.ui.Button(
                 label="Next ➡️",
@@ -215,7 +221,7 @@ class recToken(commands.Cog):
                 style=discord.ButtonStyle.secondary
             )
         )
-
+    
         return view
 
     async def send_admin_panel(self, interaction: discord.Interaction, project_name: str):
