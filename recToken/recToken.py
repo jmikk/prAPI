@@ -473,5 +473,25 @@ class recToken(commands.Cog):
     def normalize_project_name(self, project: str) -> str:
         return project.replace(" ", "_").lower()
 
+    @commands.command()
+    async def view_completed_projects(self, ctx):
+        completed_projects = await self.config.guild(ctx.guild).completed_projects()
+    
+        if not completed_projects:
+            await ctx.send(embed=discord.Embed(description="No completed projects yet.", color=discord.Color.red()))
+            return
+    
+        embed = discord.Embed(title="Completed Projects", color=discord.Color.blue())
+        
+        for project_name, project_details in completed_projects.items():
+            embed.add_field(
+                name=self.display_project_name(project_name),
+                value=f"Credits: {project_details['current_credits']}/{project_details['required_credits']}",
+                inline=False
+            )
+    
+        await ctx.send(embed=embed)
+
+
 def setup(bot):
     bot.add_cog(recToken(bot))
