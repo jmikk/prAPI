@@ -50,8 +50,12 @@ class recToken(commands.Cog):
             project_name = custom_id.split("_", 1)[1]
             await interaction.response.defer()
             await self.ask_donation_amount(interaction, project_name)
-        elif custom_id.startswith("edit_project_") or custom_id.startswith("remove_project_"):
-            await self.admin_panel(interaction, custom_id)
+        elif custom_id.startswith("edit_project_"):
+            project_name = custom_id.split("_", 2)[-1]
+            await self.edit_project(interaction, project_name)
+        elif custom_id.startswith("remove_project_"):
+            project_name = custom_id.split("_", 2)[-1]
+            await self.remove_project(interaction, project_name)
 
     async def viewprojects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
@@ -264,46 +268,22 @@ class recToken(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def edit_project(self, interaction: discord.Interaction, project_name: str):
-        await interaction.followup.send(embed=discord.Embed(description=f"Editing project: {self.display_project_name(project_name)}", color=discord.Color.yellow()), ephemeral=True)
+        # This should trigger the editing process
+        await interaction.response.send_message(
+            embed=discord.Embed(description=f"Editing project: {self.display_project_name(project_name)}", color=discord.Color.yellow()),
+            ephemeral=True
+        )
         # Implement your editing logic here
 
     async def remove_project(self, interaction: discord.Interaction, project_name: str):
         project = self.normalize_project_name(project_name)
         async with self.config.guild(interaction.guild).projects() as projects:
             if project not in projects:
-                await interaction.response.send_message(
-                    embed=discord.Embed(
-                        description=f"Project '{self.display_project_name(project)}' not found.",
-                        color=discord.Color.red()
-                    ),
-                    ephemeral=True
-                )
-                return
+                return await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()), ephemeral=True)
     
-            # Remove the project
             del projects[project]
-    
-        # Send a confirmation message and update the admin panel
-        await interaction.response.send_message(
-            embed=discord.Embed(
-                description=f"Project '{self.display_project_name(project_name)}' has been removed.",
-                color=discord.Color.green()
-            ),
-            ephemeral=True
-        )
-    
-        # Update the admin panel or disable it if no projects are left
-        remaining_projects = await self.config.guild(interaction.guild).projects()
-        if remaining_projects:
-            first_project_name = next(iter(remaining_projects))
-            await self.edit_admin_panel(interaction, first_project_name)
-        else:
-            await interaction.edit_original_message(embed=discord.Embed(
-                title="Admin Panel",
-                description="No projects left to manage.",
-                color=discord.Color.gold()
-            ), view=None)
 
+        await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project_name)}' has been removed.", color=discord.Color.green()), ephemeral=False)
 
     @commands.command()
     @commands.is_owner()
