@@ -52,10 +52,13 @@ class recToken(commands.Cog):
             await self.ask_donation_amount(interaction, project_name)
         elif custom_id.startswith("edit_project_"):
             project_name = custom_id.split("_", 2)[-1]
-            await self.edit_project(interaction, project_name)
+            await self.send_edit_menu(interaction, project_name)
         elif custom_id.startswith("remove_project_"):
             project_name = custom_id.split("_", 2)[-1]
             await self.remove_project(interaction, project_name)
+        elif custom_id.startswith("edit_field_"):
+            field, project_name = custom_id.split("_")[2:]
+            await self.prompt_edit_field(interaction, project_name, field)
 
     async def viewprojects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
@@ -209,10 +212,71 @@ class recToken(commands.Cog):
             message = self.admin_messages[interaction.user.id]
             await message.edit(embed=embed, view=view)
 
+    async def send_edit_menu(self, interaction: discord.Interaction, project_name: str):
+        view = discord.ui.View()
+
+        view.add_item(
+            discord.ui.Button(
+                label="Edit Description",
+                custom_id=f"edit_field_description_{project_name}",
+                style=discord.ButtonStyle.primary
+            )
+        )
+        view.add_item(
+            discord.ui.Button(
+                label="Edit Thumbnail",
+                custom_id=f"edit_field_thumbnail_{project_name}",
+                style=discord.ButtonStyle.primary
+            )
+        )
+        view.add_item(
+            discord.ui.Button(
+                label="Edit Emoji",
+                custom_id=f"edit_field_emoji_{project_name}",
+                style=discord.ButtonStyle.primary
+            )
+        )
+
+        embed = discord.Embed(
+            title=f"Edit Project: {self.display_project_name(project_name)}",
+            description="Choose the field you want to edit:",
+            color=discord.Color.green()
+        )
+
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    async def prompt_edit_field(self, interaction: discord.Interaction, project_name: str, field: str):
+        await interaction.response.send_message(embed=discord.Embed(
+            description=f"Please enter the new value for **{field.capitalize()}**:",
+            color=discord.Color.blue()
+        ), ephemeral=True)
+
+        def check(message):
+            return message.author == interaction.user and message.channel == interaction.channel
+
+        try:
+            msg = await self.bot.wait_for('message', check=check, timeout=60.0)
+            new_value = msg.content
+
+            await self.update_project_field(interaction, project_name, field, new_value)
+        except asyncio.TimeoutError:
+            await interaction.followup.send(embed=discord.Embed(description="You took too long to respond. Please try again.", color=discord.Color.red()), ephemeral=True)
+
+    async def update_project_field(self, interaction: discord.Interaction, project_name: str, field: str, new_value: str):
+        project = self.normalize_project_name(project_name)
+        async with self.config.guild(interaction.guild).projects() as projects:
+            if project not in projects:
+                await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()), ephemeral=True)
+                return
+
+            projects[project][field] = new_value
+
+        await interaction.followup.send(embed=discord.Embed(description=f"{field.capitalize()} for project '{self.display_project_name(project_name)}' updated successfully.", color=discord.Color.green()), ephemeral=True)
+
     async def admin_panel(self, interaction: discord.Interaction, custom_id: str):
         if custom_id.startswith("edit_project_"):
             project_name = custom_id.split("_", 2)[-1]
-            await self.edit_project(interaction, project_name)
+            await self.send_edit_menu(interaction, project_name)
         elif custom_id.startswith("remove_project_"):
             project_name = custom_id.split("_", 2)[-1]
             await self.remove_project(interaction, project_name)
@@ -268,12 +332,8 @@ class recToken(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def edit_project(self, interaction: discord.Interaction, project_name: str):
-        # This should trigger the editing process
-        await interaction.response.send_message(
-            embed=discord.Embed(description=f"Editing project: {self.display_project_name(project_name)}", color=discord.Color.yellow()),
-            ephemeral=True
-        )
-        # Implement your editing logic here
+        # Triggering the edit process now sends a menu
+        await self.send_edit_menu(interaction, project_name)
 
     async def remove_project(self, interaction: discord.Interaction, project_name: str):
         project = self.normalize_project_name(project_name)
