@@ -354,44 +354,44 @@ class recToken(commands.Cog):
         await ctx.send(embed=discord.Embed(description=f"{amount} credits given to {user.name}.", color=discord.Color.green()))
 
     async def remove_project(self, interaction: discord.Interaction, project_name: str):
-    project = self.normalize_project_name(project_name)
-    async with self.config.guild(interaction.guild).projects() as projects:
-        if project not in projects:
-            await interaction.response.send_message(
-                embed=discord.Embed(
-                    description=f"Project '{self.display_project_name(project)}' not found.",
-                    color=discord.Color.red()
-                ),
-                ephemeral=True
-            )
-            return
-
-        # Remove the project
-        del projects[project]
-
-    # Send a confirmation message
-    await interaction.response.send_message(
-        embed=discord.Embed(
-            description=f"Project '{self.display_project_name(project_name)}' has been removed.",
-            color=discord.Color.green()
-        ),
-        ephemeral=True
-    )
-
-    # Update the admin panel or disable it if no projects are left
-    remaining_projects = await self.config.guild(interaction.guild).projects()
-    if remaining_projects:
-        first_project_name = next(iter(remaining_projects))
-        await self.edit_admin_panel(interaction, first_project_name)
-    else:
-        # Edit the original message to reflect that there are no more projects
-        if interaction.user.id in self.admin_messages:
-            message = self.admin_messages[interaction.user.id]
-            await message.edit(embed=discord.Embed(
-                title="Admin Panel",
-                description="No projects left to manage.",
-                color=discord.Color.gold()
-            ), view=None)
+        project = self.normalize_project_name(project_name)
+        async with self.config.guild(interaction.guild).projects() as projects:
+            if project not in projects:
+                await interaction.response.send_message(
+                    embed=discord.Embed(
+                        description=f"Project '{self.display_project_name(project)}' not found.",
+                        color=discord.Color.red()
+                    ),
+                    ephemeral=True
+                )
+                return
+    
+            # Remove the project
+            del projects[project]
+    
+        # Send a confirmation message
+        await interaction.response.send_message(
+            embed=discord.Embed(
+                description=f"Project '{self.display_project_name(project_name)}' has been removed.",
+                color=discord.Color.green()
+            ),
+            ephemeral=True
+        )
+    
+        # Update the admin panel or disable it if no projects are left
+        remaining_projects = await self.config.guild(interaction.guild).projects()
+        if remaining_projects:
+            first_project_name = next(iter(remaining_projects))
+            await self.edit_admin_panel(interaction, first_project_name)
+        else:
+            # Edit the original message to reflect that there are no more projects
+            if interaction.user.id in self.admin_messages:
+                message = self.admin_messages[interaction.user.id]
+                await message.edit(embed=discord.Embed(
+                    title="Admin Panel",
+                    description="No projects left to manage.",
+                    color=discord.Color.gold()
+                ), view=None)
 
     
     @commands.command()
