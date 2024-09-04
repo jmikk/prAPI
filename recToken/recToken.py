@@ -80,7 +80,7 @@ class recToken(commands.Cog):
         initial_embed = self.create_embed(completed_projects, project_names, initial_index, interaction.user)
         view = self.create_completed_project_view(project_names, initial_index, interaction.user)
     
-        await interaction.followup.send(embed=initial_embed, view=view, ephemeral=True)
+        await interaction.followup.send(embed=initial_embed, view=view)
     
     def create_completed_project_view(self, project_names, index, user):
         current_project_name = project_names[index]
