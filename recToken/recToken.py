@@ -21,29 +21,34 @@ class recToken(commands.Cog):
     async def menu(self, ctx):
         embed = discord.Embed(
             title="Command Menu",
-            description="Use the buttons below to view projects or check your credits.",
+            description="Use the buttons below to view projects, check your credits, or view completed projects.",
             color=discord.Color.blue()
         )
-
+    
         view_projects_button = discord.ui.Button(label="View Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary)
         check_credits_button = discord.ui.Button(label="Check Credits", custom_id="checkcredits", style=discord.ButtonStyle.success)
-
+        view_completed_projects_button = discord.ui.Button(label="View Completed Projects", custom_id="viewcompletedprojects", style=discord.ButtonStyle.secondary)
+    
         view = discord.ui.View()
         view.add_item(view_projects_button)
         view.add_item(check_credits_button)
-
+        view.add_item(view_completed_projects_button)
+    
         await ctx.send(embed=embed, view=view)
 
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
         custom_id = interaction.data['custom_id']
-
+    
         if custom_id == "viewprojects":
             await interaction.response.defer()
             await self.viewprojects(interaction)
         elif custom_id == "checkcredits":
             await interaction.response.defer()
             await self.checkcredits(interaction)
+        elif custom_id == "viewcompletedprojects":
+            await interaction.response.defer()
+            await self.view_completed_projects_interaction(interaction)
         elif custom_id.startswith("navigate_previous_"):
             await self.navigate_projects(interaction, "previous")
         elif custom_id.startswith("navigate_next_"):
@@ -61,6 +66,24 @@ class recToken(commands.Cog):
         elif custom_id.startswith("edit_field_"):
             field, project_name = custom_id.split("_")[2:]
             await self.prompt_edit_field(interaction, project_name, field)
+
+    async def view_completed_projects_interaction(self, interaction: discord.Interaction):
+        completed_projects = await self.config.guild(interaction.guild).completed_projects()
+    
+        if not completed_projects:
+            await interaction.followup.send(embed=discord.Embed(description="No completed projects yet.", color=discord.Color.red()), ephemeral=True)
+            return
+    
+        embed = discord.Embed(title="Completed Projects", color=discord.Color.blue())
+        
+        for project_name, project_details in completed_projects.items():
+            embed.add_field(
+                name=self.display_project_name(project_name),
+                value=f"Credits: {project_details['current_credits']}/{project_details['required_credits']}",
+                inline=False
+            )
+
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def viewprojects(self, interaction: discord.Interaction):
         projects = await self.config.guild(interaction.guild).projects()
