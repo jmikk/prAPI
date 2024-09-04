@@ -58,11 +58,17 @@ class recToken(commands.Cog):
             await interaction.response.defer()
             await self.ask_donation_amount(interaction, project_name)
         elif custom_id.startswith("edit_project_"):
-            project_name = custom_id.split("_", 2)[-1]
-            await self.send_edit_menu(interaction, project_name)
+            project_name, project_type = custom_id.split("_", 2)[-1], custom_id.split("_")[-1]
+            if project_type == 'completed':
+                await self.send_edit_menu(interaction, project_name, completed=True)
+            else:
+                await self.send_edit_menu(interaction, project_name)
         elif custom_id.startswith("remove_project_"):
-            project_name = custom_id.split("_", 2)[-1]
-            await self.remove_project(interaction, project_name)
+            project_name, project_type = custom_id.split("_", 2)[-1], custom_id.split("_")[-1]
+            if project_type == 'completed':
+                await self.remove_project(interaction, project_name, completed=True)
+            else:
+                await self.remove_project(interaction, project_name)
         elif custom_id.startswith("edit_field_"):
             field, project_name = custom_id.split("_")[2:]
             await self.prompt_edit_field(interaction, project_name, field)
@@ -80,7 +86,12 @@ class recToken(commands.Cog):
         initial_embed = self.create_embed(completed_projects, project_names, initial_index, interaction.user)
         view = self.create_completed_project_view(project_names, initial_index, interaction.user)
     
-        await interaction.followup.send(embed=initial_embed, view=view)
+        await interaction.followup.send(embed=initial_embed, view=view, ephemeral=True)
+    
+        # Check if the user has the "Admin" role and show the Admin Panel
+        if any(role.name == "Admin" for role in interaction.user.roles):
+            await self.send_admin_panel(interaction, project_names[initial_index], completed=True)
+
     
     def create_completed_project_view(self, project_names, index, user):
         current_project_name = project_names[index]
@@ -120,6 +131,11 @@ class recToken(commands.Cog):
         view = self.create_completed_project_view(project_names, new_index, interaction.user)
     
         await interaction.response.edit_message(embed=new_embed, view=view)
+    
+        # Check if the user has the "Admin" role and update the Admin Panel
+        if any(role.name == "Admin" for role in interaction.user.roles):
+            await self.edit_admin_panel(interaction, project_names[new_index], completed=True)
+
 
 
 
@@ -218,62 +234,64 @@ class recToken(commands.Cog):
 
         return view
 
-    async def send_admin_panel(self, interaction: discord.Interaction, project_name: str):
+    async def send_admin_panel(self, interaction: discord.Interaction, project_name: str, completed: bool = False):
         view = discord.ui.View()
-
+    
         view.add_item(
             discord.ui.Button(
                 label="Edit Project",
-                custom_id=f"edit_project_{project_name}",
+                custom_id=f"edit_project_{project_name}_{'completed' if completed else 'inprogress'}",
                 style=discord.ButtonStyle.success
             )
         )
-
+    
         view.add_item(
             discord.ui.Button(
                 label="Remove Project",
-                custom_id=f"remove_project_{project_name}",
+                custom_id=f"remove_project_{project_name}_{'completed' if completed else 'inprogress'}",
                 style=discord.ButtonStyle.danger
             )
         )
-
+    
         embed = discord.Embed(
             title="Admin Panel",
             description=f"Manage the project: {self.display_project_name(project_name)}",
             color=discord.Color.gold()
         )
-
+    
         message = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
         self.admin_messages[interaction.user.id] = message  # Store message per user
 
-    async def edit_admin_panel(self, interaction: discord.Interaction, project_name: str):
-        view = discord.ui.View()
 
+    async def edit_admin_panel(self, interaction: discord.Interaction, project_name: str, completed: bool = False):
+        view = discord.ui.View()
+    
         view.add_item(
             discord.ui.Button(
                 label="Edit Project",
-                custom_id=f"edit_project_{project_name}",
+                custom_id=f"edit_project_{project_name}_{'completed' if completed else 'inprogress'}",
                 style=discord.ButtonStyle.success
             )
         )
-
+    
         view.add_item(
             discord.ui.Button(
                 label="Remove Project",
-                custom_id=f"remove_project_{project_name}",
+                custom_id=f"remove_project_{project_name}_{'completed' if completed else 'inprogress'}",
                 style=discord.ButtonStyle.danger
             )
         )
-
+    
         embed = discord.Embed(
             title="Admin Panel",
             description=f"Manage the project: {self.display_project_name(project_name)}",
             color=discord.Color.gold()
         )
-
+    
         if interaction.user.id in self.admin_messages:
             message = self.admin_messages[interaction.user.id]
             await message.edit(embed=embed, view=view)
+
 
     async def send_edit_menu(self, interaction: discord.Interaction, project_name: str):
         view = discord.ui.View()
