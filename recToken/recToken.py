@@ -416,7 +416,7 @@ class recToken(commands.Cog):
                 # Remove the project from the in-progress list
                 del projects[project]
     
-                await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' has been moved to the completed projects list.", color=discord.Color.green()), ephemeral=False)
+                #await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' has been moved to the completed projects list.", color=discord.Color.green()), ephemeral=False)
 
     async def checkcredits(self, interaction: discord.Interaction):
         credits = await self.config.user(interaction.user).credits()
