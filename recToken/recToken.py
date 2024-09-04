@@ -271,11 +271,39 @@ class recToken(commands.Cog):
         project = self.normalize_project_name(project_name)
         async with self.config.guild(interaction.guild).projects() as projects:
             if project not in projects:
-                return await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()), ephemeral=True)
+                await interaction.response.send_message(
+                    embed=discord.Embed(
+                        description=f"Project '{self.display_project_name(project)}' not found.",
+                        color=discord.Color.red()
+                    ),
+                    ephemeral=True
+                )
+                return
     
+            # Remove the project
             del projects[project]
+    
+        # Send a confirmation message and update the admin panel
+        await interaction.response.send_message(
+            embed=discord.Embed(
+                description=f"Project '{self.display_project_name(project_name)}' has been removed.",
+                color=discord.Color.green()
+            ),
+            ephemeral=True
+        )
+    
+        # Update the admin panel or disable it if no projects are left
+        remaining_projects = await self.config.guild(interaction.guild).projects()
+        if remaining_projects:
+            first_project_name = next(iter(remaining_projects))
+            await self.edit_admin_panel(interaction, first_project_name)
+        else:
+            await interaction.edit_original_message(embed=discord.Embed(
+                title="Admin Panel",
+                description="No projects left to manage.",
+                color=discord.Color.gold()
+            ), view=None)
 
-        await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project_name)}' has been removed.", color=discord.Color.green()), ephemeral=False)
 
     @commands.command()
     @commands.is_owner()
