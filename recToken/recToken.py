@@ -10,11 +10,17 @@ class recToken(commands.Cog):
     
         default_guild = {
             "projects": {},
-            "completed_projects": {}  # Add this line to initialize completed projects
+            "completed_projects": {},
+            "personal_projects": {}  # Server-wide personal projects
+        }
+
+        default_user = {
+            "credits": 0,
+            "completed_personal_projects": {}  # User-specific completed projects
         }
         
         self.config.register_guild(**default_guild)
-        self.config.register_user(credits=0)
+        self.config.register_user(**default_user)
 
     @commands.command()
     async def menu(self, ctx):
@@ -70,6 +76,9 @@ class recToken(commands.Cog):
         elif custom_id.startswith("edit_field_"):
             field, project_name = custom_id.split("_")[2:]
             await self.prompt_edit_field(interaction, project_name, field)
+        elif custom_id.startswith("build_personal_"):
+            project_name = custom_id.split("_", 2)[-1]
+            await self.build_personal_project(interaction, project_name)
 
 
     async def view_completed_projects_interaction(self, interaction: discord.Interaction):
@@ -580,6 +589,161 @@ class recToken(commands.Cog):
     
         await ctx.send(embed=discord.Embed(description=f"Completed project '{self.display_project_name(project)}' has been successfully deleted.", color=discord.Color.green()))
     
+
+
+    ### Command for Users to View and Build Personal Projects ###
+    @commands.command()
+    async def personal_projects(self, ctx):
+        """View and build server-wide personal projects."""
+        projects = await self.config.guild(ctx.guild).personal_projects()
+        
+        if not projects:
+            await ctx.send(embed=discord.Embed(description="No personal projects available yet.", color=discord.Color.red()))
+            return
+
+        project_names = list(projects.keys())
+        initial_index = 0
+        embed = self.create_personal_project_embed(projects, project_names, initial_index)
+        view = self.create_personal_project_view(project_names, initial_index)
+
+        await ctx.send(embed=embed, view=view)
+
+    def create_personal_project_embed(self, projects, project_names, index):
+        project_name = project_names[index]
+        project = projects[project_name]
+        
+        prereqs_met = "Yes" if project.get("prereqs_met", True) else "No"
+        percent_complete = (project["current_credits"] / project["required_credits"]) * 100 if project["required_credits"] > 0 else 100
+
+        embed = discord.Embed(
+            title=f"Personal Project: {self.display_project_name(project_name)}",
+            description=project["description"] or "No description available.",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Prerequisites Met", value=prereqs_met, inline=False)
+        embed.add_field(name="Credits", value=f"{project['current_credits']}/{project['required_credits']} credits", inline=False)
+        embed.add_field(name="% Complete", value=f"{percent_complete:.2f}% complete", inline=False)
+
+        return embed
+
+
+    def create_personal_project_view(self, project_names, index):
+        current_project_name = project_names[index]
+        view = discord.ui.View()
+
+        view.add_item(
+            discord.ui.Button(
+                label="⬅️ Previous",
+                custom_id=f"navigate_personal_previous_{current_project_name}",
+                style=discord.ButtonStyle.secondary
+            )
+        )
+        
+        view.add_item(
+            discord.ui.Button(
+                label="Build Project",
+                custom_id=f"build_personal_{current_project_name}",
+                style=discord.ButtonStyle.primary
+            )
+        )
+
+        view.add_item(
+            discord.ui.Button(
+                label="Next ➡️",
+                custom_id=f"navigate_personal_next_{current_project_name}",
+                style=discord.ButtonStyle.secondary
+            )
+        )
+
+        return view
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def add_personal_project(self, ctx, project: str, required_credits: int, prereqs: str = None):
+        """Add a server-wide personal project (Admin only)."""
+        project = self.normalize_project_name(project)
+        async with self.config.guild(ctx.guild).personal_projects() as personal_projects:
+            prereqs_met = prereqs is None  # If no prereqs, project is buildable immediately
+            personal_projects[project] = {
+                "required_credits": required_credits,
+                "current_credits": 0,
+                "thumbnail": "",
+                "description": "",
+                "prereqs_met": prereqs_met,
+                "prereqs": prereqs or "None"
+            }
+
+        await ctx.send(embed=discord.Embed(description=f"Personal project '{self.display_project_name(project)}' added server-wide.", color=discord.Color.green()))
+
+
+    async def build_personal_project(self, interaction: discord.Interaction, project_name: str):
+        project = self.normalize_project_name(project_name)
+        async with self.config.guild(interaction.guild).personal_projects() as personal_projects:
+            if project not in personal_projects:
+                await interaction.response.send_message(f"Project '{self.display_project_name(project)}' not found.", ephemeral=True)
+                return
+            
+            project_data = personal_projects[project]
+
+            if not project_data.get("prereqs_met", True):
+                await interaction.response.send_message(f"Prerequisites for project '{self.display_project_name(project)}' are not met.", ephemeral=True)
+                return
+
+            # Project can be built; Deduct credits and mark as completed for the user
+            await self.complete_personal_project(interaction, project_name)
+        
+    async def complete_personal_project(self, interaction: discord.Interaction, project_name: str):
+        user_credits = await self.config.user(interaction.user).credits()
+        project = self.normalize_project_name(project_name)
+        async with self.config.guild(interaction.guild).personal_projects() as personal_projects:
+            if project not in personal_projects:
+                return await interaction.followup.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' not found.", color=discord.Color.red()), ephemeral=True)
+
+            required_credits = personal_projects[project]["required_credits"]
+            if user_credits < required_credits:
+                return await interaction.followup.send(embed=discord.Embed(description="You don't have enough credits to complete this project.", color=discord.Color.red()), ephemeral=True)
+
+            # Deduct credits and mark as complete
+            await self.config.user(interaction.user).credits.set(user_credits - required_credits)
+            async with self.config.user(interaction.user).completed_personal_projects() as completed_projects:
+                completed_projects[project] = personal_projects[project]
+
+            await interaction.followup.send(embed=discord.Embed(description=f"You have completed the personal project '{self.display_project_name(project)}'.", color=discord.Color.green()), ephemeral=False)
+
+   
+    ### View Completed Personal Projects for a User ###
+    @commands.command()
+    async def completed_personal_projects(self, ctx):
+        """View the personal projects you have completed."""
+        completed_projects = await self.config.user(ctx.author).completed_personal_projects()
+
+        if not completed_projects:
+            await ctx.send(embed=discord.Embed(description="You haven't completed any personal projects yet.", color=discord.Color.red()))
+            return
+
+        embed = discord.Embed(title="Completed Personal Projects", color=discord.Color.blue())
+        
+        for project_name, project_details in completed_projects.items():
+            embed.add_field(
+                name=self.display_project_name(project_name),
+                value=f"Credits: {project_details['current_credits']}/{project_details['required_credits']}",
+                inline=False
+            )
+    
+        await ctx.send(embed=embed)
+
+
+
+    ### Helper Methods ###
+    def display_project_name(self, project: str) -> str:
+        return project.replace("_", " ").title()
+
+    def normalize_project_name(self, project: str) -> str:
+        return project.replace(" ", "_").lower()
+
+
+
+
 
 
 def setup(bot):
