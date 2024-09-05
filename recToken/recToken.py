@@ -13,9 +13,13 @@ class recToken(commands.Cog):
             "completed_projects": {},# Add this line to initialize completed projects
             "personal_projects":{}
         }
+        defualt_user = {
+            "credits" :0,
+            "completed_personal_projects":{}
+        }
         
         self.config.register_guild(**default_guild)
-        self.config.register_user(credits=0)
+        self.config.register_user(**default_user)
 
     @commands.command()
     async def menu(self, ctx):
