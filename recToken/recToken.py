@@ -89,9 +89,9 @@ class recToken(commands.Cog):
 
 
     #TODO:
-    def async view_completed_projects_interaction(self, interaction: discord.Interaction):
+    async def view_completed_projects_interaction(self, interaction: discord.Interaction):
         pass
-    def async view_personal_projects(self, interaction: discord.Interaction):
+    async def view_personal_projects(self, interaction: discord.Interaction):
         pass
     
 
