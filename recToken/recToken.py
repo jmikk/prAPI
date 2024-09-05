@@ -10,7 +10,8 @@ class recToken(commands.Cog):
     
         default_guild = {
             "projects": {},
-            "completed_projects": {}  # Add this line to initialize completed projects
+            "completed_projects": {}# Add this line to initialize completed projects
+            "personal_projects":{}
         }
         
         self.config.register_guild(**default_guild)
@@ -24,14 +25,19 @@ class recToken(commands.Cog):
             color=discord.Color.blue()
         )
     
-        view_projects_button = discord.ui.Button(label="View Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary)
+        view_projects_button = discord.ui.Button(label="View Kingdom Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary)
+        view_personal_projects_button = discord.ui.Button(label="View Personal Projects", custom_id="personalprojects", style=discord.ButtonStyle.success)
         check_credits_button = discord.ui.Button(label="Check Credits", custom_id="checkcredits", style=discord.ButtonStyle.success)
-        view_completed_projects_button = discord.ui.Button(label="View Completed Projects", custom_id="viewcompletedprojects", style=discord.ButtonStyle.secondary)
+        view_completed_projects_button = discord.ui.Button(label="View Completed Projects", custom_id="viewcompletedprojects", style=discord.ButtonStyle.Danger)
+        view_completed_personal_projects_button = discord.ui.Button(label="View Completed Personal Projects", custom_id="viewcompletedpersonalprojects", style=discord.ButtonStyle.Danger)
+
     
         view = discord.ui.View()
         view.add_item(view_projects_button)
-        view.add_item(check_credits_button)
         view.add_item(view_completed_projects_button)
+        view.add_item(view_personal_projects_button)
+        view.add_item(view_completed_personal_projects_button)
+        view.add_item(check_credits_button)
     
         await ctx.send(embed=embed, view=view)
 
@@ -70,6 +76,22 @@ class recToken(commands.Cog):
         elif custom_id.startswith("edit_field_"):
             field, project_name = custom_id.split("_")[2:]
             await self.prompt_edit_field(interaction, project_name, field)
+        elif custom_id == "viewcompletedpersonalprojects":
+            await interaction.response.defer()
+            await self.view_completed_projects_interaction(interaction)
+        elif custom_id == "personalprojects"
+            await interaction.response.defer()
+            await self.view_personal_projects(interaction)
+
+
+    #TODO:
+    def async view_completed_projects_interaction(self, interaction: discord.Interaction):
+        pass
+    def async view_personal_projects(self, interaction: discord.Interaction):
+        pass
+    
+
+
 
 
     async def view_completed_projects_interaction(self, interaction: discord.Interaction):
