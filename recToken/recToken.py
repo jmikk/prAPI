@@ -76,7 +76,7 @@ class recToken(commands.Cog):
         elif custom_id.startswith("edit_field_"):
             field, project_name = custom_id.split("_")[2:]
             await self.prompt_edit_field(interaction, project_name, field)
-         elif custom_id.startswith("donate_personal_"):
+        elif custom_id.startswith("donate_personal_"):
                 project_name = custom_id.split("_", 2)[-1]
                 await self.ask_donation_amount(interaction, project_name, guild_level=False)
 
