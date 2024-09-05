@@ -28,6 +28,7 @@ class recToken(commands.Cog):
             description="Use the buttons below to view projects, check your credits, or view completed projects.",
             color=discord.Color.blue()
         )
+        
     
         view_projects_button = discord.ui.Button(label="View Kingdom Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary)
         view_personal_projects_button = discord.ui.Button(label="View Personal Projects", custom_id="personalprojects", style=discord.ButtonStyle.danger)
