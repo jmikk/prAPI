@@ -30,9 +30,9 @@ class recToken(commands.Cog):
         )
     
         view_projects_button = discord.ui.Button(label="View Kingdom Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary)
-        view_personal_projects_button = discord.ui.Button(label="View Personal Projects", custom_id="personalprojects", style=discord.ButtonStyle.success)
+        view_personal_projects_button = discord.ui.Button(label="View Personal Projects", custom_id="personalprojects", style=discord.ButtonStyle.danger)
         check_credits_button = discord.ui.Button(label="Check Credits", custom_id="checkcredits", style=discord.ButtonStyle.success)
-        view_completed_projects_button = discord.ui.Button(label="View Completed Projects", custom_id="viewcompletedprojects", style=discord.ButtonStyle.danger)
+        view_completed_projects_button = discord.ui.Button(label="View Completed Projects", custom_id="viewcompletedprojects", style=discord.ButtonStyle.primary)
         view_completed_personal_projects_button = discord.ui.Button(label="View Completed Personal Projects", custom_id="viewcompletedpersonalprojects", style=discord.ButtonStyle.danger)
 
     
