@@ -83,15 +83,13 @@ class recToken(commands.Cog):
             await self.prompt_edit_field(interaction, project_name, field)
         elif custom_id == "viewcompletedpersonalprojects":
             await interaction.response.defer()
-            await self.view_completed_projects_interaction(interaction)
+            await self.view_completed_projects_interaction(interaction,guild_level = False)
         elif custom_id == "personalprojects":
             await interaction.response.defer()
             await self.view_personal_projects(interaction)
 
 
-    #TODO:
-    async def view_completed_projects_interaction(self, interaction: discord.Interaction):
-        pass
+#todo
     async def view_personal_projects(self, interaction: discord.Interaction):
         pass
     
@@ -99,8 +97,12 @@ class recToken(commands.Cog):
 
 
 
-    async def view_completed_projects_interaction(self, interaction: discord.Interaction):
-        completed_projects = await self.config.guild(interaction.guild).completed_projects()
+    async def view_completed_projects_interaction(self, interaction: discord.Interaction,guild_level = True):
+        if guild_level:
+            completed_projects = await self.config.guild(interaction.guild).completed_projects()
+        else
+            completed_projects = await self.config.user(interaction.guild).completed_personal_projects()
+
     
         if not completed_projects:
             await interaction.followup.send(embed=discord.Embed(description="No completed projects yet.", color=discord.Color.red()), ephemeral=True)
