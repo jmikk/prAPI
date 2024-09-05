@@ -100,7 +100,7 @@ class recToken(commands.Cog):
     async def view_completed_projects_interaction(self, interaction: discord.Interaction,guild_level = True):
         if guild_level:
             completed_projects = await self.config.guild(interaction.guild).completed_projects()
-        else
+        else:
             completed_projects = await self.config.user(interaction.guild).completed_personal_projects()
 
     
