@@ -10,7 +10,7 @@ class recToken(commands.Cog):
     
         default_guild = {
             "projects": {},
-            "completed_projects": {}# Add this line to initialize completed projects
+            "completed_projects": {},# Add this line to initialize completed projects
             "personal_projects":{}
         }
         
