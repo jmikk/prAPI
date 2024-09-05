@@ -83,7 +83,7 @@ class recToken(commands.Cog):
         elif custom_id == "viewcompletedpersonalprojects":
             await interaction.response.defer()
             await self.view_completed_projects_interaction(interaction)
-        elif custom_id == "personalprojects"
+        elif custom_id == "personalprojects":
             await interaction.response.defer()
             await self.view_personal_projects(interaction)
 
