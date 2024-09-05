@@ -86,7 +86,7 @@ class recToken(commands.Cog):
             await self.view_completed_projects_interaction(interaction,guild_level = False)
         elif custom_id == "personalprojects":
             await interaction.response.defer()
-            await self.view_personal_projects(interaction)
+            await self.viewprojects(interaction,guild_level = False)
 
 
 #todo
@@ -156,8 +156,26 @@ class recToken(commands.Cog):
 
 
 
-    async def viewprojects(self, interaction: discord.Interaction):
-        projects = await self.config.guild(interaction.guild).projects()
+    async def viewprojects(self, interaction: discord.Interaction, guild_level=True):
+        if guild_level:
+            # Fetch guild-level projects
+            projects = await self.config.guild(interaction.guild).projects()
+        else:
+            # Fetch all personal projects and completed personal projects
+            all_personal_projects = await self.config.guild(interaction.guild).personal_projects()
+            completed_personal_projects = await self.config.user(interaction.user).completed_personal_projects()
+    
+            # Fetch all guild-level projects
+            guild_projects = await self.config.guild(interaction.guild).projects()
+    
+            # Filter personal projects that the user hasn't completed yet
+            projects = {
+                project_name: project_data
+                for project_name, project_data in all_personal_projects.items()
+                if project_name not in completed_personal_projects and self.has_prerequisites(interaction.user, project_data, completed_personal_projects, guild_projects)
+            }
+
+            
         if not projects:
             await interaction.followup.send(embed=discord.Embed(description="No ongoing projects.", color=discord.Color.red()), ephemeral=True)
         else:
@@ -171,6 +189,18 @@ class recToken(commands.Cog):
             # Check if the user has the "Admin" role and show the Admin Panel
             if any(role.name == "Admin" for role in interaction.user.roles):
                 await self.send_admin_panel(interaction, project_names[initial_index])
+
+        # Helper method to check if the user meets the prerequisites for a project
+    def has_prerequisites(self, user, project_data, completed_personal_projects, guild_projects):
+        # Prerequisites are expected to be a list of project names
+        prereqs = project_data.get("prereqs", [])
+        
+        for prereq in prereqs:
+            # Check if the prerequisite is a completed personal project or an active guild-level project
+            if prereq not in completed_personal_projects and prereq not in guild_projects:
+                return False  # Prerequisite not met
+        
+        return True  # All prerequisites are met
    
     async def navigate_projects(self, interaction: discord.Interaction, direction: str):
         projects = await self.config.guild(interaction.guild).projects()
@@ -554,7 +584,7 @@ class recToken(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def addpersonalproject(self, ctx, project: str, required_credits: int, emoji: str = "💰"):
+    async def addpersonalproject(self, ctx, project: str, required_credits: int,prereq = []):
         project = self.normalize_project_name(project)
         async with self.config.guild(ctx.guild).personal_projects() as projects:
             projects[project] = {
@@ -562,7 +592,8 @@ class recToken(commands.Cog):
                 "current_credits": 0,
                 "thumbnail": "",
                 "description": "",
-                "emoji": emoji
+                "emoji": "💰",
+                "prereqs": prereq
             }
     
         await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' added with {required_credits} credits needed.", color=discord.Color.green()))
