@@ -554,6 +554,21 @@ class recToken(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
+    async def addpersonalproject(self, ctx, project: str, required_credits: int, emoji: str = "💰"):
+        project = self.normalize_project_name(project)
+        async with self.config.guild(ctx.guild).personal_projects() as projects:
+            projects[project] = {
+                "required_credits": required_credits,
+                "current_credits": 0,
+                "thumbnail": "",
+                "description": "",
+                "emoji": emoji
+            }
+    
+        await ctx.send(embed=discord.Embed(description=f"Project '{self.display_project_name(project)}' added with {required_credits} credits needed.", color=discord.Color.green()))
+
+    @commands.command()
+    @commands.is_owner()
     async def editproject(self, ctx, project: str, description: str = None, thumbnail: str = None, emoji: str = None):
         project = self.normalize_project_name(project)
         async with self.config.guild(ctx.guild).projects() as projects:
