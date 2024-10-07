@@ -89,6 +89,7 @@ class recToken(commands.Cog):
         elif custom_id == "manage_completed_projects":
             await interaction.response.defer()
             await self.manage_projects(interaction, completed=True)
+            
                 # Admin-specific interaction handling for manage menu
         elif custom_id == "manage_ongoing_projects":
             await interaction.response.defer()
@@ -102,6 +103,14 @@ class recToken(commands.Cog):
         elif custom_id.startswith("remove_project_"):
             project_name = custom_id.split("_", 2)[-1]
             await self.remove_project(interaction, project_name)
+        elif custom_id.startswith("admin_navigate_previous_"):
+            await self.navigate_projects(interaction, "previous",admin=True)
+        elif custom_id.startswith("admin_navigate_next_"):
+            await self.navigate_projects(interaction, "next",admin=True)
+        elif custom_id.startswith("admin_navigate_completed_previous_"):
+            await self.navigate_completed_projects(interaction, "previous")
+        elif custom_id.startswith("admin_navigate_completed_next_"):
+            await self.navigate_completed_projects(interaction, "next")
 
 
     async def manage_projects(self, interaction: discord.Interaction, completed: bool):
@@ -139,7 +148,7 @@ class recToken(commands.Cog):
         view.add_item(
             discord.ui.Button(
                 label="⬅️ Previous",
-                custom_id=f"navigate{'_completed' if completed else ''}_previous_{current_project_name}",
+                custom_id=f"admin_navigate{'_completed' if completed else ''}_previous_{current_project_name}",
                 style=discord.ButtonStyle.secondary
             )
         )
@@ -160,7 +169,7 @@ class recToken(commands.Cog):
         view.add_item(
             discord.ui.Button(
                 label="Next ➡️",
-                custom_id=f"navigate{'_completed' if completed else ''}_next_{current_project_name}",
+                custom_id=f"admin_navigate{'_completed' if completed else ''}_next_{current_project_name}",
                 style=discord.ButtonStyle.secondary
             )
         )
