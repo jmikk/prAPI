@@ -104,13 +104,13 @@ class recToken(commands.Cog):
             project_name = custom_id.split("_", 2)[-1]
             await self.remove_project(interaction, project_name)
         elif custom_id.startswith("admin_navigate_previous_"):
-            await self.navigate_projects(interaction, "previous",admin=True)
+            await self.navigate_projects(interaction, "previous", admin_mode=True)
         elif custom_id.startswith("admin_navigate_next_"):
-            await self.navigate_projects(interaction, "next",admin=True)
+            await self.navigate_projects(interaction, "next", admin_mode=True)
         elif custom_id.startswith("admin_navigate_completed_previous_"):
-            await self.navigate_completed_projects(interaction, "previous")
+            await self.navigate_completed_projects(interaction, "previous", admin_mode=True)
         elif custom_id.startswith("admin_navigate_completed_next_"):
-            await self.navigate_completed_projects(interaction, "next")
+            await self.navigate_completed_projects(interaction, "next",admin_mode=True)
 
 
     async def manage_projects(self, interaction: discord.Interaction, completed: bool):
