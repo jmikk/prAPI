@@ -130,7 +130,7 @@ class recToken(commands.Cog):
         view.add_item(
             discord.ui.Button(
                 label="⬅️ Previous",
-                custom_id=f"navigate_admin_previous_{current_project_name}",
+                custom_id=f"navigate{'_completed' if completed else ''}_previous_{current_project_name}",
                 style=discord.ButtonStyle.secondary
             )
         )
@@ -151,7 +151,7 @@ class recToken(commands.Cog):
         view.add_item(
             discord.ui.Button(
                 label="Next ➡️",
-                custom_id=f"navigate_admin_next_{current_project_name}",
+                custom_id=f"navigate{'_completed' if completed else ''}_next_{current_project_name}",
                 style=discord.ButtonStyle.secondary
             )
         )
