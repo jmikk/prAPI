@@ -87,11 +87,98 @@ class recToken(commands.Cog):
         elif custom_id == "personalprojects":
             await interaction.response.defer()
             await self.viewprojects(interaction,guild_level = False)
+        elif custom_id == "manage_ongoing_projects":
+            await interaction.response.defer()
+            await self.manage_projects(interaction, completed=False)
+        elif custom_id == "manage_completed_projects":
+            await interaction.response.defer()
+            await self.manage_projects(interaction, completed=True)
 
 
-#todo
-    async def view_personal_projects(self, interaction: discord.Interaction):
-        pass
+    async def manage_projects(self, interaction: discord.Interaction, completed: bool):
+        """Displays the list of ongoing or completed projects for admin management."""
+        if completed:
+            projects = await self.config.guild(interaction.guild).completed_projects()
+            project_type = "Completed"
+        else:
+            projects = await self.config.guild(interaction.guild).projects()
+            project_type = "Ongoing"
+
+        if not projects:
+            await interaction.followup.send(
+                embed=discord.Embed(
+                    description=f"No {project_type.lower()} projects available.",
+                    color=discord.Color.red()
+                ),
+                ephemeral=True
+            )
+            return
+
+        project_names = list(projects.keys())
+        initial_index = 0
+        initial_embed = self.create_embed(projects, project_names, initial_index, interaction.user)
+        view = self.create_admin_project_view(project_names, initial_index, interaction.user, completed)
+
+        await interaction.followup.send(embed=initial_embed, view=view)
+
+    def create_admin_project_view(self, project_names, index, user, completed):
+        """Creates the view with buttons for navigating and managing ongoing or completed projects."""
+        current_project_name = project_names[index]
+        view = discord.ui.View()
+
+        # Add navigation buttons
+        view.add_item(
+            discord.ui.Button(
+                label="⬅️ Previous",
+                custom_id=f"navigate_admin_previous_{current_project_name}",
+                style=discord.ButtonStyle.secondary
+            )
+        )
+        view.add_item(
+            discord.ui.Button(
+                label="Edit Project",
+                custom_id=f"edit_project_admin_{current_project_name}_{'completed' if completed else 'ongoing'}",
+                style=discord.ButtonStyle.success
+            )
+        )
+        view.add_item(
+            discord.ui.Button(
+                label="Delete Project",
+                custom_id=f"delete_project_admin_{current_project_name}_{'completed' if completed else 'ongoing'}",
+                style=discord.ButtonStyle.danger
+            )
+        )
+        view.add_item(
+            discord.ui.Button(
+                label="Next ➡️",
+                custom_id=f"navigate_admin_next_{current_project_name}",
+                style=discord.ButtonStyle.secondary
+            )
+        )
+
+        return view
+
+    async def navigate_admin_projects(self, interaction: discord.Interaction, direction: str, completed: bool):
+        """Handles project navigation for admins."""
+        if completed:
+            projects = await self.config.guild(interaction.guild).completed_projects()
+        else:
+            projects = await self.config.guild(interaction.guild).projects()
+
+        project_names = list(projects.keys())
+        current_project_name = interaction.data['custom_id'].split("_", 3)[-1]
+        current_index = project_names.index(current_project_name)
+
+        if direction == "previous":
+            new_index = (current_index - 1) % len(project_names)
+        else:  # direction == "next"
+            new_index = (current_index + 1) % len(project_names)
+
+        new_embed = self.create_embed(projects, project_names, new_index, interaction.user)
+        view = self.create_admin_project_view(project_names, new_index, interaction.user, completed)
+
+        await interaction.response.edit_message(embed=new_embed, view=view)
+
     
 
 
@@ -705,6 +792,30 @@ class recToken(commands.Cog):
         await ctx.send(embed=discord.Embed(description=f"Completed project '{self.display_project_name(project)}' has been successfully deleted.", color=discord.Color.green()))
     
 
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def admin_menu(self, ctx):
+        """Displays the admin menu for managing ongoing and completed projects."""
+        
+        embed = discord.Embed(
+            title="Admin Project Management",
+            description="Use the buttons below to manage ongoing and completed projects.",
+            color=discord.Color.gold()
+        )
+
+        # Buttons to manage ongoing and completed projects
+        view_ongoing_projects_button = discord.ui.Button(
+            label="Manage Ongoing Projects", custom_id="manage_ongoing_projects", style=discord.ButtonStyle.primary
+        )
+        view_completed_projects_button = discord.ui.Button(
+            label="Manage Completed Projects", custom_id="manage_completed_projects", style=discord.ButtonStyle.success
+        )
+
+        view = discord.ui.View()
+        view.add_item(view_ongoing_projects_button)
+        view.add_item(view_completed_projects_button)
+
+        await ctx.send(embed=embed, view=view)
 
 def setup(bot):
     bot.add_cog(recToken(bot))
