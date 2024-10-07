@@ -41,8 +41,8 @@ class recToken(commands.Cog):
         view.add_item(view_projects_button)
         view.add_item(view_completed_projects_button)
         view.add_item(check_credits_button)
-        view.add_item(view_personal_projects_button)
-        view.add_item(view_completed_personal_projects_button)
+        #view.add_item(view_personal_projects_button)
+        #view.add_item(view_completed_personal_projects_button)
     
         await ctx.send(embed=embed, view=view)
 
