@@ -3,6 +3,7 @@ from discord.ext import commands
 from redbot.core import Config, commands
 
 
+
 class recToken(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
