@@ -22,6 +22,7 @@ class recToken(commands.Cog):
         self.config.register_guild(**default_guild)
         self.config.register_user(**defualt_user)
 
+
     @commands.command()
     async def menu(self, ctx):
         embed = discord.Embed(
@@ -30,20 +31,14 @@ class recToken(commands.Cog):
             color=discord.Color.blue()
         )
         
-    
         view_projects_button = discord.ui.Button(label="View Kingdom Projects", custom_id="viewprojects", style=discord.ButtonStyle.primary)
-        #view_personal_projects_button = discord.ui.Button(label="View Personal Projects", custom_id="personalprojects", style=discord.ButtonStyle.danger)
         check_credits_button = discord.ui.Button(label="Check Credits", custom_id="checkcredits", style=discord.ButtonStyle.success)
         view_completed_projects_button = discord.ui.Button(label="View Completed Projects", custom_id="viewcompletedprojects", style=discord.ButtonStyle.primary)
-        #view_completed_personal_projects_button = discord.ui.Button(label="View Completed Personal Projects", custom_id="viewcompletedpersonalprojects", style=discord.ButtonStyle.danger)
 
-    
         view = discord.ui.View()
         view.add_item(view_projects_button)
         view.add_item(view_completed_projects_button)
         view.add_item(check_credits_button)
-        #view.add_item(view_personal_projects_button)
-        #view.add_item(view_completed_personal_projects_button)
     
         await ctx.send(embed=embed, view=view)
 
@@ -94,6 +89,19 @@ class recToken(commands.Cog):
         elif custom_id == "manage_completed_projects":
             await interaction.response.defer()
             await self.manage_projects(interaction, completed=True)
+                # Admin-specific interaction handling for manage menu
+        elif custom_id == "manage_ongoing_projects":
+            await interaction.response.defer()
+            await self.manage_projects(interaction, completed=False)
+        elif custom_id == "manage_completed_projects":
+            await interaction.response.defer()
+            await self.manage_projects(interaction, completed=True)
+        elif custom_id.startswith("edit_project_"):
+            project_name = custom_id.split("_", 2)[-1]
+            await self.send_edit_menu(interaction, project_name)
+        elif custom_id.startswith("remove_project_"):
+            project_name = custom_id.split("_", 2)[-1]
+            await self.remove_project(interaction, project_name)
 
 
     async def manage_projects(self, interaction: discord.Interaction, completed: bool):
@@ -158,7 +166,7 @@ class recToken(commands.Cog):
         )
 
         return view
-
+    
     async def navigate_admin_projects(self, interaction: discord.Interaction, direction: str, completed: bool):
         """Handles project navigation for admins."""
         if completed:
