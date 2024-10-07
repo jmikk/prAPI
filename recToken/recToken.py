@@ -163,7 +163,7 @@ class recToken(commands.Cog):
         view.add_item(
             discord.ui.Button(
                 label="Delete Project",
-                custom_id=f"delete_project_{current_project_name}",
+                custom_id=f"remove_project_{current_project_name}",
                 style=discord.ButtonStyle.danger
             )
         )
