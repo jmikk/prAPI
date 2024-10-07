@@ -245,8 +245,13 @@ class recToken(commands.Cog):
     async def navigate_completed_projects(self, interaction: discord.Interaction, direction: str, admin_mode=False):
         completed_projects = await self.config.guild(interaction.guild).completed_projects()
         project_names = list(completed_projects.keys())
+
+        if admin_mode:
+            current_project_name = interaction.data['custom_id'].split("_", 4)[-1]
+        else:
+            current_project_name = interaction.data['custom_id'].split("_", 3)[-1]
+
         
-        current_project_name = interaction.data['custom_id'].split("_", 3)[-1]
         current_index = project_names.index(current_project_name)
         
         if direction == "previous":
@@ -321,7 +326,13 @@ class recToken(commands.Cog):
             projects = await self.config.user(interaction.user).personal_projects()
         
         project_names = list(projects.keys())
-        current_project_name = interaction.data['custom_id'].split("_", 2)[-1]
+
+
+        if admin_mode:
+            current_project_name = interaction.data['custom_id'].split("_", 3)[-1]
+        else:
+            current_project_name = interaction.data['custom_id'].split("_", 2)[-1]
+        
         current_index = project_names.index(current_project_name)
         
         # Navigate between projects
