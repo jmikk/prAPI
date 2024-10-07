@@ -167,26 +167,25 @@ class recToken(commands.Cog):
 
         return view
     
+    # Update the admin-specific navigation logic to keep it in admin mode:
     async def navigate_admin_projects(self, interaction: discord.Interaction, direction: str, completed: bool):
-        """Handles project navigation for admins."""
-        if completed:
-            projects = await self.config.guild(interaction.guild).completed_projects()
-        else:
-            projects = await self.config.guild(interaction.guild).projects()
-
+        projects = await self.config.guild(interaction.guild).completed_projects() if completed else await self.config.guild(interaction.guild).projects()
+    
         project_names = list(projects.keys())
         current_project_name = interaction.data['custom_id'].split("_", 3)[-1]
         current_index = project_names.index(current_project_name)
-
+    
         if direction == "previous":
             new_index = (current_index - 1) % len(project_names)
         else:  # direction == "next"
             new_index = (current_index + 1) % len(project_names)
-
+    
+        # Create the embed and view for admin mode
         new_embed = self.create_embed(projects, project_names, new_index, interaction.user)
-        view = self.create_admin_project_view(project_names, new_index, interaction.user, completed)
-
+        view = self.create_admin_project_view(project_names, new_index, interaction.user, completed=completed)
+    
         await interaction.response.edit_message(embed=new_embed, view=view)
+
 
     
 
@@ -233,21 +232,29 @@ class recToken(commands.Cog):
     
         return view
 
-    async def navigate_completed_projects(self, interaction: discord.Interaction, direction: str):
+    # Similarly, for navigating completed projects:
+    async def navigate_completed_projects(self, interaction: discord.Interaction, direction: str, admin_mode=False):
         completed_projects = await self.config.guild(interaction.guild).completed_projects()
         project_names = list(completed_projects.keys())
-    
+        
         current_project_name = interaction.data['custom_id'].split("_", 3)[-1]
         current_index = project_names.index(current_project_name)
-    
+        
         if direction == "previous":
             new_index = (current_index - 1) % len(project_names)
         else:  # direction == "next"
             new_index = (current_index + 1) % len(project_names)
-    
+        
+        # Create the embed for the new project
         new_embed = self.create_embed(completed_projects, project_names, new_index, interaction.user)
-        view = self.create_completed_project_view(project_names, new_index, interaction.user)
-    
+        
+        # Determine which view to send based on the mode
+        if admin_mode:
+            view = self.create_admin_project_view(project_names, new_index, interaction.user, completed=True)
+        else:
+            view = self.create_completed_project_view(project_names, new_index, interaction.user)
+        
+        # Update the message with the new embed and view
         await interaction.response.edit_message(embed=new_embed, view=view)
 
 
@@ -298,27 +305,35 @@ class recToken(commands.Cog):
         
         return True  # All prerequisites are met
    
-    async def navigate_projects(self, interaction: discord.Interaction, direction: str):
-        projects = await self.config.guild(interaction.guild).projects()
+    async def navigate_projects(self, interaction: discord.Interaction, direction: str, guild_level=True, admin_mode=False):
+        if guild_level:
+            projects = await self.config.guild(interaction.guild).projects()
+        else:
+            projects = await self.config.user(interaction.user).personal_projects()
+        
         project_names = list(projects.keys())
-    
         current_project_name = interaction.data['custom_id'].split("_", 2)[-1]
         current_index = project_names.index(current_project_name)
-    
+        
+        # Navigate between projects
         if direction == "previous":
             new_index = (current_index - 1) % len(project_names)
         else:  # direction == "next"
             new_index = (current_index + 1) % len(project_names)
-    
+        
+        # Create the embed for the new project
         new_embed = self.create_embed(projects, project_names, new_index, interaction.user)
-        view = self.create_project_view(project_names, new_index, interaction.user)
-    
-        # Update the main project view
+        
+        # Determine which view to send based on the mode
+        if admin_mode:
+            # Admin mode - Show admin-specific navigation and options
+            view = self.create_admin_project_view(project_names, new_index, interaction.user, completed=False)
+        else:
+            # Regular mode - Show the normal project view
+            view = self.create_project_view(project_names, new_index, interaction.user, guild_level)
+        
+        # Update the message with the new embed and view
         await interaction.response.edit_message(embed=new_embed, view=view)
-    
-        # Update the admin panel if the user has the Admin role
-        if any(role.name == "Admin" for role in interaction.user.roles):
-            await self.edit_admin_panel(interaction, project_names[new_index], completed=False, guild_level = True)
 
 
 
