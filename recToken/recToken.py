@@ -853,13 +853,13 @@ class recToken(commands.Cog):
         view_ongoing_projects_button = discord.ui.Button(
             label="Manage Ongoing Projects", custom_id="manage_ongoing_projects", style=discord.ButtonStyle.primary
         )
-        #view_completed_projects_button = discord.ui.Button(
-        #    label="Manage Completed Projects", custom_id="manage_completed_projects", style=discord.ButtonStyle.success
-        #)
+        view_completed_projects_button = discord.ui.Button(
+            label="Manage Completed Projects", custom_id="manage_completed_projects", style=discord.ButtonStyle.success
+        )
 
         view = discord.ui.View()
         view.add_item(view_ongoing_projects_button)
-        view.add_item(view_completed_projects_button)
+        #view.add_item(view_completed_projects_button)
 
         await ctx.send(embed=embed, view=view)
 
