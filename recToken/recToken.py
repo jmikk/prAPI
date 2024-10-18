@@ -153,13 +153,14 @@ class recToken(commands.Cog):
                 style=discord.ButtonStyle.secondary
             )
         )
-        view.add_item(
-            discord.ui.Button(
-                label="Edit Project",
-                custom_id=f"edit_project_{current_project_name}",
-                style=discord.ButtonStyle.success
+        if not completed:
+            view.add_item(
+                discord.ui.Button(
+                    label="Edit Project",
+                    custom_id=f"edit_project_{current_project_name}",
+                    style=discord.ButtonStyle.success
+                )
             )
-        )
         view.add_item(
             discord.ui.Button(
                 label="Delete Project",
