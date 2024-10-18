@@ -25,7 +25,7 @@ class recToken(commands.Cog):
 
 
     @commands.command()
-    async def menu(self, ctx):
+    async def kingdom(self, ctx):
         embed = discord.Embed(
             title="Command Menu",
             description="Use the buttons below to view projects, check your credits, or view completed projects.",
