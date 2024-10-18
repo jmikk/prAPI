@@ -14,7 +14,7 @@ def is_admin():
 
 def is_giveaway():
     async def predicate(ctx):
-        # Check if the user has a role named "Admin"
+        # Check if the user has a role named "giveaway"
         return any(role.name == "Giveaway" for role in ctx.author.roles)
     return commands.check(predicate)
 
@@ -184,4 +184,19 @@ class CardRequestCog(commands.Cog):
             await self.config.last_reset.set(current_date.strftime("%Y-%m-%d"))
             return True
         return True
+
+    @commands.command()
+    @is_admin()
+    async def reset_own_giveaway(self, ctx, user: commands.MemberConverter):
+        """Manually reset a user's giveaway request"""
+        user_id = str(user.id)
+        requests = await self.config.requests()
+
+        if user_id in requests:
+            del requests[user_id]
+            await self.config.requests.set(requests)
+            await ctx.send(f"Giveaway request for {user.display_name} has been reset.")
+        else:
+            await ctx.send(f"{user.display_name} has no active giveaway requests.")
+
 
