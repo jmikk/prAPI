@@ -88,7 +88,7 @@ class TWERP(commands.Cog):
     @app_commands.command(name="speakas", description="Speak as one of your characters.")
     @app_commands.autocomplete(name=character_autocomplete)
     async def speak_as(self, interaction: discord.Interaction, name: str, message: str):
-        """Speak as one of your characters."""
+        """Speak as one of your characters with multi-line support."""
         characters = await self.config.user(interaction.user).characters()
         if name not in characters:
             await interaction.response.send_message(f"Character `{name}` not found.", ephemeral=True)
@@ -100,9 +100,11 @@ class TWERP(commands.Cog):
         if webhook:
             async with aiohttp.ClientSession() as session:
                 webhook_url = webhook.url
+                # Add the user's Discord username in parentheses after the character name
+                combined_name = f"{character['name']} ({interaction.user.name})"
                 json_data = {
-                    "content": message,
-                    "username": character["name"],
+                    "content": message,  # This now supports multi-line messages
+                    "username": combined_name,  # Character name with Discord username
                     "avatar_url": character["pfp_url"],
                     "allowed_mentions": {
                         "parse": ["users"]  # This prevents @everyone and @here from being pinged
@@ -110,6 +112,7 @@ class TWERP(commands.Cog):
                 }
                 await session.post(webhook_url, json=json_data)
                 await interaction.response.send_message(f"Message sent as `{name}`!", ephemeral=True)
+
 
     async def _get_webhook(self, channel: discord.TextChannel):
         """Creates or retrieves a webhook for the channel."""
