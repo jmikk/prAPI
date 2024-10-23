@@ -1,5 +1,5 @@
 import discord
-from redbot.core import commands, Config, app_commands
+from redbot.core import commands, Config
 from redbot.core.bot import Red
 import aiohttp
 
@@ -105,15 +105,16 @@ class TWERP(commands.Cog):
                 credits += credits_to_add
             await message.channel.send(f"{message.author.mention} earned {credits_to_add} credits!")
 
-    @commands.hybrid_command(name="createcharacter")
-    async def create_character(self, ctx: commands.Context, name: str, pfp_url: str):
+    # Create Character Slash Command
+    @discord.app_commands.command(name="createcharacter", description="Create a character with a name and profile picture URL.")
+    async def create_character(self, interaction: discord.Interaction, name: str, pfp_url: str):
         """Create a new character with a custom name and profile picture."""
-        characters = await self.config.user(ctx.author).characters()
+        characters = await self.config.user(interaction.user).characters()
         if characters is None:
             characters = {}
 
         if len(characters) >= 2:
-            await ctx.send("You already have 2 characters! Delete one before creating a new one.")
+            await interaction.response.send_message("You already have 2 characters! Delete one before creating a new one.", ephemeral=True)
             return
 
         characters[name] = {
@@ -121,32 +122,34 @@ class TWERP(commands.Cog):
             "name": name
         }
 
-        await self.config.user(ctx.author).characters.set(characters)
-        await ctx.send(f"Character `{name}` created with profile picture!")
+        await self.config.user(interaction.user).characters.set(characters)
+        await interaction.response.send_message(f"Character `{name}` created with profile picture!", ephemeral=True)
 
-    @commands.hybrid_command(name="deletecharacter")
-    async def delete_character(self, ctx: commands.Context, name: str):
+    # Delete Character Slash Command
+    @discord.app_commands.command(name="deletecharacter", description="Delete one of your characters.")
+    async def delete_character(self, interaction: discord.Interaction, name: str):
         """Delete one of your characters."""
-        characters = await self.config.user(ctx.author).characters()
+        characters = await self.config.user(interaction.user).characters()
 
         if name not in characters:
-            await ctx.send(f"Character `{name}` not found.")
+            await interaction.response.send_message(f"Character `{name}` not found.", ephemeral=True)
             return
 
         del characters[name]
-        await self.config.user(ctx.author).characters.set(characters)
-        await ctx.send(f"Character `{name}` deleted.")
+        await self.config.user(interaction.user).characters.set(characters)
+        await interaction.response.send_message(f"Character `{name}` deleted.", ephemeral=True)
 
-    @commands.hybrid_command(name="selectcharacter")
-    async def select_character(self, ctx: commands.Context):
+    # Select Character Slash Command
+    @discord.app_commands.command(name="selectcharacter", description="Show a dropdown to select a character.")
+    async def select_character(self, interaction: discord.Interaction):
         """Show a dropdown to select a character, then open a modal to enter a message."""
-        characters = await self.config.user(ctx.author).characters()
+        characters = await self.config.user(interaction.user).characters()
         if not characters:
-            await ctx.send("You don't have any characters created.")
+            await interaction.response.send_message("You don't have any characters created.", ephemeral=True)
             return
 
-        view = CharacterSelectView(self, characters, ctx.interaction)
-        await ctx.send("Select a character to speak as:", view=view)
+        view = CharacterSelectView(self, characters, interaction)
+        await interaction.response.send_message("Select a character to speak as:", view=view, ephemeral=True)
 
     async def _get_webhook(self, channel: discord.TextChannel):
         """Creates or retrieves a webhook for the channel."""
