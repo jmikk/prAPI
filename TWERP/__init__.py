@@ -1,5 +1,5 @@
 from .TWERP import TWERP
-
+from redbot.core import commands
 
 @commands.Cog.listener()
 async def on_ready(self):
