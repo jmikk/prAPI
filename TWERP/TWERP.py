@@ -1,5 +1,5 @@
 import discord
-from redbot.core import commands, Config
+from redbot.core import commands, Config, app_commands
 from redbot.core.bot import Red
 import aiohttp
 
@@ -8,11 +8,12 @@ class TWERP(commands.Cog):
 
     def __init__(self, bot: Red):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier="TWERP")  # Unique ID for your cog
+        self.config = Config.get_conf(self, identifier=1234567890)  # Unique ID for your cog
         self.config.register_user(characters={})  # Stores user characters
 
-    @commands.command(name="createcharacter")
-    async def create_character(self, ctx, name: str, pfp_url: str):
+    @commands.hybrid_command(name="createcharacter")
+    @app_commands.describe(name="The name of your character", pfp_url="URL to the character's profile picture")
+    async def create_character(self, ctx: commands.Context, name: str, pfp_url: str):
         """Create a new character with a custom name and profile picture."""
         async with self.config.user(ctx.author).characters() as characters:
             if len(characters) >= 2:
@@ -25,8 +26,9 @@ class TWERP(commands.Cog):
             }
             await ctx.send(f"Character `{name}` created with profile picture!")
 
-    @commands.command(name="deletecharacter")
-    async def delete_character(self, ctx, name: str):
+    @commands.hybrid_command(name="deletecharacter")
+    @app_commands.describe(name="The name of the character to delete")
+    async def delete_character(self, ctx: commands.Context, name: str):
         """Delete one of your characters."""
         async with self.config.user(ctx.author).characters() as characters:
             if name in characters:
@@ -35,8 +37,8 @@ class TWERP(commands.Cog):
             else:
                 await ctx.send(f"Character `{name}` not found.")
 
-    @commands.command(name="characters")
-    async def list_characters(self, ctx):
+    @commands.hybrid_command(name="characters")
+    async def list_characters(self, ctx: commands.Context):
         """List your characters."""
         characters = await self.config.user(ctx.author).characters()
         if not characters:
@@ -46,8 +48,9 @@ class TWERP(commands.Cog):
         character_list = "\n".join([f"{char['name']}" for char in characters.values()])
         await ctx.send(f"Your characters:\n{character_list}")
 
-    @commands.command(name="speakas")
-    async def speak_as(self, ctx, name: str, *, message: str):
+    @commands.hybrid_command(name="speakas")
+    @app_commands.describe(name="The name of your character", message="The message you want to send as the character")
+    async def speak_as(self, ctx: commands.Context, name: str, *, message: str):
         """Speak as one of your characters."""
         characters = await self.config.user(ctx.author).characters()
         if name not in characters:
