@@ -3,6 +3,7 @@ from redbot.core import commands, Config, app_commands
 from redbot.core.bot import Red
 import aiohttp
 
+
 class TWERP(commands.Cog):
     """A cog that allows users to post as custom characters using webhooks and earn credits by speaking."""
 
