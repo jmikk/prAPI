@@ -37,7 +37,7 @@ class CharacterSelectView(discord.ui.View):
         self.add_item(CharacterSelect(cog, characters, interaction))
 
 
-class TWERPModal(discord.ui.Modal, title="Speak as Character"):
+class TWERPModal(discord.ui.Modal, title="Enter your message here"):
     def __init__(self, cog, character_name, webhook, interaction, character_info):
         super().__init__(title=f"Enter your message here")  # Modal title shows the character name
         self.cog = cog
@@ -70,7 +70,7 @@ class TWERPModal(discord.ui.Modal, title="Speak as Character"):
                     }
                 }
                 await session.post(webhook_url, json=json_data)
-                await self.interaction.response.send_message(f"Message sent as `{self.character_name}`!", ephemeral=True)
+                # Remove the extra response here; no need to send another message after the webhook is posted.
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
