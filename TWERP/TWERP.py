@@ -27,10 +27,6 @@ class TWERP(commands.Cog):
         if not hasattr(self.config.USER, "completed_personal_projects"):
             self.config.register_user(completed_personal_projects={})
 
-    async def sync_commands(self):
-        guild_id = YOUR_GUILD_ID  # Replace with your test server's ID
-        guild = discord.Object(id=guild_id)
-        await self.bot.tree.sync(guild=guild)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -54,16 +50,24 @@ class TWERP(commands.Cog):
     @commands.hybrid_command(name="createcharacter")
     async def create_character(self, ctx: commands.Context, name: str, pfp_url: str):
         """Create a new character with a custom name and profile picture."""
-        async with self.config.user(ctx.author).characters() as characters:
-            if len(characters) >= 2:
-                await ctx.send("You already have 2 characters! Delete one before creating a new one.")
-                return
-            
-            characters[name] = {
-                "pfp_url": pfp_url,
-                "name": name
-            }
-            await ctx.send(f"Character `{name}` created with profile picture!")
+        # Fetch characters directly
+        characters = await self.config.user(ctx.author).characters()
+    
+        if len(characters) >= 2:
+            await ctx.send("You already have 2 characters! Delete one before creating a new one.")
+            return
+    
+        # Add the new character
+        characters[name] = {
+            "pfp_url": pfp_url,
+            "name": name
+        }
+    
+        # Save the updated characters
+        await self.config.user(ctx.author).characters.set(characters)
+    
+        await ctx.send(f"Character `{name}` created with profile picture!")
+
 
     @app_commands.command(name="speakas", description="Speak as one of your characters.")
     async def speak_as(self, interaction: discord.Interaction, name: str, message: str):
