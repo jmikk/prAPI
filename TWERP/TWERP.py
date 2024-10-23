@@ -99,6 +99,15 @@ class TWERP(commands.Cog):
         await self.config.user(ctx.author).characters.set(characters)
         await ctx.send(f"Character `{name}` created with profile picture!")
 
+    # Define the autocomplete function before it's used
+    async def character_autocomplete(self, interaction: discord.Interaction, current: str):
+        """Autocomplete for the character names."""
+        characters = await self.config.user(interaction.user).characters()
+        return [
+            app_commands.Choice(name=char_name, value=char_name)
+            for char_name in characters.keys() if current.lower() in char_name.lower()
+        ][:25]  # Limit to 25 choices
+
     @app_commands.command(name="speakas", description="Speak as one of your characters.")
     @app_commands.autocomplete(name=character_autocomplete)
     async def speak_as(self, interaction: discord.Interaction, name: str):
