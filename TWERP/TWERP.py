@@ -39,7 +39,7 @@ class CharacterSelectView(discord.ui.View):
 
 class TWERPModal(discord.ui.Modal, title="Speak as Character"):
     def __init__(self, cog, character_name, webhook, interaction, character_info):
-        super().__init__(title=f"Speak as {character_name}")  # Modal title shows the character name
+        super().__init__(title=f"Enter your message here")  # Modal title shows the character name
         self.cog = cog
         self.character_name = character_name
         self.webhook = webhook
