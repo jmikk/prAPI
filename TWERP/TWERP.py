@@ -27,6 +27,12 @@ class TWERP(commands.Cog):
         if not hasattr(self.config.USER, "completed_personal_projects"):
             self.config.register_user(completed_personal_projects={})
 
+    
+    async def sync_commands(self):
+        guild_id = 1098644885797609492  # Replace with your test server's ID
+        guild = discord.Object(id=guild_id)
+        await self.bot.tree.sync(guild=guild)
+
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
