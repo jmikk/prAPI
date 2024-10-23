@@ -3,7 +3,6 @@ from redbot.core import commands, Config, app_commands
 from redbot.core.bot import Red
 import aiohttp
 
-
 class TWERP(commands.Cog):
     """A cog that allows users to post as custom characters using webhooks and earn credits by speaking."""
 
@@ -33,7 +32,6 @@ class TWERP(commands.Cog):
         guild_id = 1098644885797609492  # Replace with your test server's ID
         guild = discord.Object(id=guild_id)
         await self.bot.tree.sync(guild=guild)
-
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -78,8 +76,17 @@ class TWERP(commands.Cog):
     
         await ctx.send(f"Character `{name}` created with profile picture!")
 
+    # Autocomplete function for character names
+    async def character_autocomplete(self, interaction: discord.Interaction, current: str):
+        """Autocomplete for the character names."""
+        characters = await self.config.user(interaction.user).characters()
+        return [
+            app_commands.Choice(name=char_name, value=char_name)
+            for char_name in characters.keys() if current.lower() in char_name.lower()
+        ][:25]  # Limit to 25 choices
 
     @app_commands.command(name="speakas", description="Speak as one of your characters.")
+    @app_commands.autocomplete(name=character_autocomplete)
     async def speak_as(self, interaction: discord.Interaction, name: str, message: str):
         """Speak as one of your characters."""
         characters = await self.config.user(interaction.user).characters()
