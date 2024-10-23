@@ -57,10 +57,13 @@ class TWERP(commands.Cog):
     @commands.hybrid_command(name="createcharacter")
     async def create_character(self, ctx: commands.Context, name: str, pfp_url: str):
         """Create a new character with a custom name and profile picture."""
-        # Fetch characters directly
+        # Fetch the user's character list, or initialize it if it's None
         characters = await self.config.user(ctx.author).characters()
+        
+        if characters is None:
+            characters = {}  # Initialize as an empty dictionary if it doesn't exist
     
-        if characters and len(characters) >= 2:
+        if len(characters) >= 2:
             await ctx.send("You already have 2 characters! Delete one before creating a new one.")
             return
     
@@ -70,10 +73,11 @@ class TWERP(commands.Cog):
             "name": name
         }
     
-        # Save the updated characters
+        # Save the updated characters list
         await self.config.user(ctx.author).characters.set(characters)
     
         await ctx.send(f"Character `{name}` created with profile picture!")
+
 
 
     @app_commands.command(name="speakas", description="Speak as one of your characters.")
