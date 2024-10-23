@@ -79,7 +79,6 @@ class TWERP(commands.Cog):
         await ctx.send(f"Character `{name}` created with profile picture!")
 
 
-
     @app_commands.command(name="speakas", description="Speak as one of your characters.")
     async def speak_as(self, interaction: discord.Interaction, name: str, message: str):
         """Speak as one of your characters."""
@@ -97,7 +96,10 @@ class TWERP(commands.Cog):
                 json_data = {
                     "content": message,
                     "username": character["name"],
-                    "avatar_url": character["pfp_url"]
+                    "avatar_url": character["pfp_url"],
+                    "allowed_mentions": {
+                        "parse": ["users"]  # This prevents @everyone and @here from being pinged
+                    }
                 }
                 await session.post(webhook_url, json=json_data)
                 await interaction.response.send_message(f"Message sent as `{name}`!", ephemeral=True)
