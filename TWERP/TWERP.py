@@ -70,7 +70,7 @@ class TWERPModal(discord.ui.Modal, title="Speak as Character"):
                     }
                 }
                 await session.post(webhook_url, json=json_data)
-                await self.interaction.response.send_message(f"Message sent as `{self.character_name}`!", ephemeral=True)
+                #await self.interaction.response.send_message(f"Message sent as `{self.character_name}`!", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
