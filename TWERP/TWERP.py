@@ -60,7 +60,7 @@ class TWERP(commands.Cog):
         # Fetch characters directly
         characters = await self.config.user(ctx.author).characters()
     
-        if len(characters) >= 2:
+        if characters and len(characters) >= 2:
             await ctx.send("You already have 2 characters! Delete one before creating a new one.")
             return
     
