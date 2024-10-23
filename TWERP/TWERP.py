@@ -3,7 +3,7 @@ from redbot.core import commands, Config
 from redbot.core.bot import Red
 import aiohttp
 
-class CharacterSpeak(commands.Cog):
+class TWERP(commands.Cog):
     """A cog that allows users to post as custom characters using webhooks"""
 
     def __init__(self, bot: Red):
