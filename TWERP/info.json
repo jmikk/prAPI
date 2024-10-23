@@ -1,0 +1,13 @@
+{
+    "author": [
+        "9003"
+    ],
+    "install_msg": "thanks for installing HOTW (Holder of the Water) A discord game about holding the water for as long as you can!",
+    "name": "HOTW",
+    "short": "How long can you hold the water for?",
+    "requirements": [
+    ],
+    "description": "Full description of your cog. Displayed on the Red Portal and with `[p]cog info`",
+    "permissions": [],
+    "tags": []
+}
