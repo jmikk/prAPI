@@ -213,9 +213,13 @@ class TWERP(commands.Cog):
                     }
                 }
                 await session.post(webhook_url, json=json_data)
-            await interaction.response.defer()  # Close the interaction
+    
+            # Properly acknowledge the interaction to prevent the "thinking" state
+            await interaction.response.send_message(f"Message sent as `{character_name}`!", ephemeral=True)
+    
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+
 
     async def _get_webhook(self, channel: discord.TextChannel):
         """Creates or retrieves a webhook for the channel."""
