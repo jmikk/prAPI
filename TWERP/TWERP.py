@@ -104,6 +104,19 @@ class TWERP(commands.Cog):
         await self.bot.tree.sync(guild=guild)
         await self.bot.tree.sync()
 
+        # Autocomplete Function for Character Names
+    async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
+        """Autocomplete function to provide character names for deletion."""
+        characters = await self.config.user(interaction.user).characters()
+        if not characters:
+            return []
+        
+        # Return matching character names based on the user's input (current)
+        return [
+            discord.app_commands.Choice(name=char_name, value=char_name)
+            for char_name in characters.keys() if current.lower() in char_name.lower()
+        ]
+
     # Create Character Slash Command
     @discord.app_commands.command(name="createcharacter", description="Create a character with a name and profile picture URL.")
     async def create_character(self, interaction: discord.Interaction, name: str, pfp_url: str):
@@ -129,6 +142,7 @@ class TWERP(commands.Cog):
 
     # Delete Character Slash Command
     @discord.app_commands.command(name="deletecharacter", description="Delete one of your characters.")
+    @discord.app_commands.autocomplete(name=character_name_autocomplete)
     async def delete_character(self, interaction: discord.Interaction, name: str):
         """Delete one of your characters."""
         try:
