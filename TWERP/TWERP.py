@@ -1,4 +1,5 @@
 import discord
+from discord.errors import InteractionResponded  # Import the correct exception
 from redbot.core import commands, Config
 from redbot.core.bot import Red
 import aiohttp
