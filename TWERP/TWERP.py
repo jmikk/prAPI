@@ -169,10 +169,12 @@ class TWERP(commands.Cog):
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
-    # Select Character Slash Command
-    @discord.app_commands.command(name="speak", description="Show a dropdown to select a character.")
-    async def select_character(self, interaction: discord.Interaction, message: str = None):
-        """Show a dropdown to select a character, or if only one character, skip to modal or directly post."""
+
+    # Select Character Slash Command with Autocomplete
+    @discord.app_commands.command(name="speak", description="Select a character and speak as that character.")
+    @discord.app_commands.autocomplete(character=character_autocomplete)
+    async def select_character(self, interaction: discord.Interaction, character: str, message: str):
+        """Speak as one of your characters."""
         try:
             characters = await self.config.user(interaction.user).characters()
 
@@ -181,29 +183,15 @@ class TWERP(commands.Cog):
                 await interaction.response.send_message("You don't have any characters created.", ephemeral=True)
                 return
 
-            # If the user has only one character
-            if len(characters) == 1:
-                character_name = list(characters.keys())[0]
-                character_info = characters[character_name]
-
-                # If the user provided a message, skip the modal and send it directly
-                if message:
-                    webhook = await self._get_webhook(interaction.channel)
-                    if webhook:
-                        await self.send_as_character(interaction, character_name, character_info, message, webhook)
-                        return
-
-                # Otherwise, open the modal for them to enter a message
-                webhook = await self._get_webhook(interaction.channel)
-                if webhook:
-                    modal = TWERPModal(self, character_name, webhook, interaction, character_info)
-                    await interaction.response.send_modal(modal)
+            # Ensure the selected character is valid
+            if character not in characters:
+                await interaction.response.send_message(f"Character `{character}` not found.", ephemeral=True)
                 return
 
-            # If more than one character, show the dropdown to select a character
-            view = CharacterSelectView(self, characters, interaction)
-            await interaction.response.send_message("Select a character to speak as:", view=view, ephemeral=True)
-
+            character_info = characters[character]
+            webhook = await self._get_webhook(interaction.channel)
+            if webhook:
+                await self.send_as_character(interaction, character, character_info, message, webhook)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
