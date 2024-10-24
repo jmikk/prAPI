@@ -208,15 +208,7 @@ class TWERP(commands.Cog):
             print(f"Failed to create webhook: {e}")
             return None
 
-    # Attach the autocomplete function to the 'name' parameter
-    @delete_character.autocomplete("name")
-    async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
-        """Autocomplete function to provide character names for deletion."""
-        characters = await self.config.user(interaction.user).characters()
-        return [
-            discord.app_commands.Choice(name=char_name, value=char_name)
-            for char_name in characters.keys() if current.lower() in char_name.lower()
-        ]
+
 
     @discord.app_commands.command(name="createcharacter", description="Create a character with a name and profile picture URL.")
     async def create_character(self, interaction: discord.Interaction, name: str, pfp_url: str):
@@ -244,6 +236,16 @@ class TWERP(commands.Cog):
         del characters[name]
         await self.config.user(interaction.user).characters.set(characters)
         await interaction.response.send_message(f"Character `{name}` deleted.", ephemeral=True)
+
+        # Attach the autocomplete function to the 'name' parameter
+    @delete_character.autocomplete("name")
+    async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
+        """Autocomplete function to provide character names for deletion."""
+        characters = await self.config.user(interaction.user).characters()
+        return [
+            discord.app_commands.Choice(name=char_name, value=char_name)
+            for char_name in characters.keys() if current.lower() in char_name.lower()
+        ]
 
 
     @discord.app_commands.command(name="speak", description="Show a dropdown to select a character.")
