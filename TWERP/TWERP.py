@@ -6,6 +6,8 @@ import aiohttp
 NPC_ROLE_NAME = "NPC"  # Change this if needed
 
 
+
+
 class CharacterSelectView(discord.ui.View):
     def __init__(self, cog, characters, interaction):
         super().__init__(timeout=180)  # View timeout after 180 seconds
@@ -88,7 +90,6 @@ class TWERP(commands.Cog):
         self.config = Config.get_conf(self, identifier=23456789648)
 
         self._init_config()
-        bot.loop.create_task(self.sync_commands())
 
     def _init_config(self):
         if not hasattr(self.config.GUILD, "allowed_channels"):
@@ -102,7 +103,7 @@ class TWERP(commands.Cog):
         if not hasattr(self.config.GUILD, "npc_characters"):
             self.config.register_guild(npc_characters={})
 
-    async def sync_commands(self):
+    async def cog_load(self):
         await self.bot.tree.sync()
 
         # Check if the user has the NPC role
