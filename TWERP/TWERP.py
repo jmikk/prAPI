@@ -186,7 +186,7 @@ class TWERP(commands.Cog):
                 "name": name
             }
 
-            await self.config.guild.NPCS.set(NPCS)
+            await self.config.guild(interaction.guild).NPCS.set(NPCS)
             await interaction.response.send_message(f"NPC {name} created with profile picture!", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
@@ -223,7 +223,7 @@ class TWERP(commands.Cog):
                 return
 
             del NPCS[name]
-            await self.config.guild.NPCS.set(NPCS)
+            await self.config.guild(interaction.guild).NPCS.set(NPCS)
             await interaction.response.send_message(f"NPC {name} deleted.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
