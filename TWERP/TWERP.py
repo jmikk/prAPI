@@ -126,7 +126,7 @@ class TWERP(commands.Cog):
         ]
 
         # Create NPC Slash Command
-    @discord.app_commands.command(name="createNPC", description="Create an NPC with a name and profile picture URL.")
+    @discord.app_commands.command(name="createnpc", description="Create an NPC with a name and profile picture URL.")
     async def create_npc(self, interaction: discord.Interaction, name: str, pfp_url: str):
         """Create a new NPC with a custom name and profile picture."""
         if not await self.has_npc_role(interaction):
