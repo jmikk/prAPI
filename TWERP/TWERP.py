@@ -102,7 +102,6 @@ class TWERP(commands.Cog):
     async def cog_load(self):
         """This method is called when the cog is loaded, and it ensures that all slash commands are synced."""
         commands_to_add = [
-            self.create_character, self.delete_character, self.select_character,
             self.create_npc, self.delete_npc, self.select_npc
         ]
 
