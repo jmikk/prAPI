@@ -240,7 +240,7 @@ class TWERP(commands.Cog):
     
 
     # Create Character Slash Command
-    @discord.app_commands.command(name="create_character", description="Create a character with a name and profile picture URL.")
+    @discord.app_commands.command(name="createcharacter", description="Create a character with a name and profile picture URL.")
     async def create_character(self, interaction: discord.Interaction, name: str, pfp_url: str):
         """Create a new character with a custom name and profile picture."""
         try:
