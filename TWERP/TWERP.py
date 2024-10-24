@@ -97,27 +97,16 @@ class TWERP(commands.Cog):
             self.config.register_user(completed_personal_projects={})
         if not hasattr(self.config.USER, "characters"):
             self.config.register_user(characters={})
+        if not hasattr(self.config.GUILD, "NPCS"):
+            self.config.register_guild(NPCS={})
 
-    async def sync_commands(self):
-
-        guild_id = 1098644885797609492  # Replace with your guild ID
-        
-        # Step 1: Clear old guild-specific commands
-        await self.clear_guild_commands(guild_id)
-        
-        # Step 2: Sync global commands
+    async def sync_commands(self):        
         await self.bot.tree.sync()  # Sync globally now that the guild-specific commands are cleared
         print("Synced commands globally.")
 
-    async def clear_guild_commands(self, guild_id: int):
-        """Clears commands from a specific guild."""
-        guild = discord.Object(id=guild_id)
-        await self.bot.tree.sync(guild=guild)  # Syncing an empty list of commands to clear them
-        print(f"Cleared commands for guild: {guild_id}")
             # Autocomplete Function for Character Names
-    
     async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
-            """Autocomplete function to provide character names for deletion."""
+            """Autocomplete function to provide character names."""
             characters = await self.config.user(interaction.user).characters()
             if not characters:
                 return []
@@ -126,6 +115,18 @@ class TWERP(commands.Cog):
             return [
                 discord.app_commands.Choice(name=char_name, value=char_name)
                 for char_name in characters.keys() if current.lower() in char_name.lower()
+            ]
+
+    async def NPC_name_autocomplete(self, interaction: discord.Interaction, current: str):
+            """Autocomplete function to provide NPC names."""
+            NPCS = await self.config.guild.NPCS()
+            if not NPCS:
+                return []
+            
+            # Return matching character names based on the user's input (current)
+            return [
+                discord.app_commands.Choice(name=char_name, value=char_name)
+                for char_name in NPCS.keys() if current.lower() in char_name.lower()
             ]
 
     # Create Character Slash Command
@@ -151,6 +152,29 @@ class TWERP(commands.Cog):
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
+    # Create Character Slash Command
+    @discord.app_commands.command(name="create_npc", description="Create a NPC with a name and profile picture URL.")
+    async def create_npc(self, interaction: discord.Interaction, name: str, pfp_url: str):
+        """Create a new character with a custom name and profile picture."""
+        try:
+            NPCS = await self.config.guild.NPCS()
+            if NPCS is None:
+                NPCS = {}
+
+            if len(characters) >= 25:
+                await interaction.response.send_message("You already have 25 NPCs! Delete one before creating a new one.", ephemeral=True)
+                return
+
+            NPCS[name] = {
+                "pfp_url": pfp_url,
+                "name": name
+            }
+
+            await self.config.guild.NPCS.set(NPCS)
+            await interaction.response.send_message(f"NPC {name} created with profile picture!", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+
     # Delete Character Slash Command
     @discord.app_commands.command(name="deletecharacter", description="Delete one of your characters.")
     @discord.app_commands.autocomplete(name=character_name_autocomplete)
@@ -166,6 +190,24 @@ class TWERP(commands.Cog):
             del characters[name]
             await self.config.user(interaction.user).characters.set(characters)
             await interaction.response.send_message(f"Character {name} deleted.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+
+    # Delete Character Slash Command
+    @discord.app_commands.command(name="delete_npc", description="Delete a NPCs.")
+    @discord.app_commands.autocomplete(name=NPC_name_autocomplete)
+    async def delete_npc(self, interaction: discord.Interaction, name: str):
+        """Delete one of your characters."""
+        try:
+            NPCS = await self.config.guild.NPCS()
+
+            if name not in NPCS:
+                await interaction.response.send_message(f"NPC {name} not found.", ephemeral=True)
+                return
+
+            del NPC[name]
+            await self.config.guild.NPCS.set(NPCS)
+            await interaction.response.send_message(f"NPC {name} deleted.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
@@ -189,6 +231,35 @@ class TWERP(commands.Cog):
                 return
 
             character_info = characters[character]
+            webhook = await self._get_webhook(interaction.channel)
+            if webhook:
+                if message is None:
+                    modal = TWERPModal(self, character, webhook, interaction, character_info)
+                    await interaction.response.send_modal(modal)
+                else:
+                    await self.send_as_character(interaction, character, character_info, message, webhook)
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+
+    # Select Character Slash Command with Autocomplete
+    @discord.app_commands.command(name="speak_npc", description="Select a NPC and speak as that NPC.")
+    @discord.app_commands.autocomplete(NPC=NPC_name_autocomplete)
+    async def select_character(self, interaction: discord.Interaction, character: str, message: str = None):
+        """Speak as a NPC."""
+        try:
+            NPCS = await self.config.guild.NPCS()
+
+            # No characters found
+            if not NPCS:
+                await interaction.response.send_message("You don't have any NPCS created.", ephemeral=True)
+                return
+
+            # Ensure the selected character is valid
+            if NPC not in NPCS:
+                await interaction.response.send_message(f"NPC `{character}` not found.", ephemeral=True)
+                return
+
+            character_info = NPCS[NPC]
             webhook = await self._get_webhook(interaction.channel)
             if webhook:
                 if message is None:
