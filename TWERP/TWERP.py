@@ -86,7 +86,6 @@ class TWERP(commands.Cog):
         self.config = Config.get_conf(self, identifier=23456789648)
 
         self._init_config()
-        bot.loop.create_task(self.sync_commands())
 
     def _init_config(self):
         if not hasattr(self.config.GUILD, "allowed_channels"):
