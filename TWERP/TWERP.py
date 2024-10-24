@@ -205,7 +205,7 @@ class TWERP(commands.Cog):
                 await interaction.response.send_message(f"NPC {name} not found.", ephemeral=True)
                 return
 
-            del NPC[name]
+            del NPCS[name]
             await self.config.guild.NPCS.set(NPCS)
             await interaction.response.send_message(f"NPC {name} deleted.", ephemeral=True)
         except Exception as e:
@@ -243,8 +243,8 @@ class TWERP(commands.Cog):
 
     # Select Character Slash Command with Autocomplete
     @discord.app_commands.command(name="speak_npc", description="Select a NPC and speak as that NPC.")
-    @discord.app_commands.autocomplete(NPC=NPC_name_autocomplete)
-    async def select_character(self, interaction: discord.Interaction, character: str, message: str = None):
+    @discord.app_commands.autocomplete(name=NPC_name_autocomplete)
+    async def select_npc(self, interaction: discord.Interaction, character: str, message: str = None):
         """Speak as a NPC."""
         try:
             NPCS = await self.config.guild.NPCS()
@@ -255,11 +255,11 @@ class TWERP(commands.Cog):
                 return
 
             # Ensure the selected character is valid
-            if NPC not in NPCS:
+            if name not in NPCS:
                 await interaction.response.send_message(f"NPC `{character}` not found.", ephemeral=True)
                 return
 
-            character_info = NPCS[NPC]
+            character_info = NPCS[name]
             webhook = await self._get_webhook(interaction.channel)
             if webhook:
                 if message is None:
