@@ -227,21 +227,6 @@ class TWERP(commands.Cog):
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
-    async def _get_webhook(self, channel: discord.TextChannel):
-        """Creates or retrieves a webhook for the channel."""
-        try:
-            webhooks = await channel.webhooks()
-            bot_webhook = discord.utils.get(webhooks, name="NPCWebhook")
-
-            if not bot_webhook:
-                try:
-                    bot_webhook = await channel.create_webhook(name="NPCWebhook")
-                except discord.Forbidden:
-                    return None
-
-            return bot_webhook
-        except Exception as e:
-            return None
 
     
 
