@@ -38,20 +38,21 @@ class CharacterSelectView(discord.ui.View):
 
 
 class TWERPModal(discord.ui.Modal, title="Enter your message here"):
-    def __init__(self, cog, character_name, webhook, interaction, character_info):
-        super().__init__(title=f"Enter your message here")  # Modal title shows the character name
+    def __init__(self, cog, character_name, webhook, interaction, character_info, message=None):
+        super().__init__(title=f"Enter your message here")
         self.cog = cog
         self.character_name = character_name
         self.webhook = webhook
         self.interaction = interaction
         self.character_info = character_info
+        self.message_content = message
 
         self.message = discord.ui.TextInput(
             label="Message",
-            style=discord.TextStyle.paragraph,  # Multiline text area
-            placeholder="Enter your message here...",
+            style=discord.TextStyle.paragraph,
+            placeholder="Enter your message here..." if not message else message,
             required=True,
-            max_length=2000  # Discord limit for message length
+            max_length=2000
         )
         self.add_item(self.message)
 
@@ -70,9 +71,8 @@ class TWERPModal(discord.ui.Modal, title="Enter your message here"):
                     }
                 }
                 await session.post(webhook_url, json=json_data)
-                # Remove the extra response here; no need to send another message after the webhook is posted.
         except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+            pass  # Silently handle benign errors
 
 
 class TWERP(commands.Cog):
@@ -117,58 +117,52 @@ class TWERP(commands.Cog):
                 credits += credits_to_add
             await message.channel.send(f"{message.author.mention} earned {credits_to_add} credits!")
 
-    # Create Character Slash Command
-    @discord.app_commands.command(name="createcharacter", description="Create a character with a name and profile picture URL.")
-    async def create_character(self, interaction: discord.Interaction, name: str, pfp_url: str):
-        """Create a new character with a custom name and profile picture."""
-        try:
-            characters = await self.config.user(interaction.user).characters()
-            if characters is None:
-                characters = {}
-
-            if len(characters) >= 2:
-                await interaction.response.send_message("You already have 2 characters! Delete one before creating a new one.", ephemeral=True)
-                return
-
-            characters[name] = {
-                "pfp_url": pfp_url,
-                "name": name
-            }
-
-            await self.config.user(interaction.user).characters.set(characters)
-            await interaction.response.send_message(f"Character `{name}` created with profile picture!", ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
-
-    # Delete Character Slash Command
-    @discord.app_commands.command(name="deletecharacter", description="Delete one of your characters.")
-    async def delete_character(self, interaction: discord.Interaction, name: str):
-        """Delete one of your characters."""
+    # Speak Command (combines character selection and message sending)
+    @discord.app_commands.command(name="speak", description="Speak as one of your characters.")
+    async def speak(self, interaction: discord.Interaction, message: str = None):
+        """Speak as a character. If the user has only one character, use it directly. If they have multiple, prompt them to select."""
         try:
             characters = await self.config.user(interaction.user).characters()
 
-            if name not in characters:
-                await interaction.response.send_message(f"Character `{name}` not found.", ephemeral=True)
-                return
-
-            del characters[name]
-            await self.config.user(interaction.user).characters.set(characters)
-            await interaction.response.send_message(f"Character `{name}` deleted.", ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
-
-    # Select Character Slash Command
-    @discord.app_commands.command(name="selectcharacter", description="Show a dropdown to select a character.")
-    async def select_character(self, interaction: discord.Interaction):
-        """Show a dropdown to select a character, then open a modal to enter a message."""
-        try:
-            characters = await self.config.user(interaction.user).characters()
             if not characters:
                 await interaction.response.send_message("You don't have any characters created.", ephemeral=True)
                 return
 
-            view = CharacterSelectView(self, characters, interaction)
-            await interaction.response.send_message("Select a character to speak as:", view=view, ephemeral=True)
+            # If the user has only one character and no message provided, open the modal immediately
+            if len(characters) == 1:
+                character_name = list(characters.keys())[0]
+                character_info = characters[character_name]
+                webhook = await self._get_webhook(interaction.channel)
+
+                if message:
+                    # If the user has only one character and provides a message, send it directly
+                    async with aiohttp.ClientSession() as session:
+                        combined_name = f"{character_info['name']} ({interaction.user.name})"
+                        json_data = {
+                            "content": message,
+                            "username": combined_name,
+                            "avatar_url": character_info["pfp_url"],
+                            "allowed_mentions": {
+                                "parse": ["users"]
+                            }
+                        }
+                        await session.post(webhook.url, json=json_data)
+                        await interaction.response.send_message(f"Message sent as `{character_name}`.", ephemeral=True)
+                else:
+                    # If no message provided, open the modal
+                    modal = TWERPModal(self, character_name, webhook, interaction, character_info)
+                    await interaction.response.send_modal(modal)
+
+            else:
+                # If multiple characters, prompt user to select one
+                if message:
+                    # If message is provided, open modal after selection
+                    view = CharacterSelectView(self, characters, interaction)
+                    await interaction.response.send_message(f"Select a character to speak as, and your message will be sent after.", view=view, ephemeral=True)
+                else:
+                    # If no message, just open modal after selection
+                    view = CharacterSelectView(self, characters, interaction)
+                    await interaction.response.send_message(f"Select a character to speak as:", view=view, ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
