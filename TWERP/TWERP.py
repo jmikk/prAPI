@@ -102,6 +102,7 @@ class TWERP(commands.Cog):
         guild = discord.Object(id=1098644885797609492)  # Replace with your server's ID
         self.bot.tree.copy_global_to(guild=guild)
         await self.bot.tree.sync(guild=guild)
+        await self.bot.tree.sync()
 
     # Create Character Slash Command
     @discord.app_commands.command(name="createcharacter", description="Create a character with a name and profile picture URL.")
