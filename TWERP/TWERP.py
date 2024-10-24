@@ -99,7 +99,7 @@ class TWERP(commands.Cog):
         if not hasattr(self.config.GUILD, "NPCS"):
             self.config.register_guild(NPCS={})
 
-    async def cog_load2(self):
+    async def cog_load(self):
         """This method is called when the cog is loaded, and it ensures that all slash commands are synced."""
         commands_to_add = [
             self.create_character, self.delete_character, self.select_character,
@@ -115,7 +115,7 @@ class TWERP(commands.Cog):
         await self.bot.tree.sync()
         print("All slash commands synced.")
 
-    async def cog_load(self):
+    async def cog_unload(self):
         """Cleanup logic when the cog is unloaded, to remove slash commands."""
         commands_to_remove = [
             self.create_character, self.delete_character, self.select_character,
