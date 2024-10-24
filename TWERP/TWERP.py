@@ -99,9 +99,7 @@ class TWERP(commands.Cog):
             self.config.register_user(characters={})
 
     async def sync_commands(self):
-        guild = discord.Object(id=1098644885797609492)  # Replace with your server's ID
-        self.bot.tree.copy_global_to(guild=guild)
-        await self.bot.tree.sync(guild=guild)
+
         await self.bot.tree.sync()
 
         # Autocomplete Function for Character Names
