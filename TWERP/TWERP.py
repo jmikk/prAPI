@@ -157,7 +157,7 @@ class TWERP(commands.Cog):
     async def create_npc(self, interaction: discord.Interaction, name: str, pfp_url: str):
         """Create a new character with a custom name and profile picture."""
         try:
-            NPCS = await self.config.guild.NPCS()
+            NPCS = await self.config.guild(interaction.guild).NPCS()
             if NPCS is None:
                 NPCS = {}
 
@@ -199,7 +199,7 @@ class TWERP(commands.Cog):
     async def delete_npc(self, interaction: discord.Interaction, name: str):
         """Delete one of your characters."""
         try:
-            NPCS = await self.config.guild.NPCS()
+            NPCS = await self.config.guild(interaction.guild).NPCS()
 
             if name not in NPCS:
                 await interaction.response.send_message(f"NPC {name} not found.", ephemeral=True)
@@ -243,11 +243,11 @@ class TWERP(commands.Cog):
 
     # Select Character Slash Command with Autocomplete
     @discord.app_commands.command(name="speak_npc", description="Select a NPC and speak as that NPC.")
-    @discord.app_commands.autocomplete(name=NPC_name_autocomplete)
+    @discord.app_commands.autocomplete(character=NPC_name_autocomplete)
     async def select_npc(self, interaction: discord.Interaction, character: str, message: str = None):
         """Speak as a NPC."""
         try:
-            NPCS = await self.config.guild.NPCS()
+            NPCS = await self.config.guild(interaction.guild).NPCS()
 
             # No characters found
             if not NPCS:
@@ -255,11 +255,11 @@ class TWERP(commands.Cog):
                 return
 
             # Ensure the selected character is valid
-            if name not in NPCS:
+            if character not in NPCS:
                 await interaction.response.send_message(f"NPC `{character}` not found.", ephemeral=True)
                 return
 
-            character_info = NPCS[name]
+            character_info = NPCS[character]
             webhook = await self._get_webhook(interaction.channel)
             if webhook:
                 if message is None:
