@@ -103,23 +103,6 @@ class TWERP(commands.Cog):
         self.bot.tree.copy_global_to(guild=guild)
         await self.bot.tree.sync(guild=guild)
 
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
-        """Listen to messages and reward credits based on word count."""
-        if message.author.bot:
-            return
-
-        allowed_channels = await self.config.guild(message.guild).allowed_channels()
-        if message.channel.id not in allowed_channels:
-            return
-
-        word_count = len(message.content.split())
-        if word_count >= 10:
-            credits_to_add = word_count // 10
-            async with self.config.user(message.author).credits() as credits:
-                credits += credits_to_add
-            await message.channel.send(f"{message.author.mention} earned {credits_to_add} credits!")
-
     # Create Character Slash Command
     @discord.app_commands.command(name="createcharacter", description="Create a character with a name and profile picture URL.")
     async def create_character(self, interaction: discord.Interaction, name: str, pfp_url: str):
