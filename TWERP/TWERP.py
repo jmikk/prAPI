@@ -1,8 +1,14 @@
 import discord
-from discord.errors import InteractionResponded  # Import the correct exception
 from redbot.core import commands, Config
 from redbot.core.bot import Red
 import aiohttp
+
+
+class CharacterSelectView(discord.ui.View):
+    def __init__(self, cog, characters, interaction):
+        super().__init__(timeout=180)  # View timeout after 180 seconds
+        self.add_item(CharacterSelect(cog, characters, interaction))
+
 
 class CharacterSelect(discord.ui.Select):
     def __init__(self, cog, characters, interaction):
@@ -32,15 +38,9 @@ class CharacterSelect(discord.ui.Select):
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
 
-class CharacterSelectView(discord.ui.View):
-    def __init__(self, cog, characters, interaction):
-        super().__init__(timeout=180)  # View timeout after 180 seconds
-        self.add_item(CharacterSelect(cog, characters, interaction))
-
-
 class TWERPModal(discord.ui.Modal, title="Enter your message here"):
     def __init__(self, cog, character_name, webhook, interaction, character_info):
-        super().__init__(title=f"Enter your message here")  # Modal title shows the character name
+        super().__init__(title=f"Enter your message here")
         self.cog = cog
         self.character_name = character_name
         self.webhook = webhook
@@ -71,12 +71,8 @@ class TWERPModal(discord.ui.Modal, title="Enter your message here"):
                     }
                 }
                 await session.post(webhook_url, json=json_data)
-
-            # Acknowledge the interaction so the modal disappears without errors
-            await interaction.response.defer()
-
-        except InteractionResponded:
-            # This specific error happens when a response has already been sent; we can safely ignore it.
+            await interaction.response.defer()  # Close the modal
+        except discord.errors.InteractionResponded:
             pass
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
@@ -166,16 +162,58 @@ class TWERP(commands.Cog):
 
     # Select Character Slash Command
     @discord.app_commands.command(name="selectcharacter", description="Show a dropdown to select a character.")
-    async def select_character(self, interaction: discord.Interaction):
-        """Show a dropdown to select a character, then open a modal to enter a message."""
+    async def select_character(self, interaction: discord.Interaction, message: str = None):
+        """Show a dropdown to select a character, or if only one character, skip to modal or directly post."""
         try:
             characters = await self.config.user(interaction.user).characters()
+
+            # No characters found
             if not characters:
                 await interaction.response.send_message("You don't have any characters created.", ephemeral=True)
                 return
 
+            # If the user has only one character
+            if len(characters) == 1:
+                character_name = list(characters.keys())[0]
+                character_info = characters[character_name]
+
+                # If the user provided a message, skip the modal and send it directly
+                if message:
+                    webhook = await self._get_webhook(interaction.channel)
+                    if webhook:
+                        await self.send_as_character(interaction, character_name, character_info, message, webhook)
+                        return
+
+                # Otherwise, open the modal for them to enter a message
+                webhook = await self._get_webhook(interaction.channel)
+                if webhook:
+                    modal = TWERPModal(self, character_name, webhook, interaction, character_info)
+                    await interaction.response.send_modal(modal)
+                return
+
+            # If more than one character, show the dropdown to select a character
             view = CharacterSelectView(self, characters, interaction)
             await interaction.response.send_message("Select a character to speak as:", view=view, ephemeral=True)
+
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+
+    async def send_as_character(self, interaction, character_name, character_info, message, webhook):
+        """Helper function to send a message as a character using the webhook."""
+        try:
+            async with aiohttp.ClientSession() as session:
+                webhook_url = webhook.url
+                combined_name = f"{character_info['name']} ({interaction.user.name})"
+                json_data = {
+                    "content": message,
+                    "username": combined_name,
+                    "avatar_url": character_info["pfp_url"],
+                    "allowed_mentions": {
+                        "parse": ["users"]  # Prevent @everyone and @here pings
+                    }
+                }
+                await session.post(webhook_url, json=json_data)
+            await interaction.response.defer()  # Close the interaction
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
