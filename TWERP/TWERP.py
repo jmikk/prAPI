@@ -235,6 +235,7 @@ class TWERP(commands.Cog):
         except Exception as e:
             return None
 
+    
 
     # Create Character Slash Command
     @discord.app_commands.command(name="createcharacter", description="Create a character with a name and profile picture URL.")
