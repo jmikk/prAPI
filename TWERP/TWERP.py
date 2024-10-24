@@ -100,7 +100,7 @@ class TWERP(commands.Cog):
         if not hasattr(self.config.GUILD, "NPCS"):
             self.config.register_guild(NPCS={})
 
-    async def sync_commands(self):
+    async def cog_load(self):
         """This method is called when the cog is loaded, and it ensures that all slash commands are synced."""
         # Add slash commands to the bot's command tree
         self.bot.tree.add_command(self.create_character)
@@ -112,7 +112,7 @@ class TWERP(commands.Cog):
         
         # Sync the commands globally
         await self.bot.tree.sync()
-        print("Slash commands synced.")
+        print("All slash commands synced.")
 
             # Autocomplete Function for Character Names
     async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
