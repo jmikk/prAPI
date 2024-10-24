@@ -115,7 +115,8 @@ class TWERP(commands.Cog):
         await self.bot.tree.sync(guild=guild)  # Syncing an empty list of commands to clear them
         print(f"Cleared commands for guild: {guild_id}")
             # Autocomplete Function for Character Names
-        async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
+    
+    async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
             """Autocomplete function to provide character names for deletion."""
             characters = await self.config.user(interaction.user).characters()
             if not characters:
