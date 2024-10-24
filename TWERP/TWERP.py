@@ -106,8 +106,14 @@ class TWERP(commands.Cog):
     async def cog_load(self):
         guild = discord.Object(id=1098644885797609492)  # Replace with your test server's ID
         await self.bot.tree.sync(guild=guild)
-        print("Commands synced for guild:", guild.id)
-        # Check if the user has the NPC role
+        
+        # Send a message to a specific channel
+        channel = self.bot.get_channel(1098673276064120842)  # Channel ID to send message to
+        if channel:
+            await channel.send(f"Commands synced for guild: {guild.id}")
+        else:
+            print("Channel not found. Cannot send sync message.")
+    
     async def has_npc_role(self, interaction: discord.Interaction):
         npc_role = discord.utils.get(interaction.guild.roles, name=NPC_ROLE_NAME)
         if npc_role and npc_role in interaction.user.roles:
