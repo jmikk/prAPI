@@ -106,6 +106,8 @@ class TWERP(commands.Cog):
         npc_role = discord.utils.get(interaction.guild.roles, name=NPC_ROLE_NAME)
         return npc_role in interaction.user.roles if npc_role else False
 
+    # Attach the autocomplete function to the 'name' parameter
+    @speak_npc.autocomplete("name")
     async def npc_name_autocomplete(self, interaction: discord.Interaction, current: str):
         """Autocomplete function to provide NPC names for speakNPC."""
         npc_characters = await self.config.guild(interaction.guild).npc_characters()
@@ -146,28 +148,28 @@ class TWERP(commands.Cog):
 
         npc_list = "\n".join([f"- {npc}" for npc in npc_characters])
         await interaction.response.send_message(f"NPCs in this server:\n{npc_list}", ephemeral=True)
-
+    # Speak as NPC Slash Command with Autocomplete
     @discord.app_commands.command(name="speaknpc", description="Speak as one of the NPCs.")
-    @discord.app_commands.autocomplete("name", npc_name_autocomplete)
     async def speak_npc(self, interaction: discord.Interaction, name: str, message: str):
         """Speak as an NPC."""
         if not await self.has_npc_role(interaction):
             await interaction.response.send_message("You don't have permission to speak as an NPC.", ephemeral=True)
             return
-
+    
         npc_characters = await self.config.guild(interaction.guild).npc_characters()
-
+    
         if name not in npc_characters:
             await interaction.response.send_message(f"NPC `{name}` not found.", ephemeral=True)
             return
-
+    
         character_info = npc_characters[name]
         webhook = await self._get_webhook(interaction.channel)
-
+    
         if webhook:
             await self.send_as_npc(interaction, character_info, message, webhook)
         else:
             await interaction.response.send_message("Failed to retrieve or create a webhook.", ephemeral=True)
+
 
     async def send_as_npc(self, interaction, character_info, message, webhook):
         """Helper function to send a message as an NPC using the webhook."""
@@ -205,7 +207,8 @@ class TWERP(commands.Cog):
             print(f"Failed to create webhook: {e}")
             return None
 
-    # Character commands
+    # Attach the autocomplete function to the 'name' parameter
+    @delete_character.autocomplete("name")
     async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
         """Autocomplete function to provide character names for deletion."""
         characters = await self.config.user(interaction.user).characters()
@@ -227,19 +230,20 @@ class TWERP(commands.Cog):
         await self.config.user(interaction.user).characters.set(characters)
         await interaction.response.send_message(f"Character `{name}` created with profile picture!", ephemeral=True)
 
+    # Delete Character Slash Command with Autocomplete
     @discord.app_commands.command(name="deletecharacter", description="Delete one of your characters.")
-    @discord.app_commands.autocomplete("name", character_name_autocomplete)
     async def delete_character(self, interaction: discord.Interaction, name: str):
         """Delete one of your characters."""
         characters = await self.config.user(interaction.user).characters()
-
+    
         if name not in characters:
             await interaction.response.send_message(f"Character `{name}` not found.", ephemeral=True)
             return
-
+    
         del characters[name]
         await self.config.user(interaction.user).characters.set(characters)
         await interaction.response.send_message(f"Character `{name}` deleted.", ephemeral=True)
+
 
     @discord.app_commands.command(name="speak", description="Show a dropdown to select a character.")
     async def select_character(self, interaction: discord.Interaction, message: str = None):
