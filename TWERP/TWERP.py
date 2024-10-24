@@ -260,6 +260,25 @@ class TWERP(commands.Cog):
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
+        # Create Character Slash Command
+    @discord.app_commands.command(name="create_npc", description="Create a NPC with a name and profile picture URL.")
+    async def create_npc(self, interaction: discord.Interaction, name: str, pfp_url: str):
+        """Create a new character with a custom name and profile picture."""
+        try:
+            characters = await self.config.guild.npc_characters()
+            if characters is None:
+                characters = {}
+
+            characters[name] = {
+                "pfp_url": pfp_url,
+                "name": name
+            }
+
+            await self.config.guild.npc_characters().set(characters)
+            await interaction.response.send_message(f"NPC `{name}` created with profile picture!", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+
     # Delete Character Slash Command
     @discord.app_commands.command(name="deletecharacter", description="Delete one of your characters.")
     @discord.app_commands.autocomplete(name=character_name_autocomplete)
