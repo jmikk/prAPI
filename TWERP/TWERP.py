@@ -100,7 +100,7 @@ class TWERP(commands.Cog):
         if not hasattr(self.config.GUILD, "NPCS"):
             self.config.register_guild(NPCS={})
 
-    async def cog_load(self):
+    async def sync_commands(self):
         """This method is called when the cog is loaded, and it ensures that all slash commands are synced."""
         # Add slash commands to the bot's command tree
         self.bot.tree.add_command(self.create_character)
