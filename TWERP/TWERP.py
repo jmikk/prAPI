@@ -172,7 +172,7 @@ class TWERP(commands.Cog):
 
     # Select Character Slash Command with Autocomplete
     @discord.app_commands.command(name="speak", description="Select a character and speak as that character.")
-    @discord.app_commands.autocomplete(character=character_autocomplete)
+    @discord.app_commands.autocomplete(character=character_name_autocomplete)
     async def select_character(self, interaction: discord.Interaction, character: str, message: str):
         """Speak as one of your characters."""
         try:
