@@ -11,7 +11,7 @@ class TWERP(commands.Cog):
         self.config = Config.get_conf(self, identifier=23456789648)
 
         self._init_config()
-        self.bot.tree.add_command(self.speak)  # Register the 'speak' command
+        self.bot.tree.add_command(self.speakas)  # Register the 'speakas' command
         self.bot.tree.add_command(self.create_character)  # Register the 'createcharacter' command
         self.bot.tree.add_command(self.delete_character)  # Register the 'deletecharacter' command
         bot.loop.create_task(self.sync_commands())
@@ -48,8 +48,8 @@ class TWERP(commands.Cog):
                 credits += credits_to_add
             await message.channel.send(f"{message.author.mention} earned {credits_to_add} credits!")
 
-    @discord.app_commands.command(name="speak", description="Speak as one of your characters.")
-    async def speak(self, interaction: discord.Interaction, message: str = None):
+    @discord.app_commands.command(name="speakas", description="Speak as one of your characters.")
+    async def speakas(self, interaction: discord.Interaction, message: str = None):
         """Speak as a character. If the user has only one character, use it directly. If they have multiple, prompt them to select."""
         try:
             characters = await self.config.user(interaction.user).characters()
