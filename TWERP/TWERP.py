@@ -100,20 +100,32 @@ class TWERP(commands.Cog):
 
     async def sync_commands(self):
 
-        await self.bot.tree.sync()
-
-        # Autocomplete Function for Character Names
-    async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
-        """Autocomplete function to provide character names for deletion."""
-        characters = await self.config.user(interaction.user).characters()
-        if not characters:
-            return []
+        guild_id = 1098644885797609492  # Replace with your guild ID
         
-        # Return matching character names based on the user's input (current)
-        return [
-            discord.app_commands.Choice(name=char_name, value=char_name)
-            for char_name in characters.keys() if current.lower() in char_name.lower()
-        ]
+        # Step 1: Clear old guild-specific commands
+        await self.clear_guild_commands(guild_id)
+        
+        # Step 2: Sync global commands
+        await self.bot.tree.sync()  # Sync globally now that the guild-specific commands are cleared
+        print("Synced commands globally.")
+
+    async def clear_guild_commands(self, guild_id: int):
+        """Clears commands from a specific guild."""
+        guild = discord.Object(id=guild_id)
+        await self.bot.tree.sync(guild=guild)  # Syncing an empty list of commands to clear them
+        print(f"Cleared commands for guild: {guild_id}")
+            # Autocomplete Function for Character Names
+        async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
+            """Autocomplete function to provide character names for deletion."""
+            characters = await self.config.user(interaction.user).characters()
+            if not characters:
+                return []
+            
+            # Return matching character names based on the user's input (current)
+            return [
+                discord.app_commands.Choice(name=char_name, value=char_name)
+                for char_name in characters.keys() if current.lower() in char_name.lower()
+            ]
 
     # Create Character Slash Command
     @discord.app_commands.command(name="createcharacter", description="Create a character with a name and profile picture URL.")
