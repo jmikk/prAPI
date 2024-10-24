@@ -173,7 +173,7 @@ class TWERP(commands.Cog):
     # Select Character Slash Command with Autocomplete
     @discord.app_commands.command(name="speak", description="Select a character and speak as that character.")
     @discord.app_commands.autocomplete(character=character_name_autocomplete)
-    async def select_character(self, interaction: discord.Interaction, character: str, message: str):
+    async def select_character(self, interaction: discord.Interaction, character: str, message: str = None):
         """Speak as one of your characters."""
         try:
             characters = await self.config.user(interaction.user).characters()
@@ -191,7 +191,11 @@ class TWERP(commands.Cog):
             character_info = characters[character]
             webhook = await self._get_webhook(interaction.channel)
             if webhook:
-                await self.send_as_character(interaction, character, character_info, message, webhook)
+                if message is None:
+                    modal = TWERPModal(self, character, webhook, interaction, character_info)
+                    await interaction.response.send_modal(modal)
+                else:
+                    await self.send_as_character(interaction, character, character_info, message, webhook)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
