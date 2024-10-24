@@ -100,9 +100,19 @@ class TWERP(commands.Cog):
         if not hasattr(self.config.GUILD, "NPCS"):
             self.config.register_guild(NPCS={})
 
-    async def sync_commands(self):        
-        await self.bot.tree.sync()  # Sync globally now that the guild-specific commands are cleared
-        print("Synced commands globally.")
+    async def cog_load(self):
+        """This method is called when the cog is loaded, and it ensures that all slash commands are synced."""
+        # Add slash commands to the bot's command tree
+        self.bot.tree.add_command(self.create_character)
+        self.bot.tree.add_command(self.delete_character)
+        self.bot.tree.add_command(self.select_character)
+        self.bot.tree.add_command(self.create_npc)
+        self.bot.tree.add_command(self.delete_npc)
+        self.bot.tree.add_command(self.select_npc)
+        
+        # Sync the commands globally
+        await self.bot.tree.sync()
+        print("Slash commands synced.")
 
             # Autocomplete Function for Character Names
     async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
@@ -119,7 +129,7 @@ class TWERP(commands.Cog):
 
     async def NPC_name_autocomplete(self, interaction: discord.Interaction, current: str):
             """Autocomplete function to provide NPC names."""
-            NPCS = await self.config.guild.NPCS()
+            NPCS = await self.config.guild(interaction.guild).NPCS()
             if not NPCS:
                 return []
             
@@ -161,7 +171,7 @@ class TWERP(commands.Cog):
             if NPCS is None:
                 NPCS = {}
 
-            if len(characters) >= 25:
+            if len(NPCS) >= 25:
                 await interaction.response.send_message("You already have 25 NPCs! Delete one before creating a new one.", ephemeral=True)
                 return
 
