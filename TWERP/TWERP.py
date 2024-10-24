@@ -70,7 +70,9 @@ class TWERPModal(discord.ui.Modal, title="Enter your message here"):
                     }
                 }
                 await session.post(webhook_url, json=json_data)
-                # Remove the extra response here; no need to send another message after the webhook is posted.
+        except InteractionResponded:
+            # This specific error happens when a response has already been sent; we can safely ignore it.
+            pass
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
