@@ -101,17 +101,32 @@ class TWERP(commands.Cog):
 
     async def cog_load(self):
         """This method is called when the cog is loaded, and it ensures that all slash commands are synced."""
-        # Add slash commands to the bot's command tree
-        self.bot.tree.add_command(self.create_character)
-        self.bot.tree.add_command(self.delete_character)
-        self.bot.tree.add_command(self.select_character)
-        self.bot.tree.add_command(self.create_npc)
-        self.bot.tree.add_command(self.delete_npc)
-        self.bot.tree.add_command(self.select_npc)
-        
+        commands_to_add = [
+            self.create_character, self.delete_character, self.select_character,
+            self.create_npc, self.delete_npc, self.select_npc
+        ]
+
+        # Check if commands already exist and avoid re-adding them
+        for cmd in commands_to_add:
+            if self.bot.tree.get_command(cmd.name) is None:
+                self.bot.tree.add_command(cmd)
+
         # Sync the commands globally
         await self.bot.tree.sync()
         print("All slash commands synced.")
+
+    async def cog_unload(self):
+        """Cleanup logic when the cog is unloaded, to remove slash commands."""
+        commands_to_remove = [
+            self.create_character, self.delete_character, self.select_character,
+            self.create_npc, self.delete_npc, self.select_npc
+        ]
+
+        # Remove the commands when the cog is unloaded
+        for cmd in commands_to_remove:
+            if self.bot.tree.get_command(cmd.name):
+                self.bot.tree.remove_command(cmd.name)
+
 
             # Autocomplete Function for Character Names
     async def character_name_autocomplete(self, interaction: discord.Interaction, current: str):
