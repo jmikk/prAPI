@@ -128,7 +128,7 @@ class TWERP(commands.Cog):
         ]
 
         # Create NPC Slash Command
-    @discord.app_commands.command(name="create-npc", description="Create an NPC with a name and profile picture URL.")
+    @discord.app_commands.command(name="createnpc", description="Create an NPC with a name and profile picture URL.")
     async def create_npc(self, interaction: discord.Interaction, name: str, pfp_url: str):
         """Create a new NPC with a custom name and profile picture."""
         if not await self.has_npc_role(interaction):
@@ -150,7 +150,7 @@ class TWERP(commands.Cog):
         await interaction.response.send_message(f"NPC `{name}` created with profile picture!", ephemeral=True)
 
     # List NPCs Slash Command
-    @discord.app_commands.command(name="list-npc", description="List all NPCs.")
+    @discord.app_commands.command(name="listnpc", description="List all NPCs.")
     async def list_npcs(self, interaction: discord.Interaction):
         """List all NPCs in the guild."""
         if not await self.has_npc_role(interaction):
@@ -179,7 +179,7 @@ class TWERP(commands.Cog):
         ]
 
     # Speak as NPC Slash Command with Autocomplete
-    @discord.app_commands.command(name="speak-npc", description="Speak as one of the NPCs.")
+    @discord.app_commands.command(name="speaknpc", description="Speak as one of the NPCs.")
     @discord.app_commands.autocomplete(name=npc_name_autocomplete)
     async def speak_npc(self, interaction: discord.Interaction, name: str, message: str):
         """Speak as an NPC."""
