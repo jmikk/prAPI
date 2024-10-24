@@ -106,15 +106,6 @@ class TWERP(commands.Cog):
         npc_role = discord.utils.get(interaction.guild.roles, name=NPC_ROLE_NAME)
         return npc_role in interaction.user.roles if npc_role else False
 
-    # Attach the autocomplete function to the 'name' parameter
-    @speak_npc.autocomplete("name")
-    async def npc_name_autocomplete(self, interaction: discord.Interaction, current: str):
-        """Autocomplete function to provide NPC names for speakNPC."""
-        npc_characters = await self.config.guild(interaction.guild).npc_characters()
-        return [
-            discord.app_commands.Choice(name=npc_name, value=npc_name)
-            for npc_name in npc_characters if current.lower() in npc_name.lower()
-        ]
 
     @discord.app_commands.command(name="createnpc", description="Create an NPC with a name and profile picture URL.")
     async def create_npc(self, interaction: discord.Interaction, name: str, pfp_url: str):
@@ -171,6 +162,16 @@ class TWERP(commands.Cog):
             await interaction.response.send_message("Failed to retrieve or create a webhook.", ephemeral=True)
 
 
+        # Attach the autocomplete function to the 'name' parameter
+    @speak_npc.autocomplete("name")
+    async def npc_name_autocomplete(self, interaction: discord.Interaction, current: str):
+        """Autocomplete function to provide NPC names for speakNPC."""
+        npc_characters = await self.config.guild(interaction.guild).npc_characters()
+        return [
+            discord.app_commands.Choice(name=npc_name, value=npc_name)
+            for npc_name in npc_characters if current.lower() in npc_name.lower()
+        ]
+    
     async def send_as_npc(self, interaction, character_info, message, webhook):
         """Helper function to send a message as an NPC using the webhook."""
         try:
