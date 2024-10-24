@@ -71,6 +71,10 @@ class TWERPModal(discord.ui.Modal, title="Enter your message here"):
                     }
                 }
                 await session.post(webhook_url, json=json_data)
+
+            # Acknowledge the interaction so the modal disappears without errors
+            await interaction.response.defer()
+
         except InteractionResponded:
             # This specific error happens when a response has already been sent; we can safely ignore it.
             pass
