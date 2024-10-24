@@ -3,7 +3,6 @@ from redbot.core import commands, Config
 from redbot.core.bot import Red
 import aiohttp
 
-import discord
 
 class PaginationView(discord.ui.View):
     def __init__(self, items: list, interaction: discord.Interaction, title: str):
@@ -28,28 +27,31 @@ class PaginationView(discord.ui.View):
         embed = self.get_embed()
         self.message = await self.interaction.response.send_message(embed=embed, view=self)
 
-    async def update_embed(self):
+    async def update_embed(self, interaction: discord.Interaction):
         """Update the embed when navigating pages."""
         embed = self.get_embed()
-        await self.message.edit(embed=embed, view=self)
+        await interaction.edit_original_response(embed=embed, view=self)
 
     @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Go to the previous page."""
+        await interaction.response.defer()  # Acknowledge the interaction to avoid the timeout
         if self.page > 0:
             self.page -= 1
-            await self.update_embed()
+            await self.update_embed(interaction)
 
     @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Go to the next page."""
+        await interaction.response.defer()  # Acknowledge the interaction to avoid the timeout
         if self.page < len(self.items) - 1:
             self.page += 1
-            await self.update_embed()
+            await self.update_embed(interaction)
 
     @discord.ui.button(label="Close", style=discord.ButtonStyle.danger)
     async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Close the pagination view."""
+        await interaction.response.defer()  # Acknowledge the interaction to avoid the timeout
         await self.message.delete()
         self.stop()
 
