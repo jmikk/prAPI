@@ -159,7 +159,7 @@ class TWERP(commands.Cog):
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
     # Select Character Slash Command
-    @discord.app_commands.command(name="selectcharacter", description="Show a dropdown to select a character.")
+    @discord.app_commands.command(name="speak", description="Show a dropdown to select a character.")
     async def select_character(self, interaction: discord.Interaction, message: str = None):
         """Show a dropdown to select a character, or if only one character, skip to modal or directly post."""
         try:
