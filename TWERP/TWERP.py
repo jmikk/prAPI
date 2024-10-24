@@ -101,15 +101,6 @@ class TWERP(commands.Cog):
 
     async def cog_load(self):
         """This method is called when the cog is loaded, and it ensures that all slash commands are synced."""
-        commands_to_add = [
-             self.delete_npc, self.select_npc
-        ]
-
-        # Check if commands already exist and avoid re-adding them
-        for cmd in commands_to_add:
-            if self.bot.tree.get_command(cmd.name) is None:
-                self.bot.tree.add_command(cmd)
-
         # Sync the commands globally
         await self.bot.tree.sync()
         print("All slash commands synced.")
