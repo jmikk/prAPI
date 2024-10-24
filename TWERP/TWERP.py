@@ -3,6 +3,57 @@ from redbot.core import commands, Config
 from redbot.core.bot import Red
 import aiohttp
 
+import discord
+
+class PaginationView(discord.ui.View):
+    def __init__(self, items: list, interaction: discord.Interaction, title: str):
+        super().__init__(timeout=180)
+        self.items = items
+        self.interaction = interaction
+        self.title = title
+        self.page = 0
+        self.message = None
+
+    def get_embed(self):
+        """Generate the current embed based on the page number."""
+        embed = discord.Embed(title=self.title)
+        item = self.items[self.page]
+        embed.add_field(name=item["name"], value=f"[Avatar Link]({item['pfp_url']})")
+        embed.set_thumbnail(url=item["pfp_url"])
+        embed.set_footer(text=f"Page {self.page + 1}/{len(self.items)}")
+        return embed
+
+    async def send_initial_message(self):
+        """Send the initial message."""
+        embed = self.get_embed()
+        self.message = await self.interaction.response.send_message(embed=embed, view=self)
+
+    async def update_embed(self):
+        """Update the embed when navigating pages."""
+        embed = self.get_embed()
+        await self.message.edit(embed=embed, view=self)
+
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
+    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to the previous page."""
+        if self.page > 0:
+            self.page -= 1
+            await self.update_embed()
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to the next page."""
+        if self.page < len(self.items) - 1:
+            self.page += 1
+            await self.update_embed()
+
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.danger)
+    async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Close the pagination view."""
+        await self.message.delete()
+        self.stop()
+
+
 
 class CharacterSelectView(discord.ui.View):
     def __init__(self, cog, characters, interaction):
@@ -326,3 +377,64 @@ class TWERP(commands.Cog):
             return bot_webhook
         except Exception as e:
             return None
+
+
+    @discord.app_commands.command(name="list_characters", description="List all of your characters.")
+    async def list_characters(self, interaction: discord.Interaction):
+        """List all characters for the user with pagination."""
+        try:
+            characters = await self.config.user(interaction.user).characters()
+            if not characters:
+                await interaction.response.send_message("You don't have any characters.", ephemeral=True)
+                return
+            
+            items = [{"name": name, "pfp_url": data["pfp_url"]} for name, data in characters.items()]
+            pagination_view = PaginationView(items, interaction, "Your Characters")
+            await pagination_view.send_initial_message()
+        
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+    
+    @discord.app_commands.command(name="list_npcs", description="List all NPCs in the server.")
+    async def list_npcs(self, interaction: discord.Interaction):
+        """List all NPCs for the guild with pagination."""
+        try:
+            NPCS = await self.config.guild(interaction.guild).NPCS()
+            if not NPCS:
+                await interaction.response.send_message("There are no NPCs in this server.", ephemeral=True)
+                return
+            
+            items = [{"name": name, "pfp_url": data["pfp_url"]} for name, data in NPCS.items()]
+            pagination_view = PaginationView(items, interaction, "Server NPCs")
+            await pagination_view.send_initial_message()
+        
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+    
+    @discord.app_commands.command(name="list_all_characters", description="List all characters across all users in the server.")
+    async def list_all_characters(self, interaction: discord.Interaction):
+        """List all characters across all users in the guild with pagination."""
+        try:
+            all_characters = []
+            for member in interaction.guild.members:
+                if member.bot:
+                    continue
+                characters = await self.config.user(member).characters()
+                if characters:
+                    all_characters += [{"name": name, "pfp_url": data["pfp_url"], "owner": member.display_name} for name, data in characters.items()]
+            
+            if not all_characters:
+                await interaction.response.send_message("There are no characters in this server.", ephemeral=True)
+                return
+            
+            items = [f"**{item['name']}** (Owned by {item['owner']})" for item in all_characters]
+            pagination_view = PaginationView(all_characters, interaction, "All Characters in the Server")
+            await pagination_view.send_initial_message()
+        
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+
+
+
+    
+            
