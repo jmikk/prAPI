@@ -104,8 +104,9 @@ class TWERP(commands.Cog):
             self.config.register_guild(npc_characters={})
 
     async def cog_load(self):
-        await self.bot.tree.sync()
-
+        guild = discord.Object(id=1098644885797609492)  # Replace with your test server's ID
+        await self.bot.tree.sync(guild=guild)
+        print("Commands synced for guild:", guild.id)
         # Check if the user has the NPC role
     async def has_npc_role(self, interaction: discord.Interaction):
         npc_role = discord.utils.get(interaction.guild.roles, name=NPC_ROLE_NAME)
