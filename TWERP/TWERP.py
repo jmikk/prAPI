@@ -221,7 +221,6 @@ class TWERP(commands.Cog):
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
     # Create Character Slash Command
-    @commands.has_role("NPC")  # Restricts this command to users with the "NPC" role
     @discord.app_commands.command(name="create_npc", description="Create a NPC with a name and profile picture URL.")
     async def create_npc(self, interaction: discord.Interaction, name: str, pfp_url: str):
         """Create a new character with a custom name and profile picture."""
@@ -263,7 +262,6 @@ class TWERP(commands.Cog):
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
     # Delete Character Slash Command
-    @commands.has_role("NPC")  # Restricts this command to users with the "NPC" role
     @discord.app_commands.command(name="delete_npc", description="Delete a NPCs.")
     @discord.app_commands.autocomplete(name=NPC_name_autocomplete)
     async def delete_npc(self, interaction: discord.Interaction, name: str):
@@ -312,7 +310,6 @@ class TWERP(commands.Cog):
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
     # Select Character Slash Command with Autocomplete
-    @commands.has_role("NPC")  # Restricts this command to users with the "NPC" role
     @discord.app_commands.command(name="speak_npc", description="Select a NPC and speak as that NPC.")
     @discord.app_commands.autocomplete(character=NPC_name_autocomplete)
     async def select_npc(self, interaction: discord.Interaction, character: str, message: str = None):
