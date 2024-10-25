@@ -19,7 +19,7 @@ class PaginationView(discord.ui.View):
         item = self.items[self.page]
         embed.add_field(name=item["name"], value=f"[Avatar Link]({item['pfp_url']})")
         embed.set_thumbnail(url=item["pfp_url"])
-        embed.set_footer(text=f"Page {self.page + 1}/{len(self.items)}")
+        embed.set_footer(text=f"Page {self.page + 1}/{len(self.items)}: {item["owner"]}")
         return embed
 
     async def send_initial_message(self):
