@@ -458,6 +458,11 @@ class TWERP(commands.Cog):
             await ctx.send(f"An error occurred: {str(e)}")
 
 
+    @discord.app_commands.command(name="buy_me_a_coffee", description="List all characters across all users in the server.")
+    async def buy_me_a_coffee(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f"Thanks for thinking of me, I code for fun and never except any tips/payments but I always appreacate it! If you are financially able and willing to buy me a coffee as a thank you you can use this link: https://ko-fi.com/9003s. If you are not financially able (or willing) just say thanks I appreacate it!")
+ 
+
 
 
     
