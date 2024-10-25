@@ -198,7 +198,7 @@ class TWERP(commands.Cog):
             ]
 
     # Create Character Slash Command
-    @discord.app_commands.command(name="createcharacter", description="Create a character with a name and profile picture URL.")
+    @discord.app_commands.command(name="create_character", description="Create a character with a name and profile picture URL.")
     async def create_character(self, interaction: discord.Interaction, name: str, pfp_url: str):
         """Create a new character with a custom name and profile picture."""
         try:
@@ -245,7 +245,7 @@ class TWERP(commands.Cog):
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
     # Delete Character Slash Command
-    @discord.app_commands.command(name="deletecharacter", description="Delete one of your characters.")
+    @discord.app_commands.command(name="delete_character", description="Delete one of your characters.")
     @discord.app_commands.autocomplete(name=character_name_autocomplete)
     async def delete_character(self, interaction: discord.Interaction, name: str):
         """Delete one of your characters."""
@@ -435,6 +435,31 @@ class TWERP(commands.Cog):
         
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+
+    @commands.command(name="admin_delete_character", help="Delete a character owned by a specified user.")
+    @commands.has_permissions(administrator=True)  # Only allows administrators to use this command
+    async def admin_delete_character(self, ctx, owner_name: str, character_name: str):
+        """Allows an admin to delete a character owned by a specified user."""
+        try:
+            # Find the member by name in the guild
+            owner = discord.utils.find(lambda m: m.name == owner_name or m.display_name == owner_name, ctx.guild.members)
+            if owner is None:
+                await ctx.send(f"User '{owner_name}' not found in the server.")
+                return
+            
+            # Fetch the user's characters
+            characters = await self.config.user(owner).characters()
+            if character_name not in characters:
+                await ctx.send(f"Character '{character_name}' not found for user '{owner_name}'.")
+                return
+    
+            # Delete the character
+            del characters[character_name]
+            await self.config.user(owner).characters.set(characters)
+            await ctx.send(f"Character '{character_name}' owned by '{owner_name}' has been deleted.")
+        except Exception as e:
+            await ctx.send(f"An error occurred: {str(e)}")
+
 
 
 
