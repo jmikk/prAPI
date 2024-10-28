@@ -305,10 +305,6 @@ class recToken(commands.Cog):
 
             await interaction.followup.send(embed=initial_embed, view=view)
 
-            # Check if the user has the "Admin" role and show the Admin Panel
-            if any(role.name == "Admin" for role in interaction.user.roles):
-                await self.send_admin_panel(interaction, project_names[initial_index])
-
         # Helper method to check if the user meets the prerequisites for a project
     def has_prerequisites(self, user, project_data, completed_personal_projects, guild_projects):
         # Prerequisites are expected to be a list of project names
@@ -443,34 +439,6 @@ class recToken(commands.Cog):
             
     
         return view
-
-    async def send_admin_panel(self, interaction: discord.Interaction, project_name: str):
-        view = discord.ui.View()
-
-        view.add_item(
-            discord.ui.Button(
-                label="Edit Project",
-                custom_id=f"edit_project_{project_name}",
-                style=discord.ButtonStyle.success
-            )
-        )
-
-        view.add_item(
-            discord.ui.Button(
-                label="Remove Project",
-                custom_id=f"remove_project_{project_name}",
-                style=discord.ButtonStyle.danger
-            )
-        )
-
-        embed = discord.Embed(
-            title="Admin Panel",
-            description=f"Manage the project: {self.display_project_name(project_name)}",
-            color=discord.Color.gold()
-        )
-
-        message = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        self.admin_messages[interaction.user.id] = message  # Store message per user
 
     async def edit_admin_panel(self, interaction: discord.Interaction, project_name: str, completed: bool = False,guild_level = True):
         view = discord.ui.View()
