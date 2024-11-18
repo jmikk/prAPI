@@ -530,16 +530,13 @@ class recToken(commands.Cog):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     async def prompt_edit_field(self, interaction: discord.Interaction, project_name: str, field: str):
-        await interaction.followup.send_message(embed=discord.Embed(
+        await interaction.response.send_message(embed=discord.Embed(
             description=f"Please enter the new value for **{field.capitalize()}**:",
             color=discord.Color.blue()
         ), ephemeral=True)
 
-        def check(message):
-            return message.author == interaction.user and message.channel == interaction.channel
-
         try:
-            msg = await self.bot.wait_for('message', check=check, timeout=60.0)
+            msg = await self.bot.wait_for('message', timeout=60.0)
             new_value = msg.content
 
             await self.update_project_field(interaction, project_name, field, new_value)
