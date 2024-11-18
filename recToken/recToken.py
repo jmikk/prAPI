@@ -47,7 +47,7 @@ class recToken(commands.Cog):
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
         custom_id = interaction.data['custom_id']
-    
+        
         if custom_id == "viewprojects":
             await interaction.response.defer()
             await self.viewprojects(interaction)
@@ -530,7 +530,7 @@ class recToken(commands.Cog):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     async def prompt_edit_field(self, interaction: discord.Interaction, project_name: str, field: str):
-        await interaction.response.send_message(embed=discord.Embed(
+        await interaction.followup.send_message(embed=discord.Embed(
             description=f"Please enter the new value for **{field.capitalize()}**:",
             color=discord.Color.blue()
         ), ephemeral=True)
