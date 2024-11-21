@@ -70,10 +70,10 @@ class recToken(commands.Cog):
             await interaction.response.defer()
             await self.ask_donation_amount(interaction, project_name)
         elif custom_id.startswith("edit_project_"):
-            project_name = custom_id.split("_", 2)[-1]
+            project_name = custom_id.split("_", 2)[1]
             await self.send_edit_menu(interaction, project_name)
         elif custom_id.startswith("remove_project_"):
-            project_name = custom_id.split("_", 2)[-1]
+            project_name = custom_id.split("_", 2)[1]
             await self.remove_project(interaction, project_name)
         elif custom_id.startswith("edit_field_"):
             field, project_name = custom_id.split("_")[2:]
