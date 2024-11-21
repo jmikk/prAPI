@@ -28,7 +28,7 @@ class GiveAway(commands.Cog):
             return f"{seconds} seconds"
 
     def format_timestamp(self, timestamp):
-        return f"<t:{timestamp-18000}:R>"
+        return f"<t:{timestamp-14400}:R>"
 
     @commands.command()
     @commands.has_role("Giveaway Host")
