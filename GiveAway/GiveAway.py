@@ -1,3 +1,4 @@
+import time
 import discord
 import asyncio
 import random
@@ -28,7 +29,10 @@ class GiveAway(commands.Cog):
             return f"{seconds} seconds"
 
     def format_timestamp(self, timestamp):
-        return f"<t:{timestamp-21600}:R>"
+        offset = 21600 # assume off 
+        if time.localtime().tm_isdst == 1: # if DST is on
+            offset = 18000
+        return f"<t:{timestamp-offset}:R>"
 
     @commands.command()
     @commands.has_role("Giveaway Host")
