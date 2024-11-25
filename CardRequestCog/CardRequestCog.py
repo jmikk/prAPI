@@ -169,6 +169,61 @@ class CardRequestCog(commands.Cog):
 
     @commands.command()
     @is_admin()
+    async def give_card(self, ctx, card_id: str, season: str, destiNATION: str, gifter: str):
+        """Request a card from a nation"""
+
+        self.auth = sans.NSAuth(password=self.password)
+
+        
+        user_id = str(ctx.author.id)
+        current_month = datetime.utcnow().month
+        requests = await self.config.requests()
+
+        if user_id in requests:
+            last_request_month = requests[user_id]["month"]
+            if last_request_month == current_month:
+                await ctx.send("You have already made a request this month.")
+                return
+
+        claim_nations = await self.config.claim_nations()
+        if not claim_nations:
+            await ctx.send("No nations available for claiming cards.")
+            return
+
+        if gifter not in claim_nations:
+            await ctx.send("No Nation not found: Error in the Gifter name please double check it")
+            return
+
+        giftie = destiNATION.lower().replace(" ", "_")
+
+        await ctx.send(
+            f"Attempting to gift {card_id} to {giftie} from {gifter}"
+        )
+        data = {
+            "nation": gifter,
+            "cardid": card_id,
+            "season": season,
+            "to": giftie,
+            "mode": "prepare",
+            "c": "giftcard",
+        }
+        r = await self.api_request(data)
+        giftToken = r.xml.find("SUCCESS").text
+        # await ctx.send(r.headers)
+        data.update(mode="execute", token=giftToken)
+        await self.api_request(data=data)
+        # await ctx.send(z2.content)
+        # Log the request
+
+        log_channel_id = await self.config.request_log_channel()
+        log_channel = self.bot.get_channel(log_channel_id)
+        if log_channel:
+            await log_channel.send(f"Card {card_id} (Season {season}) sent to {giftie} from {gifter}.")
+
+        await ctx.send(f"Card {card_id} (Season {season}) has been sent to {giftie} from {gifter}.")
+
+    @commands.command()
+    @is_admin()
     async def reset_requests(self, ctx):
         """Manually resets all requests"""
         await self.config.requests.set({})
