@@ -1,4 +1,4 @@
-from .weekly import WeeklyEmbedScheduler
+from .WeeklyEmbedScheduler import WeeklyEmbedScheduler
 
 
 async def setup(bot):
