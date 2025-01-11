@@ -1,86 +1,159 @@
 from redbot.core import commands, Config
-import discord
 import random
-import os
+import asyncio
+from datetime import datetime, timedelta
 
-class Run(commands.Cog):
+class HungerGames(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=34591395, force_registration=True)
-        self.config.register_guild(scores=0)
+        self.config = Config.get_conf(self, identifier=1234567890)
+        self.config.register_guild(
+            districts={},
+            players={},
+            game_active=False,
+            day_duration=3600,  # Default: 1 hour in seconds
+            day_start=None,
+        )
 
     @commands.guild_only()
-    @commands.command(name="run!")
-    async def run_command(self, ctx):
-        # Retrieve the current score
-        current_score = await self.config.guild(ctx.guild).scores()
-        new_score = current_score + 1
-    
-        # Update the score
-        await self.config.guild(ctx.guild).scores.set(new_score)
-    
-        lap_art = ["https://tenor.com/view/earth-gif-8912275","https://tenor.com/view/funny-gif-24784982","https://tenor.com/view/spongebob-panic-patrick-ahhh-run-around-gif-9319829","https://tenor.com/view/mobile-girl-mim-running-excited-gif-21459068","https://tenor.com/view/chicken-run-chicken-in-shoes-crash-bandicoot-crash-gif-3420651847898329517","https://tenor.com/view/cat-hopping-cute-kitty-kitty-baby-cat-gif-104564847600069574","https://tenor.com/view/cat-run-omg-gif-10386143","https://tenor.com/view/dog-running-coming-doggo-gif-12143874","https://tenor.com/view/ham-burger-hot-dog-running-funny-animated-gif-17820157"]
-        lap_art = random.choice(lap_art)
-        # Include the server name in the message
-        await ctx.send(f"Keep running, {ctx.guild.name}! Your server score is now {new_score}.\n{lap_art}")
+    @commands.group()
+    async def hunger(self, ctx):
+        """Commands for managing the Hunger Games."""
+        pass
 
-
-
-
-    @commands.command(name="Run_leaderboard")
-    async def Run_leaderboard(self, ctx):
-        all_scores = await self.config.all_guilds()
-        
-        # Sort scores by value in descending order
-        sorted_scores = sorted(all_scores.items(), key=lambda x: x[1]['scores'], reverse=True)
-        
-        # Format the leaderboard
-        leaderboard = "Leaderboard:\n"
-        for idx, (guild_id, data) in enumerate(sorted_scores, start=1):
-            guild_name = self.bot.get_guild(guild_id).name if self.bot.get_guild(guild_id) else 'Unknown Guild'
-            leaderboard += f"{idx}. {guild_name}: {data['scores']} Runs\n"
-        
-        # Send the leaderboard
-        await ctx.send(leaderboard)
-
-
-    @commands.command()
-    @commands.is_owner()
-    async def save_file(self, ctx):
-        if not ctx.message.attachments:
-            await ctx.send("Please upload a file.")
-            return
-
-        attachments = ctx.message.attachments
-        for attachment in attachments:
-            if not attachment.filename.endswith('.txt'):
-                await ctx.send("Only text files are allowed.")
+    @hunger.command()
+    async def signup(self, ctx):
+        """Sign up for the Hunger Games."""
+        guild = ctx.guild
+        async with self.config.guild(guild).players() as players:
+            if str(ctx.author.id) in players:
+                await ctx.send("You are already signed up!")
                 return
-    
-            file_path = f"/home/pi/RMBad/ads/{attachment.filename}"
-            await attachment.save(file_path)
-            await ctx.send(f"File `{attachment.filename}` has been saved.")
 
-    @commands.command()
-    @commands.is_owner()
-    async def list_files(self, ctx):
-        ads_folder = "/home/pi/RMBad/ads"
-        files = os.listdir(ads_folder)
-        if not files:
-            await ctx.send("No files found in the ads folder.")
-        else:
-            file_list = "\n".join(files)
-            await ctx.send(f"Files in the ads folder:\n```\n{file_list}\n```")
+            # Assign random district and stats
+            district = random.randint(1, 12)  # Assume 12 districts
+            stats = {
+                "Dex": random.randint(1, 10),
+                "Str": random.randint(1, 10),
+                "Con": random.randint(1, 10),
+                "Wis": random.randint(1, 10),
+                "HP": random.randint(15, 25)
+            }
 
-    @commands.command()
-    @commands.is_owner()
-    async def delete_file(self, ctx, filename: str):
-        file_path = f"/home/pi/RMBad/ads/{filename}"
-        if not os.path.exists(file_path):
-            await ctx.send(f"No such file: `{filename}`")
-        else:
-            os.remove(file_path)
-            await ctx.send(f"File `{filename}` has been deleted.")
+            players[str(ctx.author.id)] = {
+                "name": ctx.author.display_name,
+                "district": district,
+                "stats": stats,
+                "alive": True,
+                "action": None
+            }
 
+            await ctx.send(f"{ctx.author.mention} has joined the Hunger Games from District {district}!")
 
+    @hunger.command()
+    @commands.admin()
+    async def setdistrict(self, ctx, member: commands.MemberConverter, district: int):
+        """Set a player's district manually (Admin only)."""
+        guild = ctx.guild
+        async with self.config.guild(guild).players() as players:
+            if str(member.id) not in players:
+                await ctx.send(f"{member.display_name} is not signed up.")
+                return
 
+            players[str(member.id)]["district"] = district
+            await ctx.send(f"{member.display_name}'s district has been set to {district}.")
+
+    @hunger.command()
+    @commands.admin()
+    async def startgame(self, ctx):
+        """Start the Hunger Games (Admin only)."""
+        guild = ctx.guild
+        async with self.config.guild(guild) as config:
+            if config["game_active"]:
+                await ctx.send("The Hunger Games are already active!")
+                return
+
+            if not config["players"]:
+                await ctx.send("No players are signed up yet.")
+                return
+
+            config["game_active"] = True
+            config["day_start"] = datetime.utcnow().isoformat()
+            await ctx.send("The Hunger Games have begun! Day 1 starts now.")
+
+            asyncio.create_task(self.run_game(ctx))
+
+    async def run_game(self, ctx):
+        """Handle the real-time simulation of the game."""
+        guild = ctx.guild
+
+        while True:
+            async with self.config.guild(guild) as config:
+                if not config["game_active"]:
+                    break
+
+                day_start = datetime.fromisoformat(config["day_start"])
+                day_duration = timedelta(seconds=config["day_duration"])
+                if datetime.utcnow() - day_start >= day_duration:
+                    await self.process_day(ctx)
+                    config["day_start"] = datetime.utcnow().isoformat()
+
+            await asyncio.sleep(10)  # Check every 10 seconds
+
+    async def process_day(self, ctx):
+        """Process daily events and actions."""
+        guild = ctx.guild
+        async with self.config.guild(guild).players() as players:
+            event_outcomes = []
+            for player_id, player_data in players.items():
+                if not player_data["alive"]:
+                    continue
+
+                action = player_data["action"]
+                if action == "Hunt":
+                    event_outcomes.append(f"{player_data['name']} went hunting!")
+                elif action == "Hunker Down":
+                    event_outcomes.append(f"{player_data['name']} hunkered down for safety.")
+                elif action == "Loot":
+                    event_outcomes.append(f"{player_data['name']} searched for resources.")
+
+                # Reset action for the next day
+                player_data["action"] = None
+
+            # Random daily event
+            event_roll = random.randint(1, 100)
+            if event_roll <= 30:
+                event_outcomes.append("A deadly storm swept through the arena!")
+                for player_id, player_data in players.items():
+                    if player_data["alive"]:
+                        damage = random.randint(1, 5)
+                        player_data["stats"]["HP"] -= damage
+                        if player_data["stats"]["HP"] <= 0:
+                            player_data["alive"] = False
+                            event_outcomes.append(f"{player_data['name']} was killed by the storm!")
+
+            await ctx.send("\n".join(event_outcomes))
+
+    @hunger.command()
+    async def action(self, ctx, choice: str):
+        """Choose your daily action: Hunt, Hunker Down, or Loot."""
+        guild = ctx.guild
+        async with self.config.guild(guild).players() as players:
+            if str(ctx.author.id) not in players or not players[str(ctx.author.id)]["alive"]:
+                await ctx.send("You are not part of the game or are no longer alive.")
+                return
+
+            if choice not in ["Hunt", "Hunker Down", "Loot"]:
+                await ctx.send("Invalid action. Choose Hunt, Hunker Down, or Loot.")
+                return
+
+            players[str(ctx.author.id)]["action"] = choice
+            await ctx.send(f"{ctx.author.mention} has chosen to {choice}.")
+
+    @hunger.command()
+    @commands.admin()
+    async def setdaylength(self, ctx, seconds: int):
+        """Set the real-time length of a day in seconds (Admin only)."""
+        guild = ctx.guild
+        await self.config.guild(guild).day_duration.set(seconds)
+        await ctx.send(f"Day length has been set to {seconds} seconds.")
