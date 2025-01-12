@@ -248,8 +248,8 @@ class Hungar(commands.Cog):
             "districts": {},
             "players": {},
             "game_active": False,
-            "day_duration": 3600,
+            "day_duration": 10,
             "day_start": None,
         })
-        await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset.")
+        await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset, as a molten fireball crashes down and kills everyone.  Better luck next time")
         await self.endGame(ctx)
