@@ -121,7 +121,6 @@ class Hungar(commands.Cog):
         while True:
             config = await self.config.guild(guild).all()
             if not config["game_active"]:
-                self.endGame()
                 break
 
             if await self.isOneLeft(guild):
@@ -242,12 +241,14 @@ class Hungar(commands.Cog):
     @hunger.command()
     @commands.admin()
     async def stopgame(self, ctx):
-        """Stop the Hunger Games early (Admin only)."""
+        """Stop the Hunger Games early (Admin only). Reset everything."""
         guild = ctx.guild
-        config = await self.config.guild(guild).all()
-        if not config["game_active"]:
-            await ctx.send("No game is currently active.")
-            return
-
-        await self.config.guild(guild).game_active.set(False)
-        await ctx.send("The Hunger Games have been stopped early by the admin.")
+        await self.config.guild(guild).clear()
+        await self.config.guild(guild).set({
+            "districts": {},
+            "players": {},
+            "game_active": False,
+            "day_duration": 3600,
+            "day_start": None,
+        })
+        await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset.")
