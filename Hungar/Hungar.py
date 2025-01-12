@@ -257,18 +257,18 @@ class Hungar(commands.Cog):
                 damage2 = OG_damage + random.randint(1,3)
                 hunter["stats"]["HP"] -= damage2
                 event_outcomes.append(f"{hunter['name']} hunted {target['name']} but the two were evenly matched dealing {damage1} to {target['name']} and {damage2} to {hunter['name']}")
-
+                
     
 
                 
     
-            if hunter_str > target_defense:
+            elif hunter_str > target_defense:
                 target["stats"]["HP"] -= damage
                 event_outcomes.append(f"{hunter['name']} hunted {target['name']} and dealt {damage} damage!")
                 if target["stats"]["HP"] <= 0:
                     target["alive"] = False
                     event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
-            else:
+            elif:
                 hunter["stats"]["HP"] -= damage
                 event_outcomes.append(f"{target['name']} defended against {hunter['name']} and dealt {damage} damage in return!")
                 if hunter["stats"]["HP"] <= 0:
