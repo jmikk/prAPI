@@ -325,7 +325,8 @@ class Hungar(commands.Cog):
     async def process_day(self, ctx):
         """Process daily events and actions."""
         guild = ctx.guild
-        players = await self.config.guild(guild).players()
+        config = await self.config.guild(guild).all()  # Add this line to fetch config
+        players = config["players"]
         event_outcomes = []
         hunted = set()
         hunters = []
