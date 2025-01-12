@@ -92,6 +92,7 @@ class Hungar(commands.Cog):
         while True:
             config = await self.config.guild(guild).all()
             if not config["game_active"]:
+                self.endGame(ctx)
                 break
 
             day_start = datetime.fromisoformat(config["day_start"])
@@ -103,6 +104,9 @@ class Hungar(commands.Cog):
                 await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
 
             await asyncio.sleep(10)  # Check every 10 seconds
+    async def endGame(self,ctx):
+        await ctx.send("the game is done")
+        return
 
     async def process_day(self, ctx):
         """Process daily events and actions."""
