@@ -127,6 +127,7 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).game_active.set(True)
         await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
     # Announce all participants with mentions for real players
+        sorted_players = sorted(players.values(), key=lambda p: p["district"])
         participant_list = []
         for player_id, player_data in players.items():
             if player_data.get("is_npc"):
