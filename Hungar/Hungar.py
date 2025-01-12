@@ -67,21 +67,41 @@ class Hungar(commands.Cog):
 
     @hunger.command()
     @commands.admin()
-    async def startgame(self, ctx):
-        """Start the Hunger Games (Admin only)."""
+    async def startgame(self, ctx, npcs: int = 0):
+        """Start the Hunger Games (Admin only). Optionally, add NPCs."""
         guild = ctx.guild
         config = await self.config.guild(guild).all()
         if config["game_active"]:
             await ctx.send("The Hunger Games are already active!")
             return
 
-        if not config["players"]:
+        players = config["players"]
+        if not players:
             await ctx.send("No players are signed up yet.")
             return
 
+        # Add NPCs if specified
+        for i in range(npcs):
+            npc_id = f"npc_{i+1}"
+            players[npc_id] = {
+                "name": f"NPC {i+1}",
+                "district": random.randint(1, 12),
+                "stats": {
+                    "Dex": random.randint(1, 10),
+                    "Str": random.randint(1, 10),
+                    "Con": random.randint(1, 10),
+                    "Wis": random.randint(1, 10),
+                    "HP": random.randint(15, 25)
+                },
+                "alive": True,
+                "action": None,
+                "is_npc": True
+            }
+
+        await self.config.guild(guild).players.set(players)
         await self.config.guild(guild).game_active.set(True)
         await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
-        await ctx.send("The Hunger Games have begun! Day 1 starts now.")
+        await ctx.send(f"The Hunger Games have begun with {npcs} NPCs added! Day 1 starts now.")
 
         asyncio.create_task(self.run_game(ctx))
 
@@ -136,6 +156,9 @@ class Hungar(commands.Cog):
         for player_id, player_data in players.items():
             if not player_data["alive"]:
                 continue
+
+            if player_data.get("is_npc"):
+                player_data["action"] = random.choice(["Hunt", "Hunker Down", "Loot"])
 
             action = player_data["action"]
             if action == "Hunt":
