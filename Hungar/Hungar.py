@@ -367,3 +367,52 @@ class Hungar(commands.Cog):
             "day_counter": 0,
         })
         await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset.")
+
+    @hunger.command()
+    async def viewstats(self, ctx, member: commands.MemberConverter = None):
+        """
+        View your own stats or, if you're an admin, view another player's stats.
+        """
+        guild = ctx.guild
+        players = await self.config.guild(guild).players()
+        
+        # If no member is specified, show the stats of the command invoker
+        if member is None:
+            member_id = str(ctx.author.id)
+            if member_id not in players:
+                await ctx.send("You are not part of the Hunger Games.", ephemeral=True)
+                return
+            player = players[member_id]
+            embed = discord.Embed(title="Your Stats", color=discord.Color.blue())
+            embed.add_field(name="Name", value=player["name"], inline=False)
+            embed.add_field(name="District", value=player["district"], inline=False)
+            embed.add_field(name="Dex", value=player["stats"]["Dex"], inline=True)
+            embed.add_field(name="Str", value=player["stats"]["Str"], inline=True)
+            embed.add_field(name="Con", value=player["stats"]["Con"], inline=True)
+            embed.add_field(name="Wis", value=player["stats"]["Wis"], inline=True)
+            embed.add_field(name="HP", value=player["stats"]["HP"], inline=True)
+            embed.add_field(name="Alive", value="Yes" if player["alive"] else "No", inline=False)
+            await ctx.send(embed=embed, ephemeral=True)
+        else:
+            # Admins can view stats for any player
+            if not await self.bot.is_admin(ctx.author):
+                await ctx.send("You do not have permission to view other players' stats.", ephemeral=True)
+                return
+    
+            member_id = str(member.id)
+            if member_id not in players:
+                await ctx.send(f"{member.display_name} is not part of the Hunger Games.", ephemeral=True)
+                return
+    
+            player = players[member_id]
+            embed = discord.Embed(title=f"{member.display_name}'s Stats", color=discord.Color.green())
+            embed.add_field(name="Name", value=player["name"], inline=False)
+            embed.add_field(name="District", value=player["district"], inline=False)
+            embed.add_field(name="Dex", value=player["stats"]["Dex"], inline=True)
+            embed.add_field(name="Str", value=player["stats"]["Str"], inline=True)
+            embed.add_field(name="Con", value=player["stats"]["Con"], inline=True)
+            embed.add_field(name="Wis", value=player["stats"]["Wis"], inline=True)
+            embed.add_field(name="HP", value=player["stats"]["HP"], inline=True)
+            embed.add_field(name="Alive", value="Yes" if player["alive"] else "No", inline=False)
+            await ctx.send(embed=embed, ephemeral=True)
+    
