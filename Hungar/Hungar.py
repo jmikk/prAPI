@@ -53,73 +53,73 @@ class Hungar(commands.Cog):
             "Wis": random.randint(1, 10),
             "HP": random.randint(15, 25)
         }
-        if district = 1:
+        if district == 1:
             stats["Dex"] = stats["Dex"] + 1
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] + 1
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 10
-        elif district = 2:
+        elif district == 2:
             stats["Dex"] = stats["Dex"] + 1
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"]
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 10
-        elif district = 3:
+        elif district == 3:
             stats["Dex"] = stats["Dex"]
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] + 1
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 10
-        elif district = 4:
+        elif district == 4:
             stats["Dex"] = stats["Dex"] + 1
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] + 1
             stats["Wis"] = stats["Wis"] 
             stats["HP"] = stats["HP"] + 10
-        elif district = 5:
+        elif district == 5:
             stats["Dex"] = stats["Dex"] + 1
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] + 1
             stats["Wis"] = stats["Wis"] 
             stats["HP"] = stats["HP"] + 5
-        elif district = 6:
+        elif district == 6:
             stats["Dex"] = stats["Dex"] 
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 5
-        elif district = 7:
+        elif district == 7:
             stats["Dex"] = stats["Dex"] 
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 10
-        elif district = 8:
+        elif district == 8:
             stats["Dex"] = stats["Dex"] 
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] 
             stats["HP"] = stats["HP"] + 5
-        elif district = 9:
+        elif district == 9:
             stats["Dex"] = stats["Dex"] 
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 5
-        elif district = 10:
+        elif district == 10:
             stats["Dex"] = stats["Dex"] 
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] 
             stats["HP"] = stats["HP"] 
-        elif district = 11:
+        elif district == 11:
             stats["Dex"] = stats["Dex"]
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] 
             stats["HP"] = stats["HP"] + 5
-        elif district = 12:
+        elif district == 12:
             stats["Dex"] = stats["Dex"] 
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] 
