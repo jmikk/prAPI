@@ -184,7 +184,8 @@ class Hungar(commands.Cog):
         hunters = []
         looters = []
         resters = []
-
+        targets = []
+        
         for player_id, player_data in players.items():
             if not player_data["alive"]:
                 continue
@@ -225,6 +226,7 @@ class Hungar(commands.Cog):
 
         for hunter_id in hunters:
             if hunter_id in hunted:
+                event_outcomes.append(f"{hunter['name']} hunted but found nothing")
                 continue
 
             # Prioritize hunters first
@@ -235,17 +237,19 @@ class Hungar(commands.Cog):
             elif targeted_resters:
                 target_id = targeted_resters.pop(0)
             else:
+                event_outcomes.append(f"{hunter['name']} hunted but found nothing but some foot prints")
                 continue
 
             if target_id in hunted:
+                event_outcomes.append(f"{hunter['name']} hunted but found nothing but an old camp and some bloody garments")
                 continue
 
             hunter = players[hunter_id]
             target = players[target_id]
 
-            hunter_str = hunter["stats"]["Str"]
-            target_defense = max(target["stats"]["Str"], target["stats"]["Dex"])
-            damage = abs(hunter_str - target_defense)
+            hunter_str = hunter["stats"]["Str"] + random.randint(1, 5)
+            target_defense = max(target["stats"]["Str"], target["stats"]["Dex"]) + random.randint(1, 5)
+            damage = abs(hunter_str - target_defense) + random.randint(1, 3)
 
             if hunter_str > target_defense:
                 target["stats"]["HP"] -= damage
@@ -308,7 +312,7 @@ class Hungar(commands.Cog):
             "districts": {},
             "players": {},
             "game_active": False,
-            "day_duration": 3600,
+            "day_duration": 10,
             "day_start": None,
         })
         await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset.")
