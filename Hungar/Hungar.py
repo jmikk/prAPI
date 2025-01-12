@@ -267,6 +267,7 @@ class Hungar(commands.Cog):
 
     async def announce_new_day(self, ctx, guild):
         """Announce the start of a new day and ping alive players."""
+        await ctx.send("https://i.imgur.com/gtCA6wO.png")
         config = await self.config.guild(guild).all()
         players = config["players"]
 
