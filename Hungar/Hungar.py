@@ -5,6 +5,22 @@ from datetime import datetime, timedelta
 import os
 import discord
 
+#clean up list
+#Add custom lines for:
+#Hunting
+#Resting
+#Looting
+#Evenly matched Hunting
+#item names
+
+#todo list
+#World events 
+#More aggressive AI for NPCs
+#ability to find no one while hunting 
+#random chance to hurt yourself or solo skill challenges.
+#adding a feast
+
+
 
 class Hungar(commands.Cog):
     def __init__(self, bot):
@@ -16,7 +32,9 @@ class Hungar(commands.Cog):
             game_active=False,
             day_duration=10,  # Default: 1 hour in seconds
             day_start=None,
-            day_counter=0,  # Counter for days
+            day_counter=0, 
+            random_events=True,  # Enable or disable random events
+            feast_active=False,  # Track if a feast is active# Counter for days
         )
 
     async def load_npc_names(self):
@@ -255,6 +273,9 @@ class Hungar(commands.Cog):
         alive_players = [player for player in players.values() if player["alive"]]
         alive_count = len(alive_players)
 
+        feast_active = config.get("feast_active", False)
+        feast_message = "A Feast has been announced! Attend by choosing `Feast` as your action today." if feast_active else ""
+
         alive_mentions = []
         for player_id, player_data in players.items():
             if player_data["alive"]:
@@ -268,7 +289,12 @@ class Hungar(commands.Cog):
                         alive_mentions.append(member.mention)
 
         # Send the announcement with all alive participant
-        await ctx.send(f"Day {day_counter} begins in the Hunger Games! {alive_count} participants remain.\n{', '.join(alive_mentions)}")
+        # Send the announcement
+        await ctx.send(
+            f"Day {day_counter} begins in the Hunger Games! {alive_count} participants remain.\n"
+            f"{feast_message}\n"
+            f"Alive participants: {', '.join(alive_mentions)}"
+        )
 
     async def isOneLeft(self, guild):
         """Check if only one player is alive."""
@@ -311,9 +337,88 @@ class Hungar(commands.Cog):
                 player_data["action"] = "Rest"
 
             if player_data.get("is_npc"):
-                player_data["action"] = random.choice(["Hunt", "Rest", "Loot"])
+                if config["feast_active"]:
+                    player_data["action"] = random.choice(["Feast", "Feast", "Feast","Feast"])
+                else:
+                    player_data["action"] = random.choice(["Hunt", "Rest", "Loot"])
 
             action = player_data["action"]
+
+            if config["feast_active"]:
+                feast_participants = [player_id for player_id, player_data in players.items() if player_data["action"] == "Feast"]
+                if len(feast_participants) == 1:
+                    # Single participant gets +5 to all stats
+                    participant = players[feast_participants[0]]
+                    for stat in ["Dex", "Str", "Con", "Wis", "HP"]:
+                        participant["stats"][stat] += 5
+                    event_outcomes.append(f"{participant['name']} attended the Feast alone and gained +5 to all stats!")
+                elif len(feast_participants) > 1:
+                    # Multiple participants battle it out
+                    dead_players = []
+                    for _ in range(3):  # 3 battle rounds
+                        for participant_id in feast_participants[:]:  # Iterate over a copy
+                            if participant_id in dead_players:
+                                continue
+                            target_id = random.choice([p for p in feast_participants if p != participant_id and p not in dead_players])
+                            participant = players[participant_id]
+                            target = players[target_id]
+                            participant_str = participant["stats"]["Str"] + random.randint(1, 10)
+                            target_str = target["stats"]["Str"] + random.randint(1, 10)
+                            if participant_str > target_str:
+                                damage = participant_str - target_str
+                                target["stats"]["HP"] -= damage
+                                event_outcomes.append(f"{participant['name']} attacked {target['name']} and dealt {damage} damage!")
+                                if target["stats"]["HP"] <= 0:
+                                    target["alive"] = False
+                                    dead_players.append(target_id)
+                                    feast_participants.remove(target_id)
+                                    participant["items"].extend(target["items"])
+                                    target["items"] = []
+                                    event_outcomes.append(f"{target['name']} was eliminated by {participant['name']}!")
+                            else:
+                                damage = target_str - participant_str
+                                participant["stats"]["HP"] -= damage
+                                event_outcomes.append(f"{target['name']} attacked {participant['name']} and dealt {damage} damage!")
+                                if participant["stats"]["HP"] <= 0:
+                                    participant["alive"] = False
+                                    dead_players.append(participant_id)
+                                    feast_participants.remove(participant_id)
+                                    target["items"].extend(participant["items"])
+                                    participant["items"] = []
+                                    event_outcomes.append(f"{participant['name']} was eliminated by {target['name']}!")
+                                    
+                    # Remaining participants split items and stats
+                    if feast_participants:
+                            # Collect items from dead players
+                        all_dropped_items = []
+                        for dead_id in dead_players:
+                            all_dropped_items.extend(players[dead_id]["items"])
+                            players[dead_id]["items"] = []  # Clear items from the dead player
+                    
+                        # Randomly distribute items among the living participants
+                        if all_dropped_items:
+                            random.shuffle(all_dropped_items)
+                            for item in all_dropped_items:
+                                chosen_participant_id = random.choice(feast_participants)
+                                players[chosen_participant_id]["items"].append(item)
+                            event_outcomes.append(
+                                f"Feast participants split the items dropped by the eliminated players."
+                            )
+                        stat_bonus = 5  # Each stat gets +1 assigned five times
+                        stats_to_distribute = ["Dex", "Str", "Con", "Wis", "HP"]
+                        for _ in range(stat_bonus):
+                            for stat in stats_to_distribute:
+                                # Randomly choose a participant to receive +1 for the stat
+                                chosen_participant_id = random.choice(feast_participants)
+                                players[chosen_participant_id]["stats"][stat] += 1
+                        event_outcomes.append(
+                            "Feast participants split the remaining items and distributed stat bonuses randomly among themselves!"
+                        )
+
+                await self.config.guild(guild).feast_active.set(False)  # Reset Feast status
+
+
+            
             if action == "Hunt":
                 hunters.append(player_id)
                 event_outcomes.append(f"{player_data['name']} went hunting!")
@@ -525,4 +630,22 @@ class Hungar(commands.Cog):
             embed.add_field(name="HP", value=player["stats"]["HP"], inline=True)
             embed.add_field(name="Alive", value="Yes" if player["alive"] else "No", inline=False)
             await ctx.send(embed=embed, ephemeral=True)
+
+    @hunger.command()
+    @commands.admin()
+    async def toggle_random_events(self, ctx, state: bool):
+        """Enable or disable random events (Admin only)."""
+        guild = ctx.guild
+        await self.config.guild(guild).random_events.set(state)
+        state_text = "enabled" if state else "disabled"
+        await ctx.send(f"Random events have been {state_text}.")
+    
+    @hunger.command()
+    @commands.admin()
+    async def trigger_feast(self, ctx):
+        """Trigger a Feast event manually (Admin only)."""
+        guild = ctx.guild
+        await self.config.guild(guild).feast_active.set(True)
+        await ctx.send("A Feast has been announced! Participants can choose `Feast` as their action today.")
+
     
