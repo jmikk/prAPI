@@ -201,7 +201,7 @@ class Hungar(commands.Cog):
                 player_data["action"] = random.choice(["Hunt", "Rest", "Loot"])
     
             action = player_data["action"]
-            if action == "None":
+            if action == None:
                 event_outcomes.append(f"{player_data['name']} did nothing!")
                 looters.append(player_id)
             if action == "Hunt":
