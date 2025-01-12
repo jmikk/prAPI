@@ -118,6 +118,8 @@ class Hungar(commands.Cog):
                 event_outcomes.append(f"{player_data['name']} hunkered down for safety.")
             elif action == "Loot":
                 event_outcomes.append(f"{player_data['name']} searched for resources.")
+            elif action == None:
+                event_outcomes.append(f"{player_data['name']} decided to do absolutely nothing")
 
             # Reset action for the next day
             player_data["action"] = None
