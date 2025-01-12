@@ -2,6 +2,7 @@ from redbot.core import commands, Config
 import random
 import asyncio
 from datetime import datetime, timedelta
+import os
 
 class Hungar(commands.Cog):
     def __init__(self, bot):
@@ -15,13 +16,19 @@ class Hungar(commands.Cog):
             day_start=None,
         )
 
+
     async def load_npc_names(self):
         """Load NPC names from the NPC_names.txt file."""
+        # Get the directory of the current script
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        npc_file_path = os.path.join(base_path, "NPC_names.txt")
+    
         try:
-            with open("NPC_names.txt", "r") as f:
+            with open(npc_file_path, "r") as f:
                 return [line.strip() for line in f.readlines() if line.strip()]
         except FileNotFoundError:
             return [f"NPC {i+1}" for i in range(100)]  # Fallback if file is missing
+
 
     @commands.guild_only()
     @commands.group()
