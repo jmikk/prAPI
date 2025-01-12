@@ -2,7 +2,6 @@ from redbot.core import commands, Config
 import random
 import asyncio
 from datetime import datetime, timedelta
-import os
 
 class Hungar(commands.Cog):
     def __init__(self, bot):
@@ -12,23 +11,17 @@ class Hungar(commands.Cog):
             districts={},
             players={},
             game_active=False,
-            day_duration=3600,  # Default: 1 hour in seconds
+            day_duration=10,  # Default: 1 hour in seconds
             day_start=None,
         )
 
-
     async def load_npc_names(self):
         """Load NPC names from the NPC_names.txt file."""
-        # Get the directory of the current script
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        npc_file_path = os.path.join(base_path, "NPC_names.txt")
-    
         try:
-            with open(npc_file_path, "r") as f:
+            with open("NPC_names.txt", "r") as f:
                 return [line.strip() for line in f.readlines() if line.strip()]
         except FileNotFoundError:
             return [f"NPC {i+1}" for i in range(100)]  # Fallback if file is missing
-
 
     @commands.guild_only()
     @commands.group()
@@ -60,7 +53,8 @@ class Hungar(commands.Cog):
             "district": district,
             "stats": stats,
             "alive": True,
-            "action": None
+            "action": None,
+            "items": []
         }
 
         await self.config.guild(guild).players.set(players)
@@ -111,7 +105,8 @@ class Hungar(commands.Cog):
                 },
                 "alive": True,
                 "action": None,
-                "is_npc": True
+                "is_npc": True,
+                "items": []
             }
 
         await self.config.guild(guild).players.set(players)
@@ -185,52 +180,91 @@ class Hungar(commands.Cog):
         guild = ctx.guild
         players = await self.config.guild(guild).players()
         event_outcomes = []
+        hunted = set()
+        hunters = []
+        looters = []
+        resters = []
+
         for player_id, player_data in players.items():
             if not player_data["alive"]:
                 continue
 
             if player_data.get("is_npc"):
-                player_data["action"] = random.choice(["Hunt", "Hunker Down", "Loot"])
+                player_data["action"] = random.choice(["Hunt", "Rest", "Loot"])
 
             action = player_data["action"]
             if action == "Hunt":
+                hunters.append(player_id)
                 event_outcomes.append(f"{player_data['name']} went hunting!")
-            elif action == "Hunker Down":
-                event_outcomes.append(f"{player_data['name']} hunkered down for safety.")
+            elif action == "Rest":
+                resters.append(player_id)
+                if player_data["items"]:
+                    item = player_data["items"].pop()
+                    stat, boost = item
+                    player_data["stats"][stat] += boost
+                    event_outcomes.append(f"{player_data['name']} rested and used a {stat} boost item (+{boost}).")
+                else:
+                    event_outcomes.append(f"{player_data['name']} rested but had no items to use.")
             elif action == "Loot":
-                event_outcomes.append(f"{player_data['name']} searched for resources.")
-            elif action == None:
-                event_outcomes.append(f"{player_data['name']} decided to do absolutely nothing")
+                looters.append(player_id)
+                if random.random() < 0.5:  # 50% chance to find an item
+                    stat = random.choice(["Dex", "Str", "Con", "Wis", "HP","HP","HP"])
+                    boost = random.randint(1, 3)
+                    player_data["items"].append((stat, boost))
+                    event_outcomes.append(f"{player_data['name']} looted and found a {stat} boost item (+{boost}).")
+                else:
+                    event_outcomes.append(f"{player_data['name']} looted but found nothing.")
 
-            # Reset action for the next day
-            player_data["action"] = None
+        # Resolve hunting events
+        for hunter_id in hunters:
+            if hunter_id in hunted:
+                continue
 
-        # Random daily event
-        event_roll = random.randint(1, 100)
-        if event_roll <= 30:
-            event_outcomes.append("A deadly storm swept through the arena!")
-            for player_id, player_data in players.items():
-                if player_data["alive"]:
-                    damage = random.randint(1, 5)
-                    player_data["stats"]["HP"] -= damage
-                    if player_data["stats"]["HP"] <= 0:
-                        player_data["alive"] = False
-                        event_outcomes.append(f"{player_data['name']} was killed by the storm!")
+            target_pool = looters if looters else resters
+            if not target_pool:
+                continue
+
+            target_id = random.choice(target_pool)
+            if target_id in hunted:
+                continue
+
+            hunter = players[hunter_id]
+            target = players[target_id]
+
+            hunter_str = hunter["stats"]["Str"]
+            target_defense = max(target["stats"]["Str"], target["stats"]["Dex"])
+            damage = abs(hunter_str - target_defense)
+
+            if hunter_str > target_defense:
+                target["stats"]["HP"] -= damage
+                event_outcomes.append(f"{hunter['name']} hunted {target['name']} and dealt {damage} damage!")
+                if target["stats"]["HP"] <= 0:
+                    target["alive"] = False
+                    event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
+            else:
+                hunter["stats"]["HP"] -= damage
+                event_outcomes.append(f"{target['name']} defended against {hunter['name']} and dealt {damage} damage in return!")
+                if hunter["stats"]["HP"] <= 0:
+                    hunter["alive"] = False
+                    event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
+
+            hunted.add(target_id)
+            hunted.add(hunter_id)
 
         await self.config.guild(guild).players.set(players)
         await ctx.send("\n".join(event_outcomes))
 
     @hunger.command()
     async def action(self, ctx, choice: str):
-        """Choose your daily action: Hunt, Hunker Down, or Loot."""
+        """Choose your daily action: Hunt, Rest, or Loot."""
         guild = ctx.guild
         players = await self.config.guild(guild).players()
         if str(ctx.author.id) not in players or not players[str(ctx.author.id)]["alive"]:
             await ctx.send("You are not part of the game or are no longer alive.")
             return
 
-        if choice not in ["Hunt", "Hunker Down", "Loot"]:
-            await ctx.send("Invalid action. Choose Hunt, Hunker Down, or Loot.")
+        if choice not in ["Hunt", "Rest", "Loot"]:
+            await ctx.send("Invalid action. Choose Hunt, Rest, or Loot.")
             return
 
         players[str(ctx.author.id)]["action"] = choice
@@ -258,5 +292,4 @@ class Hungar(commands.Cog):
             "day_duration": 10,
             "day_start": None,
         })
-        await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset, as a molten fireball crashes down and kills everyone.  Better luck next time")
-        await self.endGame(ctx)
+        await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset.")
