@@ -340,16 +340,16 @@ class Hungar(commands.Cog):
         # Handle Feast Countdown
         feast_countdown = config.get("feast_countdown")
         if feast_countdown is not None:
-            if feast_countdown == 3:
+            if feast_countdown == 2:
                 # Announce Feast the next day
                 event_outcomes.append("The Feast has been announced! Attend by choosing `Feast` as your action tomorrow.")
-            elif feast_countdown == 2:
-                # Activate Feast today
-                event_outcomes.append("The Feast is happening today! Attend by choosing `Feast` as your action.")
             elif feast_countdown == 1:
+                # Enable Feast for players to join
                 await self.config.guild(guild).feast_active.set(True)
-                config = await self.config.guild(guild).all()  # Add this line to fetch config
-    
+                event_outcomes.append("The Feast is now active! You can choose `Feast` as your action today.")
+            elif feast_countdown == 0:
+                # Reset Feast state after it ends
+                await self.config.guild(guild).feast_active.set(False)
             # Decrement countdown or reset if Feast is active
             if feast_countdown > 0:
                 await self.config.guild(guild).feast_countdown.set(feast_countdown - 1)
@@ -597,11 +597,11 @@ class Hungar(commands.Cog):
 
         # Check if Feast is a valid action
         valid_actions = ["Hunt", "Rest", "Loot"]
-        if config["feast_active"]:  # Add Feast only if it's active
+        if config.get("feast_active", False):  # Ensure feast_active is checked correctly
             valid_actions.append("Feast")
-
-        # Validate the player's choice
-        if choice.capitalize() not in valid_actions:
+    
+        choice = choice.capitalize()  # Standardize input capitalization
+        if choice not in valid_actions:
             available_actions = ", ".join(valid_actions)
             await ctx.send(f"Invalid action. Choose one of the following: {available_actions}.")
             return
