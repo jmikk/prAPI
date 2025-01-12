@@ -215,16 +215,28 @@ class Hungar(commands.Cog):
                 else:
                     event_outcomes.append(f"{player_data['name']} looted but found nothing.")
 
+        # Shuffle hunters for randomness
+        random.shuffle(hunters)
+
         # Resolve hunting events
+        targeted_hunters = hunters[:]
+        targeted_looters = looters[:]
+        targeted_resters = resters[:]
+
         for hunter_id in hunters:
             if hunter_id in hunted:
                 continue
 
-            target_pool = looters if looters else resters
-            if not target_pool:
+            # Prioritize hunters first
+            if targeted_hunters:
+                target_id = targeted_hunters.pop(0)
+            elif targeted_looters:
+                target_id = targeted_looters.pop(0)
+            elif targeted_resters:
+                target_id = targeted_resters.pop(0)
+            else:
                 continue
 
-            target_id = random.choice(target_pool)
             if target_id in hunted:
                 continue
 
@@ -244,15 +256,22 @@ class Hungar(commands.Cog):
             else:
                 hunter["stats"]["HP"] -= damage
                 event_outcomes.append(f"{target['name']} defended against {hunter['name']} and dealt {damage} damage in return!")
-                if hunter["stats"]["HP"] <= 0:
+                               if hunter["stats"]["HP"] <= 0:
                     hunter["alive"] = False
                     event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
 
+            # Mark both the hunter and target as involved in an event
             hunted.add(target_id)
             hunted.add(hunter_id)
 
+        # Save the updated players' state
         await self.config.guild(guild).players.set(players)
-        await ctx.send("\n".join(event_outcomes))
+
+        # Announce the day's events
+        if event_outcomes:
+            await ctx.send("\n".join(event_outcomes))
+        else:
+            await ctx.send("The day passed quietly, with no significant events.")
 
     @hunger.command()
     async def action(self, ctx, choice: str):
@@ -289,7 +308,8 @@ class Hungar(commands.Cog):
             "districts": {},
             "players": {},
             "game_active": False,
-            "day_duration": 10,
+            "day_duration": 3600,
             "day_start": None,
         })
         await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset.")
+
