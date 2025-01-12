@@ -267,7 +267,6 @@ class Hungar(commands.Cog):
 
     async def announce_new_day(self, ctx, guild):
         """Announce the start of a new day and ping alive players."""
-        await ctx.send(f"Debug: Feast active? {feast_active}")  # Debugging message
         await ctx.send("https://i.imgur.com/gtCA6wO.png")
         config = await self.config.guild(guild).all()
         players = config["players"]
@@ -347,7 +346,7 @@ class Hungar(commands.Cog):
             elif feast_countdown == 1:
                 # Enable Feast for players to join
                 await self.config.guild(guild).feast_active.set(True)
-                event_outcomes.append("The Feast is now active! You can choose `Feast` as your action today.")
+                event_outcomes.append("The Feast is now active! You can choose `Feast` as your action today.2")
             elif feast_countdown == 0:
                 # Reset Feast state after it ends
                 await self.config.guild(guild).feast_active.set(False)
