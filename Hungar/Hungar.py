@@ -154,10 +154,7 @@ class Hungar(commands.Cog):
                     if member:
                         alive_mentions.append(member.mention)
         
-        # Send the announcement with all alive participants
-        await ctx.send(f"A new day dawns in the Hunger Games! Participants still alive: {', '.join(alive_mentions)}")
-
-
+        # Send the announcement with all alive participant
         await ctx.send(f"A new day dawns in the Hunger Games! Participants still alive: {', '.join(alive_mentions)}")
 
     async def isOneLeft(self, guild):
