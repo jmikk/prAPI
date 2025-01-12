@@ -243,7 +243,7 @@ class Hungar(commands.Cog):
         """Handle the real-time simulation of the game."""
         try:
             guild = ctx.guild
-    
+            await self.announce_new_day(ctx, guild)
             while True:
                 config = await self.config.guild(guild).all()
                 if not config["game_active"]:
