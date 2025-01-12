@@ -262,7 +262,7 @@ class Hungar(commands.Cog):
                 await asyncio.sleep(10)  # Check every 10 seconds
         except Exception as e:
             await ctx.send(e)
-            break
+            
 
     async def announce_new_day(self, ctx, guild):
         """Announce the start of a new day and ping alive players."""
