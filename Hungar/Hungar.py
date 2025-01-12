@@ -3,7 +3,7 @@ import random
 import asyncio
 from datetime import datetime, timedelta
 
-class Hungar(commands.Cog):
+class HungerGames(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -157,3 +157,16 @@ class Hungar(commands.Cog):
         guild = ctx.guild
         await self.config.guild(guild).day_duration.set(seconds)
         await ctx.send(f"Day length has been set to {seconds} seconds.")
+
+    @hunger.command()
+    @commands.admin()
+    async def stopgame(self, ctx):
+        """Stop the Hunger Games early (Admin only)."""
+        guild = ctx.guild
+        async with self.config.guild(guild) as config:
+            if not config["game_active"]:
+                await ctx.send("No game is currently active.")
+                return
+
+            config["game_active"] = False
+            await ctx.send("The Hunger Games have been stopped early by the admin.")
