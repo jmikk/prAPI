@@ -121,6 +121,7 @@ class Hungar(commands.Cog):
         while True:
             config = await self.config.guild(guild).all()
             if not config["game_active"]:
+                self.endGame()
                 break
 
             if await self.isOneLeft(guild):
