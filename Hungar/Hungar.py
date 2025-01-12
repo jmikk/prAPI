@@ -268,7 +268,7 @@ class Hungar(commands.Cog):
                 if target["stats"]["HP"] <= 0:
                     target["alive"] = False
                     event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
-            elif:
+            else:
                 hunter["stats"]["HP"] -= damage
                 event_outcomes.append(f"{target['name']} defended against {hunter['name']} and dealt {damage} damage in return!")
                 if hunter["stats"]["HP"] <= 0:
