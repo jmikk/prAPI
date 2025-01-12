@@ -345,6 +345,8 @@ class Hungar(commands.Cog):
             elif feast_countdown == 1:
                 # Activate Feast today
                 await self.config.guild(guild).feast_active.set(True)
+                config = await self.config.guild(guild).all()  # Add this line to fetch config
+
                 event_outcomes.append("The Feast is happening today! Attend by choosing `Feast` as your action.")
     
             # Decrement countdown or reset if Feast is active
