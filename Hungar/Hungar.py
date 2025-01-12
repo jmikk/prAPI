@@ -256,8 +256,8 @@ class Hungar(commands.Cog):
                 day_start = datetime.fromisoformat(config["day_start"])
                 day_duration = timedelta(seconds=config["day_duration"])
                 if datetime.utcnow() - day_start >= day_duration:
-                    await self.announce_new_day(ctx, guild)
                     await self.process_day(ctx)
+                    await self.announce_new_day(ctx, guild)
                     await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
     
                 await asyncio.sleep(10)  # Check every 10 seconds
