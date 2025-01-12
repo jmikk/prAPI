@@ -386,8 +386,8 @@ class Hungar(commands.Cog):
                 return
             player = players[member_id]
             embed = discord.Embed(title="Your Stats", color=discord.Color.blue())
-            embed.add_field(name="Name", value=player["name"], inline=False)
-            embed.add_field(name="District", value=player["district"], inline=False)
+            embed.add_field(name="Name", value=player["name"], inline=True)
+            embed.add_field(name="District", value=player["district"], inline=True)
             embed.add_field(name="Dex", value=player["stats"]["Dex"], inline=True)
             embed.add_field(name="Str", value=player["stats"]["Str"], inline=True)
             embed.add_field(name="Con", value=player["stats"]["Con"], inline=True)
