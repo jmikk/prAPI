@@ -336,22 +336,17 @@ class Hungar(commands.Cog):
         resters = []
         feast_participants = []  # Separate list for Feast participants
 
-
         # Handle Feast Countdown
         feast_countdown = config.get("feast_countdown")
-        if feast_countdown > 0:
-            if feast_countdown == 1:
+        if feast_countdown == 1:
             # Feast will be active on the next day
                 await self.config.guild(guild).feast_active.set(True)
                 event_outcomes.append("The Feast is now active! Players can choose `Feast` as their action today.")
         elif feast_countdown <= 0:
             # End the Feast after one day
             await self.config.guild(guild).feast_active.set(False)
-            await self.config.guild(guild).feast_countdown.set(None)  # Reset countdown
+            await self.config.guild(guild).feast_countdown.set(10)  # Reset countdown
             event_outcomes.append("The Feast has ended!")
-
-            
-    
 
         # Categorize players by action
         for player_id, player_data in players.items():
@@ -439,7 +434,7 @@ class Hungar(commands.Cog):
             hunter_str = max(hunter["stats"]["Str"], hunter["stats"]["Dex"]) + random.randint(1, 10)
             damage = abs(hunter_str - target_defense)
 
-            if damage < 3:
+            if damage < 2:
                 damage1 = damage + random.randint(1,3)
                 target["stats"]["HP"] -= damage1
                 damage2 = damage + random.randint(1,3)
@@ -577,7 +572,7 @@ class Hungar(commands.Cog):
             if feast_countdown == 2:
                 # Announce Feast the next day
                 event_outcomes.append("The Feast has been announced! Attend by choosing `Feast` as your action tomorrow.")
-                #await ctx.send(config["feast_active"])
+            await self.config.guild(guild).feast_countdown.set(feast_countdown-1)  # Reset countdown
 
         
         # Announce the day's events
