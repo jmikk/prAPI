@@ -126,11 +126,16 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).players.set(players)
         await self.config.guild(guild).game_active.set(True)
         await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
-         # Announce all participants and their districts
-        participant_list = [
-            f"{player['name']} from District {player['district']}"
-            for player in players.values()
-        ]
+    # Announce all participants with mentions for real players
+        participant_list = []
+        for player_id, player_data in players.items():
+            if player_data.get("is_npc"):
+                participant_list.append(f"{player_data['name']} from District {player_data['district']}")
+            else:
+                member = guild.get_member(int(player_id))
+                if member:
+                    participant_list.append(f"{member.mention} from District {player_data['district']}")
+    
         participant_announcement = "\n".join(participant_list)
         await ctx.send(f"The Hunger Games have begun with the following participants:\n{participant_announcement}")
 
