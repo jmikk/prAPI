@@ -246,12 +246,12 @@ class Hungar(commands.Cog):
             hunter = players[hunter_id]
             target = players[target_id]
     
-            hunter_str = hunter["stats"]["Str"] + random.randint(1, 10),
-            target_defense = max(target["stats"]["Str"], target["stats"]["Dex"]) + random.randint(1, 10),
+            hunter_str = hunter["stats"]["Str"] + random.randint(1, 10)
+            target_defense = max(target["stats"]["Str"], target["stats"]["Dex"]) + random.randint(1, 10)
             damage = abs(hunter_str - target_defense)
 
             if damage < 3:
-                OG_damage
+                OG_damage = 0
                 damage1 = OG_damage + random.randint(1,3)
                 target["stats"]["HP"] -= damage1
                 damage2 = OG_damage + random.randint(1,3)
