@@ -3,7 +3,7 @@ import random
 import asyncio
 from datetime import datetime, timedelta
 
-class Hungar(commands.Cog):
+class HungerGames(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
@@ -25,43 +25,45 @@ class Hungar(commands.Cog):
     async def signup(self, ctx):
         """Sign up for the Hunger Games."""
         guild = ctx.guild
-        async with self.config.guild(guild).players() as players:
-            if str(ctx.author.id) in players:
-                await ctx.send("You are already signed up!")
-                return
+        players = await self.config.guild(guild).players()
+        if str(ctx.author.id) in players:
+            await ctx.send("You are already signed up!")
+            return
 
-            # Assign random district and stats
-            district = random.randint(1, 12)  # Assume 12 districts
-            stats = {
-                "Dex": random.randint(1, 10),
-                "Str": random.randint(1, 10),
-                "Con": random.randint(1, 10),
-                "Wis": random.randint(1, 10),
-                "HP": random.randint(15, 25)
-            }
+        # Assign random district and stats
+        district = random.randint(1, 12)  # Assume 12 districts
+        stats = {
+            "Dex": random.randint(1, 10),
+            "Str": random.randint(1, 10),
+            "Con": random.randint(1, 10),
+            "Wis": random.randint(1, 10),
+            "HP": random.randint(15, 25)
+        }
 
-            players[str(ctx.author.id)] = {
-                "name": ctx.author.display_name,
-                "district": district,
-                "stats": stats,
-                "alive": True,
-                "action": None
-            }
+        players[str(ctx.author.id)] = {
+            "name": ctx.author.display_name,
+            "district": district,
+            "stats": stats,
+            "alive": True,
+            "action": None
+        }
 
-            await ctx.send(f"{ctx.author.mention} has joined the Hunger Games from District {district}!")
+        await self.config.guild(guild).players.set(players)
+        await ctx.send(f"{ctx.author.mention} has joined the Hunger Games from District {district}!")
 
     @hunger.command()
     @commands.admin()
     async def setdistrict(self, ctx, member: commands.MemberConverter, district: int):
         """Set a player's district manually (Admin only)."""
         guild = ctx.guild
-        async with self.config.guild(guild).players() as players:
-            if str(member.id) not in players:
-                await ctx.send(f"{member.display_name} is not signed up.")
-                return
+        players = await self.config.guild(guild).players()
+        if str(member.id) not in players:
+            await ctx.send(f"{member.display_name} is not signed up.")
+            return
 
-            players[str(member.id)]["district"] = district
-            await ctx.send(f"{member.display_name}'s district has been set to {district}.")
+        players[str(member.id)]["district"] = district
+        await self.config.guild(guild).players.set(players)
+        await ctx.send(f"{member.display_name}'s district has been set to {district}.")
 
     @hunger.command()
     @commands.admin()
@@ -72,84 +74,85 @@ class Hungar(commands.Cog):
         if config["game_active"]:
             await ctx.send("The Hunger Games are already active!")
             return
-    
+
         if not config["players"]:
             await ctx.send("No players are signed up yet.")
             return
-    
+
         await self.config.guild(guild).game_active.set(True)
         await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
         await ctx.send("The Hunger Games have begun! Day 1 starts now.")
-    
-        asyncio.create_task(self.run_game(ctx))
 
+        asyncio.create_task(self.run_game(ctx))
 
     async def run_game(self, ctx):
         """Handle the real-time simulation of the game."""
         guild = ctx.guild
 
         while True:
-            async with self.config.guild(guild) as config:
-                if not config["game_active"]:
-                    break
+            config = await self.config.guild(guild).all()
+            if not config["game_active"]:
+                break
 
-                day_start = datetime.fromisoformat(config["day_start"])
-                day_duration = timedelta(seconds=config["day_duration"])
-                if datetime.utcnow() - day_start >= day_duration:
-                    await self.process_day(ctx)
-                    config["day_start"] = datetime.utcnow().isoformat()
+            day_start = datetime.fromisoformat(config["day_start"])
+            day_duration = timedelta(seconds=config["day_duration"])
+            if datetime.utcnow() - day_start >= day_duration:
+                await self.process_day(ctx)
+                await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
 
             await asyncio.sleep(10)  # Check every 10 seconds
 
     async def process_day(self, ctx):
         """Process daily events and actions."""
         guild = ctx.guild
-        async with self.config.guild(guild).players() as players:
-            event_outcomes = []
+        players = await self.config.guild(guild).players()
+        event_outcomes = []
+        for player_id, player_data in players.items():
+            if not player_data["alive"]:
+                continue
+
+            action = player_data["action"]
+            if action == "Hunt":
+                event_outcomes.append(f"{player_data['name']} went hunting!")
+            elif action == "Hunker Down":
+                event_outcomes.append(f"{player_data['name']} hunkered down for safety.")
+            elif action == "Loot":
+                event_outcomes.append(f"{player_data['name']} searched for resources.")
+
+            # Reset action for the next day
+            player_data["action"] = None
+
+        # Random daily event
+        event_roll = random.randint(1, 100)
+        if event_roll <= 30:
+            event_outcomes.append("A deadly storm swept through the arena!")
             for player_id, player_data in players.items():
-                if not player_data["alive"]:
-                    continue
+                if player_data["alive"]:
+                    damage = random.randint(1, 5)
+                    player_data["stats"]["HP"] -= damage
+                    if player_data["stats"]["HP"] <= 0:
+                        player_data["alive"] = False
+                        event_outcomes.append(f"{player_data['name']} was killed by the storm!")
 
-                action = player_data["action"]
-                if action == "Hunt":
-                    event_outcomes.append(f"{player_data['name']} went hunting!")
-                elif action == "Hunker Down":
-                    event_outcomes.append(f"{player_data['name']} hunkered down for safety.")
-                elif action == "Loot":
-                    event_outcomes.append(f"{player_data['name']} searched for resources.")
-
-                # Reset action for the next day
-                player_data["action"] = None
-
-            # Random daily event
-            event_roll = random.randint(1, 100)
-            if event_roll <= 30:
-                event_outcomes.append("A deadly storm swept through the arena!")
-                for player_id, player_data in players.items():
-                    if player_data["alive"]:
-                        damage = random.randint(1, 5)
-                        player_data["stats"]["HP"] -= damage
-                        if player_data["stats"]["HP"] <= 0:
-                            player_data["alive"] = False
-                            event_outcomes.append(f"{player_data['name']} was killed by the storm!")
-
-            await ctx.send("\n".join(event_outcomes))
+        await self.config.guild(guild).players.set(players)
+        await ctx.send("\n".join(event_outcomes))
 
     @hunger.command()
     async def action(self, ctx, choice: str):
         """Choose your daily action: Hunt, Hunker Down, or Loot."""
         guild = ctx.guild
-        async with self.config.guild(guild).players() as players:
-            if str(ctx.author.id) not in players or not players[str(ctx.author.id)]["alive"]:
-                await ctx.send("You are not part of the game or are no longer alive.")
-                return
+        players = await self.config.guild(guild).players()
+        if str(ctx.author.id) not in players or not players[str(ctx.author.id)]["alive"]:
+            await ctx.send("You are not part of the game or are no longer alive.")
+            return
 
-            if choice not in ["Hunt", "Hunker Down", "Loot"]:
-                await ctx.send("Invalid action. Choose Hunt, Hunker Down, or Loot.")
-                return
+        if choice not in ["Hunt", "Hunker Down", "Loot"]:
+            await ctx.send("Invalid action. Choose Hunt, Hunker Down, or Loot.")
+            return
 
-            players[str(ctx.author.id)]["action"] = choice
-            await ctx.send(f"{ctx.author.mention} has chosen to {choice}.")
+        players[str(ctx.author.id)]["action"] = choice
+        await self.config.guild(guild).players.set(players)
+        await ctx.send(f"{ctx.author.mention} has chosen to {choice}.")
 
     @hunger.command()
     @commands.admin()
@@ -164,10 +167,10 @@ class Hungar(commands.Cog):
     async def stopgame(self, ctx):
         """Stop the Hunger Games early (Admin only)."""
         guild = ctx.guild
-        async with self.config.guild(guild) as config:
-            if not config["game_active"]:
-                await ctx.send("No game is currently active.")
-                return
+        config = await self.config.guild(guild).all()
+        if not config["game_active"]:
+            await ctx.send("No game is currently active.")
+            return
 
-            config["game_active"] = False
-            await ctx.send("The Hunger Games have been stopped early by the admin.")
+        await self.config.guild(guild).game_active.set(False)
+        await ctx.send("The Hunger Games have been stopped early by the admin.")
