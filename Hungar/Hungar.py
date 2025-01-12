@@ -341,19 +341,12 @@ class Hungar(commands.Cog):
         feast_countdown = config.get("feast_countdown")
         if feast_countdown > 0:
             await self.config.guild(guild).feast_countdown.set(feast_countdown - 1)
-        else:
+        elif feast_countdown < 0:
             await self.config.guild(guild).feast_countdown.set(10)
-        
-        if feast_countdown is not None:
-            if feast_countdown == 2:
-                # Announce Feast the next day
-                event_outcomes.append("The Feast has been announced! Attend by choosing `Feast` as your action tomorrow.")
-            elif feast_countdown == 1:
-                # Enable Feast for players to join
-                await self.config.guild(guild).feast_active.set(True)
-                config = await self.config.guild(guild).all()  # Add this line to fetch config
-                event_outcomes.append("The Feast is now active! You can choose `Feast` as your action today.2")
-                await ctx.send(config["feast_active"])
+            await self.config.guild(guild).feast_active.set(False)
+
+            
+    
 
         # Categorize players by action
         for player_id, player_data in players.items():
@@ -571,12 +564,22 @@ class Hungar(commands.Cog):
                                 players[chosen_participant_id]["stats"][stat] += 1
                     event_outcomes.append("Feast participants split the remaining stat bonuses among themselves!")
 
-        # Reset Feast state
-        await self.config.guild(guild).feast_active.set(False)
 
         # Save the updated players' state
         await self.config.guild(guild).players.set(players)
 
+        if feast_countdown is not None:
+            if feast_countdown == 2:
+                # Announce Feast the next day
+                event_outcomes.append("The Feast has been announced! Attend by choosing `Feast` as your action tomorrow.")
+            elif feast_countdown == 1:
+                # Enable Feast for players to join
+                await self.config.guild(guild).feast_active.set(True)
+                config = await self.config.guild(guild).all()  # Add this line to fetch config
+                event_outcomes.append("The Feast is now active! You can choose `Feast` as your action today.2")
+                #await ctx.send(config["feast_active"])
+
+        
         # Announce the day's events
         if event_outcomes:
             await ctx.send("\n".join(event_outcomes))
