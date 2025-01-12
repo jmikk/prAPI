@@ -126,7 +126,14 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).players.set(players)
         await self.config.guild(guild).game_active.set(True)
         await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
-        await ctx.send(f"The Hunger Games have begun with {npcs} NPCs added! Day 1 starts now.")
+         # Announce all participants and their districts
+        participant_list = [
+            f"{player['name']} from District {player['district']}"
+            for player in players.values()
+        ]
+        participant_announcement = "\n".join(participant_list)
+        await ctx.send(f"The Hunger Games have begun with the following participants:\n{participant_announcement}")
+
     
         asyncio.create_task(self.run_game(ctx))
 
