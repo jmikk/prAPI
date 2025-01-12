@@ -17,13 +17,13 @@ class Hungar(commands.Cog):
 
     async def load_npc_names(self):
         """Load NPC names from the NPC_names.txt file."""
-        if not hasattr(self, "_npc_name_pool"):
-            try:
-                with open("NPC_names.txt", "r") as f:
-                    self._npc_name_pool = [line.strip() for line in f.readlines() if line.strip()]
-            except FileNotFoundError:
-                self._npc_name_pool = [f"NPC {i+1}" for i in range(100)]  # Fallback if file is missing
-        return self._npc_name_pool
+        try:
+            base_path = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(base_path, "NPC_names.txt")
+            with open(file_path, "r") as f:
+                return [line.strip() for line in f.readlines() if line.strip()]
+        except FileNotFoundError:
+            return [f"NPC {i+1}" for i in range(100)]  # Fallback if file is missing
 
 
     @commands.guild_only()
