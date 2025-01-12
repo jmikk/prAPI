@@ -333,9 +333,10 @@ class Hungar(commands.Cog):
         hunters = []
         looters = []
         resters = []
+        feast_participants = []  # Separate list for Feast participants
 
 
-            # Handle Feast Countdown
+        # Handle Feast Countdown
         feast_countdown = config.get("feast_countdown")
         if feast_countdown is not None:
             if feast_countdown == 2:
@@ -356,9 +357,15 @@ class Hungar(commands.Cog):
         for player_id, player_data in players.items():
             if not player_data["alive"]:
                 continue
-
-            if player_data.get("action") is None:
-                player_data["action"] = "Rest"
+            
+            if config["feast_active"] and player_data.get("action") is None:
+                player_data["action"] = random.choices(
+                        ["Feast", "Hunt", "Rest", "Loot"], weights=[60, 20, 10, 10], k=1
+                    )[0]
+            elif player_data.get("action") is None:
+                player_data["action"] = random.choices(
+                        ["Hunt", "Rest", "Loot"], weights=[70, 15, 15], k=1
+                    )[0]
 
             if player_data.get("is_npc"):
                 if config["feast_active"]:
@@ -367,95 +374,10 @@ class Hungar(commands.Cog):
                         ["Feast", "Hunt", "Rest", "Loot"], weights=[100, 0, 0, 0], k=1
                     )[0]
                 else:
-                    player_data["action"] = random.choice(["Hunt", "Rest", "Loot"])
-
+                    player_data["action"] = random.choices(["Hunt", "Rest", "Loot"], weights=[70, 15, 15], k=1)[0]
+            
             action = player_data["action"]
 
-            if config["feast_active"]:
-                feast_participants = [player_id for player_id, player_data in players.items() if player_data["action"] == "Feast"]
-            
-                if not feast_participants:
-                    # If no one participates, skip the Feast
-                    event_outcomes.append("The Feast was announced, but no one attended.")
-                elif len(feast_participants) == 1:
-                    # Single participant gets +5 to all stats
-                    participant = players[feast_participants[0]]
-                    for stat in ["Dex", "Str", "Con", "Wis", "HP"]:
-                        participant["stats"][stat] += 5
-                    event_outcomes.append(f"{participant['name']} attended the Feast alone and gained +5 to all stats!")
-                else:
-                    # Multiple participants battle it out
-                    dead_players = []
-                    for _ in range(3):  # 3 battle rounds
-                        if len(feast_participants) <= 1:
-                            break  # Stop battles if only one participant remains
-                        for participant_id in feast_participants[:]:  # Iterate over a copy
-                            if participant_id in dead_players:
-                                continue
-                            valid_targets = [p for p in feast_participants if p != participant_id and p not in dead_players]
-                            if not valid_targets:
-                                break  # No more valid targets
-                            target_id = random.choice(valid_targets)
-                            participant = players[participant_id]
-                            target = players[target_id]
-                            participant_str = participant["stats"]["Str"] + random.randint(1, 10)
-                            target_str = target["stats"]["Str"] + random.randint(1, 10)
-            
-                            if participant_str > target_str:
-                                damage = participant_str - target_str
-                                target["stats"]["HP"] -= damage
-                                event_outcomes.append(f"{participant['name']} attacked {target['name']} and dealt {damage} damage!")
-                                if target["stats"]["HP"] <= 0:
-                                    target["alive"] = False
-                                    dead_players.append(target_id)
-                                    feast_participants.remove(target_id)
-                                    participant["items"].extend(target["items"])
-                                    target["items"] = []
-                                    event_outcomes.append(f"{target['name']} was eliminated by {participant['name']}!")
-                            else:
-                                damage = target_str - participant_str
-                                participant["stats"]["HP"] -= damage
-                                event_outcomes.append(f"{target['name']} attacked {participant['name']} and dealt {damage} damage!")
-                                if participant["stats"]["HP"] <= 0:
-                                    participant["alive"] = False
-                                    dead_players.append(participant_id)
-                                    feast_participants.remove(participant_id)
-                                    target["items"].extend(participant["items"])
-                                    participant["items"] = []
-                                    event_outcomes.append(f"{participant['name']} was eliminated by {target['name']}!")
-            
-                    # Remaining participants split items and stats
-                    if feast_participants:
-                        # Collect items from dead players
-                        all_dropped_items = []
-                        for dead_id in dead_players:
-                            all_dropped_items.extend(players[dead_id]["items"])
-                            players[dead_id]["items"] = []  # Clear items from the dead player
-            
-                        # Randomly distribute items among the living participants
-                        if all_dropped_items:
-                            random.shuffle(all_dropped_items)
-                            for item in all_dropped_items:
-                                chosen_participant_id = random.choice(feast_participants)
-                                players[chosen_participant_id]["items"].append(item)
-                            event_outcomes.append("Feast participants split the items dropped by the eliminated players.")
-            
-                        # Distribute +5 stat bonuses randomly among survivors
-                        stat_bonus = 5  # Each stat gets +1 assigned five times
-                        stats_to_distribute = ["Dex", "Str", "Con", "Wis", "HP"]
-                        for _ in range(stat_bonus):
-                            for stat in stats_to_distribute:
-                                if feast_participants:  # Ensure there are participants
-                                    chosen_participant_id = random.choice(feast_participants)
-                                    players[chosen_participant_id]["stats"][stat] += 1
-                        event_outcomes.append("Feast participants split the remaining stat bonuses among themselves!")
-            
-                # Reset Feast status
-                await self.config.guild(guild).feast_active.set(False)
-
-
-
-            
             if action == "Hunt":
                 hunters.append(player_id)
                 event_outcomes.append(f"{player_data['name']} went hunting!")
@@ -480,6 +402,8 @@ class Hungar(commands.Cog):
                     event_outcomes.append(f"{player_data['name']} looted and found a {stat} boost item (+{boost}).")
                 else:
                     event_outcomes.append(f"{player_data['name']} looted but found nothing.")
+            elif action == "Feast":
+                feast_participants.append(player_id)
 
         # Shuffle hunters for randomness
         random.shuffle(hunters)
@@ -569,6 +493,84 @@ class Hungar(commands.Cog):
             # Mark both the hunter and target as involved in an event
             hunted.add(target_id)
             hunted.add(hunter_id)
+
+
+            # Resolve Feast after other actions
+        if config["feast_active"] and feast_participants:
+            if len(feast_participants) == 1:
+                # Single participant gains +5 to all stats
+                participant = players[feast_participants[0]]
+                for stat in ["Dex", "Str", "Con", "Wis", "HP"]:
+                    participant["stats"][stat] += 5
+                event_outcomes.append(f"{participant['name']} attended the Feast alone and gained +5 to all stats!")
+            else:
+                # Multiple participants battle it out
+                dead_players = []
+                for _ in range(3):  # 3 battle rounds
+                    if len(feast_participants) <= 1:
+                        break
+                    for participant_id in feast_participants[:]:
+                        if participant_id in dead_players:
+                            continue
+                        valid_targets = [p for p in feast_participants if p != participant_id and p not in dead_players]
+                        if not valid_targets:
+                            break
+                        target_id = random.choice(valid_targets)
+                        participant = players[participant_id]
+                        target = players[target_id]
+                        participant_str = participant["stats"]["Str"] + random.randint(1, 10)
+                        target_str = target["stats"]["Str"] + random.randint(1, 10)
+    
+                        if participant_str > target_str:
+                            damage = participant_str - target_str
+                            target["stats"]["HP"] -= damage
+                            event_outcomes.append(f"{participant['name']} attacked {target['name']} and dealt {damage} damage!")
+                            if target["stats"]["HP"] <= 0:
+                                target["alive"] = False
+                                dead_players.append(target_id)
+                                feast_participants.remove(target_id)
+                                participant["items"].extend(target["items"])
+                                target["items"] = []
+                                event_outcomes.append(f"{target['name']} was eliminated by {participant['name']}!")
+                        else:
+                            damage = target_str - participant_str
+                            participant["stats"]["HP"] -= damage
+                            event_outcomes.append(f"{target['name']} attacked {participant['name']} and dealt {damage} damage!")
+                            if participant["stats"]["HP"] <= 0:
+                                participant["alive"] = False
+                                dead_players.append(participant_id)
+                                feast_participants.remove(participant_id)
+                                target["items"].extend(participant["items"])
+                                participant["items"] = []
+                                event_outcomes.append(f"{participant['name']} was eliminated by {target['name']}!")
+    
+                # Remaining participants split items and stats
+                if feast_participants:
+                    all_dropped_items = []
+                    for dead_id in dead_players:
+                        all_dropped_items.extend(players[dead_id]["items"])
+                        players[dead_id]["items"] = []
+    
+                    # Distribute items
+                    if all_dropped_items:
+                        random.shuffle(all_dropped_items)
+                        for item in all_dropped_items:
+                            chosen_participant_id = random.choice(feast_participants)
+                            players[chosen_participant_id]["items"].append(item)
+                        event_outcomes.append("Feast participants split the items dropped by the eliminated players.")
+    
+                    # Distribute +5 stat bonuses randomly
+                    stat_bonus = 5
+                    stats_to_distribute = ["Dex", "Str", "Con", "Wis", "HP"]
+                    for _ in range(stat_bonus):
+                        for stat in stats_to_distribute:
+                            if feast_participants:
+                                chosen_participant_id = random.choice(feast_participants)
+                                players[chosen_participant_id]["stats"][stat] += 1
+                    event_outcomes.append("Feast participants split the remaining stat bonuses among themselves!")
+
+        # Reset Feast state
+        await self.config.guild(guild).feast_active.set(False)
 
         # Save the updated players' state
         await self.config.guild(guild).players.set(players)
