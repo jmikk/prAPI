@@ -240,25 +240,28 @@ class Hungar(commands.Cog):
 
     async def run_game(self, ctx):
         """Handle the real-time simulation of the game."""
-        guild = ctx.guild
-
-        while True:
-            config = await self.config.guild(guild).all()
-            if not config["game_active"]:
-                break
-
-            if await self.isOneLeft(guild):
-                await self.endGame(ctx)
-                break
-
-            day_start = datetime.fromisoformat(config["day_start"])
-            day_duration = timedelta(seconds=config["day_duration"])
-            if datetime.utcnow() - day_start >= day_duration:
-                await self.announce_new_day(ctx, guild)
-                await self.process_day(ctx)
-                await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
-
-            await asyncio.sleep(10)  # Check every 10 seconds
+        try:
+            guild = ctx.guild
+    
+            while True:
+                config = await self.config.guild(guild).all()
+                if not config["game_active"]:
+                    break
+    
+                if await self.isOneLeft(guild):
+                    await self.endGame(ctx)
+                    break
+    
+                day_start = datetime.fromisoformat(config["day_start"])
+                day_duration = timedelta(seconds=config["day_duration"])
+                if datetime.utcnow() - day_start >= day_duration:
+                    await self.announce_new_day(ctx, guild)
+                    await self.process_day(ctx)
+                    await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
+    
+                await asyncio.sleep(10)  # Check every 10 seconds
+        except Exception as e:
+            await ctx.send(e)
 
     async def announce_new_day(self, ctx, guild):
         """Announce the start of a new day and ping alive players."""
