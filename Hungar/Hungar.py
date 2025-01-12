@@ -252,4 +252,4 @@ class Hungar(commands.Cog):
             "day_start": None,
         })
         await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset.")
-        self.endGame(ctx)
+        await self.endGame(ctx)
