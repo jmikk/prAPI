@@ -142,14 +142,21 @@ class Hungar(commands.Cog):
         """Announce the start of a new day and ping alive players."""
         players = await self.config.guild(guild).players()
         alive_mentions = []
+        
         for player_id, player_data in players.items():
             if player_data["alive"]:
                 if player_data.get("is_npc"):
+                    # NPC names are appended as text
                     alive_mentions.append(player_data["name"])
                 else:
+                    # Real players are pinged using mentions
                     member = guild.get_member(int(player_id))
                     if member:
                         alive_mentions.append(member.mention)
+        
+        # Send the announcement with all alive participants
+        await ctx.send(f"A new day dawns in the Hunger Games! Participants still alive: {', '.join(alive_mentions)}")
+
 
         await ctx.send(f"A new day dawns in the Hunger Games! Participants still alive: {', '.join(alive_mentions)}")
 
