@@ -14,6 +14,7 @@ class Hungar(commands.Cog):
             game_active=False,
             day_duration=10,  # Default: 1 hour in seconds
             day_start=None,
+            day_counter=0,  # Counter for days
         )
 
     async def load_npc_names(self):
@@ -25,7 +26,6 @@ class Hungar(commands.Cog):
                 return [line.strip() for line in f.readlines() if line.strip()]
         except FileNotFoundError:
             return [f"NPC {i+1}" for i in range(100)]  # Fallback if file is missing
-
 
     @commands.guild_only()
     @commands.group()
@@ -87,24 +87,24 @@ class Hungar(commands.Cog):
         if config["game_active"]:
             await ctx.send("The Hunger Games are already active!")
             return
-    
+
         players = config["players"]
         if not players:
             await ctx.send("No players are signed up yet.")
             return
-    
+
         # Load and shuffle NPC names
         npc_names = await self.load_npc_names()
         random.shuffle(npc_names)
-    
+
         # Track used NPC names and add NPCs
         used_names = set(player["name"] for player in players.values() if player.get("is_npc"))
         available_names = [name for name in npc_names if name not in used_names]
-    
+
         if len(available_names) < npcs:
             await ctx.send("Not enough unique NPC names available for the requested number of NPCs.")
             return
-    
+
         for i in range(npcs):
             npc_id = f"npc_{i+1}"
             players[npc_id] = {
@@ -122,27 +122,27 @@ class Hungar(commands.Cog):
                 "is_npc": True,
                 "items": []
             }
-    
+
         await self.config.guild(guild).players.set(players)
         await self.config.guild(guild).game_active.set(True)
         await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
-    # Announce all participants with mentions for real players
+        await self.config.guild(guild).day_counter.set(0)
+
+        # Announce all participants with mentions for real players, sorted by district
         sorted_players = sorted(players.values(), key=lambda p: p["district"])
         participant_list = []
-        for player_id, player_data in players.items():
-            if player_data.get("is_npc"):
-                participant_list.append(f"{player_data['name']} from District {player_data['district']}")
+        for player in sorted_players:
+            if player.get("is_npc"):
+                participant_list.append(f"{player['name']} from District {player['district']}")
             else:
-                member = guild.get_member(int(player_id))
+                member = guild.get_member(int(next((k for k, v in players.items() if v == player), None)))
                 if member:
-                    participant_list.append(f"{member.mention} from District {player_data['district']}")
-    
+                    participant_list.append(f"{member.mention} from District {player['district']}")
+
         participant_announcement = "\n".join(participant_list)
-        await ctx.send(f"The Hunger Games have begun with the following participants:\n{participant_announcement}")
+        await ctx.send(f"The Hunger Games have begun with the following participants (sorted by District):\n{participant_announcement}")
 
-    
         asyncio.create_task(self.run_game(ctx))
-
 
     async def run_game(self, ctx):
         """Handle the real-time simulation of the game."""
@@ -168,9 +168,18 @@ class Hungar(commands.Cog):
 
     async def announce_new_day(self, ctx, guild):
         """Announce the start of a new day and ping alive players."""
-        players = await self.config.guild(guild).players()
+        config = await self.config.guild(guild).all()
+        players = config["players"]
+
+        # Increment day counter
+        day_counter = config.get("day_counter", 0) + 1
+        await self.config.guild(guild).day_counter.set(day_counter)
+
+        # Get alive players count
+        alive_players = [player for player in players.values() if player["alive"]]
+        alive_count = len(alive_players)
+
         alive_mentions = []
-        
         for player_id, player_data in players.items():
             if player_data["alive"]:
                 if player_data.get("is_npc"):
@@ -181,9 +190,9 @@ class Hungar(commands.Cog):
                     member = guild.get_member(int(player_id))
                     if member:
                         alive_mentions.append(member.mention)
-        
+
         # Send the announcement with all alive participant
-        await ctx.send(f"A new day dawns in the Hunger Games! Participants still alive: {', '.join(alive_mentions)}")
+        await ctx.send(f"Day {day_counter} begins in the Hunger Games! {alive_count} participants remain.\n{', '.join(alive_mentions)}")
 
     async def isOneLeft(self, guild):
         """Check if only one player is alive."""
@@ -216,19 +225,19 @@ class Hungar(commands.Cog):
         hunters = []
         looters = []
         resters = []
-    
+
         # Categorize players by action
         for player_id, player_data in players.items():
             if not player_data["alive"]:
                 continue
-    
+
+            if player_data.get("action") is None:
+                player_data["action"] = "Rest"
+
             if player_data.get("is_npc"):
                 player_data["action"] = random.choice(["Hunt", "Rest", "Loot"])
-    
+
             action = player_data["action"]
-            if action == None:
-                event_outcomes.append(f"{player_data['name']} did nothing!")
-                looters.append(player_id)
             if action == "Hunt":
                 hunters.append(player_id)
                 event_outcomes.append(f"{player_data['name']} went hunting!")
@@ -250,20 +259,20 @@ class Hungar(commands.Cog):
                     event_outcomes.append(f"{player_data['name']} looted and found a {stat} boost item (+{boost}).")
                 else:
                     event_outcomes.append(f"{player_data['name']} looted but found nothing.")
-    
+
         # Shuffle hunters for randomness
         random.shuffle(hunters)
-    
+
         # Create priority target lists
         targeted_hunters = hunters[:]
         targeted_looters = looters[:]
         targeted_resters = resters[:]
-    
+
         # Resolve hunting events
         for hunter_id in hunters:
             if hunter_id in hunted:
                 continue
-    
+
             # Find a target in priority order, excluding the hunter themselves
             target_id = None
             for target_list in [targeted_hunters, targeted_looters, targeted_resters]:
@@ -274,55 +283,49 @@ class Hungar(commands.Cog):
                         break
                 if target_id:
                     break
-    
+
             if not target_id:
                 continue
-    
+
             hunter = players[hunter_id]
             target = players[target_id]
-    
+
             hunter_str = hunter["stats"]["Str"] + random.randint(1, 10)
             target_defense = max(target["stats"]["Str"], target["stats"]["Dex"]) + random.randint(1, 10)
             damage = abs(hunter_str - target_defense)
 
             if damage < 3:
-                OG_damage = 0
-                damage1 = OG_damage + random.randint(1,3)
+                damage1 = damage + random.randint(1,3)
                 target["stats"]["HP"] -= damage1
-                damage2 = OG_damage + random.randint(1,3)
+                damage2 = damage + random.randint(1,3)
                 hunter["stats"]["HP"] -= damage2
                 event_outcomes.append(f"{hunter['name']} hunted {target['name']} but the two were evenly matched dealing {damage1} to {target['name']} and {damage2} to {hunter['name']}")
-                
-    
-
-                
-    
-            elif hunter_str > target_defense:
-                target["stats"]["HP"] -= damage
-                event_outcomes.append(f"{hunter['name']} hunted {target['name']} and dealt {damage} damage!")
-                if target["stats"]["HP"] <= 0:
-                    target["alive"] = False
-                    event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
             else:
-                hunter["stats"]["HP"] -= damage
-                event_outcomes.append(f"{target['name']} defended against {hunter['name']} and dealt {damage} damage in return!")
-                if hunter["stats"]["HP"] <= 0:
-                    hunter["alive"] = False
-                    event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
-    
+                if hunter_str > target_defense:
+                    target["stats"]["HP"] -= damage
+                    event_outcomes.append(f"{hunter['name']} hunted {target['name']} and dealt {damage} damage!")
+                    if target["stats"]["HP"] <= 0:
+                        target["alive"] = False
+                        event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
+                else:
+                    hunter["stats"]["HP"] -= damage
+                    event_outcomes.append(f"{target['name']} defended against {hunter['name']} and dealt {damage} damage in return!")
+                    if hunter["stats"]["HP"] <= 0:
+                        hunter["alive"] = False
+                        event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
+
             # Mark both the hunter and target as involved in an event
             hunted.add(target_id)
             hunted.add(hunter_id)
-    
+
         # Save the updated players' state
         await self.config.guild(guild).players.set(players)
-    
+
         # Announce the day's events
         if event_outcomes:
             await ctx.send("\n".join(event_outcomes))
         else:
             await ctx.send("The day passed quietly, with no significant events.")
-
 
     @hunger.command()
     async def action(self, ctx, choice: str):
@@ -361,6 +364,6 @@ class Hungar(commands.Cog):
             "game_active": False,
             "day_duration": 10,
             "day_start": None,
+            "day_counter": 0,
         })
         await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset.")
-
