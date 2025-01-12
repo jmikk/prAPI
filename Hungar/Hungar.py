@@ -340,16 +340,14 @@ class Hungar(commands.Cog):
         # Handle Feast Countdown
         feast_countdown = config.get("feast_countdown")
         if feast_countdown is not None:
-            if feast_countdown == 2:
+            if feast_countdown == 1:
                 # Announce Feast the next day
                 event_outcomes.append("The Feast has been announced! Attend by choosing `Feast` as your action tomorrow.")
-            elif feast_countdown == 1:
+            elif feast_countdown == 0:
                 # Enable Feast for players to join
                 await self.config.guild(guild).feast_active.set(True)
+                config = await self.config.guild(guild).all()  # Add this line to fetch config
                 event_outcomes.append("The Feast is now active! You can choose `Feast` as your action today.2")
-            elif feast_countdown == 0:
-                # Reset Feast state after it ends
-                await self.config.guild(guild).feast_active.set(False)
             # Decrement countdown or reset if Feast is active
             if feast_countdown > 0:
                 await self.config.guild(guild).feast_countdown.set(feast_countdown - 1)
