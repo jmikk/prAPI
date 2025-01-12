@@ -184,15 +184,15 @@ class Hungar(commands.Cog):
         hunters = []
         looters = []
         resters = []
-        targets = []
-        
+    
+        # Categorize players by action
         for player_id, player_data in players.items():
             if not player_data["alive"]:
                 continue
-
+    
             if player_data.get("is_npc"):
                 player_data["action"] = random.choice(["Hunt", "Rest", "Loot"])
-
+    
             action = player_data["action"]
             if action == "Hunt":
                 hunters.append(player_id)
@@ -209,48 +209,47 @@ class Hungar(commands.Cog):
             elif action == "Loot":
                 looters.append(player_id)
                 if random.random() < 0.5:  # 50% chance to find an item
-                    stat = random.choice(["Dex", "Str", "Con", "Wis", "HP","HP","HP"])
+                    stat = random.choice(["Dex", "Str", "Con", "Wis", "HP"])
                     boost = random.randint(1, 3)
                     player_data["items"].append((stat, boost))
                     event_outcomes.append(f"{player_data['name']} looted and found a {stat} boost item (+{boost}).")
                 else:
                     event_outcomes.append(f"{player_data['name']} looted but found nothing.")
-
+    
         # Shuffle hunters for randomness
         random.shuffle(hunters)
-
-        # Resolve hunting events
+    
+        # Create priority target lists
         targeted_hunters = hunters[:]
         targeted_looters = looters[:]
         targeted_resters = resters[:]
-
+    
+        # Resolve hunting events
         for hunter_id in hunters:
             if hunter_id in hunted:
-                event_outcomes.append(f"{hunter['name']} hunted but found nothing")
                 continue
-
-            # Prioritize hunters first
-            if targeted_hunters:
-                target_id = targeted_hunters.pop(0)
-            elif targeted_looters:
-                target_id = targeted_looters.pop(0)
-            elif targeted_resters:
-                target_id = targeted_resters.pop(0)
-            else:
-                event_outcomes.append(f"{hunter['name']} hunted but found nothing but some foot prints")
+    
+            # Find a target in priority order, excluding the hunter themselves
+            target_id = None
+            for target_list in [targeted_hunters, targeted_looters, targeted_resters]:
+                while target_list:
+                    potential_target = target_list.pop(0)
+                    if potential_target != hunter_id and potential_target not in hunted:
+                        target_id = potential_target
+                        break
+                if target_id:
+                    break
+    
+            if not target_id:
                 continue
-
-            if target_id in hunted:
-                event_outcomes.append(f"{hunter['name']} hunted but found nothing but an old camp and some bloody garments")
-                continue
-
+    
             hunter = players[hunter_id]
             target = players[target_id]
-
-            hunter_str = hunter["stats"]["Str"] + random.randint(1, 5)
-            target_defense = max(target["stats"]["Str"], target["stats"]["Dex"]) + random.randint(1, 5)
-            damage = abs(hunter_str - target_defense) + random.randint(1, 3)
-
+    
+            hunter_str = hunter["stats"]["Str"]
+            target_defense = max(target["stats"]["Str"], target["stats"]["Dex"])
+            damage = abs(hunter_str - target_defense)
+    
             if hunter_str > target_defense:
                 target["stats"]["HP"] -= damage
                 event_outcomes.append(f"{hunter['name']} hunted {target['name']} and dealt {damage} damage!")
@@ -263,19 +262,20 @@ class Hungar(commands.Cog):
                 if hunter["stats"]["HP"] <= 0:
                     hunter["alive"] = False
                     event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
-
+    
             # Mark both the hunter and target as involved in an event
             hunted.add(target_id)
             hunted.add(hunter_id)
-
+    
         # Save the updated players' state
         await self.config.guild(guild).players.set(players)
-
+    
         # Announce the day's events
         if event_outcomes:
             await ctx.send("\n".join(event_outcomes))
         else:
             await ctx.send("The day passed quietly, with no significant events.")
+
 
     @hunger.command()
     async def action(self, ctx, choice: str):
