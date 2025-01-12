@@ -338,7 +338,10 @@ class Hungar(commands.Cog):
 
             if player_data.get("is_npc"):
                 if config["feast_active"]:
-                    player_data["action"] = random.choice(["Feast", "Feast", "Feast","Feast"])
+                    # 80% chance NPC attends the Feast, adjust weights as needed
+                    player_data["action"] = random.choices(
+                        ["Feast", "Hunt", "Rest", "Loot"], weights=[100, 0, 0, 0], k=1
+                    )[0]
                 else:
                     player_data["action"] = random.choice(["Hunt", "Rest", "Loot"])
 
