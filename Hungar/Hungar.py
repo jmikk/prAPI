@@ -96,6 +96,8 @@ class Hungar(commands.Cog):
 
             day_start = datetime.fromisoformat(config["day_start"])
             day_duration = timedelta(seconds=config["day_duration"])
+            await ctx.send(datetime.utcnow() - day_start)
+            await ctx.send(day_duration)
             if datetime.utcnow() - day_start >= day_duration:
                 await self.process_day(ctx)
                 await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
