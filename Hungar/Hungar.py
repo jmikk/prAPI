@@ -3,6 +3,8 @@ import random
 import asyncio
 from datetime import datetime, timedelta
 import os
+import discord
+
 
 class Hungar(commands.Cog):
     def __init__(self, bot):
