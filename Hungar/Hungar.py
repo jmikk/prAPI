@@ -17,11 +17,14 @@ class Hungar(commands.Cog):
 
     async def load_npc_names(self):
         """Load NPC names from the NPC_names.txt file."""
-        try:
-            with open("NPC_names.txt", "r") as f:
-                return [line.strip() for line in f.readlines() if line.strip()]
-        except FileNotFoundError:
-            return [f"NPC {i+1}" for i in range(100)]  # Fallback if file is missing
+        if not hasattr(self, "_npc_name_pool"):
+            try:
+                with open("NPC_names.txt", "r") as f:
+                    self._npc_name_pool = [line.strip() for line in f.readlines() if line.strip()]
+            except FileNotFoundError:
+                self._npc_name_pool = [f"NPC {i+1}" for i in range(100)]  # Fallback if file is missing
+        return self._npc_name_pool
+
 
     @commands.guild_only()
     @commands.group()
@@ -83,18 +86,28 @@ class Hungar(commands.Cog):
         if config["game_active"]:
             await ctx.send("The Hunger Games are already active!")
             return
-
+    
         players = config["players"]
         if not players:
             await ctx.send("No players are signed up yet.")
             return
-
-        # Add NPCs if specified
+    
+        # Load and shuffle NPC names
         npc_names = await self.load_npc_names()
+        random.shuffle(npc_names)
+    
+        # Track used NPC names and add NPCs
+        used_names = set(player["name"] for player in players.values() if player.get("is_npc"))
+        available_names = [name for name in npc_names if name not in used_names]
+    
+        if len(available_names) < npcs:
+            await ctx.send("Not enough unique NPC names available for the requested number of NPCs.")
+            return
+    
         for i in range(npcs):
             npc_id = f"npc_{i+1}"
             players[npc_id] = {
-                "name": npc_names[i % len(npc_names)],
+                "name": available_names.pop(0),  # Get and remove the first available name
                 "district": random.randint(1, 12),
                 "stats": {
                     "Dex": random.randint(1, 10),
@@ -108,13 +121,14 @@ class Hungar(commands.Cog):
                 "is_npc": True,
                 "items": []
             }
-
+    
         await self.config.guild(guild).players.set(players)
         await self.config.guild(guild).game_active.set(True)
         await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
         await ctx.send(f"The Hunger Games have begun with {npcs} NPCs added! Day 1 starts now.")
-
+    
         asyncio.create_task(self.run_game(ctx))
+
 
     async def run_game(self, ctx):
         """Handle the real-time simulation of the game."""
