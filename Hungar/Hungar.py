@@ -94,6 +94,10 @@ class Hungar(commands.Cog):
             if not config["game_active"]:
                 break
 
+            if await self.isOneLeft(guild):
+                await self.endGame(ctx)
+                break
+
             day_start = datetime.fromisoformat(config["day_start"])
             day_duration = timedelta(seconds=config["day_duration"])
             if datetime.utcnow() - day_start >= day_duration:
@@ -101,11 +105,28 @@ class Hungar(commands.Cog):
                 await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
 
             await asyncio.sleep(10)  # Check every 10 seconds
-        await self.endGame(ctx)
 
-    async def endGame(self,ctx):
-        await ctx.send("the game is done")
-        return
+    async def isOneLeft(self, guild):
+        """Check if only one player is alive."""
+        players = await self.config.guild(guild).players()
+        alive_players = [player for player in players.values() if player["alive"]]
+        return len(alive_players) == 1
+
+    async def endGame(self, ctx):
+        """End the game and announce the winner."""
+        guild = ctx.guild
+        players = await self.config.guild(guild).players()
+        alive_players = [player for player in players.values() if player["alive"]]
+
+        if alive_players:
+            winner = alive_players[0]
+            await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
+        else:
+            await ctx.send("The game is over! No one survived.")
+
+        # Reset players
+        await self.config.guild(guild).players.set({})
+        await self.config.guild(guild).game_active.set(False)
 
     async def process_day(self, ctx):
         """Process daily events and actions."""
