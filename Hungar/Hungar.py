@@ -583,14 +583,24 @@ class Hungar(commands.Cog):
     async def action(self, ctx, choice: str):
         """Choose your daily action: Hunt, Rest, or Loot."""
         guild = ctx.guild
-        players = await self.config.guild(guild).players()
+        config = await self.config.guild(guild).all()
+        players = config["players"]
+        
         if str(ctx.author.id) not in players or not players[str(ctx.author.id)]["alive"]:
             await ctx.send("You are not part of the game or are no longer alive.")
             return
 
-        if choice not in ["Hunt", "Rest", "Loot"]:
-            await ctx.send("Invalid action. Choose Hunt, Rest, or Loot.")
+        # Check if Feast is a valid action
+        valid_actions = ["Hunt", "Rest", "Loot"]
+        if config["feast_active"]:  # Add Feast only if it's active
+            valid_actions.append("Feast")
+
+        # Validate the player's choice
+        if choice.capitalize() not in valid_actions:
+            available_actions = ", ".join(valid_actions)
+            await ctx.send(f"Invalid action. Choose one of the following: {available_actions}.")
             return
+
 
         players[str(ctx.author.id)]["action"] = choice
         await self.config.guild(guild).players.set(players)
