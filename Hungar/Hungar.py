@@ -330,7 +330,10 @@ class Hungar(commands.Cog):
                 looters.append(player_id)
                 if random.random() < 0.5:  # 50% chance to find an item
                     stat = random.choice(["Dex", "Str", "Con", "Wis", "HP"])
-                    boost = random.randint(1, 3)
+                    if stat == "HP":
+                        boost = random.randint(5,10)
+                    else:
+                        boost = random.randint(1, 3)
                     player_data["items"].append((stat, boost))
                     event_outcomes.append(f"{player_data['name']} looted and found a {stat} boost item (+{boost}).")
                 else:
@@ -366,8 +369,8 @@ class Hungar(commands.Cog):
             hunter = players[hunter_id]
             target = players[target_id]
 
-            hunter_str = hunter["stats"]["Str"] + random.randint(1, 10)
-            target_defense = max(target["stats"]["Str"], target["stats"]["Dex"]) + random.randint(1, 10)
+            target_defense = target["stats"]["Str"] + random.randint(1, 10)
+            hunter_str = max(hunter["stats"]["Str"], hunter["stats"]["Dex"]) + random.randint(1, 10)
             damage = abs(hunter_str - target_defense)
 
             if damage < 3:
@@ -376,6 +379,25 @@ class Hungar(commands.Cog):
                 damage2 = damage + random.randint(1,3)
                 hunter["stats"]["HP"] -= damage2
                 event_outcomes.append(f"{hunter['name']} hunted {target['name']} but the two were evenly matched dealing {damage1} to {target['name']} and {damage2} to {hunter['name']}")
+                if target["stats"]["HP"] <= 0:
+                    target["alive"] = False
+                    event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
+                    if target["items"]:
+                        hunter["items"].extend(target["items"])
+                        event_outcomes.append(
+                            f"{hunter['name']} looted {len(target['items'])} item(s) from {target['name']}."
+                        )
+                        target["items"] = [] 
+                        
+                if hunter["stats"]["HP"] <= 0:
+                    hunter["alive"] = False
+                    event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
+                    if hunter["items"]:
+                        target["items"].extend(hunter["items"])
+                        event_outcomes.append(
+                            f"{target['name']} looted {len(hunter['items'])} item(s) from {hunter['name']}."
+                        )
+                        hunter["items"] = []
             else:
                 if hunter_str > target_defense:
                     target["stats"]["HP"] -= damage
@@ -383,12 +405,24 @@ class Hungar(commands.Cog):
                     if target["stats"]["HP"] <= 0:
                         target["alive"] = False
                         event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
+                        if target["items"]:
+                            hunter["items"].extend(target["items"])
+                            event_outcomes.append(
+                                f"{hunter['name']} looted {len(target['items'])} item(s) from {target['name']}."
+                            )
+                            target["items"] = [] 
                 else:
                     hunter["stats"]["HP"] -= damage
                     event_outcomes.append(f"{target['name']} defended against {hunter['name']} and dealt {damage} damage in return!")
                     if hunter["stats"]["HP"] <= 0:
                         hunter["alive"] = False
                         event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
+                        if hunter["items"]:
+                            target["items"].extend(hunter["items"])
+                            event_outcomes.append(
+                                f"{target['name']} looted {len(hunter['items'])} item(s) from {hunter['name']}."
+                            )
+                            hunter["items"] = []
 
             # Mark both the hunter and target as involved in an event
             hunted.add(target_id)
