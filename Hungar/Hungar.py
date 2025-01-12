@@ -15,6 +15,14 @@ class Hungar(commands.Cog):
             day_start=None,
         )
 
+    async def load_npc_names(self):
+        """Load NPC names from the NPC_names.txt file."""
+        try:
+            with open("NPC_names.txt", "r") as f:
+                return [line.strip() for line in f.readlines() if line.strip()]
+        except FileNotFoundError:
+            return [f"NPC {i+1}" for i in range(100)]  # Fallback if file is missing
+
     @commands.guild_only()
     @commands.group()
     async def hunger(self, ctx):
@@ -81,10 +89,11 @@ class Hungar(commands.Cog):
             return
 
         # Add NPCs if specified
+        npc_names = await self.load_npc_names()
         for i in range(npcs):
             npc_id = f"npc_{i+1}"
             players[npc_id] = {
-                "name": f"NPC {i+1}",
+                "name": npc_names[i % len(npc_names)],
                 "district": random.randint(1, 12),
                 "stats": {
                     "Dex": random.randint(1, 10),
@@ -121,10 +130,26 @@ class Hungar(commands.Cog):
             day_start = datetime.fromisoformat(config["day_start"])
             day_duration = timedelta(seconds=config["day_duration"])
             if datetime.utcnow() - day_start >= day_duration:
+                await self.announce_new_day(ctx, guild)
                 await self.process_day(ctx)
                 await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
 
             await asyncio.sleep(10)  # Check every 10 seconds
+
+    async def announce_new_day(self, ctx, guild):
+        """Announce the start of a new day and ping alive players."""
+        players = await self.config.guild(guild).players()
+        alive_mentions = []
+        for player_id, player_data in players.items():
+            if player_data["alive"]:
+                if player_data.get("is_npc"):
+                    alive_mentions.append(player_data["name"])
+                else:
+                    member = guild.get_member(int(player_id))
+                    if member:
+                        alive_mentions.append(member.mention)
+
+        await ctx.send(f"A new day dawns in the Hunger Games! Participants still alive: {', '.join(alive_mentions)}")
 
     async def isOneLeft(self, guild):
         """Check if only one player is alive."""
