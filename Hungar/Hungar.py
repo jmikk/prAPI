@@ -256,7 +256,7 @@ class Hungar(commands.Cog):
                 target["stats"]["HP"] -= damage1
                 damage2 = OG_damage + random.randint(1,3)
                 hunter["stats"]["HP"] -= damage2
-                event_outcomes.append(f"{hunter['name']} hunted {target['name']} but the two were evenly matched dealing {damage1} to {target['name']} and {damage2} to {hunter['name']")
+                event_outcomes.append(f"{hunter['name']} hunted {target['name']} but the two were evenly matched dealing {damage1} to {target['name']} and {damage2} to {hunter['name']}")
 
     
 
