@@ -246,9 +246,21 @@ class Hungar(commands.Cog):
             hunter = players[hunter_id]
             target = players[target_id]
     
-            hunter_str = hunter["stats"]["Str"]
-            target_defense = max(target["stats"]["Str"], target["stats"]["Dex"])
+            hunter_str = hunter["stats"]["Str"] + random.randint(1, 10),
+            target_defense = max(target["stats"]["Str"], target["stats"]["Dex"]) + random.randint(1, 10),
             damage = abs(hunter_str - target_defense)
+
+            if damage < 3:
+                OG_damage
+                damage1 = OG_damage + random.randint(1,3)
+                target["stats"]["HP"] -= damage1
+                damage2 = OG_damage + random.randint(1,3)
+                hunter["stats"]["HP"] -= damage2
+                event_outcomes.append(f"{hunter['name']} hunted {target['name']} but the two were evenly matched dealing {damage1} to {target['name']} and {damage2} to {hunter['name']")
+
+    
+
+                
     
             if hunter_str > target_defense:
                 target["stats"]["HP"] -= damage
