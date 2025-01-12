@@ -68,20 +68,21 @@ class Hungar(commands.Cog):
     async def startgame(self, ctx):
         """Start the Hunger Games (Admin only)."""
         guild = ctx.guild
-        async with self.config.guild(guild) as config:
-            if config["game_active"]:
-                await ctx.send("The Hunger Games are already active!")
-                return
+        config = await self.config.guild(guild).all()
+        if config["game_active"]:
+            await ctx.send("The Hunger Games are already active!")
+            return
+    
+        if not config["players"]:
+            await ctx.send("No players are signed up yet.")
+            return
+    
+        await self.config.guild(guild).game_active.set(True)
+        await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
+        await ctx.send("The Hunger Games have begun! Day 1 starts now.")
+    
+        asyncio.create_task(self.run_game(ctx))
 
-            if not config["players"]:
-                await ctx.send("No players are signed up yet.")
-                return
-
-            config["game_active"] = True
-            config["day_start"] = datetime.utcnow().isoformat()
-            await ctx.send("The Hunger Games have begun! Day 1 starts now.")
-
-            asyncio.create_task(self.run_game(ctx))
 
     async def run_game(self, ctx):
         """Handle the real-time simulation of the game."""
