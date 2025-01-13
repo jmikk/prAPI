@@ -640,7 +640,9 @@ class Hungar(commands.Cog):
         # Announce the day's events
         if event_outcomes:
             # Pings users and bolds NPCs
-            await ctx.send("\n".join(event_outcomes))
+            for each in event_outcomes:
+                await ctx.send(each)
+            #await ctx.send("\n".join(event_outcomes))
         else:
            await ctx.send("The day passed quietly, with no significant events.")
 
@@ -755,22 +757,6 @@ class Hungar(commands.Cog):
             embed.add_field(name="Alive", value="Yes" if player["alive"] else "No", inline=False)
             await ctx.send(embed=embed, ephemeral=True)
 
-    @hunger.command()
-    @commands.admin()
-    async def toggle_random_events(self, ctx, state: bool):
-        """Enable or disable random events (Admin only)."""
-        guild = ctx.guild
-        await self.config.guild(guild).random_events.set(state)
-        state_text = "enabled" if state else "disabled"
-        await ctx.send(f"Random events have been {state_text}.")
-    
-    @hunger.command()
-    @commands.admin()
-    async def trigger_feast(self, ctx):
-        """Schedule a Feast event manually (Admin only)."""
-        guild = ctx.guild
-        await self.config.guild(guild).feast_active.set(False)  # Ensure Feast isn't active yet
-        await ctx.send("A Feast has been scheduled! It will be announced tomorrow and occur the day after.")
 
 
     
