@@ -463,7 +463,7 @@ class Hungar(commands.Cog):
                         if player_data["stats"]["HP"] <= 0:
                             player_data["alive"] = False
                             event_outcomes.append(f"{player_data['name']} has been eliminated by themself?!")
-                            player_data["kill_list"].appened(player_data['name'])
+                            player_data["kill_list"].append(player_data['name'])
                             player_data["items"] = []
                     else:
                         event_outcomes.append(f"{player_data['name']} looted but found nothing.")
