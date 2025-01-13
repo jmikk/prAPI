@@ -14,6 +14,7 @@ import discord
 #item names
 
 #todo list
+#fix bug where if you feast you never reset to random
 
 #More aggressive AI for NPCs
 #kill count leaderboard
@@ -291,7 +292,7 @@ class Hungar(commands.Cog):
             if player_data["alive"]:  # Only reset actions for alive players
                 player_data["action"] = None
 
-        # Increment day counter
+        await self.config.guild(guild).players.set(players)
 
         # Handle Feast Activation
         #await ctx.send(day_counter)
