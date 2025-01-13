@@ -625,11 +625,26 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).players.set(players)
 
         # Announce the day's events
-        if event_outcomes:
+        #if event_outcomes:
             # Pings users and bolds NPCs
-            await ctx.send("\n".join(event_outcomes))
-        else:
-            await ctx.send("The day passed quietly, with no significant events.")
+        #    await ctx.send("\n".join(event_outcomes))
+        #else:
+        #    await ctx.send("The day passed quietly, with no significant events.")
+
+        processed_outcomes = []
+        for player_id, player_data in players.items():
+            if player_data["alive"]:
+                if player_data.get("is_npc"):
+                    pass
+                else:
+                    # Users are pinged
+                    member = guild.get_member(int(player_id))
+                    if member:
+                        player_name = member.mention
+                    else:
+                        player_name = player_data["name"]  # Fallback to the name
+
+        
     
         # Save elimination leaderboard
         if eliminations:
