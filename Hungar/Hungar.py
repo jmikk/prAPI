@@ -377,15 +377,15 @@ class Hungar(commands.Cog):
                 event_outcomes.append(f"{player_data['name']} went hunting!")
             elif action == "Rest":
                 resters.append(player_id)
-
-                threshold = 1 / (1 + player_data["Con"] / 4)  # Scale slows the decrease
+                threshold = 1 / (1 + player_data["stats"]["Con"] / 4)  # Scale slows the decrease
                 if random.random() < threshold:
                     damage = random.randint(1,5)
-                    player_data["HP"]=player_data["HP"] - damage
+                    player_data["stats"]["HP"]=player_data["stats"]["HP"] - damage
                     event_outcomes.append(f"{player_data['name']} has hunger pains and takes {damage} points of damage")
-                    if player_data["HP"] <= 0:
-                        target["alive"] = False
+                    if player_data["stats"]["HP"] <= 0:
+                        player_data["alive"] = False
                         event_outcomes.append(f"{player_data['name']} starved to death.")
+                        player_data["items"] = []
                     
                 if player_data["items"]:
                     item = player_data["items"].pop()
@@ -406,14 +406,15 @@ class Hungar(commands.Cog):
                     player_data["items"].append((stat, boost))
                     event_outcomes.append(f"{player_data['name']} looted and found a {stat} boost item (+{boost}).")
                 else:
-                    threshold = 1 / (1 + player_data["Wis"] / 10)  # Scale slows the decrease
+                    threshold = 1 / (1 + player_data["stats"]["Wis"] / 10)  # Scale slows the decrease
                     if random.random() < threshold:
                         damage = random.randint(1,5)
-                        player_data["HP"]=player_data["HP"] - damage
+                        player_data["stats"]["HP"]=player_data["stats"]["HP"] - damage
                         event_outcomes.append(f"{player_data['name']} done gone looted and stubbed their toe and took {damage} points of damage.")
-                        if player_data["HP"] <= 0:
-                            target["alive"] = False
+                        if player_data["stats"]["HP"] <= 0:
+                            player_data["alive"] = False
                             event_outcomes.append(f"{player_data['name']} has been eliminated by themself?!")
+                            player_data["items"] = []
 
                     event_outcomes.append(f"{player_data['name']} looted but found nothing.")
             elif action == "Feast":
