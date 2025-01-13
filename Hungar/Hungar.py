@@ -201,8 +201,6 @@ class Hungar(commands.Cog):
             await ctx.send("Not enough unique NPC names available for the requested number of NPCs.")
             return
 
-        await self.config.guild(guild).feast_active.set(True)
-
 
         for i in range(npcs):
             npc_id = f"npc_{i+1}"
@@ -283,6 +281,15 @@ class Hungar(commands.Cog):
         day_counter = config.get("day_counter", 0) + 1
         await self.config.guild(guild).day_counter.set(day_counter)
 
+                # Handle Feast Activation
+        if day_counter == 1 or day_counter % 10 == 0:
+            # Feast is active on Day 1 and every 10th day
+            await self.config.guild(guild).feast_active.set(True)
+            event_outcomes.append("The Feast is now active! Players can choose `Feast` as their action today.")
+        else:
+            # Ensure Feast is not active on other days
+            await self.config.guild(guild).feast_active.set(False)
+
         # Get alive players count
         alive_players = [player for player in players.values() if player["alive"]]
         alive_count = len(alive_players)
@@ -358,16 +365,6 @@ class Hungar(commands.Cog):
         feast_participants = []  # Separate list for Feast participants
         eliminations = []
 
-        # Handle Feast Countdown
-        feast_countdown = config.get("feast_countdown")
-        if feast_countdown == 1:
-            # Feast will be active on the next day
-                await self.config.guild(guild).feast_active.set(True)
-                event_outcomes.append("The Feast is now active! Players can choose `Feast` as their action today.")
-        elif feast_countdown <= 0:
-            # End the Feast after one day
-            await self.config.guild(guild).feast_active.set(False)
-            await self.config.guild(guild).feast_countdown.set(10)  # Reset countdown
 
         # Categorize players by action
         for player_id, player_data in players.items():
@@ -763,7 +760,6 @@ class Hungar(commands.Cog):
     async def trigger_feast(self, ctx):
         """Schedule a Feast event manually (Admin only)."""
         guild = ctx.guild
-        await self.config.guild(guild).feast_countdown.set(2)  # Feast happens in 2 days
         await self.config.guild(guild).feast_active.set(False)  # Ensure Feast isn't active yet
         await ctx.send("A Feast has been scheduled! It will be announced tomorrow and occur the day after.")
 
