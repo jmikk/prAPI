@@ -300,7 +300,7 @@ class Hungar(commands.Cog):
             if player_data["alive"]:
                 if player_data.get("is_npc"):
                     # NPC names are appended as text
-                    alive_mentions.append(f"**{player_data["name"]}**")
+                    alive_mentions.append(f"**{player_data['name']}**")
                 else:
                     # Real players are pinged using mentions
                     member = guild.get_member(int(player_id))
