@@ -316,18 +316,31 @@ class Hungar(commands.Cog):
     async def endGame(self, ctx):
         """End the game and announce the winner."""
         guild = ctx.guild
-        players = await self.config.guild(guild).players()
+        config = await self.config.guild(guild).all()
+        players = config["players"]
+        leaderboard = config.get("elimination_leaderboard", [])
+    
         alive_players = [player for player in players.values() if player["alive"]]
-
+    
         if alive_players:
             winner = alive_players[0]
             await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
         else:
             await ctx.send("The game is over! No one survived.")
-
+    
+        # Send elimination leaderboard
+        if leaderboard:
+            leaderboard.sort(key=lambda x: x["day"])  # Sort by elimination day
+            leaderboard_message = "**Elimination Leaderboard:**\n" + "\n".join(
+                [f"Day {entry['day']}: {entry['name']}" for entry in leaderboard]
+            )
+            await ctx.send(leaderboard_message)
+    
         # Reset players
         await self.config.guild(guild).players.set({})
         await self.config.guild(guild).game_active.set(False)
+        await self.config.guild(guild).elimination_leaderboard.set([])  # Reset leaderboard
+
 
     async def process_day(self, ctx):
         """Process daily events and actions."""
@@ -600,12 +613,38 @@ class Hungar(commands.Cog):
             await self.config.guild(guild).feast_countdown.set(feast_countdown-1)  # Reset countdown
 
         
+        # Elimination announcement and tracking
+        for player_id, player_data in players.items():
+            if player_data["alive"] is False and "eliminated_on" not in player_data:
+                player_data["eliminated_on"] = day_counter  # Track day of elimination
+                if player_data.get("is_npc", False):
+                    event_outcomes.append(f"**{player_data['name']}** was eliminated on Day {day_counter}!")
+                else:
+                    member = guild.get_member(int(player_id))
+                    if member:
+                        event_outcomes.append(f"{member.mention} was eliminated on Day {day_counter}!")
+                eliminations.append(player_data)
+
+        await self.config.guild(guild).players.set(players)
+
         # Announce the day's events
         if event_outcomes:
+            # Pings users and bolds NPCs
             await ctx.send("\n".join(event_outcomes))
         else:
             await ctx.send("The day passed quietly, with no significant events.")
+    
+        # Save elimination leaderboard
+        if eliminations:
+            leaderboard = config.get("elimination_leaderboard", [])
+            for eliminated_player in eliminations:
+                leaderboard.append(
+                    {"name": eliminated_player["name"], "day": eliminated_player["eliminated_on"]}
+                )
+            await self.config.guild(guild).elimination_leaderboard.set(leaderboard)
 
+
+    
     @hunger.command()
     async def action(self, ctx, choice: str):
         """Choose your daily action: Hunt, Rest, or Loot."""
