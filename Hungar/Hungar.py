@@ -627,12 +627,6 @@ class Hungar(commands.Cog):
         for player_id, player_data in players.items():
             if player_data["alive"] is False and "eliminated_on" not in player_data:
                 player_data["eliminated_on"] = day_counter  # Track day of elimination
-                if player_data.get("is_npc", False):
-                    event_outcomes.append(f"{player_data['name']} was eliminated on Day {day_counter}!")
-                else:
-                    member = guild.get_member(int(player_id))
-                    if member:
-                        event_outcomes.append(f"{member.mention} was eliminated on Day {day_counter}!")
                 eliminations.append(player_data)
 
         await self.config.guild(guild).players.set(players)
