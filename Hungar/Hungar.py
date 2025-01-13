@@ -179,6 +179,9 @@ class Hungar(commands.Cog):
         """Start the Hunger Games (Admin only). Optionally, add NPCs."""
         guild = ctx.guild
         config = await self.config.guild(guild).all()
+
+        await self.config.guild(guild).feast_countdown.set(1)
+
         if config["game_active"]:
             await ctx.send("The Hunger Games are already active!")
             return
