@@ -35,7 +35,6 @@ class Hungar(commands.Cog):
             day_counter=0, 
             random_events=True,  # Enable or disable random events
             feast_active=False,  # Track if a feast is active# Counter for days
-            feast_countdown=10,  # Countdown for the Feast (None means no Feast scheduled)
         )
 
     async def load_npc_names(self):
@@ -261,9 +260,6 @@ class Hungar(commands.Cog):
                     await self.process_day(ctx)
                     await self.announce_new_day(ctx, guild)
                     await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
-
-                if config["day_counter"] <= 1:
-                    await self.config.guild(guild).feast_countdown.set(10)  # Reset countdown
     
                 await asyncio.sleep(10)  # Check every 10 seconds
         except Exception as e:
@@ -606,12 +602,6 @@ class Hungar(commands.Cog):
 
         # Save the updated players' state
         await self.config.guild(guild).players.set(players)
-
-        if feast_countdown is not None:
-            if feast_countdown == 2:
-                # Announce Feast the next day
-                event_outcomes.append("The Feast has been announced! Attend by choosing `Feast` as your action tomorrow.")
-            await self.config.guild(guild).feast_countdown.set(feast_countdown-1)  # Reset countdown
 
         day_counter = config.get("day_counter", 0)
         
