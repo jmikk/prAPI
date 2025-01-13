@@ -396,7 +396,7 @@ class Hungar(commands.Cog):
 
             if action == "Hunt":
                 hunters.append(player_id)
-                event_outcomes.append(f"{player_data['name']} went hunting!")
+                #event_outcomes.append(f"{player_data['name']} went hunting!")
             elif action == "Rest":
                 resters.append(player_id)
                 threshold = 1 / (1 + player_data["stats"]["Con"] / 4)  # Scale slows the decrease
