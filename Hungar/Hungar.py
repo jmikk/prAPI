@@ -274,11 +274,10 @@ class Hungar(commands.Cog):
         players = config["players"]
 
         # Increment day counter
-        day_counter = config.get("day_counter", 0) + 1
         await self.config.guild(guild).day_counter.set(day_counter)
 
         # Handle Feast Activation
-        await ctx.send(day_counter)
+        #await ctx.send(day_counter)
         if day_counter == 1 or day_counter % 10 == 0:
             # Feast is active on Day 1 and every 10th day
             await self.config.guild(guild).feast_active.set(True)
@@ -360,6 +359,9 @@ class Hungar(commands.Cog):
         resters = []
         feast_participants = []  # Separate list for Feast participants
         eliminations = []
+                
+        day_counter = config.get("day_counter", 0) + 1
+
 
 
         # Categorize players by action
