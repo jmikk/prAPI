@@ -179,18 +179,16 @@ class Hungar(commands.Cog):
         """Start the Hunger Games (Admin only). Optionally, add NPCs."""
         guild = ctx.guild
         config = await self.config.guild(guild).all()
-
-        await self.config.guild(guild).feast_countdown.set(0)
-
+        
         if config["game_active"]:
             await ctx.send("The Hunger Games are already active!")
             return
-
+        
         players = config["players"]
         if not players:
             await ctx.send("No players are signed up yet.")
             return
-
+            
         # Load and shuffle NPC names
         npc_names = await self.load_npc_names()
         random.shuffle(npc_names)
@@ -202,6 +200,9 @@ class Hungar(commands.Cog):
         if len(available_names) < npcs:
             await ctx.send("Not enough unique NPC names available for the requested number of NPCs.")
             return
+
+        await self.config.guild(guild).feast_active.set(True)
+
 
         for i in range(npcs):
             npc_id = f"npc_{i+1}"
