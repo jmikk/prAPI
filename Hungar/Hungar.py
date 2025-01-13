@@ -400,7 +400,7 @@ class Hungar(commands.Cog):
             elif action == "Rest":
                 resters.append(player_id)
                 threshold = 1 / (1 + player_data["stats"]["Con"] / 4)  # Scale slows the decrease
-                if random.random() < threshold:
+                if random.random() < threshold or player_data["items"]: #take dmg
                     damage = random.randint(1,5)
                     player_data["stats"]["HP"]=player_data["stats"]["HP"] - damage
                     event_outcomes.append(f"**{player_data['name']}** has hunger pains and takes {damage} points of damage")
@@ -409,13 +409,11 @@ class Hungar(commands.Cog):
                         event_outcomes.append(f"**{player_data['name']}** starved to death.")
                         player_data["items"] = []
                     
-                if player_data["items"]:
+                else:
                     item = player_data["items"].pop()
                     stat, boost = item
                     player_data["stats"][stat] += boost
                     event_outcomes.append(f"**{player_data['name']}** rested and used a {stat} boost item (+{boost}).")
-                else:
-                    event_outcomes.append(f"**{player_data['name']}** rested but had no items to use.")
                     
             elif action == "Loot":
                 looters.append(player_id)
