@@ -180,7 +180,7 @@ class Hungar(commands.Cog):
         guild = ctx.guild
         config = await self.config.guild(guild).all()
 
-        await self.config.guild(guild).feast_countdown.set(1)
+        await self.config.guild(guild).feast_countdown.set(0)
 
         if config["game_active"]:
             await ctx.send("The Hunger Games are already active!")
