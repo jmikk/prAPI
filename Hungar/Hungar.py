@@ -200,6 +200,18 @@ class Hungar(commands.Cog):
             await ctx.send("Not enough unique NPC names available for the requested number of NPCs.")
             return
 
+        for player_id, player_data in players.items():
+            if player_data["alive"]:
+                if player_data.get("is_npc"):
+                    player_name = f'**{player_data["name"]}**' 
+                else:
+                    # Users are pinged
+                    member = guild.get_member(int(player_id))
+                    if member:
+                        player_name = member.mention
+                    else:
+                        player_name = f'**{player_data["name"]}**' 
+
 
         for i in range(npcs):
             npc_id = f"npc_{i+1}"
@@ -229,7 +241,7 @@ class Hungar(commands.Cog):
         participant_list = []
         for player in sorted_players:
             if player.get("is_npc"):
-                participant_list.append(f"**{player['name']}** from District {player['district']}")
+                participant_list.append(f"{player['name']} from District {player['district']}")
             else:
                 member = guild.get_member(int(next((k for k, v in players.items() if v == player), None)))
                 if member:
@@ -300,7 +312,7 @@ class Hungar(commands.Cog):
             if player_data["alive"]:
                 if player_data.get("is_npc"):
                     # NPC names are appended as text
-                    alive_mentions.append(f"**{player_data['name']}**")
+                    alive_mentions.append(f"{player_data['name']}")
                 else:
                     # Real players are pinged using mentions
                     member = guild.get_member(int(player_id))
@@ -332,15 +344,15 @@ class Hungar(commands.Cog):
     
         if alive_players:
             winner = alive_players[0]
-            await ctx.send(f"The game is over! The winner is **{winner['name']}** from District {winner['district']}!")
+            await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
         else:
             await ctx.send("The game is over! No one survived.")
     
         # Send elimination leaderboard
         if leaderboard:
             leaderboard.sort(key=lambda x: x["day"])  # Sort by elimination day
-            leaderboard_message = "**Elimination Leaderboard:**\n" + "\n".join(
-                [f"Day {entry['day']}: **{entry['name']}**" for entry in leaderboard]
+            leaderboard_message = "Elimination Leaderboard:\n" + "\n".join(
+                [f"Day {entry['day']}: {entry['name']}" for entry in leaderboard]
             )
             await ctx.send(leaderboard_message)
     
@@ -403,17 +415,17 @@ class Hungar(commands.Cog):
                 if random.random() < threshold or not player_data["items"]: #take dmg
                     damage = random.randint(1,5)
                     player_data["stats"]["HP"]=player_data["stats"]["HP"] - damage
-                    event_outcomes.append(f"**{player_data['name']}** has hunger pains and takes {damage} points of damage")
+                    event_outcomes.append(f"{player_data['name']} has hunger pains and takes {damage} points of damage")
                     if player_data["stats"]["HP"] <= 0:
                         player_data["alive"] = False
-                        event_outcomes.append(f"**{player_data['name']}** starved to death.")
+                        event_outcomes.append(f"{player_data['name']} starved to death.")
                         player_data["items"] = []
                     
                 else:
                     item = player_data["items"].pop()
                     stat, boost = item
                     player_data["stats"][stat] += boost
-                    event_outcomes.append(f"**{player_data['name']}** rested and used a {stat} boost item (+{boost}).")
+                    event_outcomes.append(f"{player_data['name']} rested and used a {stat} boost item (+{boost}).")
                     
             elif action == "Loot":
                 looters.append(player_id)
@@ -424,19 +436,19 @@ class Hungar(commands.Cog):
                     else:
                         boost = random.randint(1, 3)
                     player_data["items"].append((stat, boost))
-                    event_outcomes.append(f"**{player_data['name']}** looted and found a {stat} boost item (+{boost}).")
+                    event_outcomes.append(f"{player_data['name']} looted and found a {stat} boost item (+{boost}).")
                 else:
                     threshold = 1 / (1 + player_data["stats"]["Wis"] / 10)  # Scale slows the decrease
                     if random.random() < threshold:
                         damage = random.randint(1,5)
                         player_data["stats"]["HP"]=player_data["stats"]["HP"] - damage
-                        event_outcomes.append(f"**{player_data['name']}** done gone looted and stubbed their toe and took {damage} points of damage.")
+                        event_outcomes.append(f"{player_data['name']} done gone looted and stubbed their toe and took {damage} points of damage.")
                         if player_data["stats"]["HP"] <= 0:
                             player_data["alive"] = False
-                            event_outcomes.append(f"**{player_data['name']}** has been eliminated by themself?!")
+                            event_outcomes.append(f"{player_data['name']} has been eliminated by themself?!")
                             player_data["items"] = []
                     else:
-                        event_outcomes.append(f"**{player_data['name']}** looted but found nothing.")
+                        event_outcomes.append(f"{player_data['name']} looted but found nothing.")
             elif action == "Feast":
                 feast_participants.append(player_id)
 
@@ -479,49 +491,49 @@ class Hungar(commands.Cog):
                 target["stats"]["HP"] -= damage1
                 damage2 = damage + random.randint(1,3)
                 hunter["stats"]["HP"] -= damage2
-                event_outcomes.append(f"**{hunter['name']}** hunted **{target['name']}** but the two were evenly matched dealing {damage1} to **{target['name']}** and {damage2} to **{hunter['name']}**")
+                event_outcomes.append(f"{hunter['name']} hunted {target['name']} but the two were evenly matched dealing {damage1} to {target['name']} and {damage2} to {hunter['name']}")
                 if target["stats"]["HP"] <= 0:
                     target["alive"] = False
-                    event_outcomes.append(f"**{target['name']}** has been eliminated by **{hunter['name']}**!")
+                    event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
                     if target["items"]:
                         hunter["items"].extend(target["items"])
                         event_outcomes.append(
-                            f"**{hunter['name']}** looted {len(target['items'])} item(s) from **{target['name']}**."
+                            f"{hunter['name']} looted {len(target['items'])} item(s) from {target['name']}."
                         )
                         target["items"] = [] 
                         
                 if hunter["stats"]["HP"] <= 0:
                     hunter["alive"] = False
-                    event_outcomes.append(f"**{hunter['name']}** has been eliminated by **{target['name']}**!")
+                    event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
                     if hunter["items"]:
                         target["items"].extend(hunter["items"])
                         event_outcomes.append(
-                            f"**{target['name']}** looted {len(hunter['items'])} item(s) from **{hunter['name']}**."
+                            f"{target['name']} looted {len(hunter['items'])} item(s) from {hunter['name']}."
                         )
                         hunter["items"] = []
             else:
                 if hunter_str > target_defense:
                     target["stats"]["HP"] -= damage
-                    event_outcomes.append(f"**{hunter['name']}** hunted **{target['name']}** and dealt {damage} damage!")
+                    event_outcomes.append(f"{hunter['name']} hunted {target['name']} and dealt {damage} damage!")
                     if target["stats"]["HP"] <= 0:
                         target["alive"] = False
-                        event_outcomes.append(f"**{target['name']}** has been eliminated by **{hunter['name']}**!")
+                        event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
                         if target["items"]:
                             hunter["items"].extend(target["items"])
                             event_outcomes.append(
-                                f"**{hunter['name']}** looted {len(target['items'])} item(s) from **{target['name']}**."
+                                f"{hunter['name']} looted {len(target['items'])} item(s) from {target['name']}."
                             )
                             target["items"] = [] 
                 else:
                     hunter["stats"]["HP"] -= damage
-                    event_outcomes.append(f"**{target['name']}** defended against **{hunter['name']}** and dealt {damage} damage in return!")
+                    event_outcomes.append(f"{target['name']} defended against {hunter['name']} and dealt {damage} damage in return!")
                     if hunter["stats"]["HP"] <= 0:
                         hunter["alive"] = False
-                        event_outcomes.append(f"**{hunter['name']}** has been eliminated by **{target['name']}**!")
+                        event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
                         if hunter["items"]:
                             target["items"].extend(hunter["items"])
                             event_outcomes.append(
-                                f"**{target['name']}** looted {len(hunter['items'])} item(s) from **{hunter['name']}**."
+                                f"{target['name']} looted {len(hunter['items'])} item(s) from {hunter['name']}."
                             )
                             hunter["items"] = []
 
@@ -537,7 +549,7 @@ class Hungar(commands.Cog):
                 participant = players[feast_participants[0]]
                 for stat in ["Dex", "Str", "Con", "Wis", "HP"]:
                     participant["stats"][stat] += 5
-                event_outcomes.append(f"**{participant['name']}** attended the Feast alone and gained +5 to all stats!")
+                event_outcomes.append(f"{participant['name']} attended the Feast alone and gained +5 to all stats!")
             else:
                 # Multiple participants battle it out
                 dead_players = []
@@ -559,25 +571,25 @@ class Hungar(commands.Cog):
                         if participant_str > target_str:
                             damage = participant_str - target_str
                             target["stats"]["HP"] -= damage
-                            event_outcomes.append(f"**{participant['name']}** attacked **{target['name']}** and dealt {damage} damage!")
+                            event_outcomes.append(f"{participant['name']} attacked {target['name']} and dealt {damage} damage!")
                             if target["stats"]["HP"] <= 0:
                                 target["alive"] = False
                                 dead_players.append(target_id)
                                 feast_participants.remove(target_id)
                                 participant["items"].extend(target["items"])
                                 target["items"] = []
-                                event_outcomes.append(f"**{target['name']}** was eliminated by **{participant['name']}**!")
+                                event_outcomes.append(f"{target['name']} was eliminated by {participant['name']}!")
                         else:
                             damage = target_str - participant_str
                             participant["stats"]["HP"] -= damage
-                            event_outcomes.append(f"**{target['name']}** attacked **{participant['name']}** and dealt {damage} damage!")
+                            event_outcomes.append(f"{target['name']} attacked {participant['name']} and dealt {damage} damage!")
                             if participant["stats"]["HP"] <= 0:
                                 participant["alive"] = False
                                 dead_players.append(participant_id)
                                 feast_participants.remove(participant_id)
                                 target["items"].extend(participant["items"])
                                 participant["items"] = []
-                                event_outcomes.append(f"**{participant['name']}** was eliminated by **{target['name']}**!")
+                                event_outcomes.append(f"{participant['name']} was eliminated by {target['name']}!")
     
                 # Remaining participants split items and stats
                 if feast_participants:
@@ -615,7 +627,7 @@ class Hungar(commands.Cog):
             if player_data["alive"] is False and "eliminated_on" not in player_data:
                 player_data["eliminated_on"] = day_counter  # Track day of elimination
                 if player_data.get("is_npc", False):
-                    event_outcomes.append(f"**{player_data['name']}** was eliminated on Day {day_counter}!")
+                    event_outcomes.append(f"{player_data['name']} was eliminated on Day {day_counter}!")
                 else:
                     member = guild.get_member(int(player_id))
                     if member:
@@ -625,26 +637,12 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).players.set(players)
 
         # Announce the day's events
-        #if event_outcomes:
+        if event_outcomes:
             # Pings users and bolds NPCs
-        #    await ctx.send("\n".join(event_outcomes))
-        #else:
-        #    await ctx.send("The day passed quietly, with no significant events.")
+            await ctx.send("\n".join(event_outcomes))
+        else:
+           await ctx.send("The day passed quietly, with no significant events.")
 
-        processed_outcomes = []
-        for player_id, player_data in players.items():
-            if player_data["alive"]:
-                if player_data.get("is_npc"):
-                    pass
-                else:
-                    # Users are pinged
-                    member = guild.get_member(int(player_id))
-                    if member:
-                        player_name = member.mention
-                    else:
-                        player_name = player_data["name"]  # Fallback to the name
-
-        
     
         # Save elimination leaderboard
         if eliminations:
