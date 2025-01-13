@@ -150,7 +150,7 @@ class Hungar(commands.Cog):
             "stats": stats,
             "alive": True,
             "action": None,
-            "items": []
+            "items": [],
             "kill_list": [],  
         }
 
