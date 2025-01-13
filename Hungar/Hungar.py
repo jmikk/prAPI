@@ -200,19 +200,6 @@ class Hungar(commands.Cog):
             await ctx.send("Not enough unique NPC names available for the requested number of NPCs.")
             return
 
-        for player_id, player_data in players.items():
-            if player_data["alive"]:
-                if player_data.get("is_npc"):
-                    player_name = f'**{player_data["name"]}**' 
-                else:
-                    # Users are pinged
-                    member = guild.get_member(int(player_id))
-                    if member:
-                        player_name = member.mention
-                    else:
-                        player_name = f'**{player_data["name"]}**' 
-
-
         for i in range(npcs):
             npc_id = f"npc_{i+1}"
             players[npc_id] = {
@@ -230,6 +217,20 @@ class Hungar(commands.Cog):
                 "is_npc": True,
                 "items": []
             }
+
+        for player_id, player_data in players.items():
+            if player_data.get("is_npc", False):
+                # Bold NPC names
+                player_data["name"] = f"**{player_data['name']}**"
+            else:
+                # Mention real players
+                member = guild.get_member(int(player_id))
+                if member:
+                    player_data["name"] = member.mention  # Replace name with mention
+                else:
+                    player_data["name"] = player_data["name"]  # Fallback to original name
+        
+
 
         await self.config.guild(guild).players.set(players)
         await self.config.guild(guild).game_active.set(True)
