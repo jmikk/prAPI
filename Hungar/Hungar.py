@@ -346,7 +346,6 @@ class Hungar(commands.Cog):
             # End the Feast after one day
             await self.config.guild(guild).feast_active.set(False)
             await self.config.guild(guild).feast_countdown.set(10)  # Reset countdown
-            event_outcomes.append("The Feast has ended!")
 
         # Categorize players by action
         for player_id, player_data in players.items():
