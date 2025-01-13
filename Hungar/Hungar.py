@@ -306,7 +306,7 @@ class Hungar(commands.Cog):
         # Send the announcement with all alive participant
         # Send the announcement
         await ctx.send(
-            f"Day {day_counter} begins in the Hunger Games! {alive_count} participants remain.\n"
+            f"Day {config["day_counter"]} begins in the Hunger Games! {alive_count} participants remain.\n"
             f"{feast_message}\n"
             f"Alive participants: {', '.join(alive_mentions)}"
         )
