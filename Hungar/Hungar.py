@@ -513,7 +513,7 @@ class Hungar(commands.Cog):
                 if target["stats"]["HP"] <= 0:
                     target["alive"] = False
                     event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
-                    hunter["kill_list"].appened(target['name'])
+                    hunter["kill_list"].append(target['name'])
                     if target["items"]:
                         hunter["items"].extend(target["items"])
                         event_outcomes.append(
@@ -524,7 +524,7 @@ class Hungar(commands.Cog):
                 if hunter["stats"]["HP"] <= 0:
                     hunter["alive"] = False
                     event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
-                    target["kill_list"].appened(hunter['name'])
+                    target["kill_list"].append(hunter['name'])
                     if hunter["items"]:
                         target["items"].extend(hunter["items"])
                         event_outcomes.append(
@@ -538,7 +538,7 @@ class Hungar(commands.Cog):
                     if target["stats"]["HP"] <= 0:
                         target["alive"] = False
                         event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
-                        hunter["kill_list"].appened(target['name'])
+                        hunter["kill_list"].append(target['name'])
                         if target["items"]:
                             hunter["items"].extend(target["items"])
                             event_outcomes.append(
@@ -551,7 +551,7 @@ class Hungar(commands.Cog):
                     if hunter["stats"]["HP"] <= 0:
                         hunter["alive"] = False
                         event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
-                        target["kill_list"].appened(hunter['name'])
+                        target["kill_list"].append(hunter['name'])
                         if hunter["items"]:
                             target["items"].extend(hunter["items"])
                             event_outcomes.append(
@@ -601,7 +601,7 @@ class Hungar(commands.Cog):
                                 participant["items"].extend(target["items"])
                                 target["items"] = []
                                 event_outcomes.append(f"{target['name']} was eliminated by {participant['name']}!")
-                                participant["kill_list"].appened(target['name'])
+                                participant["kill_list"].append(target['name'])
                         else:
                             damage = target_str - participant_str
                             participant["stats"]["HP"] -= damage
@@ -613,7 +613,7 @@ class Hungar(commands.Cog):
                                 target["items"].extend(participant["items"])
                                 participant["items"] = []
                                 event_outcomes.append(f"{participant['name']} was eliminated by {target['name']}!")
-                                target["kill_list"].appened(participant['name'])
+                                target["kill_list"].append(participant['name'])
     
                 # Remaining participants split items and stats
                 if feast_participants:
