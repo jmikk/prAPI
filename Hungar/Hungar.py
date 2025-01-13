@@ -281,11 +281,11 @@ class Hungar(commands.Cog):
         day_counter = config.get("day_counter", 0) + 1
         await self.config.guild(guild).day_counter.set(day_counter)
 
+        
                 # Handle Feast Activation
         if day_counter == 1 or day_counter % 10 == 0:
             # Feast is active on Day 1 and every 10th day
             await self.config.guild(guild).feast_active.set(True)
-            event_outcomes.append("The Feast is now active! Players can choose `Feast` as their action today.")
         else:
             # Ensure Feast is not active on other days
             await self.config.guild(guild).feast_active.set(False)
