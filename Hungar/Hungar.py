@@ -353,6 +353,7 @@ class Hungar(commands.Cog):
         looters = []
         resters = []
         feast_participants = []  # Separate list for Feast participants
+        eliminations = []
 
         # Handle Feast Countdown
         feast_countdown = config.get("feast_countdown")
@@ -613,6 +614,7 @@ class Hungar(commands.Cog):
             await self.config.guild(guild).feast_countdown.set(feast_countdown-1)  # Reset countdown
 
         day_counter = config.get("day_counter", 0)
+        
         # Elimination announcement and tracking
         for player_id, player_data in players.items():
             if player_data["alive"] is False and "eliminated_on" not in player_data:
