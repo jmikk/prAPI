@@ -263,6 +263,9 @@ class Hungar(commands.Cog):
                     await self.process_day(ctx)
                     await self.announce_new_day(ctx, guild)
                     await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
+
+                if config["day_counter"] <= 1:
+                    await self.config.guild(guild).feast_countdown.set(10)  # Reset countdown
     
                 await asyncio.sleep(10)  # Check every 10 seconds
         except Exception as e:
