@@ -368,7 +368,7 @@ class Hungar(commands.Cog):
         for i, player in enumerate(sorted_players, start=1):
             leaderboard += f"**{i}. {player['name']}** - {len(player['kill_list'])} kills\n"
             if len(player["kill_list"]) > 0:
-                leaderboard += f"    Killed {len(player['kill_list'])}: {', '.join(player['kill_list'])}\n"
+                leaderboard += f"    Killed: {', '.join(player['kill_list'])}\n"
     
         # Send the leaderboard
         await ctx.send(leaderboard)
