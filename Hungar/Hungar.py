@@ -561,7 +561,7 @@ class Hungar(commands.Cog):
                             if feast_participants:
                                 chosen_participant_id = random.choice(feast_participants)
                                 players[chosen_participant_id]["stats"][stat] += 1
-                    event_outcomes.append("Feast participants split the remaining stat bonuses among themselves!")
+                    event_outcomes.append("Surviving Feast participants split the remaining items among themselves! Taking time to apply the boosts.")
 
 
         # Save the updated players' state
