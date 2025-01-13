@@ -10,7 +10,7 @@ import discord
 #Hunting
 #Resting
 #Looting
-#Evenly matched Hunting
+#Evenly matched Huntinga
 #item names
 
 #todo list
@@ -32,6 +32,7 @@ class Hungar(commands.Cog):
             day_counter=0, 
             random_events=True,  # Enable or disable random events
             feast_active=False,  # Track if a feast is active# Counter for days
+            
         )
 
     async def load_npc_names(self):
@@ -150,6 +151,7 @@ class Hungar(commands.Cog):
             "alive": True,
             "action": None,
             "items": []
+            "kill_list": [],  
         }
 
         await self.config.guild(guild).players.set(players)
@@ -353,6 +355,22 @@ class Hungar(commands.Cog):
                 [f"Day {entry['day']}: {entry['name']}" for entry in leaderboard]
             )
             await ctx.send(leaderboard_message)
+
+            guild_data = await self.config.guild(ctx.guild).all()
+      
+        players = guild_data["players"]
+        # Sort players by kill count (descending)
+        sorted_players = sorted(players.values(), key=lambda p: len(p["kill_list"]), reverse=True)
+    
+        # Generate leaderboard message
+        leaderboard = "🏆 **Kill Leaderboard** 🏆\n"
+        for i, player in enumerate(sorted_players, start=1):
+            leaderboard += f"**{i}. {player['name']}** - {len(player['kill_list'])} kills\n"
+            if len(player["kill_list"]) > 0:
+                leaderboard += f"    Killed {len(player['kill_list'])}: {', '.join(player['kill_list'])}\n"
+    
+        # Send the leaderboard
+        await ctx.send(leaderboard)
     
         # Reset players
         await self.config.guild(guild).players.set({})
@@ -444,6 +462,7 @@ class Hungar(commands.Cog):
                         if player_data["stats"]["HP"] <= 0:
                             player_data["alive"] = False
                             event_outcomes.append(f"{player_data['name']} has been eliminated by themself?!")
+                            player_data["kill_list"].appened(player_data['name'])
                             player_data["items"] = []
                     else:
                         event_outcomes.append(f"{player_data['name']} looted but found nothing.")
@@ -493,6 +512,7 @@ class Hungar(commands.Cog):
                 if target["stats"]["HP"] <= 0:
                     target["alive"] = False
                     event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
+                    hunter["kill_list"].appened(target['name'])
                     if target["items"]:
                         hunter["items"].extend(target["items"])
                         event_outcomes.append(
@@ -503,6 +523,7 @@ class Hungar(commands.Cog):
                 if hunter["stats"]["HP"] <= 0:
                     hunter["alive"] = False
                     event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
+                    target["kill_list"].appened(hunter['name'])
                     if hunter["items"]:
                         target["items"].extend(hunter["items"])
                         event_outcomes.append(
@@ -516,6 +537,7 @@ class Hungar(commands.Cog):
                     if target["stats"]["HP"] <= 0:
                         target["alive"] = False
                         event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
+                        hunter["kill_list"].appened(target['name'])
                         if target["items"]:
                             hunter["items"].extend(target["items"])
                             event_outcomes.append(
@@ -528,6 +550,7 @@ class Hungar(commands.Cog):
                     if hunter["stats"]["HP"] <= 0:
                         hunter["alive"] = False
                         event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
+                        target["kill_list"].appened(hunter['name'])
                         if hunter["items"]:
                             target["items"].extend(hunter["items"])
                             event_outcomes.append(
@@ -577,6 +600,7 @@ class Hungar(commands.Cog):
                                 participant["items"].extend(target["items"])
                                 target["items"] = []
                                 event_outcomes.append(f"{target['name']} was eliminated by {participant['name']}!")
+                                participant["kill_list"].appened(target['name'])
                         else:
                             damage = target_str - participant_str
                             participant["stats"]["HP"] -= damage
@@ -588,6 +612,7 @@ class Hungar(commands.Cog):
                                 target["items"].extend(participant["items"])
                                 participant["items"] = []
                                 event_outcomes.append(f"{participant['name']} was eliminated by {target['name']}!")
+                                target["kill_list"].appened(participant['name'])
     
                 # Remaining participants split items and stats
                 if feast_participants:
@@ -603,6 +628,7 @@ class Hungar(commands.Cog):
                             chosen_participant_id = random.choice(feast_participants)
                             players[chosen_participant_id]["items"].append(item)
                         event_outcomes.append("Feast participants split the items dropped by the eliminated players.")
+                        
     
                     # Distribute +5 stat bonuses randomly
                     stat_bonus = 5
