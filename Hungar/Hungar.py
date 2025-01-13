@@ -435,8 +435,8 @@ class Hungar(commands.Cog):
                             player_data["alive"] = False
                             event_outcomes.append(f"**{player_data['name']}** has been eliminated by themself?!")
                             player_data["items"] = []
-
-                    event_outcomes.append(f"**{player_data['name']}** looted but found nothing.")
+                    else:
+                        event_outcomes.append(f"**{player_data['name']}** looted but found nothing.")
             elif action == "Feast":
                 feast_participants.append(player_id)
 
