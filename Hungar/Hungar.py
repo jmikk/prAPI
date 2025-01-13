@@ -14,12 +14,9 @@ import discord
 #item names
 
 #todo list
-#World events 
-#More aggressive AI for NPCs
-#ability to find no one while hunting 
-#random chance to hurt yourself or solo skill challenges.
-#adding a feast
 
+#More aggressive AI for NPCs
+#kill count leaderboard
 
 
 class Hungar(commands.Cog):
