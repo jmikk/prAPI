@@ -277,7 +277,7 @@ class Hungar(commands.Cog):
 
         # Handle Feast Activation
         #await ctx.send(day_counter)
-        if config["day_counter"] == 1 or config["day_counter"] % 10 == 0:
+        if config["day_counter"] == 0 or config["day_counter"] % 10 == 0:
             # Feast is active on Day 1 and every 10th day
             await self.config.guild(guild).feast_active.set(True)
         else:
