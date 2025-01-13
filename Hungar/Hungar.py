@@ -498,7 +498,7 @@ class Hungar(commands.Cog):
                     if hunter["items"]:
                         target["items"].extend(hunter["items"])
                         event_outcomes.append(
-                            f"**{target['name']}** looted {len(hunter['items'])} item(s) from {**hunter['name']}**."
+                            f"**{target['name']}** looted {len(hunter['items'])} item(s) from **{hunter['name']}**."
                         )
                         hunter["items"] = []
             else:
