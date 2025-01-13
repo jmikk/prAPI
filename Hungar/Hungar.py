@@ -202,7 +202,7 @@ class Hungar(commands.Cog):
         for i in range(npcs):
             npc_id = f"npc_{i+1}"
             players[npc_id] = {
-                "kill_list"=[]
+                "kill_list"=[],
                 "name": available_names.pop(0),  # Get and remove the first available name
                 "district": random.randint(1, 12),
                 "stats": {
