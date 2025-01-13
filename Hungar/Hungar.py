@@ -280,9 +280,13 @@ class Hungar(commands.Cog):
         if config["day_counter"] % 10 == 0:
             # Feast is active on Day 1 and every 10th day
             await self.config.guild(guild).feast_active.set(True)
+            config = await self.config.guild(guild).all()
+
         else:
             # Ensure Feast is not active on other days
             await self.config.guild(guild).feast_active.set(False)
+            config = await self.config.guild(guild).all()
+
 
         # Get alive players count
         alive_players = [player for player in players.values() if player["alive"]]
