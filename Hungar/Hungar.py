@@ -286,6 +286,11 @@ class Hungar(commands.Cog):
         config = await self.config.guild(guild).all()
         players = config["players"]
 
+        # Reset all player actions to None
+        for player_id, player_data in players.items():
+            if player_data["alive"]:  # Only reset actions for alive players
+                player_data["action"] = None
+
         # Increment day counter
 
         # Handle Feast Activation
