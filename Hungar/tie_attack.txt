@@ -1,0 +1,1 @@
+{name1} hunted {name2} but the two were evenly matched dealing {dmg} to {name2} and {dmg2} to {name1}
