@@ -18,6 +18,9 @@ import discord
 #effect = effect.replace("{name1}",str(participant['name'])).replace("{name2}",str(target['name']).replace("{dmg}",damage)
 #in the helper function.
 
+#add display tributes before the match
+#add bidding before the game starts 
+
 
 #todo list
 
@@ -638,7 +641,7 @@ class Hungar(commands.Cog):
                         if participant_str > target_str:
                             damage = participant_str - target_str
                             target["stats"]["HP"] -= damage
-                            effect = await self.load_file("feast_attack",name1=str(participant['name']),name2=str(target['name'],dmg=damage))
+                            effect = await self.load_file("feast_attack",name1=str(participant['name']),name2=str(target['name'],dmg=str(damage)))
                             event_outcomes.append(effect)
                             if target["stats"]["HP"] <= 0:
                                 target["alive"] = False
@@ -651,7 +654,7 @@ class Hungar(commands.Cog):
                         else:
                             damage = target_str - participant_str
                             participant["stats"]["HP"] -= damage
-                            effect = await self.load_file("feast_attack",name1=str(target['name']),name2=str(participant['name'],dmg=damage))
+                            effect = await self.load_file("feast_attack",name1=str(target['name']),name2=str(participant['name'],dmg=str(damage)))
                             event_outcomes.append(effect)
                             if participant["stats"]["HP"] <= 0:
                                 participant["alive"] = False
