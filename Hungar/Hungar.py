@@ -513,14 +513,22 @@ class Hungar(commands.Cog):
                     if random.random() < threshold:
                         damage = random.randint(1,5)
                         player_data["stats"]["HP"]=player_data["stats"]["HP"] - damage
-                        event_outcomes.append(f"{player_data['name']} done gone looted and stubbed their toe and took {damage} points of damage.")
+
+                        effect = await self.load_file(
+                            f"loot_real_bad.txt",
+                            name1=player_data['name'],
+                            dmg=damage,
+                            )
+                        event_outcomes.append(effect)
+                        
                         if player_data["stats"]["HP"] <= 0:
                             player_data["alive"] = False
-                            event_outcomes.append(f"{player_data['name']} has been eliminated by themself?!")
+                            event_outcomes.append(f"{player_data['name']} has been eliminated by themselves?!")
                             player_data["kill_list"].append(player_data['name'])
                             player_data["items"] = []
                     else:
-                        event_outcomes.append(f"{player_data['name']} looted but found nothing.")
+                        effect = await self.load_file("loot_bad.txt",name1=player_data['name'])
+                        event_outcomes.append(effect)
             elif action == "Feast":
                 feast_participants.append(player_id)
 
