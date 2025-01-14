@@ -1,1 +1,91 @@
 {name1} found a dumbbell and can become stronger by {dmg} when they rest.
+{name1} stumbled upon a barbell made of enchanted steel, granting {dmg} Strength when rested with.
+{name1} discovered a pair of magical resistance bands that boost their Strength by {dmg} after a peaceful sleep.
+{name1} picked up a glowing kettlebell that hums with energy, increasing their Strength by {dmg} when used before rest.
+{name1} retrieved a wooden training dummy imbued with ancient power, adding {dmg} to their Strength during rest.
+{name1} found an iron weight etched with mystical runes, granting {dmg} Strength when kept nearby during sleep.
+{name1} stumbled upon a tiny enchanted anvil that radiates energy, boosting their Strength by {dmg} after rest.
+{name1} discovered a pair of heavy gauntlets that fortify their Strength by {dmg} when rested with.
+{name1} picked up a strange glowing stone labeled "Power Pebble," which raises their Strength by {dmg} when used during sleep.
+{name1} retrieved a mystical potion bottle shaped like a muscle, granting {dmg} Strength when consumed before rest.
+{name1} found a training rope that radiates a faint golden glow, increasing their Strength by {dmg} when held during rest.
+{name1} stumbled upon a weighted blanket that somehow adds {dmg} to their Strength when slept under.
+{name1} discovered a magical punching bag that whispers encouragement, boosting their Strength by {dmg} after a nap.
+{name1} picked up a set of enchanted lifting gloves that grant {dmg} Strength when rested with.
+{name1} retrieved a shimmering boulder labeled “Strength Stone,” which adds {dmg} to their Strength after a restful sleep.
+{name1} found a set of glowing dice that enhance Strength by {dmg} when rolled before resting.
+{name1} stumbled upon a pair of mystic running shoes that increase their Strength by {dmg} if kept nearby during rest.
+{name1} discovered a glowing weight belt that radiates power, granting {dmg} Strength when worn while sleeping.
+{name1} picked up an enchanted pair of wrist weights that boost their Strength by {dmg} when used during rest.
+{name1} retrieved a tiny golden hammer said to channel the energy of warriors, increasing Strength by {dmg} after resting.
+{name1} found a heavy coin stamped with an image of a flexing arm, granting {dmg} Strength when held while sleeping.
+{name1} stumbled upon a glowing crystal dumbbell that hums with ancient power, boosting Strength by {dmg} after rest.
+{name1} discovered a magical belt labeled “Champion’s Strength,” granting {dmg} Strength when used during rest.
+{name1} picked up a pair of enchanted knee wraps that increase their Strength by {dmg} when worn while resting.
+{name1} retrieved a glittering chain said to be forged by giants, adding {dmg} to their Strength after a peaceful nap.
+{name1} found a mysterious gem that radiates raw power, granting {dmg} Strength when kept nearby during rest.
+{name1} stumbled upon an enchanted water bottle labeled “Drink Me,” which boosts Strength by {dmg} after a refreshing nap.
+{name1} discovered a small golden figurine of a bodybuilder, raising their Strength by {dmg} when rested with.
+{name1} picked up a magical headband that tightens when worn, boosting their Strength by {dmg} after sleep.
+{name1} retrieved a set of ancient stone weights, said to be imbued with power, increasing Strength by {dmg} during rest.
+{name1} found a squeaky rubber dumbbell and can become stronger by {dmg} when they rest.
+{name1} stumbled upon a barbell made of spaghetti (don’t ask how it works), which boosts Strength by {dmg} during rest.
+{name1} discovered a pair of enchanted oven mitts that somehow add {dmg} to their Strength if kept on while sleeping.
+{name1} picked up a kettlebell shaped like a donut that makes them crave snacks, but still increases Strength by {dmg} after rest.
+{name1} retrieved a training dummy with a smiley face that cheers them on, granting {dmg} Strength when rested with.
+{name1} found a weight labeled “Super Serious Lifting Only” but it’s made of foam, and it boosts Strength by {dmg} after a nap.
+{name1} stumbled upon a pair of fuzzy wristbands that say “#1 Champ,” adding {dmg} to their Strength when used while sleeping.
+{name1} discovered a magical rock that says “Lift Me!” in glitter paint, granting {dmg} Strength when rested with.
+{name1} picked up a resistance band that snaps loudly when stretched, but still boosts Strength by {dmg} after a nap.
+{name1} retrieved a glowing sippy cup labeled “Baby’s First Gains,” which adds {dmg} to their Strength if kept nearby during rest.
+{name1} found a boulder covered in googly eyes that “watches” them sleep and somehow grants {dmg} Strength.
+{name1} stumbled upon a weight shaped like a watermelon that drips juice everywhere, boosting Strength by {dmg} after rest.
+{name1} discovered a tiny anvil that insists on being called “Sir Anvil,” adding {dmg} to Strength when rested with respectfully.
+{name1} picked up a magical protein shake that tastes like disappointment but still boosts Strength by {dmg} when consumed before sleep.
+{name1} retrieved a pair of enchanted flip-flops that loudly announce “You’re buff now!” and grant {dmg} Strength when worn to bed.
+{name1} found a headband with “Muscles Incoming” embroidered on it, boosting Strength by {dmg} after a nap.
+{name1} stumbled upon a training rope that smells like cheese, somehow granting {dmg} Strength when rested with.
+{name1} discovered a cardboard barbell painted silver that looks ridiculous but adds {dmg} to Strength after a good night’s sleep.
+{name1} picked up a pair of socks labeled “Strongest Feet Ever,” boosting Strength by {dmg} when worn to bed.
+{name1} retrieved a stuffed animal shaped like a weight that whispers “You can do it!” and grants {dmg} Strength when rested with.
+{name1} found a glittery kettlebell that leaves sparkles everywhere, but it still boosts Strength by {dmg} after a nap.
+{name1} stumbled upon a “trophy of gains” made from macaroni that adds {dmg} to Strength when displayed proudly during sleep.
+{name1} discovered a pillow shaped like a flexing bicep that grants {dmg} Strength when hugged tightly during rest.
+{name1} picked up a magical pie labeled “Power Pie,” which adds {dmg} to Strength when eaten with gusto before bed.
+{name1} retrieved a rubber chicken that crows dramatically when squeezed, granting {dmg} Strength if kept nearby while sleeping.
+{name1} found a jump rope that shouts “Get swole!” every time it moves, boosting Strength by {dmg} when rested with.
+{name1} stumbled upon a tiny dumbbell shaped like a banana, which somehow adds {dmg} to Strength after a good nap.
+{name1} discovered a magical chestplate made of pool noodles that grants {dmg} Strength when slept on like a pillow.
+{name1} picked up a flexing action figure that says “You got this, champ!” and boosts Strength by {dmg} during rest.
+{name1} retrieved a glowing stress ball that squeaks loudly when squeezed, granting {dmg} Strength after a nap.
+{name1} found a dumbbell forged from a dying star’s core, granting {dmg} Strength when rested with under the night sky.
+{name1} stumbled upon a barbell engraved with ancient runes of power, adding {dmg} to Strength after a restful sleep.
+{name1} discovered a kettlebell shaped like a dragon’s egg that radiates fiery energy, boosting Strength by {dmg} when rested with.
+{name1} picked up a shimmering gauntlet infused with the strength of titans, granting {dmg} Strength when worn while sleeping.
+{name1} retrieved a glowing crystal weight said to be crafted by celestial beings, increasing Strength by {dmg} during rest.
+{name1} found an ancient anvil that hums with dormant energy, adding {dmg} to Strength when kept nearby during slumber.
+{name1} stumbled upon a golden rope infused with the power of champions, boosting Strength by {dmg} after a peaceful nap.
+{name1} discovered a mighty shield etched with sigils of power, granting {dmg} Strength when rested upon like a throne.
+{name1} picked up a mystical belt said to have been worn by a demigod, adding {dmg} to Strength after a restful sleep.
+{name1} retrieved a pair of enchanted lifting gloves that glow faintly and grant {dmg} Strength when used during rest.
+{name1} found a colossal stone shaped like a flexing arm, radiating raw power and boosting Strength by {dmg} when slept near.
+{name1} stumbled upon a training dummy forged from celestial metals, granting {dmg} Strength when rested with under the stars.
+{name1} discovered a shimmering headband imbued with the spirit of warriors, increasing Strength by {dmg} when worn at rest.
+{name1} picked up an ancient hammer that glows with divine light, adding {dmg} to Strength when held while sleeping.
+{name1} retrieved a legendary chestplate forged in dragonfire, radiating power and boosting Strength by {dmg} when slept in.
+{name1} found a sacred training staff that hums with an ethereal melody, granting {dmg} Strength when kept close during sleep.
+{name1} stumbled upon a set of enchanted boots that channel the power of the earth, adding {dmg} to Strength after rest.
+{name1} discovered a pair of gauntlets that pulse with the energy of ancient gods, boosting Strength by {dmg} when worn while sleeping.
+{name1} picked up a glowing necklace made of celestial stones, granting {dmg} Strength when rested with under the moonlight.
+{name1} retrieved a mystical orb that pulses with raw energy, adding {dmg} to Strength when held while slumbering.
+{name1} found a rune-inscribed hammer said to belong to a forgotten hero, granting {dmg} Strength when rested with.
+{name1} stumbled upon a mighty chain forged from star-metal, increasing Strength by {dmg} when wrapped around them during rest.
+{name1} discovered a shimmering cloak said to channel the strength of ancient warriors, boosting Strength by {dmg} when slept in.
+{name1} picked up a shield with glowing glyphs of power, adding {dmg} to Strength when used as a headrest during sleep.
+{name1} retrieved a legendary bracelet infused with the essence of giants, granting {dmg} Strength when worn while resting.
+{name1} found a glowing spear that radiates boundless energy, boosting Strength by {dmg} when placed nearby during sleep.
+{name1} stumbled upon a magical training mat that channels the energy of the cosmos, adding {dmg} to Strength after a nap.
+{name1} discovered a golden medallion said to hold the strength of ten armies, granting {dmg} Strength when rested with.
+{name1} picked up a gemstone-encrusted belt forged by dwarves, adding {dmg} to Strength when worn while sleeping.
+{name1} retrieved a glowing crystal crown that hums with celestial energy, granting {dmg} Strength when rested upon like a throne.
+{name1} discovered a colossal dumbbell forged from the essence of a fallen star, its surface etched with glowing celestial runes that pulse faintly with each breath they take, granting an awe-inspiring {dmg} Strength when rested with, as though the very cosmos were lending its boundless power to their being.
