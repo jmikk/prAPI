@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import os
 import discord
 
+
 #clean up list
 #Add custom lines for:
 #Hunting
