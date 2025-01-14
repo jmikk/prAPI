@@ -1,1 +1,90 @@
-{name1} found a herbal blend and can boolster your Con for {dmg} when they rest
+{name1} found a herbal blend and can bolster their Con for {dmg} when they rest.
+{name1} discovered a pouch of dried berries that boosts their Con by {dmg} during rest.
+{name1} uncovered an ancient root said to enhance Con by {dmg} if consumed while resting.
+{name1} picked up a satchel of energizing herbs, increasing their Con by {dmg} during rest.
+{name1} found a flask of fortified elixir that grants a {dmg} Con boost when used while resting.
+{name1} discovered a bundle of healing leaves, boosting their Con by {dmg} after a good rest.
+{name1} stumbled upon a jar of spiced honey that adds {dmg} to their Con during rest.
+{name1} retrieved a glowing mushroom that provides a {dmg} Con boost when eaten before rest.
+{name1} unearthed a vial of rejuvenating tonic, granting {dmg} extra Con after resting.
+{name1} gathered a handful of wild mint that boosts their Con by {dmg} when brewed and rested.
+{name1} found a mystic tea blend that restores and boosts Con by {dmg} during rest.
+{name1} collected some enchanted nuts that increase their Con by {dmg} when eaten at rest.
+{name1} discovered a powdery root extract that enhances their Con by {dmg} when consumed at rest.
+{name1} picked up a small packet of enchanted salt that boosts Con by {dmg} when added to food before resting.
+{name1} stumbled upon a bundle of fragrant lavender that improves their Con by {dmg} after rest.
+{name1} harvested a strange glowing herb that adds {dmg} to their Con when they rest.
+{name1} found a tin of magical tea leaves that boosts Con by {dmg} when steeped and consumed during rest.
+{name1} retrieved a vial of shimmering liquid that increases their Con by {dmg} if consumed while resting.
+{name1} unearthed a sacred flower said to boost Con by {dmg} when inhaled during rest.
+{name1} picked up a pouch of spicy seeds that provide {dmg} extra Con when eaten and rested.
+{name1} discovered a small golden apple that enhances Con by {dmg} when consumed before resting.
+{name1} found a jar of enchanted jam that boosts their Con by {dmg} when eaten with a meal during rest.
+{name1} gathered a cluster of magical berries that grant {dmg} extra Con after a restful night.
+{name1} stumbled upon a charm of vitality that adds {dmg} to their Con, but only after resting.
+{name1} collected a vial of starlight dew that enhances their Con by {dmg} when consumed at rest.
+{name1} uncovered a shimmering crystal shard that boosts their Con by {dmg} when held while resting.
+{name1} found a bundle of mystic spices that can increase their Con by {dmg} when added to food during rest.
+{name1} retrieved a bag of enchanted nuts that provide {dmg} extra Con when eaten after a long rest.
+{name1} picked a flower with golden petals that grants a {dmg} boost to Con if kept nearby during rest.
+{name1} unearthed a mystical leaf that enhances Con by {dmg} if brewed into a tea and consumed at rest.
+{name1} found an iridescent potion of resilience that grants a {dmg} Con boost when consumed during rest.
+{name1} uncovered a shimmering amulet that pulses with energy, adding {dmg} to their Con after a restful night.
+{name1} discovered a glowing crystal orb that enhances Con by {dmg} when kept nearby while resting.
+{name1} retrieved a vial of ethereal mist that boosts their Con by {dmg} when inhaled during rest.
+{name1} picked up a charm inscribed with runes that amplifies Con by {dmg} after being worn at rest.
+{name1} found a radiant feather from a mythical bird, granting a {dmg} boost to Con when held while resting.
+{name1} stumbled upon an enchanted bracelet that increases their Con by {dmg} when worn during sleep.
+{name1} retrieved a mystical scroll that unlocks a {dmg} Con enhancement when read and rested upon.
+{name1} discovered a bottle of sparkling stardust that adds {dmg} to their Con after being sprinkled around their resting spot.
+{name1} gathered a cluster of glowing moonberries that provide {dmg} extra Con when eaten before resting.
+{name1} found a floating crystal shard that hums softly, boosting their Con by {dmg} if kept nearby during rest.
+{name1} picked up a luminous flower that radiates magical energy, enhancing Con by {dmg} when placed under their pillow during rest.
+{name1} retrieved a magical ring that glows faintly and grants {dmg} extra Con when worn overnight.
+{name1} uncovered a pulsating gemstone that channels restorative power, boosting Con by {dmg} when held while resting.
+{name1} found an enchanted lantern that bathes them in soothing light, granting {dmg} extra Con after a peaceful rest.
+{name1} picked up a vial of liquid moonlight that restores and boosts their Con by {dmg} after resting.
+{name1} stumbled upon a pair of glowing boots that radiate energy, adding {dmg} to their Con if worn while sleeping.
+{name1} discovered a softly glowing pillow enchanted by an ancient mage, providing a {dmg} Con boost after a good night's rest.
+{name1} retrieved a shimmering cloak of serenity that grants a {dmg} Con boost when wrapped around them while resting.
+{name1} unearthed a magical flute that plays soothing melodies, increasing their Con by {dmg} if listened to before sleeping.
+{name1} found a glittering orb of vitality that amplifies their Con by {dmg} when placed nearby during rest.
+{name1} stumbled upon a pouch of enchanted seeds that, when planted nearby, boost their Con by {dmg} after resting in the vicinity.
+{name1} retrieved a sparkling elixir labeled “Essence of Renewal,” granting a {dmg} Con boost when consumed at rest.
+{name1} discovered a pair of mystic gloves that glow faintly, increasing their Con by {dmg} if worn during rest.
+{name1} picked up a fragment of a fallen star that radiates warmth, adding {dmg} to their Con when rested upon.
+{name1} found a luminous dreamcatcher that enhances Con by {dmg} when hung above their sleeping spot.
+{name1} stumbled upon an ancient book of resilience that provides {dmg} extra Con when read and then rested upon.
+{name1} unearthed a crystalline flower that boosts Con by {dmg} when its petals are steeped into tea and consumed before resting.
+{name1} picked up a soft glowing scarf enchanted to provide {dmg} extra Con when wrapped around during rest.
+{name1} found a radiant orb inscribed with ancient glyphs that increases Con by {dmg} when meditated upon before sleeping.
+{name1} retrieved a whispering shell said to channel oceanic magic, granting {dmg} to Con when listened to before rest.
+{name1} found a neon pink potion that smells like bubblegum, boosting their Con by {dmg} if sipped before resting.
+{name1} stumbled upon a lime-green elixir with a label that reads “Extra Zesty,” adding {dmg} to their Con when consumed during rest.
+{name1} discovered a glittery gold potion that sparkles like a disco ball, granting a {dmg} Con boost after a peaceful night.
+{name1} picked up a potion that shifts colors like a rainbow, boosting their Con by {dmg} when chugged before rest.
+{name1} retrieved a fizzy orange potion that pops and crackles, increasing their Con by {dmg} if downed at bedtime.
+{name1} found a bright purple potion that smells like grape soda, giving a {dmg} Con boost when consumed during rest.
+{name1} stumbled upon a turquoise potion labeled “Mystic Ocean Essence,” adding {dmg} to their Con after a nap.
+{name1} discovered a pale yellow potion that tastes like sunshine (whatever that means), boosting their Con by {dmg} if taken before rest.
+{name1} picked up a swirling red-and-white potion that looks like candy cane syrup, granting {dmg} extra Con during rest.
+{name1} retrieved a glowing blue potion that hums like a refrigerator, adding {dmg} to their Con when sipped before sleeping.
+{name1} found a potion with a marbled pink and teal color that smells oddly like cotton candy, boosting their Con by {dmg} after resting.
+{name1} stumbled upon a chartreuse potion that fizzes aggressively, granting {dmg} Con if consumed while lying down.
+{name1} discovered a potion that’s entirely black with sparkling silver flecks, giving {dmg} to Con when drunk before resting.
+{name1} picked up a potion that looks like liquid glitter in all the wrong colors, adding {dmg} to their Con when consumed during rest.
+{name1} found a potion that glows an eerie green and smells like mint chocolate, boosting Con by {dmg} if used before bed.
+{name1} stumbled upon a magenta potion that smells like roses but tastes like peppers, granting {dmg} to their Con if drunk before sleeping.
+{name1} retrieved a cobalt blue potion with tiny stars floating in it, granting a {dmg} boost to Con when consumed at rest.
+{name1} found a bright orange potion labeled “Certified Juice of Mystery,” adding {dmg} to their Con when sipped before napping.
+{name1} picked up a potion that’s striped with purple, green, and yellow, giving a {dmg} Con boost if drunk while resting.
+{name1} stumbled upon a bright silver potion that looks like molten metal but tastes like marshmallows, increasing Con by {dmg} after rest.
+{name1} discovered a glittering pink-and-gold potion that smells faintly like cake, granting {dmg} to Con if consumed during rest.
+{name1} retrieved a navy blue potion with glowing gold swirls, adding {dmg} to Con when used before a good night’s sleep.
+{name1} found a potion that’s clear but has tiny rainbow sparkles floating in it, boosting Con by {dmg} if drunk while lying down.
+{name1} stumbled upon a potion that smells like fresh laundry and glows a soft lavender, giving {dmg} to Con when consumed before rest.
+{name1} picked up a potion that shifts between red and blue as you shake it, granting {dmg} extra Con after a nap.
+{name1} discovered a sunny yellow potion with tiny bubbles that pop like fireworks, adding {dmg} to Con when consumed before resting.
+{name1} retrieved a weird brown potion labeled “Mystic Choco-Boost,” granting {dmg} Con if drunk while resting.
+{name1} found a potion that glows neon green and smells like sour apples, boosting Con by {dmg} after a restful break.
+{name1} stumbled upon a potion with liquid stripes of pink, white, and green, granting {dmg} Con when drunk while resting.
