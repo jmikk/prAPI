@@ -263,14 +263,13 @@ class Hungar(commands.Cog):
                 if not config["game_active"]:
                     break
     
-                if await self.isOneLeft(guild):
-                    await self.endGame(ctx)
-                    break
-    
                 day_start = datetime.fromisoformat(config["day_start"])
                 day_duration = timedelta(seconds=config["day_duration"])
                 if datetime.utcnow() - day_start >= day_duration:
                     await self.process_day(ctx)
+                    if await self.isOneLeft(guild):
+                        await self.endGame(ctx)
+                    break
                     await self.announce_new_day(ctx, guild)
                     await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
     
@@ -337,7 +336,7 @@ class Hungar(commands.Cog):
         """Check if only one player is alive."""
         players = await self.config.guild(guild).players()
         alive_players = [player for player in players.values() if player["alive"]]
-        return len(alive_players) == 1
+        return len(alive_players) <= 1
 
     async def endGame(self, ctx):
         """End the game and announce the winner."""
