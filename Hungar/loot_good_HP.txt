@@ -1,1 +1,94 @@
-{name1} found a medkit and can heal for {dmg} when they rest
+{name1} found a medkit and can heal for {dmg} when they rest.
+{name1} stumbled upon an old tin first aid kit with faded red cross markings, allowing them to heal for {dmg} during rest.
+{name1} discovered a glowing green medkit labeled "Emergency Magic Aid," granting {dmg} HP when used while resting.
+{name1} picked up a compact survival pack with bandages and herbal salves, healing them for {dmg} after a nap.
+{name1} retrieved a futuristic medkit with blinking lights and holograms, boosting their HP by {dmg} when used during rest.
+{name1} found a dusty medical satchel packed with vintage supplies, healing them for {dmg} after a good night’s sleep.
+{name1} stumbled upon a high-tech medkit that emits a soothing hum, restoring {dmg} HP if used before resting.
+{name1} discovered a handmade first aid pouch stitched with care, healing them for {dmg} when they rest.
+{name1} picked up an enchanted medkit that glows faintly in the dark, granting {dmg} HP recovery during rest.
+{name1} retrieved a tiny box labeled “Pocket Healer,” allowing them to restore {dmg} HP after a peaceful sleep.
+{name1} found a floral-decorated medkit containing herbal remedies, boosting their HP by {dmg} when rested with.
+{name1} stumbled upon a "Deluxe Healer’s Kit" with extra fancy bandages, healing them for {dmg} after a nap.
+{name1} discovered a brightly colored medkit labeled “Feel Better Fast,” restoring {dmg} HP if used before sleeping.
+{name1} picked up an old military-style medkit that smells of adventure, healing {dmg} HP during rest.
+{name1} retrieved a crystalline medkit with sparkling contents, allowing them to recover {dmg} HP when they rest.
+{name1} found a holographic medkit with a soothing AI voice that guides them, healing them for {dmg} when used during rest.
+{name1} stumbled upon a lightweight medkit with a charm of good luck, restoring {dmg} HP after a refreshing sleep.
+{name1} discovered an eco-friendly medkit made entirely of recyclable materials, healing them for {dmg} when used during rest.
+{name1} picked up a magical medkit that smells like peppermint and lavender, granting {dmg} HP after a nap.
+{name1} retrieved an ancient-looking medkit carved from wood and filled with mysterious salves, restoring {dmg} HP when rested with.
+{name1} found a playful medkit decorated with smiley faces and rainbows, healing them for {dmg} during rest.
+{name1} stumbled upon a sleek, futuristic medkit with glowing buttons, granting {dmg} HP recovery when used while sleeping.
+{name1} discovered a tiny medkit shaped like a treasure chest, filled with glittery bandages, allowing {dmg} HP restoration after rest.
+{name1} picked up a quirky medkit labeled “Fix-It-Quick!” that heals them for {dmg} when they take a moment to relax.
+{name1} retrieved a shimmering medkit etched with runes of health, boosting their HP by {dmg} after a restorative sleep.
+{name1} found an antique medkit that smells faintly of eucalyptus, restoring {dmg} HP when rested with.
+{name1} stumbled upon a portable medkit shaped like a heart, granting {dmg} HP recovery when used at bedtime.
+{name1} discovered a pastel-colored medkit filled with sweet-smelling balms, healing them for {dmg} during rest.
+{name1} picked up a strange medkit that hums when opened, granting {dmg} HP recovery when rested with.
+{name1} retrieved a whimsical medkit shaped like a lunchbox, filled with surprisingly effective supplies, restoring {dmg} HP after rest.
+{name1} found a lightweight medkit made of enchanted fabric that feels warm to the touch, healing them for {dmg} after a good night’s sleep.
+{name1} stumbled upon a glowing medkit that smells like fresh-cut grass, restoring {dmg} HP when rested with.
+{name1} discovered a vintage medkit stamped with an unknown symbol, allowing {dmg} HP recovery after a nap.
+{name1} picked up a medkit with a cheerful note inside reading “You’ve got this!” and granting {dmg} HP after rest.
+{name1} found a medkit covered in stickers of ducks and can heal for {dmg} when they rest.
+{name1} stumbled upon a “magical” first aid box filled with bandages that say “ouch” on them, healing {dmg} HP during rest.
+{name1} discovered a medkit labeled “Definitely Not Expired,” which restores {dmg} HP if used with crossed fingers during rest.
+{name1} picked up a kit with glittery band-aids shaped like stars, healing them for {dmg} after a nap.
+{name1} retrieved a “Gamer Edition” medkit that makes 8-bit healing noises, restoring {dmg} HP when rested with.
+{name1} found a medkit that smells suspiciously like cheese, but hey, it still heals {dmg} HP after resting.
+{name1} stumbled upon a medkit shaped like a teddy bear that hugs them back, boosting HP by {dmg} when rested with.
+{name1} discovered a first aid kit labeled “100% Effective Probably,” healing them for {dmg} if they “believe hard enough.”
+{name1} picked up a medkit with a broken zipper that mutters “fix me” but still heals {dmg} HP when rested with.
+{name1} retrieved a first aid box that plays elevator music when opened, soothing their soul and restoring {dmg} HP after a nap.
+{name1} found a medkit shaped like a pizza box and filled with “pepperoni bandages,” healing them for {dmg} if rested with.
+{name1} stumbled upon a glitter-filled medkit that boosts HP by {dmg} but makes everything they touch sparkle for days.
+{name1} discovered a first aid kit labeled “Super Deluxe Edition” but it’s just duct tape inside, which still heals {dmg} HP.
+{name1} picked up a medkit with googly eyes glued on it, raising their HP by {dmg} while they rest under its watchful gaze.
+{name1} retrieved a medkit that doubles as a harmonica, healing {dmg} HP if they play it before resting.
+{name1} found a “DIY” medkit with random items like toothpicks and chewing gum, which somehow restores {dmg} HP during rest.
+{name1} stumbled upon a medkit that shouts “You’re doing amazing, sweetie!” and boosts HP by {dmg} when rested with.
+{name1} discovered a first aid kit labeled “Made in a Cave” but still heals {dmg} HP… somehow.
+{name1} picked up a medkit filled with neon bandages that glow in the dark, granting {dmg} HP recovery and style points during rest.
+{name1} retrieved a medkit that plays motivational speeches when opened, healing {dmg} HP after listening while resting.
+{name1} found a first aid kit that’s actually just a box of marshmallows, but eating them heals {dmg} HP after rest.
+{name1} stumbled upon a medkit labeled “Totally Legit Healing Supplies,” which smells fishy but still restores {dmg} HP.
+{name1} discovered a first aid kit shaped like a pineapple that hums island music, boosting HP by {dmg} if used while napping.
+{name1} picked up a medkit with a cartoon face that winks when they open it, healing them for {dmg} after a cheeky nap.
+{name1} retrieved a medkit labeled “Break Glass in Case of Emergency,” but it’s made of plastic, and still heals {dmg} HP after rest.
+{name1} found a medkit with supplies that smell like bubblegum and include a free lollipop, restoring {dmg} HP after use.
+{name1} stumbled upon a medkit shaped like a toolbox but filled with snacks, healing {dmg} HP when shared with their stomach during rest.
+{name1} discovered a first aid kit that sprays glitter when opened, healing {dmg} HP but making them sparkle for days.
+{name1} picked up a medkit that’s been duct-taped shut and labeled “Fixes Everything,” which heals {dmg} HP after rest.
+{name1} found an ancient medkit carved from obsidian and engraved with glowing runes, granting {dmg} HP restoration when rested with.
+{name1} stumbled upon a celestial first aid kit that shines with the light of the stars, healing them for {dmg} HP as they rest.
+{name1} discovered a golden medkit said to be blessed by a long-lost deity, restoring {dmg} HP after a peaceful sleep.
+{name1} picked up a medkit forged from dragon scales, radiating warmth as it grants {dmg} HP recovery during rest.
+{name1} retrieved a shimmering crystal medkit that hums with ancient energy, boosting their HP by {dmg} when used during rest.
+{name1} found a legendary medkit that glows like molten gold, healing {dmg} HP when activated under the light of the moon.
+{name1} stumbled upon an ethereal medkit that seems to float in mid-air, granting {dmg} HP as it envelops them in a soothing aura.
+{name1} discovered a mythical first aid box crafted by elves, which restores {dmg} HP when used while surrounded by nature.
+{name1} picked up a medkit made from enchanted silverwood, its contents glowing faintly, healing {dmg} HP during rest.
+{name1} retrieved a radiant medkit that emits the sound of angelic choirs, granting {dmg} HP as it wraps them in divine light.
+{name1} found a medkit shaped like a phoenix feather, its fiery glow restoring {dmg} HP when used while resting.
+{name1} stumbled upon an otherworldly medkit filled with glowing vials of liquid starlight, boosting their HP by {dmg} after sleep.
+{name1} discovered a medkit rumored to be from a forgotten realm, its shimmering contents granting {dmg} HP when rested with.
+{name1} picked up a medkit forged in the heart of a volcano, radiating power as it restores {dmg} HP when rested upon.
+{name1} retrieved a medkit wrapped in enchanted silk, its delicate touch healing them for {dmg} HP as they sleep.
+{name1} found a luminous medkit infused with the essence of the sun, granting {dmg} HP recovery when used at dawn.
+{name1} stumbled upon a celestial medkit that pulses like a heartbeat, healing them for {dmg} HP when rested under the stars.
+{name1} discovered a medkit crafted from enchanted ice, cooling and soothing their wounds as it restores {dmg} HP during rest.
+{name1} picked up an ornate medkit encrusted with gemstones, each one glowing as it heals {dmg} HP during their slumber.
+{name1} retrieved a medkit said to be crafted by ancient warriors, its sturdy contents restoring {dmg} HP after a long rest.
+{name1} found a medkit containing vials of liquid gold, rumored to heal any ailment, granting {dmg} HP when used during rest.
+{name1} stumbled upon a medkit filled with petals from a mythical flower, boosting HP by {dmg} as its essence rejuvenates them.
+{name1} discovered a medkit that radiates an unearthly glow, its aura wrapping around them and healing {dmg} HP as they rest.
+{name1} picked up a first aid kit with an ancient crest, its contents restoring {dmg} HP as they channel the strength of heroes past.
+{name1} retrieved a medkit that whispers forgotten incantations, soothing their wounds and granting {dmg} HP during sleep.
+{name1} found a medkit bathed in the light of a full moon, its energy replenishing their HP by {dmg} after a restful night.
+{name1} stumbled upon a medkit containing a vial of phoenix tears, granting {dmg} HP recovery when used at the brink of rest.
+{name1} discovered a medkit said to be touched by the gods, its shimmering aura healing them for {dmg} HP after slumber.
+{name1} picked up a medkit encased in crystal that glows faintly with celestial power, restoring {dmg} HP during rest.
+{name1} retrieved a medkit forged by dwarves and enchanted by wizards, granting {dmg} HP as it mends their body during sleep.
+{name1} discovered a medkit unlike any other—a relic from an ancient age, its case made of polished obsidian that reflects faint traces of stars when turned in the light. The edges are bound in glowing runes that seem to shift and rearrange themselves, whispering in a language long forgotten. As {name1} opens it, a soft, golden mist escapes, carrying a soothing aroma of lavender, honey, and fresh rain. Inside, the contents are nothing short of miraculous: crystal vials filled with shimmering liquid that swirls as if alive, rolls of pristine bandages embroidered with protective sigils, and a glowing salve that radiates warmth upon contact. The medkit hums faintly when touched, responding to the wielder's intent, as if it understands their needs. When used during rest, the kit works in harmony with the body's natural rhythm, mending wounds, easing pain, and fortifying the spirit. The ancient magic within restores {dmg} HP, leaving {name1} rejuvenated and feeling as though they’ve been shielded by the very essence of the cosmos itself. The medkit closes with a soft click, its power recharging as it awaits its next call to action, a silent guardian of health and vitality.
