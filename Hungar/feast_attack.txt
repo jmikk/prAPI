@@ -1,0 +1,1 @@
+{name1} slashed {name2} for {dmg}.
