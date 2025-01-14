@@ -386,11 +386,16 @@ class Hungar(commands.Cog):
             )
             for i, player in enumerate(sorted_players, start=1):
                 kills = len(player["kill_list"])
-          
-                kill_embed.add_field(
-                    name="",
-                    value=f"**{i}.** {player['name']}: {kills} kills\nKilled: {', '.join(player['kill_list'])}",
-                    inline=False)
+                if kills == 1:
+                    kill_embed.add_field(
+                        name="",
+                        value=f"**{i}.** {player['name']}: {kills} kill\nKilled: {', '.join(player['kill_list'])}",
+                        inline=False)
+                else:
+                    kill_embed.add_field(
+                        name="",
+                        value=f"**{i}.** {player['name']}: {kills} kills\nKilled: {', '.join(player['kill_list'])}",
+                        inline=False)
             await ctx.send(embed=kill_embed)
 
     
