@@ -1,0 +1,1 @@
+{name1} found a herbal blend and can boolster your Con for {dmg} when they rest
