@@ -8,15 +8,12 @@ import discord
 
 #clean up list
 #Add custom lines for:
-#Hunting
 #Resting
 #Looting
 #Evenly matched Huntinga
 #item names
 
 #do this 
-#effect = effect.replace("{name1}",str(participant['name'])).replace("{name2}",str(target['name']).replace("{dmg}",damage)
-#in the helper function.
 
 #add display tributes before the match
 #add bidding before the game starts 
@@ -502,7 +499,15 @@ class Hungar(commands.Cog):
                     else:
                         boost = random.randint(1, 3)
                     player_data["items"].append((stat, boost))
-                    event_outcomes.append(f"{player_data['name']} looted and found a {stat} boost item (+{boost}).")
+
+                    
+                    effect = await self.load_file(
+                        f"loot_good_{stat}.txt",
+                        name1=player_data['name'],
+                        dmg=boost,
+                        )
+
+                    event_outcomes.append(effect)
                 else:
                     threshold = 1 / (1 + player_data["stats"]["Wis"] / 10)  # Scale slows the decrease
                     if random.random() < threshold:
