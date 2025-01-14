@@ -454,7 +454,7 @@ class Hungar(commands.Cog):
                 #event_outcomes.append(f"{player_data['name']} went hunting!")
             elif action == "Rest":
                 resters.append(player_id)
-                threshold = 1 / (1 + player_data["stats"]["Con"] / 4)  # Scale slows the decrease
+                threshold = 1 / (1 + player_data["stats"]["Con"] / 3)  # Scale slows the decrease
                 if random.random() < threshold or not player_data["items"]: #take dmg
                     damage = random.randint(1,5)
                     player_data["stats"]["HP"]=player_data["stats"]["HP"] - damage
@@ -526,8 +526,8 @@ class Hungar(commands.Cog):
             hunter = players[hunter_id]
             target = players[target_id]
 
-            target_defense = target["stats"]["Str"] + random.randint(1, 10)
-            hunter_str = max(hunter["stats"]["Str"], hunter["stats"]["Def"]) + random.randint(1, 10)
+            target_defense = target["stats"]["Def"] + random.randint(1, 10)
+            hunter_str = hunter["stats"]["Str"] + random.randint(1, 10)
             damage = abs(hunter_str - target_defense)
 
             if damage < 2:
@@ -614,7 +614,7 @@ class Hungar(commands.Cog):
                         participant = players[participant_id]
                         target = players[target_id]
                         participant_str = participant["stats"]["Str"] + random.randint(1, 10)
-                        target_str = target["stats"]["Str"] + random.randint(1, 10)
+                        target_str = target["stats"]["Def"] + random.randint(1, 10)
     
                         if participant_str > target_str:
                             damage = participant_str - target_str
