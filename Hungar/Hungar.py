@@ -269,7 +269,7 @@ class Hungar(commands.Cog):
                     await self.process_day(ctx)
                     if await self.isOneLeft(guild):
                         await self.endGame(ctx)
-                    break
+                        break
                     await self.announce_new_day(ctx, guild)
                     await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
     
