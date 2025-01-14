@@ -46,7 +46,7 @@ class Hungar(commands.Cog):
         )
 
 
-    async def load_file(self,fileName,name1="Name1 Filler",name2="Name2 Filler",dmg="DMG Filler",item_name="Item name filler"):
+    async def load_file(self,fileName,name1="Name1 Filler",name2="Name2 Filler",dmg="DMG Filler",dmg2="DMG2 Filler", item_name="Item name filler"):
         """Load file names from the fileName.txt file."""
         try:
             base_path = os.path.dirname(os.path.abspath(__file__))
@@ -54,7 +54,7 @@ class Hungar(commands.Cog):
             with open(file_path, "r") as f:
                 line =  [line.strip() for line in f.readlines() if line.strip()]
                 line = random.choice(line)
-                line = line.replace("{name1}",str(name1)).replace("{name2}",str(name2)).replace("{dmg}",str(dmg)).replace("{item}",str(item_name))
+                line = line.replace("{name1}",str(name1)).replace("{name2}",str(name2)).replace("{dmg}",str(dmg)).replace("{item}",str(item_name)).replace("{dmg2}",str(dmg2))
                 return line
         except FileNotFoundError:
             return f"ERROR {fileName} not found"  # Fallback if file is missing
