@@ -386,8 +386,7 @@ class Hungar(commands.Cog):
                 kills = len(player["kill_list"])
                 if kills > 0:
                     kill_embed.add_field(
-                        name=f"{i}.",
-                        value=f"{player['name']}: {kills} kills\nKilled: {', '.join(player['kill_list'])}",
+                        value=f"**{i.}** {player['name']}: {kills} kills\nKilled: {', '.join(player['kill_list'])}",
                         inline=False
                     )
                 else:
