@@ -1,0 +1,1 @@
+{name1} found a dumbbell and can become stronger by {dmg} when they rest.
