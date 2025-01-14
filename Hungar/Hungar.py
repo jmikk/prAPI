@@ -631,7 +631,7 @@ class Hungar(commands.Cog):
                         if participant_str > target_str:
                             damage = participant_str - target_str
                             target["stats"]["HP"] -= damage
-                            effect = load_file(feast_attack).replace("{name1}",participant['name']).replace("{name2}",target['name']).replace("{dmg}",damage)
+                            effect = await self.load_file(feast_attack).replace("{name1}",participant['name']).replace("{name2}",target['name']).replace("{dmg}",damage)
                             event_outcomes.append(effect)
                             if target["stats"]["HP"] <= 0:
                                 target["alive"] = False
@@ -644,7 +644,7 @@ class Hungar(commands.Cog):
                         else:
                             damage = target_str - participant_str
                             participant["stats"]["HP"] -= damage
-                            effect = load_file(feast_attack).replace("{name1}",participant['name']).replace("{name2}",target['name']).replace("{dmg}",damage)
+                            effect = await self.load_file(feast_attack).replace("{name1}",participant['name']).replace("{name2}",target['name']).replace("{dmg}",damage)
                             event_outcomes.append(effect)
                             if participant["stats"]["HP"] <= 0:
                                 participant["alive"] = False
