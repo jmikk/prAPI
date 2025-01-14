@@ -1,0 +1,1 @@
+{name1} found a medkit and can heal for {dmg} when they rest
