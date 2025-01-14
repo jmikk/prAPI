@@ -37,6 +37,18 @@ class Hungar(commands.Cog):
             
         )
 
+
+    async def load_file(self,fileName):
+        """Load file names from the fileName.txt file."""
+        try:
+            base_path = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(base_path, fileName)
+            with open(file_path, "r") as f:
+                return [line.strip() for line in f.readlines() if line.strip()]
+        except FileNotFoundError:
+            return ""  # Fallback if file is missing
+
+    
     async def load_npc_names(self):
         """Load NPC names from the NPC_names.txt file."""
         try:
@@ -619,7 +631,8 @@ class Hungar(commands.Cog):
                         if participant_str > target_str:
                             damage = participant_str - target_str
                             target["stats"]["HP"] -= damage
-                            event_outcomes.append(f"{participant['name']} attacked {target['name']} and dealt {damage} damage!")
+                            effect = load_file(feast_attack).replace("{name1}",participant['name']).replace("{name2}",target['name']).replace("{dmg}",damage)
+                            event_outcomes.append(effect)
                             if target["stats"]["HP"] <= 0:
                                 target["alive"] = False
                                 dead_players.append(target_id)
@@ -631,7 +644,8 @@ class Hungar(commands.Cog):
                         else:
                             damage = target_str - participant_str
                             participant["stats"]["HP"] -= damage
-                            event_outcomes.append(f"{target['name']} attacked {participant['name']} and dealt {damage} damage!")
+                            effect = load_file(feast_attack).replace("{name1}",participant['name']).replace("{name2}",target['name']).replace("{dmg}",damage)
+                            event_outcomes.append(effect)
                             if participant["stats"]["HP"] <= 0:
                                 participant["alive"] = False
                                 dead_players.append(participant_id)
