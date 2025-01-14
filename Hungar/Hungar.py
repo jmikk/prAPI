@@ -14,6 +14,11 @@ import discord
 #Evenly matched Huntinga
 #item names
 
+#do this 
+#effect = effect.replace("{name1}",str(participant['name'])).replace("{name2}",str(target['name']).replace("{dmg}",damage)
+#in the helper function.
+
+
 #todo list
 
 #More aggressive AI for NPCs
@@ -632,7 +637,7 @@ class Hungar(commands.Cog):
                             damage = participant_str - target_str
                             target["stats"]["HP"] -= damage
                             effect = await self.load_file("feast_attack")
-                            effect = effect.replace("{name1}",participant['name']).replace("{name2}",target['name']).replace("{dmg}",damage)
+                            effect = effect.replace("{name1}",str(participant['name'])).replace("{name2}",str(target['name']).replace("{dmg}",damage)
                             event_outcomes.append(effect)
                             if target["stats"]["HP"] <= 0:
                                 target["alive"] = False
