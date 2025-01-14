@@ -356,26 +356,49 @@ class Hungar(commands.Cog):
         # Send elimination leaderboard
         if leaderboard:
             leaderboard.sort(key=lambda x: x["day"])  # Sort by elimination day
-            leaderboard_message = "Elimination Leaderboard:\n" + "\n".join(
-                [f"Day {entry['day']}: {entry['name']}" for entry in leaderboard]
+            
+            # Create the elimination leaderboard embed
+            elim_embed = discord.Embed(
+                title="🏅 Elimination Leaderboard 🏅",
+                description="Here are the players eliminated so far:",
+                color=discord.Color.red(),
             )
-            await ctx.send(leaderboard_message)
-
+            for entry in leaderboard:
+                elim_embed.add_field(
+                    name=f"Day {entry['day']}",
+                    value=f"{entry['name']}",
+                    inline=False
+                )
+            await ctx.send(embed=elim_embed)
+    
+            # Fetch player data and sort by kill count
             guild_data = await self.config.guild(ctx.guild).all()
-      
-        players = guild_data["players"]
-        # Sort players by kill count (descending)
-        sorted_players = sorted(players.values(), key=lambda p: len(p["kill_list"]), reverse=True)
-    
-        # Generate leaderboard message
-        leaderboard = "🏆 **Kill Leaderboard** 🏆\n"
-        for i, player in enumerate(sorted_players, start=1):
-            leaderboard += f"{i}. {player['name']} - {len(player['kill_list'])} kills\n"
-            if len(player["kill_list"]) > 0:
-                leaderboard += f"    Killed: {', '.join(player['kill_list'])}\n"
-    
-        # Send the leaderboard
-        await ctx.send(leaderboard)
+            players = guild_data["players"]
+            sorted_players = sorted(players.values(), key=lambda p: len(p["kill_list"]), reverse=True)
+            
+            # Create the kill leaderboard embed
+            kill_embed = discord.Embed(
+                title="🏆 Kill Leaderboard 🏆",
+                description="Here are the top killers:",
+                color=discord.Color.gold(),
+            )
+            for i, player in enumerate(sorted_players, start=1):
+                kills = len(player["kill_list"])
+                if kills > 0:
+                    kill_embed.add_field(
+                        name=f"{i}. {player['name']}",
+                        value=f"{kills} kills\nKilled: {', '.join(player['kill_list'])}",
+                        inline=False
+                    )
+                else:
+                    kill_embed.add_field(
+                        name=f"{i}. {player['name']}",
+                        value="0 kills",
+                        inline=False
+                    )
+            
+            await ctx.send(embed=kill_embed)
+
     
         # Reset players
         await self.config.guild(guild).players.set({})
