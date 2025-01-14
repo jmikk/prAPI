@@ -15,10 +15,8 @@ import discord
 #item names
 
 #todo list
-#fix bug where if you feast you never reset to random
 
 #More aggressive AI for NPCs
-#kill count leaderboard
 
 
 class Hungar(commands.Cog):
@@ -65,80 +63,80 @@ class Hungar(commands.Cog):
         # Assign random district and stats
         district = random.randint(1, 12)  # Assume 12 districts
         stats = {
-            "Dex": random.randint(1, 10),
+            "Def": random.randint(1, 10),
             "Str": random.randint(1, 10),
             "Con": random.randint(1, 10),
             "Wis": random.randint(1, 10),
             "HP": random.randint(15, 25)
         }
         if district == 1:
-            stats["Dex"] = stats["Dex"] + 1
+            stats["Def"] = stats["Def"] + 1
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] + 1
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 10
         elif district == 2:
-            stats["Dex"] = stats["Dex"] + 1
+            stats["Def"] = stats["Def"] + 1
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"]
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 10
         elif district == 3:
-            stats["Dex"] = stats["Dex"]
+            stats["Def"] = stats["Def"]
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] + 1
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 10
         elif district == 4:
-            stats["Dex"] = stats["Dex"] + 1
+            stats["Def"] = stats["Def"] + 1
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] + 1
             stats["Wis"] = stats["Wis"] 
             stats["HP"] = stats["HP"] + 10
         elif district == 5:
-            stats["Dex"] = stats["Dex"] + 1
+            stats["Def"] = stats["Def"] + 1
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] + 1
             stats["Wis"] = stats["Wis"] 
             stats["HP"] = stats["HP"] + 5
         elif district == 6:
-            stats["Dex"] = stats["Dex"] 
+            stats["Def"] = stats["Def"] 
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 5
         elif district == 7:
-            stats["Dex"] = stats["Dex"] 
+            stats["Def"] = stats["Def"] 
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 10
         elif district == 8:
-            stats["Dex"] = stats["Dex"] 
+            stats["Def"] = stats["Def"] 
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] 
             stats["HP"] = stats["HP"] + 5
         elif district == 9:
-            stats["Dex"] = stats["Dex"] 
+            stats["Def"] = stats["Def"] 
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] + 1
             stats["HP"] = stats["HP"] + 5
         elif district == 10:
-            stats["Dex"] = stats["Dex"] 
+            stats["Def"] = stats["Def"] 
             stats["Str"] = stats["Str"] + 1
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] 
             stats["HP"] = stats["HP"] 
         elif district == 11:
-            stats["Dex"] = stats["Dex"]
+            stats["Def"] = stats["Def"]
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] 
             stats["HP"] = stats["HP"] + 5
         elif district == 12:
-            stats["Dex"] = stats["Dex"] 
+            stats["Def"] = stats["Def"] 
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] 
@@ -208,7 +206,7 @@ class Hungar(commands.Cog):
                 "name": available_names.pop(0),  # Get and remove the first available name
                 "district": random.randint(1, 12),
                 "stats": {
-                    "Dex": random.randint(1, 10),
+                    "Def": random.randint(1, 10),
                     "Str": random.randint(1, 10),
                     "Con": random.randint(1, 10),
                     "Wis": random.randint(1, 10),
@@ -454,7 +452,7 @@ class Hungar(commands.Cog):
             elif action == "Loot":
                 looters.append(player_id)
                 if random.random() < 0.5:  # 50% chance to find an item
-                    stat = random.choice(["Dex", "Str", "Con", "Wis", "HP"])
+                    stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
                     if stat == "HP":
                         boost = random.randint(5,10)
                     else:
@@ -508,7 +506,7 @@ class Hungar(commands.Cog):
             target = players[target_id]
 
             target_defense = target["stats"]["Str"] + random.randint(1, 10)
-            hunter_str = max(hunter["stats"]["Str"], hunter["stats"]["Dex"]) + random.randint(1, 10)
+            hunter_str = max(hunter["stats"]["Str"], hunter["stats"]["Def"]) + random.randint(1, 10)
             damage = abs(hunter_str - target_defense)
 
             if damage < 2:
@@ -576,7 +574,7 @@ class Hungar(commands.Cog):
             if len(feast_participants) == 1:
                 # Single participant gains +5 to all stats
                 participant = players[feast_participants[0]]
-                for stat in ["Dex", "Str", "Con", "Wis", "HP"]:
+                for stat in ["Def", "Str", "Con", "Wis", "HP"]:
                     participant["stats"][stat] += 5
                 event_outcomes.append(f"{participant['name']} attended the Feast alone and gained +5 to all stats!")
             else:
@@ -640,7 +638,7 @@ class Hungar(commands.Cog):
     
                     # Distribute +5 stat bonuses randomly
                     stat_bonus = 5
-                    stats_to_distribute = ["Dex", "Str", "Con", "Wis", "HP"]
+                    stats_to_distribute = ["Def", "Str", "Con", "Wis", "HP"]
                     for _ in range(stat_bonus):
                         for stat in stats_to_distribute:
                             if feast_participants:
@@ -752,7 +750,7 @@ class Hungar(commands.Cog):
             embed = discord.Embed(title="Your Stats", color=discord.Color.blue())
             embed.add_field(name="Name", value=player["name"], inline=False)
             embed.add_field(name="District", value=player["district"], inline=False)
-            embed.add_field(name="Dex", value=player["stats"]["Dex"], inline=True)
+            embed.add_field(name="Def", value=player["stats"]["Def"], inline=True)
             embed.add_field(name="Str", value=player["stats"]["Str"], inline=True)
             embed.add_field(name="Con", value=player["stats"]["Con"], inline=True)
             embed.add_field(name="Wis", value=player["stats"]["Wis"], inline=True)
@@ -774,7 +772,7 @@ class Hungar(commands.Cog):
             embed = discord.Embed(title=f"{member.display_name}'s Stats", color=discord.Color.green())
             embed.add_field(name="Name", value=player["name"], inline=False)
             embed.add_field(name="District", value=player["district"], inline=False)
-            embed.add_field(name="Dex", value=player["stats"]["Dex"], inline=True)
+            embed.add_field(name="Def", value=player["stats"]["Def"], inline=True)
             embed.add_field(name="Str", value=player["stats"]["Str"], inline=True)
             embed.add_field(name="Con", value=player["stats"]["Con"], inline=True)
             embed.add_field(name="Wis", value=player["stats"]["Wis"], inline=True)
