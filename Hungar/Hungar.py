@@ -592,7 +592,15 @@ class Hungar(commands.Cog):
             else:
                 if hunter_str > target_defense:
                     target["stats"]["HP"] -= damage
-                    event_outcomes.append(f"{hunter['name']} hunted {target['name']} and dealt {damage} damage!")
+                    
+                    effect = await self.load_file(
+                        "feast_attack.txt",
+                        name1=hunter['name'],
+                        name2=target['name'],
+                        dmg=damage,
+                        )
+                    
+                    event_outcomes.append(effect)
                     if target["stats"]["HP"] <= 0:
                         target["alive"] = False
                         event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
@@ -605,7 +613,15 @@ class Hungar(commands.Cog):
                             target["items"] = [] 
                 else:
                     hunter["stats"]["HP"] -= damage
-                    event_outcomes.append(f"{target['name']} defended against {hunter['name']} and dealt {damage} damage in return!")
+
+                    effect = await self.load_file(
+                        "feast_attack.txt",
+                        name1=target['name'],
+                        name2=hunter['name'],
+                        dmg=damage,
+                        )
+                    
+                    event_outcomes.append(effect)
                     if hunter["stats"]["HP"] <= 0:
                         hunter["alive"] = False
                         event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
