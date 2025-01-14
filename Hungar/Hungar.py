@@ -56,7 +56,7 @@ class Hungar(commands.Cog):
                 line = line.replace("{name1}",str(name1)).replace("{name2}",str(name2)).replace("{dmg}",str(dmg)).replace("{item}",str(item_name))
                 return line
         except FileNotFoundError:
-            return ""  # Fallback if file is missing
+            return f"ERROR {fileName} not found"  # Fallback if file is missing
 
     
     async def load_npc_names(self):
@@ -643,7 +643,7 @@ class Hungar(commands.Cog):
                             target["stats"]["HP"] -= damage
                           
                             effect = await self.load_file(
-                                "feast_attack",
+                                "feast_attack.txt",
                                 name1=participant['name'],
                                 name2=target['name'],
                                 dmg=damage
@@ -662,7 +662,7 @@ class Hungar(commands.Cog):
                             damage = target_str - participant_str
                             participant["stats"]["HP"] -= damage
                             effect = await self.load_file(
-                                "feast_attack",
+                                "feast_attack.txt",
                                 name1=target['name'],
                                 name2=participant['name'],
                                 dmg=damage
