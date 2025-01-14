@@ -18,6 +18,8 @@ import discord
 
 #More aggressive AI for NPCs
 
+#add random traps
+
 
 class Hungar(commands.Cog):
     def __init__(self, bot):
