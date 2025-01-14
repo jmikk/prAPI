@@ -386,6 +386,7 @@ class Hungar(commands.Cog):
                 kills = len(player["kill_list"])
           
                 kill_embed.add_field(
+                    name="",
                     value=f"**{i}.** {player['name']}: {kills} kills\nKilled: {', '.join(player['kill_list'])}",
                     inline=False)
             await ctx.send(embed=kill_embed)
