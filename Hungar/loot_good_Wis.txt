@@ -1,1 +1,91 @@
-{name1} found a textbook and can become wiser by {dmg} when they rest
+{name1} found a textbook and can become wiser by {dmg} when they rest.
+{name1} stumbled upon an ancient tome filled with forgotten knowledge, granting {dmg} Wisdom when rested with.
+{name1} discovered a glowing scroll that hums softly, boosting their Wisdom by {dmg} after a peaceful sleep.
+{name1} picked up a leather-bound journal of a long-lost scholar, adding {dmg} to their Wisdom when read before rest.
+{name1} retrieved a mystical quill that whispers wise words, increasing their Wisdom by {dmg} when kept close during rest.
+{name1} found a book of riddles that glows faintly, granting {dmg} Wisdom when pondered before sleep.
+{name1} stumbled upon a small crystal tablet that radiates ancient wisdom, boosting their Wisdom by {dmg} during rest.
+{name1} discovered a set of enchanted spectacles that reveal hidden truths, adding {dmg} to their Wisdom after a nap.
+{name1} picked up a magical library card that seems to hum with energy, granting {dmg} Wisdom when held while sleeping.
+{name1} retrieved a weathered scroll sealed with a golden clasp, increasing their Wisdom by {dmg} when opened before resting.
+{name1} found a guidebook to the stars that grants {dmg} Wisdom when studied under the night sky during rest.
+{name1} stumbled upon a feather quill said to belong to an oracle, boosting Wisdom by {dmg} when rested with.
+{name1} discovered an ancient clay tablet etched with celestial maps, adding {dmg} to their Wisdom when slept near.
+{name1} picked up a glowing bookmark that seems to organize thoughts, granting {dmg} Wisdom when placed in a book before rest.
+{name1} retrieved a mysterious journal with pages that write themselves, increasing their Wisdom by {dmg} after a restful nap.
+{name1} found a magical abacus that seems to calculate infinity, granting {dmg} Wisdom when kept nearby during rest.
+{name1} stumbled upon a tome of philosophies that radiates calm, boosting their Wisdom by {dmg} when pondered during sleep.
+{name1} discovered a set of enchanted parchment that rewrites itself with wise teachings, adding {dmg} to Wisdom after resting.
+{name1} picked up an intricately carved wooden tablet said to contain the secrets of nature, granting {dmg} Wisdom when rested with.
+{name1} retrieved a shimmering orb that projects visions of the cosmos, increasing their Wisdom by {dmg} when gazed upon before rest.
+{name1} found a book of enchanted poetry that sings softly, boosting their Wisdom by {dmg} when slept with nearby.
+{name1} stumbled upon a glowing inkpot that refills endlessly, granting {dmg} Wisdom when rested upon while contemplating its origin.
+{name1} discovered a tablet of shimmering silver engraved with ancient runes, adding {dmg} to their Wisdom when studied during rest.
+{name1} picked up a star map that glows faintly in the dark, granting {dmg} Wisdom when pondered before sleep.
+{name1} retrieved a mystical lantern that casts shadows of words, boosting their Wisdom by {dmg} when placed nearby while resting.
+{name1} found a small enchanted chalkboard that reveals profound truths when doodled upon, granting {dmg} Wisdom after rest.
+{name1} stumbled upon a delicate crystal hourglass that slows time when turned, adding {dmg} to their Wisdom during slumber.
+{name1} discovered a magical compass that points toward enlightenment, granting {dmg} Wisdom when used before rest.
+{name1} picked up a set of enchanted flashcards that whisper facts, increasing their Wisdom by {dmg} when flipped through before sleeping.
+{name1} retrieved a glowing journal said to hold the dreams of wise sages, boosting Wisdom by {dmg} when kept under their pillow.
+{name1} found a textbook titled “How to Seem Smarter” and can become wiser by {dmg} when they rest.
+{name1} stumbled upon a scroll labeled “Top 10 Life Hacks for Wizards,” granting {dmg} Wisdom after a nap.
+{name1} discovered a book titled “Philosophy for Dummies” that boosts their Wisdom by {dmg} when read before sleep.
+{name1} picked up a notebook full of chicken scratch labeled “Totally Useful Notes,” adding {dmg} to their Wisdom during rest.
+{name1} retrieved a glowing sticky note that says “Think More,” granting {dmg} Wisdom when stuck to their forehead before bed.
+{name1} found an enchanted pen that shouts random trivia, boosting their Wisdom by {dmg} if tolerated during rest.
+{name1} stumbled upon a comic book titled “Captain Smartypants,” granting {dmg} Wisdom when read with great focus before a nap.
+{name1} discovered a magical mirror that says, “You’re the wisest of them all,” boosting their Wisdom by {dmg} when admired before sleep.
+{name1} picked up a fortune cookie that keeps spitting out wisdom quotes, granting {dmg} Wisdom after being rested upon.
+{name1} retrieved a book with the title “Wisdom or Bust!” that boosts their Wisdom by {dmg} when read dramatically before resting.
+{name1} found a pair of glasses that makes everything look blurry but still adds {dmg} to Wisdom when worn while napping.
+{name1} stumbled upon a chalkboard with the words “Smart Stuff Here” scribbled on it, boosting their Wisdom by {dmg} when stared at before rest.
+{name1} discovered a book titled “Advanced Nap Strategies,” which increases their Wisdom by {dmg} when used as a pillow.
+{name1} picked up a tea cup that whispers, “Sip your way to wisdom,” granting {dmg} Wisdom when used for bedtime tea.
+{name1} retrieved a guidebook titled “Where’s Waldo: The Deep Edition,” which somehow grants {dmg} Wisdom after studying it.
+{name1} found a scroll that keeps repeating, “Think harder,” boosting their Wisdom by {dmg} when they finally take a break and rest.
+{name1} stumbled upon a wisdom crystal that glows brighter the more confused they are, granting {dmg} Wisdom during sleep.
+{name1} discovered a pop-up book titled “Big Brain Adventures” that boosts their Wisdom by {dmg} when explored before bed.
+{name1} picked up a small pillow embroidered with “Rest Smart,” adding {dmg} to their Wisdom when used for sleep.
+{name1} retrieved a shiny bookmark that says “You’re the hero of your own story,” granting {dmg} Wisdom when tucked in a random book.
+{name1} found a magical napkin with “Brain Fuel” scribbled on it, boosting their Wisdom by {dmg} when rested with.
+{name1} stumbled upon a box of crayons labeled “Colors of Genius,” granting {dmg} Wisdom when doodled with before a nap.
+{name1} discovered a glowing book titled “Wisdom of the Ages (Now with Pictures!),” adding {dmg} to their Wisdom after a dramatic read.
+{name1} picked up a pair of enchanted slippers that whisper “Smart steps start here,” boosting their Wisdom by {dmg} when worn to bed.
+{name1} retrieved a magical chalk stick that writes “You’re so wise” on every surface, granting {dmg} Wisdom when it’s finally set down for rest.
+{name1} found a fortune cookie that says, “You’re on the right track!” boosting their Wisdom by {dmg} when eaten before sleep.
+{name1} stumbled upon a notebook labeled “Big Ideas Only” that’s completely blank, granting {dmg} Wisdom when rested upon for inspiration.
+{name1} discovered a book titled “How to Win Arguments” that adds {dmg} to their Wisdom when read with smug confidence before sleep.
+{name1} picked up a coffee mug that says “World’s Wisest Napper,” which grants {dmg} Wisdom when held close while dozing off.
+{name1} found an ancient textbook bound in dragonhide, its pages glowing faintly, granting {dmg} Wisdom when rested with under the stars.
+{name1} stumbled upon a golden scroll inscribed with the secrets of the universe, boosting their Wisdom by {dmg} after a restful sleep.
+{name1} discovered a tome of celestial knowledge that hums with cosmic energy, adding {dmg} to their Wisdom when read before bed.
+{name1} picked up an iridescent crystal tablet that reveals visions of forgotten realms, increasing Wisdom by {dmg} when gazed upon during rest.
+{name1} retrieved a feather quill said to have been used by a god of wisdom, granting {dmg} Wisdom when held while slumbering.
+{name1} found a book bound in starlight, its words shifting and shimmering, boosting Wisdom by {dmg} when studied before rest.
+{name1} stumbled upon a glowing lantern that casts shadows of ancient writings, adding {dmg} to their Wisdom when kept nearby during sleep.
+{name1} discovered a runestone carved by an elder sage, its energy granting {dmg} Wisdom when meditated upon before rest.
+{name1} picked up a celestial codex with pages that turn themselves, granting {dmg} Wisdom when rested with under the moonlight.
+{name1} retrieved a magical hourglass filled with liquid light, boosting their Wisdom by {dmg} when turned before slumber.
+{name1} found an oracle’s guide etched on a silver plate, its glow enhancing their Wisdom by {dmg} after a peaceful sleep.
+{name1} stumbled upon a scroll written in an unearthly hand that grants {dmg} Wisdom when deciphered and contemplated during rest.
+{name1} discovered a glowing sapphire orb that whispers the truths of existence, increasing their Wisdom by {dmg} when rested with.
+{name1} picked up an enchanted parchment that rewrites itself with wise lessons, granting {dmg} Wisdom after a reflective nap.
+{name1} retrieved a golden compass that points to enlightenment, adding {dmg} to their Wisdom when studied before sleeping.
+{name1} found a crystal globe containing swirling galaxies, its insights boosting their Wisdom by {dmg} when gazed upon at rest.
+{name1} stumbled upon a luminous ring that enhances the wearer’s mind, granting {dmg} Wisdom when worn while sleeping.
+{name1} discovered a celestial star map that reveals hidden truths, adding {dmg} to their Wisdom when studied under the night sky.
+{name1} picked up a glowing pendant said to house the wisdom of the ancients, boosting Wisdom by {dmg} when kept close during sleep.
+{name1} retrieved a shimmering scroll that reveals the answers to unspoken questions, granting {dmg} Wisdom when read before rest.
+{name1} found a mirror that reflects infinite possibilities, its power boosting their Wisdom by {dmg} after a peaceful slumber.
+{name1} stumbled upon a legendary book of prophecies, its words granting {dmg} Wisdom when contemplated at the edge of rest.
+{name1} discovered a glowing quill that writes the secrets of the cosmos, increasing their Wisdom by {dmg} when held while napping.
+{name1} picked up a carved obsidian tablet that radiates ancient energy, granting {dmg} Wisdom when studied during rest.
+{name1} retrieved a shimmering cloak of insight that wraps the wearer in understanding, adding {dmg} to their Wisdom when worn at rest.
+{name1} found a silver bookmark that channels the essence of sages, boosting Wisdom by {dmg} when placed in a book during sleep.
+{name1} stumbled upon a glowing codex of eternal truths, its pages unlocking {dmg} Wisdom when read before a peaceful slumber.
+{name1} discovered a radiant crystal wand that enhances mental clarity, granting {dmg} Wisdom when rested with in hand.
+{name1} picked up a celestial artifact etched with constellations, its power boosting Wisdom by {dmg} when used to meditate before rest.
+{name1} retrieved a golden chalice filled with liquid knowledge, adding {dmg} to their Wisdom when sipped before sleeping.
+{name1} found an ancient tome bound in shimmering starlight, its pages whispering cosmic truths, granting {dmg} Wisdom when rested with under the night sky.
+{name1} discovered a radiant tome bound in silver-threaded leather, its cover adorned with shifting constellations that pulse faintly as if alive, and upon opening, the pages glow with an ethereal light, each word written in an ancient language that hums with cosmic resonance, granting {dmg} Wisdom when {name1} rests with it, as though the secrets of the universe itself seep into their mind through dreams of infinite knowledge and clarity.
