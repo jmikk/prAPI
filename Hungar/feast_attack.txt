@@ -1,1 +1,225 @@
 {name1} slashed {name2} for {dmg}.
+{name1} stabbed {name2} for {dmg}.
+{name1} decimated {name2} with a strike for {dmg}.
+{name1} lunged at {name2}, dealing {dmg} damage.
+{name1} unleashed a flurry of blows on {name2}, causing {dmg} damage.
+{name1} ambushed {name2}, slashing for {dmg}.
+{name1} struck {name2} with brutal force, dealing {dmg}.
+{name1} carved through {name2} for {dmg}.
+{name1} charged at {name2}, dealing {dmg}.
+{name1} delivered a critical blow to {name2} for {dmg}.
+{name1} clashed with {name2} and dealt {dmg}.
+{name1} unleashed a devastating strike on {name2}, inflicting {dmg}.
+{name1} overwhelmed {name2} with a slash for {dmg}.
+{name1} hacked at {name2}, causing {dmg}.
+{name1} disarmed and struck {name2} for {dmg}.
+{name1} ferociously attacked {name2}, delivering {dmg}.
+{name1} knocked {name2} down and inflicted {dmg}.
+{name1} tore into {name2}, dealing {dmg}.
+{name1} pummeled {name2}, leaving {dmg} damage.
+{name1} swung their weapon at {name2}, hitting for {dmg}.
+{name1} ambushed and dealt {dmg} to {name2}.
+{name1} landed a vicious cut on {name2}, inflicting {dmg}.
+{name1} mauled {name2} for {dmg}.
+{name1} slashed through {name2}'s defenses for {dmg}.
+{name1} brutally injured {name2} for {dmg}.
+{name1} battered {name2}, causing {dmg} damage.
+{name1} delivered a precise hit to {name2} for {dmg}.
+{name1} brought {name2} to their knees with {dmg} damage.
+{name1} crushed {name2} with a heavy blow for {dmg}.
+{name1} rained destruction upon {name2}, dealing {dmg}.
+{name1} caught {name2} off guard and inflicted {dmg}.
+{name1} gouged {name2} with their weapon for {dmg}.
+{name1} delivered a ruthless strike to {name2}, causing {dmg}.
+{name1} attacked {name2} relentlessly, dealing {dmg}.
+{name1} overpowered {name2} with a slash for {dmg}.
+{name1} inflicted a mortal wound on {name2} for {dmg}.
+{name1} overwhelmed {name2} and dealt {dmg}.
+{name1} struck {name2} in a frenzy, causing {dmg}.
+{name1} landed a finishing blow on {name2}, dealing {dmg}.
+{name1} lashed out at {name2}, slashing for {dmg}.
+{name1} pierced {name2} with deadly precision for {dmg}.
+{name1} went berserk and inflicted {dmg} on {name2}.
+{name1} executed a flawless attack on {name2}, causing {dmg}.
+{name1} ravaged {name2} with a brutal strike for {dmg}.
+{name1} skewered {name2} for {dmg}.
+{name1} thrashed {name2} for {dmg}.
+{name1} lunged at {name2} with fury, delivering {dmg}.
+{name1} punished {name2} with {dmg} damage.
+{name1} hurled themselves at {name2}, dealing {dmg}.
+{name1} smashed {name2} for {dmg}.
+{name1} sent {name2} reeling with {dmg} damage.
+{name1} slashed viciously at {name2}, causing {dmg}.
+{name1} battered {name2} senseless for {dmg}.
+{name1} dismembered {name2}, inflicting {dmg}.
+{name1} took down {name2} with {dmg} damage.
+{name1} annihilated {name2}, delivering {dmg}.
+{name1} sliced {name2} for {dmg}.
+{name1} obliterated {name2} for {dmg}.
+{name1} fought savagely, dealing {dmg} to {name2}.
+{name1} broke {name2}'s defenses, inflicting {dmg}.
+{name1} overwhelmed {name2} with a fierce attack, dealing {dmg}.
+{name1} bonked {name2} on the head for {dmg}.
+{name1} accidentally tripped and landed on {name2}, dealing {dmg}.
+{name1} hit {name2} with a loaf of bread for {dmg}.
+{name1} slapped {name2} with a fish for {dmg}.
+{name1} threw a rubber chicken at {name2}, causing {dmg}.
+{name1} sneakily poked {name2} with a stick for {dmg}.
+{name1} smacked {name2} with a frying pan for {dmg}.
+{name1} spilled hot soup on {name2}, dealing {dmg}.
+{name1} scared {name2} so badly they took {dmg}.
+{name1} shouted “BOO!” at {name2}, causing {dmg}.
+{name1} accidentally hit {name2} while swatting a fly, dealing {dmg}.
+{name1} unleashed a pillow barrage on {name2}, dealing {dmg}.
+{name1} tickled {name2} into submission, causing {dmg}.
+{name1} dropped a piano on {name2} for {dmg}.
+{name1} challenged {name2} to a thumb war and won, dealing {dmg}.
+{name1} pelted {name2} with marshmallows for {dmg}.
+{name1} spilled glitter on {name2}, inflicting {dmg}.
+{name1} stepped on {name2}'s foot, dealing {dmg}.
+{name1} distracted {name2} with bad jokes, causing {dmg}.
+{name1} dumped a bucket of ice water on {name2}, dealing {dmg}.
+{name1} beaned {name2} with a dodgeball for {dmg}.
+{name1} mistook {name2} for a piñata and dealt {dmg}.
+{name1} gave {name2} a wedgie, causing {dmg}.
+{name1} yeeted a cupcake at {name2}, dealing {dmg}.
+{name1} threw a handful of spaghetti at {name2}, causing {dmg}.
+{name1} slipped on a banana peel and landed on {name2} for {dmg}.
+{name1} tripped {name2} into a mud puddle, dealing {dmg}.
+{name1} smacked {name2} with a baguette, causing {dmg}.
+{name1} accidentally unleashed chaos on {name2}, dealing {dmg}.
+{name1} hit {name2} with an oversized lollipop for {dmg}.
+{name1} dumped a bucket of feathers on {name2}, dealing {dmg}.
+{name1} unleashed their inner mime on {name2}, causing {dmg}.
+{name1} sprayed {name2} with seltzer water for {dmg}.
+{name1} accidentally hit {name2} with their selfie stick for {dmg}.
+{name1} tossed glitter bombs at {name2}, dealing {dmg}.
+{name1} scared {name2} with an airhorn, causing {dmg}.
+{name1} tripped and spilled their drink on {name2}, dealing {dmg}.
+{name1} dropped a bucket of popcorn on {name2}, causing {dmg}.
+{name1} used a water balloon to soak {name2}, dealing {dmg}.
+{name1} started a food fight with {name2}, causing {dmg}.
+{name1} tossed an overly ripe tomato at {name2}, dealing {dmg}.
+{name1} unleashed a swarm of bees on {name2}, causing {dmg}.
+{name1} gave {name2} a noogie, dealing {dmg}.
+{name1} bumped into {name2} with a shopping cart, causing {dmg}.
+{name1} accidentally sat on {name2}, dealing {dmg}.
+{name1} smacked {name2} with a rolled-up newspaper for {dmg}.
+{name1} doused {name2} in whipped cream, dealing {dmg}.
+{name1} unleashed a sneak attack with silly string, causing {dmg}.
+{name1} flung a taco at {name2}, dealing {dmg}.
+{name1} tied {name2}'s shoelaces together, causing {dmg}.
+{name1} turned {name2} into a human burrito, dealing {dmg}.
+{name1} tripped over {name2} but somehow dealt {dmg}.
+{name1} launched a surprise dance battle on {name2}, dealing {dmg}.
+{name1} gave {name2} an atomic wedgie, causing {dmg}.
+{name1} scared {name2} with a clown mask, dealing {dmg}.
+{name1} slashed {name2} with a longsword for {dmg}.
+{name1} stabbed {name2} with a dagger for {dmg}.
+{name1} crushed {name2} with a warhammer for {dmg}.
+{name1} shot {name2} with an arrow, dealing {dmg}.
+{name1} bashed {name2} with a shield for {dmg}.
+{name1} bludgeoned {name2} with a mace for {dmg}.
+{name1} sliced {name2} with a battleaxe for {dmg}.
+{name1} impaled {name2} with a spear, causing {dmg}.
+{name1} scorched {name2} with a flaming sword for {dmg}.
+{name1} whipped {name2} with a chain, dealing {dmg}.
+{name1} smashed {name2} with a morningstar for {dmg}.
+{name1} hacked {name2} with a hatchet for {dmg}.
+{name1} pummeled {name2} with brass knuckles for {dmg}.
+{name1} decimated {name2} with a halberd for {dmg}.
+{name1} hurled a throwing knife at {name2}, dealing {dmg}.
+{name1} shot {name2} with a crossbow bolt, causing {dmg}.
+{name1} struck {name2} with a spiked club for {dmg}.
+{name1} zapped {name2} with a lightning staff for {dmg}.
+{name1} froze {name2} with an icy blade, dealing {dmg}.
+{name1} smashed {name2} with a greatsword for {dmg}.
+{name1} slashed {name2} with twin scimitars, causing {dmg}.
+{name1} fired a slingshot at {name2}, dealing {dmg}.
+{name1} clocked {name2} with a war pick for {dmg}.
+{name1} hurled a javelin at {name2}, causing {dmg}.
+{name1} struck {name2} with a staff for {dmg}.
+{name1} bombarded {name2} with throwing axes, dealing {dmg}.
+{name1} unleashed fury with nunchaku on {name2} for {dmg}.
+{name1} blasted {name2} with a magical wand for {dmg}.
+{name1} tripped {name2} with a polearm, causing {dmg}.
+{name1} gutted {name2} with a kukri for {dmg}.
+{name1} clobbered {name2} with a flail for {dmg}.
+{name1} hurled a firebomb at {name2}, dealing {dmg}.
+{name1} sliced {name2} with a katana, causing {dmg}.
+{name1} skewered {name2} with a trident for {dmg}.
+{name1} smashed {name2} with a maul for {dmg}.
+{name1} struck {name2} with a war fan, dealing {dmg}.
+{name1} jabbed {name2} with a rapier, causing {dmg}.
+{name1} torched {name2} with a flamethrower, dealing {dmg}.
+{name1} pierced {name2} with a bayonet for {dmg}.
+{name1} launched a harpoon at {name2}, causing {dmg}.
+{name1} cracked {name2} with a quarterstaff for {dmg}.
+{name1} crushed {name2} with a boulder for {dmg}.
+{name1} struck {name2} with a spiked gauntlet for {dmg}.
+{name1} skewered {name2} with a lance for {dmg}.
+{name1} zapped {name2} with an enchanted scepter for {dmg}.
+{name1} sliced {name2} with a ceremonial dagger for {dmg}.
+{name1} ambushed {name2} with a hidden blade, dealing {dmg}.
+{name1} crushed {name2} under a battering ram for {dmg}.
+{name1} pelted {name2} with shurikens, causing {dmg}.
+{name1} decimated {name2} with a double-bladed axe for {dmg}.
+{name1} shattered {name2}'s defenses with a siege hammer, dealing {dmg}.
+{name1} carved {name2} with a jagged sword for {dmg}.
+{name1} fired a cannonball at {name2}, causing {dmg}.
+{name1} tore into {name2} with a chainsaw for {dmg}.
+{name1} sliced {name2} cleanly with a razor-sharp scythe for {dmg}.
+{name1} launched {name2} into orbit with a trebuchet for {dmg}.
+{name1} dropkicked {name2} into next Tuesday, dealing {dmg}.
+{name1} summoned a swarm of angry geese to attack {name2} for {dmg}.
+{name1} hit {name2} with the force of a thousand memes, causing {dmg}.
+{name1} challenged {name2} to a dance-off and won, dealing {dmg}.
+{name1} sent {name2} flying with an oversized banana, inflicting {dmg}.
+{name1} summoned a cursed rubber duck to haunt {name2}, dealing {dmg}.
+{name1} hurled {name2} into a portal to another dimension for {dmg}.
+{name1} yeeted a cactus at {name2}, causing {dmg}.
+{name1} unleashed a battle cry so loud it dealt {dmg} to {name2}.
+{name1} hit {name2} with a bag of expired chips, dealing {dmg}.
+{name1} trapped {name2} in an avalanche of glitter for {dmg}.
+{name1} poked {name2} aggressively with a pool noodle, causing {dmg}.
+{name1} force-fed {name2} a pie so quickly it caused {dmg}.
+{name1} used the power of friendship (and a frying pan) on {name2} for {dmg}.
+{name1} summoned a stampede of unicorns to trample {name2} for {dmg}.
+{name1} beaned {name2} with a giant pumpkin, dealing {dmg}.
+{name1} unleashed a karaoke rendition so bad it caused {dmg} to {name2}.
+{name1} weaponized a live lobster against {name2} for {dmg}.
+{name1} roasted {name2} so hard they took {dmg}.
+{name1} spilled an entire pot of spaghetti on {name2} for {dmg}.
+{name1} zapped {name2} with a malfunctioning toaster, causing {dmg}.
+{name1} catapulted a couch at {name2}, dealing {dmg}.
+{name1} declared themselves the CEO of violence and fired {name2} for {dmg}.
+{name1} summoned a cloud of bees to chase {name2} for {dmg}.
+{name1} hit {name2} with a frozen fish stick, causing {dmg}.
+{name1} drove a bumper car straight into {name2} for {dmg}.
+{name1} defeated {name2} with a strongly worded email, causing {dmg}.
+{name1} used a yo-yo as a weapon against {name2}, dealing {dmg}.
+{name1} slapped {name2} with a wet tortilla for {dmg}.
+{name1} summoned a tornado of socks to engulf {name2}, causing {dmg}.
+{name1} created a Rube Goldberg machine to bonk {name2} for {dmg}.
+{name1} unleashed the power of interpretive dance on {name2} for {dmg}.
+{name1} hacked {name2}’s social media and caused {dmg}.
+{name1} threw a bowling ball at {name2}, dealing {dmg}.
+{name1} used a baguette as a sword and dueled {name2} for {dmg}.
+{name1} trapped {name2} in a game of Monopoly for {dmg}.
+{name1} hit {name2} with an inflatable hammer, causing {dmg}.
+{name1} launched a pizza at {name2} so fast it dealt {dmg}.
+{name1} summoned a killer Roomba to chase {name2} for {dmg}.
+{name1} tied {name2}'s shoelaces together, causing {dmg}.
+{name1} unleashed a glitter cannon on {name2}, dealing {dmg}.
+{name1} tripped {name2} into a pool of jello for {dmg}.
+{name1} trained a seagull to steal {name2}'s lunch and cause {dmg}.
+{name1} summoned a rogue shopping cart to run over {name2} for {dmg}.
+{name1} weaponized a bouquet of flowers against {name2}, dealing {dmg}.
+{name1} hit {name2} with a stale baguette, causing {dmg}.
+{name1} turned {name2} into a human pancake with a giant spatula for {dmg}.
+{name1} summoned a cow to sit on {name2}, dealing {dmg}.
+{name1} karate chopped {name2} with a giant foam hand for {dmg}.
+{name1} wielded a garden gnome to bash {name2} for {dmg}.
+{name1} unleashed a pack of angry squirrels on {name2}, causing {dmg}.
+{name1} challenged {name2} to a duel using water guns for {dmg}.
+{name1} accidentally tripped over {name2}, causing {dmg}.
