@@ -1,0 +1,1 @@
+{name1} found a sheild and raise your defense by {dmg} when they rest
