@@ -558,7 +558,16 @@ class Hungar(commands.Cog):
                 target["stats"]["HP"] -= damage1
                 damage2 = damage + random.randint(1,3)
                 hunter["stats"]["HP"] -= damage2
-                event_outcomes.append(f"{hunter['name']} hunted {target['name']} but the two were evenly matched dealing {damage1} to {target['name']} and {damage2} to {hunter['name']}")
+
+                effect = await self.load_file(
+                    "tie_attack.txt",
+                    name1=hunter['name'],
+                    name2=target['name'],
+                    dmg=damage1,
+                    dmg2=damage2
+                    )
+                
+                event_outcomes.append(effect)
                 if target["stats"]["HP"] <= 0:
                     target["alive"] = False
                     event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
