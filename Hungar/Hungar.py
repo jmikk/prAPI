@@ -53,7 +53,7 @@ class Hungar(commands.Cog):
             file_path = os.path.join(base_path, fileName)
             with open(file_path, "r") as f:
                 line =  [line.strip() for line in f.readlines() if line.strip()]
-                line = line.replace("{name1}",name1).replace("{name2}",name2).replace("{dmg}",dmg)
+                line = line.replace("{name1}",str(name1)).replace("{name2}",str(name2)).replace("{dmg}",str(dmg)).replace("{item}",str(item_name))
                 return line
         except FileNotFoundError:
             return ""  # Fallback if file is missing
