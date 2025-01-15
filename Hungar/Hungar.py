@@ -343,7 +343,7 @@ class Hungar(commands.Cog):
             await ctx.send("No players are signed up yet.")
             return
             
-        if len(players) => 25: 
+        if len(players) > 24: 
             await ctx.send("Sorry only 25 people can play (this includes NPCs)")
             return
             
