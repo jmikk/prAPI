@@ -46,8 +46,8 @@ class ViewTributesButton(Button):
         )
         for rank, tribute in enumerate(tribute_scores, start=1):
             embed.add_field(
-                name=f"#{rank} {tribute['name']} (District {tribute['district']})",
-                value=f"Score: {tribute['score']}",
+                name=f"(District {tribute['district']})",
+                value=f"#{rank} {tribute['name']}\n Score: {tribute['score']}",
                 inline=False
             )
 
