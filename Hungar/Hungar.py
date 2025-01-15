@@ -8,6 +8,8 @@ from discord.ext.commands import CheckFailure
 from discord.ui import View, Button
 from discord import Interaction
 
+#clear bets at the end of game
+#double check late sign up bug is fixed
 
 class ViewTributesButton(Button):
     def __init__(self, cog):
