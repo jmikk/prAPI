@@ -339,10 +339,7 @@ class Hungar(commands.Cog):
             return
         
         players = config["players"]
-        if not players:
-            await ctx.send("No players are signed up yet.")
-            return
-        
+    
             
         # Load and shuffle NPC names
         npc_names = await self.load_npc_names()
