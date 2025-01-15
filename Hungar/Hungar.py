@@ -9,7 +9,6 @@ from discord.ui import View, Button
 from discord import Interaction
 
 #clear bets at the end of game
-#double check late sign up bug is fixed
 
 class ViewTributesButton(Button):
     def __init__(self, cog):
@@ -686,7 +685,7 @@ class Hungar(commands.Cog):
                     
             elif action == "Loot":
                 looters.append(player_id)
-                if random.random() < 0.5:  # 50% chance to find an item
+                if random.random() < 0.75:  # 50% chance to find an item
                     stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
                     if stat == "HP":
                         boost = random.randint(5,10)
