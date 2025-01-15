@@ -500,7 +500,7 @@ class Hungar(commands.Cog):
                     )[0]
             elif player_data.get("action") is None: 
                 player_data["action"] = random.choices(
-                        ["Hunt", "Rest", "Loot"], weights=[player_data["stats"]["Str"], player_data["stats"]["Con"], player_data["stats"]["Wis"]], k=1
+                        ["Hunt", "Rest", "Loot"], weights=[player_data["stats"]["Str"], player_data["stats"]["Con"]+len(player_data["items"])*3, player_data["stats"]["Wis"]], k=1
                     )[0]
 
             if player_data.get("is_npc"):
@@ -510,7 +510,7 @@ class Hungar(commands.Cog):
                         ["Feast", "Hunt", "Rest", "Loot"], weights=[60, 20, 10, 10], k=1
                     )[0]
                 else:
-                    player_data["action"] = random.choices(["Hunt", "Rest", "Loot"], weights=[player_data["stats"]["Str"], player_data["stats"]["Con"], player_data["stats"]["Wis"]], k=1)[0]
+                    player_data["action"] = random.choices(["Hunt", "Rest", "Loot"], weights=[player_data["stats"]["Str"], player_data["stats"]["Con"]+len(player_data["items"])*3, player_data["stats"]["Wis"]], k=1)[0]
             
             action = player_data["action"]
 
