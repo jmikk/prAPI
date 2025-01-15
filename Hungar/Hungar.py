@@ -667,6 +667,12 @@ class Hungar(commands.Cog):
                 #event_outcomes.append(f"{player_data['name']} went hunting!")
             elif action == "Rest":
                 resters.append(player_id)
+
+                if player_data["stats"]["HP"] < player_data["stats"]["Con"] * 3:
+                    damage = random.randint(1,5)
+                    player_data["stats"]["HP"] = player_data["stats"]["HP"] + damage
+                    event_outcomes.append(f"{player_data['name']} nursed their wounds and healed for {damage} points of damage")
+
                 threshold = 1 / (1 + player_data["stats"]["Con"] / 3)  # Scale slows the decrease
                 if random.random() < threshold or not player_data["items"]: #take dmg
                     damage = random.randint(1,5)
