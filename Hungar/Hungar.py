@@ -374,6 +374,7 @@ class Hungar(commands.Cog):
         config = await self.config.guild(guild).all()
         players = config["players"]
         leaderboard = config.get("elimination_leaderboard", [])
+        all_users = await self.config.all_users()  # Fetch all users
     
         alive_players = [player for player in players.values() if player["alive"]]
     
