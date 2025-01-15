@@ -6,13 +6,6 @@ import os
 import discord
 
 
-#clean up list
-#Add custom lines for:
-#Resting
-#Looting
-#Evenly matched Huntinga
-#item names
-
 #do this 
 
 #add display tributes before the match
@@ -42,7 +35,7 @@ class Hungar(commands.Cog):
             
         )
 
-
+    
     async def load_file(self,fileName,name1="Name1 Filler",name2="Name2 Filler",dmg="DMG Filler",dmg2="DMG2 Filler", item_name="Item name filler"):
         """Load file names from the fileName.txt file."""
         try:
@@ -441,6 +434,25 @@ class Hungar(commands.Cog):
         day_counter = config.get("day_counter", 0) + 1
         await self.config.guild(guild).day_counter.set(day_counter)
 
+        if day_counter > 5:
+            reduction = ((day_counter - 5) // 5) + 1     
+            
+            event_outcomes.append("A mysterious mist has descended upon the arena, sapping the abilites of all participants!")
+
+            for player_id, player_data in players.items():
+                if not player_data["alive"]:
+                    continue
+    
+                # Choose a random stat to reduce
+                stats = ["Def", "Str", "Con", "Wis", "HP"]
+                stat_to_reduce = random.choice(stats)
+                player_data["stats"][stat_to_reduce] -= reduction
+
+                # Check if the player dies
+                if player_data["stats"][stat_to_reduce] <= 0:
+                    player_data["alive"] = False
+                    event_outcomes.append(f"{player_data['name']} succumbed to the mist and perished.")
+                    player_data["items"] = []  # Drop all items
 
 
 
