@@ -891,33 +891,6 @@ class Hungar(commands.Cog):
             await self.config.user_from_id(user_id).bets.set(bets)
 
     @hunger.command()
-    async def action(self, ctx, choice: str):
-        """Choose your daily action: Hunt, Rest, or Loot."""
-        guild = ctx.guild
-        config = await self.config.guild(guild).all()
-        players = config["players"]
-        
-        if str(ctx.author.id) not in players or not players[str(ctx.author.id)]["alive"]:
-            await ctx.send("You are not part of the game or are no longer alive.")
-            return
-
-        # Check if Feast is a valid action
-        valid_actions = ["Hunt", "Rest", "Loot"]
-        if config.get("feast_active", False):  # Ensure feast_active is checked correctly
-            valid_actions.append("Feast")
-    
-        choice = choice.capitalize()  # Standardize input capitalization
-        if choice not in valid_actions:
-            available_actions = ", ".join(valid_actions)
-            await ctx.send(f"Invalid action. Choose one of the following: {available_actions}.")
-            return
-
-
-        players[str(ctx.author.id)]["action"] = choice
-        await self.config.guild(guild).players.set(players)
-        await ctx.send(f"{ctx.author.mention} has chosen to {choice}.")
-
-    @hunger.command()
     @is_gamemaster()
     async def setdaylength(self, ctx, seconds: int):
         """Set the real-time length of a day in seconds (Admin only)."""
@@ -1127,7 +1100,7 @@ class Hungar(commands.Cog):
         embed.add_field(
             name="2. Actions",
             value=(
-                "Each day, choose an action with `!hunger action <action>`:\n"
+                "Each day, choose an action:\n"
                 "- **Hunt**: Attack other tributes and try to eliminate them.\n"
                 "- **Rest**: Recover and use items to restore stats.\n"
                 "- **Loot**: Search for valuable items to boost your stats."
