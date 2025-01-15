@@ -9,6 +9,88 @@ from discord.ui import View, Button
 from discord import Interaction
 
 
+class ViewTributesButton(Button):
+    def __init__(self, cog):
+        super().__init__(label="View Tributes", style=discord.ButtonStyle.success)
+        self.cog = cog
+
+    async def callback(self, interaction: Interaction):
+        guild = interaction.guild
+        players = await self.cog.config.guild(guild).players()
+
+        # Calculate scores for each tribute
+        tribute_scores = []
+        for player_id, player in players.items():
+            if player["alive"]:
+                score = (
+                    player["stats"]["Def"]
+                    + player["stats"]["Str"]
+                    + player["stats"]["Con"]
+                    + player["stats"]["Wis"]
+                    + (player["stats"]["HP"] // 5)  # Normalize HP by dividing by 5
+                )
+                tribute_scores.append({
+                    "name": player["name"],
+                    "district": player["district"],
+                    "score": score
+                })
+
+        # Sort tributes by score in descending order
+        tribute_scores.sort(key=lambda x: x["score"], reverse=True)
+
+        # Create an embed with the rankings
+        embed = discord.Embed(
+            title="Tribute Rankings",
+            description="Ranked tributes by their calculated scores.",
+            color=discord.Color.gold()
+        )
+        for rank, tribute in enumerate(tribute_scores, start=1):
+            embed.add_field(
+                name=f"#{rank} {tribute['name']} (District {tribute['district']})",
+                value=f"Score: {tribute['score']}",
+                inline=False
+            )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+
+class ViewStatsButton(Button):
+    def __init__(self, cog):
+        super().__init__(label="View Stats", style=discord.ButtonStyle.success)
+        self.cog = cog
+
+    async def callback(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        guild = interaction.guild
+        players = await self.cog.config.guild(guild).players()
+
+        # Check if the user is in the game
+        if user_id not in players:
+            await interaction.response.send_message(
+                "You are not part of the Hunger Games.", ephemeral=True
+            )
+            return
+
+        # Fetch player data
+        player = players[user_id]
+        embed = discord.Embed(
+            title=f"{interaction.user.display_name}'s Stats",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="Name", value=player["name"], inline=False)
+        embed.add_field(name="District", value=player["district"], inline=False)
+        embed.add_field(name="Def", value=player["stats"]["Def"], inline=True)
+        embed.add_field(name="Str", value=player["stats"]["Str"], inline=True)
+        embed.add_field(name="Con", value=player["stats"]["Con"], inline=True)
+        embed.add_field(name="Wis", value=player["stats"]["Wis"], inline=True)
+        embed.add_field(name="HP", value=player["stats"]["HP"], inline=True)
+        embed.add_field(name="Alive", value="Yes" if player["alive"] else "No", inline=False)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+
 class ActionSelectionView(View):
     def __init__(self, cog, feast_active):
         super().__init__(timeout=None)  # No timeout for the buttons
@@ -21,6 +103,9 @@ class ActionSelectionView(View):
         
         if feast_active:
             self.add_item(ActionButton(cog, "Feast"))
+
+        self.add_item(ViewStatsButton(cog))
+        self.add_item(ViewTributesButton(cog))
 
 class ActionButton(Button):
     def __init__(self, cog, action):
