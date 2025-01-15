@@ -206,15 +206,25 @@ class Hungar(commands.Cog):
         """Sign up for the Hunger Games."""
         guild = ctx.guild
         players = await self.config.guild(guild).players()
-       
+        config = await self.config.guild(guild).all()
+        
+        if config["game_active"]:
+            await ctx.send("The Hunger Games are already active! Please wait for the next one")
+            return
+            
+        if str(ctx.author.id) in players:
+            await ctx.send("You are already signed up!")
+            return
+
+        if len(players) > 25:
+            await ctx.send("Sorry this game is full try again next time!")
+            return
+        
         # Award 100 gold to the player in user config
         user_gold = await self.config.user(ctx.author).gold()
         user_gold += 100
         await self.config.user(ctx.author).gold.set(user_gold)
-        
-        if str(ctx.author.id) in players:
-            await ctx.send("You are already signed up!")
-            return
+    
 
         # Assign random district and stats
         district = random.randint(1, 12)  # Assume 12 districts
