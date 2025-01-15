@@ -380,6 +380,7 @@ class Hungar(commands.Cog):
     
         if alive_players:
             winner = alive_players[0]
+            winner_id = next((pid for pid, pdata in players.items() if pdata == winner), None)
             await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
         else:
             await ctx.send("The game is over! No one survived.")
@@ -434,7 +435,7 @@ class Hungar(commands.Cog):
             user_gold = user_data.get("gold", 0)
     
             for tribute_id, bet_data in bets.items():
-                if tribute_id == winner['name']:
+                if tribute_id == winner_id:
                     # Pay double the bet amount + daily earnings for the winner
                     user_gold += bet_data["amount"] * 2
 
