@@ -6,18 +6,9 @@ import os
 import discord
 
 
-#do this 
-
-#add display tributes before the match
-#add bidding before the game starts 
-
-
 #todo list
 
 #More aggressive AI for NPCs
-
-#add random traps
-
 
 class Hungar(commands.Cog):
     def __init__(self, bot):
@@ -497,19 +488,19 @@ class Hungar(commands.Cog):
                 player_data["action"] = random.choices(
                         ["Feast", "Hunt", "Rest", "Loot"], weights=[60, 20, 10, 10], k=1
                     )[0]
-            elif player_data.get("action") is None:
+            elif player_data.get("action") is None: 
                 player_data["action"] = random.choices(
-                        ["Hunt", "Rest", "Loot"], weights=[70, 15, 15], k=1
+                        ["Hunt", "Rest", "Loot"], weights=[player_data["stats"]["Str"], player_data["stats"]["Con"], player_data["stats"]["Wis"]], k=1
                     )[0]
 
             if player_data.get("is_npc"):
                 if config["feast_active"]:
                     # 80% chance NPC attends the Feast, adjust weights as needed
                     player_data["action"] = random.choices(
-                        ["Feast", "Hunt", "Rest", "Loot"], weights=[100, 0, 0, 0], k=1
+                        ["Feast", "Hunt", "Rest", "Loot"], weights=[60, 20, 10, 10], k=1
                     )[0]
                 else:
-                    player_data["action"] = random.choices(["Hunt", "Rest", "Loot"], weights=[70, 15, 15], k=1)[0]
+                    player_data["action"] = random.choices(["Hunt", "Rest", "Loot"], weights=[player_data["stats"]["Str"], player_data["stats"]["Con"], player_data["stats"]["Wis"]], k=1)[0]
             
             action = player_data["action"]
 
