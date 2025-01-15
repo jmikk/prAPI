@@ -747,8 +747,8 @@ class Hungar(commands.Cog):
             hunter = players[hunter_id]
             target = players[target_id]
 
-            target_defense = target["stats"]["Def"] + random.randint(1+int((target["stats"]["Con"]/4)), 10+target["stats"]["Con"])
-            hunter_str = hunter["stats"]["Str"] + random.randint(1+int(target["stats"]["Wis"]/4), 10+hunter["stats"]["Wis"])
+            target_defense = target["stats"]["Def"] + random.randint(1+int((target["stats"]["Con"]/4)), 10+int(target["stats"]["Con"]))
+            hunter_str = hunter["stats"]["Str"] + random.randint(1+int(target["stats"]["Wis"]/4), 10+int(hunter["stats"]["Wis"]))
             damage = abs(hunter_str - target_defense)
 
             if damage < 2:
