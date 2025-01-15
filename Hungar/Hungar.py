@@ -201,6 +201,9 @@ class Hungar(commands.Cog):
         if not players:
             await ctx.send("No players are signed up yet.")
             return
+        if len(players)>25: 
+            await ctx.send("Sorry only 25 people can play (this includes NPCs)")
+            return
             
         # Load and shuffle NPC names
         npc_names = await self.load_npc_names()
