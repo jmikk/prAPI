@@ -5,6 +5,49 @@ from datetime import datetime, timedelta
 import os
 import discord
 from discord.ext.commands import CheckFailure
+from discord.ui import View, Button
+from discord import Interaction
+
+
+class ActionSelectionView(View):
+    def __init__(self, cog, feast_active):
+        super().__init__(timeout=None)  # No timeout for the buttons
+        self.cog = cog
+
+        # Add action buttons
+        self.add_item(ActionButton(cog, "Hunt"))
+        self.add_item(ActionButton(cog, "Rest"))
+        self.add_item(ActionButton(cog, "Loot"))
+        
+        if feast_active:
+            self.add_item(ActionButton(cog, "Feast"))
+
+class ActionButton(Button):
+    def __init__(self, cog, action):
+        super().__init__(label=action, style=discord.ButtonStyle.primary)
+        self.cog = cog
+        self.action = action
+
+    async def callback(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        guild = interaction.guild
+        players = await self.cog.config.guild(guild).players()
+
+        # Check if the user is in the game and alive
+        if user_id not in players or not players[user_id]["alive"]:
+            await interaction.response.send_message(
+                "You are not part of the game or are no longer alive.", ephemeral=True
+            )
+            return
+
+        # Update the user's action
+        players[user_id]["action"] = self.action
+        await self.cog.config.guild(guild).players.set(players)
+        
+        await interaction.response.send_message(
+            f"You have selected to **{self.action}** for today.", ephemeral=True
+        )
+
 
 #todo list
 
@@ -362,6 +405,7 @@ class Hungar(commands.Cog):
             f"{feast_message}\n"
             f"Alive participants: {', '.join(alive_mentions)}"
         )
+        await ctx.send("Pick your action for the day",view=ActionSelectionView(self, feast_active)
 
     async def isOneLeft(self, guild):
         """Check if only one player is alive."""
