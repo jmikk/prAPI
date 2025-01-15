@@ -32,8 +32,14 @@ class Hungar(commands.Cog):
             day_counter=0, 
             random_events=True,  # Enable or disable random events
             feast_active=False,  # Track if a feast is active# Counter for days
+            gambling 
             
         )
+        self.config.register_user(
+            gold=0,
+            bets={},
+        )
+
 
     
     async def load_file(self,fileName,name1="Name1 Filler",name2="Name2 Filler",dmg="DMG Filler",dmg2="DMG2 Filler", item_name="Item name filler"):
@@ -71,6 +77,12 @@ class Hungar(commands.Cog):
         """Sign up for the Hunger Games."""
         guild = ctx.guild
         players = await self.config.guild(guild).players()
+       
+        # Award 100 gold to the player in user config
+        user_gold = await self.config.user(ctx.author).gold()
+        user_gold += 100
+        await self.config.user(ctx.author).gold.set(user_gold)
+        
         if str(ctx.author.id) in players:
             await ctx.send("You are already signed up!")
             return
@@ -413,6 +425,21 @@ class Hungar(commands.Cog):
                         value=f"**{i}.** {player['name']}: {kills} kills\nKilled: {', '.join(player['kill_list'])}",
                         inline=False)
             await ctx.send(embed=kill_embed)
+
+
+            # Distribute winnings
+        for user_id, user_data in all_users.items():
+            bets = user_data.get("bets", {})
+            user_gold = user_data.get("gold", 0)
+    
+            for tribute_id, bet_data in bets.items():
+                if tribute_id == winner_id:
+                    # Pay double the bet amount + daily earnings for the winner
+                    user_gold += bet_data["amount"] * 2
+
+        # Clear bets after game ends
+        await self.config.user_from_id(user_id).gold.set(user_gold)
+        await self.config.user_from_id(user_id).bets.set({})
 
     
         # Reset players
@@ -789,9 +816,24 @@ class Hungar(commands.Cog):
                     {"name": eliminated_player["name"], "day": eliminated_player["eliminated_on"]}
                 )
             await self.config.guild(guild).elimination_leaderboard.set(leaderboard)
+        
+        # Process daily bet earnings
+        players = await self.config.guild(guild).players()
+        all_users = await self.config.all_users()
+        
+        for user_id, user_data in all_users.items():
+            bets = user_data.get("bets", {})
+            user_gold = user_data.get("gold", 0)
+        
+            for tribute_id, bet_data in bets.items():
+                if tribute_id in players and players[tribute_id]["alive"]:
+                    daily_return = int(bet_data["amount"] * 0.1)  # 10% daily return
+                    bet_data["daily_earnings"] += daily_return
+                    user_gold += daily_return
+        
+            await self.config.user_from_id(user_id).gold.set(user_gold)
+            await self.config.user_from_id(user_id).bets.set(bets)
 
-
-    
     @hunger.command()
     async def action(self, ctx, choice: str):
         """Choose your daily action: Hunt, Rest, or Loot."""
@@ -841,6 +883,11 @@ class Hungar(commands.Cog):
             "day_start": None,
             "day_counter": 0,
         })
+        
+        all_users = await self.config.all_users()
+        for user_id, user_data in all_users.items():
+            await self.config.user_from_id(user_id).bets.set({})
+        
         await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset.")
 
     @hunger.command()
@@ -891,6 +938,53 @@ class Hungar(commands.Cog):
             embed.add_field(name="Alive", value="Yes" if player["alive"] else "No", inline=False)
             await ctx.send(embed=embed, ephemeral=True)
 
-
+    @hunger.command()
+    async def place_bet(self, ctx, tribute: str, amount: int):
+        """Place a bet on a tribute."""
+        if amount <= 0:
+            await ctx.send("Bet amount must be greater than zero.")
+            return
+    
+        user_gold = await self.config.user(ctx.author).gold()
+        if amount > user_gold:
+            await ctx.send("You don't have enough gold to place that bet. You can always play in the games to earn money.")
+            return
+    
+        guild = ctx.guild
+        players = await self.config.guild(guild).players()
+        tribute = tribute.lower()
+    
+        # Validate tribute
+        tribute_id = next((pid for pid, pdata in players.items() if pdata["name"].lower() == tribute), None)
+        if not tribute_id:
+            await ctx.send("Tribute not found. Please check the name and try again.")
+            return
+    
+        # Save the bet
+        user_bets = await self.config.user(ctx.author).bets()
+        if tribute_id in user_bets:
+            await ctx.send("You have already placed a bet on this tribute.")
+            return
+    
+        user_bets[tribute_id] = {
+            "amount": amount,
+            "daily_earnings": 0
+        }
+        await self.config.user(ctx.author).bets.set(user_bets)
+    
+        # Deduct gold
+        await self.config.user(ctx.author).gold.set(user_gold - amount)
+    
+        tribute_name = players[tribute_id]["name"]
+        await ctx.send(f"{ctx.author.mention} has placed a bet of {amount} gold on {tribute_name}. Good luck!")
+    
+    @hunger.command()
+    async def check_gold(self, ctx):
+        """Check your current gold."""
+        user_gold = await self.config.user(ctx.author).gold()
+        await ctx.send(f"{ctx.author.mention}, you currently have {user_gold} gold.")
+    
+    
+    
 
     
