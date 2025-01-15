@@ -405,7 +405,7 @@ class Hungar(commands.Cog):
             f"{feast_message}\n"
             f"Alive participants: {', '.join(alive_mentions)}"
         )
-        await ctx.send("Pick your action for the day",view=ActionSelectionView(self, feast_active)
+        await ctx.send("Pick your action for the day",view=ActionSelectionView(self, feast_active))
 
     async def isOneLeft(self, guild):
         """Check if only one player is alive."""
