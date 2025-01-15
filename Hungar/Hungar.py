@@ -4,11 +4,20 @@ import asyncio
 from datetime import datetime, timedelta
 import os
 import discord
-
+from discord.ext.commands import CheckFailure
 
 #todo list
 
-#More aggressive AI for NPCs
+def is_gamemaster():
+    """Check if the user has the GameMaster role."""
+    async def predicate(ctx):
+        gamemaster_role = discord.utils.get(ctx.guild.roles, name="GameMaster")
+        if not gamemaster_role:
+            raise CheckFailure("The 'GameMaster' role does not exist in this server.")
+        if gamemaster_role not in ctx.author.roles:
+            raise CheckFailure("You do not have the 'GameMaster' role.")
+        return True
+    return commands.check(predicate)
 
 class Hungar(commands.Cog):
     def __init__(self, bot):
@@ -177,7 +186,7 @@ class Hungar(commands.Cog):
         await ctx.send(f"{ctx.author.mention} has joined the Hunger Games from District {district}!")
 
     @hunger.command()
-    @commands.admin()
+    @is_gamemaster()
     async def setdistrict(self, ctx, member: commands.MemberConverter, district: int):
         """Set a player's district manually (Admin only)."""
         guild = ctx.guild
@@ -191,7 +200,7 @@ class Hungar(commands.Cog):
         await ctx.send(f"{member.display_name}'s district has been set to {district}.")
 
     @hunger.command()
-    @commands.admin()
+    @is_gamemaster()
     async def startgame(self, ctx, npcs: int = 0):
         """Start the Hunger Games (Admin only). Optionally, add NPCs."""
         guild = ctx.guild
@@ -865,7 +874,7 @@ class Hungar(commands.Cog):
         await ctx.send(f"{ctx.author.mention} has chosen to {choice}.")
 
     @hunger.command()
-    @commands.admin()
+    @is_gamemaster()
     async def setdaylength(self, ctx, seconds: int):
         """Set the real-time length of a day in seconds (Admin only)."""
         guild = ctx.guild
@@ -873,7 +882,7 @@ class Hungar(commands.Cog):
         await ctx.send(f"Day length has been set to {seconds} seconds.")
 
     @hunger.command()
-    @commands.admin()
+    @is_gamemaster()
     async def stopgame(self, ctx):
         """Stop the Hunger Games early (Admin only). Reset everything."""
         guild = ctx.guild
