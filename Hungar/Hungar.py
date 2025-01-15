@@ -434,7 +434,7 @@ class Hungar(commands.Cog):
             user_gold = user_data.get("gold", 0)
     
             for tribute_id, bet_data in bets.items():
-                if tribute_id == winner_id:
+                if tribute_id == winner:
                     # Pay double the bet amount + daily earnings for the winner
                     user_gold += bet_data["amount"] * 2
 
