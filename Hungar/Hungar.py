@@ -932,7 +932,7 @@ class Hungar(commands.Cog):
             await ctx.send(embed=embed, ephemeral=True)
 
     @hunger.command()
-    async def place_bet(self, ctx, amount: int, tribute: str*):
+    async def place_bet(self, ctx, amount: int, tribute*: str):
         """Place a bet on a tribute."""
         
         if amount <= 0:
