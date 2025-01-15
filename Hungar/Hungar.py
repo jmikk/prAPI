@@ -29,6 +29,7 @@ class Hungar(commands.Cog):
         self.config.register_user(
             gold=0,
             bets={},
+            kill_count=0,  # Track total kills
         )
 
 
@@ -429,6 +430,15 @@ class Hungar(commands.Cog):
                 if tribute_id == winner_id:
                     # Pay double the bet amount + daily earnings for the winner
                     user_gold += bet_data["amount"] * 2
+
+
+            # Update total kill counts for each player
+        for player_id, player_data in players.items():
+            if not player_data.get("is_npc") and player_data["kill_list"]:
+                user_id = int(player_id)
+                total_kills = len(player_data["kill_list"])
+                current_kill_count = await self.config.user_from_id(user_id).kill_count()
+                await self.config.user_from_id(user_id).kill_count.set(current_kill_count + total_kills)
 
         # Clear bets after game ends
         await self.config.user_from_id(user_id).gold.set(user_gold)
@@ -991,6 +1001,60 @@ class Hungar(commands.Cog):
         """Check your current gold."""
         user_gold = await self.config.user(ctx.author).gold()
         await ctx.send(f"{ctx.author.mention}, you currently have {user_gold} gold.")
+
+    @hunger.command()
+    async def leaderboard(self, ctx):
+        """Display leaderboards for total kills and gold."""
+        all_users = await self.config.all_users()
+        
+        # Gather and sort kill counts
+        kill_leaderboard = sorted(
+            all_users.items(),
+            key=lambda x: x[1].get("kill_count", 0),
+            reverse=True
+        )
+        
+        # Gather and sort gold counts
+        gold_leaderboard = sorted(
+            all_users.items(),
+            key=lambda x: x[1].get("gold", 0),
+            reverse=True
+        )
+        
+        # Build the embed
+        embed = discord.Embed(title="🏆 Hunger Games Leaderboard 🏆", color=discord.Color.gold())
+    
+        # Add top players by kills
+        if kill_leaderboard:
+            kills_text = "\n".join(
+                f"**{ctx.guild.get_member(int(user_id)).display_name}**: {data['kill_count']} kills"
+                for user_id, data in kill_leaderboard[:10]
+                if ctx.guild.get_member(int(user_id))  # Ensure the user exists in the guild
+            )
+            embed.add_field(name="Top Killers", value=kills_text or "No data", inline=False)
+    
+        # Add top players by gold
+        if gold_leaderboard:
+            gold_text = "\n".join(
+                f"**{ctx.guild.get_member(int(user_id)).display_name}**: {data['gold']} gold"
+                for user_id, data in gold_leaderboard[:10]
+                if ctx.guild.get_member(int(user_id))  # Ensure the user exists in the guild
+            )
+            embed.add_field(name="Top Richest Players", value=gold_text or "No data", inline=False)
+    
+        await ctx.send(embed=embed)
+    
+    @hunger.command()
+    @commands.admin()
+    async def reset_leaderboard(self, ctx):
+        """Reset all user kill counts and gold."""
+        all_users = await self.config.all_users()
+        for user_id in all_users:
+            await self.config.user_from_id(int(user_id)).kill_count.set(0)
+            await self.config.user_from_id(int(user_id)).gold.set(0)
+        await ctx.send("Leaderboards have been reset.")
+
+
     
     
     
