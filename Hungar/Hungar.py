@@ -1027,7 +1027,7 @@ class Hungar(commands.Cog):
         # Add top players by kills
         if kill_leaderboard:
             kills_text = "\n".join(
-                f"**{ctx.guild.get_member(int(user_id)).display_name}**: {data['kill_count']} kills"
+                f"**{ctx.guild.get_member(int(user_id)).mention}**: {data['kill_count']} kills"
                 for user_id, data in kill_leaderboard[:10]
                 if ctx.guild.get_member(int(user_id))  # Ensure the user exists in the guild
             )
@@ -1036,7 +1036,7 @@ class Hungar(commands.Cog):
         # Add top players by gold
         if gold_leaderboard:
             gold_text = "\n".join(
-                f"**{ctx.guild.get_member(int(user_id)).display_name}**: {data['gold']} gold"
+                f"**{ctx.guild.get_member(int(user_id)).mention}**: {data['gold']} gold"
                 for user_id, data in gold_leaderboard[:10]
                 if ctx.guild.get_member(int(user_id))  # Ensure the user exists in the guild
             )
