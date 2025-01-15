@@ -935,6 +935,9 @@ class Hungar(commands.Cog):
     async def place_bet(self, ctx, amount: int, *, tribute: str):
         """Place a bet on a tribute."""
 
+        if not ("<" in tribute):
+            tribute = f"**{tribute}**"
+
         tribute = tribute.strip()  # Clean up any extra spaces        
         
         if amount <= 0:
