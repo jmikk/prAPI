@@ -32,7 +32,7 @@ class Hungar(commands.Cog):
             day_counter=0, 
             random_events=True,  # Enable or disable random events
             feast_active=False,  # Track if a feast is active# Counter for days
-            gambling 
+             
             
         )
         self.config.register_user(
