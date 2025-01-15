@@ -1064,6 +1064,68 @@ class Hungar(commands.Cog):
         await ctx.send("Leaderboards have been reset.")
 
 
+    @hunger.command()
+    async def how_to_play(self, ctx):
+        """Learn how to play the Hunger Games bot."""
+        embed = discord.Embed(
+            title="How to Play the Hunger Games Bot",
+            description="Welcome to the Hunger Games! Here's a quick guide to get you started.",
+            color=discord.Color.green()
+        )
+        embed.add_field(
+            name="1. Sign Up",
+            value=(
+                "Use the `!hunger signup` command to join the game. "
+                "You'll be assigned to a random district and given stats like Strength, Defense, Wisdom, Constitution, and HP. Your family is also sent 100 gold pre-bereavement gift."
+            ),
+            inline=False
+        )
+        embed.add_field(
+            name="2. Actions",
+            value=(
+                "Each day, choose an action with `!hunger action <action>`:\n"
+                "- **Hunt**: Attack other tributes and try to eliminate them.\n"
+                "- **Rest**: Recover and use items to restore stats.\n"
+                "- **Loot**: Search for valuable items to boost your stats."
+            ),
+            inline=False
+        )
+        embed.add_field(
+            name="3. Betting (Days 0 & 1 Only)",
+            value=(
+                "Place bets on your favorite tributes using `!hunger place_bet <amount> <tribute_name>`. "
+                "Earn 20% of your bet back each day the tribute survives, and double your bet if they win!"
+            ),
+            inline=False
+        )
+        embed.add_field(
+            name="4. Survive!",
+            value=(
+                "Your goal is to be the last tribute standing. Survive random events, fights, and the challenges of the arena."
+            ),
+            inline=False
+        )
+        embed.add_field(
+            name="5. Feasts",
+            value=(
+                "Every 10 days, and the first day a Feast is held. Choose the `Feast` action to participate and gain powerful boosts, "
+                "but beware—others may attack you during the Feast!"
+            ),
+            inline=False
+        )
+        embed.add_field(
+            name="6. Leaderboards",
+            value=(
+                "Check your kills and gold with `!hunger leaderboard`. Compete for top spots in kills and gold on the leaderboards!"
+            ),
+            inline=False
+        )
+        embed.set_footer(text="Good luck, and may the odds be ever in your favor!")
+        
+        await ctx.send(embed=embed)
+
+
+
     
     
     
