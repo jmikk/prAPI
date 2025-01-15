@@ -618,7 +618,7 @@ class Hungar(commands.Cog):
     
                 # Choose a random stat to reduce
                 stats = ["Def", "Str", "Con", "Wis", "HP"]
-                stat_to_reduce = random.choice(stats)
+                stat_to_reduce = max(stats, key=lambda stat: player_data["stats"][stat])
                 player_data["stats"][stat_to_reduce] -= reduction
 
                 # Check if the player dies
