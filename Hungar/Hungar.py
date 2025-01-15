@@ -476,8 +476,8 @@ class Hungar(commands.Cog):
         day_counter = config.get("day_counter", 0) + 1
         await self.config.guild(guild).day_counter.set(day_counter)
 
-        if day_counter > 5:
-            reduction = ((day_counter - 5) // 5) + 1     
+        if day_counter > 15:
+            reduction = ((day_counter - 15) // 15) + 1     
             
             event_outcomes.append("A mysterious mist has descended upon the arena, sapping the abilites of all participants!")
 
