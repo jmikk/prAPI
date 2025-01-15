@@ -934,9 +934,7 @@ class Hungar(commands.Cog):
     @hunger.command()
     async def place_bet(self, ctx, tribute: str, amount: int):
         """Place a bet on a tribute."""
-
         
-            
         if amount <= 0:
             await ctx.send("Bet amount must be greater than zero.")
             return
@@ -950,6 +948,8 @@ class Hungar(commands.Cog):
         players = await self.config.guild(guild).players()
         tribute = tribute.lower()
 
+        config = await self.config.guild(guild).all()
+        
         day_counter = config.get("day_counter", 0)
 
         # Restrict betting to days 1 and 2
