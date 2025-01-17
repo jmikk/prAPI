@@ -599,7 +599,7 @@ class Hungar(commands.Cog):
         day_duration = timedelta(seconds=config["day_duration"])
         day_end = day_start + day_duration - offset + offset2
         day_end_timestamp = int(day_end.timestamp())  # Convert to Unix timestamp for Discord's formatting
-        await ctx.send(f"Pick your action for the day, the sun will set <t:{day_end_timestamp}:R>",view=ActionSelectionView(self, feast_active))
+        await ctx.send(f"Pick your action for the day, the sun will set in about <t:{day_end_timestamp}:R>",view=ActionSelectionView(self, feast_active))
 
     async def isOneLeft(self, guild):
         """Check if only one player is alive."""
