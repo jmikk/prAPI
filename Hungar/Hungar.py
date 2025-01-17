@@ -7,7 +7,99 @@ import discord
 from discord.ext.commands import CheckFailure
 from discord.ui import View, Button
 from discord import Interaction
+from discord.ui import Select, View
+from discord import app_commands
 
+
+
+class TributeSelect(Select):
+    def __init__(self, cog, players, amount, stat):
+        self.cog = cog
+        self.players = players
+        self.amount = amount
+        self.stat = stat
+        options = []
+        for player_id, player_data in players.items():
+            if player_data["alive"]:
+                options.append(
+                    discord.SelectOption(
+                        label=player_data["name"],
+                        description=f"District {player_data['district']}",
+                        value=player_id
+                    )
+                )
+
+        super().__init__(
+            placeholder="Select a tribute to sponsor...",
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        player_id = self.values[0]
+        target_player = self.players[player_id]
+
+        # Determine the boost based on the amount spent
+        if self.stat == "HP":
+            boost = self.amount // 10  # HP boosts are cheaper
+        else:
+            boost = self.amount // 20  # Other stats are more expensive
+
+        if boost <= 0:
+            await interaction.response.send_message("The amount you spent is too low to provide any boost. Try a higher amount.", ephemeral=True)
+            return
+
+        # Deduct gold from the sponsor
+        user_gold = await self.cog.config.user(interaction.user).gold()
+        await self.cog.config.user(interaction.user).gold.set(user_gold - self.amount)
+
+        # Add the item to the sponsored player's inventory
+        target_player["items"].append((self.stat, boost))
+
+        await self.cog.config.guild(interaction.guild).players.set(self.players)
+        await interaction.response.send_message(f"{interaction.user.mention} has sponsored {target_player['name']} with a {boost} {self.stat} boost item!")
+
+        # 75% chance to sponsor another random tribute
+        if random.random() < 0.75:
+            alive_players = [player for player_id, player in self.players.items() if player["alive"] and player_id != player_id]
+            if alive_players:
+                random_player = random.choice(alive_players)
+
+                if self.stat == "HP":
+                    random_boost = boost + random.randint(5, 10)
+                else:
+                    random_boost = boost + random.randint(1, 3)
+
+                random_player["items"].append((self.stat, random_boost))
+
+                await interaction.channel.send(
+                    f"The generosity spreads! {random_player['name']} has also received a {random_boost} {self.stat} boost item from an anonymous sponsor!"
+                )
+
+            await self.cog.config.guild(interaction.guild).players.set(self.players)
+
+class StatSelect(Select):
+    def __init__(self, cog, players, amount):
+        self.cog = cog
+        self.players = players
+        self.amount = amount
+        options = [
+            discord.SelectOption(label="Defense", value="Def"),
+            discord.SelectOption(label="Strength", value="Str"),
+            discord.SelectOption(label="Constitution", value="Con"),
+            discord.SelectOption(label="Wisdom", value="Wis"),
+            discord.SelectOption(label="Health", value="HP")
+        ]
+
+        super().__init__(
+            placeholder="Select a stat to boost...",
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        stat = self.values[0]
+        view = View()
+        view.add_item(TributeSelect(self.cog, self.players, self.amount, stat))
+        await interaction.response.edit_message(content="Now select a tribute to sponsor:", view=view)
 #clear bets at the end of game
 
 class ViewTributesButton(Button):
@@ -669,7 +761,7 @@ class Hungar(commands.Cog):
                 resters.append(player_id)
 
                 if player_data["stats"]["HP"] < player_data["stats"]["Con"] * 3:
-                    damage = random.randint(1,5)
+                    damage = random.randint(1,int(player_data["stats"]["Con"])/2)
                     player_data["stats"]["HP"] = player_data["stats"]["HP"] + damage
                     event_outcomes.append(f"{player_data['name']} nursed their wounds and healed for {damage} points of damage")
 
