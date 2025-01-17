@@ -594,9 +594,10 @@ class Hungar(commands.Cog):
         )
         # Calculate the end of the day
         offset = timedelta(hours=6)
+        offset2 = timedelta(secounds=10)
         day_start = datetime.fromisoformat(config["day_start"])
         day_duration = timedelta(seconds=config["day_duration"])
-        day_end = day_start + day_duration - offset
+        day_end = day_start + day_duration - offset + offset2
         day_end_timestamp = int(day_end.timestamp())  # Convert to Unix timestamp for Discord's formatting
         await ctx.send(f"Pick your action for the day, the sun will set <t:{day_end_timestamp}:R>",view=ActionSelectionView(self, feast_active))
 
