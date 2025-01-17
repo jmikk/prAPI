@@ -1340,6 +1340,26 @@ class Hungar(commands.Cog):
         
         await ctx.send(embed=embed)
 
+    @app_commands.command(name="sponsor", description="Sponsor a tribute with a boost item.")
+    @app_commands.describe(amount="The amount of gold to spend.")
+    async def sponsor(self, interaction: discord.Interaction, amount: int):
+        guild = interaction.guild
+        players = await self.config.guild(guild).players()
+        user_gold = await self.config.user(interaction.user).gold()
+
+        if amount <= 0:
+            await interaction.response.send_message("You must spend more than 0 gold to sponsor someone.", ephemeral=True)
+            return
+
+        if user_gold < amount:
+            await interaction.response.send_message("You don't have enough gold to sponsor that amount.", ephemeral=True)
+            return
+
+        view = View()
+        view.add_item(StatSelect(self, players, amount))
+
+        await interaction.response.send_message("Select a stat to sponsor:", view=view, ephemeral=True)
+
 
 
     
