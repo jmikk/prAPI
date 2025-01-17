@@ -771,8 +771,7 @@ class Hungar(commands.Cog):
                     player_data["stats"]["HP"] = player_data["stats"]["HP"] + damage
                     event_outcomes.append(f"{player_data['name']} nursed their wounds and healed for {damage} points of damage")
 
-                threshold = 1 / (1 + player_data["stats"]["Con"] / 3)  # Scale slows the decrease
-                if random.random() < threshold and not player_data["items"]: #take dmg
+                if not player_data["items"]: #take dmg
                     damage = random.randint(1,5)
                     player_data["stats"]["HP"]=player_data["stats"]["HP"] - damage
                     event_outcomes.append(f"{player_data['name']} has hunger pains and takes {damage} points of damage")
@@ -781,7 +780,7 @@ class Hungar(commands.Cog):
                         event_outcomes.append(f"{player_data['name']} starved to death.")
                         player_data["items"] = []
                     
-                else:
+                else player_data["items"]:
                     item = player_data["items"].pop()
                     stat, boost = item
                     player_data["stats"][stat] += boost
