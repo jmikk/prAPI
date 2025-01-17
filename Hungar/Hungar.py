@@ -594,7 +594,7 @@ class Hungar(commands.Cog):
         )
         # Calculate the end of the day
         offset = timedelta(hours=6)
-        offset2 = timedelta(secounds=10)
+        offset2 = timedelta(seconds=10)
         day_start = datetime.fromisoformat(config["day_start"])
         day_duration = timedelta(seconds=config["day_duration"])
         day_end = day_start + day_duration - offset + offset2
