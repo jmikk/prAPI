@@ -60,7 +60,7 @@ class SponsorView(View):
             self.add_item(SponsorConfirmButton())
 
          except Exception as e:
-                    self.handle_error(e, "tribute selection dropdown")
+            self.handle_error(e, "tribute selection dropdown")
 
 
 
