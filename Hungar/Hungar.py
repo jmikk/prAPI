@@ -604,10 +604,9 @@ class Hungar(commands.Cog):
         )
         # Calculate the end of the day
         offset = timedelta(hours=6)
-        offset2 = timedelta(seconds=10)
         day_start = datetime.fromisoformat(config["day_start"])
         day_duration = timedelta(seconds=config["day_duration"])
-        day_end = day_start + day_duration - offset + offset2
+        day_end = day_start + day_duration - offset 
         day_end_timestamp = int(day_end.timestamp())  # Convert to Unix timestamp for Discord's formatting
         await ctx.send(f"Pick your action for the day, the sun will set in about <t:{day_end_timestamp}:R>",view=ActionSelectionView(self, feast_active))
 
@@ -1392,8 +1391,30 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).players.set(players)
 
         await interaction.response.send_message(
-            f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat.name} boost!", ephemeral=True
+            f"A mysterious sponsor successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat.name} boost!"
         )
+
+            # 75% chance to sponsor another random tribute
+        if random.random() < 0.75:
+            await asyncio.sleep(5)  # Wait for a few moments
+            alive_players = [
+                player_id
+                for player_id, player in players.items()
+                if player["alive"] and player_id != tribute_id
+            ]
+
+            if alive_players:
+                random_tribute_id = random.choice(alive_players)
+                random_boost = boost + random.randint(-2, 2)
+                random_boost = max(1, random_boost)  # Ensure boost is at least 1
+
+                players[random_tribute_id]["items"].append((stat.value, random_boost))
+                await self.config.guild(guild).players.set(players)
+
+                await interaction.channel.send(
+                    f"An anonymous sponsor has granted {players[random_tribute_id]['name']} a {random_boost} {stat.name} boost!"
+                )
+
 
     @sponsor.autocomplete("tribute")
     async def tribute_autocomplete(self, interaction: discord.Interaction, current: str):
