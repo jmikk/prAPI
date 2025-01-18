@@ -1415,20 +1415,27 @@ class Hungar(commands.Cog):
                     f"An anonymous sponsor has granted {players[random_tribute_id]['name']} a {random_boost} {stat.name} boost!"
                 )
 
-
     @sponsor.autocomplete("tribute")
     async def tribute_autocomplete(self, interaction: discord.Interaction, current: str):
         """Autocomplete tribute names."""
         guild = interaction.guild
         players = await self.config.guild(guild).players()
-
+    
         # Filter tribute names that match the current input
-        options = [
-            app_commands.Choice(name=player["name"], value=player["name"])
-            for player in players.values()
-            if player["alive"] and current.lower() in player["name"].lower()
-        ]
-
+        options = []
+        for player_id, player in players.items():
+            if not player["alive"]:
+                continue
+    
+            if player.get("is_npc"):
+                name = player["name"]  # NPC names are already bolded
+            else:
+                member = guild.get_member(int(player_id))
+                name = member.display_name if member else player["name"]
+    
+            if current.lower() in name.lower():
+                options.append(app_commands.Choice(name=name, value=name))
+    
         return options[:25]  # Return up to 25 matches (Discord's limit)
 
 
