@@ -266,9 +266,13 @@ class Hungar(commands.Cog):
     
     async def cog_load(self):
         """This method is called when the cog is loaded, and it ensures that all slash commands are synced."""
-        # Sync the commands globally
+        try:
+            self.bot.tree.remove_command("sponsor")  # Remove existing registration if it exists
+        except KeyError:
+            pass  # Ignore if the command isn't already registered
+
+        self.bot.tree.add_command(self.sponsor)
         await self.bot.tree.sync()
-        print("All slash commands synced.")
     
     async def load_file(self,fileName,name1="Name1 Filler",name2="Name2 Filler",dmg="DMG Filler",dmg2="DMG2 Filler", item_name="Item name filler"):
         """Load file names from the fileName.txt file."""
