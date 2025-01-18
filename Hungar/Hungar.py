@@ -271,8 +271,12 @@ class Hungar(commands.Cog):
         except KeyError:
             pass  # Ignore if the command isn't already registered
 
-        self.bot.tree.add_command(self.sponsor)
+        #self.bot.tree.add_command(self.sponsor)
         await self.bot.tree.sync()
+
+    async def cog_unload(self):
+    self.bot.tree.remove_command("sponsor")
+
     
     async def load_file(self,fileName,name1="Name1 Filler",name2="Name2 Filler",dmg="DMG Filler",dmg2="DMG2 Filler", item_name="Item name filler"):
         """Load file names from the fileName.txt file."""
