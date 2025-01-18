@@ -1377,9 +1377,9 @@ class Hungar(commands.Cog):
         if user_gold < amount:
             await interaction.response.send_message("You don't have enough gold to sponsor that amount.", ephemeral=True)
             return
-
+            
+        await ctx.send(tribute)
         # Validate the tribute name
-        tribute_id = next((pid for pid, pdata in players.items() if pdata["name"].lower() == tribute.lower()), None)
         if not tribute_id:
             await interaction.response.send_message("Tribute not found. Please check the name and try again.")
             return
