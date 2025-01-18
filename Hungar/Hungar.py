@@ -56,25 +56,28 @@ class SponsorView(View):
         self.add_item(self.gold_select)
 
         # Add a confirm button
-        self.add_item(SponsorConfirmButton(self))
+        self.add_item(SponsorConfirmButton())
+
 
 
 class SponsorConfirmButton(Button):
-    def __init__(self, view):
+    def __init__(self):
         super().__init__(label="Confirm Sponsorship", style=discord.ButtonStyle.success)
-        self.view = view
 
     async def callback(self, interaction: Interaction):
         try:
+            # Access the parent view
+            parent_view: SponsorView = self.view
+
             # Get selected values
-            tribute_id = self.view.tribute_select.values[0]
-            stat = self.view.stat_select.values[0]
-            boost_level = int(self.view.gold_select.values[0])
+            tribute_id = parent_view.tribute_select.values[0]
+            stat = parent_view.stat_select.values[0]
+            boost_level = int(parent_view.gold_select.values[0])
             cost = boost_level * 20  # 20 gold per level
 
-            players = await self.view.cog.config.guild(self.view.guild).players()
+            players = await parent_view.cog.config.guild(parent_view.guild).players()
             tribute = players[tribute_id]
-            user_gold = await self.view.cog.config.user(interaction.user).gold()
+            user_gold = await parent_view.cog.config.user(interaction.user).gold()
 
             if cost > user_gold:
                 await interaction.response.send_message(
@@ -84,52 +87,16 @@ class SponsorConfirmButton(Button):
                 return
 
             # Deduct gold and apply sponsorship
-            await self.view.cog.config.user(interaction.user).gold.set(user_gold - cost)
+            await parent_view.cog.config.user(interaction.user).gold.set(user_gold - cost)
             tribute["items"].append((stat, boost_level))
-            await self.view.cog.config.guild(self.view.guild).players.set(players)
+            await parent_view.cog.config.guild(parent_view.guild).players.set(players)
 
             await interaction.response.send_message(
                 f"You successfully sponsored {tribute['name']} with a +{boost_level} {stat} boost!",
                 ephemeral=True
             )
         except Exception as e:
-            await self.view.cog.report_error(interaction.channel, e)
-
-
-class SponsorButton(Button):
-    def __init__(self, cog):
-        super().__init__(label="Sponsor Tribute", style=discord.ButtonStyle.primary)
-        self.cog = cog
-
-    async def callback(self, interaction: Interaction):
-        try:
-            guild = interaction.guild
-            config = await self.cog.config.guild(guild).all()
-
-            if not config.get("game_active", False):
-                await interaction.response.send_message(
-                    "No Hunger Games are currently active. Start a game first!",
-                    ephemeral=True
-                )
-                return
-
-            players = config.get("players", {})
-            if not players:
-                await interaction.response.send_message(
-                    "There are no tributes available to sponsor at the moment.",
-                    ephemeral=True
-                )
-                return
-
-            # Send the sponsor view
-            view = SponsorView(self.cog, guild, players)
-            await interaction.response.send_message(
-                "Select a tribute, stat, and boost level for sponsorship:",
-                view=view,
-                ephemeral=True
-            )
-        except Exception as e:
-            await self.cog.report_error(interaction.channel, e)
+            await parent_view.cog.report_error(interaction.channel, e)
 
 class SponsorButton(Button):
     def __init__(self, cog):
