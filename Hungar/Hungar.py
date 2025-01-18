@@ -1381,7 +1381,7 @@ class Hungar(commands.Cog):
         # Validate the tribute name
         tribute_id = next((pid for pid, pdata in players.items() if pdata["name"].lower() == tribute.lower()), None)
         if not tribute_id:
-            await interaction.response.send_message("Tribute not found. Please check the name and try again.", ephemeral=True)
+            await interaction.response.send_message("Tribute not found. Please check the name and try again.")
             return
 
         # Deduct gold from the sponsor
@@ -1392,20 +1392,20 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).players.set(players)
 
         await interaction.response.send_message(
-            f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat.name} boost!", ephemeral=True
+            f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat.name} boost!"
         )
 
-    @sponsor.autocomplete("tribute")
-    async def tribute_autocomplete(self, interaction: discord.Interaction, current: str):
-        """Autocomplete tribute names."""
-        guild = interaction.guild
-        players = await self.config.guild(guild).players()
+@sponsor.autocomplete("tribute")
+async def tribute_autocomplete(self, interaction: discord.Interaction, current: str):
+    """Autocomplete tribute names."""
+    guild = interaction.guild
+    players = await self.config.guild(guild).players()
 
-        # Filter tribute names that match the current input
-        options = [
-            app_commands.Choice(name=player["name"], value=player["name"])
-            for player in players.values()
-            if player["alive"] and current.lower() in player["name"].lower()
-        ]
+    options = []
+    for player_id, player_data in players.items():
+        if player_data["alive"] and current.lower() in player_data["name"].lower():
+            member = guild.get_member(int(player_id)) if player_id.isdigit() else None
+            display_name = member.mention if member else player_data["name"]
+            options.append(app_commands.Choice(name=display_name, value=player_id))
 
-        return options[:25]  # Return up to 25 matches (Discord's limit)
+    return options[:25]  # Return up to 25 matches (Discord's limit)
