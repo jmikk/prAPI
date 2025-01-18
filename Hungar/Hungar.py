@@ -254,7 +254,7 @@ class Hungar(commands.Cog):
             districts={},
             players={},
             game_active=False,
-            day_duration=10,  # Default: 1 hour in seconds
+            day_duration=120,  # Default: 1 hour in seconds
             day_start=None,
             day_counter=0, 
             random_events=True,  # Enable or disable random events
@@ -1120,7 +1120,7 @@ class Hungar(commands.Cog):
             "districts": {},
             "players": {},
             "game_active": False,
-            "day_duration": 10,
+            "day_duration": 300,
             "day_start": None,
             "day_counter": 0,
         })
