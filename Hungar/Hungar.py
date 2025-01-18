@@ -170,7 +170,7 @@ class SponsorButton(Button):
                     member = guild.get_member(int(player_id))
                     if member:
                         # Add mention for real players
-                        tribute_options.append(SelectOption(label=member.mention, value=player_id))
+                        tribute_options.append(SelectOption(label=member.name, value=player_id))
                     else:
                         # Fallback to the stored name if the member is not found
                         tribute_options.append(SelectOption(label=player["name"], value=player_id))
