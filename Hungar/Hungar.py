@@ -10,68 +10,99 @@ from discord import Interaction, TextStyle
 from discord import app_commands
 
 
-class SponsorModal(Modal):
-    def __init__(self, cog, guild, players):
-        super().__init__(title="Sponsor a Tribute")
+class SponsorButton(Button):
+    def __init__(self, cog):
+        super().__init__(label="Sponsor Tribute", style=discord.ButtonStyle.primary)
         self.cog = cog
-        self.guild = guild
-        self.players = players
 
-        # Gold amount input
-        self.gold_input = TextInput(
-            label="Amount of Gold",
-            placeholder="Enter the amount of gold to sponsor",
-            style=TextStyle.short
-        )
-        self.add_item(self.gold_input)
+    async def callback(self, interaction: Interaction):
+        guild = interaction.guild
+        config = await self.cog.config.guild(guild).all()
 
-        # Stat selection dropdown
-        self.stat_select = Select(
-            placeholder="Select a stat to boost",
-            options=[
-                discord.SelectOption(label="Defense", value="Def"),
-                discord.SelectOption(label="Strength", value="Str"),
-                discord.SelectOption(label="Constitution", value="Con"),
-                discord.SelectOption(label="Wisdom", value="Wis"),
-                discord.SelectOption(label="Health", value="HP"),
-            ]
-        )
-        self.add_item(self.stat_select)
-
-        # Tribute selection dropdown
-        tribute_options = [
-            discord.SelectOption(
-                label=guild.get_member(int(player_id)).display_name if player_id.isdigit() else player_data["name"],
-                value=player_id
+        # Check if the game is active
+        if not config.get("game_active", False):
+            await interaction.response.send_message(
+                "No Hunger Games are currently active. Start a game first!",
+                ephemeral=True
             )
-            for player_id, player_data in players.items()
-            if player_data["alive"]
-        ]
-        self.tribute_select = Select(
-            placeholder="Select a tribute",
-            options=tribute_options[:25]  # Limit to 25 options
+            return
+
+        players = config.get("players", {})
+
+        if not players:
+            await interaction.response.send_message(
+                "There are no tributes available to sponsor at the moment.",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.send_message(
+            "Enter the sponsorship details in the following format:\n"
+            "`<tribute name>, <stat>, <amount>`\n\n"
+            "- **Tribute Name**: The name of the tribute you want to sponsor.\n"
+            "- **Stat**: The stat to boost (`Def`, `Str`, `Con`, `Wis`, or `HP`).\n"
+            "- **Amount**: The amount of gold to sponsor.\n"
+            "Example: `John Doe, Str, 50`",
+            ephemeral=True
         )
-        self.add_item(self.tribute_select)
 
-    async def on_submit(self, interaction: Interaction):
+        def check(m):
+            return m.author == interaction.user and m.channel == interaction.channel
+
         try:
-            # Fetch input values
-            amount = int(self.gold_input.value)
-            stat = self.stat_select.values[0]
-            tribute_id = self.tribute_select.values[0]
+            # Wait for user input
+            message = await self.cog.bot.wait_for("message", check=check, timeout=60)
+            inputs = message.content.split(",")
 
-            players = await self.cog.config.guild(self.guild).players()
-            user_gold = await self.cog.config.user(interaction.user).gold()
-
-            if amount <= 0:
-                await interaction.response.send_message(
-                    "You must spend more than 0 gold to sponsor.",
+            if len(inputs) != 3:
+                await interaction.followup.send(
+                    "Invalid format. Please use the format: `<tribute name>, <stat>, <amount>`.",
                     ephemeral=True
                 )
                 return
 
+            # Extract inputs
+            tribute_name = inputs[0].strip().lower()
+            stat = inputs[1].strip().capitalize()
+            try:
+                amount = int(inputs[2].strip())
+            except ValueError:
+                await interaction.followup.send(
+                    "Invalid amount. Please enter a positive number.",
+                    ephemeral=True
+                )
+                return
+
+            # Validate inputs
+            if stat not in ["Def", "Str", "Con", "Wis", "HP"]:
+                await interaction.followup.send(
+                    f"Invalid stat '{stat}'. Valid stats are: `Def`, `Str`, `Con`, `Wis`, `HP`.",
+                    ephemeral=True
+                )
+                return
+
+            if amount <= 0:
+                await interaction.followup.send(
+                    "You must sponsor more than 0 gold.",
+                    ephemeral=True
+                )
+                return
+
+            tribute_id = next(
+                (pid for pid, pdata in players.items() if pdata["name"].lower() == tribute_name),
+                None
+            )
+            if not tribute_id:
+                await interaction.followup.send(
+                    f"Tribute '{tribute_name}' not found. Please check the name and try again.",
+                    ephemeral=True
+                )
+                return
+
+            # Check user's gold balance
+            user_gold = await self.cog.config.user(interaction.user).gold()
             if amount > user_gold:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "You don't have enough gold to sponsor this amount.",
                     ephemeral=True
                 )
@@ -80,47 +111,18 @@ class SponsorModal(Modal):
             # Deduct gold and apply sponsorship
             await self.cog.config.user(interaction.user).gold.set(user_gold - amount)
             players[tribute_id]["items"].append((stat, amount // 20))
-            await self.cog.config.guild(self.guild).players.set(players)
+            await self.cog.config.guild(guild).players.set(players)
 
-            await interaction.response.send_message(
-                f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat} boost!"
+            await interaction.followup.send(
+                f"You successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat} boost!",
+                ephemeral=True
             )
-        except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+        except asyncio.TimeoutError:
+            await interaction.followup.send(
+                "Sponsor process timed out. Please try again.",
+                ephemeral=True
+            )
 
-
-class SponsorButton(Button):
-    def __init__(self, cog):
-        super().__init__(label="Sponsor Tribute", style=discord.ButtonStyle.primary)
-        self.cog = cog
-
-    async def callback(self, interaction: Interaction):
-        try:
-            guild = interaction.guild
-            config = await self.cog.config.guild(guild).all()
-
-            # Check if the game is active
-            if not config.get("game_active", False):
-                await interaction.response.send_message(
-                    "No Hunger Games are currently active. Start a game first!",
-                    ephemeral=True
-                )
-                return
-
-            players = config.get("players", {})
-
-            if not players:
-                await interaction.response.send_message(
-                    "There are no tributes available to sponsor at the moment.",
-                    ephemeral=True
-                )
-                return
-
-            # Open the modal
-            modal = SponsorModal(self.cog, guild, players)
-            await interaction.response.send_modal(modal)
-        except Exception as e:
-            await interaction.channel.send(f"Error: {e}")
 
 
 
