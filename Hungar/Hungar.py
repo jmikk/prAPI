@@ -12,7 +12,7 @@ from discord import app_commands
 
 
 class SponsorModal(Modal):
-    def __init__(self, cog, players):
+    def __init__(self, cog, guild, players):
         super().__init__(title="Sponsor a Tribute")
         self.cog = cog
         self.players = players
@@ -1339,7 +1339,7 @@ class Hungar(commands.Cog):
             return
     
         # Open the modal
-        modal = SponsorModal(self, players)
+        modal = SponsorModal(self,guild, players)
         await ctx.interaction.response.send_modal(modal)
 
 
