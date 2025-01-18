@@ -90,9 +90,26 @@ class BettingView(View):
         self.confirm_button.callback = self.confirm_bet
         self.add_item(self.confirm_button)
 
+    def get_tribute_options(self):
+        """Get the tribute options with the selected value marked."""
+        tribute_options = []
+        for option in self.tribute_options:
+            is_default = option.value == self.selected_tribute
+            tribute_options.append(SelectOption(label=option.label, value=option.value, default=is_default))
+        return tribute_options
+
+    def get_amount_options(self):
+    """Get the amount options with the selected value marked."""
+    return [
+        SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_amount))
+        for option in self.amount_options
+    ]    
+
     async def on_tribute_select(self, interaction: Interaction):
         try:
-            self.selected_tribute = self.tribute_select.values[0]  # Access the selected value
+            self.selected_tribute = self.tribute_select.values[0]
+            self.tribute_select.options = self.get_tribute_options()  # Update options to retain selection# Access the selected value
+            
             if self.selected_amount:
                 self.confirm_button.disabled = False  # Enable the confirm button if both are selected
             await interaction.response.edit_message(view=self)
@@ -103,7 +120,9 @@ class BettingView(View):
 
     async def on_amount_select(self, interaction: Interaction):
         try:
-            self.selected_amount = self.amount_select.values[0]  # Access the selected value
+            self.selected_amount = self.amount_select.values[0]
+            self.amount_select.options = self.get_amount_options()  # Update options to retain selection
+            # Access the selected value
             if self.selected_tribute:
                 self.confirm_button.disabled = False  # Enable the confirm button if both are selected
             await interaction.response.edit_message(view=self)
