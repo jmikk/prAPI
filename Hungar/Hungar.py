@@ -315,7 +315,7 @@ class ViewStatsButton(Button):
 
 
 class ActionSelectionView(View):
-    def __init__(self, cog, feast_active, day_count):
+    def __init__(self, cog, feast_active, current_day):
         super().__init__(timeout=None)  # No timeout for the buttons
         self.cog = cog
 
