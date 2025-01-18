@@ -266,12 +266,7 @@ class Hungar(commands.Cog):
     
     async def cog_load(self):
         """This method is called when the cog is loaded, and it ensures that all slash commands are synced."""
-        try:
-            self.bot.tree.remove_command("sponsor")  # Remove existing registration if it exists
-        except KeyError:
-            pass  # Ignore if the command isn't already registered
-
-        #self.bot.tree.add_command(self.sponsor)
+        self.bot.tree.add_command(self.sponsor)
         await self.bot.tree.sync()
 
     async def cog_unload(self):
