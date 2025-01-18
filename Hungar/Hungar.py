@@ -9,29 +9,6 @@ from discord.ui import View, Button, Modal, Select, TextInput
 from discord import Interaction, TextStyle, SelectOption
 
 
-class BettingButton(Button):
-    def __init__(self, cog):
-        super().__init__(label="Place a Bet", style=discord.ButtonStyle.primary)
-        self.cog = cog
-
-    async def callback(self, interaction: Interaction):
-        guild = interaction.guild
-        players = await self.cog.config.guild(guild).players()
-
-        # Create options for tributes
-        tribute_options = [
-            SelectOption(label=player["name"], value=player_id)
-            for player_id, player in players.items() if player["alive"]
-        ]
-        if not tribute_options:
-            await interaction.response.send_message("There are no tributes to bet on.", ephemeral=True)
-            return
-
-        # Send a view with dropdowns for selecting tribute and bet amount
-        view = BettingView(self.cog, tribute_options)
-        await interaction.response.send_message("Place your bet using the options below:", view=view, ephemeral=True)
-
-
 class BettingView(View):
     def __init__(self, cog, tribute_options):
         super().__init__(timeout=60)
@@ -71,14 +48,14 @@ class BettingView(View):
     async def on_tribute_select(self, interaction: Interaction):
         self.selected_tribute = self.tribute_select.values[0]
         if self.selected_amount:
-            self.confirm_button.disabled = False
-        await interaction.response.defer()
+            self.confirm_button.disabled = False  # Enable the confirm button if both are selected
+        await interaction.response.edit_message(view=self)  # Update the view to reflect changes
 
     async def on_amount_select(self, interaction: Interaction):
         self.selected_amount = self.amount_select.values[0]
         if self.selected_tribute:
-            self.confirm_button.disabled = False
-        await interaction.response.defer()
+            self.confirm_button.disabled = False  # Enable the confirm button if both are selected
+        await interaction.response.edit_message(view=self)  # Update the view to reflect changes
 
     async def confirm_bet(self, interaction: Interaction):
         try:
@@ -123,7 +100,6 @@ class BettingView(View):
             )
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
-
 
 
 class SponsorButton(Button):
