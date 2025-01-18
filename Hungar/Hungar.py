@@ -244,26 +244,21 @@ class SponsorInteractionView(View):
     async def on_tribute_select(self, interaction: Interaction):
         try:
             self.selected_tribute = self.tribute_select.values[0]
-            await interaction.response.defer()
-            await interaction.followup.send(f"Selected tribute: {self.selected_tribute}", ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+            await interaction.response.send_message(f"An error occurred: {e}")
 
     async def on_item_select(self, interaction: Interaction):
         try:
             self.selected_item = self.item_select.values[0]
-            await interaction.response.defer()
-            await interaction.followup.send(f"Selected item: {self.selected_item}", ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+            await interaction.response.send_message(f"An error occurred: {e}")
 
     async def on_boost_select(self, interaction: Interaction):
         try:
             self.selected_boost = int(self.boost_select.values[0])
             await interaction.response.defer()
-            await interaction.followup.send(f"Selected boost: {self.selected_boost}", ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+            await interaction.response.send_message(f"An error occurred: {e}")
 
     async def submit(self, interaction: Interaction):
         try:
@@ -924,7 +919,7 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).day_counter.set(day_counter)
 
         if day_counter > 15:
-            reduction = ((day_counter - 15) // 15) + 1     
+            reduction = (day_counter - 15) // 2     
             
             event_outcomes.append("A mysterious mist has descended upon the arena, sapping the abilites of all participants!")
 
