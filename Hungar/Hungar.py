@@ -158,7 +158,7 @@ class SponsorButton(Button):
                 )
                 return
 
-            view = SponsorSelectView(self.cog, guild, players)
+            view = SponsorView(self.cog, guild, players)
             await interaction.response.send_message(
                 "Choose a tribute and stat to sponsor using the dropdown menus below:",
                 view=view,
