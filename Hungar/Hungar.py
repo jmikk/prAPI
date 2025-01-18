@@ -161,10 +161,23 @@ class SponsorButton(Button):
         players = await self.cog.config.guild(guild).players()
 
         # Create options for tributes
-        tribute_options = [
-            SelectOption(label=player["name"], value=player_id)
-            for player_id, player in players.items() if player["alive"]
-        ]
+        tribute_options = []
+        # Check if the player is a real user or an NPC
+        for player_id, player in players.items():
+            if player["alive"]:
+                # Check if the player is a real user or an NPC
+                if player_id.isdigit():  # Real user (user IDs are digits)
+                    member = guild.get_member(int(player_id))
+                    if member:
+                        # Add mention for real players
+                        tribute_options.append(SelectOption(label=member.mention, value=player_id))
+                    else:
+                        # Fallback to the stored name if the member is not found
+                        tribute_options.append(SelectOption(label=player["name"], value=player_id))
+                else:
+                    # Add NPC names as they are
+                    tribute_options.append(SelectOption(label=player["name"], value=player_id))
+
         if not tribute_options:
             await interaction.response.send_message("There are no tributes to sponsor.", ephemeral=True)
             return
