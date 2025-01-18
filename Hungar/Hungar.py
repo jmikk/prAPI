@@ -1421,26 +1421,23 @@ class Hungar(commands.Cog):
         guild = interaction.guild
         players = await self.config.guild(guild).players()
     
-        # Filter tribute names that match the current input
+        # Build autocomplete options
         options = []
         for player_id, player in players.items():
             if not player["alive"]:
                 continue
     
+            # Display NPC names as-is and real user names as display names
             if player.get("is_npc"):
-                name = player["name"]  # NPC names are already bolded
+                display_name = player["name"]  # NPC names are unchanged
             else:
                 member = guild.get_member(int(player_id))
-                name = member.display_name if member else player["name"]
+                display_name = member.display_name if member else player["name"]
     
-            if current.lower() in name.lower():
-                options.append(app_commands.Choice(name=name, value=name))
+            # Match against current input and include the underlying ID as value
+            if current.lower() in display_name.lower():
+                options.append(app_commands.Choice(name=display_name, value=player_id))
     
-        return options[:25]  # Return up to 25 matches (Discord's limit)
-
-
-    
-    
-    
+        return options[:25]  # Return up to 25 matches
 
     
