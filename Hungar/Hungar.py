@@ -21,11 +21,22 @@ class BettingButton(Button):
             guild = interaction.guild
             players = await self.cog.config.guild(guild).players()
 
-            # Create options for tributes
-            tribute_options = [
-                SelectOption(label=player["name"], value=player_id)
-                for player_id, player in players.items() if player["alive"]
-            ]
+            # Create options for tributes using nicknames or usernames
+            tribute_options = []
+            for player_id, player in players.items():
+                if player["alive"]:
+                    if player_id.isdigit():  # Check if it's a real user
+                        member = guild.get_member(int(player_id))
+                        if member:
+                            display_name = member.nick or member.name  # Use nickname or fallback to username
+                            tribute_options.append(SelectOption(label=display_name, value=player_id))
+                        else:
+                            # Fallback to the stored name if the member is not found
+                            tribute_options.append(SelectOption(label=player["name"], value=player_id))
+                    else:
+                        # For NPCs, use their stored names
+                        tribute_options.append(SelectOption(label=player["name"], value=player_id))
+
             if not tribute_options:
                 await interaction.response.send_message("There are no tributes to bet on.", ephemeral=True)
                 return
@@ -37,6 +48,7 @@ class BettingButton(Button):
             await interaction.response.send_message(
                 f"An error occurred: {e}", ephemeral=True
             )
+
 
 
 
