@@ -33,9 +33,10 @@ class BettingButton(Button):
 
 
 class BettingView(View):
-    def __init__(self, cog, tribute_options):
+    def __init__(self, cog, tribute_options, guild):
         super().__init__(timeout=60)
         self.cog = cog
+        self.guild = guild
         self.selected_tribute = None
         self.selected_amount = None
 
@@ -71,24 +72,16 @@ class BettingView(View):
         self.add_item(self.confirm_button)
 
     def get_tribute_options(self):
-        """Refresh options for tribute selection, keeping the selected value."""
-
+        """Get the tribute options with real players mentioned and NPCs as names."""
         tribute_options = []
-        # Check if the player is a real user or an NPC
-        for player_id, player in players.items():
-            if player["alive"]:
-                # Check if the player is a real user or an NPC
-                if player_id.isdigit():  # Real user (user IDs are digits)
-                    member = guild.get_member(int(player_id))
-                    if member:
-                        # Add mention for real players
-                        tribute_options.append(SelectOption(label=member.display_name, value=player_id))
-                    else:
-                        # Fallback to the stored name if the member is not found
-                        tribute_options.append(SelectOption(label=player["name"], value=player_id))
-                else:
-                    # Add NPC names as they are
-                    tribute_options.append(SelectOption(label=player["name"], value=player_id))
+        for player in self.tribute_options:
+            player_id = player["id"]
+            player_name = player["name"]
+            if player_id.isdigit():  # Check if the player ID is for a real user
+                member = self.guild.get_member(int(player_id))
+                if member:
+                    player_name = member.display_name  # Use nickname or username
+            tribute_options.append(SelectOption(label=player_name, value=player_id))
         return tribute_options
 
     def get_amount_options(self):
