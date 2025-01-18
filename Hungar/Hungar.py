@@ -7,7 +7,7 @@ import discord
 from discord.ext.commands import CheckFailure
 from discord.ui import View, Button
 from discord import Interaction, TextStyle
-from discord.ui import Select, View
+from discord.ui import Select, View, TextInput
 from discord import app_commands
 
 
