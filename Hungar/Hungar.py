@@ -26,7 +26,7 @@ class BettingButton(Button):
                     if player_id.isdigit():  # Check if the player ID is for a real user
                         member = guild.get_member(int(player_id))
                         if member:
-                            # Use member's display name (or mention for better clarity)
+                            # Use member's display name
                             tribute_options.append(SelectOption(label=member.display_name, value=player_id))
                         else:
                             # Fallback to stored name if the member is not found
@@ -39,7 +39,7 @@ class BettingButton(Button):
                 await interaction.response.send_message("There are no tributes to bet on.", ephemeral=True)
                 return
 
-            # Send a view with dropdowns for selecting tribute and bet amount
+            # Pass tribute options and guild to the BettingView
             view = BettingView(self.cog, tribute_options, guild)
             await interaction.response.send_message("Place your bet using the options below:", view=view, ephemeral=True)
         except Exception as e:
@@ -61,10 +61,9 @@ class BettingView(View):
         self.selected_amount = None
 
         # Tribute selection dropdown
-        self.tribute_options = tribute_options
         self.tribute_select = Select(
             placeholder="Select a tribute...",
-            options=self.get_tribute_options(),
+            options=tribute_options,  # Use the provided tribute options
             custom_id="tribute_select"
         )
         self.tribute_select.callback = self.on_tribute_select
@@ -80,7 +79,7 @@ class BettingView(View):
         ]
         self.amount_select = Select(
             placeholder="Select bet amount...",
-            options=self.get_amount_options(),
+            options=self.amount_options,
             custom_id="amount_select"
         )
         self.amount_select.callback = self.on_amount_select
@@ -91,43 +90,27 @@ class BettingView(View):
         self.confirm_button.callback = self.confirm_bet
         self.add_item(self.confirm_button)
 
-    def get_tribute_options(self):
-        """Get the tribute options with real players mentioned and NPCs as names."""
-        tribute_options = []
-        for player in self.tribute_options:
-            player_id = player["id"]
-            player_name = player["name"]
-            if player_id.isdigit():  # Check if the player ID is for a real user
-                member = self.guild.get_member(int(player_id))
-                if member:
-                    player_name = member.display_name  # Use nickname or username
-            tribute_options.append(SelectOption(label=player_name, value=player_id))
-        return tribute_options
-
-    def get_amount_options(self):
-        """Refresh options for bet amount selection, keeping the selected value."""
-        return [
-            SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_amount))
-            for option in self.amount_options
-        ]
-
     async def on_tribute_select(self, interaction: Interaction):
-        self.selected_tribute = self.tribute_select.values[0]
-        if self.selected_amount:
-            self.confirm_button.disabled = False  # Enable the confirm button if both are selected
-
-        # Refresh the view to maintain the selected state
-        self.tribute_select.options = self.get_tribute_options()
-        await interaction.response.edit_message(view=self)
+        try:
+            self.selected_tribute = self.tribute_select.values[0]  # Access the selected value
+            if self.selected_amount:
+                self.confirm_button.disabled = False  # Enable the confirm button if both are selected
+            await interaction.response.edit_message(view=self)
+        except Exception as e:
+            await interaction.response.send_message(
+                f"An error occurred in tribute selection: {e}", ephemeral=True
+            )
 
     async def on_amount_select(self, interaction: Interaction):
-        self.selected_amount = self.amount_select.values[0]
-        if self.selected_tribute:
-            self.confirm_button.disabled = False  # Enable the confirm button if both are selected
-
-        # Refresh the view to maintain the selected state
-        self.amount_select.options = self.get_amount_options()
-        await interaction.response.edit_message(view=self)
+        try:
+            self.selected_amount = self.amount_select.values[0]  # Access the selected value
+            if self.selected_tribute:
+                self.confirm_button.disabled = False  # Enable the confirm button if both are selected
+            await interaction.response.edit_message(view=self)
+        except Exception as e:
+            await interaction.response.send_message(
+                f"An error occurred in amount selection: {e}", ephemeral=True
+            )
 
     async def confirm_bet(self, interaction: Interaction):
         try:
