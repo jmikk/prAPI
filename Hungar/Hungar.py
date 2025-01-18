@@ -27,15 +27,15 @@ class SponsorSelectView(View):
             for player_id, player_data in players.items() if player_data["alive"]
         ]
 
-        self.tribute_select = Select(
+        tribute_select = Select(
             placeholder="Select a tribute",
             options=tribute_options[:25]  # Discord allows max 25 options
         )
-        self.tribute_select.callback = self.tribute_callback
-        self.add_item(self.tribute_select)
+        tribute_select.callback = self.tribute_callback
+        self.add_item(tribute_select)
 
         # Stat selection dropdown
-        self.stat_select = Select(
+        stat_select = Select(
             placeholder="Select a stat to boost",
             options=[
                 SelectOption(label="Defense", value="Def"),
@@ -45,27 +45,29 @@ class SponsorSelectView(View):
                 SelectOption(label="Health", value="HP"),
             ]
         )
-        self.stat_select.callback = self.stat_callback
-        self.add_item(self.stat_select)
+        stat_select.callback = self.stat_callback
+        self.add_item(stat_select)
 
         # Confirm button
-        self.add_item(Button(label="Confirm Sponsorship", style=discord.ButtonStyle.green, callback=self.confirm_sponsorship))
+        confirm_button = Button(label="Confirm Sponsorship", style=discord.ButtonStyle.green)
+        confirm_button.callback = self.confirm_sponsorship
+        self.add_item(confirm_button)
 
     async def tribute_callback(self, interaction: Interaction):
         try:
-            self.selected_tribute = self.tribute_select.values[0]
+            self.selected_tribute = interaction.data['values'][0]
             await interaction.response.defer()
         except Exception as e:
             await self.cog.report_error(interaction.channel, e)
 
     async def stat_callback(self, interaction: Interaction):
         try:
-            self.selected_stat = self.stat_select.values[0]
+            self.selected_stat = interaction.data['values'][0]
             await interaction.response.defer()
         except Exception as e:
             await self.cog.report_error(interaction.channel, e)
 
-    async def confirm_sponsorship(self, button: Button, interaction: Interaction):
+    async def confirm_sponsorship(self, interaction: Interaction):
         try:
             if not self.selected_tribute or not self.selected_stat:
                 await interaction.response.send_message(
@@ -163,54 +165,6 @@ class SponsorButton(Button):
             )
         except Exception as e:
             await self.cog.report_error(interaction.channel, e)
-
-
-class ViewTributesButton(Button):
-    def __init__(self, cog):
-        super().__init__(label="View Tributes", style=discord.ButtonStyle.success)
-        self.cog = cog
-
-    async def callback(self, interaction: Interaction):
-        guild = interaction.guild
-        players = await self.cog.config.guild(guild).players()
-
-        # Calculate scores for each tribute
-        tribute_scores = []
-        for player_id, player in players.items():
-            if player["alive"]:
-                score = (
-                    player["stats"]["Def"]
-                    + player["stats"]["Str"]
-                    + player["stats"]["Con"]
-                    + player["stats"]["Wis"]
-                    + (player["stats"]["HP"] // 5)  # Normalize HP by dividing by 5
-                )
-                tribute_scores.append({
-                    "name": player["name"],
-                    "district": player["district"],
-                    "score": score
-                })
-
-        # Sort tributes by score in descending order
-        tribute_scores.sort(key=lambda x: x["score"], reverse=True)
-
-        # Create an embed with the rankings
-        embed = discord.Embed(
-            title="Tribute Rankings",
-            description="Ranked tributes by their calculated scores.",
-            color=discord.Color.gold()
-        )
-        for rank, tribute in enumerate(tribute_scores, start=1):
-            embed.add_field(
-                name=f"District {tribute['district']}",
-                value=f"#{rank} {tribute['name']}\n Score: {tribute['score']}",
-                inline=False
-            )
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-
-
 class ViewStatsButton(Button):
     def __init__(self, cog):
         super().__init__(label="View Stats", style=discord.ButtonStyle.success)
