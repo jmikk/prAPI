@@ -33,31 +33,27 @@ class BettingButton(Button):
 
 
 class BettingView(View):
-    def __init__(self, cog, tribute_options):
+    def __init__(self, cog, tribute_options, user_gold):
         super().__init__(timeout=60)
         self.cog = cog
         self.selected_tribute = None
         self.selected_amount = None
+        self.user_gold = user_gold
 
-        # Dropdown for selecting tribute
+        # Tribute selection dropdown
+        self.tribute_options = tribute_options
         self.tribute_select = Select(
             placeholder="Select a tribute...",
-            options=tribute_options,
+            options=self.get_tribute_options(),
             custom_id="tribute_select"
         )
         self.tribute_select.callback = self.on_tribute_select
         self.add_item(self.tribute_select)
 
-        # Dropdown for selecting bet amount
+        # Bet amount selection dropdown
         self.amount_select = Select(
             placeholder="Select bet amount...",
-            options=[
-                SelectOption(label="10 Gold", value="10"),
-                SelectOption(label="50 Gold", value="50"),
-                SelectOption(label="100 Gold", value="100"),
-                SelectOption(label="1000 Gold", value="1000"),
-                SelectOption(label="All Gold", value="all")
-            ],
+            options=self.get_amount_options(),
             custom_id="amount_select"
         )
         self.amount_select.callback = self.on_amount_select
@@ -68,38 +64,62 @@ class BettingView(View):
         self.confirm_button.callback = self.confirm_bet
         self.add_item(self.confirm_button)
 
+    def get_tribute_options(self):
+        """Refresh options for tribute selection, keeping the selected value."""
+        return [
+            SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_tribute))
+            for option in self.tribute_options
+        ]
+
+    def get_amount_options(self):
+        """Generate betting options as percentages of the user's gold."""
+        percentage_steps = [10, 25, 50, 75, 100]  # Define percentage steps
+        options = []
+        for percentage in percentage_steps:
+            amount = int(self.user_gold * (percentage / 100))
+            options.append(
+                SelectOption(
+                    label=f"{percentage}% ({amount} Gold)",
+                    value=str(amount),
+                    default=(str(amount) == self.selected_amount)
+                )
+            )
+        return options
+
     async def on_tribute_select(self, interaction: Interaction):
         self.selected_tribute = self.tribute_select.values[0]
         if self.selected_amount:
             self.confirm_button.disabled = False  # Enable the confirm button if both are selected
-        await interaction.response.edit_message(view=self)  # Update the view to reflect changes
+
+        # Refresh the view to maintain the selected state
+        self.tribute_select.options = self.get_tribute_options()
+        await interaction.response.edit_message(view=self)
 
     async def on_amount_select(self, interaction: Interaction):
         self.selected_amount = self.amount_select.values[0]
         if self.selected_tribute:
             self.confirm_button.disabled = False  # Enable the confirm button if both are selected
-        await interaction.response.edit_message(view=self)  # Update the view to reflect changes
+
+        # Refresh the view to maintain the selected state
+        self.amount_select.options = self.get_amount_options()
+        await interaction.response.edit_message(view=self)
 
     async def confirm_bet(self, interaction: Interaction):
         try:
             guild = interaction.guild
-            user_gold = await self.cog.config.user(interaction.user).gold()
 
             # Determine the bet amount
-            if self.selected_amount == "all":
-                bet_amount = user_gold
-            else:
-                bet_amount = int(self.selected_amount)
+            bet_amount = int(self.selected_amount)
 
-            if bet_amount > user_gold:
+            if bet_amount > self.user_gold:
                 await interaction.response.send_message(
-                    f"You don't have enough gold to place this bet. You have {user_gold} gold.",
+                    f"You don't have enough gold to place this bet. You have {self.user_gold} gold.",
                     ephemeral=True
                 )
                 return
 
             # Deduct gold and save the bet
-            await self.cog.config.user(interaction.user).gold.set(user_gold - bet_amount)
+            await self.cog.config.user(interaction.user).gold.set(self.user_gold - bet_amount)
             user_bets = await self.cog.config.user(interaction.user).bets()
 
             if self.selected_tribute in user_bets:
@@ -123,6 +143,7 @@ class BettingView(View):
             )
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+
 
 
 
