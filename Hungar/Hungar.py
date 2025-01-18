@@ -19,18 +19,28 @@ class BettingButton(Button):
         players = await self.cog.config.guild(guild).players()
 
         # Create options for tributes
-        tribute_options = [
-            SelectOption(label=player["name"], value=player_id)
-            for player_id, player in players.items() if player["alive"]
-        ]
+        tribute_options = []
+        for player_id, player in players.items():
+            if player["alive"]:
+                if player_id.isdigit():  # Check if the player ID is for a real user
+                    member = guild.get_member(int(player_id))
+                    if member:
+                        # Use member's display name (or mention for better clarity)
+                        tribute_options.append(SelectOption(label=member.display_name, value=player_id))
+                    else:
+                        # Fallback to stored name if the member is not found
+                        tribute_options.append(SelectOption(label=player["name"], value=player_id))
+                else:
+                    # NPCs retain their original names
+                    tribute_options.append(SelectOption(label=player["name"], value=player_id))
+
         if not tribute_options:
             await interaction.response.send_message("There are no tributes to bet on.", ephemeral=True)
             return
 
         # Send a view with dropdowns for selecting tribute and bet amount
-        view = BettingView(self.cog, tribute_options)
+        view = BettingView(self.cog, tribute_options, guild)
         await interaction.response.send_message("Place your bet using the options below:", view=view, ephemeral=True)
-
 
 class BettingView(View):
     def __init__(self, cog, tribute_options, guild):
