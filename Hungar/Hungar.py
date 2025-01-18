@@ -20,7 +20,7 @@ class SponsorButton(Button):
 
         # Create options for tributes
         tribute_options = [
-            SelectOption(label=player["name"], value=player["name"])
+            SelectOption(label=player["name"], value=player_id)
             for player_id, player in players.items() if player["alive"]
         ]
         if not tribute_options:
