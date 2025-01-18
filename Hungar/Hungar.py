@@ -30,7 +30,7 @@ class TributeSelect(Select):
                 )
 
         super().__init__(
-            placeholder="Select a tribute to buy_gift...",
+            placeholder="Select a tribute to sponsor...",
             options=options
         )
 
@@ -48,17 +48,17 @@ class TributeSelect(Select):
             await interaction.response.send_message("The amount you spent is too low to provide any boost. Try a higher amount.", ephemeral=True)
             return
 
-        # Deduct gold from the buy_gift
+        # Deduct gold from the sponsor
         user_gold = await self.cog.config.user(interaction.user).gold()
         await self.cog.config.user(interaction.user).gold.set(user_gold - self.amount)
 
-        # Add the item to the buy_gifted player's inventory
+        # Add the item to the sponsored player's inventory
         target_player["items"].append((self.stat, boost))
 
         await self.cog.config.guild(interaction.guild).players.set(self.players)
-        await interaction.response.send_message(f"{interaction.user.mention} has buy_gifted {target_player['name']} with a {boost} {self.stat} boost item!")
+        await interaction.response.send_message(f"{interaction.user.mention} has sponsored {target_player['name']} with a {boost} {self.stat} boost item!")
 
-        # 75% chance to buy_gift another random tribute
+        # 75% chance to sponsor another random tribute
         if random.random() < 0.75:
             alive_players = [player for player_id, player in self.players.items() if player["alive"] and player_id != player_id]
             if alive_players:
@@ -72,7 +72,7 @@ class TributeSelect(Select):
                 random_player["items"].append((self.stat, random_boost))
 
                 await interaction.channel.send(
-                    f"The generosity spreads! {random_player['name']} has also received a {random_boost} {self.stat} boost item from an anonymous buy_gift!"
+                    f"The generosity spreads! {random_player['name']} has also received a {random_boost} {self.stat} boost item from an anonymous sponsor!"
                 )
 
             await self.cog.config.guild(interaction.guild).players.set(self.players)
@@ -99,7 +99,7 @@ class StatSelect(Select):
         stat = self.values[0]
         view = View()
         view.add_item(TributeSelect(self.cog, self.players, self.amount, stat))
-        await interaction.response.edit_message(content="Now select a tribute to buy_gift:", view=view)
+        await interaction.response.edit_message(content="Now select a tribute to sponsor:", view=view)
 #clear bets at the end of game
 
 class ViewTributesButton(Button):
@@ -269,7 +269,7 @@ class Hungar(commands.Cog):
         await self.bot.tree.sync()
 
     async def cog_unload(self):
-        self.bot.tree.remove_command("buy_gift")
+        self.bot.tree.remove_command("sponsor")
         await self.bot.tree.sync()
 
 
@@ -1350,25 +1350,25 @@ class Hungar(commands.Cog):
         
         await ctx.send(embed=embed)
 
-    @app_commands.command(name="buy_gift", description="buy_gift a tribute with a boost item.")
+    @app_commands.command(name="sponsor", description="sponsor a tribute with a boost item.")
     @app_commands.describe(amount="The amount of gold to spend.")
-    async def buy_gift(self, interaction: discord.Interaction, amount: int):
+    async def sponsor(self, interaction: discord.Interaction, amount: int):
         guild = interaction.guild
         players = await self.config.guild(guild).players()
         user_gold = await self.config.user(interaction.user).gold()
 
         if amount <= 0:
-            await interaction.response.send_message("You must spend more than 0 gold to buy_gift someone.", ephemeral=True)
+            await interaction.response.send_message("You must spend more than 0 gold to sponsor someone.", ephemeral=True)
             return
 
         if user_gold < amount:
-            await interaction.response.send_message("You don't have enough gold to buy_gift that amount.", ephemeral=True)
+            await interaction.response.send_message("You don't have enough gold to sponsor that amount.", ephemeral=True)
             return
 
         view = View()
         view.add_item(StatSelect(self, players, amount))
 
-        await interaction.response.send_message("Select a stat to buy_gift:", view=view, ephemeral=True)
+        await interaction.response.send_message("Select a stat to sponsor:", view=view, ephemeral=True)
 
 
 
