@@ -7,27 +7,70 @@ import discord
 from discord.ext.commands import CheckFailure
 from discord.ui import View, Button
 from discord import Interaction, TextStyle
-from discord.ui import Select, View, Modal, TextInput
+from discord.ui import Select, View
 from discord import app_commands
 
 
-class SponsorModal(Modal):
-    def __init__(self, cog, guild, players):
-        super().__init__(title="Sponsor a Tribute")
+class SponsorButton(Button):
+    def __init__(self, cog):
+        super().__init__(label="Sponsor Tribute", style=discord.ButtonStyle.primary)
         self.cog = cog
-        self.players = players
-        self.guild = guild
 
-        # Gold amount input
+    async def callback(self, interaction: Interaction):
+        guild = interaction.guild
+        config = await self.cog.config.guild(guild).all()
+
+        # Check if the game is active
+        if not config.get("game_active", False):
+            await interaction.response.send_message(
+                "No Hunger Games are currently active. Start a game first!",
+                ephemeral=True
+            )
+            return
+
+        players = config.get("players", {})
+
+        if not players:
+            await interaction.response.send_message(
+                "There are no tributes available to sponsor at the moment.",
+                ephemeral=True
+            )
+            return
+
+        # Create the sponsor selection view
+        view = SponsorSelectionView(self.cog, guild, players)
+        await interaction.response.send_message(
+            "Choose a tribute and stat to sponsor:",
+            view=view,
+            ephemeral=True
+        )
+
+
+class SponsorSelectionView(View):
+    def __init__(self, cog, guild, players):
+        super().__init__(timeout=30)
+        self.cog = cog
+        self.guild = guild
+        self.players = players
+
+        # Tribute selection dropdown
+        tribute_options = [
+            discord.SelectOption(
+                label=guild.get_member(int(player_id)).display_name if player_id.isdigit() else player_data["name"],
+                value=player_id
+            )
+            for player_id, player_data in players.items()
+            if player_data["alive"]
+        ]
+
         self.add_item(
-            TextInput(
-                label="Amount of Gold",
-                placeholder="Enter the amount of gold to spend",
-                style=TextStyle.short
+            Select(
+                placeholder="Select a tribute",
+                options=tribute_options[:25]  # Limit to 25 options
             )
         )
 
-        # Stat selection
+        # Stat selection dropdown
         self.add_item(
             Select(
                 placeholder="Select a stat to boost",
@@ -41,47 +84,47 @@ class SponsorModal(Modal):
             )
         )
 
-        # Tribute selection
-        tribute_options = [
-            discord.SelectOption(
-                label=guild.get_member(int(player_id)).display_name if player_id.isdigit() else player_data["name"],
-                value=player_id
-            )
-            for player_id, player_data in players.items()
-            if player_data["alive"]
-        ]
+        # Gold input field
         self.add_item(
-            Select(
-                placeholder="Select a tribute",
-                options=tribute_options[:25]  # Limit to 25 options
+            TextInput(
+                label="Amount of Gold",
+                placeholder="Enter the amount of gold to sponsor",
+                style=TextStyle.short
             )
         )
 
-    async def callback(self, interaction: Interaction):
-        """Handle the submission of the modal."""
-        amount = int(self.children[0].value)
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.success)
+    async def confirm_button(self, button: discord.ui.Button, interaction: Interaction):
+        tribute_id = self.children[0].values[0]
         stat = self.children[1].values[0]
-        tribute_id = self.children[2].values[0]
+        amount = int(self.children[2].value)
 
-        # Check and update gold
+        players = await self.cog.config.guild(self.guild).players()
         user_gold = await self.cog.config.user(interaction.user).gold()
-        if amount > user_gold:
-            await interaction.response.send_message("You don't have enough gold to sponsor this amount.", ephemeral=True)
+
+        if amount <= 0:
+            await interaction.response.send_message(
+                "You must spend more than 0 gold to sponsor.",
+                ephemeral=True
+            )
             return
 
-        # Deduct gold
-        await self.cog.config.user(interaction.user).gold.set(user_gold - amount)
+        if amount > user_gold:
+            await interaction.response.send_message(
+                "You don't have enough gold to sponsor this amount.",
+                ephemeral=True
+            )
+            return
 
-        # Apply the sponsorship
-        players = await self.cog.config.guild(interaction.guild).players()
+        # Deduct gold and apply sponsorship
+        await self.cog.config.user(interaction.user).gold.set(user_gold - amount)
         players[tribute_id]["items"].append((stat, amount // 20))
-        await self.cog.config.guild(interaction.guild).players.set(players)
+        await self.cog.config.guild(self.guild).players.set(players)
 
         await interaction.response.send_message(
             f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat} boost!"
         )
 
-#clear bets at the end of game
 
 class ViewTributesButton(Button):
     def __init__(self, cog):
@@ -180,6 +223,7 @@ class ActionSelectionView(View):
 
         self.add_item(ViewStatsButton(cog))
         self.add_item(ViewTributesButton(cog))
+        self.add_item(SponsorButton(cog))
 
 class ActionButton(Button):
     def __init__(self, cog, action):
