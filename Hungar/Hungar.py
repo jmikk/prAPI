@@ -266,6 +266,7 @@ class Hungar(commands.Cog):
     
     async def cog_load(self):
         """This method is called when the cog is loaded, and it ensures that all slash commands are synced."""
+        self.bot.tree.add_command(self.sponsor)
         # Sync the commands globally
         await self.bot.tree.sync()
         print("All slash commands synced.")
