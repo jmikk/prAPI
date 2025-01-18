@@ -1395,17 +1395,17 @@ class Hungar(commands.Cog):
             f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat.name} boost!"
         )
 
-@sponsor.autocomplete("tribute")
-async def tribute_autocomplete(self, interaction: discord.Interaction, current: str):
-    """Autocomplete tribute names."""
-    guild = interaction.guild
-    players = await self.config.guild(guild).players()
-
-    options = []
-    for player_id, player_data in players.items():
-        if player_data["alive"] and current.lower() in player_data["name"].lower():
-            member = guild.get_member(int(player_id)) if player_id.isdigit() else None
-            display_name = member.mention if member else player_data["name"]
-            options.append(app_commands.Choice(name=display_name, value=player_id))
-
-    return options[:25]  # Return up to 25 matches (Discord's limit)
+    @sponsor.autocomplete("tribute")
+    async def tribute_autocomplete(self, interaction: discord.Interaction, current: str):
+        """Autocomplete tribute names."""
+        guild = interaction.guild
+        players = await self.config.guild(guild).players()
+    
+        options = []
+        for player_id, player_data in players.items():
+            if player_data["alive"] and current.lower() in player_data["name"].lower():
+                member = guild.get_member(int(player_id)) if player_id.isdigit() else None
+                display_name = member.mention if member else player_data["name"]
+                options.append(app_commands.Choice(name=display_name, value=player_id))
+    
+        return options[:25]  # Return up to 25 matches (Discord's limit)
