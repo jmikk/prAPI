@@ -275,7 +275,7 @@ class Hungar(commands.Cog):
         await self.bot.tree.sync()
 
     async def cog_unload(self):
-    self.bot.tree.remove_command("sponsor")
+        self.bot.tree.remove_command("sponsor")
 
     
     async def load_file(self,fileName,name1="Name1 Filler",name2="Name2 Filler",dmg="DMG Filler",dmg2="DMG2 Filler", item_name="Item name filler"):
