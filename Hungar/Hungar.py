@@ -86,7 +86,7 @@ class SponsorModal(Modal):
 
 class SponsorButton(Button):
     def __init__(self, cog):
-        super().__init__(label="Sponsor Tribute", style=discord.ButtonStyle.primary)
+        super().__init__(label="Sponsor Tribute", style=discord.ButtonStyle.danger)
         self.cog = cog
 
     async def callback(self, interaction: Interaction):
