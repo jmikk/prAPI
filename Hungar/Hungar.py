@@ -40,10 +40,10 @@ class SponsorView(View):
                 SelectOption(label="Health", value="HP"),
              ]
          )
-         self.add_item(self.stat_select)
+        self.add_item(self.stat_select)
     
          # Gold selection dropdown
-         self.gold_select = Select(
+        self.gold_select = Select(
                placeholder="Select a boost level (cost in gold)",
                options=[
                  SelectOption(label="+1 (20 gold)", value="1"),
