@@ -27,41 +27,70 @@ class BettingButton(Button):
             await interaction.response.send_message("There are no tributes to bet on.", ephemeral=True)
             return
 
-        # Open the modal for placing a bet
-        modal = BettingModal(self.cog, tribute_options)
-        await interaction.response.send_modal(modal)
+        # Send a view with dropdowns for selecting tribute and bet amount
+        view = BettingView(self.cog, tribute_options)
+        await interaction.response.send_message("Place your bet using the options below:", view=view, ephemeral=True)
 
 
-class BettingModal(Modal):
+class BettingView(View):
     def __init__(self, cog, tribute_options):
-        super().__init__(title="Place Your Bet")
+        super().__init__(timeout=60)
         self.cog = cog
-        self.tribute_options = tribute_options
+        self.selected_tribute = None
+        self.selected_amount = None
 
-        # Input field for the bet amount
-        self.bet_amount = TextInput(
-            label="Enter the amount to bet",
-            placeholder="Amount in gold",
-            style=TextStyle.short,
-            required=True
-        )
-        self.add_item(self.bet_amount)
-
-        # Dropdown for selecting a tribute
+        # Dropdown for selecting tribute
         self.tribute_select = Select(
-            placeholder="Choose a tribute to bet on...",
-            options=self.tribute_options,
+            placeholder="Select a tribute...",
+            options=tribute_options,
+            custom_id="tribute_select"
         )
+        self.tribute_select.callback = self.on_tribute_select
         self.add_item(self.tribute_select)
 
-    async def on_submit(self, interaction: Interaction):
-        try:
-            # Validate and process the bet
-            bet_amount = int(self.bet_amount.value)
-            tribute_id = self.tribute_select.values[0]
+        # Dropdown for selecting bet amount
+        self.amount_select = Select(
+            placeholder="Select bet amount...",
+            options=[
+                SelectOption(label="10 Gold", value="10"),
+                SelectOption(label="50 Gold", value="50"),
+                SelectOption(label="100 Gold", value="100"),
+                SelectOption(label="1000 Gold", value="1000"),
+                SelectOption(label="All Gold", value="all")
+            ],
+            custom_id="amount_select"
+        )
+        self.amount_select.callback = self.on_amount_select
+        self.add_item(self.amount_select)
 
-            # Check user's gold
+        # Confirm button
+        self.confirm_button = Button(label="Confirm Bet", style=discord.ButtonStyle.green, disabled=True)
+        self.confirm_button.callback = self.confirm_bet
+        self.add_item(self.confirm_button)
+
+    async def on_tribute_select(self, interaction: Interaction):
+        self.selected_tribute = self.tribute_select.values[0]
+        if self.selected_amount:
+            self.confirm_button.disabled = False
+        await interaction.response.defer()
+
+    async def on_amount_select(self, interaction: Interaction):
+        self.selected_amount = self.amount_select.values[0]
+        if self.selected_tribute:
+            self.confirm_button.disabled = False
+        await interaction.response.defer()
+
+    async def confirm_bet(self, interaction: Interaction):
+        try:
+            guild = interaction.guild
             user_gold = await self.cog.config.user(interaction.user).gold()
+
+            # Determine the bet amount
+            if self.selected_amount == "all":
+                bet_amount = user_gold
+            else:
+                bet_amount = int(self.selected_amount)
+
             if bet_amount > user_gold:
                 await interaction.response.send_message(
                     f"You don't have enough gold to place this bet. You have {user_gold} gold.",
@@ -72,19 +101,22 @@ class BettingModal(Modal):
             # Deduct gold and save the bet
             await self.cog.config.user(interaction.user).gold.set(user_gold - bet_amount)
             user_bets = await self.cog.config.user(interaction.user).bets()
-            if tribute_id in user_bets:
+
+            if self.selected_tribute in user_bets:
                 await interaction.response.send_message(
                     "You have already placed a bet on this tribute.", ephemeral=True
                 )
                 return
 
-            user_bets[tribute_id] = {
+            user_bets[self.selected_tribute] = {
                 "amount": bet_amount,
                 "daily_earnings": 0
             }
             await self.cog.config.user(interaction.user).bets.set(user_bets)
 
-            tribute_name = next(player["name"] for player_id, player in await self.cog.config.guild(interaction.guild).players().items() if player_id == tribute_id)
+            players = await self.cog.config.guild(guild).players()
+            tribute_name = players[self.selected_tribute]["name"]
+
             await interaction.response.send_message(
                 f"You placed a bet of {bet_amount} gold on {tribute_name}. Good luck!",
                 ephemeral=True
@@ -92,11 +124,6 @@ class BettingModal(Modal):
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
-
-class BettingView(View):
-    def __init__(self, cog):
-        super().__init__(timeout=None)
-        self.add_item(BettingButton(cog))
 
 
 class SponsorButton(Button):
