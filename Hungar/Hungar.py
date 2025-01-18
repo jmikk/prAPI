@@ -266,11 +266,14 @@ class Hungar(commands.Cog):
     
     async def cog_load(self):
         """This method is called when the cog is loaded, and it ensures that all slash commands are synced."""
-        self.bot.tree.add_command(self.sponsor)
+        #self.bot.tree.add_command(self.sponsor)
+        self.bot.tree.remove_command("sponsor")
         await self.bot.tree.sync()
 
     async def cog_unload(self):
         self.bot.tree.remove_command("sponsor")
+        await self.bot.tree.sync()
+
 
     
     async def load_file(self,fileName,name1="Name1 Filler",name2="Name2 Filler",dmg="DMG Filler",dmg2="DMG2 Filler", item_name="Item name filler"):
