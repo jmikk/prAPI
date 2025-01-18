@@ -180,11 +180,6 @@ class BettingView(View):
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
 
-
-
-
-
-
 class SponsorButton(Button):
     def __init__(self, cog):
         super().__init__(label="Sponsor a Tribute", style=discord.ButtonStyle.secondary)
