@@ -1378,7 +1378,6 @@ class Hungar(commands.Cog):
             await interaction.response.send_message("You don't have enough gold to sponsor that amount.", ephemeral=True)
             return
             
-        await ctx.send(tribute)
         # Validate the tribute name
         if not tribute_id:
             await interaction.response.send_message("Tribute not found. Please check the name and try again.")
