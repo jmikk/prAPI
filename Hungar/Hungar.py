@@ -16,6 +16,7 @@ class SponsorModal(Modal):
         super().__init__(title="Sponsor a Tribute")
         self.cog = cog
         self.players = players
+        self.guild = guild
 
         # Gold amount input
         self.add_item(
