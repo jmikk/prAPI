@@ -1350,9 +1350,22 @@ class Hungar(commands.Cog):
         
         await ctx.send(embed=embed)
 
-    @app_commands.command(name="sponsor", description="sponsor a tribute with a boost item.")
-    @app_commands.describe(amount="The amount of gold to spend.")
-    async def sponsor(self, interaction: discord.Interaction, amount: int):
+    @app_commands.command(name="sponsor", description="Sponsor a tribute with a boost item.")
+    @app_commands.describe(
+        amount="The amount of gold to spend.",
+        stat="The stat to boost.",
+        tribute="The name of the tribute to sponsor."
+    )
+    @app_commands.choices(
+        stat=[
+            app_commands.Choice(name="Defense", value="Def"),
+            app_commands.Choice(name="Strength", value="Str"),
+            app_commands.Choice(name="Constitution", value="Con"),
+            app_commands.Choice(name="Wisdom", value="Wis"),
+            app_commands.Choice(name="Health", value="HP"),
+        ]
+    )
+    async def sponsor(self, interaction: discord.Interaction, amount: int, stat: app_commands.Choice[str], tribute: str):
         guild = interaction.guild
         players = await self.config.guild(guild).players()
         user_gold = await self.config.user(interaction.user).gold()
@@ -1365,11 +1378,37 @@ class Hungar(commands.Cog):
             await interaction.response.send_message("You don't have enough gold to sponsor that amount.", ephemeral=True)
             return
 
-        view = View()
-        view.add_item(StatSelect(self, players, amount))
+        # Validate the tribute name
+        tribute_id = next((pid for pid, pdata in players.items() if pdata["name"].lower() == tribute.lower()), None)
+        if not tribute_id:
+            await interaction.response.send_message("Tribute not found. Please check the name and try again.", ephemeral=True)
+            return
 
-        await interaction.response.send_message("Select a stat to sponsor:", view=view, ephemeral=True)
+        # Deduct gold from the sponsor
+        await self.config.user(interaction.user).gold.set(user_gold - amount)
 
+        # Add the item to the sponsored player's inventory
+        players[tribute_id]["items"].append((stat.value, amount // 20))
+        await self.config.guild(guild).players.set(players)
+
+        await interaction.response.send_message(
+            f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat.name} boost!", ephemeral=True
+        )
+
+    @sponsor.autocomplete("tribute")
+    async def tribute_autocomplete(self, interaction: discord.Interaction, current: str):
+        """Autocomplete tribute names."""
+        guild = interaction.guild
+        players = await self.config.guild(guild).players()
+
+        # Filter tribute names that match the current input
+        options = [
+            app_commands.Choice(name=player["name"], value=player["name"])
+            for player in players.values()
+            if player["alive"] and current.lower() in player["name"].lower()
+        ]
+
+        return options[:25]  # Return up to 25 matches (Discord's limit)
 
 
     
