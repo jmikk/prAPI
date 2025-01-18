@@ -101,11 +101,11 @@ class BettingView(View):
         return tribute_options
 
     def get_amount_options(self):
-    """Get the amount options with the selected value marked."""
-    return [
-        SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_amount))
-        for option in self.amount_options
-    ]    
+        """Get the amount options with the selected value marked."""
+        return [
+            SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_amount))
+            for option in self.amount_options
+        ]    
 
     async def on_tribute_select(self, interaction: Interaction):
         try:
