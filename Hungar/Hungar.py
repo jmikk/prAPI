@@ -27,15 +27,15 @@ class SponsorSelectView(View):
             for player_id, player_data in players.items() if player_data["alive"]
         ]
 
-        self.tribute_select = Select(
+        tribute_select = Select(
             placeholder="Select a tribute",
             options=tribute_options[:25]  # Discord allows max 25 options
         )
-        self.tribute_select.callback = self.tribute_callback
-        self.add_item(self.tribute_select)
+        tribute_select.callback = self.tribute_callback
+        self.add_item(tribute_select)
 
         # Stat selection dropdown
-        self.stat_select = Select(
+        stat_select = Select(
             placeholder="Select a stat to boost",
             options=[
                 SelectOption(label="Defense", value="Def"),
@@ -45,27 +45,29 @@ class SponsorSelectView(View):
                 SelectOption(label="Health", value="HP"),
             ]
         )
-        self.stat_select.callback = self.stat_callback
-        self.add_item(self.stat_select)
+        stat_select.callback = self.stat_callback
+        self.add_item(stat_select)
 
         # Confirm button
-        self.add_item(Button(label="Confirm Sponsorship", style=discord.ButtonStyle.green, callback=self.confirm_sponsorship))
+        confirm_button = Button(label="Confirm Sponsorship", style=discord.ButtonStyle.green)
+        confirm_button.callback = self.confirm_sponsorship
+        self.add_item(confirm_button)
 
     async def tribute_callback(self, interaction: Interaction):
         try:
-            self.selected_tribute = self.tribute_select.values[0]
+            self.selected_tribute = interaction.data['values'][0]
             await interaction.response.defer()
         except Exception as e:
             await self.cog.report_error(interaction.channel, e)
 
     async def stat_callback(self, interaction: Interaction):
         try:
-            self.selected_stat = self.stat_select.values[0]
+            self.selected_stat = interaction.data['values'][0]
             await interaction.response.defer()
         except Exception as e:
             await self.cog.report_error(interaction.channel, e)
 
-    async def confirm_sponsorship(self, button: Button, interaction: Interaction):
+    async def confirm_sponsorship(self, interaction: Interaction):
         try:
             if not self.selected_tribute or not self.selected_stat:
                 await interaction.response.send_message(
