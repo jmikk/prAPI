@@ -17,18 +17,16 @@ class SponsorModal(Modal):
         self.guild = guild
         self.players = players
 
-        self.tribute_dropdown = Select(
-            placeholder="Select a tribute",
-            options=[
-                discord.SelectOption(
-                    label=guild.get_member(int(player_id)).display_name if player_id.isdigit() else player_data["name"],
-                    value=player_id
-                )
-                for player_id, player_data in players.items()
-                if player_data["alive"]
-            ][:25]  # Limit to 25 options
+        # Gold amount input
+        self.gold_input = TextInput(
+            label="Amount of Gold",
+            placeholder="Enter the amount of gold to sponsor",
+            style=TextStyle.short
         )
-        self.stat_dropdown = Select(
+        self.add_item(self.gold_input)
+
+        # Stat selection dropdown
+        self.stat_select = Select(
             placeholder="Select a stat to boost",
             options=[
                 discord.SelectOption(label="Defense", value="Def"),
@@ -38,21 +36,29 @@ class SponsorModal(Modal):
                 discord.SelectOption(label="Health", value="HP"),
             ]
         )
-        self.gold_input = TextInput(
-            label="Amount of Gold",
-            placeholder="Enter the amount of gold to sponsor",
-            style=TextStyle.short
-        )
+        self.add_item(self.stat_select)
 
-        self.add_item(self.tribute_dropdown)
-        self.add_item(self.stat_dropdown)
-        self.add_item(self.gold_input)
+        # Tribute selection dropdown
+        tribute_options = [
+            discord.SelectOption(
+                label=guild.get_member(int(player_id)).display_name if player_id.isdigit() else player_data["name"],
+                value=player_id
+            )
+            for player_id, player_data in players.items()
+            if player_data["alive"]
+        ]
+        self.tribute_select = Select(
+            placeholder="Select a tribute",
+            options=tribute_options[:25]  # Limit to 25 options
+        )
+        self.add_item(self.tribute_select)
 
     async def on_submit(self, interaction: Interaction):
         try:
-            tribute_id = self.tribute_dropdown.values[0]
-            stat = self.stat_dropdown.values[0]
+            # Fetch input values
             amount = int(self.gold_input.value)
+            stat = self.stat_select.values[0]
+            tribute_id = self.tribute_select.values[0]
 
             players = await self.cog.config.guild(self.guild).players()
             user_gold = await self.cog.config.user(interaction.user).gold()
@@ -80,12 +86,12 @@ class SponsorModal(Modal):
                 f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat} boost!"
             )
         except Exception as e:
-            await self.cog.report_error(interaction.channel, e)
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
 
 class SponsorButton(Button):
     def __init__(self, cog):
-        super().__init__(label="Sponsor Tribute", style=discord.ButtonStyle.danger)
+        super().__init__(label="Sponsor Tribute", style=discord.ButtonStyle.primary)
         self.cog = cog
 
     async def callback(self, interaction: Interaction):
@@ -110,11 +116,11 @@ class SponsorButton(Button):
                 )
                 return
 
-            # Open the sponsor modal
+            # Open the modal
             modal = SponsorModal(self.cog, guild, players)
             await interaction.response.send_modal(modal)
         except Exception as e:
-            await self.cog.report_error(interaction.channel, e)
+            await interaction.channel.send(f"Error: {e}")
 
 
 
