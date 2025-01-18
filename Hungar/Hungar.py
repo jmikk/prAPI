@@ -9,6 +9,96 @@ from discord.ui import View, Button, Modal, Select, TextInput
 from discord import Interaction, TextStyle, SelectOption
 
 
+class BettingButton(Button):
+    def __init__(self, cog):
+        super().__init__(label="Place a Bet", style=discord.ButtonStyle.primary)
+        self.cog = cog
+
+    async def callback(self, interaction: Interaction):
+        guild = interaction.guild
+        players = await self.cog.config.guild(guild).players()
+
+        # Create options for tributes
+        tribute_options = [
+            SelectOption(label=player["name"], value=player_id)
+            for player_id, player in players.items() if player["alive"]
+        ]
+        if not tribute_options:
+            await interaction.response.send_message("There are no tributes to bet on.", ephemeral=True)
+            return
+
+        # Open the modal for placing a bet
+        modal = BettingModal(self.cog, tribute_options)
+        await interaction.response.send_modal(modal)
+
+
+class BettingModal(Modal):
+    def __init__(self, cog, tribute_options):
+        super().__init__(title="Place Your Bet")
+        self.cog = cog
+        self.tribute_options = tribute_options
+
+        # Input field for the bet amount
+        self.bet_amount = TextInput(
+            label="Enter the amount to bet",
+            placeholder="Amount in gold",
+            style=TextStyle.short,
+            required=True
+        )
+        self.add_item(self.bet_amount)
+
+        # Dropdown for selecting a tribute
+        self.tribute_select = Select(
+            placeholder="Choose a tribute to bet on...",
+            options=self.tribute_options,
+        )
+        self.add_item(self.tribute_select)
+
+    async def on_submit(self, interaction: Interaction):
+        try:
+            # Validate and process the bet
+            bet_amount = int(self.bet_amount.value)
+            tribute_id = self.tribute_select.values[0]
+
+            # Check user's gold
+            user_gold = await self.cog.config.user(interaction.user).gold()
+            if bet_amount > user_gold:
+                await interaction.response.send_message(
+                    f"You don't have enough gold to place this bet. You have {user_gold} gold.",
+                    ephemeral=True
+                )
+                return
+
+            # Deduct gold and save the bet
+            await self.cog.config.user(interaction.user).gold.set(user_gold - bet_amount)
+            user_bets = await self.cog.config.user(interaction.user).bets()
+            if tribute_id in user_bets:
+                await interaction.response.send_message(
+                    "You have already placed a bet on this tribute.", ephemeral=True
+                )
+                return
+
+            user_bets[tribute_id] = {
+                "amount": bet_amount,
+                "daily_earnings": 0
+            }
+            await self.cog.config.user(interaction.user).bets.set(user_bets)
+
+            tribute_name = next(player["name"] for player_id, player in await self.cog.config.guild(interaction.guild).players().items() if player_id == tribute_id)
+            await interaction.response.send_message(
+                f"You placed a bet of {bet_amount} gold on {tribute_name}. Good luck!",
+                ephemeral=True
+            )
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+
+
+class BettingView(View):
+    def __init__(self, cog):
+        super().__init__(timeout=None)
+        self.add_item(BettingButton(cog))
+
+
 class SponsorButton(Button):
     def __init__(self, cog):
         super().__init__(label="Sponsor a Tribute", style=discord.ButtonStyle.secondary)
@@ -225,7 +315,7 @@ class ViewStatsButton(Button):
 
 
 class ActionSelectionView(View):
-    def __init__(self, cog, feast_active):
+    def __init__(self, cog, feast_active, day_count):
         super().__init__(timeout=None)  # No timeout for the buttons
         self.cog = cog
 
@@ -236,10 +326,15 @@ class ActionSelectionView(View):
         
         if feast_active:
             self.add_item(ActionButton(cog, "Feast"))
+        
 
         self.add_item(ViewStatsButton(cog))
         self.add_item(ViewTributesButton(cog))
         self.add_item(SponsorButton(cog))
+
+        # Only add the Betting Button on Day 0 and Day 1
+        if current_day in [0, 1]:
+            self.add_item(BettingButton(cog))
 
 class ActionButton(Button):
     def __init__(self, cog, action):
@@ -594,6 +689,7 @@ class Hungar(commands.Cog):
         await ctx.send("https://i.imgur.com/gtCA6wO.png")
         config = await self.config.guild(guild).all()
         players = config["players"]
+        current_day = config.get("day_counter", -1)
 
         # Reset all player actions to None
         for player_id, player_data in players.items():
@@ -647,7 +743,7 @@ class Hungar(commands.Cog):
         day_duration = timedelta(seconds=config["day_duration"])
         day_end = day_start + day_duration - offset 
         day_end_timestamp = int(day_end.timestamp())  # Convert to Unix timestamp for Discord's formatting
-        await ctx.send(f"Pick your action for the day, the sun will set in about <t:{day_end_timestamp}:R>",view=ActionSelectionView(self, feast_active))
+        await ctx.send(f"Pick your action for the day, the sun will set in about <t:{day_end_timestamp}:R>",view=ActionSelectionView(self, feast_active,current_day))
 
     async def isOneLeft(self, guild):
         """Check if only one player is alive."""
