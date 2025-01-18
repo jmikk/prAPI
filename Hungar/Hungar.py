@@ -10,7 +10,7 @@ from discord import Interaction, TextStyle, SelectOption
 
 
 class SponsorView(View):
-    async def __init__(self, cog, guild, players):
+    def __init__(self, cog, guild, players):
         super().__init__(timeout=60)  # 60 seconds timeout
         self.cog = cog
         self.guild = guild
