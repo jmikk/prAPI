@@ -1404,6 +1404,7 @@ class Hungar(commands.Cog):
         options = []
         for player_id, player_data in players.items():
             if player_data["alive"] and current.lower() in player_data["name"].lower():
+                player_id = player_id.replace("<","").replace(">","").replace("@","")
                 member = guild.get_member(int(player_id)) if player_id.isdigit() else None
                 display_name = member.mention if member else player_data["name"]
                 options.append(app_commands.Choice(name=display_name, value=player_id))
