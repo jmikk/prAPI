@@ -11,6 +11,44 @@ from discord.ui import Select, View
 from discord import app_commands
 
 
+class SponsorButton(Button):
+    def __init__(self, cog):
+        super().__init__(label="Sponsor Tribute", style=discord.ButtonStyle.primary)
+        self.cog = cog
+
+    async def callback(self, interaction: Interaction):
+        try:
+            guild = interaction.guild
+            config = await self.cog.config.guild(guild).all()
+
+            # Check if the game is active
+            if not config.get("game_active", False):
+                await interaction.response.send_message(
+                    "No Hunger Games are currently active. Start a game first!",
+                    ephemeral=True
+                )
+                return
+
+            players = config.get("players", {})
+
+            if not players:
+                await interaction.response.send_message(
+                    "There are no tributes available to sponsor at the moment.",
+                    ephemeral=True
+                )
+                return
+
+            # Create the sponsor selection view
+            view = SponsorSelectionView(self.cog, guild, players)
+            await interaction.response.send_message(
+                "Choose a tribute and stat to sponsor:",
+                view=view,
+                ephemeral=True
+            )
+        except Exception as e:
+            await self.cog.report_error(interaction.channel, e)
+
+
 class SponsorSelectionView(View):
     def __init__(self, cog, guild, players):
         super().__init__(timeout=30)
@@ -61,43 +99,45 @@ class SponsorSelectionView(View):
         self.add_item(confirm_button)
 
     async def confirm_sponsorship(self, interaction: Interaction):
-        tribute_id = self.tribute_dropdown.values[0]
-        stat = self.stat_dropdown.values[0]
         try:
-            amount = int(self.gold_input.value)
-        except ValueError:
+            tribute_id = self.tribute_dropdown.values[0]
+            stat = self.stat_dropdown.values[0]
+            try:
+                amount = int(self.gold_input.value)
+            except ValueError:
+                await interaction.response.send_message(
+                    "Invalid amount. Please enter a valid number.",
+                    ephemeral=True
+                )
+                return
+
+            players = await self.cog.config.guild(self.guild).players()
+            user_gold = await self.cog.config.user(interaction.user).gold()
+
+            if amount <= 0:
+                await interaction.response.send_message(
+                    "You must spend more than 0 gold to sponsor.",
+                    ephemeral=True
+                )
+                return
+
+            if amount > user_gold:
+                await interaction.response.send_message(
+                    "You don't have enough gold to sponsor this amount.",
+                    ephemeral=True
+                )
+                return
+
+            # Deduct gold and apply sponsorship
+            await self.cog.config.user(interaction.user).gold.set(user_gold - amount)
+            players[tribute_id]["items"].append((stat, amount // 20))
+            await self.cog.config.guild(self.guild).players.set(players)
+
             await interaction.response.send_message(
-                "Invalid amount. Please enter a valid number.",
-                ephemeral=True
+                f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat} boost!"
             )
-            return
-
-        players = await self.cog.config.guild(self.guild).players()
-        user_gold = await self.cog.config.user(interaction.user).gold()
-
-        if amount <= 0:
-            await interaction.response.send_message(
-                "You must spend more than 0 gold to sponsor.",
-                ephemeral=True
-            )
-            return
-
-        if amount > user_gold:
-            await interaction.response.send_message(
-                "You don't have enough gold to sponsor this amount.",
-                ephemeral=True
-            )
-            return
-
-        # Deduct gold and apply sponsorship
-        await self.cog.config.user(interaction.user).gold.set(user_gold - amount)
-        players[tribute_id]["items"].append((stat, amount // 20))
-        await self.cog.config.guild(self.guild).players.set(players)
-
-        await interaction.response.send_message(
-            f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat} boost!"
-        )
-
+        except Exception as e:
+            await self.cog.report_error(interaction.channel, e)
 
 
 class ViewTributesButton(Button):
@@ -261,6 +301,14 @@ class Hungar(commands.Cog):
             kill_count=0,  # Track total kills
         )
 
+
+    async def report_error(self, channel, error):
+        """Send error details to a designated channel."""
+        error_message = f"An error occurred:\n```{error}```"
+        if isinstance(channel, discord.TextChannel):
+            await channel.send(error_message)
+        else:
+            print(error_message)  #
 
     
     async def load_file(self,fileName,name1="Name1 Filler",name2="Name2 Filler",dmg="DMG Filler",dmg2="DMG2 Filler", item_name="Item name filler"):
