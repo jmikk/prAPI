@@ -19,7 +19,7 @@ class SponsorModal(Modal):
 
         # Gold amount input
         self.add_item(
-            InputText(
+            TextInput(
                 label="Amount of Gold",
                 placeholder="Enter the amount of gold to spend",
                 style=TextStyle.short
@@ -1323,15 +1323,23 @@ class Hungar(commands.Cog):
     @commands.command(name="sponsor")
     async def sponsor_command(self, ctx):
         """Sponsor a tribute by opening an interactive modal."""
-        players = await self.config.guild(ctx.guild).players()
-
+        guild = ctx.guild
+        config = await self.config.guild(guild).all()
+    
+        # Check if the game is active
+        if not config.get("game_active", False):
+            await ctx.send("No Hunger Games are currently active. Start a game first!")
+            return
+    
+        players = config.get("players", {})
+    
         if not players:
             await ctx.send("There are no tributes available to sponsor at the moment.")
             return
-
+    
         # Open the modal
-        await ctx.send("Fill out the sponsor details:", view=View())
         modal = SponsorModal(self, players)
         await ctx.interaction.response.send_modal(modal)
+
 
 
