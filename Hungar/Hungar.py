@@ -1400,22 +1400,14 @@ class Hungar(commands.Cog):
         """Autocomplete tribute names."""
         guild = interaction.guild
         players = await self.config.guild(guild).players()
-    
-        # Debug: Check if players are correctly fetched
-    
-        if not players:
-            return [app_commands.Choice(name="No tributes available", value="")]
-    
-        options = []
-        for player_id, player_data in players.items():
-            # Debug: Check player data during iteration
-            if player_data["alive"] and current.lower() in player_data["name"].lower():
-                member = guild.get_member(int(player_id)) if player_id.isdigit() else None
-                display_name = member.mention if member else player_data["name"]
-                options.append(app_commands.Choice(name=display_name, value=player_id))
-    
-        # Debug: Log options to ensure they are being created
-    
+
+        # Filter tribute names that match the current input
+        options = [
+            app_commands.Choice(name=player["name"], value=player["name"])
+            for player in players.values()
+            if player["alive"] and current.lower() in player["name"].lower()
+        ]
+
         return options[:25]  # Return up to 25 matches (Discord's limit)
 
 
