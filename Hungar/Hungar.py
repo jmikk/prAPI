@@ -15,21 +15,21 @@ class SponsorView(View):
         self.cog = cog
         self.guild = guild
         self.players = players
+
         try:
             # Tribute selection dropdown
             self.tribute_select = Select(
                 placeholder="Select a tribute",
                 options=[
-                      SelectOption(
-                         label=f"{player_data['name']} (District {player_data['district']})",
-                         value=player_id
+                    SelectOption(
+                        label=f"{player_data['name']} (District {player_data['district']})",
+                        value=player_id
                     )
                     for player_id, player_data in players.items() if player_data["alive"]
-                 ]
+                ]
             )
             self.add_item(self.tribute_select)
-   
-    
+
             # Stat selection dropdown
             self.stat_select = Select(
                 placeholder="Select a stat to boost",
@@ -39,31 +39,28 @@ class SponsorView(View):
                     SelectOption(label="Constitution", value="Con"),
                     SelectOption(label="Wisdom", value="Wis"),
                     SelectOption(label="Health", value="HP"),
-                 ]
-             )
+                ]
+            )
             self.add_item(self.stat_select)
-        
-             # Gold selection dropdown
+
+            # Gold selection dropdown
             self.gold_select = Select(
-                   placeholder="Select a boost level (cost in gold)",
-                   options=[
-                     SelectOption(label="+1 (20 gold)", value="1"),
-                     SelectOption(label="+2 (40 gold)", value="2"),
-                     SelectOption(label="+3 (60 gold)", value="3"),
-                     SelectOption(label="+4 (80 gold)", value="4"),
-                     SelectOption(label="+5 (100 gold)", value="5"),
+                placeholder="Select a boost level (cost in gold)",
+                options=[
+                    SelectOption(label="+1 (20 gold)", value="1"),
+                    SelectOption(label="+2 (40 gold)", value="2"),
+                    SelectOption(label="+3 (60 gold)", value="3"),
+                    SelectOption(label="+4 (80 gold)", value="4"),
+                    SelectOption(label="+5 (100 gold)", value="5"),
                 ]
             )
             self.add_item(self.gold_select)
-        
+
             # Add a confirm button
             self.add_item(SponsorConfirmButton())
 
         except Exception as e:
-            self.handle_error(e, "tribute selection dropdown")
-
-
-
+            print(f"Error initializing SponsorView: {e}")
 
 class SponsorConfirmButton(Button):
     def __init__(self):
@@ -73,6 +70,14 @@ class SponsorConfirmButton(Button):
         try:
             # Access the parent view
             parent_view: SponsorView = self.view
+
+            # Check if selections were made
+            if not parent_view.tribute_select.values or not parent_view.stat_select.values or not parent_view.gold_select.values:
+                await interaction.response.send_message(
+                    "Please select a tribute, stat, and boost level before confirming.",
+                    ephemeral=True
+                )
+                return
 
             # Get selected values
             tribute_id = parent_view.tribute_select.values[0]
@@ -101,7 +106,8 @@ class SponsorConfirmButton(Button):
                 ephemeral=True
             )
         except Exception as e:
-            await parent_view.cog.report_error(interaction.channel, e)
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+            print(f"Error in SponsorConfirmButton callback: {e}")
 
 class SponsorButton(Button):
     def __init__(self, cog):
@@ -137,7 +143,9 @@ class SponsorButton(Button):
                 ephemeral=True
             )
         except Exception as e:
-            await self.cog.report_error(interaction.channel, e)
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+            print(f"Error in SponsorButton callback: {e}")
+
 
 
 class ViewTributesButton(Button):
