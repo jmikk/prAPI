@@ -1369,78 +1369,43 @@ class Hungar(commands.Cog):
         guild = interaction.guild
         players = await self.config.guild(guild).players()
         user_gold = await self.config.user(interaction.user).gold()
-    
+
         if amount <= 0:
             await interaction.response.send_message("You must spend more than 0 gold to sponsor someone.", ephemeral=True)
             return
-    
+
         if user_gold < amount:
             await interaction.response.send_message("You don't have enough gold to sponsor that amount.", ephemeral=True)
             return
-    
-        # Tribute ID is passed directly from autocomplete; check if it exists in players
-        tribute_id = tribute  # Tribute is the ID returned from autocomplete
-        if tribute_id not in players:
-            await interaction.response.send_message("Tribute not found. Please try again.", ephemeral=True)
+
+        # Validate the tribute name
+        tribute_id = next((pid for pid, pdata in players.items() if pdata["name"].lower() == tribute.lower()), None)
+        if not tribute_id:
+            await interaction.response.send_message("Tribute not found. Please check the name and try again.", ephemeral=True)
             return
-    
+
         # Deduct gold from the sponsor
         await self.config.user(interaction.user).gold.set(user_gold - amount)
-    
-        # Add the item to the sponsored player's inventory
-        boost = amount // 20
-        players[tribute_id]["items"].append((stat.value, boost))
-        await self.config.guild(guild).players.set(players)
-    
-        await interaction.response.send_message(
-            f"A mysterious sponsor successfully sponsored {players[tribute_id]['name']} with a {boost} {stat.name} boost!"
-        )
-    
-        # 75% chance to sponsor another random tribute
-        if random.random() < 0.75:
-            await asyncio.sleep(5)  # Wait for a few moments
-            alive_players = [
-                player_id
-                for player_id, player in players.items()
-                if player["alive"] and player_id != tribute_id
-            ]
-    
-            if alive_players:
-                random_tribute_id = random.choice(alive_players)
-                random_boost = boost + random.randint(-2, 2)
-                random_boost = max(1, random_boost)  # Ensure boost is at least 1
-    
-                players[random_tribute_id]["items"].append((stat.value, random_boost))
-                await self.config.guild(guild).players.set(players)
-    
-                await interaction.channel.send(
-                    f"An anonymous sponsor has granted {players[random_tribute_id]['name']} a {random_boost} {stat.name} boost!"
-                )
 
+        # Add the item to the sponsored player's inventory
+        players[tribute_id]["items"].append((stat.value, amount // 20))
+        await self.config.guild(guild).players.set(players)
+
+        await interaction.response.send_message(
+            f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat.name} boost!", ephemeral=True
+        )
 
     @sponsor.autocomplete("tribute")
     async def tribute_autocomplete(self, interaction: discord.Interaction, current: str):
         """Autocomplete tribute names."""
         guild = interaction.guild
         players = await self.config.guild(guild).players()
-    
-        # Build autocomplete options
-        options = []
-        for player_id, player in players.items():
-            if not player["alive"]:
-                continue
-    
-            # Display NPC names as-is and real user names as display names
-            if player.get("is_npc"):
-                display_name = player["name"]  # NPC names are unchanged
-            else:
-                member = guild.get_member(int(player_id))
-                display_name = member.display_name if member else player["name"]
-    
-            # Match against current input and include the underlying ID as value
-            if current.lower() in display_name.lower():
-                options.append(app_commands.Choice(name=display_name, value=player_id))
-    
-        return options[:25]  # Return up to 25 matches
 
-    
+        # Filter tribute names that match the current input
+        options = [
+            app_commands.Choice(name=player["name"], value=player["name"])
+            for player in players.values()
+            if player["alive"] and current.lower() in player["name"].lower()
+        ]
+
+        return options[:25]  # Return up to 25 matches (Discord's limit)
