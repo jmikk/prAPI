@@ -9,142 +9,101 @@ from discord.ui import View, Button, Modal, Select, TextInput
 from discord import Interaction, TextStyle, SelectOption
 
 
-class SponsorView(View):
-    def __init__(self, cog, guild, players):
-        super().__init__(timeout=60)  # 60 seconds timeout
-        self.cog = cog
-        self.guild = guild
-        self.players = players
-
-        try:
-            # Tribute selection dropdown
-            self.tribute_select = Select(
-                placeholder="Select a tribute",
-                options=[
-                    SelectOption(
-                        label=f"{player_data['name']} (District {player_data['district']})",
-                        value=player_id
-                    )
-                    for player_id, player_data in players.items() if player_data["alive"]
-                ]
-            )
-            self.add_item(self.tribute_select)
-
-            # Stat selection dropdown
-            self.stat_select = Select(
-                placeholder="Select a stat to boost",
-                options=[
-                    SelectOption(label="Defense", value="Def"),
-                    SelectOption(label="Strength", value="Str"),
-                    SelectOption(label="Constitution", value="Con"),
-                    SelectOption(label="Wisdom", value="Wis"),
-                    SelectOption(label="Health", value="HP"),
-                ]
-            )
-            self.add_item(self.stat_select)
-
-            # Gold selection dropdown
-            self.gold_select = Select(
-                placeholder="Select a boost level (cost in gold)",
-                options=[
-                    SelectOption(label="+1 (20 gold)", value="1"),
-                    SelectOption(label="+2 (40 gold)", value="2"),
-                    SelectOption(label="+3 (60 gold)", value="3"),
-                    SelectOption(label="+4 (80 gold)", value="4"),
-                    SelectOption(label="+5 (100 gold)", value="5"),
-                ]
-            )
-            self.add_item(self.gold_select)
-
-            # Add a confirm button
-            self.add_item(SponsorConfirmButton())
-
-        except Exception as e:
-            print(f"Error initializing SponsorView: {e}")
-
-class SponsorConfirmButton(Button):
-    def __init__(self):
-        super().__init__(label="Confirm Sponsorship", style=discord.ButtonStyle.success)
-
-    async def callback(self, interaction: Interaction):
-        try:
-            # Access the parent view
-            parent_view: SponsorView = self.view
-
-            # Check if selections were made
-            if not parent_view.tribute_select.values or not parent_view.stat_select.values or not parent_view.gold_select.values:
-                await interaction.response.send_message(
-                    "Please select a tribute, stat, and boost level before confirming.",
-                    ephemeral=True
-                )
-                return
-
-            # Get selected values
-            tribute_id = parent_view.tribute_select.values[0]
-            stat = parent_view.stat_select.values[0]
-            boost_level = int(parent_view.gold_select.values[0])
-            cost = boost_level * 20  # 20 gold per level
-
-            players = await parent_view.cog.config.guild(parent_view.guild).players()
-            tribute = players[tribute_id]
-            user_gold = await parent_view.cog.config.user(interaction.user).gold()
-
-            if cost > user_gold:
-                await interaction.response.send_message(
-                    f"You don't have enough gold to sponsor this amount. You need {cost} gold.",
-                    ephemeral=True
-                )
-                return
-
-            # Deduct gold and apply sponsorship
-            await parent_view.cog.config.user(interaction.user).gold.set(user_gold - cost)
-            tribute["items"].append((stat, boost_level))
-            await parent_view.cog.config.guild(parent_view.guild).players.set(players)
-
-            await interaction.response.send_message(
-                f"You successfully sponsored {tribute['name']} with a +{boost_level} {stat} boost!",
-                ephemeral=True
-            )
-        except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
-            print(f"Error in SponsorConfirmButton callback: {e}")
-
 class SponsorButton(Button):
     def __init__(self, cog):
-        super().__init__(label="Sponsor Tribute", style=discord.ButtonStyle.primary)
+        super().__init__(label="Sponsor a Tribute", style=discord.ButtonStyle.secondary)
         self.cog = cog
 
     async def callback(self, interaction: Interaction):
-        try:
-            guild = interaction.guild
-            config = await self.cog.config.guild(guild).all()
+        guild = interaction.guild
+        players = await self.cog.config.guild(guild).players()
 
-            # Check if the game is active
-            if not config.get("game_active", False):
-                await interaction.response.send_message(
-                    "No Hunger Games are currently active. Start a game first!",
-                    ephemeral=True
-                )
-                return
+        # Create options for tributes
+        tribute_options = [
+            SelectOption(label=player["name"], value=player_id)
+            for player_id, player in players.items() if player["alive"]
+        ]
+        if not tribute_options:
+            await interaction.response.send_message("There are no tributes to sponsor.", ephemeral=True)
+            return
 
-            players = config.get("players", {})
+        # Create options for item types
+        item_options = [
+            SelectOption(label="Defense Boost", value="Def"),
+            SelectOption(label="Strength Boost", value="Str"),
+            SelectOption(label="Constitution Boost", value="Con"),
+            SelectOption(label="Wisdom Boost", value="Wis"),
+            SelectOption(label="Health Boost", value="HP"),
+        ]
 
-            if not players:
-                await interaction.response.send_message(
-                    "There are no tributes available to sponsor at the moment.",
-                    ephemeral=True
-                )
-                return
+        # Create options for boost levels
+        boost_options = [
+            SelectOption(label=f"{boost} (+{boost * 20} gold)", value=str(boost))
+            for boost in range(1, 6)
+        ]
 
-            view = SponsorView(self.cog, guild, players)
+        # Create a modal for the sponsor interaction
+        view = SponsorInteractionView(
+            cog=self.cog,
+            tribute_options=tribute_options,
+            item_options=item_options,
+            boost_options=boost_options,
+        )
+        await interaction.response.send_message("Select a tribute, item type, and boost level to sponsor:", view=view, ephemeral=True)
+
+
+class SponsorInteractionView(View):
+    def __init__(self, cog, tribute_options, item_options, boost_options):
+        super().__init__(timeout=60)
+        self.cog = cog
+
+        self.tribute_select = Select(
+            placeholder="Choose a tribute to sponsor...",
+            options=tribute_options,
+        )
+        self.item_select = Select(
+            placeholder="Choose an item to sponsor...",
+            options=item_options,
+        )
+        self.boost_select = Select(
+            placeholder="Choose a boost level...",
+            options=boost_options,
+        )
+
+        self.add_item(self.tribute_select)
+        self.add_item(self.item_select)
+        self.add_item(self.boost_select)
+
+        self.submit_button = Button(label="Confirm Sponsorship", style=discord.ButtonStyle.green)
+        self.submit_button.callback = self.submit
+        self.add_item(self.submit_button)
+
+    async def submit(self, interaction: Interaction):
+        tribute_id = self.tribute_select.values[0]
+        item_type = self.item_select.values[0]
+        boost_level = int(self.boost_select.values[0])
+
+        # Calculate cost
+        cost = boost_level * 20
+        user_gold = await self.cog.config.user(interaction.user).gold()
+
+        if user_gold < cost:
             await interaction.response.send_message(
-                "Choose a tribute and stat to sponsor using the dropdown menus below:",
-                view=view,
-                ephemeral=True
+                f"You don't have enough gold. This sponsorship costs {cost} gold.", ephemeral=True
             )
-        except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
-            print(f"Error in SponsorButton callback: {e}")
+            return
+
+        # Deduct gold and add item to tribute's inventory
+        await self.cog.config.user(interaction.user).gold.set(user_gold - cost)
+
+        players = await self.cog.config.guild(interaction.guild).players()
+        players[tribute_id]["items"].append((item_type, boost_level))
+        await self.cog.config.guild(interaction.guild).players.set(players)
+
+        tribute_name = players[tribute_id]["name"]
+        await interaction.response.send_message(
+            f"You successfully sponsored {tribute_name} with a {item_type} boost (+{boost_level}).", ephemeral=True
+        )
 
 
 
