@@ -1365,26 +1365,5 @@ class Hungar(commands.Cog):
         await ctx.send(embed=embed)
 
 
-    @commands.command(name="sponsor")
-    async def sponsor_command(self, ctx):
-        """Sponsor a tribute by opening an interactive modal."""
-        guild = ctx.guild
-        config = await self.config.guild(guild).all()
-    
-        # Check if the game is active
-        if not config.get("game_active", False):
-            await ctx.send("No Hunger Games are currently active. Start a game first!")
-            return
-    
-        players = config.get("players", {})
-    
-        if not players:
-            await ctx.send("There are no tributes available to sponsor at the moment.")
-            return
-    
-        # Open the modal
-        modal = SponsorModal(self,guild, players)
-        await ctx.interaction.response.send_modal(modal)
-
 
 
