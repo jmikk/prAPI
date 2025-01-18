@@ -72,10 +72,24 @@ class BettingView(View):
 
     def get_tribute_options(self):
         """Refresh options for tribute selection, keeping the selected value."""
-        return [
-            SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_tribute))
-            for option in self.tribute_options
-        ]
+
+        tribute_options = []
+        # Check if the player is a real user or an NPC
+        for player_id, player in players.items():
+            if player["alive"]:
+                # Check if the player is a real user or an NPC
+                if player_id.isdigit():  # Real user (user IDs are digits)
+                    member = guild.get_member(int(player_id))
+                    if member:
+                        # Add mention for real players
+                        tribute_options.append(SelectOption(label=member.display_name, value=player_id))
+                    else:
+                        # Fallback to the stored name if the member is not found
+                        tribute_options.append(SelectOption(label=player["name"], value=player_id))
+                else:
+                    # Add NPC names as they are
+                    tribute_options.append(SelectOption(label=player["name"], value=player_id))
+        return tribute_options
 
     def get_amount_options(self):
         """Refresh options for bet amount selection, keeping the selected value."""
@@ -170,7 +184,7 @@ class SponsorButton(Button):
                     member = guild.get_member(int(player_id))
                     if member:
                         # Add mention for real players
-                        tribute_options.append(SelectOption(label=member.name, value=player_id))
+                        tribute_options.append(SelectOption(label=member.display_name, value=player_id))
                     else:
                         # Fallback to the stored name if the member is not found
                         tribute_options.append(SelectOption(label=player["name"], value=player_id))
