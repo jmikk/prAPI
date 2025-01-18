@@ -6,100 +6,80 @@ import os
 import discord
 from discord.ext.commands import CheckFailure
 from discord.ui import View, Button
-from discord import Interaction
-from discord.ui import Select, View
+from discord import Interaction, TextStyle
+from discord.ui import Select, View, Modal, InputText
 from discord import app_commands
 
 
-
-class TributeSelect(Select):
-    def __init__(self, cog, players, amount, stat):
+class SponsorModal(Modal):
+    def __init__(self, cog, players):
+        super().__init__(title="Sponsor a Tribute")
         self.cog = cog
         self.players = players
-        self.amount = amount
-        self.stat = stat
-        options = []
-        for player_id, player_data in players.items():
-            if player_data["alive"]:
-                options.append(
-                    discord.SelectOption(
-                        label=player_data["name"],
-                        description=f"District {player_data['district']}",
-                        value=player_id
-                    )
-                )
 
-        super().__init__(
-            placeholder="Select a tribute to sponsor...",
-            options=options
+        # Gold amount input
+        self.add_item(
+            InputText(
+                label="Amount of Gold",
+                placeholder="Enter the amount of gold to spend",
+                style=TextStyle.short
+            )
         )
 
-    async def callback(self, interaction: discord.Interaction):
-        player_id = self.values[0]
-        target_player = self.players[player_id]
+        # Stat selection
+        self.add_item(
+            Select(
+                placeholder="Select a stat to boost",
+                options=[
+                    discord.SelectOption(label="Defense", value="Def"),
+                    discord.SelectOption(label="Strength", value="Str"),
+                    discord.SelectOption(label="Constitution", value="Con"),
+                    discord.SelectOption(label="Wisdom", value="Wis"),
+                    discord.SelectOption(label="Health", value="HP"),
+                ]
+            )
+        )
 
-        # Determine the boost based on the amount spent
-        if self.stat == "HP":
-            boost = self.amount // 10  # HP boosts are cheaper
-        else:
-            boost = self.amount // 20  # Other stats are more expensive
+        # Tribute selection
+        tribute_options = [
+            discord.SelectOption(
+                label=guild.get_member(int(player_id)).display_name if player_id.isdigit() else player_data["name"],
+                value=player_id
+            )
+            for player_id, player_data in players.items()
+            if player_data["alive"]
+        ]
+        self.add_item(
+            Select(
+                placeholder="Select a tribute",
+                options=tribute_options[:25]  # Limit to 25 options
+            )
+        )
 
-        if boost <= 0:
-            await interaction.response.send_message("The amount you spent is too low to provide any boost. Try a higher amount.", ephemeral=True)
+    async def callback(self, interaction: Interaction):
+        """Handle the submission of the modal."""
+        amount = int(self.children[0].value)
+        stat = self.children[1].values[0]
+        tribute_id = self.children[2].values[0]
+
+        # Check and update gold
+        user_gold = await self.cog.config.user(interaction.user).gold()
+        if amount > user_gold:
+            await interaction.response.send_message("You don't have enough gold to sponsor this amount.", ephemeral=True)
             return
 
-        # Deduct gold from the sponsor
-        user_gold = await self.cog.config.user(interaction.user).gold()
-        await self.cog.config.user(interaction.user).gold.set(user_gold - self.amount)
+        # Deduct gold
+        await self.cog.config.user(interaction.user).gold.set(user_gold - amount)
 
-        # Add the item to the sponsored player's inventory
-        target_player["items"].append((self.stat, boost))
+        # Apply the sponsorship
+        players = await self.cog.config.guild(interaction.guild).players()
+        players[tribute_id]["items"].append((stat, amount // 20))
+        await self.cog.config.guild(interaction.guild).players.set(players)
 
-        await self.cog.config.guild(interaction.guild).players.set(self.players)
-        await interaction.response.send_message(f"{interaction.user.mention} has sponsored {target_player['name']} with a {boost} {self.stat} boost item!")
-
-        # 75% chance to sponsor another random tribute
-        if random.random() < 0.75:
-            alive_players = [player for player_id, player in self.players.items() if player["alive"] and player_id != player_id]
-            if alive_players:
-                random_player = random.choice(alive_players)
-
-                if self.stat == "HP":
-                    random_boost = boost + random.randint(5, 10)
-                else:
-                    random_boost = boost + random.randint(1, 3)
-
-                random_player["items"].append((self.stat, random_boost))
-
-                await interaction.channel.send(
-                    f"The generosity spreads! {random_player['name']} has also received a {random_boost} {self.stat} boost item from an anonymous sponsor!"
-                )
-
-            await self.cog.config.guild(interaction.guild).players.set(self.players)
-
-class StatSelect(Select):
-    def __init__(self, cog, players, amount):
-        self.cog = cog
-        self.players = players
-        self.amount = amount
-        options = [
-            discord.SelectOption(label="Defense", value="Def"),
-            discord.SelectOption(label="Strength", value="Str"),
-            discord.SelectOption(label="Constitution", value="Con"),
-            discord.SelectOption(label="Wisdom", value="Wis"),
-            discord.SelectOption(label="Health", value="HP")
-        ]
-
-        super().__init__(
-            placeholder="Select a stat to boost...",
-            options=options
+        await interaction.response.send_message(
+            f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat} boost!"
         )
 
-    async def callback(self, interaction: discord.Interaction):
-        stat = self.values[0]
-        view = View()
-        view.add_item(TributeSelect(self.cog, self.players, self.amount, stat))
-        await interaction.response.edit_message(content="Now select a tribute to sponsor:", view=view)
 #clear bets at the end of game
 
 class ViewTributesButton(Button):
@@ -1350,63 +1330,18 @@ class Hungar(commands.Cog):
         await ctx.send(embed=embed)
 
 
-    @app_commands.command(name="sponsor", description="Sponsor a tribute with a boost item.")
-    @app_commands.describe(
-        amount="The amount of gold to spend.",
-        stat="The stat to boost.",
-        tribute="The name of the tribute to sponsor."
-    )
-    @app_commands.choices(
-        stat=[
-            app_commands.Choice(name="Defense", value="Def"),
-            app_commands.Choice(name="Strength", value="Str"),
-            app_commands.Choice(name="Constitution", value="Con"),
-            app_commands.Choice(name="Wisdom", value="Wis"),
-            app_commands.Choice(name="Health", value="HP"),
-        ]
-    )
-    async def sponsor(self, interaction: discord.Interaction, amount: int, stat: app_commands.Choice[str], tribute: str):
-        guild = interaction.guild
-        players = await self.config.guild(guild).players()
-        user_gold = await self.config.user(interaction.user).gold()
+    @commands.command(name="sponsor")
+    async def sponsor_command(self, ctx):
+        """Sponsor a tribute by opening an interactive modal."""
+        players = await self.config.guild(ctx.guild).players()
 
-        if amount <= 0:
-            await interaction.response.send_message("You must spend more than 0 gold to sponsor someone.", ephemeral=True)
+        if not players:
+            await ctx.send("There are no tributes available to sponsor at the moment.")
             return
 
-        if user_gold < amount:
-            await interaction.response.send_message("You don't have enough gold to sponsor that amount.", ephemeral=True)
-            return
-            
-        # Validate the tribute name
-        if not tribute_id:
-            await interaction.response.send_message("Tribute not found. Please check the name and try again.")
-            return
-
-        # Deduct gold from the sponsor
-        await self.config.user(interaction.user).gold.set(user_gold - amount)
-
-        # Add the item to the sponsored player's inventory
-        players[tribute_id]["items"].append((stat.value, amount // 20))
-        await self.config.guild(guild).players.set(players)
-
-        await interaction.response.send_message(
-            f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat.name} boost!"
-        )
-    
-    @sponsor.autocomplete("tribute")
-    async def tribute_autocomplete(self, interaction: discord.Interaction, current: str):
-        """Autocomplete tribute names."""
-        guild = interaction.guild
-        players = await self.config.guild(guild).players()
-
-        # Filter tribute names that match the current input
-        options = [
-            app_commands.Choice(name=player["name"], value=player["name"])
-            for player in players.values()
-            if player["alive"] and current.lower() in player["name"].lower()
-        ]
-
-        return options[:25]  # Return up to 25 matches (Discord's limit)
+        # Open the modal
+        await ctx.send("Fill out the sponsor details:", view=View())
+        modal = SponsorModal(self, players)
+        await ctx.interaction.response.send_modal(modal)
 
 
