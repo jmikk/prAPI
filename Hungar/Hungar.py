@@ -11,41 +11,6 @@ from discord.ui import Select, View
 from discord import app_commands
 
 
-class SponsorButton(Button):
-    def __init__(self, cog):
-        super().__init__(label="Sponsor Tribute", style=discord.ButtonStyle.primary)
-        self.cog = cog
-
-    async def callback(self, interaction: Interaction):
-        guild = interaction.guild
-        config = await self.cog.config.guild(guild).all()
-
-        # Check if the game is active
-        if not config.get("game_active", False):
-            await interaction.response.send_message(
-                "No Hunger Games are currently active. Start a game first!",
-                ephemeral=True
-            )
-            return
-
-        players = config.get("players", {})
-
-        if not players:
-            await interaction.response.send_message(
-                "There are no tributes available to sponsor at the moment.",
-                ephemeral=True
-            )
-            return
-
-        # Create the sponsor selection view
-        view = SponsorSelectionView(self.cog, guild, players)
-        await interaction.response.send_message(
-            "Choose a tribute and stat to sponsor:",
-            view=view,
-            ephemeral=True
-        )
-
-
 class SponsorSelectionView(View):
     def __init__(self, cog, guild, players):
         super().__init__(timeout=30)
@@ -63,41 +28,49 @@ class SponsorSelectionView(View):
             if player_data["alive"]
         ]
 
-        self.add_item(
-            Select(
-                placeholder="Select a tribute",
-                options=tribute_options[:25]  # Limit to 25 options
-            )
+        self.tribute_dropdown = Select(
+            placeholder="Select a tribute",
+            options=tribute_options[:25]  # Limit to 25 options
         )
+        self.add_item(self.tribute_dropdown)
 
         # Stat selection dropdown
-        self.add_item(
-            Select(
-                placeholder="Select a stat to boost",
-                options=[
-                    discord.SelectOption(label="Defense", value="Def"),
-                    discord.SelectOption(label="Strength", value="Str"),
-                    discord.SelectOption(label="Constitution", value="Con"),
-                    discord.SelectOption(label="Wisdom", value="Wis"),
-                    discord.SelectOption(label="Health", value="HP"),
-                ]
-            )
+        self.stat_dropdown = Select(
+            placeholder="Select a stat to boost",
+            options=[
+                discord.SelectOption(label="Defense", value="Def"),
+                discord.SelectOption(label="Strength", value="Str"),
+                discord.SelectOption(label="Constitution", value="Con"),
+                discord.SelectOption(label="Wisdom", value="Wis"),
+                discord.SelectOption(label="Health", value="HP"),
+            ]
         )
+        self.add_item(self.stat_dropdown)
 
         # Gold input field
-        self.add_item(
-            TextInput(
-                label="Amount of Gold",
-                placeholder="Enter the amount of gold to sponsor",
-                style=TextStyle.short
-            )
+        self.gold_input = TextInput(
+            label="Amount of Gold",
+            placeholder="Enter the amount of gold to sponsor",
+            style=TextStyle.short
         )
+        self.add_item(self.gold_input)
 
-    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.success)
-    async def confirm_button(self, button: discord.ui.Button, interaction: Interaction):
-        tribute_id = self.children[0].values[0]
-        stat = self.children[1].values[0]
-        amount = int(self.children[2].value)
+        # Confirm button
+        confirm_button = Button(label="Confirm", style=discord.ButtonStyle.success)
+        confirm_button.callback = self.confirm_sponsorship
+        self.add_item(confirm_button)
+
+    async def confirm_sponsorship(self, interaction: Interaction):
+        tribute_id = self.tribute_dropdown.values[0]
+        stat = self.stat_dropdown.values[0]
+        try:
+            amount = int(self.gold_input.value)
+        except ValueError:
+            await interaction.response.send_message(
+                "Invalid amount. Please enter a valid number.",
+                ephemeral=True
+            )
+            return
 
         players = await self.cog.config.guild(self.guild).players()
         user_gold = await self.cog.config.user(interaction.user).gold()
@@ -124,6 +97,7 @@ class SponsorSelectionView(View):
         await interaction.response.send_message(
             f"You have successfully sponsored {players[tribute_id]['name']} with a {amount // 20} {stat} boost!"
         )
+
 
 
 class ViewTributesButton(Button):
