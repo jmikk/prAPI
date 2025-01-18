@@ -8,6 +8,8 @@ from discord.ext.commands import CheckFailure
 from discord.ui import View, Button, Modal, Select, TextInput
 from discord import Interaction, TextStyle, SelectOption
 
+#Add a view bets by tritube button
+
 
 class BettingButton(Button):
     def __init__(self, cog):
