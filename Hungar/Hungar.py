@@ -70,6 +70,10 @@ class SponsorInteractionView(View):
             options=boost_options,
         )
 
+        self.tribute_select.callback = self.on_tribute_select
+        self.item_select.callback = self.on_item_select
+        self.boost_select.callback = self.on_boost_select
+
         self.add_item(self.tribute_select)
         self.add_item(self.item_select)
         self.add_item(self.boost_select)
@@ -77,6 +81,34 @@ class SponsorInteractionView(View):
         self.submit_button = Button(label="Confirm Sponsorship", style=discord.ButtonStyle.green)
         self.submit_button.callback = self.submit
         self.add_item(self.submit_button)
+
+        self.selected_tribute = None
+        self.selected_item = None
+        self.selected_boost = None
+
+    async def on_tribute_select(self, interaction: Interaction):
+        try:
+            self.selected_tribute = self.tribute_select.values[0]
+            await interaction.response.defer()
+            await interaction.followup.send(f"Selected tribute: {self.selected_tribute}", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+
+    async def on_item_select(self, interaction: Interaction):
+        try:
+            self.selected_item = self.item_select.values[0]
+            await interaction.response.defer()
+            await interaction.followup.send(f"Selected item: {self.selected_item}", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+
+    async def on_boost_select(self, interaction: Interaction):
+        try:
+            self.selected_boost = int(self.boost_select.values[0])
+            await interaction.response.defer()
+            await interaction.followup.send(f"Selected boost: {self.selected_boost}", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
     async def submit(self, interaction: Interaction):
         tribute_id = self.tribute_select.values[0]
