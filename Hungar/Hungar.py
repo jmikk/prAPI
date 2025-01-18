@@ -111,31 +111,34 @@ class SponsorInteractionView(View):
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
     async def submit(self, interaction: Interaction):
-        tribute_id = self.tribute_select.values[0]
-        item_type = self.item_select.values[0]
-        boost_level = int(self.boost_select.values[0])
-
-        # Calculate cost
-        cost = boost_level * 20
-        user_gold = await self.cog.config.user(interaction.user).gold()
-
-        if user_gold < cost:
+        try:
+            tribute_id = self.tribute_select.values[0]
+            item_type = self.item_select.values[0]
+            boost_level = int(self.boost_select.values[0])
+    
+            # Calculate cost
+            cost = boost_level * 20
+            user_gold = await self.cog.config.user(interaction.user).gold()
+    
+            if user_gold < cost:
+                await interaction.response.send_message(
+                    f"You don't have enough gold. This sponsorship costs {cost} gold.", ephemeral=True
+                )
+                return
+    
+            # Deduct gold and add item to tribute's inventory
+            await self.cog.config.user(interaction.user).gold.set(user_gold - cost)
+    
+            players = await self.cog.config.guild(interaction.guild).players()
+            players[tribute_id]["items"].append((item_type, boost_level))
+            await self.cog.config.guild(interaction.guild).players.set(players)
+    
+            tribute_name = players[tribute_id]["name"]
             await interaction.response.send_message(
-                f"You don't have enough gold. This sponsorship costs {cost} gold.", ephemeral=True
+                f"You successfully sponsored {tribute_name} with a {item_type} boost (+{boost_level}).", ephemeral=True
             )
-            return
-
-        # Deduct gold and add item to tribute's inventory
-        await self.cog.config.user(interaction.user).gold.set(user_gold - cost)
-
-        players = await self.cog.config.guild(interaction.guild).players()
-        players[tribute_id]["items"].append((item_type, boost_level))
-        await self.cog.config.guild(interaction.guild).players.set(players)
-
-        tribute_name = players[tribute_id]["name"]
-        await interaction.response.send_message(
-            f"You successfully sponsored {tribute_name} with a {item_type} boost (+{boost_level}).", ephemeral=True
-        )
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
 
 
