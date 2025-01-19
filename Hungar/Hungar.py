@@ -1048,10 +1048,10 @@ class Hungar(commands.Cog):
         day_duration = timedelta(seconds=config["day_duration"])
         
         # Calculate the start time of the next day
-        next_day_start = day_start + day_duration
+        next_day_start = day_start + day_duration + timedelta(hours=6) 
         
         # Convert the next day start time to a Discord timestamp
-        next_day_start_timestamp = int(next_day_start.timestamp()) + timedelta(hours=6)  # Convert to Unix timestamp for Discord formatting
+        next_day_start_timestamp = int(next_day_start.timestamp())  # Convert to Unix timestamp for Discord formatting
 
         await ctx.send(f"Pick your action for the day, the sun will set in about <t:{next_day_start_timestamp}:R>",view=ActionSelectionView(self, feast_active,current_day))
 
