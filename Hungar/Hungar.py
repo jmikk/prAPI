@@ -819,60 +819,60 @@ class Hungar(commands.Cog):
             await ctx.send("Sorry only 25 people can play (this includes NPCs)")
             return
         
-    # Add AI bettors
-    ai_bettors = {}
-    npc_names = await self.load_npc_names()
-    for tribute_id, tribute in players.items():
-        if not tribute["alive"]:
-            continue
+        # Add AI bettors
+        ai_bettors = {}
+        npc_names = await self.load_npc_names()
+        for tribute_id, tribute in players.items():
+            if not tribute["alive"]:
+                continue
+        
+            ai_name = random.choice(npc_names)
+            bet_amount = random.randint(50, 500)  # Random bet between 50 and 500 gold
+        
+            # Save the bet to the AI bettors dictionary for announcements
+            ai_bettors[ai_name] = {
+                "tribute_id": tribute_id,
+                "amount": bet_amount
+            }
+        
+            # Store the AI bet in the tribute's bet data (same structure as user bets)
+            tribute_bets = tribute.get("bets", {})  # Ensure "bets" key exists for tribute
+            if "AI" not in tribute_bets:
+                tribute_bets["AI"] = []
+            tribute_bets["AI"].append({
+                "name": ai_name,
+                "amount": bet_amount
+            })
+            tribute["bets"] = tribute_bets  # Save back to players
+        
+        # Apply AI bets
+        for ai_name, bet_data in ai_bettors.items():
+            tribute_id = bet_data["tribute_id"]
+            amount = bet_data["amount"]
+        
+            if tribute_id not in players or not players[tribute_id]["alive"]:
+                continue  # Skip invalid tributes
+                    
+            await self.config.guild(guild).players.set(players)
+            await self.config.guild(guild).game_active.set(True)
+            await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
+            await self.config.guild(guild).day_counter.set(0)
     
-        ai_name = random.choice(npc_names)
-        bet_amount = random.randint(50, 500)  # Random bet between 50 and 500 gold
+            # Announce all participants with mentions for real players, sorted by district
+            sorted_players = sorted(players.values(), key=lambda p: p["district"])
+            participant_list = []
+            for player in sorted_players:
+                if player.get("is_npc"):
+                    participant_list.append(f"{player['name']} from District {player['district']}")
+                else:
+                    member = guild.get_member(int(next((k for k, v in players.items() if v == player), None)))
+                    if member:
+                        participant_list.append(f"{member.mention} from District {player['district']}")
     
-        # Save the bet to the AI bettors dictionary for announcements
-        ai_bettors[ai_name] = {
-            "tribute_id": tribute_id,
-            "amount": bet_amount
-        }
+            participant_announcement = "\n".join(participant_list)
+            await ctx.send(f"The Hunger Games have begun with the following participants (sorted by District):\n{participant_announcement}")
     
-        # Store the AI bet in the tribute's bet data (same structure as user bets)
-        tribute_bets = tribute.get("bets", {})  # Ensure "bets" key exists for tribute
-        if "AI" not in tribute_bets:
-            tribute_bets["AI"] = []
-        tribute_bets["AI"].append({
-            "name": ai_name,
-            "amount": bet_amount
-        })
-        tribute["bets"] = tribute_bets  # Save back to players
-    
-    # Apply AI bets
-    for ai_name, bet_data in ai_bettors.items():
-        tribute_id = bet_data["tribute_id"]
-        amount = bet_data["amount"]
-    
-        if tribute_id not in players or not players[tribute_id]["alive"]:
-            continue  # Skip invalid tributes
-                
-        await self.config.guild(guild).players.set(players)
-        await self.config.guild(guild).game_active.set(True)
-        await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
-        await self.config.guild(guild).day_counter.set(0)
-
-        # Announce all participants with mentions for real players, sorted by district
-        sorted_players = sorted(players.values(), key=lambda p: p["district"])
-        participant_list = []
-        for player in sorted_players:
-            if player.get("is_npc"):
-                participant_list.append(f"{player['name']} from District {player['district']}")
-            else:
-                member = guild.get_member(int(next((k for k, v in players.items() if v == player), None)))
-                if member:
-                    participant_list.append(f"{member.mention} from District {player['district']}")
-
-        participant_announcement = "\n".join(participant_list)
-        await ctx.send(f"The Hunger Games have begun with the following participants (sorted by District):\n{participant_announcement}")
-
-        asyncio.create_task(self.run_game(ctx))
+            asyncio.create_task(self.run_game(ctx))
 
     async def run_game(self, ctx):
         """Handle the real-time simulation of the game."""
