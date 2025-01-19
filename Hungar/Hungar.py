@@ -974,7 +974,7 @@ class Hungar(commands.Cog):
 
                 if await self.ai_manager.should_sponsor(guild):
                     await ctx.send("Lets sponsor")
-                    await self.ai_manager.ai_sponsor(guild, game_channel)
+                    await self.ai_manager.ai_sponsor(guild, ctx.channel)
     
                 day_start = datetime.fromisoformat(config["day_start"])
                 day_duration = timedelta(seconds=config["day_duration"])
