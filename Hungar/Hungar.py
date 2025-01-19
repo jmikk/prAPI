@@ -1044,10 +1044,9 @@ class Hungar(commands.Cog):
         )
         # Calculate the end of the day
         offset = timedelta(hours=6)
-        day_start = datetime.fromisoformat(config["day_start"])
         day_duration = timedelta(seconds=config["day_duration"])
-        day_end = day_start + day_duration - offset 
-        day_end_timestamp = int(day_end.timestamp())  # Convert to Unix timestamp for Discord's formatting
+        next_day_start = datetime.utcnow() + day_duration  # Calculate the next day's start time
+        day_end_timestamp = int(next_day_start.timestamp())  # Convert to Unix timestamp for Discord's formatting
         await ctx.send(f"Pick your action for the day, the sun will set in about <t:{day_end_timestamp}:R>",view=ActionSelectionView(self, feast_active,current_day))
 
     async def isOneLeft(self, guild):
