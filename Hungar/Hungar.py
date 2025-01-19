@@ -195,25 +195,35 @@ class ViewBidsButton(Button):
 
             # Calculate total bets on each tribute
             bid_totals = {}
+            bet_details = {}  # Store detailed bet info for each tribute
+
             for player_id, player_data in players.items():
                 if not player_data["alive"]:
                     continue
 
                 tribute_bets = player_data.get("bets", {})
                 total_bets = 0
+                details = []
 
                 # Include user bets
                 for user_id, user_data in all_users.items():
                     bets = user_data.get("bets", {})
                     if player_id in bets:
-                        total_bets += bets[player_id]["amount"]
+                        bet_amount = bets[player_id]["amount"]
+                        total_bets += bet_amount
+                        member = guild.get_member(int(user_id))
+                        if member:
+                            details.append(f"{member.display_name}: {bet_amount} gold")
 
                 # Include AI bets
                 ai_bets = tribute_bets.get("AI", [])
-                total_bets += sum(ai_bet["amount"] for ai_bet in ai_bets)
+                for ai_bet in ai_bets:
+                    total_bets += ai_bet["amount"]
+                    details.append(f"{ai_bet['name']}: {ai_bet['amount']} gold")
 
                 if total_bets > 0:
                     bid_totals[player_id] = total_bets
+                    bet_details[player_id] = details
 
             # Sort tributes by total bets
             sorted_tributes = sorted(
@@ -234,11 +244,14 @@ class ViewBidsButton(Button):
                 if not tribute["alive"]:
                     continue  # Skip dead tributes
                 district = tribute["district"]
-
                 tribute_name = tribute["name"]
+
+                # Format detailed bets
+                details_text = "\n".join(bet_details[tribute_id])
+
                 embed.add_field(
                     name=f"#{rank} {tribute_name} (District {district})",
-                    value=f"Total Bets: {total_bet} gold",
+                    value=f"Total Bets: {total_bet} gold\n{details_text}",
                     inline=False
                 )
 
