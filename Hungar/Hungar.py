@@ -10,6 +10,61 @@ from discord import Interaction, TextStyle, SelectOption
 
 #Add a view bets by tritube button
 
+class ViewBidsButton(Button):
+    def __init__(self, cog):
+        super().__init__(label="View Bids", style=discord.ButtonStyle.secondary)
+        self.cog = cog
+
+    async def callback(self, interaction: Interaction):
+        try:
+            guild = interaction.guild
+            players = await self.cog.config.guild(guild).players()
+            all_users = await self.cog.config.all_users()
+
+            # Calculate total bets on each tribute
+            bid_totals = {}
+            for user_data in all_users.values():
+                bets = user_data.get("bets", {})
+                for tribute_id, bet in bets.items():
+                    bid_totals[tribute_id] = bid_totals.get(tribute_id, 0) + bet["amount"]
+
+            # Calculate total gold bet across all tributes
+            total_gold = sum(bid_totals.values())
+
+            if not bid_totals:
+                await interaction.response.send_message("No bets have been placed yet.", ephemeral=True)
+                return
+
+            # Sort tributes by total bets
+            sorted_tributes = sorted(
+                bid_totals.items(),
+                key=lambda item: item[1],
+                reverse=True
+            )
+
+            # Create embed
+            embed = discord.Embed(
+                title="🏅 Tribute Betting Rankings 🏅",
+                description="Ranking of tributes based on total bets placed.",
+                color=discord.Color.gold()
+            )
+
+            for rank, (tribute_id, total_bet) in enumerate(sorted_tributes, start=1):
+                tribute = players.get(tribute_id)
+                tribute_name = tribute["name"]
+                district = tribute["district"]
+                percentage = (total_bet / total_gold) * 100 if total_gold > 0 else 0
+                embed.add_field(
+                    name=f"#{rank} {tribute_name} (District {district})",
+                    value=f"Total Bets: {total_bet} gold\n{percentage:.2f}% of total bets",
+                    inline=False
+                )
+
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+
+
 
 class BettingButton(Button):
     def __init__(self, cog):
@@ -424,6 +479,8 @@ class ActionSelectionView(View):
         # Only add the Betting Button on Day 0 and Day 1
         if current_day in [0, 1]:
             self.add_item(BettingButton(cog))
+
+        self.add_item(ViewBidsButton(cog))  # Add the new button here
 
 class ActionButton(Button):
     def __init__(self, cog, action):
