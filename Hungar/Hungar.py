@@ -244,7 +244,13 @@ class ViewBidsButton(Button):
                 if not tribute["alive"]:
                     continue  # Skip dead tributes
                 district = tribute["district"]
-                tribute_name = tribute["name"]
+
+                # Determine display name (nickname or stored name for NPCs)
+                if tribute_id.isdigit():  # Real user
+                    member = guild.get_member(int(tribute_id))
+                    tribute_name = member.display_name if member else tribute["name"]
+                else:  # NPC
+                    tribute_name = tribute["name"]
 
                 # Format detailed bets
                 details_text = "\n".join(bet_details[tribute_id])
