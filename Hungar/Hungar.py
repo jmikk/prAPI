@@ -239,7 +239,7 @@ class SponsorView(View):
             tribute_name = tribute["name"]
 
             await interaction.response.send_message(
-                f"🎁 **Someone** sponsored **{tribute_name}** with a +{boost_amount} boost to {stat_to_boost}!"
+                f"🎁 **Someone** sponsored **{tribute_name}** with a +{self.selected_boost} boost to {self.selected_stat}!"
 
             )
         except Exception as e:
