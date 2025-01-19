@@ -87,7 +87,7 @@ class SponsorView(View):
 
         # Boost amount selection dropdown
         self.boost_options = [
-            SelectOption(label=f"+{i} Boost ({20*i} Gold", value=str(i)) for i in range(1, 11)
+            SelectOption(label=f"+{i} Boost ({20*i} Gold)", value=str(i)) for i in range(1, 11)
         ]
         self.boost_select = Select(
             placeholder="Select the boost amount...",
@@ -822,8 +822,28 @@ class Hungar(commands.Cog):
             await ctx.send("Sorry only 25 people can play (this includes NPCs)")
             return
         
-
-
+        # Add AI bettors
+        ai_bettors = {}
+        npc_names = await self.load_npc_names()
+        for tribute_id, tribute in players.items():
+            if not tribute["alive"]:
+                continue
+        
+            ai_name = random.choice(npc_names)
+            bet_amount = random.randint(50, 500)  # Random bet between 50 and 500 gold
+            ai_bettors[ai_name] = {
+                "tribute_id": tribute_id,
+                "amount": bet_amount
+            }
+        
+        # Apply AI bets
+        for ai_name, bet_data in ai_bettors.items():
+            tribute_id = bet_data["tribute_id"]
+            amount = bet_data["amount"]
+        
+            if tribute_id not in players or not players[tribute_id]["alive"]:
+                continue  # Skip invalid tributes
+                
         await self.config.guild(guild).players.set(players)
         await self.config.guild(guild).game_active.set(True)
         await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
