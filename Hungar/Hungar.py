@@ -9,14 +9,8 @@ from discord.ui import View, Button, Modal, Select, TextInput
 from discord import Interaction, TextStyle, SelectOption
 
 #Fix Timer for new day (Useing the days before time?)
-#Add AI  sponsors
 #Add NS dispatch posting games,
 # -link accounts to nations for easy ping mabye in signup
-
-class HungerGamesAI:
-    def __init__(self, cog):
-        self.cog = cog
-        self.last_sponsorship = {}
 
 class HungerGamesAI:
     def __init__(self, cog):
@@ -56,7 +50,7 @@ class HungerGamesAI:
 
         # Random stat to boost
         stat_to_boost = random.choice(["Def", "Str", "Con", "Wis", "HP"])
-        boost_amount = random.randint(100, 10000)  # Random boost amount
+        boost_amount = random.randint(1, 10)  # Random boost amount
 
         # Apply sponsorship
         selected_tribute["stats"][stat_to_boost] += boost_amount
@@ -65,7 +59,7 @@ class HungerGamesAI:
         # Broadcast sponsorship in the given channel
         if channel:
             await channel.send(
-                f"🎁 **{npc_name}** sponsored **{selected_tribute['name']}** with a "
+                f"🎁 **Someone** sponsored **{selected_tribute['name']}** with a "
                 f"+{boost_amount} boost to {stat_to_boost}!"
             )
 
@@ -78,7 +72,7 @@ class HungerGamesAI:
         """
         now = datetime.utcnow()
         last_time = self.last_sponsorship.get(guild.id, now - timedelta(days=1))
-        return (now - last_time).total_seconds() > random.randint(1, 2)  
+        return (now - last_time).total_seconds() > random.randint(60, 300)  
 
         
 
