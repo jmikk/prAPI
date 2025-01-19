@@ -102,11 +102,28 @@ class SponsorView(View):
         self.confirm_button.callback = self.confirm_sponsorship
         self.add_item(self.confirm_button)
 
+
     def get_tribute_options(self):
+        """Get the tribute options with the selected value marked."""
         return [
             SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_tribute))
             for option in self.tribute_options
         ]
+
+    async def on_tribute_select(self, interaction: Interaction):
+        try:
+            self.selected_tribute = self.tribute_select.values[0]  # Store the selected tribute
+            self.tribute_select.options = self.get_tribute_options()  # Update options to retain selection
+
+            # Enable confirm button if both selections are made
+            if self.selected_amount:
+                self.confirm_button.disabled = False
+
+            await interaction.response.edit_message(view=self)
+        except Exception as e:
+            await interaction.response.send_message(
+                f"An error occurred in tribute selection: {e}", ephemeral=True
+            )
 
     def get_stat_options(self):
         return [
@@ -119,12 +136,6 @@ class SponsorView(View):
             SelectOption(label=option.label, value=option.value, default=(option.value == str(self.selected_boost)))
             for option in self.boost_options
         ]
-
-    async def on_tribute_select(self, interaction: Interaction):
-        self.selected_tribute = self.tribute_select.values[0]  # Store the selected tribute
-        self.tribute_select.options = self.get_tribute_options()  # Update options to retain selection
-        self.update_confirm_button()
-        await interaction.response.edit_message(view=self)
 
     async def on_stat_select(self, interaction: Interaction):
         self.selected_stat = self.stat_select.values[0]  # Store the selected stat
