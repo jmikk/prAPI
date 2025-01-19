@@ -15,7 +15,7 @@ from discord import Interaction, TextStyle, SelectOption
 
 class SponsorButton(Button):
     def __init__(self, cog):
-        super().__init__(label="Sponsor a Tribute", style=discord.ButtonStyle.success)
+        super().__init__(label="Sponsor a Tribute", style=discord.ButtonStyle.danger)
         self.cog = cog
 
     async def callback(self, interaction: Interaction):
@@ -254,7 +254,7 @@ class ViewBidsButton(Button):
 
 class BettingButton(Button):
     def __init__(self, cog):
-        super().__init__(label="Place a Bet", style=discord.ButtonStyle.primary)
+        super().__init__(label="Place a Bet", style=discord.ButtonStyle.danger)
         self.cog = cog
 
     async def callback(self, interaction: Interaction):
