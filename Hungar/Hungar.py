@@ -115,11 +115,6 @@ class SponsorView(View):
         try:
             self.selected_tribute = self.tribute_select.values[0]  # Store the selected tribute
             self.tribute_select.options = self.get_tribute_options()  # Update options to retain selection
-
-            # Enable confirm button if both selections are made
-            if self.selected_amount:
-                self.confirm_button.disabled = False
-
             await interaction.response.edit_message(view=self)
         except Exception as e:
             await interaction.response.send_message(
