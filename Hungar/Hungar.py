@@ -237,9 +237,14 @@ class SponsorView(View):
             await self.cog.config.guild(self.guild).players.set(players)
 
             tribute_name = tribute["name"]
+
+            await channel.send(
+                f"🎁 **Someone** sponsored **{selected_tribute['name']}** with a "
+                f"+{boost_amount} boost to {stat_to_boost}!"
+            )
             await interaction.response.send_message(
-                f"You sponsored {tribute_name} with a +{self.selected_boost} boost to {self.selected_stat}! It cost you {cost} gold.",
-                ephemeral=True
+                f"🎁 **Someone** sponsored **{tribute_name}** with a +{boost_amount} boost to {stat_to_boost}!"
+
             )
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
