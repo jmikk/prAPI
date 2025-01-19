@@ -879,6 +879,7 @@ class Hungar(commands.Cog):
                 day_duration = timedelta(seconds=config["day_duration"])
                 if datetime.utcnow() - day_start >= day_duration:
                     await self.process_day(ctx)
+                    self.ai_sponsor(guild)
                     if await self.isOneLeft(guild):
                         await self.endGame(ctx)
                         break
@@ -1691,5 +1692,41 @@ class Hungar(commands.Cog):
         
         await ctx.send(embed=embed)
 
+    async def ai_sponsor(self, guild):
+        players = await self.config.guild(guild).players()
+        alive_players = [player for player in players.values() if player["alive"]]
+    
+        if not alive_players:
+            return  # No one to sponsor
+    
+        # Pick a tribute with weighted favoritism for underdogs
+        underdog_weight = [
+            (player, max(1, 10 - len(player["items"])) + min(player["stats"].values()))
+            for player in alive_players
+        ]
+        total_weight = sum(weight for _, weight in underdog_weight)
+        if total_weight == 0:
+            return
+    
+        selected_player = random.choices(
+            [player for player, _ in underdog_weight],
+            weights=[weight for _, weight in underdog_weight],
+            k=1
+        )[0]
+    
+        # Pick a random stat and boost
+        stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
+        boost = random.randint(1, 5) if stat != "HP" else random.randint(5, 15)
+    
+        # Apply sponsorship
+        selected_player["stats"][stat] += boost
+        await self.config.guild(guild).players.set(players)
+    
+        sponsor_name = random.choice(await self.load_npc_names())
+        await guild.text_channels[0].send(
+            f"🎁 **{sponsor_name}** has sponsored **{selected_player['name']}** with a +{boost} boost to {stat}!"
+        )
 
+
+    
 
