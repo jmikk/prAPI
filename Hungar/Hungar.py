@@ -238,10 +238,6 @@ class SponsorView(View):
 
             tribute_name = tribute["name"]
 
-            await channel.send(
-                f"🎁 **Someone** sponsored **{selected_tribute['name']}** with a "
-                f"+{boost_amount} boost to {stat_to_boost}!"
-            )
             await interaction.response.send_message(
                 f"🎁 **Someone** sponsored **{tribute_name}** with a +{boost_amount} boost to {stat_to_boost}!"
 
