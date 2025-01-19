@@ -56,6 +56,7 @@ class SponsorView(View):
         self.cog = cog
         self.guild = guild
         self.user = user
+        self.tribute_options = tribute_options
         self.selected_tribute = None
         self.selected_stat = None
         self.selected_boost = None
