@@ -967,7 +967,6 @@ class Hungar(commands.Cog):
                     break
 
                 if await self.ai_manager.should_sponsor(guild):
-                    await ctx.send("Lets sponsor")
                     await self.ai_manager.ai_sponsor(guild, ctx.channel)
     
                 day_start = datetime.fromisoformat(config["day_start"])
