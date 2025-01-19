@@ -102,6 +102,24 @@ class SponsorView(View):
         self.confirm_button.callback = self.confirm_sponsorship
         self.add_item(self.confirm_button)
 
+    def get_tribute_options(self):
+        return [
+            SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_tribute))
+            for option in self.tribute_options
+        ]
+
+    def get_stat_options(self):
+        return [
+            SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_stat))
+            for option in self.stat_options
+        ]
+    
+    def get_boost_options(self):
+        return [
+            SelectOption(label=option.label, value=option.value, default=(option.value == str(self.selected_boost)))
+            for option in self.boost_options
+        ]
+
     async def on_tribute_select(self, interaction: Interaction):
         self.selected_tribute = self.tribute_select.values[0]
         self.update_confirm_button()
@@ -126,7 +144,7 @@ class SponsorView(View):
 
     async def confirm_sponsorship(self, interaction: Interaction):
         try:
-            user_gold = await self.cog.config.user(self.user).gold()
+            user_gold = await self.cog.config.user(interaction.user).gold()
             cost = self.selected_boost * 20
 
             if cost > user_gold:
