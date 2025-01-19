@@ -121,19 +121,23 @@ class SponsorView(View):
         ]
 
     async def on_tribute_select(self, interaction: Interaction):
-        self.selected_tribute = self.tribute_select.values[0]
+        self.selected_tribute = self.tribute_select.values[0]  # Store the selected tribute
+        self.tribute_select.options = self.get_tribute_options()  # Update options to retain selection
         self.update_confirm_button()
         await interaction.response.edit_message(view=self)
 
     async def on_stat_select(self, interaction: Interaction):
-        self.selected_stat = self.stat_select.values[0]
+        self.selected_stat = self.stat_select.values[0]  # Store the selected stat
+        self.stat_select.options = self.get_stat_options()  # Update options to retain selection
+        self.update_confirm_button()
+        await interaction.response.edit_message(view=self)
+    
+    async def on_boost_select(self, interaction: Interaction):
+        self.selected_boost = int(self.boost_select.values[0])  # Store the selected boost
+        self.boost_select.options = self.get_boost_options()  # Update options to retain selection
         self.update_confirm_button()
         await interaction.response.edit_message(view=self)
 
-    async def on_boost_select(self, interaction: Interaction):
-        self.selected_boost = int(self.boost_select.values[0])
-        self.update_confirm_button()
-        await interaction.response.edit_message(view=self)
 
     def update_confirm_button(self):
         # Enable the confirm button if all selections are made
