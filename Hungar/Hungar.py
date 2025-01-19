@@ -9,7 +9,6 @@ from discord.ui import View, Button, Modal, Select, TextInput
 from discord import Interaction, TextStyle, SelectOption
 
 #Fix Timer for new day (Useing the days before time?)
-#Fix sponsor button.....
 #Add AI bettering and sponsors
 #Add NS dispatch posting games,
 # -link accounts to nations for easy ping mabye in signup
@@ -88,7 +87,7 @@ class SponsorView(View):
 
         # Boost amount selection dropdown
         self.boost_options = [
-            SelectOption(label=f"+{i}", value=str(i)) for i in range(1, 11)
+            SelectOption(label=f"+{i} Boost ({20*i} Gold", value=str(i)) for i in range(1, 11)
         ]
         self.boost_select = Select(
             placeholder="Select the boost amount...",
