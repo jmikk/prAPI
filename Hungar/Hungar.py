@@ -13,6 +13,75 @@ from discord import Interaction, TextStyle, SelectOption
 #Add NS dispatch posting games,
 # -link accounts to nations for easy ping mabye in signup
 
+class HungerGamesAI:
+    def __init__(self, cog):
+        self.cog = cog
+        self.last_sponsorship = {}
+
+class HungerGamesAI:
+    def __init__(self, cog):
+        self.cog = cog
+        self.last_sponsorship = {}
+
+    async def ai_sponsor(self, guild, channel):
+        """
+        AI sponsors tributes at random times, favoring underdogs.
+        """
+        players = await self.cog.config.guild(guild).players()
+        if not players:
+            return  # No players to sponsor
+
+        # Load NPC names
+        npc_names = await self.cog.load_npc_names()
+        npc_name = random.choice(npc_names)
+
+        # Select a tribute with weighting for underdogs
+        alive_players = [p for p in players.values() if p["alive"]]
+        if not alive_players:
+            return  # No alive players to sponsor
+
+        total_stats = {p["name"]: sum(p["stats"].values()) for p in alive_players}
+        min_stats = min(total_stats.values())
+        max_stats = max(total_stats.values())
+        stat_range = max(1, max_stats - min_stats)
+
+        # Weighting: lower stats get a higher chance
+        weights = [
+            1.5 - ((total_stats[p["name"]] - min_stats) / stat_range)
+            for p in alive_players
+        ]
+
+        selected_tribute = random.choices(alive_players, weights=weights, k=1)[0]
+        tribute_id = next(k for k, v in players.items() if v == selected_tribute)
+
+        # Random stat to boost
+        stat_to_boost = random.choice(["Def", "Str", "Con", "Wis", "HP"])
+        boost_amount = random.randint(1, 10)  # Random boost amount
+
+        # Apply sponsorship
+        selected_tribute["stats"][stat_to_boost] += boost_amount
+        await self.cog.config.guild(guild).players.set(players)
+
+        # Broadcast sponsorship in the given channel
+        if channel:
+            await channel.send(
+                f"🎁 **{npc_name}** sponsored **{selected_tribute['name']}** with a "
+                f"+{boost_amount} boost to {stat_to_boost}!"
+            )
+
+        # Track sponsorship timing to avoid spamming
+        self.last_sponsorship[guild.id] = datetime.utcnow()
+
+    async def should_sponsor(self, guild):
+        """
+        Determine if AI should sponsor today.
+        """
+        now = datetime.utcnow()
+        last_time = self.last_sponsorship.get(guild.id, now - timedelta(days=1))
+        return (now - last_time).total_seconds() > random.randint(30, 300)  
+
+        
+
 class SponsorButton(Button):
     def __init__(self, cog):
         super().__init__(label="Sponsor a Tribute", style=discord.ButtonStyle.danger)
@@ -601,6 +670,7 @@ class Hungar(commands.Cog):
             bets={},
             kill_count=0,  # Track total kills
         )
+        self.ai_manager = HungerGamesAI(self)
 
 
     async def report_error(self, channel, error):
@@ -901,6 +971,10 @@ class Hungar(commands.Cog):
                 config = await self.config.guild(guild).all()
                 if not config["game_active"]:
                     break
+
+                if await self.ai_manager.should_sponsor(guild):
+                    await ctx.send("Lets sponsor")
+                    await self.ai_manager.ai_sponsor(guild, game_channel)
     
                 day_start = datetime.fromisoformat(config["day_start"])
                 day_duration = timedelta(seconds=config["day_duration"])
