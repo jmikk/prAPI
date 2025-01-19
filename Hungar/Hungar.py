@@ -57,6 +57,7 @@ class HungerGamesAI:
         await self.cog.config.guild(guild).players.set(players)
 
         # Broadcast sponsorship in the given channel
+        await asyncio.sleep(5)
         if channel:
             await channel.send(
                 f"🎁 **Someone** sponsored **{selected_tribute['name']}** with a "
