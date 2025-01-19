@@ -73,7 +73,7 @@ class HungerGamesAI:
         """
         now = datetime.utcnow()
         last_time = self.last_sponsorship.get(guild.id, now - timedelta(days=1))
-        return (now - last_time).total_seconds() > random.randint(200, 600)  
+        return (now - last_time).total_seconds() > random.randint(300, 900)  
 
         
 
