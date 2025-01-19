@@ -869,10 +869,9 @@ class Hungar(commands.Cog):
                     if member:
                         participant_list.append(f"{member.mention} from District {player['district']}")
     
-            participant_announcement = "\n".join(participant_list)
-            await ctx.send(f"The Hunger Games have begun with the following participants (sorted by District):\n{participant_announcement}")
-    
-            asyncio.create_task(self.run_game(ctx))
+        participant_announcement = "\n".join(participant_list)
+        await ctx.send(f"The Hunger Games have begun with the following participants (sorted by District):\n{participant_announcement}")
+        asyncio.create_task(self.run_game(ctx))
 
     async def run_game(self, ctx):
         """Handle the real-time simulation of the game."""
