@@ -26,13 +26,15 @@ class ViewBidsButton(Button):
             for user_data in all_users.values():
                 bets = user_data.get("bets", {})
                 for tribute_id, bet in bets.items():
-                    bid_totals[tribute_id] = bid_totals.get(tribute_id, 0) + bet["amount"]
+                    # Exclude dead tributes
+                    if tribute_id in players and players[tribute_id]["alive"]:
+                        bid_totals[tribute_id] = bid_totals.get(tribute_id, 0) + bet["amount"]
 
             # Calculate total gold bet across all tributes
             total_gold = sum(bid_totals.values())
 
             if not bid_totals:
-                await interaction.response.send_message("No bets have been placed yet.", ephemeral=True)
+                await interaction.response.send_message("No bets have been placed on living tributes.", ephemeral=True)
                 return
 
             # Sort tributes by total bets
@@ -45,15 +47,26 @@ class ViewBidsButton(Button):
             # Create embed
             embed = discord.Embed(
                 title="🏅 Tribute Betting Rankings 🏅",
-                description="Ranking of tributes based on total bets placed.",
+                description="Ranking of living tributes based on total bets placed.",
                 color=discord.Color.gold()
             )
 
             for rank, (tribute_id, total_bet) in enumerate(sorted_tributes, start=1):
                 tribute = players.get(tribute_id)
-                tribute_name = tribute["name"]
+                if not tribute["alive"]:
+                    continue  # Skip dead tributes
                 district = tribute["district"]
+
+                # Determine display name (nickname or stored name for NPCs)
+                if tribute_id.isdigit():  # Real user
+                    member = guild.get_member(int(tribute_id))
+                    tribute_name = member.nick or member.name if member else tribute["name"]
+                else:  # NPC
+                    tribute_name = tribute["name"]
+
+                # Calculate percentage
                 percentage = (total_bet / total_gold) * 100 if total_gold > 0 else 0
+
                 embed.add_field(
                     name=f"#{rank} {tribute_name} (District {district})",
                     value=f"Total Bets: {total_bet} gold\n{percentage:.2f}% of total bets",
@@ -63,6 +76,7 @@ class ViewBidsButton(Button):
             await interaction.response.send_message(embed=embed, ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+
 
 
 
