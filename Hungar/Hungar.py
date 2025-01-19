@@ -1043,11 +1043,17 @@ class Hungar(commands.Cog):
             f"Alive participants: {', '.join(alive_mentions)}"
         )
         # Calculate the end of the day
-        offset = timedelta(hours=6)
+        # Fetch the current day start and duration
+        day_start = datetime.fromisoformat(config["day_start"])
         day_duration = timedelta(seconds=config["day_duration"])
-        next_day_start = datetime.utcnow() + day_duration  # Calculate the next day's start time
-        day_end_timestamp = int(next_day_start.timestamp())  # Convert to Unix timestamp for Discord's formatting
-        await ctx.send(f"Pick your action for the day, the sun will set in about <t:{day_end_timestamp}:R>",view=ActionSelectionView(self, feast_active,current_day))
+        
+        # Calculate the start time of the next day
+        next_day_start = day_start + day_duration
+        
+        # Convert the next day start time to a Discord timestamp
+        next_day_start_timestamp = int(next_day_start.timestamp())  # Convert to Unix timestamp for Discord formatting
+
+        await ctx.send(f"Pick your action for the day, the sun will set in about <t:{next_day_start_timestamp}:R>",view=ActionSelectionView(self, feast_active,current_day))
 
     async def isOneLeft(self, guild):
         """Check if only one player is alive."""
