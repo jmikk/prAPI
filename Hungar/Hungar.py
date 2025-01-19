@@ -195,19 +195,25 @@ class ViewBidsButton(Button):
 
             # Calculate total bets on each tribute
             bid_totals = {}
-            for user_data in all_users.values():
-                bets = user_data.get("bets", {})
-                for tribute_id, bet in bets.items():
-                    # Exclude dead tributes
-                    if tribute_id in players and players[tribute_id]["alive"]:
-                        bid_totals[tribute_id] = bid_totals.get(tribute_id, 0) + bet["amount"]
+            for player_id, player_data in players.items():
+                if not player_data["alive"]:
+                    continue
 
-            # Calculate total gold bet across all tributes
-            total_gold = sum(bid_totals.values())
+                tribute_bets = player_data.get("bets", {})
+                total_bets = 0
 
-            if not bid_totals:
-                await interaction.response.send_message("No bets have been placed on living tributes.", ephemeral=True)
-                return
+                # Include user bets
+                for user_id, user_data in all_users.items():
+                    bets = user_data.get("bets", {})
+                    if player_id in bets:
+                        total_bets += bets[player_id]["amount"]
+
+                # Include AI bets
+                ai_bets = tribute_bets.get("AI", [])
+                total_bets += sum(ai_bet["amount"] for ai_bet in ai_bets)
+
+                if total_bets > 0:
+                    bid_totals[player_id] = total_bets
 
             # Sort tributes by total bets
             sorted_tributes = sorted(
@@ -229,25 +235,17 @@ class ViewBidsButton(Button):
                     continue  # Skip dead tributes
                 district = tribute["district"]
 
-                # Determine display name (nickname or stored name for NPCs)
-                if tribute_id.isdigit():  # Real user
-                    member = guild.get_member(int(tribute_id))
-                    tribute_name = member.nick or member.name if member else tribute["name"]
-                else:  # NPC
-                    tribute_name = tribute["name"]
-
-                # Calculate percentage
-                percentage = (total_bet / total_gold) * 100 if total_gold > 0 else 0
-
+                tribute_name = tribute["name"]
                 embed.add_field(
                     name=f"#{rank} {tribute_name} (District {district})",
-                    value=f"Total Bets: {total_bet} gold\n{percentage:.2f}% of total bets",
+                    value=f"Total Bets: {total_bet} gold",
                     inline=False
                 )
 
             await interaction.response.send_message(embed=embed, ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+
 
 
 
@@ -773,8 +771,7 @@ class Hungar(commands.Cog):
             return
         
         players = config["players"]
-    
-            
+       
         # Load and shuffle NPC names
         npc_names = await self.load_npc_names()
         random.shuffle(npc_names)
@@ -822,27 +819,39 @@ class Hungar(commands.Cog):
             await ctx.send("Sorry only 25 people can play (this includes NPCs)")
             return
         
-        # Add AI bettors
-        ai_bettors = {}
-        npc_names = await self.load_npc_names()
-        for tribute_id, tribute in players.items():
-            if not tribute["alive"]:
-                continue
-        
-            ai_name = random.choice(npc_names)
-            bet_amount = random.randint(50, 500)  # Random bet between 50 and 500 gold
-            ai_bettors[ai_name] = {
-                "tribute_id": tribute_id,
-                "amount": bet_amount
-            }
-        
-        # Apply AI bets
-        for ai_name, bet_data in ai_bettors.items():
-            tribute_id = bet_data["tribute_id"]
-            amount = bet_data["amount"]
-        
-            if tribute_id not in players or not players[tribute_id]["alive"]:
-                continue  # Skip invalid tributes
+    # Add AI bettors
+    ai_bettors = {}
+    npc_names = await self.load_npc_names()
+    for tribute_id, tribute in players.items():
+        if not tribute["alive"]:
+            continue
+    
+        ai_name = random.choice(npc_names)
+        bet_amount = random.randint(50, 500)  # Random bet between 50 and 500 gold
+    
+        # Save the bet to the AI bettors dictionary for announcements
+        ai_bettors[ai_name] = {
+            "tribute_id": tribute_id,
+            "amount": bet_amount
+        }
+    
+        # Store the AI bet in the tribute's bet data (same structure as user bets)
+        tribute_bets = tribute.get("bets", {})  # Ensure "bets" key exists for tribute
+        if "AI" not in tribute_bets:
+            tribute_bets["AI"] = []
+        tribute_bets["AI"].append({
+            "name": ai_name,
+            "amount": bet_amount
+        })
+        tribute["bets"] = tribute_bets  # Save back to players
+    
+    # Apply AI bets
+    for ai_name, bet_data in ai_bettors.items():
+        tribute_id = bet_data["tribute_id"]
+        amount = bet_data["amount"]
+    
+        if tribute_id not in players or not players[tribute_id]["alive"]:
+            continue  # Skip invalid tributes
                 
         await self.config.guild(guild).players.set(players)
         await self.config.guild(guild).game_active.set(True)
@@ -879,7 +888,6 @@ class Hungar(commands.Cog):
                 day_duration = timedelta(seconds=config["day_duration"])
                 if datetime.utcnow() - day_start >= day_duration:
                     await self.process_day(ctx)
-                    self.ai_sponsor(guild)
                     if await self.isOneLeft(guild):
                         await self.endGame(ctx)
                         break
@@ -1692,40 +1700,7 @@ class Hungar(commands.Cog):
         
         await ctx.send(embed=embed)
 
-    async def ai_sponsor(self, guild):
-        players = await self.config.guild(guild).players()
-        alive_players = [player for player in players.values() if player["alive"]]
-    
-        if not alive_players:
-            return  # No one to sponsor
-    
-        # Pick a tribute with weighted favoritism for underdogs
-        underdog_weight = [
-            (player, max(1, 10 - len(player["items"])) + min(player["stats"].values()))
-            for player in alive_players
-        ]
-        total_weight = sum(weight for _, weight in underdog_weight)
-        if total_weight == 0:
-            return
-    
-        selected_player = random.choices(
-            [player for player, _ in underdog_weight],
-            weights=[weight for _, weight in underdog_weight],
-            k=1
-        )[0]
-    
-        # Pick a random stat and boost
-        stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
-        boost = random.randint(1, 5) if stat != "HP" else random.randint(5, 15)
-    
-        # Apply sponsorship
-        selected_player["stats"][stat] += boost
-        await self.config.guild(guild).players.set(players)
-    
-        sponsor_name = random.choice(await self.load_npc_names())
-        await guild.text_channels[0].send(
-            f"🎁 **{sponsor_name}** has sponsored **{selected_player['name']}** with a +{boost} boost to {stat}!"
-        )
+
 
 
     
