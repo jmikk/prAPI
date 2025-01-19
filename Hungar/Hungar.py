@@ -8,7 +8,8 @@ from discord.ext.commands import CheckFailure
 from discord.ui import View, Button, Modal, Select, TextInput
 from discord import Interaction, TextStyle, SelectOption
 
-#Add a view bets by tritube button
+#Fix Timer for new day (Useing the days before time?)
+#Fix sponsor button.....
 
 class ViewBidsButton(Button):
     def __init__(self, cog):
