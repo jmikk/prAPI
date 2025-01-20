@@ -1047,8 +1047,12 @@ class Hungar(commands.Cog):
         day_start = datetime.fromisoformat(config["day_start"])
         day_duration = timedelta(seconds=config["day_duration"])
         
-        # Calculate the start time of the next day
-        next_day_start = day_start + day_duration - timedelta(hours=6) 
+        if config["day_counter"] == 0:
+            # Calculate the start time of the next day
+            next_day_start = day_start + day_duration - timedelta(hours=6) 
+        else:
+            next_day_start = day_start + day_duration + day_duration - timedelta(hours=6) 
+
         
         # Convert the next day start time to a Discord timestamp
         next_day_start_timestamp = int(next_day_start.timestamp())  # Convert to Unix timestamp for Discord formatting
