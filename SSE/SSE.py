@@ -10,7 +10,7 @@ class SSE(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=098342)
+        self.config = Config.get_conf(self, identifier=1098342)
         default_global = {"region_mapping": {}, "sse_url": "https://www.nationstates.net/api/member+admin"}
         self.config.register_global(**default_global)
         self.sse_task = None
