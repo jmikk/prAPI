@@ -8,7 +8,6 @@ from discord.ext.commands import CheckFailure
 from discord.ui import View, Button, Modal, Select, TextInput
 from discord import Interaction, TextStyle, SelectOption
 
-#Fix Timer for new day (Useing the days before time?)
 #Add NS dispatch posting games,
 # -link accounts to nations for easy ping mabye in signup
 
