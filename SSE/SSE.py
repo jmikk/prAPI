@@ -5,7 +5,7 @@ from aiohttp import ClientSession, ClientError
 import json
 from datetime import datetime
 
-class RegionMonitor(commands.Cog):
+class SSE(commands.Cog):
     """Monitor regions for updates and delegate changes via SSE."""
 
     def __init__(self, bot):
