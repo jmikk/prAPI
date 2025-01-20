@@ -30,7 +30,10 @@ class SSE(commands.Cog):
                 parts = line.split(",")
                 if len(parts) == 3:
                     rs, trigger, target = parts
-                    mappings[rs.strip().lower().replace(" ","_"] = {"trigger": trigger.strip().lower.replace(" ","_", "target": target.strip().lower.replace(" ","_")}
+                    mappings[rs.strip().lower().replace(" ", "_")] = {
+                        "trigger": trigger.strip().lower().replace(" ", "_"),
+                        "target": target.strip().lower().replace(" ", "_")
+                    }
             await self.config.region_mapping.set(mappings)
             await ctx.send("Region mappings loaded successfully.")
         except Exception as e:
