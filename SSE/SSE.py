@@ -65,44 +65,53 @@ class SSE(commands.Cog):
         url = "https://www.nationstates.net/api/member+admin"
         headers = {"User-Agent": "9006"}
 
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers) as response:
-                    if response.status == 200:
-                        buffer = ""
-                        async for chunk in response.content.iter_any():
-                            buffer += chunk.decode("utf-8")
-                            while "\n" in buffer:
-                                line, buffer = buffer.split("\n", 1)
-                                line = line.strip()
-                                if line.startswith("data:"):
-                                    event_data = line[5:].strip()
-                                    target = await self.config.guild_from_id(guild_id).target()
+        while await self.config.guild_from_id(guild_id).listening():
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, headers=headers) as response:
+                        if response.status == 200:
+                            buffer = ""
+                            async for chunk in response.content.iter_any():
+                                buffer += chunk.decode("utf-8")
+                                while "\n" in buffer:
+                                    line, buffer = buffer.split("\n", 1)
+                                    line = line.strip()
+                                    if line.startswith("data:"):
+                                        event_data = line[5:].strip()
+                                        target = await self.config.guild_from_id(guild_id).target()
 
-                                    if target in event_data:
-                                        matches = re.findall(r"%%(.*?)%%", event_data)
-                                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                        match_message = (
-                                            f"[{timestamp}] Found between %%: " + ", ".join(matches)
-                                        )
-
-                                        # Send message to the current channel
-                                        if self.current_channel:
-                                            await self.current_channel.send(match_message)
-                                            await self.current_channel.send(
-                                                f"Event data: {event_data}"
+                                        if target in event_data:
+                                            matches = re.findall(r"%%(.*?)%%", event_data)
+                                            timestamp = datetime.now().strftime(
+                                                "%Y-%m-%d %H:%M:%S"
                                             )
-        except asyncio.CancelledError:
-            # Handle task cancellation gracefully
-            pass
-        except Exception as e:
-            if self.current_channel:
-                await self.current_channel.send(f"Error in listening to the feed: {e}")
-                await self.config.guild(ctx.guild).listening.set(False)
-                self.current_channel = None
-                if self.current_task:
-                    self.current_task.cancel()
-                await ctx.send("Stopped listening to the NationStates API feed. Most times this is just means nothing happened for a bit, Start me again by doing ```nsfeed start```")
+                                            match_message = (
+                                                f"[{timestamp}] Found between %%: "
+                                                + ", ".join(matches)
+                                            )
+
+                                            # Send message to the current channel
+                                            if self.current_channel:
+                                                await self.current_channel.send(
+                                                    match_message
+                                                )
+                                                await self.current_channel.send(
+                                                    f"Event data: {event_data}"
+                                                )
+                        else:
+                            if self.current_channel:
+                                await self.current_channel.send(
+                                    f"Error: Received status code {response.status}. Retrying in 5 seconds..."
+                                )
+                            await asyncio.sleep(5)  # Wait before retrying
+            except asyncio.CancelledError:
+                # Handle task cancellation gracefully
+                break
+            except Exception as e:
+                if self.current_channel:
+                    await self.current_channel.send(
+                        f"Error in listening to the feed: {e}. Retrying in now."
+                    )
 
     async def cog_unload(self):
         """Ensure the task is stopped when the cog is unloaded."""
