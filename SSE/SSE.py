@@ -94,8 +94,3 @@ class SSE(commands.Cog):
         except Exception as e:
             if self.current_channel:
                 await self.current_channel.send(f"Error in listening to the feed: {e}")
-
-    @listen_to_feed.before_loop
-    async def before_listen_to_feed(self):
-        """Wait until the bot is ready before starting the feed listener."""
-        await self.bot.wait_until_ready()
