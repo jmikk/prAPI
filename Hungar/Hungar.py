@@ -1079,8 +1079,12 @@ class Hungar(commands.Cog):
             winner = alive_players[0]
             winner_id = next((pid for pid, pdata in players.items() if pdata == winner), None)
             await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
+            file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
+            await ctx.send(file=discord.File(file_name))
         else:
             await ctx.send("The game is over! No one survived.")
+            file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
+            await ctx.send(file=discord.File(file_name))
     
         # Send elimination leaderboard
         if leaderboard:
