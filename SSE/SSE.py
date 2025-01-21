@@ -77,25 +77,32 @@ class SSE(commands.Cog):
             print(error_message)
             await self.send_error_notification(error_message)
             return
-
+    
         mappings = await self.config.region_mapping()
-
+        headers = {"User-Agent": "9006"}  # Add the custom header here
+    
         while True:
             try:
                 async with ClientSession() as session:
-                    async with session.get(url,headers = {"User-Agent": "9006"}) as response:
+                    async with session.get(url, headers=headers) as response:
                         if response.status != 200:
                             error_message = f"Failed to connect to SSE feed: {response.status}"
                             print(error_message)
                             await self.send_error_notification(error_message)
                             await self.retry_on_failure()
                             continue
+                        
+                        # Process the SSE stream line by line
                         async for line in response.content:
                             if line:
                                 try:
-                                    event = json.loads(line.decode("utf-8"))
-                                    await self.process_event(event, mappings)
+                                    decoded_line = line.decode("utf-8").strip()
+                                    if decoded_line.startswith("data:"):  # SSE payload starts with 'data:'
+                                        raw_event = decoded_line[5:].strip()  # Extract JSON payload after 'data:'
+                                        event = json.loads(raw_event)
+                                        await self.process_event(event, mappings)
                                 except json.JSONDecodeError:
+                                    print(f"Failed to decode JSON: {line.decode('utf-8').strip()}")
                                     continue
             except ClientError as e:
                 error_message = f"Connection error: {e}"
@@ -108,10 +115,11 @@ class SSE(commands.Cog):
                 await self.send_error_notification(error_message)
                 await self.retry_on_failure()
             except Exception as e:
-                error_message = await f"Unexpected error: {e}+{response.text}"
+                error_message = f"Unexpected error: {e}"
                 print(error_message)
                 await self.send_error_notification(error_message)
                 await self.retry_on_failure()
+
 
     async def retry_on_failure(self):
         """Handles retries after a connection error."""
