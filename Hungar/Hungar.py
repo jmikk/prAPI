@@ -7,6 +7,7 @@ import discord
 from discord.ext.commands import CheckFailure
 from discord.ui import View, Button, Modal, Select, TextInput
 from discord import Interaction, TextStyle, SelectOption
+import aiofiles
 
 #Add NS dispatch posting games,
 # -link accounts to nations for easy ping mabye in signup
@@ -1512,9 +1513,13 @@ class Hungar(commands.Cog):
 
         # Announce the day's events
         if event_outcomes:
-            # Pings users and bolds NPCs
-            for each in event_outcomes:
-                await ctx.send(each)
+        #Prepare the events log file
+            file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
+            async with aiofiles.open(file_name, mode='w') as file:
+                # Pings users and bolds NPCs
+                for each in event_outcomes:
+                    await file.write(each + '\n')
+                    await ctx.send(each)
             #await ctx.send("\n".join(event_outcomes))
         else:
            await ctx.send("The day passed quietly, with no significant events.")
