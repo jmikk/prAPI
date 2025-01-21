@@ -1,173 +1,101 @@
 import discord
-from discord.ext import tasks
 from redbot.core import commands, Config
-from aiohttp import ClientSession, ClientError
-import json
+import aiohttp
+import asyncio
+import re
 from datetime import datetime
 
 
 class SSE(commands.Cog):
-    """Monitor regions for updates and delegate changes via SSE."""
+    """Listen to the NationStates founding API feed and notify about matches."""
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1098342)
-        default_global = {"region_mapping": {}, "sse_url": "https://www.nationstates.net/api/member+admin"}
-        self.config.register_global(**default_global)
-        self.sse_task = None
-        self.show_feed = False
-        self.next_event_ctx = None  # Store context for showing the next event
+        self.config = Config.get_conf(self, identifier=1234567890)
+        self.config.register_guild(target=None, listening=False)
+        self.current_task = None
+        self.current_channel = None
 
     @commands.group()
-    async def regionmonitor(self, ctx):
-        """Manage the Region Monitor settings."""
+    async def nsfeed(self, ctx):
+        """Commands for managing the NationStates API feed."""
         pass
 
-    @regionmonitor.command()
-    async def loadfile(self, ctx, file: discord.Attachment):
-        """Upload a file mapping Radio Silence, trigger, and target regions."""
-        content = await file.read()
-        try:
-            mappings = {}
-            for line in content.decode("utf-8").splitlines():
-                parts = line.split(",")
-                if len(parts) == 3:
-                    rs, trigger, target = parts
-                    mappings[rs.strip().lower().replace(" ", "_")] = {
-                        "trigger": trigger.strip().lower().replace(" ", "_"),
-                        "target": target.strip().lower().replace(" ", "_")
-                    }
-            await self.config.region_mapping.set(mappings)
-            await ctx.send("Region mappings loaded successfully.")
-        except Exception as e:
-            error_message = f"Error processing the file: {e}"
-            await ctx.send(error_message)
-            await self.send_error_notification(error_message)
+    @nsfeed.command()
+    async def settarget(self, ctx, *, target: str):
+        """Set the target string to look for in the SSE feed."""
+        target = target.lower().replace(" ", "_")
+        await self.config.guild(ctx.guild).target.set(target)
+        await ctx.send(f"Target set to: `{target}`")
 
-    @regionmonitor.command()
+    @nsfeed.command()
     async def start(self, ctx):
-        """Start monitoring the SSE feed."""
-        if self.sse_task is not None:
-            return await ctx.send("Monitoring is already running.")
-        self.sse_task = self.bot.loop.create_task(self.listen_to_sse())
-        await ctx.send("Monitoring started.")
-
-    @regionmonitor.command()
-    async def showfeed(self, ctx):
-        """Show the next SSE event the bot receives."""
-        if self.sse_task is None:
-            return await ctx.send("Monitoring is not running.")
-        self.show_feed = True
-        self.next_event_ctx = ctx  # Save the context to reply later
-        await ctx.send("I'll show the next SSE event that the bot sees.")
-
-    @regionmonitor.command()
-    async def stop(self, ctx):
-        """Stop monitoring the SSE feed."""
-        if self.sse_task is None:
-            return await ctx.send("Monitoring is not running.")
-        self.sse_task.cancel()
-        self.sse_task = None
-        await ctx.send("Monitoring stopped.")
-
-    async def listen_to_sse(self):
-        url = await self.config.sse_url()
-        if not url:
-            error_message = "SSE URL not set."
-            print(error_message)
-            await self.send_error_notification(error_message)
+        """Start listening to the NationStates API feed."""
+        listening = await self.config.guild(ctx.guild).listening()
+        if listening:
+            await ctx.send("Already listening to the feed.")
             return
-    
-        mappings = await self.config.region_mapping()
-        headers = {"User-Agent": "9006"}  # Add the custom header here
-    
-        while True:
-            try:
-                async with ClientSession() as session:
-                    async with session.get(url, headers=headers) as response:
-                        if response.status != 200:
-                            error_message = f"Failed to connect to SSE feed: {response.status}"
-                            print(error_message)
-                            await self.send_error_notification(error_message)
-                            await self.retry_on_failure()
-                            continue
-                        
-                        # Process the SSE stream line by line
+
+        target = await self.config.guild(ctx.guild).target()
+        if not target:
+            await ctx.send("Please set a target first using `nsfeed settarget`.")
+            return
+
+        self.current_channel = ctx.channel
+        await self.config.guild(ctx.guild).listening.set(True)
+        await ctx.send("Started listening to the NationStates API feed.")
+        self.current_task = asyncio.create_task(self.listen_to_feed(ctx.guild.id))
+
+    @nsfeed.command()
+    async def stop(self, ctx):
+        """Stop listening to the NationStates API feed."""
+        listening = await self.config.guild(ctx.guild).listening()
+        if not listening:
+            await ctx.send("Not currently listening to the feed.")
+            return
+
+        await self.config.guild(ctx.guild).listening.set(False)
+        self.current_channel = None
+        if self.current_task:
+            self.current_task.cancel()
+        await ctx.send("Stopped listening to the NationStates API feed.")
+
+    async def listen_to_feed(self, guild_id):
+        """Listen to the SSE feed and notify on matches."""
+        url = "https://www.nationstates.net/api/member+admin"
+        headers = {"User-Agent": "9006"}
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
                         async for line in response.content:
-                            if line:
-                                try:
-                                    decoded_line = line.decode("utf-8").strip()
-                                    if decoded_line.startswith("data:"):  # SSE payload starts with 'data:'
-                                        raw_event = decoded_line[5:].strip()  # Extract JSON payload after 'data:'
-                                        event = json.loads(raw_event)
-                                        await self.process_event(event, mappings)
-                                except json.JSONDecodeError:
-                                    print(f"Failed to decode JSON: {line.decode('utf-8').strip()}")
-                                    continue
-            except ClientError as e:
-                error_message = f"Connection error: {e}"
-                print(error_message)
-                await self.send_error_notification(error_message)
-                await self.retry_on_failure()
-            except TimeoutError:
-                error_message = "Connection timed out."
-                print(error_message)
-                await self.send_error_notification(error_message)
-                await self.retry_on_failure()
-            except Exception as e:
-                error_message = f"Unexpected error: {e}"
-                print(error_message)
-                await self.send_error_notification(error_message)
-                await self.retry_on_failure()
+                            line = line.decode("utf-8").strip()
+                            if line.startswith("data:"):
+                                event_data = line[5:].strip()
+                                target = await self.config.guild_from_id(guild_id).target()
 
+                                if target in event_data:
+                                    matches = re.findall(r"%%(.*?)%%", event_data)
+                                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    match_message = (
+                                        f"[{timestamp}] Found between %%: " + ", ".join(matches)
+                                    )
 
-    async def retry_on_failure(self):
-        """Handles retries after a connection error."""
-        print("Retrying connection in 5 seconds...")
-        await discord.utils.sleep_until(datetime.now().timestamp() + 5)
+                                    # Send message to the current channel
+                                    if self.current_channel:
+                                        await self.current_channel.send(match_message)
+                                        await self.current_channel.send(
+                                            f"Event data: {event_data}"
+                                        )
+        except asyncio.CancelledError:
+            # Handle task cancellation gracefully
+            pass
+        except Exception as e:
+            if self.current_channel:
+                await self.current_channel.send(f"Error in listening to the feed: {e}")
 
-    async def process_event(self, event, mappings):
-        """Process incoming SSE events."""
-        # Check if the next event should be shown
-        if self.show_feed and self.next_event_ctx:
-            await self.next_event_ctx.send(f"**Next SSE Event:** {event}")
-            self.show_feed = False  # Reset the flag
-            self.next_event_ctx = None
-
-        # Continue with normal event processing
-        event_str = event.get("str", "")
-        event_time = event.get("time", None)
-        event_timestamp = f"<t:{event_time}:F>" if event_time else "Unknown time"
-
-        for rs, regions in mappings.items():
-            trigger = regions["trigger"]
-            target = regions["target"]
-
-            if f"%%{trigger}%% updated" in event_str:
-                message = (
-                    f"Region Trigger: `{trigger}` was updated at {event_timestamp}.\n"
-                    f"Radio Silence Region: `{rs}`"
-                )
-                await self.send_notification(message)
-
-            if f"became WA Delegate of %%{target}%%" in event_str:
-                delegate = event_str.split("@@")[1].split("@@")[0]
-                message = (
-                    f"**New Delegate Alert!**\n"
-                    f"`{delegate}` became the WA Delegate of `{target}` at {event_timestamp}."
-                )
-                await self.send_notification(message)
-
-    async def send_notification(self, message):
-        """Send the notification to a specific Discord channel."""
-        channel_id = 811288101557239888  # Replace this with your Discord channel ID
-        channel = self.bot.get_channel(channel_id)
-        if channel:
-            await channel.send(message)
-
-    async def send_error_notification(self, error_message):
-        """Send error notifications to the specified Discord channel."""
-        channel_id = 811288101557239888  # Replace this with your Discord channel ID
-        channel = self.bot.get_channel(channel_id)
-        if channel:
-            await channel.send(f"⚠️ **Error:** {error_message}")
+    @listen_to_feed.before_loop
+    async def before_listen_to_feed(self):
+        """Wait until the bot is ready before starting the feed listener."""
+        await self.bot.wait_until_ready()
