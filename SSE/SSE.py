@@ -108,7 +108,7 @@ class SSE(commands.Cog):
                 await self.send_error_notification(error_message)
                 await self.retry_on_failure()
             except Exception as e:
-                error_message = f"Unexpected error: {e}"
+                error_message = f"Unexpected error: {e}+{response.text}"
                 print(error_message)
                 await self.send_error_notification(error_message)
                 await self.retry_on_failure()
