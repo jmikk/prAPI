@@ -850,6 +850,11 @@ class Hungar(commands.Cog):
     @is_gamemaster()
     async def startgame(self, ctx, npcs: int = 0):
         """Start the Hunger Games (Admin only). Optionally, add NPCs."""
+
+        file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
+        async with aiofiles.open(file_name, mode='w') as file:
+            pass
+        
         guild = ctx.guild
         config = await self.config.guild(guild).all()
         
@@ -1519,7 +1524,7 @@ class Hungar(commands.Cog):
         if event_outcomes:
         #Prepare the events log file
             file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
-            async with aiofiles.open(file_name, mode='w') as file:
+            async with aiofiles.open(file_name, mode='a') as file:
                 # Pings users and bolds NPCs
                 for each in event_outcomes:
                     await file.write(each + '\n')
