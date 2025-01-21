@@ -83,7 +83,7 @@ class SSE(commands.Cog):
         while True:
             try:
                 async with ClientSession() as session:
-                    async with session.get(url) as response:
+                    async with session.get(url,headers = {"User-Agent": "9006"}) as response:
                         if response.status != 200:
                             error_message = f"Failed to connect to SSE feed: {response.status}"
                             print(error_message)
