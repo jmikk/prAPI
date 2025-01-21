@@ -69,28 +69,37 @@ class SSE(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
                     if response.status == 200:
-                        async for line in response.content:
-                            line = line.decode("utf-8").strip()
-                            if line.startswith("data:"):
-                                event_data = line[5:].strip()
-                                target = await self.config.guild_from_id(guild_id).target()
+                        buffer = ""
+                        async for chunk in response.content.iter_any():
+                            buffer += chunk.decode("utf-8")
+                            while "\n" in buffer:
+                                line, buffer = buffer.split("\n", 1)
+                                line = line.strip()
+                                if line.startswith("data:"):
+                                    event_data = line[5:].strip()
+                                    target = await self.config.guild_from_id(guild_id).target()
 
-                                if target in event_data:
-                                    matches = re.findall(r"%%(.*?)%%", event_data)
-                                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                    match_message = (
-                                        f"[{timestamp}] Found between %%: " + ", ".join(matches)
-                                    )
-
-                                    # Send message to the current channel
-                                    if self.current_channel:
-                                        await self.current_channel.send(match_message)
-                                        await self.current_channel.send(
-                                            f"Event data: {event_data}"
+                                    if target in event_data:
+                                        matches = re.findall(r"%%(.*?)%%", event_data)
+                                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                        match_message = (
+                                            f"[{timestamp}] Found between %%: " + ", ".join(matches)
                                         )
+
+                                        # Send message to the current channel
+                                        if self.current_channel:
+                                            await self.current_channel.send(match_message)
+                                            await self.current_channel.send(
+                                                f"Event data: {event_data}"
+                                            )
         except asyncio.CancelledError:
             # Handle task cancellation gracefully
             pass
         except Exception as e:
             if self.current_channel:
                 await self.current_channel.send(f"Error in listening to the feed: {e}")
+
+    async def cog_unload(self):
+        """Ensure the task is stopped when the cog is unloaded."""
+        if self.current_task:
+            self.current_task.cancel()
