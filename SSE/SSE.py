@@ -98,6 +98,11 @@ class SSE(commands.Cog):
         except Exception as e:
             if self.current_channel:
                 await self.current_channel.send(f"Error in listening to the feed: {e}")
+                await self.config.guild(ctx.guild).listening.set(False)
+                self.current_channel = None
+                if self.current_task:
+                    self.current_task.cancel()
+                await ctx.send("Stopped listening to the NationStates API feed. Most times this is just means nothing happened for a bit, Start me again by doing ```nsfeed start```")
 
     async def cog_unload(self):
         """Ensure the task is stopped when the cog is unloaded."""
