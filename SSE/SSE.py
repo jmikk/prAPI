@@ -111,7 +111,7 @@ class SSE(commands.Cog):
             except Exception as e:
                 if self.current_channel:
                     await self.current_channel.send(
-                        f"Error in listening to the feed: {e}. Retrying in now."
+                        f"Error in listening to the feed: {e}. Retrying in now. {datetime.now()}"
                     )
 
     async def cog_unload(self):
