@@ -24,7 +24,8 @@ class SSE(commands.Cog):
     @nsfeed.command()
     async def settarget(self, ctx, *, target: str):
         """Set the target string to look for in the SSE feed."""
-        target = target.lower().replace(" ", "_")
+        target = target.lower().strip().replace(" ", "_")
+        target = f"%{target}%"
         await self.config.guild(ctx.guild).target.set(target)
         await ctx.send(f"Target set to: `{target}`")
 
