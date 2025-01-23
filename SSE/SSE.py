@@ -126,10 +126,11 @@ class SSE(commands.Cog):
                 break
             except Exception as e:
                 if self.current_channel and e:
-                    await self.current_channel.send(
-                            f"Error in listening to the feed: {e}. Retrying now. {datetime.now()}"
-                        )
-                    
+                    if not "Response payload is not completed" in e:
+                        await self.current_channel.send(
+                                f"Error in listening to the feed: {e}. Retrying now. {datetime.now()}"
+                            )
+                        
 
     async def cog_unload(self):
         """Ensure the task is stopped when the cog is unloaded."""
