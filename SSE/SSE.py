@@ -119,17 +119,17 @@ class SSE(commands.Cog):
                         else:
                             if self.current_channel:
                                 await self.current_channel.send(
-                                    f"Error: Received status code {response.status}. Retrying in 5 seconds..."
+                                    f"Error: Received status code {response.status}. {response.text}"
                                 )
-                            await asyncio.sleep(5)
             except asyncio.CancelledError:
                 # Handle task cancellation gracefully
                 break
             except Exception as e:
-                if self.current_channel:
+                if self.current_channel and e:
                     await self.current_channel.send(
-                        f"Error in listening to the feed: {e}. Retrying now. {datetime.now()}"
-                    )
+                            f"Error in listening to the feed: {e}. Retrying now. {datetime.now()}"
+                        )
+                    
 
     async def cog_unload(self):
         """Ensure the task is stopped when the cog is unloaded."""
