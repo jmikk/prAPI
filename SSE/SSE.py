@@ -5,14 +5,14 @@ import asyncio
 import re
 from datetime import datetime
 
-
 class SSE(commands.Cog):
     """Listen to the NationStates founding API feed and notify about matches."""
 
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
-        self.config.register_guild(target=None, listening=False)
+        self.config.register_guild(targets={})  # Store targets as a dictionary
+        self.config.register_guild(listening=False)
         self.current_task = None
         self.current_channel = None
 
@@ -22,12 +22,41 @@ class SSE(commands.Cog):
         pass
 
     @nsfeed.command()
-    async def settarget(self, ctx, *, target: str):
-        """Set the target string to look for in the SSE feed."""
-        target = target.lower().strip().replace(" ", "_")
-        target = f"%{target}%"
-        await self.config.guild(ctx.guild).target.set(target)
-        await ctx.send(f"Target set to: `{target}`")
+    async def settarget(self, ctx, *, target_data: str):
+        """Set targets and messages from input or a file.
+
+        Input format:
+        - List: `target1, message1; target2, message2`
+        - File: Upload a file with `target,message` pairs, one per line.
+        """
+        if ctx.message.attachments:
+            # Handle file input
+            attachment = ctx.message.attachments[0]
+            content = (await attachment.read()).decode("utf-8")
+            lines = content.splitlines()
+            target_dict = {}
+
+            for line in lines:
+                if "," in line:
+                    target, message = line.split(",", 1)
+                    target = target.lower().strip().replace(" ", "_")
+                    target_dict[f"%{target}%"] = message.strip()
+
+            await self.config.guild(ctx.guild).targets.set(target_dict)
+            await ctx.send(f"Targets set from file with {len(target_dict)} entries.")
+        else:
+            # Handle manual input
+            pairs = target_data.split(";")
+            target_dict = {}
+
+            for pair in pairs:
+                if "," in pair:
+                    target, message = pair.split(",", 1)
+                    target = target.lower().strip().replace(" ", "_")
+                    target_dict[f"%{target}%"] = message.strip()
+
+            await self.config.guild(ctx.guild).targets.set(target_dict)
+            await ctx.send(f"Targets set with {len(target_dict)} entries.")
 
     @nsfeed.command()
     async def start(self, ctx):
@@ -37,9 +66,9 @@ class SSE(commands.Cog):
             await ctx.send("Already listening to the feed.")
             return
 
-        target = await self.config.guild(ctx.guild).target()
-        if not target:
-            await ctx.send("Please set a target first using `nsfeed settarget`.")
+        targets = await self.config.guild(ctx.guild).targets()
+        if not targets:
+            await ctx.send("Please set targets first using `nsfeed settarget`.")
             return
 
         self.current_channel = ctx.channel
@@ -79,39 +108,27 @@ class SSE(commands.Cog):
                                     line = line.strip()
                                     if line.startswith("data:"):
                                         event_data = line[5:].strip()
-                                        target = await self.config.guild_from_id(guild_id).target()
+                                        targets = await self.config.guild_from_id(guild_id).targets()
 
-                                        if target in event_data:
-                                            matches = re.findall(r"%%(.*?)%%", event_data)
-                                            timestamp = datetime.now().strftime(
-                                                "%Y-%m-%d %H:%M:%S"
-                                            )
-                                            match_message = (
-                                                f"[{timestamp}] Found between %%: "
-                                                + ", ".join(matches)
-                                            )
-
-                                            # Send message to the current channel
-                                            if self.current_channel:
-                                                await self.current_channel.send(
-                                                    match_message
-                                                )
-                                                await self.current_channel.send(
-                                                    f"Event data: {event_data}"
-                                                )
+                                        for target, message in targets.items():
+                                            if target in event_data:
+                                                timestamp = datetime.now().strftime("<t:%s:F>") % int(datetime.now().timestamp())
+                                                if self.current_channel:
+                                                    await self.current_channel.send(f"{timestamp} {message}")
+                                                    await self.current_channel.send(f"Event data: {event_data}")
                         else:
                             if self.current_channel:
                                 await self.current_channel.send(
                                     f"Error: Received status code {response.status}. Retrying in 5 seconds..."
                                 )
-                            await asyncio.sleep(5)  # Wait before retrying
+                            await asyncio.sleep(5)
             except asyncio.CancelledError:
                 # Handle task cancellation gracefully
                 break
             except Exception as e:
                 if self.current_channel:
                     await self.current_channel.send(
-                        f"Error in listening to the feed: {e}. Retrying in now. {datetime.now()}"
+                        f"Error in listening to the feed: {e}. Retrying now. {datetime.now()}"
                     )
 
     async def cog_unload(self):
