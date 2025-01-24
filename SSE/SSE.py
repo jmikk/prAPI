@@ -22,6 +22,14 @@ class SSE(commands.Cog):
         pass
 
     @nsfeed.command()
+    async def viewtargetes(self,ctx)
+        """views all current targets and msg"""
+        targets = await self.config.guild(ctx.guild).targets()
+        await ctx.send(targets)
+
+    
+
+    @nsfeed.command()
     async def settarget(self, ctx, *, target_data: str):
         """Set targets and messages from input or a file.
 
