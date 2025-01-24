@@ -22,7 +22,7 @@ class SSE(commands.Cog):
         pass
 
     @nsfeed.command()
-    async def viewtargetes(self,ctx)
+    async def viewtargetes(self,ctx):
         """views all current targets and msg"""
         targets = await self.config.guild(ctx.guild).targets()
         await ctx.send(targets)
