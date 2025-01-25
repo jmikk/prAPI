@@ -1780,7 +1780,7 @@ class Hungar(commands.Cog):
         embed.add_field(
             name="3. Betting (Days 0 & 1 Only)",
             value=(
-                "Place bets on your favorite tributes using `!hunger place_bet <amount> <tribute_name>`. "
+                "Place bets on your favorite tributes using the action buttons. "
                 "Earn 20% of your bet back each day the tribute survives, and double your bet if they win!"
             ),
             inline=False
