@@ -1191,7 +1191,7 @@ class Hungar(commands.Cog):
                     continue
     
                 # Choose a random stat to reduce
-                stats = ["Def", "Str", "Con", "Wis", "HP"]
+                stats = ["Def", "Str", "Con", "Wis"]
                 stat_to_reduce = max(stats, key=lambda stat: player_data["stats"][stat])
                 player_data["stats"][stat_to_reduce] -= reduction
 
