@@ -1807,6 +1807,13 @@ class Hungar(commands.Cog):
             ),
             inline=False
         )
+        embed.add_field(
+            name="7. Sponsoring",
+            value=(
+                "If you just fall in love with one of the tributes you can spend gold to help them out, use the sponsor button on any day to send them an item."
+            ),
+            inline=False
+        )
         embed.set_footer(text="Good luck, and may the odds be ever in your favor!")
         
         await ctx.send(embed=embed)
