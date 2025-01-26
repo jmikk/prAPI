@@ -1144,6 +1144,9 @@ class Hungar(commands.Cog):
                 if tribute_id == winner_id:
                     # Pay double the bet amount + daily earnings for the winner
                     user_gold += bet_data["amount"] * 2
+                    # Clear bets after game ends
+            await self.config.user_from_id(user_id).gold.set(user_gold)
+            await self.config.user_from_id(user_id).bets.set({})
 
 
             # Update total kill counts for each player
@@ -1154,9 +1157,19 @@ class Hungar(commands.Cog):
                 current_kill_count = await self.config.user_from_id(user_id).kill_count()
                 await self.config.user_from_id(user_id).kill_count.set(current_kill_count + total_kills)
 
-        # Clear bets after game ends
-        await self.config.user_from_id(user_id).gold.set(user_gold)
-        await self.config.user_from_id(user_id).bets.set({})
+        await self.config.guild(guild).clear()
+        await self.config.guild(guild).set({
+            "districts": {},
+            "players": {},
+            "game_active": False,
+            "day_duration": 120,
+            "day_start": None,
+            "day_counter": 0,
+        })
+        
+        all_users = await self.config.all_users()
+        for user_id, user_data in all_users.items():
+            await self.config.user_from_id(user_id).bets.set({})
 
     
         # Reset players
