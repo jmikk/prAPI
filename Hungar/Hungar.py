@@ -1863,7 +1863,7 @@ class Hungar(commands.Cog):
     @hunger.command()
     @is_gamemaster()
     async def clear_signups(self, ctx):
-        """Clear all signups and reset the player list (Admin only)."""
+    """Clear all signups and reset the player list (Admin only)."""
         guild = ctx.guild
         await self.config.guild(guild).players.clear()
         await ctx.send("All signups have been cleared. The player list has been reset.")
