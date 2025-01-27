@@ -329,7 +329,7 @@ class ViewBidsButton(Button):
                         total_bets += bet_amount
                         member = guild.get_member(int(user_id))
                         if member:
-                            details.append(f"{member.display_name}: {bet_amount} gold")
+                            details.append(f"{member.nick}: {bet_amount} gold")
 
                 # Include AI bets
                 ai_bets = tribute_bets.get("AI", [])
