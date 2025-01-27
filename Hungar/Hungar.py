@@ -1632,7 +1632,7 @@ class Hungar(commands.Cog):
             "districts": {},
             "players": {},
             "game_active": False,
-            "day_duration": 300,
+            "day_duration": 120,
             "day_start": None,
             "day_counter": 0,
         })
