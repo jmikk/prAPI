@@ -1611,7 +1611,7 @@ class Hungar(commands.Cog):
             for tribute_id, bet_data in bets.items():
                 if tribute_id in players and players[tribute_id]["alive"]:
                     
-                    daily_return = int(bet_data["amount"] * min(0.01 * day_counter, 0.20)  
+                    daily_return = int(bet_data["amount"] * min(0.01 * day_counter, 0.20))  
                     bet_data["daily_earnings"] += daily_return
                     user_gold += daily_return
         
