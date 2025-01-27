@@ -12,6 +12,46 @@ import aiofiles
 #Add NS dispatch posting games,
 # -link accounts to nations for easy ping mabye in signup
 
+class ViewItemsButton(Button):
+    def __init__(self, cog):
+        super().__init__(label="View Items", style=discord.ButtonStyle.secondary)
+        self.cog = cog
+
+    async def callback(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        guild = interaction.guild
+        players = await self.cog.config.guild(guild).players()
+
+        # Check if the user is in the game
+        if user_id not in players:
+            await interaction.response.send_message(
+                "You are not part of the Hunger Games.", ephemeral=True
+            )
+            return
+
+        # Fetch player data
+        player = players[user_id]
+        items = player.get("items", [])
+
+        # Prepare embed to display items
+        embed = discord.Embed(
+            title=f"{interaction.user.display_name}'s Items",
+            color=discord.Color.gold()
+        )
+
+        if not items:
+            embed.description = "You have no items."
+        else:
+            for idx, (stat, boost) in enumerate(items, start=1):
+                embed.add_field(
+                    name=f"Item {idx}",
+                    value=f"Boost: +{boost} to **{stat}**",
+                    inline=False
+                )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
 class HungerGamesAI:
     def __init__(self, cog):
         self.cog = cog
@@ -600,6 +640,8 @@ class ActionSelectionView(View):
         self.add_item(ViewStatsButton(cog))
         self.add_item(ViewTributesButton(cog))
         self.add_item(SponsorButton(cog))
+
+        self.add_item(ViewItemsButton(cog))  # Add the new View Items button
 
         # Only add the Betting Button on Day 0 and Day 1
         if current_day in [0, 1]:
