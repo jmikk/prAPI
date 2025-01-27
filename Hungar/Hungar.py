@@ -8,6 +8,7 @@ from discord.ext.commands import CheckFailure
 from discord.ui import View, Button, Modal, Select, TextInput
 from discord import Interaction, TextStyle, SelectOption
 import aiofiles
+import traceback
 
 #Add NS dispatch posting games,
 # -link accounts to nations for easy ping mabye in signup
@@ -152,7 +153,8 @@ class SponsorButton(Button):
             view = SponsorView(self.cog, tribute_options, guild, interaction.user)
             await interaction.response.send_message("Sponsor a tribute using the options below:", view=view, ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+            error_message = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+            await interaction.response.send_message(f"An error occurred: {error_message}", ephemeral=True)
 
 class SponsorView(View):
     def __init__(self, cog, tribute_options, guild, user):
