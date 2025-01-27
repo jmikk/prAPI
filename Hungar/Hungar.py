@@ -1605,10 +1605,13 @@ class Hungar(commands.Cog):
         for user_id, user_data in all_users.items():
             bets = user_data.get("bets", {})
             user_gold = user_data.get("gold", 0)
-        
+
+            day_counter = config.get("day_counter", 0)
+
             for tribute_id, bet_data in bets.items():
                 if tribute_id in players and players[tribute_id]["alive"]:
-                    daily_return = int(bet_data["amount"] * 0.2)  # 10% daily return
+                    
+                    daily_return = int(bet_data["amount"] * min(0.01 * day_counter, 0.20)  
                     bet_data["daily_earnings"] += daily_return
                     user_gold += daily_return
         
