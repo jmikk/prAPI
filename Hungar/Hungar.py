@@ -1320,7 +1320,7 @@ class Hungar(commands.Cog):
                     
             elif action == "Loot":
                 looters.append(player_id)
-                if random.random() < 0.75:  # 50% chance to find an item
+                if random.random() < 0.75:  # 75% chance to find an item
                     stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
                     if stat == "HP":
                         boost = random.randint(5,10)
@@ -1620,7 +1620,7 @@ class Hungar(commands.Cog):
             for tribute_id, bet_data in bets.items():
                 if tribute_id in players and players[tribute_id]["alive"]:
                     
-                    daily_return = int(bet_data["amount"] * min(0.01 * day_counter, 0.20))  
+                    daily_return = max(int(bet_data["amount"] * min(0.01 * day_counter, 0.20)),1)  
                     bet_data["daily_earnings"] += daily_return
                     user_gold += daily_return
         
