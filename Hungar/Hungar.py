@@ -14,7 +14,7 @@ import aiofiles
 
 class ViewItemsButton(Button):
     def __init__(self, cog):
-        super().__init__(label="View Items", style=discord.ButtonStyle.secondary)
+        super().__init__(label="View Items", style=discord.ButtonStyle.success)
         self.cog = cog
 
     async def callback(self, interaction: Interaction):
