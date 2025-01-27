@@ -158,7 +158,7 @@ class SponsorButton(Button):
             await interaction.response.send_message(f"An error occurred: {error_message}", ephemeral=True)
 
 class SponsorView(View):
-     def __init__(self, cog, tribute_options, guild, user,day_count):
+    def __init__(self, cog, tribute_options, guild, user,day_count):
         super().__init__(timeout=60)
         self.cog = cog
         self.guild = guild
