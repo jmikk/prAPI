@@ -10,8 +10,6 @@ from discord import Interaction, TextStyle, SelectOption
 import aiofiles
 import traceback
 
-#Add NS dispatch posting games,
-# -link accounts to nations for easy ping mabye in signup
 
 class ViewItemsButton(Button):
     def __init__(self, cog):
@@ -1586,11 +1584,16 @@ class Hungar(commands.Cog):
 
         # Announce the day's events
         if event_outcomes:
+            eliminated = [event for event in event_outcomes if "was eliminated by" in event]
+            others = [event for event in event_outcomes if "was eliminated by" not in event]
+
+            # Combine the lists with 'others' first and 'eliminated' last
+            ordered_outcomes = others + eliminated
         #Prepare the events log file
             file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
             async with aiofiles.open(file_name, mode='a') as file:
                 # Pings users and bolds NPCs
-                for each in event_outcomes:
+                for each in ordered_outcomes:
                     await file.write(each + '\n')
                     await ctx.send(each)
             #await ctx.send("\n".join(event_outcomes))
