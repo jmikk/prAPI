@@ -1830,6 +1830,45 @@ class Hungar(commands.Cog):
         embed.set_footer(text="Good luck, and may the odds be ever in your favor!")
         
         await ctx.send(embed=embed)
+    
+    @hunger.command()
+    async def view_signups(self, ctx):
+    """View the current list of players signed up for the Hunger Games."""
+        guild = ctx.guild
+        players = await self.config.guild(guild).players()
+    
+        if not players:
+            await ctx.send("No players have signed up for the Hunger Games yet.")
+            return
+    
+        # Create an embed to display the player information
+        embed = discord.Embed(
+            title="Current Hunger Games Signups",
+            description="Here is the list of players currently signed up:",
+            color=discord.Color.blue(),
+        )
+    
+        for player_id, player_data in players.items():
+            player_name = player_data["name"]
+            district = player_data["district"]
+            status = "Alive" if player_data["alive"] else "Eliminated"
+            embed.add_field(
+                name=f"District {district}: {player_name}",
+                value=f"Status: **{status}**",
+                inline=False,
+            )
+    
+        await ctx.send(embed=embed)
+    
+    @hunger.command()
+    @is_gamemaster()
+    async def clear_signups(self, ctx):
+        """Clear all signups and reset the player list (Admin only)."""
+        guild = ctx.guild
+        await self.config.guild(guild).players.clear()
+        await ctx.send("All signups have been cleared. The player list has been reset.")
+
+    
 
 
 
