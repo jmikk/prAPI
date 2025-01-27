@@ -1588,7 +1588,7 @@ class Hungar(commands.Cog):
             others = [event for event in event_outcomes if "was eliminated by" not in event]
 
             # Combine the lists with 'others' first and 'eliminated' last
-            ordered_outcomes = others + eliminated
+            ordered_outcomes = others +"\n\n"+ eliminated
         #Prepare the events log file
             file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
             async with aiofiles.open(file_name, mode='a') as file:
