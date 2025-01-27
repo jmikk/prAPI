@@ -1589,7 +1589,7 @@ class Hungar(commands.Cog):
 
             # Combine the lists with 'others' first and 'eliminated' last
             if eliminated:
-                others.append("\n\n")
+                others.append("A cannon sounds signaling another set of dead tributes \n\n")
                 event_outcomes = others + eliminated
         #Prepare the events log file
             file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
