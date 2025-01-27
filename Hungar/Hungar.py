@@ -291,6 +291,8 @@ class SponsorView(View):
                 f"🎁 **Someone** sponsored **{tribute_name}** with a +{self.selected_boost} boost to {self.selected_stat}!"
 
             )
+            await interaction.response.defer(ephemeral=True)
+
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
