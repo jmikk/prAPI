@@ -150,14 +150,15 @@ class SponsorButton(Button):
                 return
 
             # Send the sponsor view
-            view = SponsorView(self.cog, tribute_options, guild, interaction.user)
+            day_count = await self.cog.config.guild(guild).day_counter()
+            view = SponsorView(self.cog, tribute_options, guild, interaction.user,day_count)
             await interaction.response.send_message("Sponsor a tribute using the options below:", view=view, ephemeral=True)
         except Exception as e:
             error_message = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
             await interaction.response.send_message(f"An error occurred: {error_message}", ephemeral=True)
 
 class SponsorView(View):
-    async def __init__(self, cog, tribute_options, guild, user):
+     def __init__(self, cog, tribute_options, guild, user,day_count):
         super().__init__(timeout=60)
         self.cog = cog
         self.guild = guild
@@ -191,7 +192,6 @@ class SponsorView(View):
         )
         self.stat_select.callback = self.on_stat_select
         self.add_item(self.stat_select)
-        day_count = await self.cog.config.guild(guild).day_counter()
         
         # Boost amount selection dropdown
         self.boost_options = [
