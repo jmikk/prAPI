@@ -193,7 +193,7 @@ class SponsorView(View):
 
         # Boost amount selection dropdown
         self.boost_options = [
-            SelectOption(label=f"+{i} Boost ({20 * i + (day_count) * 10)} Gold)", value=str(i)) for i in range(1, 11)
+            SelectOption(label=f"+{i} Boost ({20 * i + (day_count) * 10}) Gold)", value=str(i)) for i in range(1, 11)
         ]
         self.boost_select = Select(
             placeholder="Select the boost amount...",
