@@ -189,10 +189,11 @@ class SponsorView(View):
         )
         self.stat_select.callback = self.on_stat_select
         self.add_item(self.stat_select)
+        day_count = config.get("day_counter",0)
 
         # Boost amount selection dropdown
         self.boost_options = [
-            SelectOption(label=f"+{i} Boost ({20*i} Gold)", value=str(i)) for i in range(1, 11)
+            SelectOption(label=f"+{i} Boost ({20 * i + (day_count) * 10)} Gold)", value=str(i)) for i in range(1, 11)
         ]
         self.boost_select = Select(
             placeholder="Select the boost amount...",
@@ -259,8 +260,12 @@ class SponsorView(View):
 
     async def confirm_sponsorship(self, interaction: Interaction):
         try:
+
+            guild = interaction.guild
+            day_count = await self.cog.config.guild(guild).day_counter()
+            
             user_gold = await self.cog.config.user(interaction.user).gold()
-            cost = self.selected_boost * 20
+            cost = self.selected_boost * 20 + (day_count * 10)
 
             if cost > user_gold:
                 await interaction.response.send_message(
