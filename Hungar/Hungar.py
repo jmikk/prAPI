@@ -189,8 +189,8 @@ class SponsorView(View):
         )
         self.stat_select.callback = self.on_stat_select
         self.add_item(self.stat_select)
-        day_count = config.get("day_counter",0)
-
+        day_count = await self.cog.config.guild(guild).day_counter()
+        
         # Boost amount selection dropdown
         self.boost_options = [
             SelectOption(label=f"+{i} Boost ({20 * i + (day_count) * 10}) Gold)", value=str(i)) for i in range(1, 11)
