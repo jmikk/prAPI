@@ -44,8 +44,7 @@ class ViewItemsButton(Button):
         else:
             for idx, (stat, boost) in enumerate(items, start=1):
                 embed.add_field(
-                    name=f"Item {idx}",
-                    value=f"Boost: +{boost} to **{stat}**",
+                    name=f"Boost: +{boost} to **{stat}**",
                     inline=False
                 )
 
