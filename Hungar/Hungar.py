@@ -189,7 +189,7 @@ class SponsorView(View):
         )
         self.stat_select.callback = self.on_stat_select
         self.add_item(self.stat_select)
-        day_count = await self.cog.config.guild(guild).day_counter()
+        day_count = self.cog.config.guild(guild).day_counter()
         
         # Boost amount selection dropdown
         self.boost_options = [
