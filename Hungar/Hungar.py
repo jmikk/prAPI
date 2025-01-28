@@ -1796,6 +1796,7 @@ class Hungar(commands.Cog):
     async def leaderboard(self, ctx):
         """Display leaderboards for total kills and gold."""
         all_users = await self.config.all_users()
+        guild_config = await self.config.guild(ctx.guild).all()
         
         # Gather and sort kill counts
         kill_leaderboard = sorted(
