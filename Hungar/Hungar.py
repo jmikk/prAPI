@@ -1140,6 +1140,7 @@ class Hungar(commands.Cog):
     
         if alive_players:
 
+            winner = alive_players[0]
 
        
             winner_id = next((pid for pid, pdata in players.items() if pdata == winner), None)
