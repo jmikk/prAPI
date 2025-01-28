@@ -1104,20 +1104,19 @@ class Hungar(commands.Cog):
             f"{feast_message}\n"
             f"Alive participants: {', '.join(alive_mentions)}"
         )
-        # Calculate the end of the day
-        # Fetch the current day start and duration
-        day_start = datetime.fromisoformat(config["day_start"])
-        day_duration = timedelta(seconds=config["day_duration"])
-        
-        if config["day_counter"] == 0:
-            # Calculate the start time of the next day
-            next_day_start = day_start + day_duration - timedelta(hours=6) 
-        else:
-            next_day_start = day_start + day_duration + day_duration - timedelta(hours=6) 
+        # Calculate the next day start time
+        day_start = datetime.utcnow()
+        alive_count = len(alive_players)
+        day_duration = max(alive_count * 20 + 20)  
+        if day_counter > 0 and day_counter % 10 == 0:
+            day_duration = int(day_duration * 1.5)  # Feast days are longer
+    
+        next_day_start = day_start + timedelta(seconds=day_duration)
+        next_day_start_timestamp = int(next_day_start.timestamp())  # Convert to Unix timestamp
 
-        
-        # Convert the next day start time to a Discord timestamp
-        next_day_start_timestamp = int(next_day_start.timestamp())  # Convert to Unix timestamp for Discord formatting
+                # Save the updated day start time and duration
+        await self.config.guild(guild).day_start.set(day_start.isoformat())
+        await self.config.guild(guild).day_duration.set(day_duration)
 
         await ctx.send(f"Pick your action for the day, the sun will set in about <t:{next_day_start_timestamp}:R>",view=ActionSelectionView(self, feast_active,current_day))
 
