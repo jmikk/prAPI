@@ -708,7 +708,8 @@ class Hungar(commands.Cog):
             day_start=None,
             day_counter=0, 
             random_events=True,  # Enable or disable random events
-            feast_active=False,  # Track if a feast is active# Counter for days
+            feast_active=False, 
+            winner_leaderboard=[],  # New field for tracking winners# Track if a feast is active# Counter for days
              
             
         )
@@ -1138,15 +1139,25 @@ class Hungar(commands.Cog):
         alive_players = [player for player in players.values() if player["alive"]]
     
         if alive_players:
-            winner = alive_players[0]
+            if not alive_players[0].get("is_npc", False):
+                winner_leaderboard = config.get("winner_leaderboard", {})
+                winner_data = winner_leaderboard.get(winner_id, {
+                "name": winner["name"],
+                "wins": 0,
+                })
+                winner_data["wins"] += 1
+                winner_leaderboard[winner_id] = winner_data
+                await self.config.guild(guild).winner_leaderboard.set(winner_leaderboard)
+
+       
             winner_id = next((pid for pid, pdata in players.items() if pdata == winner), None)
             await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
-            file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
-            await ctx.send(file=discord.File(file_name))
+            #file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
+            #await ctx.send(file=discord.File(file_name))
         else:
             await ctx.send("The game is over! No one survived.")
-            file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
-            await ctx.send(file=discord.File(file_name))
+            #file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
+            #await ctx.send(file=discord.File(file_name))
     
         # Send elimination leaderboard
         if leaderboard:
@@ -1797,28 +1808,45 @@ class Hungar(commands.Cog):
             reverse=True
         )
         
-        # Build the embed
+        # Gather and sort winner leaderboard
+        winner_leaderboard = guild_config.get("winner_leaderboard", {})
+        sorted_winners = sorted(
+            winner_leaderboard.values(),
+            key=lambda x: x["wins"],
+            reverse=True,
+        )    
+
         embed = discord.Embed(title="🏆 Hunger Games Leaderboard 🏆", color=discord.Color.gold())
-    
         # Add top players by kills
         if kill_leaderboard:
             kills_text = "\n".join(
                 f"**{ctx.guild.get_member(int(user_id)).mention}**: {data['kill_count']} kills"
-                for user_id, data in kill_leaderboard[:10]
+                for user_id, data in kill_leaderboard[:5]
                 if ctx.guild.get_member(int(user_id))  # Ensure the user exists in the guild
             )
             embed.add_field(name="Top Killers", value=kills_text or "No data", inline=False)
+
+         # Add most wins
+        if sorted_winners:
+            medals = ["🥇", "🥈", "🥉"]
+            winner_text = "\n".join(
+                f"{medals[idx]} **{winner['name']}**: {winner['wins']} wins"
+                for idx, winner in enumerate(sorted_winners[:3])
+            )
+            embed.add_field(name="Top Winners", value=winner_text or "No data", inline=False)
     
         # Add top players by gold
         if gold_leaderboard:
             gold_text = "\n".join(
                 f"**{ctx.guild.get_member(int(user_id)).mention}**: {data['gold']} gold"
-                for user_id, data in gold_leaderboard[:10]
+                for user_id, data in gold_leaderboard[:5]
                 if ctx.guild.get_member(int(user_id))  # Ensure the user exists in the guild
             )
             embed.add_field(name="Top Richest Players", value=gold_text or "No data", inline=False)
     
         await ctx.send(embed=embed)
+
+        winner_leaderboard = guild_config.get("winner_leaderboard", [])
     
     @hunger.command()
     @commands.admin()
