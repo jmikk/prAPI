@@ -1,4 +1,4 @@
-ednfrom redbot.core import commands, Config
+from redbot.core import commands, Config
 import random
 import asyncio
 from datetime import datetime, timedelta
