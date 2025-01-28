@@ -709,7 +709,7 @@ class Hungar(commands.Cog):
             day_counter=0, 
             random_events=True,  # Enable or disable random events
             feast_active=False, 
-            winner_leaderboard=[],  # New field for tracking winners# Track if a feast is active# Counter for days
+            winner_leaderboard={},  # New field for tracking winners# Track if a feast is active# Counter for days
              
             
         )
