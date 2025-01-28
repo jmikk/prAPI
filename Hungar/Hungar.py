@@ -1107,7 +1107,7 @@ class Hungar(commands.Cog):
         # Calculate the next day start time
         day_start = datetime.utcnow()
         alive_count = len(alive_players)
-        day_duration = max(int(alive_count) * 20 + 20)  
+        day_duration = max(int(alive_count) * 20 + 20),60)  
         if day_counter > 0 and day_counter % 10 == 0:
             day_duration = int(day_duration * 1.5)  # Feast days are longer
     
