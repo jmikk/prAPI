@@ -1819,6 +1819,7 @@ class Hungar(commands.Cog):
             key=lambda x: x["wins"],
             reverse=True,
         )    
+        await ctx.send(winner_leaderboard)
 
         embed = discord.Embed(title="🏆 Hunger Games Leaderboard 🏆", color=discord.Color.gold())
         # Add top players by kills
