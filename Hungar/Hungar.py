@@ -709,7 +709,7 @@ class Hungar(commands.Cog):
             day_counter=0, 
             random_events=True,  # Enable or disable random events
             feast_active=False, 
-            winner_leaderboard={},  # New field for tracking winners# Track if a feast is active# Counter for days
+            winner_leaderboards={},  # New field for tracking winners# Track if a feast is active# Counter for days
              
             
         )
@@ -1140,14 +1140,14 @@ class Hungar(commands.Cog):
     
         if alive_players:
             if not alive_players[0].get("is_npc", False):
-                winner_leaderboard = config.get("winner_leaderboard", {})
+                winner_leaderboard = config.get("winner_leaderboards", {})
                 winner_data = winner_leaderboard.get(winner_id, {
                 "name": winner["name"],
                 "wins": 0,
                 })
                 winner_data["wins"] += 1
                 winner_leaderboard[winner_id] = winner_data
-                await self.config.guild(guild).winner_leaderboard.set(winner_leaderboard)
+                await self.config.guild(guild).winner_leaderboards.set(winner_leaderboard)
 
        
             winner_id = next((pid for pid, pdata in players.items() if pdata == winner), None)
@@ -1809,7 +1809,7 @@ class Hungar(commands.Cog):
         )
         
         # Gather and sort winner leaderboard
-        winner_leaderboard = guild_config.get("winner_leaderboard", {})
+        winner_leaderboard = guild_config.get("winner_leaderboards", {})
         sorted_winners = sorted(
             winner_leaderboard.values(),
             key=lambda x: x["wins"],
