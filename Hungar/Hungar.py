@@ -1,4 +1,4 @@
-from redbot.core import commands, Config
+ednfrom redbot.core import commands, Config
 import random
 import asyncio
 from datetime import datetime, timedelta
@@ -1153,6 +1153,7 @@ class Hungar(commands.Cog):
                 })
                 winner_data["wins"] += 1
                 winner_leaderboard[winner_id] = winner_data
+                await ctx.send(winner_data)
                 await self.config.guild(guild).winner_leaderboards.set(winner_leaderboard)
             await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
             #file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
