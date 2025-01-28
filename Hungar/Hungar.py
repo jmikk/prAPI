@@ -1642,11 +1642,11 @@ class Hungar(commands.Cog):
 
     @hunger.command()
     @is_gamemaster()
-    async def setdaylength(self, ctx, seconds: int):
+    async def nextday(self, ctx):
         """Set the real-time length of a day in seconds (Admin only)."""
         guild = ctx.guild
-        await self.config.guild(guild).day_duration.set(seconds)
-        await ctx.send(f"Day length has been set to {seconds} seconds.")
+        await self.config.guild(guild).day_duration.set(0)
+        await ctx.send(f"The next day will start next cycle.")
 
     @hunger.command()
     @is_gamemaster()
