@@ -1036,7 +1036,9 @@ class Hungar(commands.Cog):
                         break
                     
                     config = await self.config.guild(guild).all()
-                    day_length = config["day_counter"] * 20 + 20 #day speed settings
+                    players = await self.config.guild(guild).players()
+                    alive_players = [player for player in players.values() if player["alive"]]
+                    day_length = len(alive_players) * 20 + 20 #day speed settings
                     if config["day_counter"] % 10 == 0:
                         day_length = day_length * 1.5
                     await self.config.guild(guild).day_duration.set(day_length)
