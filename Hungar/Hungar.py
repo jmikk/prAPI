@@ -709,7 +709,7 @@ class Hungar(commands.Cog):
             day_counter=0, 
             random_events=True,  # Enable or disable random events
             feast_active=False, 
-            winner_leaderboards={},  # New field for tracking winners# Track if a feast is active# Counter for days
+            WLboard={},  # New field for tracking winners# Track if a feast is active# Counter for days
              
             
         )
@@ -1142,16 +1142,15 @@ class Hungar(commands.Cog):
             winner = alive_players[0]
             winner_id = next((pid for pid, pdata in players.items() if pdata == winner), None)
             if not alive_players[0].get("is_npc", False):
-                winner_leaderboards = config.get("winner_leaderboards")
-                winner_data = winner_leaderboards.get(winner_id, {
+                WLboard = config.get("WLboard")
+                winner_data = WLboard.get(winner_id, {
                 "name": winner["name"],
                 "wins": 0,
                 })
                 winner_data["wins"] += 1
-                winner_leaderboards[winner_id] = winner_data
-                await ctx.send(winner_leaderboards)
-                await ctx.send(winner_data)
-                await self.config.guild(guild).winner_leaderboards.set(winner_leaderboards)
+                WLboard[winner_id] = winner_data
+                await ctx.send(WLboard)
+                await self.config.guild(guild).WLboard.set(WLboard)
             await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
             #file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
             #await ctx.send(file=discord.File(file_name))
@@ -1811,13 +1810,13 @@ class Hungar(commands.Cog):
         )
         
         # Gather and sort winner leaderboard
-        winner_leaderboards = guild_config.get("winner_leaderboards", {})
+        WLboard = guild_config.get("WLboard", {})
         sorted_winners = sorted(
-            winner_leaderboards.values(),
+            WLboard.values(),
             key=lambda x: x["wins"],
             reverse=True,
         )    
-        await ctx.send(winner_leaderboards)
+        await ctx.send(WLboard)
 
         embed = discord.Embed(title="🏆 Hunger Games Leaderboard 🏆", color=discord.Color.gold())
         # Add top players by kills
@@ -1849,7 +1848,7 @@ class Hungar(commands.Cog):
     
         await ctx.send(embed=embed)
 
-        winner_leaderboards = guild_config.get("winner_leaderboards", [])
+        WLboard = guild_config.get("WLboard", [])
     
     @hunger.command()
     @commands.admin()
