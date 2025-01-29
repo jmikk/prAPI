@@ -644,16 +644,17 @@ class ActionSelectionView(View):
             self.add_item(ActionButton(cog, "Feast"))
         
 
-        self.add_item(ViewStatsButton(cog))
-        self.add_item(ViewTributesButton(cog))
+
         self.add_item(SponsorButton(cog))
 
-        self.add_item(ViewItemsButton(cog))  # Add the new View Items button
 
         # Only add the Betting Button on Day 0 and Day 1
         if current_day in [0, 1]:
             self.add_item(BettingButton(cog))
-
+        
+        self.add_item(ViewItemsButton(cog))  # Add the new View Items button
+        self.add_item(ViewStatsButton(cog))
+        self.add_item(ViewTributesButton(cog))
         self.add_item(ViewBidsButton(cog))  # Add the new button here
 
 class ActionButton(Button):
