@@ -55,27 +55,28 @@ class ViewAllTributesButton(Button):
 
 class GameMasterView(View):
     """View for GameMasters to trigger events."""
-    def __init__(self, cog, guild):
+    def __init__(self, cog, guild, public_channel):
         super().__init__(timeout=None)  # Persistent until game ends
         self.cog = cog
         self.guild = guild
+        self.public_channel = public_channel  # Store public channel for messages
 
         # Add buttons for global events
-        self.add_item(GameMasterEventButton(cog, guild, "Fog Descends"))
-        self.add_item(GameMasterEventButton(cog, guild, "Arena Shrinks"))
-        self.add_item(GameMasterEventButton(cog, guild, "Heatwave Strikes"))
+        self.add_item(GameMasterEventButton(cog, guild, "Fog Descends",public_channel))
+        self.add_item(GameMasterEventButton(cog, guild, "Arena Shrinks",public_channel))
+        self.add_item(GameMasterEventButton(cog, guild, "Heatwave Strikes",public_channel))
         
         # Add buttons for targeted sponsorships
-        self.add_item(SponsorRandomTributeButton(cog, guild))
-        self.add_item(MandatoryCombatButton(cog, guild))
-        self.add_item(MutantBeastAttackButton(cog, guild))
+        self.add_item(SponsorRandomTributeButton(cog, guild,public_channel))
+        self.add_item(MandatoryCombatButton(cog, guild,public_channel))
+        self.add_item(MutantBeastAttackButton(cog, guild,public_channel))
         
         self.add_item(ViewAllTributesButton(cog, guild))
 
 
 class GameMasterEventButton(Button):
     """Button for triggering global events."""
-    def __init__(self, cog, guild, event_name):
+    def __init__(self, cog, guild, event_name , public_channel):
         super().__init__(label=event_name, style=discord.ButtonStyle.primary)
         self.cog = cog
         self.guild = guild
@@ -115,7 +116,7 @@ class GameMasterEventButton(Button):
         await self.cog.config.guild(self.guild).players.set(players)
 
         # Announce event
-        await interaction.channel.send(event_message)
+        await self.public_channel.send(event_message)
         await interaction.response.defer()
 
 
@@ -125,6 +126,7 @@ class SponsorRandomTributeButton(Button):
         super().__init__(label="Sponsor a Random Tribute", style=discord.ButtonStyle.success)
         self.cog = cog
         self.guild = guild
+        self.public_channel = public_channel  # Store public channel
 
     async def callback(self, interaction: Interaction):
         config = await self.cog.config.guild(self.guild).all()
@@ -142,7 +144,7 @@ class SponsorRandomTributeButton(Button):
         tribute["stats"][stat] += boost
         
         await self.cog.config.guild(self.guild).players.set(players)
-        await interaction.channel.send(f"🎁 **Someone** sponsored **{tribute['name']}** with a **+{boost} boost to {stat}**!")
+        await self.public_channel.send(f"🎁 **Someone** sponsored **{tribute['name']}** with a **+{boost} boost to {stat}**!")
         await interaction.response.defer()
 
 class MandatoryCombatButton(Button):
@@ -151,6 +153,7 @@ class MandatoryCombatButton(Button):
         super().__init__(label="Mandatory Combat", style=discord.ButtonStyle.danger)
         self.cog = cog
         self.guild = guild
+        self.public_channel = public_channel  # Store public channel
 
     async def callback(self, interaction: Interaction):
         config = await self.cog.config.guild(self.guild).all()
@@ -163,16 +166,17 @@ class MandatoryCombatButton(Button):
 
         await self.cog.config.guild(self.guild).players.set(players)
 
-        await interaction.channel.send("⚔️ **Mandatory Combat!** All tributes have been set to hunt tomorrow!")
+        await self.public_channel.send("⚔️ **Mandatory Combat!** All tributes have been set to hunt tomorrow!")
         await interaction.response.defer()
 
 
 class MutantBeastAttackButton(Button):
     """Triggers a random mutant beast attack affecting tributes."""
-    def __init__(self, cog, guild):
+    def __init__(self, cog, guild,public_channel):
         super().__init__(label="Mutant Beast Attack", style=discord.ButtonStyle.danger)
         self.cog = cog
         self.guild = guild
+        self.public_channel = public_channel  # Store public channel
 
     async def callback(self, interaction: Interaction):
         config = await self.cog.config.guild(self.guild).all()
@@ -206,7 +210,7 @@ class MutantBeastAttackButton(Button):
     
         await self.cog.config.guild(self.guild).players.set(players)
     
-        await interaction.channel.send(f"🐺 A **mutant beast** ambushes **{victim['name']}**, dealing **{damage} damage**!")
+        await self.public_channel.send(f"🐺 A **mutant beast** ambushes **{victim['name']}**, dealing **{damage} damage**!")
         await interaction.response.defer()    
 
 
@@ -1141,7 +1145,7 @@ class Hungar(commands.Cog):
 
     @hunger.command()
     @is_gamemaster()
-    async def startgame(self, ctx, npcs: int = 0):
+    async def startgame(self, ctx, npcs: int = 0, dashboard_channel: discord.TextChannel = None):
         """Start the Hunger Games (Admin only). Optionally, add NPCs."""
 
         file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
@@ -1256,6 +1260,14 @@ class Hungar(commands.Cog):
     
         participant_announcement = "\n".join(participant_list)
         await ctx.send(f"The Hunger Games have begun with the following participants (sorted by District):\n{participant_announcement}")
+
+        #Send GameMaster Dashboard if a private channel is provided**
+        if dashboard_channel:
+            await dashboard_channel.send(
+                "🕹️ **GameMaster Dashboard**: Use these buttons to trigger special events!",
+                view=GameMasterView(self, ctx.guild, ctx.channel  # Store the original channel where the command was called)
+            )
+            
         asyncio.create_task(self.run_game(ctx))
 
     async def run_game(self, ctx):
@@ -2232,12 +2244,6 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).players.clear()
         await ctx.send("All signups have been cleared. The player list has been reset.")
 
-    # Command to send the GameMaster Dashboard
-    @hunger.command()
-    @is_gamemaster()
-    async def gamemaster_dashboard(self, ctx, channel: discord.TextChannel):
-        """Create a GameMaster control panel in the specified channel."""
-        await channel.send("🕹️ **GameMaster Dashboard**: Use these buttons to trigger special events!", view=GameMasterView(self, ctx.guild))
     
 
     
