@@ -81,6 +81,7 @@ class GameMasterEventButton(Button):
         self.cog = cog
         self.guild = guild
         self.event_name = event_name
+        self.public_channel = public_channel
 
     async def callback(self, interaction: Interaction):
         config = await self.cog.config.guild(self.guild).all()
