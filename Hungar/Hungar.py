@@ -1,4 +1,4 @@
-from redbot.core import commands, Config
+efrom redbot.core import commands, Config
 import random
 import asyncio
 from datetime import datetime, timedelta
@@ -1443,6 +1443,14 @@ class Hungar(commands.Cog):
             bets = user_data.get("bets", {})
             if winner_id in bets:
                 total_bet_on_winner += bets[winner_id]["amount"]
+
+        # **Include AI bets**
+        winner_bets = players.get(winner_id, {}).get("bets", {})
+        ai_bets = winner_bets.get("AI", [])
+
+        for ai_bet in ai_bets:
+            total_bet_on_winner += ai_bet["amount"]
+
     
         # **Award 50% of total bets to the winner**
         winner_bonus = int(total_bet_on_winner * 0.5)  # 50% of total bets
