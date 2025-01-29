@@ -10,6 +10,48 @@ from discord import Interaction, TextStyle, SelectOption
 import aiofiles
 import traceback
 
+class ViewAllTributesButton(Button):
+    """Button to display all tribute stats in one embed."""
+    def __init__(self, cog, guild):
+        super().__init__(label="View All Tributes", style=discord.ButtonStyle.secondary)
+        self.cog = cog
+        self.guild = guild
+
+    async def callback(self, interaction: Interaction):
+        """Shows all tributes' stats in a formatted embed."""
+        config = await self.cog.config.guild(self.guild).all()
+        players = config["players"]
+
+        if not players:
+            await interaction.response.send_message("No tributes are currently in the game.", ephemeral=True)
+            return
+
+        # Sort players by district
+        sorted_players = sorted(players.values(), key=lambda p: p["district"])
+
+        embed = discord.Embed(
+            title="🏹 **Hunger Games Tributes** 🏹",
+            description="Here are the current tributes and their stats:",
+            color=discord.Color.gold()
+        )
+
+        for player in sorted_players:
+            status = "🟢 **Alive**" if player["alive"] else "🔴 **Eliminated**"
+            embed.add_field(
+                name=f"District {player['district']}: {player['name']}",
+                value=(
+                    f"{status}\n"
+                    f"**🛡️ Def:** {player['stats']['Def']}\n"
+                    f"**⚔️ Str:** {player['stats']['Str']}\n"
+                    f"**💪 Con:** {player['stats']['Con']}\n"
+                    f"**🧠 Wis:** {player['stats']['Wis']}\n"
+                    f"**❤️ HP:** {player['stats']['HP']}"
+                ),
+                inline=False
+            )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 class GameMasterView(View):
     """View for GameMasters to trigger events."""
@@ -27,6 +69,8 @@ class GameMasterView(View):
         self.add_item(SponsorRandomTributeButton(cog, guild))
         self.add_item(MandatoryCombatButton(cog, guild))
         self.add_item(MutantBeastAttackButton(cog, guild))
+        
+        self.add_item(ViewAllTributesButton(cog, guild))
 
 
 class GameMasterEventButton(Button):
