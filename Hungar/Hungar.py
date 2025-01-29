@@ -1358,19 +1358,19 @@ class Hungar(commands.Cog):
             elif action == "Rest":
                 resters.append(player_id)
 
-                if not player["items"]:  # No items, just rest normally
+                if not player_data["items"]:  # No items, just rest normally
                     damage = random.randint(1, 5)
-                    player["stats"]["HP"] -= damage
-                    event_outcomes.append(f"{player['name']} has hunger pains and takes {damage} points of damage.")
-                    if player["stats"]["HP"] <= 0:
-                        player["alive"] = False
-                        event_outcomes.append(f"{player['name']} starved to death.")
+                    player_data["stats"]["HP"] -= damage
+                    event_outcomes.append(f"{player_data['name']} has hunger pains and takes {damage} points of damage.")
+                    if player_data["stats"]["HP"] <= 0:
+                        player_data["alive"] = False
+                        event_outcomes.append(f"{player_data['name']} starved to death.")
                     continue  # Skip item logic if no items exist
  
                 else:
                     # Prompt the player with a dropdown selection
-                    view = RestView(self, player_id, player["items"], guild)
-                    await ctx.send(f"{player['name']}, select an item to use:", view=view)
+                    view = RestView(self, player_id, player_data["items"], guild)
+                    await ctx.send(f"{player_data['name']}, select an item to use:", view=view)
                 
                     # Wait for interaction (timeout 30s)
                     await asyncio.sleep(30)
@@ -1378,7 +1378,7 @@ class Hungar(commands.Cog):
                     # Move selected item to front
                     selected_index = view.selected_item_index
                     if selected_index > 0:
-                        player["items"].insert(0, player["items"].pop(selected_index))  # Move selected item to front
+                        player["items"].insert(0, player_data["items"].pop(selected_index))  # Move selected item to front
 
                 if player_data["stats"]["HP"] < player_data["stats"]["Con"]:
                     damage = random.randint(1,int(int(player_data["stats"]["Con"])/2))
