@@ -140,15 +140,22 @@ class MutantBeastAttackButton(Button):
             return
 
         # Select a random tribute to be attacked
-        victim = random.choice(alive_players)
-        max = min(victim["stats"]["HP"] - 1, 15)
-        damage = random.randint(1, max)
-        victim["stats"]["HP"] -= damage
-
+        tries = 0
+        while True:
+            if tries <= len(alive_players):
+                break
+            victim = random.choice(alive_players)
+            max = min(victim["stats"]["HP"] - 1, 15)
+            if not max < 1:
+                damage = random.randint(1, max)
+                victim["stats"]["HP"] -= damage
+                break
+            tries += 1
+    
         await self.cog.config.guild(self.guild).players.set(players)
-
+    
         await interaction.channel.send(f"🐺 A **mutant beast** ambushes **{victim['name']}**, dealing **{damage} damage**!")
-        await interaction.response.defer()
+        await interaction.response.defer()    
 
 
 
