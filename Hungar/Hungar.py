@@ -1266,7 +1266,7 @@ class Hungar(commands.Cog):
             await dashboard_channel.send(
                 "🕹️ **GameMaster Dashboard**: Use these buttons to trigger special events!",
                 view=GameMasterView(self, ctx.guild, ctx.channel  # Store the original channel where the command was called)
-            )
+            ))
             
         asyncio.create_task(self.run_game(ctx))
 
