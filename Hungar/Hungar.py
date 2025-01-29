@@ -194,7 +194,7 @@ class MutantBeastAttackButton(Button):
                 damage = random.randint(1, max)
                 victim["stats"]["HP"] -= damage
                 break
-            tries += 1
+            tries = tries + 1
     
         await self.cog.config.guild(self.guild).players.set(players)
     
