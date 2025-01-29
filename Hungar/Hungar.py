@@ -11,6 +11,47 @@ import aiofiles
 import traceback
 
 
+class RestView(View):
+    def __init__(self, cog, player_id, items, guild):
+        super().__init__(timeout=30)  # Timeout after 30s if no selection
+        self.cog = cog
+        self.player_id = player_id
+        self.items = items
+        self.guild = guild
+        self.selected_item_index = 0  # Default: use the first item if none selected
+
+        # Create dropdown menu with player items
+        options = [
+            discord.SelectOption(
+                label=f"{stat} +{boost}",
+                value=str(idx),
+                description=f"Boosts {stat} by {boost}"
+            )
+            for idx, (stat, boost) in enumerate(items)
+        ]
+
+        if not options:
+            options.append(discord.SelectOption(label="No Items", value="-1", description="You have no items."))
+
+        self.select = Select(
+            placeholder="Select an item to use...",
+            options=options
+        )
+        self.select.callback = self.item_selected
+        self.add_item(self.select)
+
+    async def item_selected(self, interaction):
+        """Handles item selection."""
+        selected_index = int(self.select.values[0])
+        if selected_index >= 0:  # Ensure valid item selection
+            self.selected_item_index = selected_index
+        await interaction.response.defer()  # Acknowledge interaction silently
+
+    async def on_timeout(self):
+        """Fallback in case player doesn't select an item in time."""
+        pass
+
+
 class ViewItemsButton(Button):
     def __init__(self, cog):
         super().__init__(label="View Items", style=discord.ButtonStyle.success)
@@ -1317,30 +1358,37 @@ class Hungar(commands.Cog):
             elif action == "Rest":
                 resters.append(player_id)
 
-                if player_data["stats"]["HP"] < player_data["stats"]["Con"] * 3:
+                if not player["items"]:  # No items, just rest normally
+                    damage = random.randint(1, 5)
+                    player["stats"]["HP"] -= damage
+                    event_outcomes.append(f"{player['name']} has hunger pains and takes {damage} points of damage.")
+                    if player["stats"]["HP"] <= 0:
+                        player["alive"] = False
+                        event_outcomes.append(f"{player['name']} starved to death.")
+                    continue  # Skip item logic if no items exist
+ 
+                else:
+                    # Prompt the player with a dropdown selection
+                    view = RestView(self, player_id, player["items"], guild)
+                    await ctx.send(f"{player['name']}, select an item to use:", view=view)
+                
+                    # Wait for interaction (timeout 30s)
+                    await asyncio.sleep(30)
+                
+                    # Move selected item to front
+                    selected_index = view.selected_item_index
+                    if selected_index > 0:
+                        player["items"].insert(0, player["items"].pop(selected_index))  # Move selected item to front
+
+                if player_data["stats"]["HP"] < player_data["stats"]["Con"]:
                     damage = random.randint(1,int(int(player_data["stats"]["Con"])/2))
                     player_data["stats"]["HP"] = player_data["stats"]["HP"] + damage
                     event_outcomes.append(f"{player_data['name']} nursed their wounds and healed for {damage} points of damage")
-
-                if not player_data["items"]: #take dmg
-                    damage = random.randint(1,5)
-                    player_data["stats"]["HP"]=player_data["stats"]["HP"] - damage
-                    event_outcomes.append(f"{player_data['name']} has hunger pains and takes {damage} points of damage")
-                    if player_data["stats"]["HP"] <= 0:
-                        player_data["alive"] = False
-                        event_outcomes.append(f"{player_data['name']} starved to death.")
-                        player_data["items"] = []
-                    
-                else:
-                    item = player_data["items"].pop()
-                    stat, boost = item
-                    player_data["stats"][stat] += boost
-                    event_outcomes.append(f"{player_data['name']} rested and used a {stat} boost item (+{boost}).")
                     
             elif action == "Loot":
                 looters.append(player_id)
                 if random.random() < 0.75:  # 75% chance to find an item
-                    stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
+                    stat = random.choice(["Def", "Str", "Con", "Wis"])
                     if stat == "HP":
                         boost = random.randint(5,10)
                     else:
