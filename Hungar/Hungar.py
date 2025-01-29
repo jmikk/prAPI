@@ -151,12 +151,6 @@ class MutantBeastAttackButton(Button):
         await interaction.response.defer()
 
 
-# Command to send the GameMaster Dashboard
-@Hungar.command()
-@is_gamemaster()
-async def gamemaster_dashboard(self, ctx, channel: discord.TextChannel):
-    """Create a GameMaster control panel in the specified channel."""
-    await channel.send("🕹️ **GameMaster Dashboard**: Use these buttons to trigger special events!", view=GameMasterView(self, ctx.guild))
 
 
 class RestView(View):
@@ -2170,6 +2164,14 @@ class Hungar(commands.Cog):
         guild = ctx.guild
         await self.config.guild(guild).players.clear()
         await ctx.send("All signups have been cleared. The player list has been reset.")
+
+    # Command to send the GameMaster Dashboard
+    @Hungar.command()
+    @is_gamemaster()
+    async def gamemaster_dashboard(self, ctx, channel: discord.TextChannel):
+        """Create a GameMaster control panel in the specified channel."""
+        await channel.send("🕹️ **GameMaster Dashboard**: Use these buttons to trigger special events!", view=GameMasterView(self, ctx.guild))
+    
 
     
 
