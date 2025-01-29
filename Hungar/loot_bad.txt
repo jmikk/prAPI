@@ -1,3 +1,4 @@
+{name1} found Mjolnir, mythical hammer, and you alone are worthy to lift it. It is forged from a dying star and you will be excited to know that it can hammer nails with 1 hit less than a normal hammer.
 {name1} rummaged through the pile but found nothing but dust.
 {name1} searched high and low but came up empty-handed.
 {name1} reached into the chest only to discover it was empty.
