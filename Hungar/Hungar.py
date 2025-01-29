@@ -415,11 +415,13 @@ class SponsorButton(Button):
         try:
             guild = interaction.guild
             players = await self.cog.config.guild(guild).players()
-
+            
+            user_id = str(interaction.user.id)  # Get the sponsor's user ID
+           
             # Create options for tributes using nicknames or usernames
             tribute_options = []
             for player_id, player in players.items():
-                if player["alive"]:
+                if player["alive"] and player_id != user_id::
                     if player_id.isdigit():  # Check if it's a real user
                         member = guild.get_member(int(player_id))
                         if member:
