@@ -1149,7 +1149,6 @@ class Hungar(commands.Cog):
                 })
                 winner_data["wins"] += 1
                 WLboard[winner_id] = winner_data
-                await ctx.send(WLboard)
                 await self.config.guild(guild).WLboard.set(WLboard)
             await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
             #file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
@@ -1819,7 +1818,6 @@ class Hungar(commands.Cog):
             key=lambda x: x["wins"],
             reverse=True,
         )    
-        await ctx.send(WLboard)
 
         embed = discord.Embed(title="🏆 Hunger Games Leaderboard 🏆", color=discord.Color.gold())
         # Add top players by kills
