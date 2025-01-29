@@ -11,6 +11,154 @@ import aiofiles
 import traceback
 
 
+class GameMasterView(View):
+    """View for GameMasters to trigger events."""
+    def __init__(self, cog, guild):
+        super().__init__(timeout=None)  # Persistent until game ends
+        self.cog = cog
+        self.guild = guild
+
+        # Add buttons for global events
+        self.add_item(GameMasterEventButton(cog, guild, "Fog Descends"))
+        self.add_item(GameMasterEventButton(cog, guild, "Arena Shrinks"))
+        self.add_item(GameMasterEventButton(cog, guild, "Heatwave Strikes"))
+        
+        # Add buttons for targeted sponsorships
+        self.add_item(SponsorRandomTributeButton(cog, guild))
+        self.add_item(MandatoryCombatButton(cog, guild))
+        self.add_item(MutantBeastAttackButton(cog, guild))
+
+
+class GameMasterEventButton(Button):
+    """Button for triggering global events."""
+    def __init__(self, cog, guild, event_name):
+        super().__init__(label=event_name, style=discord.ButtonStyle.primary)
+        self.cog = cog
+        self.guild = guild
+        self.event_name = event_name
+
+    async def callback(self, interaction: Interaction):
+        config = await self.cog.config.guild(self.guild).all()
+        players = config["players"]
+
+        event_message = ""
+        
+        if self.event_name == "Fog Descends":
+            for player in players.values():
+                if player["alive"]:
+                    player["stats"]["Wis"] -= 2  # Decrease wisdom
+                    if player["stats"]["Wis"] < 1:
+                        player["stats"]["Wis"] = 1
+            event_message = "🌫️ A thick fog descends over the arena, reducing all tributes' **Wisdom by 2**!"
+        
+        elif self.event_name == "Arena Shrinks":
+            for player in players.values():
+                if player["alive"]:
+                    player["stats"]["HP"] -= 3  # Reduce HP
+                    if player["stats"]["HP"] < 1:
+                        player["stats"]["HP"] = 1
+            event_message = "🏟️ The arena shrinks! All tributes lose **5 HP** as space gets tighter!"
+        
+        elif self.event_name == "Heatwave Strikes":
+            for player in players.values():
+                if player["alive"]:
+                    player["stats"]["Con"] -= 2
+                    if player["stats"]["Con"] < 1:
+                        player["stats"]["Con"] = 1# Reduce Constitution
+            event_message = "🔥 A brutal heatwave hits the arena! All tributes lose **2 Constitution** due to exhaustion!"
+
+        # Save updated player stats
+        await self.cog.config.guild(self.guild).players.set(players)
+
+        # Announce event
+        await interaction.channel.send(event_message)
+        await interaction.response.defer()
+
+
+class SponsorRandomTributeButton(Button):
+    """Button to sponsor a random tribute with an item."""
+    def __init__(self, cog, guild):
+        super().__init__(label="Sponsor a Random Tribute", style=discord.ButtonStyle.success)
+        self.cog = cog
+        self.guild = guild
+
+    async def callback(self, interaction: Interaction):
+        config = await self.cog.config.guild(self.guild).all()
+        players = config["players"]
+        alive_players = [p for p in players.values() if p["alive"]]
+
+        if not alive_players:
+            await interaction.response.send_message("No tributes are alive to sponsor!", ephemeral=True)
+            return
+        
+        # Select a random tribute
+        tribute = random.choice(alive_players)
+        stat = random.choice(["Def", "Str", "Con", "Wis"])
+        boost = random.randint(1, 5)
+        tribute["stats"][stat] += boost
+        
+        await self.cog.config.guild(self.guild).players.set(players)
+        await interaction.channel.send(f"🎁 **Someone** sponsored **{tribute['name']}** with a **+{boost} boost to {stat}**!")
+        await interaction.response.defer()
+
+class MandatoryCombatButton(Button):
+    """Forces all tributes into combat next turn."""
+    def __init__(self, cog, guild):
+        super().__init__(label="Mandatory Combat", style=discord.ButtonStyle.danger)
+        self.cog = cog
+        self.guild = guild
+
+    async def callback(self, interaction: Interaction):
+        config = await self.cog.config.guild(self.guild).all()
+        players = config["players"]
+
+        # Force all alive tributes to select "Hunt" for the next turn
+        for player in players.values():
+            if player["alive"]:
+                player["action"] = "Hunt"
+
+        await self.cog.config.guild(self.guild).players.set(players)
+
+        await interaction.channel.send("⚔️ **Mandatory Combat!** All tributes have been set to hunt tomorrow!")
+        await interaction.response.defer()
+
+
+class MutantBeastAttackButton(Button):
+    """Triggers a random mutant beast attack affecting tributes."""
+    def __init__(self, cog, guild):
+        super().__init__(label="Mutant Beast Attack", style=discord.ButtonStyle.danger)
+        self.cog = cog
+        self.guild = guild
+
+    async def callback(self, interaction: Interaction):
+        config = await self.cog.config.guild(self.guild).all()
+        players = config["players"]
+        alive_players = [p for p in players.values() if p["alive"]]
+
+        if not alive_players:
+            await interaction.response.send_message("No tributes are alive to attack!", ephemeral=True)
+            return
+
+        # Select a random tribute to be attacked
+        victim = random.choice(alive_players)
+        max = min(victim["stats"]["HP"] - 1, 15)
+        damage = random.randint(1, max)
+        victim["stats"]["HP"] -= damage
+
+        await self.cog.config.guild(self.guild).players.set(players)
+
+        await interaction.channel.send(f"🐺 A **mutant beast** ambushes **{victim['name']}**, dealing **{damage} damage**!")
+        await interaction.response.defer()
+
+
+# Command to send the GameMaster Dashboard
+@hunger.command()
+@is_gamemaster()
+async def gamemaster_dashboard(self, ctx, channel: discord.TextChannel):
+    """Create a GameMaster control panel in the specified channel."""
+    await channel.send("🕹️ **GameMaster Dashboard**: Use these buttons to trigger special events!", view=GameMasterView(self, ctx.guild))
+
+
 class RestView(View):
     def __init__(self, cog, player_id, items, guild):
         super().__init__(timeout=30)  # Timeout after 30s if no selection
