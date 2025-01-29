@@ -421,7 +421,7 @@ class SponsorButton(Button):
             # Create options for tributes using nicknames or usernames
             tribute_options = []
             for player_id, player in players.items():
-                if player["alive"] and player_id != user_id::
+                if player["alive"] and player_id != user_id:
                     if player_id.isdigit():  # Check if it's a real user
                         member = guild.get_member(int(player_id))
                         if member:
