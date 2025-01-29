@@ -146,7 +146,7 @@ class MutantBeastAttackButton(Button):
                 break
             victim = random.choice(alive_players)
             max = min(victim["stats"]["HP"] - 1, 15)
-            if not max < 1:
+            if not max < 2:
                 damage = random.randint(1, max)
                 victim["stats"]["HP"] -= damage
                 break
