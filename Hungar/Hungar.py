@@ -1262,12 +1262,15 @@ class Hungar(commands.Cog):
         participant_announcement = "\n".join(participant_list)
         await ctx.send(f"The Hunger Games have begun with the following participants (sorted by District):\n{participant_announcement}")
 
-        #Send GameMaster Dashboard if a private channel is provided**
+        # 📌 Send GameMaster Dashboard **if a private channel is provided**
         if dashboard_channel:
-            await dashboard_channel.send(
+            dashboard_message = await dashboard_channel.send(
                 "🕹️ **GameMaster Dashboard**: Use these buttons to trigger special events!",
-                view=GameMasterView(self, ctx.guild, ctx.channel  # Store the original channel where the command was called)
-            ))
+                view=GameMasterView(self, ctx.guild, public_channel)
+            )
+            await self.config.guild(guild).set_raw("dashboard_message_id", value=dashboard_message.id)
+            await self.config.guild(guild).set_raw("dashboard_channel_id", value=dashboard_channel.id)
+
             
         asyncio.create_task(self.run_game(ctx))
 
@@ -1394,6 +1397,26 @@ class Hungar(commands.Cog):
     
         alive_players = [player for player in players.values() if player["alive"]]
         WLboard = config.get("WLboard",{})
+
+
+            # 🛑 **Disable GameMaster Dashboard if it exists**
+        dashboard_channel_id = config.get("dashboard_channel_id")
+        dashboard_message_id = config.get("dashboard_message_id")
+    
+        if dashboard_channel_id and dashboard_message_id:
+            dashboard_channel = guild.get_channel(dashboard_channel_id)
+            if dashboard_channel:
+                try:
+                    message = await dashboard_channel.fetch_message(dashboard_message_id)
+                    if message:
+                        # Create a **disabled version** of the GameMaster dashboard
+                        disabled_view = GameMasterView(self, guild, None)
+                        for item in disabled_view.children:
+                            item.disabled = True  # Disable all buttons
+                        
+                        await message.edit(content="🔒 **Game Over!** The GameMaster dashboard is now locked.", view=disabled_view)
+                except discord.NotFound:
+                    print("Dashboard message not found, skipping lockout.")
 
         if alive_players:
             winner = alive_players[0]
@@ -1942,23 +1965,7 @@ class Hungar(commands.Cog):
     @is_gamemaster()
     async def stopgame(self, ctx):
         """Stop the Hunger Games early (Admin only). Reset everything."""
-        guild = ctx.guild
-        WLboard = await self.config.guild(guild).WLboard()
-        await self.config.guild(guild).clear()
-        await self.config.guild(guild).set({
-            "districts": {},
-            "players": {},
-            "game_active": False,
-            "day_duration": 120,
-            "day_start": None,
-            "day_counter": 0,
-            "WLboard": WLboard,  # Preserve leaderboard data
-        })
-        
-        all_users = await self.config.all_users()
-        for user_id, user_data in all_users.items():
-            await self.config.user_from_id(user_id).bets.set({})
-        
+        self.endGame(ctx)
         await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset.")
 
     @hunger.command()
