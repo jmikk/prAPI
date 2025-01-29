@@ -1138,7 +1138,8 @@ class Hungar(commands.Cog):
         all_users = await self.config.all_users()  # Fetch all users
     
         alive_players = [player for player in players.values() if player["alive"]]
-    
+        WLboard = config.get("WLboard",{})
+
         if alive_players:
             winner = alive_players[0]
             winner_id = next((pid for pid, pdata in players.items() if pdata == winner), None)
