@@ -185,16 +185,24 @@ class MutantBeastAttackButton(Button):
 
         # Select a random tribute to be attacked
         tries = 0
-        while True:
-            if tries <= len(alive_players):
-                break
-            victim = random.choice(alive_players)
-            max = min(victim["stats"]["HP"] - 1, 15)
-            if not max < 2:
-                damage = random.randint(1, max)
+        victim = None
+        
+        while tries < len(alive_players):
+            potential_victim = random.choice(alive_players)
+            max_damage = min(potential_victim["stats"]["HP"] - 1, 15)
+
+            if max_damage >= 2:
+                victim = potential_victim
+                damage = random.randint(1, max_damage)
                 victim["stats"]["HP"] -= damage
-                break
-            tries = tries + 1
+                break  # Stop searching once a valid target is found
+
+            tries += 1
+
+        # If no valid tribute was found, exit gracefully
+        if not victim:
+            await interaction.response.send_message("No valid tributes had enough HP for a beast attack.", ephemeral=True)
+            return
     
         await self.cog.config.guild(self.guild).players.set(players)
     
