@@ -2166,7 +2166,7 @@ class Hungar(commands.Cog):
         await ctx.send("All signups have been cleared. The player list has been reset.")
 
     # Command to send the GameMaster Dashboard
-    @Hungar.command()
+    @hunger.command()
     @is_gamemaster()
     async def gamemaster_dashboard(self, ctx, channel: discord.TextChannel):
         """Create a GameMaster control panel in the specified channel."""
