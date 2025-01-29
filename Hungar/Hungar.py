@@ -1243,8 +1243,22 @@ class Hungar(commands.Cog):
                         value=f"**{i}.** {player['name']}: {kills} kills\nKilled: {', '.join(player['kill_list'])}",
                         inline=False)
             await ctx.send(embed=kill_embed)
-
-
+    
+        # **Calculate total bets placed on the winner**
+        total_bet_on_winner = 0
+        for user_id, user_data in all_users.items():
+            bets = user_data.get("bets", {})
+            if winner_id in bets:
+                total_bet_on_winner += bets[winner_id]["amount"]
+    
+        # **Award 50% of total bets to the winner**
+        winner_bonus = int(total_bet_on_winner * 0.5)  # 50% of total bets
+        if winner_bonus > 0 and not winner.get("is_npc", False):  # Only give to real players
+            winner_gold = await self.config.user_from_id(int(winner_id)).gold()
+            winner_gold += winner_bonus
+            await self.config.user_from_id(int(winner_id)).gold.set(winner_gold)
+            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!")
+        
             # Distribute winnings
         for user_id, user_data in all_users.items():
             bets = user_data.get("bets", {})
