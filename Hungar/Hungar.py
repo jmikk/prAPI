@@ -1142,7 +1142,7 @@ class Hungar(commands.Cog):
             winner = alive_players[0]
             winner_id = next((pid for pid, pdata in players.items() if pdata == winner), None)
             if not alive_players[0].get("is_npc", False):
-                WLboard = config.get("WLboard")
+                WLboard = config.get("WLboard",{})
                 winner_data = WLboard.get(winner_id, {
                 "name": winner["name"],
                 "wins": 0,
@@ -1233,6 +1233,7 @@ class Hungar(commands.Cog):
             "day_duration": 120,
             "day_start": None,
             "day_counter": 0,
+            "WLboard": WLboard,  # Preserve leaderboard data
         })
         
         all_users = await self.config.all_users()
@@ -1664,6 +1665,7 @@ class Hungar(commands.Cog):
     async def stopgame(self, ctx):
         """Stop the Hunger Games early (Admin only). Reset everything."""
         guild = ctx.guild
+        WLboard = await self.config.guild(guild).WLboard()
         await self.config.guild(guild).clear()
         await self.config.guild(guild).set({
             "districts": {},
@@ -1672,6 +1674,7 @@ class Hungar(commands.Cog):
             "day_duration": 120,
             "day_start": None,
             "day_counter": 0,
+            "WLboard": WLboard,  # Preserve leaderboard data
         })
         
         all_users = await self.config.all_users()
