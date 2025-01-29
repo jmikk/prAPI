@@ -1146,7 +1146,7 @@ class Hungar(commands.Cog):
             winner_id = next((pid for pid, pdata in players.items() if pdata == winner), None)
 
             if not alive_players[0].get("is_npc", False):
-                winner_leaderboards = config.get("winner_leaderboards", {})
+                winner_leaderboards = config.get("winner_leaderboards")
                 winner_data = winner_leaderboards.get(winner_id, {
                 "name": winner["name"],
                 "wins": 0,
