@@ -1399,7 +1399,7 @@ class Hungar(commands.Cog):
         WLboard = config.get("WLboard",{})
 
 
-            # 🛑 **Disable GameMaster Dashboard if it exists**
+        # 🛑 **Disable GameMaster Dashboard if it exists**
         dashboard_channel_id = config.get("dashboard_channel_id")
         dashboard_message_id = config.get("dashboard_message_id")
     
@@ -1965,7 +1965,7 @@ class Hungar(commands.Cog):
     @is_gamemaster()
     async def stopgame(self, ctx):
         """Stop the Hunger Games early (Admin only). Reset everything."""
-        self.endGame(ctx)
+        await self.endGame(ctx)
         await ctx.send("The Hunger Games have been stopped early by the admin. All settings and players have been reset.")
 
     @hunger.command()
