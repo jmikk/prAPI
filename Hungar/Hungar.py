@@ -53,6 +53,7 @@ class ViewAllTributesButton(Button):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
+
 class GameMasterView(View):
     """View for GameMasters to trigger events."""
     def __init__(self, cog, guild, public_channel):
@@ -72,6 +73,47 @@ class GameMasterView(View):
         self.add_item(MutantBeastAttackButton(cog, guild,public_channel))
         
         self.add_item(ViewAllTributesButton(cog, guild))
+
+        self.add_item(GMHelpButton())
+
+        self.add_item(ForceNextDayButton(cog, guild, public_channel))
+
+class ForceNextDayButton(Button):
+    """Forces the game to progress to the next day."""
+    def __init__(self, cog, guild, public_channel):
+        super().__init__(label="Force Next Day", style=discord.ButtonStyle.danger)
+        self.cog = cog
+        self.guild = guild
+        self.public_channel = public_channel
+
+    async def callback(self, interaction: Interaction):
+        """Triggers the next day by calling the `nextday` command."""
+        await self.cog.nextday(interaction)
+        await interaction.response.send_message("⏩ **Next day has been forced!**", ephemeral=True)
+
+class GMHelpButton(Button):
+    """Displays a help message explaining how GameMasters can use their tools."""
+    def __init__(self):
+        super().__init__(label="How to GM", style=discord.ButtonStyle.secondary)
+
+    async def callback(self, interaction: Interaction):
+        """Sends an embed explaining how GameMasters can use the dashboard."""
+        embed = discord.Embed(
+            title="🕹️ **How to be a GameMaster** 🕹️",
+            description=(
+                "**As a GameMaster, you have powerful tools at your disposal. Here’s how to use them effectively:**\n\n"
+                "- 🎭 **Trigger Events**: Use the buttons to launch **arena-wide effects** like fog or heatwaves.\n"
+                "- 🎁 **Sponsor Tributes**: Provide a random tribute with a stat boost to shake things up!\n"
+                "- ⚔️ **Mandatory Combat**: Force all tributes to **fight tomorrow**.\n"
+                "- 🐺 **Mutant Beast Attack**: Send a dangerous **mutant beast** after a random tribute.\n"
+                "- 🏹 **View Tributes**: Get an overview of all tributes’ stats.\n"
+                "- 🔄 **Force Next Day**: Instantly **progress the game** to the next day (use wisely!).\n\n"
+                "**GameMasters should balance fun and fairness! Keep the game engaging but not impossible.**"
+            ),
+            color=discord.Color.blue()
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 
 class GameMasterEventButton(Button):
