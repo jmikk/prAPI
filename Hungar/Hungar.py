@@ -152,7 +152,7 @@ class MutantBeastAttackButton(Button):
 
 
 # Command to send the GameMaster Dashboard
-@hungar.command()
+@Hungar.command()
 @is_gamemaster()
 async def gamemaster_dashboard(self, ctx, channel: discord.TextChannel):
     """Create a GameMaster control panel in the specified channel."""
