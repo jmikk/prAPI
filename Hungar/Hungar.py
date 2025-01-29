@@ -1356,26 +1356,27 @@ class Hungar(commands.Cog):
                 hunters.append(player_id)
                 #event_outcomes.append(f"{player_data['name']} went hunting!")
             elif action == "Rest":
-                   resters.append(player_id)
+                resters.append(player_id)
 
-                    if player_data["stats"]["HP"] < player_data["stats"]["Con"] * 3:
-                        damage = random.randint(1, int(player_data["stats"]["Con"] / 2))
-                        player_data["stats"]["HP"] += damage
-                        event_outcomes.append(f"{player_data['name']} nursed their wounds and healed for {damage} points of damage.")
+                if player_data["stats"]["HP"] < player_data["stats"]["Con"]:
+                    damage = random.randint(1, int(player_data["stats"]["Con"] / 2))
+                    player_data["stats"]["HP"] += damage
+                    event_outcomes.append(f"{player_data['name']} nursed their wounds and healed for {damage} points of damage.")
                 
-                    if not player_data["items"]:  # No items to use, take damage instead
-                        damage = random.randint(1, 5)
-                        player_data["stats"]["HP"] -= damage
-                        event_outcomes.append(f"{player_data['name']} has hunger pains and takes {damage} points of damage.")
+                if not player_data["items"]:  # No items to use, take damage instead
+                    damage = random.randint(1, 5)
+                    player_data["stats"]["HP"] -= damage
+                    event_outcomes.append(f"{player_data['name']} has hunger pains and takes {damage} points of damage.")
                 
-                        if player_data["stats"]["HP"] <= 0:
-                            player_data["alive"] = False
-                            event_outcomes.append(f"{player_data['name']} starved to death.")
-                    else:
-                        item = player_data["items"].pop()
-                        stat, boost = item
-                        player_data["stats"][stat] += boost
-                        event_outcomes.append(f"{player_data['name']} rested and used a {stat} boost item (+{boost}).")
+                    if player_data["stats"]["HP"] <= 0:
+                        player_data["alive"] = False
+                        event_outcomes.append(f"{player_data['name']} starved to death.")
+                    continue
+                else:
+                    item = player_data["items"].pop()
+                    stat, boost = item
+                    player_data["stats"][stat] += boost
+                    event_outcomes.append(f"{player_data['name']} rested and used a {stat} boost item (+{boost}).")
                     
             elif action == "Loot":
                 looters.append(player_id)
