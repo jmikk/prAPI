@@ -67,7 +67,7 @@ class GameMasterView(View):
         self.add_item(GameMasterEventButton(cog, guild, "Heatwave Strikes",public_channel))
         
         # Add buttons for targeted sponsorships
-        self.add_item(SponsorRandomTributeButton(cog, guild,public_channel))
+        self.add_item(SponsorRandomTributeButton(cog, guild , public_channel))
         self.add_item(MandatoryCombatButton(cog, guild,public_channel))
         self.add_item(MutantBeastAttackButton(cog, guild,public_channel))
         
@@ -122,7 +122,7 @@ class GameMasterEventButton(Button):
 
 class SponsorRandomTributeButton(Button):
     """Button to sponsor a random tribute with an item."""
-    def __init__(self, cog, guild):
+    def __init__(self, cog, guild,public_channel):
         super().__init__(label="Sponsor a Random Tribute", style=discord.ButtonStyle.success)
         self.cog = cog
         self.guild = guild
@@ -149,7 +149,7 @@ class SponsorRandomTributeButton(Button):
 
 class MandatoryCombatButton(Button):
     """Forces all tributes into combat next turn."""
-    def __init__(self, cog, guild):
+    def __init__(self, cog, guild,public_channel):
         super().__init__(label="Mandatory Combat", style=discord.ButtonStyle.danger)
         self.cog = cog
         self.guild = guild
