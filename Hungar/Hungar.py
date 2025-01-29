@@ -1153,6 +1153,7 @@ class Hungar(commands.Cog):
                 })
                 winner_data["wins"] += 1
                 winner_leaderboards[winner_id] = winner_data
+                await ctx.send(winner_id)
                 await ctx.send(winner_data)
                 await self.config.guild(guild).winner_leaderboards.set(winner_leaderboards)
             await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
