@@ -1266,7 +1266,7 @@ class Hungar(commands.Cog):
         if dashboard_channel:
             dashboard_message = await dashboard_channel.send(
                 "🕹️ **GameMaster Dashboard**: Use these buttons to trigger special events!",
-                view=GameMasterView(self, ctx.guild, dashboard_channel)
+                view=GameMasterView(self, ctx.guild, ctx.channel)
             )
             await self.config.guild(guild).set_raw("dashboard_message_id", value=dashboard_message.id)
             await self.config.guild(guild).set_raw("dashboard_channel_id", value=dashboard_channel.id)
