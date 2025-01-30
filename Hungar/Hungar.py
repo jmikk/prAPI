@@ -1195,7 +1195,7 @@ class Hungar(commands.Cog):
     async def startgame(self, ctx, npcs: int = 0, dashboard_channel: discord.TextChannel = None):
         """Start the Hunger Games (Admin only). Optionally, add NPCs."""
 
-        file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
+        file_name = f"Hunger_games.txt"
         async with aiofiles.open(file_name, mode='w') as file:
             pass
         
@@ -1477,12 +1477,9 @@ class Hungar(commands.Cog):
                 WLboard[winner_id] = winner_data
                 await self.config.guild(guild).WLboard.set(WLboard)
             await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
-            #file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
-            #await ctx.send(file=discord.File(file_name))
         else:
             await ctx.send("The game is over! No one survived.")
-            #file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
-            #await ctx.send(file=discord.File(file_name))
+
     
         # Send elimination leaderboard
         if leaderboard:
@@ -1548,8 +1545,9 @@ class Hungar(commands.Cog):
             winner_gold = await self.config.user_from_id(int(winner_id)).gold()
             winner_gold += winner_bonus
             await self.config.user_from_id(int(winner_id)).gold.set(winner_gold)
+            
             await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!")
-        
+
             # Distribute winnings
         for user_id, user_data in all_users.items():
             bets = user_data.get("bets", {})
@@ -1592,6 +1590,9 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).players.set({})
         await self.config.guild(guild).game_active.set(False)
         await self.config.guild(guild).elimination_leaderboard.set([])  # Reset leaderboard
+        file_name = f"Hunger_Games.txt"
+        await file.write(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!")
+        await ctx.send(file=discord.File(file_name))
 
 
     async def process_day(self, ctx):
@@ -1959,7 +1960,7 @@ class Hungar(commands.Cog):
                 others.append("A cannon sounds signaling another set of dead tributes \n\n")
                 event_outcomes = others + eliminated
         #Prepare the events log file
-            file_name = f"day_events_{datetime.now().strftime('%Y-%m-%d')}.txt"
+            file_name = f"Hunger_Games.txt"
             async with aiofiles.open(file_name, mode='a') as file:
                 # Pings users and bolds NPCs
                 for each in event_outcomes:
