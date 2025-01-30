@@ -46,9 +46,6 @@ class ViewAllTributesButton(Button):
                     f"**💪 Con:** {player['stats']['Con']}\n"
                     f"**🧠 Wis:** {player['stats']['Wis']}\n"
                     f"**❤️ HP:** {player['stats']['HP']}"
-                    f"**
-                ),
-                inline=False
             )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
