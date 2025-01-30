@@ -46,6 +46,7 @@ class ViewAllTributesButton(Button):
                     f"**💪 Con:** {player['stats']['Con']}\n"
                     f"**🧠 Wis:** {player['stats']['Wis']}\n"
                     f"**❤️ HP:** {player['stats']['HP']}"
+                    f"**
                 ),
                 inline=False
             )
@@ -886,38 +887,42 @@ class ViewTributesButton(Button):
 
 
 class ViewStatsButton(Button):
+    """Button to display the user's tribute stats in a detailed, formatted embed."""
     def __init__(self, cog):
-        super().__init__(label="View Stats", style=discord.ButtonStyle.success)
+        super().__init__(label="View Stats", style=discord.ButtonStyle.secondary)
         self.cog = cog
 
     async def callback(self, interaction: Interaction):
+        """Shows the player's stats in a clean and formatted embed."""
         user_id = str(interaction.user.id)
         guild = interaction.guild
         players = await self.cog.config.guild(guild).players()
 
-        # Check if the user is in the game
+        # Check if the user is a tribute
         if user_id not in players:
             await interaction.response.send_message(
                 "You are not part of the Hunger Games.", ephemeral=True
             )
             return
 
-        # Fetch player data
         player = players[user_id]
+        status = "🟢 **Alive**" if player["alive"] else "🔴 **Eliminated**"
+
+        # 🎨 Create a styled embed
         embed = discord.Embed(
-            title=f"{interaction.user.display_name}'s Stats",
-            color=discord.Color.green()
+            title="🏹 **Your Tribute Stats** 🏹",
+            description=f"{status}",
+            color=discord.Color.gold()
         )
-        embed.add_field(name="Name", value=player["name"], inline=False)
-        embed.add_field(name="District", value=player["district"], inline=False)
-        embed.add_field(name="Def", value=player["stats"]["Def"], inline=True)
-        embed.add_field(name="Str", value=player["stats"]["Str"], inline=True)
-        embed.add_field(name="Con", value=player["stats"]["Con"], inline=True)
-        embed.add_field(name="Wis", value=player["stats"]["Wis"], inline=True)
-        embed.add_field(name="HP", value=player["stats"]["HP"], inline=True)
-        embed.add_field(name="Alive", value="Yes" if player["alive"] else "No", inline=False)
+        embed.add_field(name="🏛 **District**", value=f"{player['district']}", inline=False)
+        embed.add_field(name="🛡️ **Defense**", value=f"{player['stats']['Def']}", inline=True)
+        embed.add_field(name="⚔️ **Strength**", value=f"{player['stats']['Str']}", inline=True)
+        embed.add_field(name="💪 **Constitution**", value=f"{player['stats']['Con']}", inline=True)
+        embed.add_field(name="🧠 **Wisdom**", value=f"{player['stats']['Wis']}", inline=True)
+        embed.add_field(name="❤️ **HP**", value=f"{player['stats']['HP']}", inline=True)
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 
 
