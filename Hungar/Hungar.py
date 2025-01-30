@@ -1194,7 +1194,7 @@ class Hungar(commands.Cog):
     @is_gamemaster()
     async def startgame(self, ctx, npcs: int = 0, dashboard_channel: discord.TextChannel = None):
         """Start the Hunger Games (Admin only). Optionally, add NPCs."""
-            
+        file_name = "Hunger_Games.txt"
         async with aiofiles.open(file_name, mode='w') as file:
             pass
         
