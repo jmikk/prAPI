@@ -1594,7 +1594,22 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).elimination_leaderboard.set([])  # Reset leaderboard
         file = f"Hunger_Games.txt"
         async with aiofiles.open(file, mode="a") as file:  # "a" for append mode
-            await file.write(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!\n")        
+            await file.write(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!\n")  
+
+        file_name = "Hunger_Games.txt"
+        async with aiofiles.open(file_name, mode='r') as file:
+            file_content = await file.read()
+    
+        member_dict = {str(member.id): (member.nick or member.name) for member in guild.members}
+        
+        for user_id, nickname in member_dict.items():
+            mention = f"<@{user_id}>"
+            if mention in file_content:
+                file_content = file_content.replace(mention, nickname)
+    
+        async with aiofiles.open(file_name, mode='w') as file:
+            await file.write(file_content)
+        
         await ctx.send(file=discord.File("Hunger_Games.txt"))
         
 
