@@ -1194,11 +1194,7 @@ class Hungar(commands.Cog):
     @is_gamemaster()
     async def startgame(self, ctx, npcs: int = 0, dashboard_channel: discord.TextChannel = None):
         """Start the Hunger Games (Admin only). Optionally, add NPCs."""
-
-        file_name = f"Hunger_games.txt"
-
-        if os.path.exists(file_name):
-            os.remove(file_name)
+            
         async with aiofiles.open(file_name, mode='w') as file:
             pass
         
@@ -1611,6 +1607,10 @@ class Hungar(commands.Cog):
             await file.write(file_content)
         
         await ctx.send(file=discord.File("Hunger_Games.txt"))
+
+
+        if os.path.exists("Hunger_Games.txt"):
+            os.remove("Hunger_Games.txt")
         
 
     async def process_day(self, ctx):
