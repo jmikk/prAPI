@@ -1196,6 +1196,9 @@ class Hungar(commands.Cog):
         """Start the Hunger Games (Admin only). Optionally, add NPCs."""
 
         file_name = f"Hunger_games.txt"
+
+        if os.path.exists(file_name):
+            os.remove(file_name)
         async with aiofiles.open(file_name, mode='w') as file:
             pass
         
@@ -1545,7 +1548,6 @@ class Hungar(commands.Cog):
             winner_gold = await self.config.user_from_id(int(winner_id)).gold()
             winner_gold += winner_bonus
             await self.config.user_from_id(int(winner_id)).gold.set(winner_gold)
-            
             await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!")
 
             # Distribute winnings
