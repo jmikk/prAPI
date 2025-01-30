@@ -1591,7 +1591,7 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).game_active.set(False)
         await self.config.guild(guild).elimination_leaderboard.set([])  # Reset leaderboard
         file = f"Hunger_Games.txt"
-        async with aiofiles.open(file_name, mode="a") as file:  # "a" for append mode
+        async with aiofiles.open(file, mode="a") as file:  # "a" for append mode
             await file.write(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!\n")        
         await ctx.send(file=discord.File(file_name))
         
