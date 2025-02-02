@@ -508,8 +508,7 @@ class SponsorView(View):
     async def on_tribute_select(self, interaction: Interaction):
         try:
             self.selected_tribute = self.tribute_select.values[0]
-            await self.update_confirm_button(Interaction)
-            #await interaction.response.send_message(self.selected_tribute)
+            await self.update_confirm_button(interaction)
             await interaction.response.defer()
 
         except Exception as e:
@@ -531,17 +530,16 @@ class SponsorView(View):
 
     async def on_stat_select(self, interaction: Interaction):
         self.selected_stat = self.stat_select.values[0]
-        await self.update_confirm_button(Interaction)
-        #await interaction.response.send_message(self.selected_stat)
+        await self.update_confirm_button(interaction)
         await interaction.response.defer()
     
     async def on_boost_select(self, interaction: Interaction):
         self.selected_boost = int(self.boost_select.values[0])
-        #await interaction.response.send_message(self.selected_boost)
+        await self.update_confirm_button(interaction)
         await interaction.response.defer()
 
 
-    async def update_confirm_button(self,interaction):
+    async def update_confirm_button(self, interaction):
         # Enable the confirm button if all selections are made
         ready = not (self.selected_tribute and self.selected_stat and self.selected_boost)
         if not ready:
