@@ -507,9 +507,10 @@ class SponsorView(View):
 
     async def on_tribute_select(self, interaction: Interaction):
         try:
-            self.selected_tribute = self.tribute_select.values[0]  # Store the selected tribute
-            self.tribute_select.options = self.get_tribute_options()  # Update options to retain selection
-            await interaction.response.edit_message(view=self)
+            self.selected_tribute = self.tribute_select.values[0]
+            self.update_confirm_button()
+            await interaction.response.defer()
+
         except Exception as e:
             await interaction.response.send_message(
                 f"An error occurred in tribute selection: {e}", ephemeral=True
@@ -528,24 +529,19 @@ class SponsorView(View):
         ]
 
     async def on_stat_select(self, interaction: Interaction):
-        self.selected_stat = self.stat_select.values[0]  # Store the selected stat
-        self.stat_select.options = self.get_stat_options()  # Update options to retain selection
+        self.selected_stat = self.stat_select.values[0]
         self.update_confirm_button()
-        await interaction.response.edit_message(view=self)
+        await interaction.response.defer()
     
     async def on_boost_select(self, interaction: Interaction):
-        self.selected_boost = int(self.boost_select.values[0])  # Store the selected boost
-        self.boost_select.options = self.get_boost_options()  # Update options to retain selection
+        self.selected_boost = int(self.boost_select.values[0])
         self.update_confirm_button()
-        await interaction.response.edit_message(view=self)
+        await interaction.response.defer()
 
 
     def update_confirm_button(self):
         # Enable the confirm button if all selections are made
-        if self.selected_tribute and self.selected_stat and self.selected_boost:
-            self.confirm_button.disabled = False
-        else:
-            self.confirm_button.disabled = True
+        self.confirm_button.disabled = not (self.selected_tribute and self.selected_stat and self.selected_boost)
 
     async def confirm_sponsorship(self, interaction: Interaction):
         try:
