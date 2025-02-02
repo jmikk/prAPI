@@ -541,7 +541,7 @@ class SponsorView(View):
         await interaction.response.defer()
 
 
-    async def update_confirm_button(self):
+    async def update_confirm_button(self,interaction):
         # Enable the confirm button if all selections are made
         ready = not (self.selected_tribute and self.selected_stat and self.selected_boost)
         if not ready:
