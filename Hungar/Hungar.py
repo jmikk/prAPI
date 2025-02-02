@@ -537,7 +537,7 @@ class SponsorView(View):
     
     async def on_boost_select(self, interaction: Interaction):
         self.selected_boost = int(self.boost_select.values[0])
-       await self.update_confirm_button(Interaction)
+        await self.update_confirm_button(Interaction)
         #await interaction.response.send_message(self.selected_boost)
         await interaction.response.defer()
 
