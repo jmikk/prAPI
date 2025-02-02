@@ -509,6 +509,7 @@ class SponsorView(View):
         try:
             self.selected_tribute = self.tribute_select.values[0]
             await self.update_confirm_button(interaction)
+            await interaction.response.defer()  # Prevents interaction expiration
 
         except Exception as e:
             await interaction.response.send_message(
@@ -530,10 +531,12 @@ class SponsorView(View):
     async def on_stat_select(self, interaction: Interaction):
         self.selected_stat = self.stat_select.values[0]
         await self.update_confirm_button(interaction)
+        await interaction.response.defer()  # Prevents interaction expiration
     
     async def on_boost_select(self, interaction: Interaction):
         self.selected_boost = int(self.boost_select.values[0])
         await self.update_confirm_button(interaction)
+        await interaction.response.defer()  # Prevents interaction expiration
 
 
     async def update_confirm_button(self, interaction):
@@ -541,7 +544,12 @@ class SponsorView(View):
         ready = not (self.selected_tribute and self.selected_stat and self.selected_boost)
         if not ready:
             self.confirm_button.disabled = False
-            await interaction.response.edit_message(view=self)
+            if interaction.response.is_done():
+                # If the interaction was already deferred, edit the message directly
+                await interaction.message.edit(view=self)
+            else:
+                # Otherwise, edit the interaction response
+                await interaction.response.edit_message(view=self)
         
     async def confirm_sponsorship(self, interaction: Interaction):
         try:
