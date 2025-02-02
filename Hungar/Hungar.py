@@ -509,7 +509,9 @@ class SponsorView(View):
         try:
             self.selected_tribute = self.tribute_select.values[0]
             self.update_confirm_button()
-            await interaction.response.defer()
+            await interaction.response.send_message(self.selected_tribute)
+
+            #await interaction.response.defer()
 
         except Exception as e:
             await interaction.response.send_message(
@@ -531,12 +533,14 @@ class SponsorView(View):
     async def on_stat_select(self, interaction: Interaction):
         self.selected_stat = self.stat_select.values[0]
         self.update_confirm_button()
-        await interaction.response.defer()
+        await interaction.response.send_message(self.selected_stat)
+        #await interaction.response.defer()
     
     async def on_boost_select(self, interaction: Interaction):
         self.selected_boost = int(self.boost_select.values[0])
         self.update_confirm_button()
-        await interaction.response.defer()
+        await interaction.response.send_message(self.selected_boost)
+        #await interaction.response.defer()
 
 
     def update_confirm_button(self):
