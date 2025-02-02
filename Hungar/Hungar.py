@@ -545,7 +545,7 @@ class SponsorView(View):
         # Enable the confirm button if all selections are made
         ready = not (self.selected_tribute and self.selected_stat and self.selected_boost)
         if ready:
-            self.confirm_button.disabled = 
+            self.confirm_button.disabled = False
             await interaction.message.edit(view=self)
         
     async def confirm_sponsorship(self, interaction: Interaction):
