@@ -6,7 +6,7 @@ class NexusExchange(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=345678654456, force_registration=True)
+        self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.config.register_guild(
             master_currency_name="Wellspring Coins",
             exchange_rates={},  # {"currency_name": {"config_id": int, "rate": float}}
