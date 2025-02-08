@@ -116,48 +116,48 @@ class NexusExchange(commands.Cog):
             exchange_rates[currency_name]["rate"] = rate
         await ctx.send(f"Updated `{currency_name}` exchange rate to `{rate}`.")
 
-@commands.guild_only()
-@commands.command()
-async def debug_currency(self, ctx, currency_name: str):
-    """Dump everything related to a given currency's config."""
-    currency_name = currency_name.lower().replace(" ", "_")
+    @commands.guild_only()
+    @commands.command()
+    async def debug_currency(self, ctx, currency_name: str):
+        """Dump everything related to a given currency's config."""
+        currency_name = currency_name.lower().replace(" ", "_")
+        
+        # Check if the currency exists
+        exchange_rates = await self.config.guild(ctx.guild).exchange_rates()
+        if currency_name not in exchange_rates:
+            await ctx.send(f"Currency `{currency_name}` does not exist.")
+            return
     
-    # Check if the currency exists
-    exchange_rates = await self.config.guild(ctx.guild).exchange_rates()
-    if currency_name not in exchange_rates:
-        await ctx.send(f"Currency `{currency_name}` does not exist.")
-        return
-
-    # Retrieve the correct config_id
-    config_id = exchange_rates[currency_name]["config_id"]
-    mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
-
-    # Retrieve all stored data in this Config space
-    try:
-        all_data = await mini_currency_config.all()
-        all_user_data = await mini_currency_config.all_users()
-        all_member_data = await mini_currency_config.all_members()
-    except Exception as e:
-        await ctx.send(f"Error retrieving data: {e}")
-        return
-
-    # Format the data for debugging
-    embed = discord.Embed(title=f"Debugging `{currency_name}`", color=discord.Color.red())
-    embed.add_field(name="Stored Config ID", value=f"`{config_id}`", inline=False)
+        # Retrieve the correct config_id
+        config_id = exchange_rates[currency_name]["config_id"]
+        mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
     
-    if all_data:
-        embed.add_field(name="Global Config Data", value=f"```{str(all_data)[:1000]}```", inline=False)
-    else:
-        embed.add_field(name="Global Config Data", value="No data found.", inline=False)
-
-    if all_user_data:
-        embed.add_field(name="User-Level Data", value=f"```{str(all_user_data)[:1000]}```", inline=False)
-    else:
-        embed.add_field(name="User-Level Data", value="No user data found.", inline=False)
-
-    if all_member_data:
-        embed.add_field(name="Member-Level Data", value=f"```{str(all_member_data)[:1000]}```", inline=False)
-    else:
-        embed.add_field(name="Member-Level Data", value="No member data found.", inline=False)
-
-    await ctx.send(embed=embed)
+        # Retrieve all stored data in this Config space
+        try:
+            all_data = await mini_currency_config.all()
+            all_user_data = await mini_currency_config.all_users()
+            all_member_data = await mini_currency_config.all_members()
+        except Exception as e:
+            await ctx.send(f"Error retrieving data: {e}")
+            return
+    
+        # Format the data for debugging
+        embed = discord.Embed(title=f"Debugging `{currency_name}`", color=discord.Color.red())
+        embed.add_field(name="Stored Config ID", value=f"`{config_id}`", inline=False)
+        
+        if all_data:
+            embed.add_field(name="Global Config Data", value=f"```{str(all_data)[:1000]}```", inline=False)
+        else:
+            embed.add_field(name="Global Config Data", value="No data found.", inline=False)
+    
+        if all_user_data:
+            embed.add_field(name="User-Level Data", value=f"```{str(all_user_data)[:1000]}```", inline=False)
+        else:
+            embed.add_field(name="User-Level Data", value="No user data found.", inline=False)
+    
+        if all_member_data:
+            embed.add_field(name="Member-Level Data", value=f"```{str(all_member_data)[:1000]}```", inline=False)
+        else:
+            embed.add_field(name="Member-Level Data", value="No member data found.", inline=False)
+    
+        await ctx.send(embed=embed)
