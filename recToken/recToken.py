@@ -7,7 +7,7 @@ from redbot.core import Config, commands
 class recToken(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=23456789648)
+        self.config = Config.get_conf(None, identifier=23456789648)
         self.admin_messages = {}  # Store admin panel messages
     
         default_guild = {
