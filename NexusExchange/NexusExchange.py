@@ -148,4 +148,16 @@ class NexusExchange(commands.Cog):
         embed.add_field(name="Stored Member Keys", value=f"Total: {len(keys)}\nPreview: {keys_preview}", inline=False)
         
         await ctx.send(embed=embed)
+    
+    @commands.command()
+    async def debug_user_config(self, ctx):
+        user_data = await self.config.user(ctx.author).all()
+        member_data = await self.config.member(ctx.author).all()
+        
+        embed = discord.Embed(title=f"Debug {ctx.author.display_name}'s Data", color=discord.Color.blue())
+        embed.add_field(name="User Data", value=f"```{user_data}```", inline=False)
+        embed.add_field(name="Member Data", value=f"```{member_data}```", inline=False)
+        
+        await ctx.send(embed=embed)
+
 
