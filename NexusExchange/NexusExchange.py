@@ -11,7 +11,7 @@ class NexusExchange(commands.Cog):
             master_currency_name="Wellspring Coins",
             exchange_rates={},  # {"currency_name": {"config_id": int, "rate": float}}
         )
-        self.config.register_member(master_balance=0)
+        self.config.register_user(master_balance=0)
 
     @commands.guild_only()
     @commands.admin()
@@ -50,7 +50,7 @@ class NexusExchange(commands.Cog):
         config_id = exchange_rates[currency_name]["config_id"]
         rate = exchange_rates[currency_name]["rate"]
         mini_currency_config = Config.get_conf(None, identifier=config_id)
-        user_balance = await mini_currency_config.member(ctx.author).get_raw(currency_name, default=0)
+        user_balance = await mini_currency_config.user(ctx.author).get_raw(currency_name, default=0)
 
         if user_balance < amount:
             await ctx.send("You do not have enough of this currency.")
@@ -59,7 +59,7 @@ class NexusExchange(commands.Cog):
         new_wellspring_coins = int(amount * rate)
         
         # Deduct from mini-currency
-        await mini_currency_config.member(ctx.author).set_raw(currency_name, value=user_balance - amount)
+        await mini_currency_config.user(ctx.author).set_raw(currency_name, value=user_balance - amount)
         
         # Add to master currency
         master_balance = await self.config.user(ctx.author).master_balance()
@@ -84,7 +84,7 @@ class NexusExchange(commands.Cog):
 
             config_id = exchange_rates[currency_name]["config_id"]
             mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
-            user_balance = await mini_currency_config.member(ctx.author).get_raw(currency_name, default=0)
+            user_balance = await mini_currency_config.user(ctx.author).get_raw(currency_name, default=0)
 
             await ctx.send(f"You have `{user_balance}` `{currency_name}`.")
 
