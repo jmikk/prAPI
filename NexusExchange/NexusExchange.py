@@ -50,7 +50,7 @@ class NexusExchange(commands.Cog):
         config_id = exchange_rates[currency_name]["config_id"]
         rate = exchange_rates[currency_name]["rate"]
         
-        mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
+        mini_currency_config = Config.get_conf(self, identifier=config_id, force_registration=True)
         user_balance = await mini_currency_config.member(ctx.author).get_raw(currency_name, default=0)
 
         if user_balance < amount:
