@@ -62,8 +62,8 @@ class NexusExchange(commands.Cog):
         await mini_currency_config.member(ctx.author).set_raw(currency_name, value=user_balance - amount)
         
         # Add to master currency
-        master_balance = await self.config.member(ctx.author).master_balance()
-        await self.config.member(ctx.author).master_balance.set(master_balance + new_wellspring_coins)
+        master_balance = await self.config.user(ctx.author).master_balance()
+        await self.config.user(ctx.author).master_balance.set(master_balance + new_wellspring_coins)
         
         await ctx.send(f"Exchanged `{amount}` `{currency_name}` for `{new_wellspring_coins}` Wellspring Coins!")
 
@@ -72,7 +72,7 @@ class NexusExchange(commands.Cog):
     async def balance(self, ctx, currency_name: str = None):
         """Check your balance of Wellspring Coins or a specific mini-currency."""
         if currency_name is None:
-            balance = await self.config.member(ctx.author).master_balance()
+            balance = await self.config.user(ctx.author).master_balance()
             await ctx.send(f"You have `{balance}` Wellspring Coins.")
         else:
             currency_name = currency_name.lower().replace(" ","_")
