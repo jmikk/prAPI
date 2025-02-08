@@ -51,6 +51,11 @@ class NexusExchange(commands.Cog):
         
         mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
         user_balance = await mini_currency_config.member(ctx.author).get_raw(currency_name, default=0)
+        await ctx.send(user_balance)
+        await ctx.send(mini_currency_config)
+        await ctx.send(config_id)
+
+        
 
         if user_balance < amount:
             await ctx.send("You do not have enough of this currency.")
