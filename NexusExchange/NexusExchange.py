@@ -28,7 +28,6 @@ class NexusExchange(commands.Cog):
     @commands.command()
     async def remove_currency(self, ctx, currency_name: str):
         """Remove a mini-currency from the exchange list."""
-        currency_name = currency_name.lower().replace(" ","_")
         async with self.config.guild(ctx.guild).exchange_rates() as exchange_rates:
             if currency_name not in exchange_rates:
                 await ctx.send("This currency does not exist.")
