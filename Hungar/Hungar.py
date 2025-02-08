@@ -1694,7 +1694,7 @@ class Hungar(commands.Cog):
                 if not player_data["items"]:  # No items to use, take damage instead
                     damage = random.randint(1, 5)
                     player_data["stats"]["HP"] -= damage
-                    event_outcomes.append(f"{player_data['name']} has hunger pains and takes {damage} points of damage.")
+                    event_outcomes.append(f"{player_data['name']} has hunger pangs and takes {damage} points of damage.")
                 
                     if player_data["stats"]["HP"] <= 0:
                         player_data["alive"] = False
