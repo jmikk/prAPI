@@ -16,6 +16,30 @@ class NexusExchange(commands.Cog):
     @commands.guild_only()
     @commands.admin()
     @commands.command()
+    async def add_to_currency(self, ctx, user: discord.Member, currency_name: str, amount: int):
+        """Add a certain amount of a mini-currency to a user's balance."""
+        currency_name = currency_name.lower().replace(" ", "_")
+        exchange_rates = await self.config.guild(ctx.guild).exchange_rates()
+
+        if currency_name not in exchange_rates:
+            await ctx.send("This currency does not exist.")
+            return
+
+        config_id = exchange_rates[currency_name]["config_id"]
+        mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
+        
+        # Retrieve user's current balance
+        user_balance = await mini_currency_config.user(user).get_raw(currency_name, default=0)
+        new_balance = user_balance + amount
+
+        # Update balance
+        await mini_currency_config.user(user).set_raw(currency_name, value=new_balance)
+
+        await ctx.send(f"Added `{amount}` `{currency_name}` to {user.mention}. New balance: `{new_balance}`.")
+
+    @commands.guild_only()
+    @commands.admin()
+    @commands.command()
     async def add_currency(self, ctx, currency_name: str, config_id: int, rate: float):
         """Add a new mini-currency with its config ID and exchange rate."""
         currency_name = currency_name.lower().replace(" ","_")
