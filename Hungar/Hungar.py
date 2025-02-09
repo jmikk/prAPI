@@ -11,20 +11,19 @@ import aiofiles
 import traceback
 
 class CheckGoldButton(Button):
-    """Button to display the users current gold"""
+    """Button to display the user's current gold"""
+
     def __init__(self, cog):
-        super().__init__(label="Check gold", style=discord.ButtonStyle.primary)
+        super().__init__(label="Check gold", style=discord.ui.ButtonStyle.primary)
         self.cog = cog
 
-        
-    async def callback(self, interaction: Interaction):
+    async def callback(self, interaction: discord.Interaction):
         try:
-            user_id = str(interaction.user.id)
-            user_gold = await self.config.user(user_id).gold()
-    
-            await interaction.response.send_message(user_gold, ephemeral=True)
-        except exception as e:
-            await interaction.response.send_message(e, ephemeral=True)
+            user_gold = await self.cog.config.user(interaction.user).gold()
+            await interaction.response.send_message(f"You have {user_gold} gold.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+
         
 
 class ViewAllTributesButton(Button):
