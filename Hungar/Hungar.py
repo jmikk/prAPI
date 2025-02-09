@@ -14,7 +14,6 @@ from discord.utils import get
 
 
 
-
 class EqualizerButton(Button):
     """Button for the Gamemaster to balance the game by showering all tributes with 10 gifts."""
     
@@ -169,7 +168,7 @@ class GameMasterView(View):
 
         self.add_item(ForceNextDayButton(cog, guild, public_channel))
 
-        self.add_item(EqualizerButton(cog, guild, channel))
+        self.add_item(EqualizerButton(cog, guild, public_channel))
 
 class ForceNextDayButton(Button):
     """Forces the game to progress to the next day."""
