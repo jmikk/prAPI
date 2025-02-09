@@ -15,7 +15,7 @@ from discord.utils import get
 
 
 class EqualizerButton(Button):
-    """Button for the Gamemaster to balance the game by showering all tributes with 10 gifts."""
+    """Button for the Gamemaster to balance the game by showering all tributes with 10 gifts, favoring weaker players."""
     
     def __init__(self, cog, guild, channel):
         super().__init__(label="Equalizer", style=discord.ButtonStyle.primary)
@@ -24,7 +24,7 @@ class EqualizerButton(Button):
         self.channel = channel
 
     async def callback(self, interaction: Interaction):
-        """Triggers the equalizer event to distribute stat boosts across all players fairly."""
+        """Triggers the equalizer event to distribute stat boosts with weaker tributes receiving more."""
         try:
             config = await self.cog.config.guild(self.guild).all()
             players = config["players"]
@@ -33,45 +33,65 @@ class EqualizerButton(Button):
                 await interaction.response.send_message("No tributes to equalize!", ephemeral=True)
                 return
 
-            # Determine the lowest and highest total stats
-            total_stats = {p_id: sum(p["stats"].values()) for p_id, p in players.items() if p["alive"]}
-            if not total_stats:
+            # Get only alive players
+            alive_players = {p_id: p for p_id, p in players.items() if p["alive"]}
+            if not alive_players:
                 await interaction.response.send_message("No alive tributes to equalize!", ephemeral=True)
                 return
 
+            # Calculate total stats for each player
+            total_stats = {p_id: sum(p["stats"].values()) for p_id, p in alive_players.items()}
             min_stats = min(total_stats.values())
             max_stats = max(total_stats.values())
             stat_range = max(1, max_stats - min_stats)  # Prevent divide by zero
 
-            # Weighted distribution: Lower stats = Higher chance of getting bigger boosts
+            # Calculate boost weights (lower stat players get higher weight)
             weights = {
-                p_id: 1.5 - ((total - min_stats) / stat_range)
+                p_id: 1.0 + (1.5 - ((total - min_stats) / stat_range))  # Heavily favors low-stat players
                 for p_id, total in total_stats.items()
             }
 
-            # Apply 10 rounds of random stat boosts
+            # Normalize weights (to prevent extreme gaps)
+            total_weight = sum(weights.values())
+            weights = {p_id: w / total_weight for p_id, w in weights.items()}
+
+            # Distribute 10 boosts, favoring weaker players
             stat_choices = ["Def", "Str", "Con", "Wis", "HP"]
-            for _ in range(10):  # Shower of 10 gifts
+            boost_distribution = {p_id: 0 for p_id in alive_players.keys()}  # Track how much each tribute receives
+
+            for _ in range(10):  # 10 total boosts
                 selected_tribute_id = random.choices(list(weights.keys()), weights=list(weights.values()), k=1)[0]
                 selected_stat = random.choice(stat_choices)
-                boost_amount = random.randint(5, 15)  # Boost between 5-15
 
-                players[selected_tribute_id]["stats"][selected_stat] += boost_amount
+                # Scale boost size based on stats (weaker players get bigger boosts)
+                base_boost = random.randint(5, 10)  # Base range
+                scaled_boost = int(base_boost * (1 + (1 - weights[selected_tribute_id]) * 2))  # Adjust based on weighting
+                
+                # Apply boost
+                players[selected_tribute_id]["stats"][selected_stat] += scaled_boost
+                boost_distribution[selected_tribute_id] += scaled_boost
 
-            # Save the new stats
+            # Save the updated stats
             await self.cog.config.guild(self.guild).players.set(players)
 
-            # Announce in the game channel
+            # Announce the event
+            boost_messages = [
+                f"**{players[p_id]['name']}** received **+{amount}** total stat points!"
+                for p_id, amount in boost_distribution.items()
+            ]
+            boost_summary = "\n".join(boost_messages)
+
             await self.channel.send(
                 "⚖️ **The Equalizer has arrived!** ⚖️\n"
-                "A shower of **10 mysterious gifts** rains down upon the arena, "
-                "giving stat boosts to those in need! May the odds be ever in your favor!"
+                "A divine force seeks balance, strengthening those who need it most!\n\n"
+                f"{boost_summary}\n\nMay the odds be ever in your favor! 🎁"
             )
 
             await interaction.response.send_message("Equalizer activated successfully!", ephemeral=True)
 
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+
 
 
 
