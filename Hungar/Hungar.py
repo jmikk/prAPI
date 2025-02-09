@@ -10,6 +10,37 @@ from discord import Interaction, TextStyle, SelectOption
 import aiofiles
 import traceback
 
+class CheckGold(Button):
+    """Button to display the users current gold"""
+    def __init__(self,cog,guild):
+        super().__init__(label="Check gold", style=discord.ButtonStyle.secondary)
+        self.cog = cog
+        self.guild = guild
+        
+    async def callback(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        guild = interaction.guild
+        players = await self.cog.config.guild(guild).players()
+
+        # Fetch player data
+        player = players[user_id]
+        items = player.get("gold", 0)
+
+        # Prepare embed to display items
+        embed = discord.Embed(
+            title=f"{interaction.user.display_name}'s Gold",
+            color=discord.Color.gold()
+        )
+
+        embed.add_field(
+                    name=f"You have:",
+                    value=gold,
+                    inline=False
+                )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+
 class ViewAllTributesButton(Button):
     """Button to display all tribute stats in one embed."""
     def __init__(self, cog, guild):
@@ -253,49 +284,6 @@ class MutantBeastAttackButton(Button):
     
         await self.public_channel.send(f"🐺 A **mutant beast** ambushes **{victim['name']}**, dealing **{damage} damage**!")
         await interaction.response.defer()    
-
-
-
-
-class RestView(View):
-    def __init__(self, cog, player_id, items, guild):
-        super().__init__(timeout=30)  # Timeout after 30s if no selection
-        self.cog = cog
-        self.player_id = player_id
-        self.items = items
-        self.guild = guild
-        self.selected_item_index = 0  # Default: use the first item if none selected
-
-        # Create dropdown menu with player items
-        options = [
-            discord.SelectOption(
-                label=f"{stat} +{boost}",
-                value=str(idx),
-                description=f"Boosts {stat} by {boost}"
-            )
-            for idx, (stat, boost) in enumerate(items)
-        ]
-
-        if not options:
-            options.append(discord.SelectOption(label="No Items", value="-1", description="You have no items."))
-
-        self.select = Select(
-            placeholder="Select an item to use...",
-            options=options
-        )
-        self.select.callback = self.item_selected
-        self.add_item(self.select)
-
-    async def item_selected(self, interaction):
-        """Handles item selection."""
-        selected_index = int(self.select.values[0])
-        if selected_index >= 0:  # Ensure valid item selection
-            self.selected_item_index = selected_index
-        await interaction.response.defer()  # Acknowledge interaction silently
-
-    async def on_timeout(self):
-        """Fallback in case player doesn't select an item in time."""
-        pass
 
 
 class ViewItemsButton(Button):
