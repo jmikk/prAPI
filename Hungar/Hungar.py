@@ -73,7 +73,7 @@ class EqualizerButton(Button):
 
             await self.channel.send(
                 "⚖️ **The Equalizer Strikes!** ⚖️\n"
-                "A mysterious force seeks balance... All tributes now stand as equals!\n\n"
+                "A mysterious force seeks balance... All tributes now stand as equals yet still differnt!\n\n"
                 f"{boost_summary}\n\nMay the best tribute survive! 🏹🔥"
             )
 
