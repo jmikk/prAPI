@@ -558,28 +558,36 @@ class SponsorView(View):
                 # Otherwise, edit the interaction response
                 await interaction.response.edit_message(view=self)
         
-    async def confirm_sponsorship(self, interaction: Interaction):
-        try:
+    async def update_confirm_button(self, interaction):
+        """Ensure the confirm button enables when all fields are set and retains selections."""
+        # Enable the confirm button if all three selections are made
+        all_selected = self.selected_tribute and self.selected_stat and self.selected_boost
+        self.confirm_button.disabled = not all_selected
+    
+        # Re-create dropdowns with current selections retained
+        self.tribute_select.options = [
+            SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_tribute))
+            for option in self.tribute_options
+        ]
+        self.stat_select.options = [
+            SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_stat))
+            for option in self.stat_options
+        ]
+        self.boost_select.options = [
+            SelectOption(label=option.label, value=option.value, default=(option.value == str(self.selected_boost)))
+            for option in self.boost_options
+        ]
+    
+        # Refresh the message with updated selections
+        await interaction.response.edit_message(view=self)
 
-            guild = interaction.guild
-            day_count = await self.cog.config.guild(guild).day_counter()
-            
-            user_gold = await self.cog.config.user(interaction.user).gold()
-            cost = self.selected_boost * 20 + (int(day_count) * 10)
-
-            if cost > user_gold:
-                await interaction.response.send_message(
-                    f"You don't have enough gold. Sponsorship requires {cost} gold, but you only have {user_gold}.",
-                    ephemeral=True
-                )
-                return
 
             players = await self.cog.config.guild(self.guild).players()
             tribute = players[self.selected_tribute]
             tribute["stats"][self.selected_stat] += self.selected_boost
 
             # Deduct gold
-            await self.cog.config.user(self.user).gold.set(user_gold - cost)
+            await self.cog.config.user(interaction.user).gold.set(user_gold - cost)
             await self.cog.config.guild(self.guild).players.set(players)
 
             tribute_name = tribute["name"]
