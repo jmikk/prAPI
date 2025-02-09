@@ -10,7 +10,7 @@ from discord import Interaction, TextStyle, SelectOption
 import aiofiles
 import traceback
 
-class CheckGold(Button):
+class CheckGoldButton(Button):
     """Button to display the users current gold"""
     def __init__(self,cog,guild):
         super().__init__(label="Check gold", style=discord.ButtonStyle.secondary)
@@ -941,6 +941,8 @@ class ActionSelectionView(View):
         self.add_item(ViewStatsButton(cog))
         self.add_item(ViewTributesButton(cog))
         self.add_item(ViewBidsButton(cog))  # Add the new button here
+        self.add_item(CheckGoldButton(cog))  # Add the new button here
+ 
 
 class ActionButton(Button):
     def __init__(self, cog, action):
