@@ -1541,6 +1541,8 @@ class Hungar(commands.Cog):
                     # Clear bets after game ends
             await self.config.user_from_id(user_id).gold.set(user_gold)
             await self.config.user_from_id(user_id).bets.set({})
+        await ctx.send(f"Debug: Gold After Update part 2: {await self.config.user_from_id(int(winner_id)).gold()}")
+
 
 
             # Update total kill counts for each player
