@@ -46,7 +46,7 @@ class ViewAllTributesButton(Button):
             return
 
         # Sort players by district
-        sorted_players = sorted(players.values(), key=lambda p: p["district"])
+        sorted_players = sorted(players.items(), key=lambda p: p[1]["district"])
 
         embed = discord.Embed(
             title="🏹 **Hunger Games Tributes** 🏹",
@@ -54,10 +54,17 @@ class ViewAllTributesButton(Button):
             color=discord.Color.gold()
         )
 
-        for player in sorted_players:
+        for player_id, player in sorted_players:
+            # Fetch Discord member to get nickname
+            if player_id.isdigit():  # Real user
+                member = self.guild.get_member(int(player_id))
+                display_name = member.nick or member.name if member else player["name"]
+            else:  # NPCs or non-member users
+                display_name = player["name"]
+
             status = "🟢 **Alive**" if player["alive"] else "🔴 **Eliminated**"
             embed.add_field(
-                name=f"District {player['district']}: {player['name']}",
+                name=f"District {player['district']}: {display_name}",
                 value=(
                     f"{status}\n"
                     f"**🛡️ Def:** {player['stats']['Def']}\n"
@@ -65,9 +72,12 @@ class ViewAllTributesButton(Button):
                     f"**💪 Con:** {player['stats']['Con']}\n"
                     f"**🧠 Wis:** {player['stats']['Wis']}\n"
                     f"**❤️ HP:** {player['stats']['HP']}"
-            ))
+                ),
+                inline=False
+            )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 
 
