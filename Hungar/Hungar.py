@@ -336,7 +336,7 @@ class HungerGamesAI:
             return  # No players to sponsor
 
         # 🎁 **1% chance for a massive sponsorship shower**
-        if random.random() < 1:  # 1% chance
+        if random.random() < .01:  # 1% chance
             # Decide a **fair** boost amount for all tributes
             universal_boost = random.randint(1000, 2000)
 
