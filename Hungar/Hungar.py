@@ -12,6 +12,70 @@ import traceback
 from discord.utils import get
 
 
+
+
+
+class EqualizerButton(Button):
+    """Button for the Gamemaster to balance the game by showering all tributes with 10 gifts."""
+    
+    def __init__(self, cog, guild, channel):
+        super().__init__(label="Equalizer", style=discord.ButtonStyle.primary)
+        self.cog = cog
+        self.guild = guild
+        self.channel = channel
+
+    async def callback(self, interaction: Interaction):
+        """Triggers the equalizer event to distribute stat boosts across all players fairly."""
+        try:
+            config = await self.cog.config.guild(self.guild).all()
+            players = config["players"]
+
+            if not players:
+                await interaction.response.send_message("No tributes to equalize!", ephemeral=True)
+                return
+
+            # Determine the lowest and highest total stats
+            total_stats = {p_id: sum(p["stats"].values()) for p_id, p in players.items() if p["alive"]}
+            if not total_stats:
+                await interaction.response.send_message("No alive tributes to equalize!", ephemeral=True)
+                return
+
+            min_stats = min(total_stats.values())
+            max_stats = max(total_stats.values())
+            stat_range = max(1, max_stats - min_stats)  # Prevent divide by zero
+
+            # Weighted distribution: Lower stats = Higher chance of getting bigger boosts
+            weights = {
+                p_id: 1.5 - ((total - min_stats) / stat_range)
+                for p_id, total in total_stats.items()
+            }
+
+            # Apply 10 rounds of random stat boosts
+            stat_choices = ["Def", "Str", "Con", "Wis", "HP"]
+            for _ in range(10):  # Shower of 10 gifts
+                selected_tribute_id = random.choices(list(weights.keys()), weights=list(weights.values()), k=1)[0]
+                selected_stat = random.choice(stat_choices)
+                boost_amount = random.randint(5, 15)  # Boost between 5-15
+
+                players[selected_tribute_id]["stats"][selected_stat] += boost_amount
+
+            # Save the new stats
+            await self.cog.config.guild(self.guild).players.set(players)
+
+            # Announce in the game channel
+            await self.channel.send(
+                "⚖️ **The Equalizer has arrived!** ⚖️\n"
+                "A shower of **10 mysterious gifts** rains down upon the arena, "
+                "giving stat boosts to those in need! May the odds be ever in your favor!"
+            )
+
+            await interaction.response.send_message("Equalizer activated successfully!", ephemeral=True)
+
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+
+
+
 class CheckGoldButton(Button):
     """Button to display the user's current gold"""
 
@@ -104,6 +168,8 @@ class GameMasterView(View):
         self.add_item(GMHelpButton())
 
         self.add_item(ForceNextDayButton(cog, guild, public_channel))
+
+        self.add_item(EqualizerButton(cog, guild, channel))
 
 class ForceNextDayButton(Button):
     """Forces the game to progress to the next day."""
