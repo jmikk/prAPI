@@ -317,15 +317,47 @@ class HungerGamesAI:
         self.cog = cog
         self.last_sponsorship = {}
 
+import random
+from datetime import datetime, timedelta
+import asyncio
+
+class HungerGamesAI:
+    def __init__(self, cog):
+        self.cog = cog
+        self.last_sponsorship = {}
+
     async def ai_sponsor(self, guild, channel):
         """
         AI sponsors tributes at random times, favoring underdogs.
+        1% chance to shower all tributes with gifts (+1000 to +2000 to all stats).
         """
         players = await self.cog.config.guild(guild).players()
         if not players:
             return  # No players to sponsor
 
-        # Load NPC names
+        # 🎁 **1% chance for a massive sponsorship shower**
+        if random.random() < 1:  # 1% chance
+            # Decide a **fair** boost amount for all tributes
+            universal_boost = random.randint(1000, 2000)
+
+            # Apply to all alive tributes
+            for player in players.values():
+                if player["alive"]:
+                    for stat in ["Def", "Str", "Con", "Wis", "HP"]:
+                        player["stats"][stat] += universal_boost  # Apply boost
+
+            await self.cog.config.guild(guild).players.set(players)
+
+            # 🎉 Announce the sponsorship shower
+            await asyncio.sleep(3)  # Small delay for dramatic effect
+            await channel.send(
+                f"🌟 **A mysterious benefactor showers all tributes with gifts!** 🌟\n"
+                f"Each tribute gains **+{universal_boost} to all stats!** 🎁"
+            )
+            self.last_sponsorship[guild.id] = datetime.utcnow()
+            return  # Skip normal sponsorship
+
+        # **Normal AI Sponsorship (Favoring Underdogs)**
         npc_names = await self.cog.load_npc_names()
         npc_name = random.choice(npc_names)
 
@@ -350,7 +382,7 @@ class HungerGamesAI:
 
         # Random stat to boost
         stat_to_boost = random.choice(["Def", "Str", "Con", "Wis", "HP"])
-        boost_amount = random.randint(1, 10)  # Random boost amount
+        boost_amount = random.randint(1, 10)  # Normal random boost amount
 
         # Apply sponsorship
         selected_tribute["stats"][stat_to_boost] += boost_amount
@@ -373,8 +405,9 @@ class HungerGamesAI:
         """
         now = datetime.utcnow()
         last_time = self.last_sponsorship.get(guild.id, now - timedelta(days=1))
-        #AI sponsor timer
-        return (now - last_time).total_seconds() > random.randint(500, 10000)  
+        # AI sponsor timer
+        return (now - last_time).total_seconds() > random.randint(500, 10000)
+
 
         
 
