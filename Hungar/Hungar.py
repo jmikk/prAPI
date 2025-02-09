@@ -32,10 +32,8 @@ class CheckGoldButton(Button):
         # Fetch player data
         player = players[user_id]
         items = player.get("gold", 0)
-        await interaction.response.send_message(f"You have gold.", ephemeral=True)
         try:
-            user_gold = await self.cog.config.user(interaction.user).gold()
-            await interaction.response.send_message(f"You have {user_gold} gold.", ephemeral=True)
+            await interaction.response.send_message(f"You have {items} gold.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
