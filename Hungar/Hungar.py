@@ -553,22 +553,50 @@ class SponsorView(View):
         all_selected = self.selected_tribute and self.selected_stat and self.selected_boost
         self.confirm_button.disabled = not all_selected
     
-        # Re-create dropdowns with current selections retained
-        self.tribute_select.options = [
-            SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_tribute))
-            for option in self.tribute_options
-        ]
-        self.stat_select.options = [
-            SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_stat))
-            for option in self.stat_options
-        ]
-        self.boost_select.options = [
-            SelectOption(label=option.label, value=option.value, default=(option.value == str(self.selected_boost)))
-            for option in self.boost_options
-        ]
+        # Defer the interaction response to prevent failure
+        await interaction.response.defer()
     
-        # Refresh the message with updated selections
-        await interaction.response.edit_message(view=self)
+        # Create new dropdowns with the selected values retained
+        new_tribute_select = Select(
+            placeholder="Select a tribute...",
+            options=[
+                SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_tribute))
+                for option in self.tribute_options
+            ],
+            custom_id="tribute_select"
+        )
+        new_tribute_select.callback = self.on_tribute_select
+    
+        new_stat_select = Select(
+            placeholder="Select a stat to boost...",
+            options=[
+                SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_stat))
+                for option in self.stat_options
+            ],
+            custom_id="stat_select"
+        )
+        new_stat_select.callback = self.on_stat_select
+    
+        new_boost_select = Select(
+            placeholder="Select the boost amount...",
+            options=[
+                SelectOption(label=option.label, value=option.value, default=(option.value == str(self.selected_boost)))
+                for option in self.boost_options
+            ],
+            custom_id="boost_select"
+        )
+        new_boost_select.callback = self.on_boost_select
+    
+        # Clear the view and re-add all components
+        self.clear_items()
+        self.add_item(new_tribute_select)
+        self.add_item(new_stat_select)
+        self.add_item(new_boost_select)
+        self.add_item(self.confirm_button)
+    
+        # Edit the message with the updated view
+        await interaction.message.edit(view=self)
+
     
 
 
