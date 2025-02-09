@@ -19,21 +19,9 @@ class CheckGoldButton(Button):
 
     async def callback(self, interaction: discord.Interaction):
         user_id = str(interaction.user.id)
-        guild = interaction.guild
-        players = await self.cog.config.guild(guild).players()
-
-        # Check if the user is in the game
-        if user_id not in players:
-            await interaction.response.send_message(
-                "You are not part of the Hunger Games.", ephemeral=True
-            )
-            return
-
-        # Fetch player data
-        player = players[user_id]
-        items = player.get("gold", 0)
+        gold = await self.cog.config.user(user_id).gold()
         try:
-            await interaction.response.send_message(f"You have {items} gold.", ephemeral=True)
+            await interaction.response.send_message(f"You have {gold} gold.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
