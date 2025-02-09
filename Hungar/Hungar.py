@@ -11,6 +11,7 @@ import aiofiles
 import traceback
 from discord.utils import get
 
+
 class CheckGoldButton(Button):
     """Button to display the user's current gold"""
 
