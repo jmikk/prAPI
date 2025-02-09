@@ -13,6 +13,20 @@ class NexusExchange(commands.Cog):
         )
         self.config.register_user(master_balance=0)
 
+
+    @commands.group(name="shop")
+    async def shop(self, ctx):
+        """Master command for the shop."""
+        if ctx.invoked_subcommand is None:
+            embed = discord.Embed(title="🛒 Shop Inventory", color=discord.Color.blue())
+            
+            embed.add_field(name="Loot box", value=f"💰 `10 Coins`\n📜", inline=False)
+
+            await ctx.send(embed=embed)
+    @shop.command()
+    async def buy_lootbox(self, ctx):
+        await ctx.send("You bought a lootbox woot woot!")
+
     @commands.guild_only()
     @commands.admin()
     @commands.command()
