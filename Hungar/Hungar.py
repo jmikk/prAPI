@@ -1084,6 +1084,13 @@ class Hungar(commands.Cog):
         if len(players) > 25:
             await ctx.send("Sorry this game is full try again next time!")
             return
+
+        # 🎖️ **Assign a Role to the User**
+        role_name = "Tribute"  # Change this to match your role name
+        role = get(guild.roles, name=role_name)  # Fetch the role
+    
+        if role:
+            await ctx.author.add_roles(role)
         
         # Award 100 gold to the player in user config
         user_gold = await self.config.user(ctx.author).gold()
@@ -1454,6 +1461,13 @@ class Hungar(commands.Cog):
     
         alive_players = [player for player in players.values() if player["alive"]]
         WLboard = config.get("WLboard",{})
+
+        role = get(guild.roles, name="Tribute")
+    
+        if role:
+            for member in guild.members:
+                if role in member.roles:
+                    await member.remove_roles(role)    
 
 
         # 🛑 **Disable GameMaster Dashboard if it exists**
