@@ -1073,7 +1073,7 @@ def is_gamemaster():
 class Hungar(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890)
+        self.config = Config.get_conf(None, identifier=1234567890)
         self.config.register_guild(
             districts={},
             players={},
