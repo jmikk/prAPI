@@ -18,10 +18,13 @@ class CheckGoldButton(Button):
 
         
     async def callback(self, interaction: Interaction):
-        user_id = str(interaction.user.id)
-        user_gold = await self.config.user(user_id).gold()
-
-        await interaction.response.send_message(user_gold, ephemeral=True)
+        try:
+            user_id = str(interaction.user.id)
+            user_gold = await self.config.user(user_id).gold()
+    
+            await interaction.response.send_message(user_gold, ephemeral=True)
+        except exception as e:
+            await interaction.response.send_message(e, ephemeral=True)
         
 
 class ViewAllTributesButton(Button):
