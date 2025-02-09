@@ -502,7 +502,7 @@ class SponsorView(View):
 
         # Confirm button
         self.confirm_button = Button(label="Confirm Sponsorship", style=discord.ButtonStyle.green, disabled=True)
-        self.confirm_button.callback = self.confirm_sponsorship
+        self.confirm_button.callback = lambda i: asyncio.create_task(self.confirm_sponsorship(i))  # ✅ Fixed callback
         self.add_item(self.confirm_button)
 
 
