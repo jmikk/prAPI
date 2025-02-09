@@ -1517,19 +1517,7 @@ class Hungar(commands.Cog):
         for ai_bet in ai_bets:
             total_bet_on_winner += ai_bet["amount"]
 
-    
-        # **Award 50% of total bets to the winner**
-        winner_bonus = int(total_bet_on_winner * 0.5)  # 50% of total bets
-        if winner_bonus > 0 and not winner.get("is_npc", False):  # Only give to real players
-            winner_gold = await self.config.user_from_id(int(winner_id)).gold()
-            winner_gold = winner_bonus + winner_gold
-            await ctx.send(f"Debug: Gold After Update: {await self.config.user_from_id(int(winner_id)).gold()}")
-            await self.config.user_from_id(int(winner_id)).gold.set(winner_gold)
-            await ctx.send(f"Debug: Gold After Update: {await self.config.user_from_id(int(winner_id)).gold()}")
-            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!")
-            await asyncio.sleep(1)
-
-            # Distribute winnings
+                # Distribute winnings
         for user_id, user_data in all_users.items():
             bets = user_data.get("bets", {})
             user_gold = user_data.get("gold", 0)
@@ -1541,7 +1529,14 @@ class Hungar(commands.Cog):
                     # Clear bets after game ends
             await self.config.user_from_id(user_id).gold.set(user_gold)
             await self.config.user_from_id(user_id).bets.set({})
-        await ctx.send(f"Debug: Gold After Update part 2: {await self.config.user_from_id(int(winner_id)).gold()}")
+
+                # **Award 50% of total bets to the winner**
+        winner_bonus = int(total_bet_on_winner * 0.5)  # 50% of total bets
+        if winner_bonus > 0 and not winner.get("is_npc", False):  # Only give to real players
+            winner_gold = await self.config.user_from_id(int(winner_id)).gold()
+            winner_gold = winner_bonus + winner_gold
+            await self.config.user_from_id(int(winner_id)).gold.set(winner_gold)
+            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!")
 
 
 
