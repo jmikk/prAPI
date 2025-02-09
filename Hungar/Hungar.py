@@ -19,26 +19,9 @@ class CheckGoldButton(Button):
         
     async def callback(self, interaction: Interaction):
         user_id = str(interaction.user.id)
-        guild = interaction.guild
-        players = await self.cog.config.guild(guild).players()
+        user_gold = await self.config.user(user_id).gold()
 
-        # Fetch player data
-        player = players[user_id]
-        items = player.get("gold", 0)
-
-        # Prepare embed to display items
-        embed = discord.Embed(
-            title=f"{interaction.user.display_name}'s Gold",
-            color=discord.Color.gold()
-        )
-
-        embed.add_field(
-                    name=f"You have:",
-                    value=gold,
-                    inline=False
-                )
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(user_gold, ephemeral=True)
         
 
 class ViewAllTributesButton(Button):
