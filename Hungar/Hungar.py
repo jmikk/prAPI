@@ -1522,7 +1522,10 @@ class Hungar(commands.Cog):
         winner_bonus = int(total_bet_on_winner * 0.5)  # 50% of total bets
         if winner_bonus > 0 and not winner.get("is_npc", False):  # Only give to real players
             winner_gold = await self.config.user_from_id(int(winner_id)).gold()
-            winner_gold += winner_bonus
+            await ctx.send(winner_gold)
+            winner_gold = winner_bonus + winner_gold
+            await ctx.send(winner_gold)
+            await ctx.send(winner_bonus)
             await self.config.user_from_id(int(winner_id)).gold.set(winner_gold)
             await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!")
 
