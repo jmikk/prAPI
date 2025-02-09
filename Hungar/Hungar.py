@@ -274,7 +274,7 @@ class MutantBeastAttackButton(Button):
 
 class ViewItemsButton(Button):
     def __init__(self, cog):
-        super().__init__(label="View Items", style=discord.ButtonStyle.success)
+        super().__init__(label="View Items", style=discord.ButtonStyle.secondary)
         self.cog = cog
 
     async def callback(self, interaction: Interaction):
@@ -817,7 +817,7 @@ class BettingView(View):
 
 class ViewTributesButton(Button):
     def __init__(self, cog):
-        super().__init__(label="View Tributes", style=discord.ButtonStyle.success)
+        super().__init__(label="View Tributes", style=discord.ButtonStyle.secondary)
         self.cog = cog
 
     async def callback(self, interaction: Interaction):
