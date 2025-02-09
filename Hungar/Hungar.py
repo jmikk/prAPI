@@ -343,13 +343,12 @@ class HungerGamesAI:
             # Apply to all alive tributes
             for player in players.values():
                 if player["alive"]:
-                    for stat in ["Def", "Str", "Con", "Wis", "HP"]:
+                    for stat in ["Def", "Str", "Wis", "HP"]:
                         player["stats"][stat] += universal_boost  # Apply boost
 
             await self.cog.config.guild(guild).players.set(players)
 
             # 🎉 Announce the sponsorship shower
-            await asyncio.sleep(3)  # Small delay for dramatic effect
             await channel.send(
                 f"🌟 **A mysterious benefactor showers all tributes with gifts!** 🌟\n"
                 f"Each tribute gains **+{universal_boost} to all stats!** 🎁"
