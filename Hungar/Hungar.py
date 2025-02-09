@@ -19,7 +19,7 @@ class CheckGoldButton(Button):
 
     async def callback(self, interaction: discord.Interaction):
         try:
-            user_id = str(interaction.user.id)
+            user_id = interaction.user
             gold = await self.cog.config.user(user_id).gold()
             await interaction.response.send_message(f"You have {gold} gold.", ephemeral=True)
         except Exception as e:
