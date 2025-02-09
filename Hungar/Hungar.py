@@ -20,6 +20,8 @@ class CheckGoldButton(Button):
     async def callback(self, interaction: discord.Interaction):
         user_id = str(interaction.user.id)
         gold = await self.cog.config.user(user_id).gold()
+        if not gold:
+            gold='no'
         try:
             await interaction.response.send_message(f"You have {gold} gold.", ephemeral=True)
         except Exception as e:
@@ -983,7 +985,7 @@ class Hungar(commands.Cog):
             day_counter=0, 
             random_events=True,  # Enable or disable random events
             feast_active=False, 
-            WLboard={},  # New field for tracking winners# Track if a feast is active# Counter for days
+            WLboard={},  
              
             
         )
