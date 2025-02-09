@@ -547,18 +547,6 @@ class SponsorView(View):
 
 
     async def update_confirm_button(self, interaction):
-        # Enable the confirm button if all selections are made
-        ready = not (self.selected_tribute and self.selected_stat and self.selected_boost)
-        if not ready:
-            self.confirm_button.disabled = False
-            if interaction.response.is_done():
-                # If the interaction was already deferred, edit the message directly
-                await interaction.message.edit(view=self)
-            else:
-                # Otherwise, edit the interaction response
-                await interaction.response.edit_message(view=self)
-        
-    async def update_confirm_button(self, interaction):
         """Ensure the confirm button enables when all fields are set and retains selections."""
         # Enable the confirm button if all three selections are made
         all_selected = self.selected_tribute and self.selected_stat and self.selected_boost
@@ -580,27 +568,7 @@ class SponsorView(View):
     
         # Refresh the message with updated selections
         await interaction.response.edit_message(view=self)
-
-
-            players = await self.cog.config.guild(self.guild).players()
-            tribute = players[self.selected_tribute]
-            tribute["stats"][self.selected_stat] += self.selected_boost
-
-            # Deduct gold
-            await self.cog.config.user(interaction.user).gold.set(user_gold - cost)
-            await self.cog.config.guild(self.guild).players.set(players)
-
-            tribute_name = tribute["name"]
-#            await interaction.response.send_message(
-            channel = interaction.channel            
-            await channel.send(
-                f"🎁 **Someone** sponsored **{tribute_name}** with a +{self.selected_boost} boost to {self.selected_stat}!"
-
-            )
-            await interaction.response.defer(ephemeral=True)
-
-        except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+    
 
 
 
