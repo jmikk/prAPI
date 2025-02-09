@@ -1094,7 +1094,7 @@ class Hungar(commands.Cog):
             kill_count=0,  # Track total kills
         )
 
-                self.bot.loop.create_task(self.migrate_config())
+        self.bot.loop.create_task(self.migrate_config())
 
         self.ai_manager = HungerGamesAI(self)
 
