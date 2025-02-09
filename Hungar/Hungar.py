@@ -14,7 +14,7 @@ class CheckGoldButton(Button):
     """Button to display the user's current gold"""
 
     def __init__(self, cog):
-        super().__init__(label="Check gold", style=discord.ui.ButtonStyle.primary)
+        super().__init__(label="Check gold", style=discord.ButtonStyle.secondary)
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
