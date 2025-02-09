@@ -1527,6 +1527,7 @@ class Hungar(commands.Cog):
             await self.config.user_from_id(int(winner_id)).gold.set(winner_gold)
             await ctx.send(f"Debug: Gold After Update: {await self.config.user_from_id(int(winner_id)).gold()}")
             await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!")
+            await asyncio.sleep(1)
 
             # Distribute winnings
         for user_id, user_data in all_users.items():
