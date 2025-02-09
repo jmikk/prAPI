@@ -12,8 +12,10 @@ import traceback
 
 class CheckGoldButton(Button):
     """Button to display the users current gold"""
-    def __init__(self, cog, guild):
-        super().__init__(label="Check gold", style=discord.ButtonStyle.secondary)
+    def __init__(self, cog):
+        super().__init__(label="Check gold", style=discord.ButtonStyle.primary)
+        self.cog = cog
+
         
     async def callback(self, interaction: Interaction):
         user_id = str(interaction.user.id)
