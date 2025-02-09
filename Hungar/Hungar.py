@@ -1074,7 +1074,6 @@ class Hungar(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=1234567890)
-        self.config2 = Config.get_conf(self, identifier=1234567890)
         self.config.register_guild(
             districts={},
             players={},
@@ -1094,20 +1093,8 @@ class Hungar(commands.Cog):
             kill_count=0,  # Track total kills
         )
 
-        self.bot.loop.create_task(self.migrate_config())
 
         self.ai_manager = HungerGamesAI(self)
-
-
-    async def migrate_config(self):
-        """Migrate config data from self.config2 to self.config if needed."""
-        all_guilds = await self.config2.all_guilds()  # Fetch all stored guild data
-
-        for guild_id, old_data in all_guilds.items():
-            # Check if the new config is empty (to prevent overwriting existing data)
-            new_data = await self.config.guild_from_id(guild_id).all()
-            # Migrate the old config data to the new structure
-            await self.config.guild_from_id(guild_id).set(old_data)
 
 
     async def report_error(self, channel, error):
