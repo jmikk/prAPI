@@ -453,7 +453,7 @@ class SponsorButton(Button):
             await interaction.response.send_message(f"An error occurred: {error_message}", ephemeral=True)
 
 class SponsorView(View):
-    def __init__(self, cog, tribute_options, guild, user,day_count):
+    def __init__(self, cog, tribute_options, guild, user, day_count):
         super().__init__(timeout=60)
         self.cog = cog
         self.guild = guild
@@ -466,7 +466,10 @@ class SponsorView(View):
         # Tribute selection dropdown
         self.tribute_select = Select(
             placeholder="Select a tribute...",
-            options=tribute_options,
+            options=[
+                SelectOption(label=option.label, value=option.value)
+                for option in tribute_options
+            ],
             custom_id="tribute_select"
         )
         self.tribute_select.callback = self.on_tribute_select
@@ -487,10 +490,11 @@ class SponsorView(View):
         )
         self.stat_select.callback = self.on_stat_select
         self.add_item(self.stat_select)
-        
+
         # Boost amount selection dropdown
         self.boost_options = [
-            SelectOption(label=f"+{i} Boost ({20 * i + (day_count) * 10}) Gold)", value=str(i)) for i in range(1, 11)
+            SelectOption(label=f"+{i} Boost ({20 * i + (day_count) * 10} Gold)", value=str(i))
+            for i in range(1, 11)
         ]
         self.boost_select = Select(
             placeholder="Select the boost amount...",
@@ -502,100 +506,80 @@ class SponsorView(View):
 
         # Confirm button
         self.confirm_button = Button(label="Confirm Sponsorship", style=discord.ButtonStyle.green, disabled=True)
-        self.confirm_button.callback = lambda i: asyncio.create_task(self.confirm_sponsorship(i))  # ✅ Fixed callback
+        self.confirm_button.callback = lambda i: asyncio.create_task(self.confirm_sponsorship(i))
         self.add_item(self.confirm_button)
 
+    async def on_tribute_select(self, interaction: Interaction):
+        """Handles tribute selection."""
+        self.selected_tribute = self.tribute_select.values[0]
+        await self.update_confirm_button(interaction)
 
-    def get_tribute_options(self):
-        """Get the tribute options with the selected value marked."""
-        return [
+    async def on_stat_select(self, interaction: Interaction):
+        """Handles stat selection."""
+        self.selected_stat = self.stat_select.values[0]
+        await self.update_confirm_button(interaction)
+
+    async def on_boost_select(self, interaction: Interaction):
+        """Handles boost selection."""
+        self.selected_boost = int(self.boost_select.values[0])
+        await self.update_confirm_button(interaction)
+
+    async def update_confirm_button(self, interaction: Interaction):
+        """Ensure the confirm button enables when all fields are set and retains selections."""
+        all_selected = self.selected_tribute and self.selected_stat and self.selected_boost
+        self.confirm_button.disabled = not all_selected  # Enable button if all fields are selected
+
+        # Rebuild dropdowns to retain selections
+        self.tribute_select.options = [
             SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_tribute))
             for option in self.tribute_options
         ]
-
-    async def on_tribute_select(self, interaction: Interaction):
-        try:
-            self.selected_tribute = self.tribute_select.values[0]
-            await self.update_confirm_button(interaction)
-            await interaction.response.defer()  # Prevents interaction expiration
-
-        except Exception as e:
-            await interaction.response.send_message(
-                f"An error occurred in tribute selection: {e}", ephemeral=True
-            )
-
-    def get_stat_options(self):
-        return [
+        self.stat_select.options = [
             SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_stat))
             for option in self.stat_options
         ]
-    
-    def get_boost_options(self):
-        return [
+        self.boost_select.options = [
             SelectOption(label=option.label, value=option.value, default=(option.value == str(self.selected_boost)))
             for option in self.boost_options
         ]
 
-    async def on_stat_select(self, interaction: Interaction):
-        self.selected_stat = self.stat_select.values[0]
-        await self.update_confirm_button(interaction)
-        await interaction.response.defer()  # Prevents interaction expiration
-    
-    async def on_boost_select(self, interaction: Interaction):
-        self.selected_boost = int(self.boost_select.values[0])
-        await self.update_confirm_button(interaction)
-        await interaction.response.defer()  # Prevents interaction expiration
+        # Edit the message to refresh the dropdown selections and confirm button state
+        if interaction.response.is_done():
+            await interaction.message.edit(view=self)
+        else:
+            await interaction.response.edit_message(view=self)
 
+    async def confirm_sponsorship(self, interaction: Interaction):
+        """Handles the confirmation of a sponsorship."""
+        try:
+            guild = interaction.guild
+            day_count = await self.cog.config.guild(guild).day_counter()
+            
+            user_gold = await self.cog.config.user(interaction.user).gold()
+            cost = self.selected_boost * 20 + (int(day_count) * 10)
 
-    async def update_confirm_button(self, interaction):
-        """Ensure the confirm button enables when all fields are set and retains selections."""
-        # Enable the confirm button if all three selections are made
-        all_selected = self.selected_tribute and self.selected_stat and self.selected_boost
-        self.confirm_button.disabled = not all_selected
-    
-        # Defer the interaction response to prevent failure
-        await interaction.response.defer()
-    
-        # Create new dropdowns with the selected values retained
-        new_tribute_select = Select(
-            placeholder="Select a tribute...",
-            options=[
-                SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_tribute))
-                for option in self.tribute_options
-            ],
-            custom_id="tribute_select"
-        )
-        new_tribute_select.callback = self.on_tribute_select
-    
-        new_stat_select = Select(
-            placeholder="Select a stat to boost...",
-            options=[
-                SelectOption(label=option.label, value=option.value, default=(option.value == self.selected_stat))
-                for option in self.stat_options
-            ],
-            custom_id="stat_select"
-        )
-        new_stat_select.callback = self.on_stat_select
-    
-        new_boost_select = Select(
-            placeholder="Select the boost amount...",
-            options=[
-                SelectOption(label=option.label, value=option.value, default=(option.value == str(self.selected_boost)))
-                for option in self.boost_options
-            ],
-            custom_id="boost_select"
-        )
-        new_boost_select.callback = self.on_boost_select
-    
-        # Clear the view and re-add all components
-        self.clear_items()
-        self.add_item(new_tribute_select)
-        self.add_item(new_stat_select)
-        self.add_item(new_boost_select)
-        self.add_item(self.confirm_button)
-    
-        # Edit the message with the updated view
-        await interaction.message.edit(view=self)
+            if cost > user_gold:
+                await interaction.response.send_message(
+                    f"You don't have enough gold. Sponsorship requires {cost} gold, but you only have {user_gold}.",
+                    ephemeral=True
+                )
+                return
+
+            players = await self.cog.config.guild(self.guild).players()
+            tribute = players[self.selected_tribute]
+            tribute["stats"][self.selected_stat] += self.selected_boost
+
+            # Deduct gold
+            await self.cog.config.user(self.user).gold.set(user_gold - cost)
+            await self.cog.config.guild(self.guild).players.set(players)
+
+            tribute_name = tribute["name"]
+            channel = interaction.channel
+            await channel.send(f"🎁 **Someone** sponsored **{tribute_name}** with a +{self.selected_boost} boost to {self.selected_stat}!")
+
+            await interaction.response.defer()
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
     
 
