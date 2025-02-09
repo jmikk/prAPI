@@ -1526,7 +1526,7 @@ class Hungar(commands.Cog):
             winner_gold = winner_bonus + winner_gold
             await ctx.send(winner_gold)
             await ctx.send(winner_bonus)
-            await self.config.user_from_id(int(winner_id)).gold.set(winner_gold)
+            await self.config.user_from_id(winner_id).gold.set(winner_gold)
             await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!")
 
             # Distribute winnings
