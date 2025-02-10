@@ -77,10 +77,121 @@ class NexusExchange(commands.Cog):
         categories = [category for category in categories]
         await self.config.categories.set(categories)
         await ctx.send(f"Categories set to {', '.join(categories)}")
-        
+
     @shop.command()
-    async def buy_lootbox(self, ctx):
+    @commands.admin()
+    @commands.cooldown(1, 60, commands.BucketType.default)  # 1 use per 60 seconds
+    async def buy_lootbox(self, ctx, *recipient: str):
+        """Open a loot box and fetch a random card for the specified nation."""
         await ctx.send("You bought a lootbox woot woot!")
+
+        if len(recipient) < 1:
+            await ctx.send("Make sure to put your nation in after openlootbox")
+            return
+
+
+        recipient =  "_".join(recipient)
+        await ctx.send(recipient)
+        season = await self.config.season()
+        nationname = await self.config.nationName()
+        categories = ["common","uncommon", "rare", "ultra-rare","epic"]
+        useragent = await self.config.useragent()
+
+        headers = {"User-Agent": useragent}
+        password = await self.config.password()
+
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(
+                f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname={nationname}"
+            ) as response:
+                if response.status != 200:
+                    await ctx.send("Failed to fetch data from NationStates API.")
+                    return
+
+                data = await response.text()
+                cards = self.parse_cards(data, season, categories)
+
+                if not cards:
+                    await ctx.send(
+                        f"No cards found for season {season} in categories {', '.join(categories)}"
+                    )
+                    return
+
+                random_card = random.choice(cards)
+
+                # Fetch card details
+                async with session.get(
+                    f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info;cardid={random_card['id']};season={random_card['season']}"
+                ) as card_info_response:
+                    if card_info_response.status != 200:
+                        await ctx.send("Failed to fetch card details from NationStates API.")
+                        return
+
+                    card_info_data = await card_info_response.text()
+                    card_info = self.parse_card_info(card_info_data)
+
+                    embed_color = self.get_embed_color(random_card['category'])
+                    embed = Embed(title="Loot Box Opened!", description="You received a card!", color=embed_color)
+                    embed.add_field(name="Card Name", value=card_info['name'], inline=True)
+                    embed.add_field(name="Card ID", value=random_card['id'], inline=True)
+                    embed.add_field(name="Season", value=random_card['season'], inline=True)
+                    embed.add_field(name="Market Value", value=card_info['market_value'], inline=True)
+
+                # Prepare the gift
+                prepare_data = {
+                    "nation": nationname,
+                    "c": "giftcard",
+                    "cardid": random_card['id'],
+                    "season": random_card['season'],
+                    "to": recipient,
+                    "mode": "prepare"
+                }
+                prepare_headers = {
+                    "User-Agent": useragent,
+                    "X-Password": password
+                }
+
+                async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
+                    if prepare_response.status != 200:
+                        if prepare_response.status == 409 or 403:
+                            await ctx.send("No loot boxes ready! Give me a minute or so to wrap one up for you.")
+                            return       
+                        await ctx.send(prepare_response.text)
+                        await ctx.send("Failed to prepare the gift.")
+                        return
+
+                    prepare_response_data = await prepare_response.text()
+                    token = self.parse_token(prepare_response_data)
+                    x_pin = prepare_response.headers.get("X-Pin")
+
+                    if not token or not x_pin:
+                        await ctx.send(prepare_response_data)
+                        await ctx.send("Failed to retrieve the token or X-Pin for gift execution.")
+                        return
+
+                    # Execute the gift
+                    execute_data = {
+                        "nation": nationname,
+                        "c": "giftcard",
+                        "cardid": random_card['id'],
+                        "season": random_card['season'],
+                        "to": recipient,
+                        "mode": "execute",
+                        "token": token
+                    }
+                    execute_headers = {
+                        "User-Agent": useragent,
+                        "X-Pin": x_pin
+                    }
+
+                    async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
+                        if execute_response.status == 200:
+                            await self.add_to_tsv(recipient, random_card['id'], random_card['season'], card_info['market_value'])
+                            await ctx.send(embed=embed)
+
+                            await ctx.send(f"Successfully gifted the card to {recipient}!")
+                        else:
+                            await ctx.send("Failed to execute the gift.")
 
     @commands.guild_only()
     @commands.admin()
