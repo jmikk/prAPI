@@ -373,7 +373,7 @@ class NexusExchange(commands.Cog):
         for card in root.findall(".//CARD"):
             card_season = int(card.find("SEASON").text)
             card_category = card.find("CATEGORY").text
-            if card_season == season and card_category in categories:
+            if card_season in season and card_category in categories:
                 card_id = card.find("CARDID").text
                 cards.append(
                     {"id": card_id, "season": card_season, "category": card_category}
