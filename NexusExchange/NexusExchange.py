@@ -1,5 +1,13 @@
-from redbot.core import commands, Config
 import discord
+from redbot.core import commands, Config, checks
+import aiohttp
+import random
+import xml.etree.ElementTree as ET
+from discord import Embed
+import time
+import csv
+import os
+from datetime import datetime
 
 class NexusExchange(commands.Cog):
     """A Master Currency Exchange Cog for The Wellspring"""
@@ -13,6 +21,15 @@ class NexusExchange(commands.Cog):
         )
         self.config.register_user(master_balance=0)
 
+            # Lootbox configuration
+        self.config.register_global(
+            season=3,
+            categories=["common", "uncommon", "rare", "ultra-rare", "epic"],
+            useragent="",
+            nationName="",
+            password="",
+        )
+
 
     @commands.group(name="shop")
     async def shop(self, ctx):
@@ -23,6 +40,44 @@ class NexusExchange(commands.Cog):
             embed.add_field(name="Loot box", value=f"💰 `10 Coins`\n📜", inline=False)
 
             await ctx.send(embed=embed)
+
+    @shop.command()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def set_nation(self, ctx, *, nationname: str):
+        """Set the nation name for the loot box prizes."""
+        await self.config.nationName.set(nationname)
+        await ctx.send(f"Nation Name set to {nationname}")
+
+    @shop.command()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def set_password(self, ctx, *, password: str):
+        """Set the password for the loot box prizes."""
+        await self.config.password.set(password)
+        await ctx.send("Password has been set successfully.")
+
+    @shop.command()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def useragent(self, ctx, *, useragent: str):
+        """Set the User-Agent header for the requests."""
+        await self.config.useragent.set(useragent)
+        await ctx.send(f"User-Agent set to {useragent}")
+
+    @shop.command()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def season(self, ctx, *season: int):
+        """Set the season to filter cards."""
+        seasons = [season for season in seasons]
+        await self.config.season.set(seasons)
+        await ctx.send(f"Season(s) set to {seasons}")
+
+    @shop.command()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def categories(self, ctx, *categories: str):
+        """Set the categories to filter cards."""
+        categories = [category for category in categories]
+        await self.config.categories.set(categories)
+        await ctx.send(f"Categories set to {', '.join(categories)}")
+        
     @shop.command()
     async def buy_lootbox(self, ctx):
         await ctx.send("You bought a lootbox woot woot!")
