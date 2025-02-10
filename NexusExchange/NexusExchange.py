@@ -379,3 +379,26 @@ class NexusExchange(commands.Cog):
                     {"id": card_id, "season": card_season, "category": card_category}
                 )
         return cards
+
+    def parse_card_info(self, xml_data):
+        root = ET.fromstring(xml_data)
+        return {
+            "name": root.find("NAME").text,
+            "market_value": root.find("MARKET_VALUE").text
+        }
+
+    def parse_token(self, xml_data):
+        root = ET.fromstring(xml_data)
+        token = root.find("SUCCESS")
+        return token.text if token is not None else None
+
+    def get_embed_color(self, category):
+        colors = {
+            "COMMON": 0x808080,       # Grey
+            "UNCOMMON": 0x00FF00,     # Green
+            "RARE": 0x0000FF,         # Blue
+            "ULTRA-RARE": 0x800080,   # Purple
+            "EPIC": 0xFFA500,         # Orange
+            "LEGENDARY": 0xFFFF00     # Yellow
+        }
+        return colors.get(category.upper(), 0xFFFFFF)  # Default to white if not found
