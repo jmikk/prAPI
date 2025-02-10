@@ -64,11 +64,11 @@ class NexusExchange(commands.Cog):
 
     @shop.command()
     @checks.admin_or_permissions(manage_guild=True)
-    async def season(self, ctx, *season: int):
+    async def season(self, ctx, *seasons: int):
         """Set the season to filter cards."""
         seasons = [season for season in seasons]
-        await self.config.season.set(seasons)
-        await ctx.send(f"Season(s) set to {seasons}")
+        await self.config.categories.set(seasons)
+        await ctx.send(f"Categories set to {', '.join(seasons)}")
 
     @shop.command()
     @checks.admin_or_permissions(manage_guild=True)
