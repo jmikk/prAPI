@@ -365,3 +365,17 @@ class NexusExchange(commands.Cog):
             embed.add_field(name="Member-Level Data", value="No member data found.", inline=False)
     
         await ctx.send(embed=embed)
+
+
+    def parse_cards(self, xml_data, season, categories):
+        root = ET.fromstring(xml_data)
+        cards = []
+        for card in root.findall(".//CARD"):
+            card_season = int(card.find("SEASON").text)
+            card_category = card.find("CATEGORY").text
+            if card_season == season and card_category in categories:
+                card_id = card.find("CARDID").text
+                cards.append(
+                    {"id": card_id, "season": card_season, "category": card_category}
+                )
+        return cards
