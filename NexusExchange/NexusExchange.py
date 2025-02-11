@@ -111,7 +111,7 @@ class NexusExchange(commands.Cog):
                 cards = self.parse_cards(data, season, categories)
 
                 if not cards:
-                    await ctx.send(data)
+                    await ctx.send(data[:1000])
                     await ctx.send(
                         f"No cards found for season {season} in categories {', '.join(categories)}"
                     )
