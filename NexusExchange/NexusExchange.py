@@ -23,7 +23,7 @@ class NexusExchange(commands.Cog):
 
             # Lootbox configuration
         self.config.register_global(
-            season=3,
+            season=[3,4],
             categories=["common", "uncommon", "rare", "ultra-rare", "epic"],
             useragent="",
             nationName="",
@@ -111,6 +111,7 @@ class NexusExchange(commands.Cog):
                 cards = self.parse_cards(data, season, categories)
 
                 if not cards:
+                    await ctx.send(response.text)
                     await ctx.send(
                         f"No cards found for season {season} in categories {', '.join(categories)}"
                     )
