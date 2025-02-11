@@ -243,7 +243,7 @@ class NexusExchange(commands.Cog):
     @commands.guild_only()
     @commands.command()
     async def exchange(self, ctx, currency_name: str, amount: int):
-        """Convert a mini-currency into Wellspring Coins."""
+        """Convert a mini-currency into WellCoins."""
         currency_name = currency_name.lower().replace(" ","_")
         exchange_rates = await self.config.guild(ctx.guild).exchange_rates()
         
@@ -269,15 +269,15 @@ class NexusExchange(commands.Cog):
         master_balance = await self.config.user(ctx.author).master_balance()
         await self.config.user(ctx.author).master_balance.set(master_balance + new_wellspring_coins)
         
-        await ctx.send(f"Exchanged `{amount}` `{currency_name}` for `{new_wellspring_coins}` Wellspring Coins!")
+        await ctx.send(f"Exchanged `{amount}` `{currency_name}` for `{new_wellspring_coins}` WellCoins!")
 
     @commands.guild_only()
     @commands.command()
     async def balance(self, ctx, currency_name: str = None):
-        """Check your balance of Wellspring Coins or a specific mini-currency."""
+        """Check your balance of WellCoins or a specific mini-currency."""
         if currency_name is None:
             balance = await self.config.user(ctx.author).master_balance()
-            await ctx.send(f"You have `{balance}` Wellspring Coins.")
+            await ctx.send(f"You have `{balance}` WellCoins.")
         else:
             currency_name = currency_name.lower().replace(" ","_")
             exchange_rates = await self.config.guild(ctx.guild).exchange_rates()
