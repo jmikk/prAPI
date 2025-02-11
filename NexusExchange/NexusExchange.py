@@ -16,7 +16,7 @@ class NexusExchange(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.config.register_guild(
-            master_currency_name="Wellspring Coins",
+            master_currency_name="wellcoin",
             exchange_rates={},  # {"currency_name": {"config_id": int, "rate": float}}
         )
         self.config.register_user(master_balance=0)
