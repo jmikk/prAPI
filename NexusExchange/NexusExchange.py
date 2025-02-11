@@ -607,8 +607,8 @@ class NexusExchange(commands.Cog):
             user_balance = await self.config.user(user).master_balance()
             await self.config.user(user).master_balance.set(user_balance + coins_per_message)
         
-        # Update last message time
-        await self.config.user(user).last_message_time.set(current_time)
+            # Update last message time
+            await self.config.user(user).last_message_time.set(current_time)
     
     @commands.guild_only()
     @commands.admin()
