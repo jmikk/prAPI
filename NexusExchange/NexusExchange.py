@@ -67,7 +67,7 @@ class NexusExchange(commands.Cog):
     async def season(self, ctx, *seasons: str):
         """Set the season to filter cards."""
         seasons = [season for season in seasons]
-        await self.config.categories.set(seasons)
+        await self.config.season.set(seasons)
         await ctx.send(f"Season's set to {seasons}")
 
     @shop.command()
