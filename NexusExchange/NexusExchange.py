@@ -581,7 +581,6 @@ class NexusExchange(commands.Cog):
         if message.author.bot or not message.guild:
             return  # Ignore bot messages and DMs
         
-        await message.add_reaction("✅")
         
         user = message.author
         guild = message.guild
@@ -606,6 +605,7 @@ class NexusExchange(commands.Cog):
         
         # Grant WellCoins if the channel is NOT blacklisted
         if channel.id not in blacklisted_channels:
+            await message.add_reaction("✅")
             user_balance = await self.config.user(user).master_balance()
             await self.config.user(user).master_balance.set(user_balance + coins_per_message)
         
