@@ -262,7 +262,7 @@ class NexusExchange(commands.Cog):
                     return
 
         
-                card_info_data = await card_info_response.text()
+                card_info_data = await response.text()
                 card_info = self.parse_card_info(card_info_data)
 
                 embed_color = self.get_embed_color(random_card['category'])
