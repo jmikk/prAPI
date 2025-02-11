@@ -91,9 +91,7 @@ class NexusExchange(commands.Cog):
 
 
         recipient =  "_".join(recipient)
-        await ctx.send(recipient)
         season = await self.config.season()
-        await ctx.send(season)
         nationname = await self.config.nationName()
         categories = ["common","uncommon", "rare", "ultra-rare","epic"]
         useragent = await self.config.useragent()
