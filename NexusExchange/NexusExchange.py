@@ -227,7 +227,7 @@ class NexusExchange(commands.Cog):
         user_balance = await self.config.user(ctx.author).master_balance()
     
         # Check if the user has at least 10 WellCoins
-        lootbox_cost = 1000
+        lootbox_cost = 500
         if user_balance < lootbox_cost:
             await ctx.send(f"❌ You need at least `{lootbox_cost}` WellCoins to buy a card request. Your balance: `{user_balance}` WellCoins.")
             return
