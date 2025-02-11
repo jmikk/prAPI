@@ -417,3 +417,32 @@ class NexusExchange(commands.Cog):
             "LEGENDARY": 0xFFFF00     # Yellow
         }
         return colors.get(category.upper(), 0xFFFFFF)  # Default to white if not found
+
+@commands.guild_only()
+@commands.command(name="richest")
+async def richest(self, ctx):
+    """Display the top 3 richest users in WellCoins."""
+    
+    # Get all user balances
+    all_users = await self.config.all_users()
+    
+    # Extract users and balances
+    balances = [(ctx.guild.get_member(user_id), data.get("master_balance", 0)) for user_id, data in all_users.items()]
+    
+    # Filter out users who are not in the server (None values)
+    balances = [(user, balance) for user, balance in balances if user is not None]
+    
+    # Sort users by balance in descending order
+    top_users = sorted(balances, key=lambda x: x[1], reverse=True)[:3]
+    
+    # Create an embed to display results
+    embed = discord.Embed(title="🏆 Top 3 Richest Users 🏆", color=discord.Color.gold())
+    
+    if not top_users:
+        embed.description = "No users have any WellCoins yet."
+    else:
+        for rank, (user, balance) in enumerate(top_users, start=1):
+            embed.add_field(name=f"#{rank} {user.display_name}", value=f"💰 `{balance}` WellCoins", inline=False)
+    
+    await ctx.send(embed=embed)
+
