@@ -85,6 +85,16 @@ class NexusExchange(commands.Cog):
         """Open a loot box and fetch a random card for the specified nation."""
         await ctx.send("You bought a lootbox woot woot!")
 
+
+            # Fetch the user's current WellCoin balance
+        user_balance = await self.config.user(ctx.author).master_balance()
+    
+        # Check if the user has at least 10 WellCoins
+        lootbox_cost = 10
+        if user_balance < lootbox_cost:
+            await ctx.send(f"❌ You need at least `{lootbox_cost}` WellCoins to buy a lootbox. Your balance: `{user_balance}` WellCoins.")
+            return
+
         if len(recipient) < 1:
             await ctx.send("Make sure to put your nation in after openlootbox")
             return
@@ -188,8 +198,11 @@ class NexusExchange(commands.Cog):
                     async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
                         if execute_response.status == 200:
                             await ctx.send(embed=embed)
-
-                            await ctx.send(f"Successfully gifted the card to {recipient}!")
+                         # Deduct the cost from the user's balance
+                            await self.config.user(ctx.author).master_balance.set(user_balance - lootbox_cost)
+                        
+                            # Confirm purchase
+                            await ctx.send(f"✅ You bought a lootbox for `{lootbox_cost}` WellCoins! Your new balance: `{user_balance - lootbox_cost}` WellCoins.")
                         else:
                             await ctx.send("Failed to execute the gift.")
 
