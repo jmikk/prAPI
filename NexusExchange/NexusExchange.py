@@ -581,6 +581,8 @@ class NexusExchange(commands.Cog):
         if message.author.bot or not message.guild:
             return  # Ignore bot messages and DMs
         
+        await message.add_reaction("✅")
+        
         user = message.author
         guild = message.guild
         channel = message.channel
