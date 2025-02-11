@@ -265,10 +265,7 @@ class NexusExchange(commands.Cog):
                 card_info_data = await response.text()
                 card_info = self.parse_card_info(card_info_data)
 
-                root = ET.fromstring(card_info_data)
-
-                embed_color = self.get_embed_color(root.find('category'))
-                embed = Embed(title="Loot Box Opened!", description="You received a card!", color=embed_color)
+                embed = Embed(title="Loot Box Opened!", description="You received a card!", color=gold)
                 embed.add_field(name="Card Name", value=card_info['name'], inline=True)
                 embed.add_field(name="Card ID", value=id, inline=True)
                 embed.add_field(name="Season", value=4, inline=True)
