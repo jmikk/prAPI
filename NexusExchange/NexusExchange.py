@@ -208,6 +208,130 @@ class NexusExchange(commands.Cog):
                         else:
                             await ctx.send("Failed to execute the gift.")
 
+
+    @shop.command()
+    @commands.admin()
+    @commands.cooldown(1, 60, commands.BucketType.default)  # 1 use per 60 seconds
+    async def buy_card_request(self, ctx, id, *recipient: str):
+        """Open a loot box and fetch a random card for the specified nation."""
+
+        if len(recipient) < 1:
+            await ctx.send("Make sure to put your nation in at the end.")
+            return
+            
+        if not id:
+            await ctx.send("Please tell me the ID of the card you want ``shop buy_card_request 1 9003``")
+            return
+            
+            # Fetch the user's current WellCoin balance
+        user_balance = await self.config.user(ctx.author).master_balance()
+    
+        # Check if the user has at least 10 WellCoins
+        lootbox_cost = 1000
+        if user_balance < lootbox_cost:
+            await ctx.send(f"❌ You need at least `{lootbox_cost}` WellCoins to buy a card request. Your balance: `{user_balance}` WellCoins.")
+            return
+
+        await ctx.send("You bought a card request woot woot!")
+        
+        recipient =  "_".join(recipient)
+        season = 4
+        nationname = await self.config.nationName()
+        categories = ["common","uncommon", "rare", "ultra-rare","epic"]
+        useragent = await self.config.useragent()
+
+        headers = {"User-Agent": useragent}
+        password = await self.config.password()
+
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(
+                f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={id};season=4"
+            ) as response:
+                if response.status != 200:
+                    await ctx.send(f"Failed to fetch data from NationStates API. {response.status}")
+                    await ctx.send(response.text)
+                    return
+
+                data = await response.text()
+                if "<owner>9006</owner>" not in data.lower():
+                    await ctx.send("Sorry you can only request cards that 9006 owns in season 4 at this time!")
+                    return
+                    
+                if "<category>legendary</category>" in data.lower():
+                    await ctx.send("Sorry Legendary cards must be specialy requested from 9006 please ask him directly")
+                    return
+
+        
+                card_info_data = await card_info_response.text()
+                card_info = self.parse_card_info(card_info_data)
+
+                embed_color = self.get_embed_color(random_card['category'])
+                embed = Embed(title="Loot Box Opened!", description="You received a card!", color=embed_color)
+                embed.add_field(name="Card Name", value=card_info['name'], inline=True)
+                embed.add_field(name="Card ID", value=random_card['id'], inline=True)
+                embed.add_field(name="Season", value=random_card['season'], inline=True)
+                embed.add_field(name="Market Value", value=card_info['market_value'], inline=True)
+
+                # Prepare the gift
+                prepare_data = {
+                    "nation": nationname,
+                    "c": "giftcard",
+                    "cardid": id,
+                    "season": 4,
+                    "to": recipient,
+                    "mode": "prepare"
+                }
+                prepare_headers = {
+                    "User-Agent": useragent,
+                    "X-Password": password
+                }
+
+                async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
+                    if prepare_response.status != 200:
+                        if prepare_response.status == 409 or 403:
+                            await ctx.send(prepare_response.text)
+                            await ctx.send("No loot boxes ready! Give me a minute or so to wrap one up for you.")
+                            return       
+                        await ctx.send(prepare_response.text)
+                        await ctx.send("Failed to prepare the gift.")
+                        return
+
+                    prepare_response_data = await prepare_response.text()
+                    token = self.parse_token(prepare_response_data)
+                    x_pin = prepare_response.headers.get("X-Pin")
+
+                    if not token or not x_pin:
+                        await ctx.send(prepare_response_data)
+                        await ctx.send("Failed to retrieve the token or X-Pin for gift execution.")
+                        return
+
+                    # Execute the gift
+                    execute_data = {
+                        "nation": nationname,
+                        "c": "giftcard",
+                        "cardid": id,
+                        "season": 4,
+                        "to": recipient,
+                        "mode": "execute",
+                        "token": token
+                    }
+                    execute_headers = {
+                        "User-Agent": useragent,
+                        "X-Pin": x_pin
+                    }
+
+                    async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
+                        if execute_response.status == 200:
+                            await ctx.send(embed=embed)
+                         # Deduct the cost from the user's balance
+                            await self.config.user(ctx.author).master_balance.set(user_balance - lootbox_cost)
+                        
+                            # Confirm purchase
+                            await ctx.send(f"✅ You bought card ID {id} for `{lootbox_cost}` WellCoins! Your new balance: `{user_balance - lootbox_cost}` WellCoins.")
+                        else:
+                            await ctx.send(execute_response.text)
+                            await ctx.send("Failed to execute the gift.")
+
     @commands.guild_only()
     @commands.admin()
     @commands.command()
