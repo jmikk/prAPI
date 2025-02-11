@@ -68,7 +68,7 @@ class NexusExchange(commands.Cog):
         """Set the season to filter cards."""
         seasons = [season for season in seasons]
         await self.config.categories.set(seasons)
-        await ctx.send(f"Categories set to {', '.join(seasons)}")
+        await ctx.send(f"Season's set to {seasons}")
 
     @shop.command()
     @checks.admin_or_permissions(manage_guild=True)
@@ -93,6 +93,7 @@ class NexusExchange(commands.Cog):
         recipient =  "_".join(recipient)
         await ctx.send(recipient)
         season = await self.config.season()
+        await ctx.send(season)
         nationname = await self.config.nationName()
         categories = ["common","uncommon", "rare", "ultra-rare","epic"]
         useragent = await self.config.useragent()
