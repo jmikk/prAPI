@@ -187,7 +187,6 @@ class NexusExchange(commands.Cog):
 
                     async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
                         if execute_response.status == 200:
-                            await self.add_to_tsv(recipient, random_card['id'], random_card['season'], card_info['market_value'])
                             await ctx.send(embed=embed)
 
                             await ctx.send(f"Successfully gifted the card to {recipient}!")
