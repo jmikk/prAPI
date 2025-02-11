@@ -115,6 +115,8 @@ class NexusExchange(commands.Cog):
             ) as response:
                 if response.status != 200:
                     await ctx.send(f"Failed to fetch data from NationStates API. {response.status}")
+                    await ctx.send(response.text)
+
                     return
 
                 data = await response.text()
