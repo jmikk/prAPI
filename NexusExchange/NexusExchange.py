@@ -8,6 +8,8 @@ import time
 import csv
 import os
 from datetime import datetime
+import asyncio
+from datetime import datetime, timedelta
 
 class NexusExchange(commands.Cog):
     """A Master Currency Exchange Cog for The Wellspring"""
@@ -17,7 +19,11 @@ class NexusExchange(commands.Cog):
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.config.register_guild(
             master_currency_name="wellcoin",
-            exchange_rates={},  # {"currency_name": {"config_id": int, "rate": float}}
+            exchange_rates={}, 
+            xp_per_message=5,  # XP per message
+            coins_per_message=1,  # WellCoins per valid message
+            message_cooldown=10,  # Cooldown in seconds to prevent farming
+            blacklisted_channels=[],  # List of channel IDs where WellCoins are NOT earned# {"currency_name": {"config_id": int, "rate": float}}
         )
         self.config.register_user(master_balance=0)
 
@@ -567,5 +573,96 @@ class NexusExchange(commands.Cog):
             for rank, (user, balance) in enumerate(top_users, start=1):
                 embed.add_field(name=f"#{rank} {user.display_name}", value=f"💰 `{balance}` WellCoins", inline=False)
         
+        await ctx.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        """Reward users for chatting."""
+        if message.author.bot or not message.guild:
+            return  # Ignore bot messages and DMs
+        
+        user = message.author
+        guild = message.guild
+        channel = message.channel
+        
+        # Fetch config settings
+        xp_per_message = await self.config.guild(guild).xp_per_message()
+        coins_per_message = await self.config.guild(guild).coins_per_message()
+        cooldown_time = await self.config.guild(guild).message_cooldown()
+        blacklisted_channels = await self.config.guild(guild).blacklisted_channels()
+        
+        # Check cooldown
+        last_message_time = await self.config.user(user).last_message_time()
+        current_time = datetime.utcnow().timestamp()
+        
+        if current_time - last_message_time < cooldown_time:
+            return  # On cooldown, no rewards
+        
+        # Grant XP (always given)
+        user_xp = await self.config.user(user).xp()
+        await self.config.user(user).xp.set(user_xp + xp_per_message)
+        
+        # Grant WellCoins if the channel is NOT blacklisted
+        if channel.id not in blacklisted_channels:
+            user_balance = await self.config.user(user).master_balance()
+            await self.config.user(user).master_balance.set(user_balance + coins_per_message)
+        
+        # Update last message time
+        await self.config.user(user).last_message_time.set(current_time)
+    
+    @commands.guild_only()
+    @commands.admin()
+    @commands.group()
+    async def chatrewards(self, ctx):
+        """Manage chat-based rewards."""
+        pass
+    
+    @chatrewards.command()
+    async def setxp(self, ctx, xp: int):
+        """Set the amount of XP gained per message."""
+        await self.config.guild(ctx.guild).xp_per_message.set(xp)
+        await ctx.send(f"XP per message set to {xp}.")
+    
+    @chatrewards.command()
+    async def setcoins(self, ctx, coins: int):
+        """Set the amount of WellCoins gained per valid message."""
+        await self.config.guild(ctx.guild).coins_per_message.set(coins)
+        await ctx.send(f"WellCoins per message set to {coins}.")
+    
+    @chatrewards.command()
+    async def setcooldown(self, ctx, seconds: int):
+        """Set the cooldown time in seconds before users can earn again."""
+        await self.config.guild(ctx.guild).message_cooldown.set(seconds)
+        await ctx.send(f"Message reward cooldown set to {seconds} seconds.")
+    
+    @chatrewards.command()
+    async def blacklist(self, ctx, channel: discord.TextChannel):
+        """Blacklist a channel from earning WellCoins."""
+        async with self.config.guild(ctx.guild).blacklisted_channels() as blacklisted_channels:
+            if channel.id not in blacklisted_channels:
+                blacklisted_channels.append(channel.id)
+                await ctx.send(f"{channel.mention} has been blacklisted from earning WellCoins.")
+            else:
+                await ctx.send(f"{channel.mention} is already blacklisted.")
+    
+    @chatrewards.command()
+    async def unblacklist(self, ctx, channel: discord.TextChannel):
+        """Remove a channel from the blacklist."""
+        async with self.config.guild(ctx.guild).blacklisted_channels() as blacklisted_channels:
+            if channel.id in blacklisted_channels:
+                blacklisted_channels.remove(channel.id)
+                await ctx.send(f"{channel.mention} has been removed from the blacklist.")
+            else:
+                await ctx.send(f"{channel.mention} is not blacklisted.")
+    
+    @chatrewards.command()
+    async def viewsettings(self, ctx):
+        """View current chat reward settings."""
+        settings = await self.config.guild(ctx.guild).all()
+        embed = discord.Embed(title="Chat Reward Settings", color=discord.Color.blue())
+        embed.add_field(name="XP per Message", value=f"{settings['xp_per_message']}")
+        embed.add_field(name="WellCoins per Message", value=f"{settings['coins_per_message']}")
+        embed.add_field(name="Cooldown Time", value=f"{settings['message_cooldown']} seconds")
+        embed.add_field(name="Blacklisted Channels", value=f"{', '.join([f'<#{cid}>' for cid in settings['blacklisted_channels']])}" if settings['blacklisted_channels'] else "None")
         await ctx.send(embed=embed)
 
