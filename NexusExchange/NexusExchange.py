@@ -114,7 +114,7 @@ class NexusExchange(commands.Cog):
                 f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname={nationname}"
             ) as response:
                 if response.status != 200:
-                    await ctx.send("Failed to fetch data from NationStates API.")
+                    await ctx.send("Failed to fetch data from NationStates API. {response.status}")
                     return
 
                 data = await response.text()
