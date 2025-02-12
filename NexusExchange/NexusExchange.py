@@ -705,13 +705,14 @@ class NexusExchange(commands.Cog):
                     await ctx.send("❌ Verification failed. Make sure you entered the correct code and try again.")
     
     @commands.command()
-    async def mynation(self, ctx):
-        """Check which NationStates nation is linked to your Discord account."""
-        nation = await self.config.user(ctx.author).linked_nation()
+    async def mynation(self, ctx, user: discord.Member = None):
+        """Check which NationStates nation is linked to a Discord user."""
+        user = user or ctx.author
+        nation = await self.config.user(user).linked_nation()
         if nation:
-            await ctx.send(f"🌍 Your linked NationStates nation is: **{nation}**")
+            await ctx.send(f"🌍 {user.display_name}'s linked NationStates nation is: **{nation}**")
         else:
-            await ctx.send("❌ You have not linked a NationStates nation yet. Use `!linknation <nation_name>` to start the process.")
+            await ctx.send(f"❌ {user.display_name} has not linked a NationStates nation yet.")
     
     @commands.command()
     async def unlinknation(self, ctx):
