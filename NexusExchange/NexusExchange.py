@@ -617,7 +617,7 @@ class NexusExchange(commands.Cog):
             user_balance = await self.config.user(user).master_balance()
             await self.config.user(user).master_balance.set(user_balance + coins_per_message)
             # 10% chance to add a green check mark reaction
-            if random.random() < 0.10:
+            if random.random() < 0.30:
                 await message.add_reaction("💰")          
             # Update last message time
             await self.config.user(user).last_message_time.set(current_time)
