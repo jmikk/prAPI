@@ -24,6 +24,8 @@ class NexusExchange(commands.Cog):
             coins_per_message=1,  # WellCoins per valid message
             message_cooldown=10,  # Cooldown in seconds to prevent farming
             blacklisted_channels=[],  # List of channel IDs where WellCoins are NOT earned# {"currency_name": {"config_id": int, "rate": float}}
+            min_message_length=20,  # Minimum message length to earn rewards
+
         )
         self.config.register_user(master_balance=0, xp=0, last_message_time=0)
 
@@ -583,6 +585,9 @@ class NexusExchange(commands.Cog):
 
         if message.guild.id != 1098644885797609492:
             return  # Ignore messages from other servers
+
+        if len(message.content.strip()) < await self.config.guild(message.guild).min_message_length():
+            return  # Ignore low-effort messages
         
         
         user = message.author
@@ -672,4 +677,10 @@ class NexusExchange(commands.Cog):
         embed.add_field(name="Cooldown Time", value=f"{settings['message_cooldown']} seconds")
         embed.add_field(name="Blacklisted Channels", value=f"{', '.join([f'<#{cid}>' for cid in settings['blacklisted_channels']])}" if settings['blacklisted_channels'] else "None")
         await ctx.send(embed=embed)
+    
+    @chatrewards.command()
+    async def setminlength(self, ctx, length: int):
+        """Set the minimum message length required to earn rewards."""
+        await self.config.guild(ctx.guild).min_message_length.set(length)
+        await ctx.send(f"Minimum message length set to {length} characters.")
 
