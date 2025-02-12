@@ -598,7 +598,6 @@ class NexusExchange(commands.Cog):
         # Check cooldown
         last_message_time = await self.config.user(user).last_message_time()
         current_time = datetime.utcnow().timestamp()
-        await message.add_reaction("✅")
         
         if current_time - last_message_time < cooldown_time:
             return  # On cooldown, no rewards
@@ -612,7 +611,8 @@ class NexusExchange(commands.Cog):
         if channel.id not in blacklisted_channels:
             user_balance = await self.config.user(user).master_balance()
             await self.config.user(user).master_balance.set(user_balance + coins_per_message)
-        
+            await message.add_reaction("✅")
+
             # Update last message time
             await self.config.user(user).last_message_time.set(current_time)
     
