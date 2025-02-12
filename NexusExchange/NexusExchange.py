@@ -580,6 +580,9 @@ class NexusExchange(commands.Cog):
         """Reward users for chatting."""
         if message.author.bot or not message.guild:
             return  # Ignore bot messages and DMs
+
+        if message.guild.id != 1098644885797609492:
+            return  # Ignore messages from other servers
         
         
         user = message.author
