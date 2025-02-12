@@ -688,7 +688,7 @@ class NexusExchange(commands.Cog):
     async def linknation(self, ctx, nation_name: str):
         """Link your NationStates nation to your Discord account."""
         verify_url = f"https://www.nationstates.net/page=verify_login"
-        await ctx.send(f"To verify your NationStates nation, visit {verify_url} and copy the code in the box. `{ctx.author.id}`.")
+        await ctx.send(f"To verify your NationStates nation, visit {verify_url} and copy the code in the box.")
         await ctx.send("Then, DM me the following command to complete verification: `!verifynation <nation_name> <code>` \n For example `!verifynation 9006 FWIXlb2dPZCHm1rq-4isM94FkCJ4RGPUXcjrMjFHsIc`")
     
     @commands.command()
