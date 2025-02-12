@@ -611,8 +611,9 @@ class NexusExchange(commands.Cog):
         if channel.id not in blacklisted_channels:
             user_balance = await self.config.user(user).master_balance()
             await self.config.user(user).master_balance.set(user_balance + coins_per_message)
-            await message.add_reaction("✅")
-
+            # 10% chance to add a green check mark reaction
+            if random.random() < 0.10:
+                await message.add_reaction("💰")          
             # Update last message time
             await self.config.user(user).last_message_time.set(current_time)
     
