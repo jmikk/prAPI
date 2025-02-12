@@ -602,10 +602,10 @@ class NexusExchange(commands.Cog):
         # Grant XP (always given)
         user_xp = await self.config.user(user).xp()
         await self.config.user(user).xp.set(user_xp + xp_per_message)
-        
+
+        await message.add_reaction("✅")
         # Grant WellCoins if the channel is NOT blacklisted
         if channel.id not in blacklisted_channels:
-            await message.add_reaction("✅")
             user_balance = await self.config.user(user).master_balance()
             await self.config.user(user).master_balance.set(user_balance + coins_per_message)
         
