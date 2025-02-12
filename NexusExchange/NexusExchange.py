@@ -590,7 +590,7 @@ class NexusExchange(commands.Cog):
         coins_per_message = await self.config.guild(guild).coins_per_message()
         cooldown_time = await self.config.guild(guild).message_cooldown()
         blacklisted_channels = await self.config.guild(guild).blacklisted_channels()
-        await message.add_reaction("✅")
+       # await message.add_reaction("✅")
 
         # Check cooldown
         last_message_time = await self.config.user(user).last_message_time()
