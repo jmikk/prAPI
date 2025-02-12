@@ -27,7 +27,7 @@ class NexusExchange(commands.Cog):
             min_message_length=20,  # Minimum message length to earn rewards
 
         )
-        self.config.register_user(master_balance=0, xp=0, last_message_time=0)
+        self.config.register_user(master_balance=0, xp=0, last_message_time=0, linked_nation=None)
 
             # Lootbox configuration
         self.config.register_global(
@@ -683,4 +683,39 @@ class NexusExchange(commands.Cog):
         """Set the minimum message length required to earn rewards."""
         await self.config.guild(ctx.guild).min_message_length.set(length)
         await ctx.send(f"Minimum message length set to {length} characters.")
+
+    @commands.command()
+    async def linknation(self, ctx, nation_name: str):
+        """Link your NationStates nation to your Discord account."""
+        verify_url = f"https://www.nationstates.net/page=verify_login"
+        await ctx.send(f"To verify your NationStates nation, visit {verify_url} and copy the code in the box. `{ctx.author.id}`.")
+        await ctx.send("Then, DM me the following command to complete verification: `!verifynation <nation_name> <code>` \n For example `!verifynation 9006 FWIXlb2dPZCHm1rq-4isM94FkCJ4RGPUXcjrMjFHsIc`")
+    
+    @commands.command()
+    async def verifynation(self, ctx, nation_name: str, code: str):
+        """Verify the NationStates nation using the provided verification code."""
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"https://www.nationstates.net/cgi-bin/api.cgi?a=verify&nation={nation_name}&checksum={code}") as response:
+                result = await response.text()
+                
+                if result.strip() == "1":
+                    await self.config.user(ctx.author).linked_nation.set(nation_name)
+                    await ctx.send(f"✅ Successfully linked your NationStates nation: **{nation_name}**")
+                else:
+                    await ctx.send("❌ Verification failed. Make sure you entered the correct code and try again.")
+    
+    @commands.command()
+    async def mynation(self, ctx):
+        """Check which NationStates nation is linked to your Discord account."""
+        nation = await self.config.user(ctx.author).linked_nation()
+        if nation:
+            await ctx.send(f"🌍 Your linked NationStates nation is: **{nation}**")
+        else:
+            await ctx.send("❌ You have not linked a NationStates nation yet. Use `!linknation <nation_name>` to start the process.")
+    
+    @commands.command()
+    async def unlinknation(self, ctx):
+        """Unlink your NationStates nation from your Discord account."""
+        await self.config.user(ctx.author).linked_nation.set(None)
+        await ctx.send("✅ Successfully unlinked your NationStates nation.")
 
