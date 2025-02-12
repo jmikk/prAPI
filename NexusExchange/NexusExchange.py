@@ -585,7 +585,7 @@ class NexusExchange(commands.Cog):
         user = message.author
         guild = message.guild
         channel = message.channel
-        
+        await message.add_reaction("✅")
         # Fetch config settings
         xp_per_message = await self.config.guild(guild).xp_per_message()
         coins_per_message = await self.config.guild(guild).coins_per_message()
@@ -595,7 +595,6 @@ class NexusExchange(commands.Cog):
         # Check cooldown
         last_message_time = await self.config.user(user).last_message_time()
         current_time = datetime.utcnow().timestamp()
-        await message.add_reaction("✅")
         
         if current_time - last_message_time < cooldown_time:
             return  # On cooldown, no rewards
