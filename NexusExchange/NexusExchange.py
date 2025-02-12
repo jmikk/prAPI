@@ -587,12 +587,11 @@ class NexusExchange(commands.Cog):
         channel = message.channel
         # Fetch config settings
         xp_per_message = await self.config.guild(guild).xp_per_message()
-        await message.add_reaction("✅")
-
         coins_per_message = await self.config.guild(guild).coins_per_message()
         cooldown_time = await self.config.guild(guild).message_cooldown()
         blacklisted_channels = await self.config.guild(guild).blacklisted_channels()
-        
+        await message.add_reaction("✅")
+
         # Check cooldown
         last_message_time = await self.config.user(user).last_message_time()
         current_time = datetime.utcnow().timestamp()
