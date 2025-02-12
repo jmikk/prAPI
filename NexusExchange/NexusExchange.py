@@ -25,7 +25,7 @@ class NexusExchange(commands.Cog):
             message_cooldown=10,  # Cooldown in seconds to prevent farming
             blacklisted_channels=[],  # List of channel IDs where WellCoins are NOT earned# {"currency_name": {"config_id": int, "rate": float}}
         )
-        self.config.register_user(master_balance=0)
+        self.config.register_user(master_balance=0, xp=0, last_message_time=0)
 
             # Lootbox configuration
         self.config.register_global(
