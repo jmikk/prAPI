@@ -721,3 +721,38 @@ class NexusExchange(commands.Cog):
         await self.config.user(ctx.author).linked_nation.set(None)
         await ctx.send("✅ Successfully unlinked your NationStates nation.")
 
+    @commands.guild_only()
+    @commands.command()
+    async def pay(self, ctx, recipient: discord.Member, amount: int):
+        """Transfer WellCoins to another player."""
+        if amount <= 0:
+            await ctx.send("❌ Amount must be greater than zero.")
+            return
+
+        sender_balance = await self.config.user(ctx.author).master_balance()
+        if sender_balance < amount:
+            await ctx.send(f"❌ You do not have enough WellCoins to complete this transaction. You only have {sender_balance} WellCoins")
+            return
+
+        recipient_balance = await self.config.user(recipient).master_balance()
+        await self.config.user(ctx.author).master_balance.set(sender_balance - amount)
+        await self.config.user(recipient).master_balance.set(recipient_balance + amount)
+
+        await ctx.send(f"✅ {ctx.author.mention} has sent `{amount}` WellCoins to {recipient.mention}!")
+
+
+    @commands.guild_only()
+    @commands.admin()
+    @commands.command()
+    async def govgive(self, ctx, user: discord.Member, amount: int):
+        """The government distributes WellCoins to a user."""
+        if amount <= 0:
+            await ctx.send("❌ Amount must be greater than zero.")
+            return
+
+        user_balance = await self.config.user(user).master_balance()
+        await self.config.user(user).master_balance.set(user_balance + amount)
+        await ctx.send(f"🏛️ The government has issued `{amount}` WellCoins to {user.mention}!")
+
+
+
