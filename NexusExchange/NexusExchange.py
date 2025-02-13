@@ -451,7 +451,7 @@ class NexusExchange(commands.Cog):
         for currency, data in exchange_rates.items():
             embed.add_field(name=currency, value=f"Rate: 1 {currency} will get you `{data['rate']}` (Config: `{data['config_id']}`)", inline=False)
         
-        embed.add_field(name="How to get the various currencies", value="Gold Comes from Hunger Games! Join us every Saturday\ncredits come from recruiting, if you are instread in joining our recruiting force please reach out to 9006! ", inline=False)
+        embed.add_field(name="How to get the various currencies", value="**Gold** Comes from Hunger Games! Join us every Saturday\n\n**credits** come from recruiting, if you are instread in joining our recruiting force please reach out to 9006! ", inline=False)
         await ctx.send(embed=embed)
 
     @commands.guild_only()
