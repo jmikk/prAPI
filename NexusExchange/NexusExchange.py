@@ -18,8 +18,8 @@ class NexusExchange(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.config.register_guild(
-            daily_channel: None,
-            daily_time: "12:00",  # Default time to noon
+            daily_channel = None,
+            daily_time = "12:00",  # Default time to noon
             master_currency_name="wellcoin",
             exchange_rates={}, 
             xp_per_message=5,  # XP per message
