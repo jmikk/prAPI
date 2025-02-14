@@ -75,11 +75,11 @@ class NexusExchange(commands.Cog):
     async def set_daily_time(self, ctx, time: str):
         """Set the daily message time (HH:MM format, UTC)."""
         try:
-            datetime.strptime(time, "%H:%M")  # Validate time format
+            datetime.strptime(time, "%H")  # Validate time format
             await self.config.guild(ctx.guild).daily_time.set(time)
             await ctx.send(f"Daily message time set to **{time} UTC**.")
         except ValueError:
-            await ctx.send("Invalid time format. Use HH:MM (24-hour UTC).")
+            await ctx.send("Invalid time format. Use HH (24-hour UTC).")
                         
     @commands.group(name="shop")
     async def shop(self, ctx):
