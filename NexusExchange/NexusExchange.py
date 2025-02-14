@@ -715,7 +715,7 @@ class NexusExchange(commands.Cog):
         nations = await self.config.user(user).linked_nations()
         if nations:
             nation_list = "\n".join(nations)
-            await ctx.send(f"🌍 {user.display_name}'s linked NationStates nations is: **{nation}**")
+            await ctx.send(f"🌍 {user.display_name}'s linked NationStates nations is: **{nation_list}**")
         else:
             await ctx.send(f"❌ {user.display_name} has not linked a NationStates nation yet.")
     
