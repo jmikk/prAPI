@@ -27,7 +27,8 @@ class NexusExchange(commands.Cog):
             min_message_length=20,  # Minimum message length to earn rewards
 
         )
-        self.config.register_user(master_balance=0, xp=0, last_message_time=0, linked_nation=None)
+        
+        self.config.register_user(master_balance=0, xp=0, last_message_time=0, linked_nations=[])
 
             # Lootbox configuration
         self.config.register_global(
@@ -700,7 +701,9 @@ class NexusExchange(commands.Cog):
                 result = await response.text()
                 
                 if result.strip() == "1":
-                    await self.config.user(ctx.author).linked_nation.set(nation_name)
+                    async with self.config.user(ctx.author).linked_nations() as nations:
+                    if nation_name not in nations:
+                        nations.append(nation_name)
                     await ctx.send(f"✅ Successfully linked your NationStates nation: **{nation_name}**")
                 else:
                     await ctx.send("❌ Verification failed. Make sure you entered the correct code and try again.")
@@ -709,17 +712,23 @@ class NexusExchange(commands.Cog):
     async def mynation(self, ctx, user: discord.Member = None):
         """Check which NationStates nation is linked to a Discord user."""
         user = user or ctx.author
-        nation = await self.config.user(user).linked_nation()
+        nation = await self.config.user(user).linked_nations()
         if nation:
-            await ctx.send(f"🌍 {user.display_name}'s linked NationStates nation is: **{nation}**")
+            nation_list = "\n".join(nations)
+            await ctx.send(f"🌍 {user.display_name}'s linked NationStates nations is: **{nation}**")
         else:
             await ctx.send(f"❌ {user.display_name} has not linked a NationStates nation yet.")
     
+    
     @commands.command()
-    async def unlinknation(self, ctx):
-        """Unlink your NationStates nation from your Discord account."""
-        await self.config.user(ctx.author).linked_nation.set(None)
-        await ctx.send("✅ Successfully unlinked your NationStates nation.")
+    async def unlinknation(self, ctx, nation_name: str):
+        """Unlink a specific NationStates nation from your Discord account."""
+        async with self.config.user(ctx.author).linked_nations() as nations:
+            if nation_name in nations:
+                nations.remove(nation_name)
+                await ctx.send(f"✅ Successfully unlinked the NationStates nation: **{nation_name}**")
+            else:
+                await ctx.send(f"❌ You do not have **{nation_name}** linked to your account.")
 
     @commands.guild_only()
     @commands.command()
@@ -770,6 +779,22 @@ class NexusExchange(commands.Cog):
 
         await self.config.user(user).master_balance.set(user_balance - amount)
         await ctx.send(f"🚨 {user.mention} has been fined `{amount}` WellCoins by Gob on behalf the goverment!")
+    
+    @commands.command()
+    async def migrate_nations(self, ctx):
+        """Migrate old linked_nation data to linked_nations."""
+        all_users = await self.config.all_users()
+        migrated_count = 0
+        
+        for user_id, data in all_users.items():
+            if "linked_nation" in data and data["linked_nation"]:
+                async with self.config.user_from_id(user_id).linked_nations() as nations:
+                    if data["linked_nation"] not in nations:
+                        nations.append(data["linked_nation"])
+                await self.config.user_from_id(user_id).linked_nation.clear()
+                migrated_count += 1
+        
+        await ctx.send(f"✅ Migration complete! {migrated_count} users had their nations migrated.")
 
 
 
