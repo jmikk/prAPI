@@ -712,7 +712,7 @@ class NexusExchange(commands.Cog):
     async def mynation(self, ctx, user: discord.Member = None):
         """Check which NationStates nation is linked to a Discord user."""
         user = user or ctx.author
-        nation = await self.config.user(user).linked_nations()
+        nations = await self.config.user(user).linked_nations()
         if nation:
             nation_list = "\n".join(nations)
             await ctx.send(f"🌍 {user.display_name}'s linked NationStates nations is: **{nation}**")
