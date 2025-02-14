@@ -702,9 +702,9 @@ class NexusExchange(commands.Cog):
                 
                 if result.strip() == "1":
                     async with self.config.user(ctx.author).linked_nations() as nations:
-                    if nation_name not in nations:
-                        nations.append(nation_name)
-                    await ctx.send(f"✅ Successfully linked your NationStates nation: **{nation_name}**")
+                        if nation_name not in nations:
+                            nations.append(nation_name)
+                        await ctx.send(f"✅ Successfully linked your NationStates nation: **{nation_name}**")
                 else:
                     await ctx.send("❌ Verification failed. Make sure you entered the correct code and try again.")
     
