@@ -752,7 +752,24 @@ class NexusExchange(commands.Cog):
 
         user_balance = await self.config.user(user).master_balance()
         await self.config.user(user).master_balance.set(user_balance + amount)
-        await ctx.send(f"🏛️ The government has issued `{amount}` WellCoins to {user.mention}!")
+        await ctx.send(f"🏛️ Gob The great has issued `{amount}` WellCoins to {user.mention}!")
+
+    @commands.guild_only()
+    @commands.admin()
+    @commands.command()
+    async def fine(self, ctx, user: discord.Member, amount: int):
+        """Fine a user a specific amount of WellCoins."""
+        if amount <= 0:
+            await ctx.send("❌ Fine amount must be greater than zero.")
+            return
+
+        user_balance = await self.config.user(user).master_balance()
+        if user_balance < amount:
+            await ctx.send(f"❌ {user.mention} does not have enough WellCoins to pay the fine of `{amount}`.")
+            return
+
+        await self.config.user(user).master_balance.set(user_balance - amount)
+        await ctx.send(f"🚨 {user.mention} has been fined `{amount}` WellCoins by Gob on behalf the goverment!")
 
 
 
