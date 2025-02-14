@@ -18,6 +18,8 @@ class NexusExchange(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.config.register_guild(
+            daily_channel: None,
+            daily_time: "12:00",  # Default time to noon
             master_currency_name="wellcoin",
             exchange_rates={}, 
             xp_per_message=5,  # XP per message
@@ -38,8 +40,46 @@ class NexusExchange(commands.Cog):
             nationName="",
             password="",
         )
+        self.daily_task.start()  # Start the daily loop
+
+    def cog_unload(self):
+        self.daily_task.cancel()
 
 
+    @tasks.loop(hours=1)
+    async def daily_task(self):
+        now = datetime.utcnow().strftime("%H")  # Get current time in HH:MM format
+        guilds = await self.config.all_guilds()
+
+        for guild_id, data in guilds.items():
+            if data["daily_channel"] and data["daily_time"] == now:
+                channel = self.bot.get_channel(data["daily_channel"])
+                if channel:
+                    try:
+                        await channel.send("This is your daily message!")
+                    except discord.Forbidden:
+                        print(f"Missing permissions to send messages in {channel.id}")
+
+    @commands.admin_or_permissions(manage_guild=True)
+    @commands.guild_only()
+    @commands.command()
+    async def set_daily_channel(self, ctx, channel: discord.TextChannel):
+        """Set the channel where the daily message will be sent."""
+        await self.config.guild(ctx.guild).daily_channel.set(channel.id)
+        await ctx.send(f"Daily message channel set to {channel.mention}.")
+
+    @commands.admin_or_permissions(manage_guild=True)
+    @commands.guild_only()
+    @commands.command()
+    async def set_daily_time(self, ctx, time: str):
+        """Set the daily message time (HH:MM format, UTC)."""
+        try:
+            datetime.strptime(time, "%H:%M")  # Validate time format
+            await self.config.guild(ctx.guild).daily_time.set(time)
+            await ctx.send(f"Daily message time set to **{time} UTC**.")
+        except ValueError:
+            await ctx.send("Invalid time format. Use HH:MM (24-hour UTC).")
+                        
     @commands.group(name="shop")
     async def shop(self, ctx):
         """Master command for the shop."""
