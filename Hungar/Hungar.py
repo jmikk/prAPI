@@ -2371,7 +2371,7 @@ class Hungar(commands.Cog):
         # Create an embed to display the player information
         embed = discord.Embed(
             title="Current Hunger Games Signups",
-            description="Here is the list of players currently signed up:",
+            description=f"Here is the list of players currently signed up: ({len(players)}",
             color=discord.Color.blue(),
         )
     
