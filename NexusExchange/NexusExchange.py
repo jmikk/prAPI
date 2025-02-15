@@ -12,6 +12,7 @@ from datetime import datetime
 import asyncio
 from datetime import datetime, timedelta
 import re
+import urllib.parse  
 
 
 class NexusExchange(commands.Cog):
@@ -164,6 +165,8 @@ class NexusExchange(commands.Cog):
         nationname = await self.config.nationName()  # Nation that owns the dispatch
         password = await self.config.password()  # Nation's password
         useragent = await self.config.useragent()  # Custom user agent
+
+        dispatch_content = urllib.parse.quote_plus(dispatch_content)
     
         url = "https://www.nationstates.net/cgi-bin/api.cgi"
         headers = {
