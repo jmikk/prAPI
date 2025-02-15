@@ -641,7 +641,7 @@ class SponsorView(View):
             day_count = await self.cog.config.guild(guild).day_counter()
             
             user_gold = await self.cog.config.user(interaction.user).gold()
-            cost = self.selected_boost * 20 + (int(day_count) * 10)
+            cost = self.selected_boost * 50 + (int(day_count) * 10) + 100
 
             if cost > user_gold:
                 await interaction.response.send_message(
