@@ -56,15 +56,12 @@ class NexusExchange(commands.Cog):
             if data["daily_channel"] and data["daily_time"] == now:
                 channel = self.bot.get_channel(data["daily_channel"])
                 if channel:
-                    try:
-                        #daily Loop stuff 
-                        await channel.send("This is your daily message!")
-                        ad_text = self.get_random_ad()
-                        if ad_text:
-                            try:
-                                await channel.send(ad_text)
-
-                    
+                     #daily Loop stuff 
+                    await channel.send("This is your daily message!")
+                    ad_text = self.get_random_ad()
+                    if ad_text:
+                        try:
+                            await channel.send(ad_text)
                             #end of daily Loops stuff
                             except discord.Forbidden:
                                 print(f"Missing permissions to send messages in {channel.id}")
