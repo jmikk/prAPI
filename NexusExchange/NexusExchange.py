@@ -144,7 +144,7 @@ class NexusExchange(commands.Cog):
         if not xml_data:
             await ctx.send("Failed to fetch RMB posts.")
             return
-        #await ctx.send(xml_data[:1000])
+        await ctx.send(xml_data[:1000])
         posts = self.extract_rmb_posts(xml_data)
         
         scan, count = await self.reward_users_RMB(posts)
