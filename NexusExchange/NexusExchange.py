@@ -185,50 +185,50 @@ class NexusExchange(commands.Cog):
             "mode": "prepare"
         }
 
-    async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.post(url, data=prepare_data) as prepare_response:
-            prepare_text = await prepare_response.text()
-            
-            if prepare_response.status != 200:
-                return f"❌ Failed to prepare dispatch. Response: {prepare_text}"
-
-            # Extract token and X-Pin from response headers
-            x_pin = prepare_response.headers.get("X-Pin")
-            try:
-                root = ET.fromstring(prepare_text)
-                token = root.find("SUCCESS").text
-            except:
-                return f"❌ Failed to extract token from response. API Response: {prepare_text}"
-
-            if not token or not x_pin:
-                return "❌ Missing token or X-Pin in API response. Cannot proceed."
-
-            # Step 2: Execute the Dispatch Edit Request
-            execute_data = {
-                "nation": nationname,
-                "c": "dispatch",
-                "dispatch": "edit",
-                "dispatchid": "2618850",
-                "title": "WellCoins: Bank of The Wellspring",
-                "text": dispatch_content,
-                "category": "8",
-                "subcategory": "845",
-                "mode": "execute",
-                "token": token
-            }
-
-            execute_headers = {
-                "User-Agent": useragent,
-                "X-Pin": x_pin  # Use the X-Pin from the prepare request
-            }
-
-            async with session.post(url, data=execute_data, headers=execute_headers) as execute_response:
-                execute_text = await execute_response.text()
-
-                if execute_response.status == 200:
-                    return f"✅ Dispatch updated successfully!\n\n{execute_text}"
-                else:
-                    return f"❌ Failed to execute dispatch update. Response: {execute_text}"
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.post(url, data=prepare_data) as prepare_response:
+                prepare_text = await prepare_response.text()
+                
+                if prepare_response.status != 200:
+                    return f"❌ Failed to prepare dispatch. Response: {prepare_text}"
+    
+                # Extract token and X-Pin from response headers
+                x_pin = prepare_response.headers.get("X-Pin")
+                try:
+                    root = ET.fromstring(prepare_text)
+                    token = root.find("SUCCESS").text
+                except:
+                    return f"❌ Failed to extract token from response. API Response: {prepare_text}"
+    
+                if not token or not x_pin:
+                    return "❌ Missing token or X-Pin in API response. Cannot proceed."
+    
+                # Step 2: Execute the Dispatch Edit Request
+                execute_data = {
+                    "nation": nationname,
+                    "c": "dispatch",
+                    "dispatch": "edit",
+                    "dispatchid": "2618850",
+                    "title": "WellCoins: Bank of The Wellspring",
+                    "text": dispatch_content,
+                    "category": "8",
+                    "subcategory": "845",
+                    "mode": "execute",
+                    "token": token
+                }
+    
+                execute_headers = {
+                    "User-Agent": useragent,
+                    "X-Pin": x_pin  # Use the X-Pin from the prepare request
+                }
+    
+                async with session.post(url, data=execute_data, headers=execute_headers) as execute_response:
+                    execute_text = await execute_response.text()
+    
+                    if execute_response.status == 200:
+                        return f"✅ Dispatch updated successfully!\n\n{execute_text}"
+                    else:
+                        return f"❌ Failed to execute dispatch update. Response: {execute_text}"
 
 
 
