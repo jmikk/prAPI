@@ -76,7 +76,7 @@ class NexusExchange(commands.Cog):
                 region = match.group(2).lower()
 
                 # Only count messages from "the_wellspring"
-                if region == self.tracked_region:
+                if region == "the_wellspring:
                     posts.append({"nation": nation, "timestamp": timestamp, "text": text})
 
         return posts
