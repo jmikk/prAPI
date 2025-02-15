@@ -64,9 +64,9 @@ class NexusExchange(commands.Cog):
                                 await channel.send(ad_text)
 
                     
-                        #end of daily Loops stuff
-                    except discord.Forbidden:
-                        print(f"Missing permissions to send messages in {channel.id}")
+                            #end of daily Loops stuff
+                            except discord.Forbidden:
+                                print(f"Missing permissions to send messages in {channel.id}")
     
 
     async def fetch_wa_data(self,hall):
