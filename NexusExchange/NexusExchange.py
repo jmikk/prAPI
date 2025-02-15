@@ -544,9 +544,56 @@ class NexusExchange(commands.Cog):
         if ctx.invoked_subcommand is None:
             embed = discord.Embed(title="🛒 Shop Inventory", color=discord.Color.blue())
             
-            embed.add_field(name="Loot box", value=f"💰 `10 Coins`\n📜", inline=False)
-
+            #embed.add_field(name="Loot box", value=f"💰 `10 Coins`\n📜", inline=False)
+            embed.add_field(name="Hunger games gold", value=f"💰 `1 Wellcoin gets you 50 hunger games gold`\n📜", inline=False)
+        
             await ctx.send(embed=embed)
+
+    @commands.guild_only()
+    @shop.command()
+    async def buy_gold(self, ctx):
+        """Buy Gold using WellCoins (1 WellCoin = 50 Gold)."""
+    
+        # Ask user for amount to convert
+        await ctx.send("💰 How many WellCoins would you like to spend on Gold? (1 WellCoin = 50 Gold)")
+    
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel and m.content.isdigit()
+    
+        try:
+            response = await self.bot.wait_for("message", check=check, timeout=60)  # Wait for 60 seconds
+            wellcoins_to_spend = int(response.content)
+        except asyncio.TimeoutError:
+            await ctx.send("⏳ You took too long to respond. Try again.")
+            return
+        except ValueError:
+            await ctx.send("❌ Please enter a valid number.")
+            return
+    
+        if wellcoins_to_spend <= 0:
+            await ctx.send("❌ You must spend at least 1 WellCoin.")
+            return
+    
+        # Fetch user's current WellCoin balance
+        user_balance = await self.config.user(ctx.author).master_balance()
+    
+        if wellcoins_to_spend > user_balance:
+            await ctx.send(f"❌ You only have `{user_balance}` WellCoins. Try again with a smaller amount.")
+            return
+    
+        # Convert WellCoins to Gold
+        gold_earned = wellcoins_to_spend * 50
+        gold_config = Config.get_conf(None, identifier=1234567890, force_registration=True)
+    
+        # Fetch user's current Gold balance
+        user_gold_balance = await gold_config.user(ctx.author).get_raw("gold", default=0)
+    
+        # Update balances
+        await self.config.user(ctx.author).master_balance.set(user_balance - wellcoins_to_spend)
+        await gold_config.user(ctx.author).set_raw("gold", value=user_gold_balance + gold_earned)
+    
+        await ctx.send(f"✅ You have converted `{wellcoins_to_spend}` WellCoins into `{gold_earned}` Gold! Your new Gold balance: `{user_gold_balance + gold_earned}`.")
+
 
     @shop.command()
     @checks.admin_or_permissions(manage_guild=True)
