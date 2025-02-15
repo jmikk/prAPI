@@ -240,7 +240,7 @@ class NexusExchange(commands.Cog):
                     execute_text = await execute_response.text()
     
                     if execute_response.status == 200:
-                        return f"✅ Dispatch updated successfully!\n\n{execute_text}"
+                        return f"✅ Dispatch updated successfully!\n\n{dispatch_content}"
                     else:
                         return f"❌ Failed to execute dispatch update. Response: {execute_text}"
 
