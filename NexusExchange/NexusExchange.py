@@ -160,57 +160,76 @@ class NexusExchange(commands.Cog):
         self.post_dispatch(dispatch_content)
         await ctx.send("✅ Dispatch ready! Copy and post it on NationStates manually.")
 
-    async def post_dispatch(self, dispatch_content):
-        """Posts the updated dispatch to NationStates API"""
-        nationname = await self.config.nationName()  # Nation that owns the dispatch
-        password = await self.config.password()  # Nation's password
-        useragent = await self.config.useragent()  # Custom user agent
-    
-        url = "https://www.nationstates.net/cgi-bin/api.cgi"
-        headers = {"User-Agent": useragent, "X-Password": password}
-    
-        # Step 1: Prepare the Dispatch Edit
-        prepare_data = {
-            "nation": nationname,
-            "c": "dispatch",
-            "mode": "prepare",
-            "dispatchid": "2618850",
-            "category": "8",
-            "subcategory": "845",
-            "title": "WellCoins: Bank of The Wellspring",
-            "text": dispatch_content
-        }
-    
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.post(url, data=prepare_data) as prepare_response:
-                prepare_text = await prepare_response.text()
-    
-                if prepare_response.status != 200:
-                    return f"❌ Failed to prepare dispatch. Response: {prepare_text}"
-    
-                # Extract the token from response
-                try:
-                    root = ET.fromstring(prepare_text)
-                    token = root.find("SUCCESS").text
-                except:
-                    return f"❌ Failed to extract token from response. API Response: {prepare_text}"
-    
-                # Step 2: Execute the Dispatch Edit
-                execute_data = {
-                    "nation": nationname,
-                    "c": "dispatch",
-                    "mode": "execute",
-                    "dispatchid": "2618850",
-                    "token": token
-                }
-    
-                async with session.post(url, data=execute_data) as execute_response:
-                    execute_text = await execute_response.text()
-    
-                    if execute_response.status == 200:
-                        return f"✅ Dispatch updated successfully!\n\n{execute_text}"
-                    else:
-                        return f"❌ Failed to execute dispatch update. Response: {execute_text}"
+async def post_dispatch(self, dispatch_content):
+    """Posts the updated dispatch to NationStates API"""
+    nationname = await self.config.nationName()  # Nation that owns the dispatch
+    password = await self.config.password()  # Nation's password
+    useragent = await self.config.useragent()  # Custom user agent
+
+    url = "https://www.nationstates.net/cgi-bin/api.cgi"
+    headers = {
+        "User-Agent": useragent,
+        "X-Password": password
+    }
+
+    # Step 1: Prepare the Dispatch Edit Request
+    prepare_data = {
+        "nation": nationname,
+        "c": "dispatch",
+        "dispatch": "edit",
+        "dispatchid": "2618850",
+        "title": "WellCoins: Bank of The Wellspring",
+        "text": dispatch_content,
+        "category": "8",
+        "subcategory": "845",
+        "mode": "prepare"
+    }
+
+    async with aiohttp.ClientSession(headers=headers) as session:
+        async with session.post(url, data=prepare_data) as prepare_response:
+            prepare_text = await prepare_response.text()
+            
+            if prepare_response.status != 200:
+                return f"❌ Failed to prepare dispatch. Response: {prepare_text}"
+
+            # Extract token and X-Pin from response headers
+            x_pin = prepare_response.headers.get("X-Pin")
+            try:
+                root = ET.fromstring(prepare_text)
+                token = root.find("SUCCESS").text
+            except:
+                return f"❌ Failed to extract token from response. API Response: {prepare_text}"
+
+            if not token or not x_pin:
+                return "❌ Missing token or X-Pin in API response. Cannot proceed."
+
+            # Step 2: Execute the Dispatch Edit Request
+            execute_data = {
+                "nation": nationname,
+                "c": "dispatch",
+                "dispatch": "edit",
+                "dispatchid": "2618850",
+                "title": "WellCoins: Bank of The Wellspring",
+                "text": dispatch_content,
+                "category": "8",
+                "subcategory": "845",
+                "mode": "execute",
+                "token": token
+            }
+
+            execute_headers = {
+                "User-Agent": useragent,
+                "X-Pin": x_pin  # Use the X-Pin from the prepare request
+            }
+
+            async with session.post(url, data=execute_data, headers=execute_headers) as execute_response:
+                execute_text = await execute_response.text()
+
+                if execute_response.status == 200:
+                    return f"✅ Dispatch updated successfully!\n\n{execute_text}"
+                else:
+                    return f"❌ Failed to execute dispatch update. Response: {execute_text}"
+
 
 
     
