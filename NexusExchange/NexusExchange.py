@@ -32,6 +32,8 @@ class NexusExchange(commands.Cog):
             message_cooldown=10,  # Cooldown in seconds to prevent farming
             blacklisted_channels=[],  # List of channel IDs where WellCoins are NOT earned# {"currency_name": {"config_id": int, "rate": float}}
             min_message_length=20,  # Minimum message length to earn rewards
+            daily_wellcoins=0,  # Total WellCoins from the last dispatch
+            weekly_wellcoins=0,
 
         )
         self.ads_folder = "ads"  # Folder where ad text files are stored
@@ -114,11 +116,22 @@ class NexusExchange(commands.Cog):
         # Random ad selection
         server_ad = self.get_random_ad()
 
-        # Fun statistics (mocked values)
-        richest_transaction = max(bank_data, key=lambda x: x[1])[1] if bank_data else 0
-        total_transactions = random.randint(50, 500)  # Mocked, replace with real data
-        biggest_spender = random.choice(bank_data)[0] if bank_data else "No Data"
-        largest_donation = random.randint(50, 1000)  # Mocked, replace with real data
+        # Update historical snapshots
+        await self.update_wellcoin_snapshots(total_wellcoins)
+    
+        # Fetch previous totals
+        last_daily = await self.config.daily_wellcoins()
+        last_weekly = await self.config.weekly_wellcoins()
+    
+        # Calculate changes
+        daily_change = total_wellcoins - last_daily
+        weekly_change = total_wellcoins - last_weekly
+    
+        # Formatting positive/negative change
+        daily_change_str = f"[color=green]+{daily_change}[/color]" if daily_change >= 0 else f"[color=red]{daily_change}[/color]"
+        weekly_change_str = f"[color=green]+{weekly_change}[/color]" if weekly_change >= 0 else f"[color=red]{weekly_change}[/color]"
+
+        
 
         # Dispatch content
         dispatch_content = f"""
@@ -1276,6 +1289,26 @@ class NexusExchange(commands.Cog):
                 migrated_count += 1
         
         await ctx.send(f"✅ Migration complete! {migrated_count} users had their nations migrated.")
+
+    async def update_wellcoin_snapshots(self, total_wellcoins):
+        """Updates daily and weekly WellCoin snapshots"""
+        last_daily = await self.config.daily_wellcoins()
+        last_weekly = await self.config.weekly_wellcoins()
+    
+        # If it's a new day, update the daily snapshot
+        today = datetime.utcnow().date()
+        last_update = datetime.utcfromtimestamp(await self.config.get_raw("last_update", default=0)).date()
+    
+        if today > last_update:
+            await self.config.daily_wellcoins.set(total_wellcoins)
+            await self.config.set_raw("last_update", value=int(datetime.utcnow().timestamp()))
+        
+        # If it's a new week, update the weekly snapshot
+        last_weekly_update = datetime.utcfromtimestamp(await self.config.get_raw("last_weekly_update", default=0)).date()
+        if (today - last_weekly_update).days >= 7:
+            await self.config.weekly_wellcoins.set(total_wellcoins)
+            await self.config.set_raw("last_weekly_update", value=int(datetime.utcnow().timestamp()))
+
 
 
 
