@@ -91,7 +91,7 @@ class NexusExchange(commands.Cog):
 
         return len(text_cleaned) >= 20
 
-    async def reward_users(self, posts):
+    async def reward_users_RMB(self, posts):
         """Processes RMB posts and rewards users accordingly"""
         all_users = await self.config.all_users()
 
@@ -145,7 +145,7 @@ class NexusExchange(commands.Cog):
             return
 
         posts = self.extract_rmb_posts(xml_data)
-        await self.reward_users(posts)
+        await self.reward_users_RMB(posts)
 
         await ctx.send("Rewards have been distributed for substantial RMB posts in The Wellspring!")
 
