@@ -99,14 +99,14 @@ class NexusExchange(commands.Cog):
         medals = ["🥇", "🥈", "🥉"]  # Gold, Silver, Bronze
         
         richest_section = "\n".join([
-            f"[*][b]{medals[i]} {i+1}:[/b] [nation]{nation}[/nation] - **{balance} WellCoins**"
+            f"[*][b]{medals[i]} {i+1}:[/b] [nation]{nation}[/nation] - [b]{balance} WellCoins[/b]"
             for i, (nation, balance) in enumerate(top_richest)
         ])
 
 
         # Full bank listing
         full_bank_section = "\n".join([
-            f"[*][b][nation]{nation}[/nation][/b] - **{balance} WellCoins**"
+            f"[*][b][nation]{nation}[/nation][/b] - [b]balance} WellCoins[/b]"
             for nation, balance in bank_data
         ])
 
@@ -159,11 +159,11 @@ class NexusExchange(commands.Cog):
 [background-block=#BAEBFA]
 [hr][center][font=georgia][color=#2A6273][b][size=150]📊 Fun Stats 📊[/size][/b][/color][/font][/center][hr]
 [list]
-[*]Total WellCoins in circulation: **{total_wellcoins}**
-[*]Richest single transaction: **{richest_transaction} WellCoins**
-[*]Total transactions this week: **{total_transactions}**
+[*]Total WellCoins in circulation: [b]{total_wellcoins}[/b]
+[*]Richest single transaction: [b]{richest_transaction} WellCoins[/b]
+[*]Total transactions this week: [b]{total_transactions}[/b]
 [*]Most active spender: [nation]{biggest_spender}[/nation]
-[*]Largest single donation: **{largest_donation} WellCoins**
+[*]Largest single donation: [b]{largest_donation} WellCoins[/b]
 [/list]
 [/background-block]
 [/box]
@@ -500,7 +500,7 @@ class NexusExchange(commands.Cog):
         # Reward users
         await self.reward_users(user_votes, vote_9006_council1, vote_9006_council2)
 
-        await ctx.send(f"Users who voted the same as **9006** have been rewarded! (10 for one match, 20 for both)")
+        await ctx.send(f"Users who voted the same as [nation]9006[/nation] have been rewarded! (10 for one match, 20 for both)")
         
         
 
