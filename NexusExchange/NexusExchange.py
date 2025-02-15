@@ -155,7 +155,7 @@ class NexusExchange(commands.Cog):
 [box]
 [background-block=#2A6273]
 [hr][center][font=georgia][color=#BAEBFA][b][size=150]📢 Shoutout Space 📢[/size][/b][/color][/font][/center][hr]
-[i]Want your nation or region featured here? Contact us in the Discord![/i]
+[i]Want to give someone a shout out here is your chance! Your message here for only 100 Wellcoins![/i]
 [/background-block]
 [/box]
 [box]
