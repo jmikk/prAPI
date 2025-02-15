@@ -1,6 +1,6 @@
 import discord
 from redbot.core import commands, Config, checks
-from discord.ext import tasks  # ✅ Correct
+from discord.ext import tasks  
 import aiohttp
 import random
 import xml.etree.ElementTree as ET
@@ -46,6 +46,107 @@ class NexusExchange(commands.Cog):
 
     def cog_unload(self):
         self.daily_task.cancel()
+
+    async def fetch_rmb_posts(self, since_time):
+        """Fetches RMB posts from NationStates API"""
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=happenings;filter=rmb;limit=1000;sincetime={since_time}"
+        headers = {"User-Agent": "9006, NexusExchange"}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers) as response:
+                if response.status != 200:
+                    return None
+                return await response.text()
+
+    def extract_rmb_posts(self, xml_data):
+        """Parses XML data to extract valid RMB posts from The Wellspring"""
+        root = ET.fromstring(xml_data)
+        events = root.findall(".//EVENT")
+
+        posts = []
+        for event in events:
+            timestamp = int(event.find("TIMESTAMP").text)
+            text = event.find("TEXT").text
+
+            # Extract nation and region using regex
+            match = re.search(r"@@(.*?)@@ lodged .*? on the %%(.*?)%% Regional Message Board", text)
+            if match:
+                nation = match.group(1).lower()
+                region = match.group(2).lower()
+
+                # Only count messages from "the_wellspring"
+                if region == self.tracked_region:
+                    posts.append({"nation": nation, "timestamp": timestamp, "text": text})
+
+        return posts
+
+    def is_valid_post(self, text):
+        """Checks if a post meets the 20-character requirement (excluding links)"""
+        # Remove hyperlinks
+        text_cleaned = re.sub(r"https://.*?</a>", "", text)
+
+        # Strip remaining non-visible characters
+        text_cleaned = re.sub(r"[\[\]<>]", "", text_cleaned).strip()
+
+        return len(text_cleaned) >= 20
+
+    async def reward_users(self, posts):
+        """Processes RMB posts and rewards users accordingly"""
+        all_users = await self.config.all_users()
+
+        last_post_times = {}
+
+        for post in posts:
+            nation = post["nation"]
+            timestamp = post["timestamp"]
+
+            # Find Discord users linked to this nation
+            for user_id, data in all_users.items():
+                linked_nations = data.get("linked_nations", [])
+                if nation in linked_nations:
+                    user = self.bot.get_user(user_id)
+                    if not user:
+                        continue
+
+                    # Check if post is substantial
+                    if not self.is_valid_post(post["text"]):
+                        continue
+
+                    # Check cooldown (must be 10 minutes apart)
+                    last_time = await self.config.user(user).last_rmb_post_time()
+                    if timestamp - last_time < 600:  # 600 seconds = 10 minutes
+                        continue
+
+                    # Check back-to-back posting (same user, consecutive posts)
+                    if nation in last_post_times and timestamp - last_post_times[nation] < 60:
+                        continue
+
+                    # Reward the user
+                    new_balance = data["master_balance"] + 10
+                    await self.config.user(user).master_balance.set(new_balance)
+                    await self.config.user(user).last_rmb_post_time.set(timestamp)
+
+                    # Update last post time for the nation
+                    last_post_times[nation] = timestamp
+
+    @commands.command()
+    @commands.admin_or_permissions(manage_guild=True)
+    async def reward_rmb(self, ctx):
+        """Manually trigger the RMB rewards check"""
+        await ctx.send("Fetching The Wellspring RMB posts...")
+
+        # Get last processed timestamp
+        last_time = int(datetime.utcnow().timestamp()) - 86400  # Default to last 24 hours
+
+        xml_data = await self.fetch_rmb_posts(last_time)
+        if not xml_data:
+            await ctx.send("Failed to fetch RMB posts.")
+            return
+
+        posts = self.extract_rmb_posts(xml_data)
+        await self.reward_users(posts)
+
+        await ctx.send("Rewards have been distributed for substantial RMB posts in The Wellspring!")
 
 
     @tasks.loop(hours=1)
