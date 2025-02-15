@@ -106,7 +106,7 @@ class NexusExchange(commands.Cog):
 
         # Full bank listing
         full_bank_section = "\n".join([
-            f"[*][b][nation]{nation}[/nation][/b] - [b]balance} WellCoins[/b]"
+            f"[*][b][nation]{nation}[/nation][/b] - [b]balance: WellCoins[/b]"
             for nation, balance in bank_data
         ])
 
