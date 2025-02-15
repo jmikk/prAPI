@@ -174,6 +174,8 @@ class NexusExchange(commands.Cog):
 [hr][center][font=georgia][color=#2A6273][b][size=150]📊 Fun Stats 📊[/size][/b][/color][/font][/center][hr]
 [list]
 [*]Total WellCoins in circulation: [b]{total_wellcoins}[/b]
+[*]Change since yesterday: {daily_change_str}
+[*]Change since last week: {weekly_change_str}
 [/list]
 [/background-block]
 [/box]
