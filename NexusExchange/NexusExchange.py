@@ -1274,18 +1274,5 @@ class NexusExchange(commands.Cog):
         
         await ctx.send(f"✅ Migration complete! {migrated_count} users had their nations migrated.")
 
-    def get_random_ad(self):
-        """Fetches a random text file from the ad folder and returns its content."""
-        if not os.path.exists(self.ads_folder):
-            return "No ad folder found."
-
-        files = [f for f in os.listdir(self.ads_folder) if f.endswith(".txt")]
-        if not files:
-            return "No ad files found."
-
-        chosen_file = random.choice(files)
-        with open(os.path.join(self.ads_folder, chosen_file), "r", encoding="utf-8") as f:
-            return f.read()
-
 
 
