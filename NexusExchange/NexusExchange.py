@@ -83,12 +83,6 @@ class NexusExchange(commands.Cog):
 
     def is_valid_post(self, text):
         """Checks if a post meets the 20-character requirement (excluding links)"""
-        # Remove hyperlinks
-        text_cleaned = re.sub(r"https://.*?</a>", "", text)
-
-        # Strip remaining non-visible characters
-        text_cleaned = re.sub(r"[\[\]<>]", "", text_cleaned).strip()
-
         return len(text_cleaned) >= 20
 
     async def reward_users_RMB(self, posts):
@@ -152,6 +146,7 @@ class NexusExchange(commands.Cog):
             return
 
         posts = self.extract_rmb_posts(xml_data)
+        await ctx.send(posts[:100]
         scan, count = await self.reward_users_RMB(posts)
 
         await ctx.send(f"Rewards have been distributed for substantial RMB posts in The Wellspring!{count}/{scan}")
