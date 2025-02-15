@@ -85,51 +85,55 @@ class NexusExchange(commands.Cog):
     def is_valid_post(self, text):
         """Checks if a post meets the 20-character requirement (excluding links)"""
         return len(text) >= 20
-
+    
     async def reward_users_RMB(self, posts):
-        """Processes RMB posts and rewards users accordingly"""
+        """Rewards users with 20 WellCoins for 1 post, 50 WellCoins for 2+ posts"""
         all_users = await self.config.all_users()
-
-        last_post_times = {}
-        count = 0
+    
+        user_post_counts = {}  # Tracks how many valid posts each user made
         scan = 0
+    
         for post in posts:
             nation = post["nation"]
             timestamp = post["timestamp"]
-            scan = scan + 1 
-
-
+            scan += 1
+    
             # Find Discord users linked to this nation
-
             for user_id, data in all_users.items():
                 linked_nations = data.get("linked_nations", [])
                 if nation in linked_nations:
                     user = self.bot.get_user(user_id)
                     if not user:
                         continue
-
+    
                     # Check if post is substantial
                     if not self.is_valid_post(post["text"]):
                         continue
-
+    
                     # Check cooldown (must be 10 minutes apart)
                     last_time = await self.config.user(user).last_rmb_post_time()
+                    if last_time == 0:
+                        last_time = 10000  # Prevents skipping first-time posters
                     if timestamp - last_time < 600:  # 600 seconds = 10 minutes
                         continue
-
-                    # Check back-to-back posting (same user, consecutive posts)
-                    if nation in last_post_times and timestamp - last_post_times[nation] < 60:
-                        continue
-
-                    # Reward the user
-                    new_balance = data["master_balance"] + 10
-                    await self.config.user(user).master_balance.set(new_balance)
+    
+                    # Track valid posts per user
+                    if user_id not in user_post_counts:
+                        user_post_counts[user_id] = 0
+                    user_post_counts[user_id] += 1
+    
+                    # Update last post time for the user
                     await self.config.user(user).last_rmb_post_time.set(timestamp)
+    
+        # Reward users based on post count
+        for user_id, post_count in user_post_counts.items():
+            reward = 50 if post_count >= 2 else 20  # 50 for 2+ posts, 20 for 1 post
+            user_data = await self.config.user_from_id(user_id).all()
+            new_balance = user_data["master_balance"] + reward
+            await self.config.user_from_id(user_id).master_balance.set(new_balance)
+    
+        return scan, len(user_post_counts)
 
-                    # Update last post time for the nation
-                    last_post_times[nation] = timestamp
-                    count = count + 1
-        return scan,count
         
 
     @commands.command()
