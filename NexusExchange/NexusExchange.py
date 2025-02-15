@@ -48,6 +48,51 @@ class NexusExchange(commands.Cog):
     def cog_unload(self):
         self.daily_task.cancel()
 
+    async def fetch_endorsements(self):
+        """Fetches the list of nations endorsing 9006"""
+        url = "https://www.nationstates.net/cgi-bin/api.cgi?nation=9006&q=endorsements"
+        headers = {"User-Agent": "9006, EndorserPayoutBot"}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers) as response:
+                if response.status != 200:
+                    print(f"API request failed: {response.status}")
+                    return None
+                return await response.text()
+
+    @commands.command()
+    @commands.admin_or_permissions(manage_guild=True)
+    async def pay_endorsers(self, ctx):
+        """Pays 10 WellCoins to all users who endorsed 9006"""
+        await ctx.send("Fetching endorsements from NationStates API...")
+
+        xml_data = await self.fetch_endorsements()
+        if not xml_data:
+            await ctx.send("Failed to retrieve endorsements. Try again later.")
+            return
+
+        # Parse XML to get endorsed nations
+        root = ET.fromstring(xml_data)
+        endorsements_text = root.find(".//ENDORSEMENTS").text
+        endorsers = set(endorsements_text.split(",")) if endorsements_text else set()
+
+        if not endorsers:
+            await ctx.send("No endorsers found.")
+            return
+
+        # Get all users from config
+        all_users = await self.config.all_users()
+        paid_users = 0
+
+        for user_id, data in all_users.items():
+            linked_nations = data.get("linked_nations", [])
+            if any(nation in endorsers for nation in linked_nations):
+                new_balance = data["master_balance"] + 10
+                await self.config.user_from_id(user_id).master_balance.set(new_balance)
+                paid_users += 1
+
+        await ctx.send(f"✅ Paid 10 WellCoins to {paid_users} users who endorsed 9006!")
+
     
     async def fetch_rmb_posts(self, since_time):
         """Fetches RMB posts from NationStates API"""
