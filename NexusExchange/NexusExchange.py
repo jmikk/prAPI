@@ -538,7 +538,7 @@ class NexusExchange(commands.Cog):
         except ValueError:
             await ctx.send("Invalid time format. Use HH (24-hour UTC).")
                         
-    @commands.group(name="shop")
+    @commands.group(name="shop", invoke_without_command=True)
     async def shop(self, ctx):
         """Master command for the shop."""
         if ctx.invoked_subcommand is None:
