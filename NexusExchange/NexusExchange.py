@@ -160,30 +160,30 @@ class NexusExchange(commands.Cog):
         self.post_dispatch(dispatch_content)
         await ctx.send("✅ Dispatch ready! Copy and post it on NationStates manually.")
 
-async def post_dispatch(self, dispatch_content):
-    """Posts the updated dispatch to NationStates API"""
-    nationname = await self.config.nationName()  # Nation that owns the dispatch
-    password = await self.config.password()  # Nation's password
-    useragent = await self.config.useragent()  # Custom user agent
-
-    url = "https://www.nationstates.net/cgi-bin/api.cgi"
-    headers = {
-        "User-Agent": useragent,
-        "X-Password": password
-    }
-
-    # Step 1: Prepare the Dispatch Edit Request
-    prepare_data = {
-        "nation": nationname,
-        "c": "dispatch",
-        "dispatch": "edit",
-        "dispatchid": "2618850",
-        "title": "WellCoins: Bank of The Wellspring",
-        "text": dispatch_content,
-        "category": "8",
-        "subcategory": "845",
-        "mode": "prepare"
-    }
+    async def post_dispatch(self, dispatch_content):
+        """Posts the updated dispatch to NationStates API"""
+        nationname = await self.config.nationName()  # Nation that owns the dispatch
+        password = await self.config.password()  # Nation's password
+        useragent = await self.config.useragent()  # Custom user agent
+    
+        url = "https://www.nationstates.net/cgi-bin/api.cgi"
+        headers = {
+            "User-Agent": useragent,
+            "X-Password": password
+        }
+    
+        # Step 1: Prepare the Dispatch Edit Request
+        prepare_data = {
+            "nation": nationname,
+            "c": "dispatch",
+            "dispatch": "edit",
+            "dispatchid": "2618850",
+            "title": "WellCoins: Bank of The Wellspring",
+            "text": dispatch_content,
+            "category": "8",
+            "subcategory": "845",
+            "mode": "prepare"
+        }
 
     async with aiohttp.ClientSession(headers=headers) as session:
         async with session.post(url, data=prepare_data) as prepare_response:
