@@ -13,6 +13,7 @@ import asyncio
 from datetime import datetime, timedelta
 import re
 import urllib.parse  
+import html
 
 
 class NexusExchange(commands.Cog):
