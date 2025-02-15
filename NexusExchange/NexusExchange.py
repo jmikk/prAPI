@@ -166,8 +166,8 @@ class NexusExchange(commands.Cog):
         password = await self.config.password()  # Nation's password
         useragent = await self.config.useragent()  # Custom user agent
 
-        dispatch_content = urllib.parse.quote_plus(dispatch_content)
-    
+        dispatch_content = dispatch_content.encode('utf-8')    
+        
         url = "https://www.nationstates.net/cgi-bin/api.cgi"
         headers = {
             "User-Agent": useragent,
