@@ -51,15 +51,115 @@ class NexusExchange(commands.Cog):
     async def daily_task(self):
         now = datetime.utcnow().strftime("%H")  # Get current time in HH:MM format
         guilds = await self.config.all_guilds()
-
         for guild_id, data in guilds.items():
             if data["daily_channel"] and data["daily_time"] == now:
                 channel = self.bot.get_channel(data["daily_channel"])
                 if channel:
                     try:
+                        #daily Loop stuff 
                         await channel.send("This is your daily message!")
+                        ad_text = self.get_random_ad()
+                        if ad_text:
+                            try:
+                                await channel.send(ad_text)
+
+                    
+                        #end of daily Loops stuff
                     except discord.Forbidden:
                         print(f"Missing permissions to send messages in {channel.id}")
+    
+
+    async def fetch_wa_data(self,hall):
+        """Fetches WA voting data from NationStates API"""
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?wa={hall}&q=resolution+voters"
+        headers = {"User-Agent": "9006, NexusExhange"}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers) as response:
+                if response.status != 200:
+                    return None
+                return await response.text()
+
+    async def get_9006_vote(self, xml_data):
+        """Parses XML and finds how nation '9006' voted"""
+        root = ET.fromstring(xml_data)
+
+        votes_for = {n.text.lower() for n in root.findall(".//VOTES_FOR/N")}
+        votes_against = {n.text.lower() for n in root.findall(".//VOTES_AGAINST/N")}
+
+        if "9006" in votes_for:
+            return "for"
+        elif "9006" in votes_against:
+            return "against"
+        return None  # 9006 hasn't voted
+    
+    async def reward_users(self, user_votes, vote_9006_council1, vote_9006_council2):
+        """Rewards users who voted the same as '9006' in either or both councils"""
+        all_users = await self.config.all_users()
+
+        for user_id, data in all_users.items():
+            linked_nations = data.get("linked_nations", [])
+            if not linked_nations:
+                continue  # Skip users with no linked nations
+
+            matching_council_1 = False
+            matching_council_2 = False
+
+            for nation in linked_nations:
+                nation = nation.lower()
+                if vote_9006_council1 and nation in user_votes["council1"]:
+                    matching_council_1 = True
+                if vote_9006_council2 and nation in user_votes["council2"]:
+                    matching_council_2 = True
+
+            # Reward based on how many councils match
+            if matching_council_1 and matching_council_2:
+                reward = 20  # Matching both votes
+            elif matching_council_1 or matching_council_2:
+                reward = 10  # Matching in one council
+            else:
+                reward = 0  # No match, no reward
+
+            if reward > 0:
+                new_balance = data["master_balance"] + reward
+                await self.config.user_from_id(user_id).master_balance.set(new_balance)
+
+    @commands.command()
+    @commands.admin_or_permissions(manage_guild=True)
+    async def reward_voters(self, ctx):
+        """Check votes and reward users who voted the same as '9006' in either WA Council"""
+        await ctx.send("Fetching WA vote data for both councils...")
+
+        # Fetch data for both WA councils
+        xml_data_council1 = await self.fetch_wa_data(1)
+        xml_data_council2 = await self.fetch_wa_data(2)
+
+        # Determine 9006's votes
+        vote_9006_council1 = await self.get_9006_vote(xml_data_council1)
+        vote_9006_council2 = await self.get_9006_vote(xml_data_council2)
+
+        # If 9006 hasn't voted in either council, no rewards
+        if not vote_9006_council1 and not vote_9006_council2:
+            await ctx.send("Nation '9006' has not voted in either council. No rewards given.")
+            return
+
+        # Parse votes from each council
+        user_votes = {"council1": set(), "council2": set()}
+
+        if xml_data_council1 and vote_9006_council1:
+            root = ET.fromstring(xml_data_council1)
+            user_votes["council1"] = {n.text.lower() for n in root.findall(f".//VOTES_{vote_9006_council1.upper()}/N")}
+
+        if xml_data_council2 and vote_9006_council2:
+            root = ET.fromstring(xml_data_council2)
+            user_votes["council2"] = {n.text.lower() for n in root.findall(f".//VOTES_{vote_9006_council2.upper()}/N")}
+
+        # Reward users
+        await self.reward_users(user_votes, vote_9006_council1, vote_9006_council2)
+
+        await ctx.send(f"Users who voted the same as **9006** have been rewarded! (10 for one match, 20 for both)")
+        
+        
 
     @commands.admin_or_permissions(manage_guild=True)
     @commands.guild_only()
@@ -836,6 +936,19 @@ class NexusExchange(commands.Cog):
                 migrated_count += 1
         
         await ctx.send(f"✅ Migration complete! {migrated_count} users had their nations migrated.")
+
+    def get_random_ad(self):
+        """Fetches a random text file from the ad folder and returns its content."""
+        if not os.path.exists(self.ads_folder):
+            return "No ad folder found."
+
+        files = [f for f in os.listdir(self.ads_folder) if f.endswith(".txt")]
+        if not files:
+            return "No ad files found."
+
+        chosen_file = random.choice(files)
+        with open(os.path.join(self.ads_folder, chosen_file), "r", encoding="utf-8") as f:
+            return f.read()
 
 
 
