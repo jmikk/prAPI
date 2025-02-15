@@ -543,10 +543,8 @@ class NexusExchange(commands.Cog):
         """Master command for the shop."""
         if ctx.invoked_subcommand is None:
             embed = discord.Embed(title="🛒 Shop Inventory", color=discord.Color.blue())
-            
             #embed.add_field(name="Loot box", value=f"💰 `10 Coins`\n📜", inline=False)
-            embed.add_field(name="Hunger games gold", value=f"💰 `1 Wellcoin gets you 50 hunger games gold`\n📜", inline=False)
-        
+            embed.add_field(name="Hunger games gold", value=f"💰 `1 Wellcoin gets you 50 hunger games gold`\n📜``$shop buy_gold``` Then tell me how many Wellcoins you want to spend.", inline=False)
             await ctx.send(embed=embed)
 
     @commands.guild_only()
@@ -555,7 +553,7 @@ class NexusExchange(commands.Cog):
         """Buy Gold using WellCoins (1 WellCoin = 50 Gold)."""
     
         # Ask user for amount to convert
-        await ctx.send("💰 How many WellCoins would you like to spend on Gold? (1 WellCoin = 50 Gold)")
+        await ctx.send("💰 How many WellCoins would you like to spend on Gold? (1 WellCoin = 20 Gold)")
     
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel and m.content.isdigit()
@@ -582,7 +580,7 @@ class NexusExchange(commands.Cog):
             return
     
         # Convert WellCoins to Gold
-        gold_earned = wellcoins_to_spend * 50
+        gold_earned = wellcoins_to_spend * 20
         gold_config = Config.get_conf(None, identifier=1234567890, force_registration=True)
     
         # Fetch user's current Gold balance
