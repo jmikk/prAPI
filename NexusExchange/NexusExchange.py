@@ -96,12 +96,16 @@ class NexusExchange(commands.Cog):
         all_users = await self.config.all_users()
 
         last_post_times = {}
-
+        count = 0
+        scan = 0
         for post in posts:
             nation = post["nation"]
             timestamp = post["timestamp"]
+            scan = scan + 1 
+
 
             # Find Discord users linked to this nation
+
             for user_id, data in all_users.items():
                 linked_nations = data.get("linked_nations", [])
                 if nation in linked_nations:
@@ -129,6 +133,9 @@ class NexusExchange(commands.Cog):
 
                     # Update last post time for the nation
                     last_post_times[nation] = timestamp
+                    count = count + 1
+        return scan,count
+        
 
     @commands.command()
     @commands.admin_or_permissions(manage_guild=True)
@@ -145,9 +152,9 @@ class NexusExchange(commands.Cog):
             return
 
         posts = self.extract_rmb_posts(xml_data)
-        await self.reward_users_RMB(posts)
+        scan, count await self.reward_users_RMB(posts)
 
-        await ctx.send("Rewards have been distributed for substantial RMB posts in The Wellspring!")
+        await ctx.send(f"Rewards have been distributed for substantial RMB posts in The Wellspring!{count}/{scan}")
 
 
     @tasks.loop(hours=1)
