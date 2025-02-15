@@ -157,6 +157,7 @@ class NexusExchange(commands.Cog):
 [/background-block]
 """
         await ctx.send(dispatch_content[:1000])
+        self.post_dispatch(dispatch_content)
         await ctx.send("✅ Dispatch ready! Copy and post it on NationStates manually.")
 
     async def post_dispatch(self, dispatch_content):
