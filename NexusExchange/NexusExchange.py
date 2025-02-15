@@ -129,28 +129,33 @@ class NexusExchange(commands.Cog):
 [hr][center][font=georgia][color=#BAEBFA][b][size=200]WellCoins: Bank of The Wellspring[/size][/b][/color][/font][/center][hr]
 [/background-block]
 
+[box]
 [background-block=#BAEBFA]
 [center][font=georgia][color=#2A6273][b][size=150]💰 Top 3 Richest Users 💰[/size][/b][/color][/font][/center]
 [list]{richest_section}
 [/list]
 [/background-block]
-
+[/box]
+[box]
 [background-block=#2A6273]
 [hr][center][font=georgia][color=#BAEBFA][b][size=150]📢 Shoutout Space 📢[/size][/b][/color][/font][/center][hr]
 [i]Want your nation or region featured here? Contact us in the Discord![/i]
 [/background-block]
-
+[/box]
+[box]
 [background-block=#BAEBFA]
 [hr][center][font=georgia][color=#2A6273][b][size=150]🌍 Server Ad 🌍[/size][/b][/color][/font][/center][hr]
-[quote]{server_ad}[/quote]
+{server_ad}
 [/background-block]
-
+[/box]
+[box]
 [background-block=#2A6273]
 [hr][center][font=georgia][color=#BAEBFA][b][size=150]🏦 Full Bank Listings 🏦[/size][/b][/color][/font][/center][hr]
 [list]{full_bank_section}
 [/list]
 [/background-block]
-
+[/box]
+[box]
 [background-block=#BAEBFA]
 [hr][center][font=georgia][color=#2A6273][b][size=150]📊 Fun Stats 📊[/size][/b][/color][/font][/center][hr]
 [list]
@@ -161,6 +166,7 @@ class NexusExchange(commands.Cog):
 [*]Largest single donation: **{largest_donation} WellCoins**
 [/list]
 [/background-block]
+[/box]
 """
         await ctx.send(await self.post_dispatch(dispatch_content))
         await ctx.send("✅ Dispatch ready! Copy and post it on NationStates manually.")
