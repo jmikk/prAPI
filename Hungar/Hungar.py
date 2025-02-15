@@ -2073,7 +2073,8 @@ class Hungar(commands.Cog):
             if eliminated:
                 others.append("A cannon sounds signaling another set of dead tributes \n\n")
                 event_outcomes = others + eliminated
-        #Prepare the events log file
+       
+            #Prepare the events log file
             file_name = f"Hunger_Games.txt"
             async with aiofiles.open(file_name, mode='a') as file:
                 # Pings users and bolds NPCs
@@ -2107,7 +2108,7 @@ class Hungar(commands.Cog):
             for tribute_id, bet_data in bets.items():
                 if tribute_id in players and players[tribute_id]["alive"]:
                     
-                    daily_return = max(int(bet_data["amount"] * min(0.01 * day_counter, 0.20)),1)  
+                    daily_return = max(int(bet_data["amount"] * min(0.01 * day_counter/4, 0.20)),1)  
                     bet_data["daily_earnings"] += daily_return
                     user_gold += daily_return
         
