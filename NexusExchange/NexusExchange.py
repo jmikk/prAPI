@@ -33,7 +33,7 @@ class NexusExchange(commands.Cog):
 
         )
         
-        self.config.register_user(master_balance=0, xp=0, last_message_time=0, linked_nations=[])
+        self.config.register_user(master_balance=0, xp=0, last_message_time=0, linked_nations=[],last_rmb_post_time=0)
 
             # Lootbox configuration
         self.config.register_global(
