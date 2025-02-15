@@ -50,7 +50,7 @@ class NexusExchange(commands.Cog):
 
     async def fetch_rmb_posts(self, since_time):
         """Fetches RMB posts from NationStates API"""
-        url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=happenings;filter=rmb;limit=1000;sincetime={since_time};view=region.the_rejected_realms"
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=happenings;filter=rmb;limit=1000;sincetime={since_time};view=region.the_wellspring"
         headers = {"User-Agent": "9006, NexusExchange"}
 
         async with aiohttp.ClientSession() as session:
