@@ -95,7 +95,6 @@ class NexusExchange(commands.Cog):
     
         for post in posts:
             nation = post["nation"]
-            timestamp = post["timestamp"]
             scan += 1
     
             # Find Discord users linked to this nation
@@ -110,20 +109,11 @@ class NexusExchange(commands.Cog):
                     if not self.is_valid_post(post["text"]):
                         continue
     
-                    # Check cooldown (must be 10 minutes apart)
-                    last_time = await self.config.user(user).last_rmb_post_time()
-                    if last_time == 0:
-                        last_time = 10000  # Prevents skipping first-time posters
-                    if timestamp - last_time < 600:  # 600 seconds = 10 minutes
-                        continue
-    
                     # Track valid posts per user
                     if user_id not in user_post_counts:
                         user_post_counts[user_id] = 0
                     user_post_counts[user_id] += 1
     
-                    # Update last post time for the user
-                    await self.config.user(user).last_rmb_post_time.set(timestamp)
     
         # Reward users based on post count
         for user_id, post_count in user_post_counts.items():
