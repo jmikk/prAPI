@@ -149,7 +149,7 @@ class NexusExchange(commands.Cog):
         
         scan, count = await self.reward_users_RMB(posts)
 
-        await ctx.send(f"Rewards have been distributed for substantial RMB posts in The Wellspring!{count}/{scan}")
+        await ctx.send(f"Rewards have been distributed for substantial RMB posts in The Wellspring!{count}/{scan}  {last_time}")
 
 
     @tasks.loop(hours=1)
