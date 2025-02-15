@@ -32,6 +32,7 @@ class NexusExchange(commands.Cog):
             min_message_length=20,  # Minimum message length to earn rewards
 
         )
+        self.ads_folder = "ads"  # Folder where ad text files are stored
         
         self.config.register_user(master_balance=0, xp=0, last_message_time=0, linked_nations=[],last_rmb_post_time=0)
 
@@ -45,6 +46,117 @@ class NexusExchange(commands.Cog):
         )
         self.daily_task.start()  # Start the daily loop
 
+
+    async def fetch_bank_data(self):
+        """Fetches all users' bank balances and linked nations."""
+        all_users = await self.config.all_users()
+        bank_list = []
+
+        for user_id, data in all_users.items():
+            linked_nations = data.get("linked_nations", [])
+            balance = data.get("master_balance", 0)
+
+            if linked_nations:
+                nation = linked_nations[0]  # Assume first linked nation is primary
+                bank_list.append((nation, balance))
+
+        return sorted(bank_list, key=lambda x: x[1], reverse=True)
+
+    def get_random_ad(self):
+        """Fetches a random ad from the ad folder."""
+        if not os.path.exists(self.ads_folder):
+            return "No ads found."
+
+        files = [f for f in os.listdir(self.ads_folder) if f.endswith(".txt")]
+        if not files:
+            return "No ad files available."
+
+        chosen_file = random.choice(files)
+        with open(os.path.join(self.ads_folder, chosen_file), "r", encoding="utf-8") as f:
+            return f.read()
+
+    @commands.command()
+    @commands.admin_or_permissions(manage_guild=True)
+    async def post_bank_dispatch(self, ctx):
+        """Posts a NationStates dispatch with the latest bank rankings."""
+        await ctx.send("Generating the Bank of The Wellspring dispatch...")
+
+        bank_data = await self.fetch_bank_data()
+        total_wellcoins = sum(balance for _, balance in bank_data)
+
+        if not bank_data:
+            await ctx.send("No bank data found. Cannot post dispatch.")
+            return
+
+        # Top 3 richest users
+        top_richest = bank_data[:3]
+        richest_section = "\n".join([
+            f"[*][b]🥇 {i+1}:[/b] [nation]{nation}[/nation] - **{balance} WellCoins**"
+            for i, (nation, balance) in enumerate(top_richest)
+        ])
+
+        # Full bank listing
+        full_bank_section = "\n".join([
+            f"[*][b][nation]{nation}[/nation][/b] - **{balance} WellCoins**"
+            for nation, balance in bank_data
+        ])
+
+        # Random ad selection
+        server_ad = self.get_random_ad()
+
+        # Fun statistics (mocked values)
+        richest_transaction = max(bank_data, key=lambda x: x[1])[1] if bank_data else 0
+        total_transactions = random.randint(50, 500)  # Mocked, replace with real data
+        biggest_spender = random.choice(bank_data)[0] if bank_data else "No Data"
+        largest_donation = random.randint(50, 1000)  # Mocked, replace with real data
+
+        # Dispatch content
+        dispatch_content = f"""
+[background-block=#BAEBFA]
+[hr][center][img]https://i.imgur.com/nyLuC78.png[/img][hr][/center]
+[/background-block]
+
+[background-block=#2A6273]
+[hr][center][font=georgia][color=#BAEBFA][b][size=200]WellCoins: Bank of The Wellspring[/size][/b][/color][/font][/center][hr]
+[/background-block]
+
+[background-block=#BAEBFA]
+[center][font=georgia][color=#2A6273][b][size=150]💰 Top 3 Richest Users 💰[/size][/b][/color][/font][/center]
+[list]{richest_section}
+[/list]
+[/background-block]
+
+[background-block=#2A6273]
+[hr][center][font=georgia][color=#BAEBFA][b][size=150]📢 Shoutout Space 📢[/size][/b][/color][/font][/center][hr]
+[i]Want your nation or region featured here? Contact us in the Discord![/i]
+[/background-block]
+
+[background-block=#BAEBFA]
+[hr][center][font=georgia][color=#2A6273][b][size=150]🌍 Server Ad 🌍[/size][/b][/color][/font][/center][hr]
+[quote]{server_ad}[/quote]
+[/background-block]
+
+[background-block=#2A6273]
+[hr][center][font=georgia][color=#BAEBFA][b][size=150]🏦 Full Bank Listings 🏦[/size][/b][/color][/font][/center][hr]
+[list]{full_bank_section}
+[/list]
+[/background-block]
+
+[background-block=#BAEBFA]
+[hr][center][font=georgia][color=#2A6273][b][size=150]📊 Fun Stats 📊[/size][/b][/color][/font][/center][hr]
+[list]
+[*]Total WellCoins in circulation: **{total_wellcoins}**
+[*]Richest single transaction: **{richest_transaction} WellCoins**
+[*]Total transactions this week: **{total_transactions}**
+[*]Most active spender: [nation]{biggest_spender}[/nation]
+[*]Largest single donation: **{largest_donation} WellCoins**
+[/list]
+[/background-block]
+"""
+
+        await ctx.send("✅ Dispatch ready! Copy and post it on NationStates manually.")
+
+    
     def cog_unload(self):
         self.daily_task.cancel()
 
