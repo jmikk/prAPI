@@ -159,6 +159,59 @@ class NexusExchange(commands.Cog):
         await ctx.send(dispatch_content[:1000])
         await ctx.send("✅ Dispatch ready! Copy and post it on NationStates manually.")
 
+    async def post_dispatch(self, dispatch_content):
+        """Posts the updated dispatch to NationStates API"""
+        nationname = await self.config.nationName()  # Nation that owns the dispatch
+        password = await self.config.password()  # Nation's password
+        useragent = await self.config.useragent()  # Custom user agent
+    
+        url = "https://www.nationstates.net/cgi-bin/api.cgi"
+        headers = {"User-Agent": useragent, "X-Password": password}
+    
+        # Step 1: Prepare the Dispatch Edit
+        prepare_data = {
+            "nation": nationname,
+            "c": "dispatch",
+            "mode": "prepare",
+            "dispatchid": "2618850",
+            "category": "8",
+            "subcategory": "845",
+            "title": "WellCoins: Bank of The Wellspring",
+            "text": dispatch_content
+        }
+    
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.post(url, data=prepare_data) as prepare_response:
+                prepare_text = await prepare_response.text()
+    
+                if prepare_response.status != 200:
+                    return f"❌ Failed to prepare dispatch. Response: {prepare_text}"
+    
+                # Extract the token from response
+                try:
+                    root = ET.fromstring(prepare_text)
+                    token = root.find("SUCCESS").text
+                except:
+                    return f"❌ Failed to extract token from response. API Response: {prepare_text}"
+    
+                # Step 2: Execute the Dispatch Edit
+                execute_data = {
+                    "nation": nationname,
+                    "c": "dispatch",
+                    "mode": "execute",
+                    "dispatchid": "2618850",
+                    "token": token
+                }
+    
+                async with session.post(url, data=execute_data) as execute_response:
+                    execute_text = await execute_response.text()
+    
+                    if execute_response.status == 200:
+                        return f"✅ Dispatch updated successfully!\n\n{execute_text}"
+                    else:
+                        return f"❌ Failed to execute dispatch update. Response: {execute_text}"
+
+
     
     def cog_unload(self):
         self.daily_task.cancel()
