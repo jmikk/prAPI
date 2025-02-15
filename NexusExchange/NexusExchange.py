@@ -48,6 +48,7 @@ class NexusExchange(commands.Cog):
     def cog_unload(self):
         self.daily_task.cancel()
 
+    
     async def fetch_rmb_posts(self, since_time):
         """Fetches RMB posts from NationStates API"""
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=happenings;filter=rmb;limit=1000;sincetime={since_time};view=region.the_wellspring"
