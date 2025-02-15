@@ -47,6 +47,8 @@ class NexusExchange(commands.Cog):
             password="",
             daily_wellcoins=0,  # Total WellCoins from the last dispatch
             weekly_wellcoins=0,
+            last_update=0,  # Timestamp of the last daily update
+            last_weekly_update=0,  # Timestamp of the last weekly update
         )
         self.daily_task.start()  # Start the daily loop
 
