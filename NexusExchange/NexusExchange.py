@@ -32,8 +32,6 @@ class NexusExchange(commands.Cog):
             message_cooldown=10,  # Cooldown in seconds to prevent farming
             blacklisted_channels=[],  # List of channel IDs where WellCoins are NOT earned# {"currency_name": {"config_id": int, "rate": float}}
             min_message_length=20,  # Minimum message length to earn rewards
-            daily_wellcoins=0,  # Total WellCoins from the last dispatch
-            weekly_wellcoins=0,
 
         )
         self.ads_folder = "ads"  # Folder where ad text files are stored
@@ -47,6 +45,8 @@ class NexusExchange(commands.Cog):
             useragent="",
             nationName="",
             password="",
+            daily_wellcoins=0,  # Total WellCoins from the last dispatch
+            weekly_wellcoins=0,
         )
         self.daily_task.start()  # Start the daily loop
 
