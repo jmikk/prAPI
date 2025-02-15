@@ -63,7 +63,7 @@ class NexusExchange(commands.Cog):
                         try:
                             await channel.send(ad_text)
                             #end of daily Loops stuff
-                            except discord.Forbidden:
+                        except discord.Forbidden:
                                 print(f"Missing permissions to send messages in {channel.id}")
     
 
