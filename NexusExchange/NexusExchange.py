@@ -50,7 +50,7 @@ class NexusExchange(commands.Cog):
 
     async def fetch_rmb_posts(self, since_time):
         """Fetches RMB posts from NationStates API"""
-        url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=happenings;filter=rmb;limit=1000;sincetime={since_time}"
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=happenings;filter=rmb;limit=1000;sincetime={since_time};view=region.the_rejected_realms"
         headers = {"User-Agent": "9006, NexusExchange"}
 
         async with aiohttp.ClientSession() as session:
@@ -144,7 +144,7 @@ class NexusExchange(commands.Cog):
         if not xml_data:
             await ctx.send("Failed to fetch RMB posts.")
             return
-        await ctx.send(xml_data[:1000])
+        #await ctx.send(xml_data[:1000])
         posts = self.extract_rmb_posts(xml_data)
         
         scan, count = await self.reward_users_RMB(posts)
