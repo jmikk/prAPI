@@ -88,12 +88,15 @@ class NexusExchange(commands.Cog):
             await ctx.send("No bank data found. Cannot post dispatch.")
             return
 
-        # Top 3 richest users
+        # Top 3 richest users with proper medals
         top_richest = bank_data[:3]
+        medals = ["🥇", "🥈", "🥉"]  # Gold, Silver, Bronze
+        
         richest_section = "\n".join([
-            f"[*][b]🥇 {i+1}:[/b] [nation]{nation}[/nation] - **{balance} WellCoins**"
+            f"[*][b]{medals[i]} {i+1}:[/b] [nation]{nation}[/nation] - **{balance} WellCoins**"
             for i, (nation, balance) in enumerate(top_richest)
         ])
+
 
         # Full bank listing
         full_bank_section = "\n".join([
