@@ -12,6 +12,7 @@ from datetime import datetime
 import asyncio
 from datetime import datetime, timedelta
 
+
 class NexusExchange(commands.Cog):
     """A Master Currency Exchange Cog for The Wellspring"""
 
