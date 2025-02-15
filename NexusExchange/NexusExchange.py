@@ -146,7 +146,7 @@ class NexusExchange(commands.Cog):
             return
 
         posts = self.extract_rmb_posts(xml_data)
-        await ctx.send(posts[:100]
+        await ctx.send(posts[:100])
         scan, count = await self.reward_users_RMB(posts)
 
         await ctx.send(f"Rewards have been distributed for substantial RMB posts in The Wellspring!{count}/{scan}")
