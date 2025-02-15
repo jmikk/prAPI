@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 import asyncio
 from datetime import datetime, timedelta
+import re
 
 
 class NexusExchange(commands.Cog):
