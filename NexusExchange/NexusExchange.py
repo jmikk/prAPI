@@ -84,7 +84,7 @@ class NexusExchange(commands.Cog):
 
     def is_valid_post(self, text):
         """Checks if a post meets the 20-character requirement (excluding links)"""
-        return len(text_cleaned) >= 20
+        return len(text) >= 20
 
     async def reward_users_RMB(self, posts):
         """Processes RMB posts and rewards users accordingly"""
