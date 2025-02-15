@@ -65,15 +65,20 @@ class NexusExchange(commands.Cog):
 
     def get_random_ad(self):
         """Fetches a random ad from the ad folder."""
-        if not os.path.exists(self.ads_folder):
+
+            # Get the absolute path to the ads folder
+        base_dir = os.path.dirname(os.path.abspath(__file__))  # Get the script's directory
+        ads_folder = os.path.join(base_dir, "ads")  # Assume ads is in the same folder as the script
+        
+        if not os.path.exists(ads_folder):
             return "No ads found."
 
-        files = [f for f in os.listdir(self.ads_folder) if f.endswith(".txt")]
+        files = [f for f in os.listdir(ads_folder) if f.endswith(".txt")]
         if not files:
             return "No ad files available."
 
         chosen_file = random.choice(files)
-        with open(os.path.join(self.ads_folder, chosen_file), "r", encoding="utf-8") as f:
+        with open(os.path.join(ads_folder, chosen_file), "r", encoding="utf-8") as f:
             return f.read()
 
     @commands.command()
