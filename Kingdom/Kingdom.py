@@ -4,7 +4,7 @@ import discord
 from collections import Counter
 from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
-from discord.ui import View, Button, InputText, Modal
+from discord.ui import View, Button, TextInput, Modal
 
 class FundingMenu(View):
     def __init__(self, cog, ctx, projects):
@@ -58,10 +58,10 @@ class FundModal(Modal):
         super().__init__(title="Fund Project")
         self.menu = menu
         self.user_balance = user_balance
-        self.input = InputText(label="Amount to Donate", placeholder=f"Max: {user_balance}")
+        self.input = TextInput(label="Amount to Donate", placeholder=f"Max: {user_balance}")
         self.add_item(self.input)
     
-    async def callback(self, interaction: discord.Interaction):
+    async def on_submit(self, interaction: discord.Interaction):
         amount = self.input.value.lower()
         if amount == "all":
             amount = self.user_balance
@@ -85,7 +85,7 @@ class FundModal(Modal):
             await self.menu.update_message()
             await interaction.response.defer()
 
-class Kingdom(commands.Cog):
+class FundCog(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
@@ -129,3 +129,5 @@ class Kingdom(commands.Cog):
         self.projects.append(new_project)
         await ctx.send(f"Project '{name}' added with a goal of {goal} WellCoins!")
 
+async def setup(bot):
+    await bot.add_cog(FundCog(bot))
