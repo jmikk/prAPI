@@ -1,0 +1,114 @@
+import discord
+from redbot.core import commands, Config
+from redbot.core.bot import Red
+from discord.ui import View, Button, InputText, Modal
+
+class FundingMenu(View):
+    def __init__(self, cog, ctx, projects):
+        super().__init__()
+        self.cog = cog
+        self.ctx = ctx
+        self.projects = projects
+        self.current_index = 0
+        
+        self.fund_button = Button(label="Fund", style=discord.ButtonStyle.green)
+        self.fund_button.callback = self.fund_project
+        
+        self.left_button = Button(label="◀", style=discord.ButtonStyle.blurple)
+        self.left_button.callback = self.previous_project
+        
+        self.right_button = Button(label="▶", style=discord.ButtonStyle.blurple)
+        self.right_button.callback = self.next_project
+        
+        self.add_item(self.left_button)
+        self.add_item(self.fund_button)
+        self.add_item(self.right_button)
+        
+    async def update_message(self):
+        project = self.projects[self.current_index]
+        embed = discord.Embed(
+            title=f"{project['name']}",
+            description=f"Total Needed: {project['goal']} WellCoins\nFunded: {project['funded']} WellCoins",
+            color=discord.Color.gold()
+        )
+        await self.message.edit(embed=embed, view=self)
+    
+    async def previous_project(self, interaction: discord.Interaction):
+        self.current_index = (self.current_index - 1) % len(self.projects)
+        await self.update_message()
+        await interaction.response.defer()
+    
+    async def next_project(self, interaction: discord.Interaction):
+        self.current_index = (self.current_index + 1) % len(self.projects)
+        await self.update_message()
+        await interaction.response.defer()
+    
+    async def fund_project(self, interaction: discord.Interaction):
+        user_balance = await self.cog.get_balance(interaction.user)
+        modal = FundModal(self, user_balance)
+        await interaction.response.send_modal(modal)
+
+class FundModal(Modal):
+    def __init__(self, menu, user_balance):
+        super().__init__(title="Fund Project")
+        self.menu = menu
+        self.user_balance = user_balance
+        self.input = InputText(label="Amount to Donate", placeholder=f"Max: {user_balance}")
+        self.add_item(self.input)
+    
+    async def callback(self, interaction: discord.Interaction):
+        amount = self.input.value.lower()
+        if amount == "all":
+            amount = self.user_balance
+        else:
+            try:
+                amount = int(amount)
+                if amount <= 0 or amount > self.user_balance:
+                    raise ValueError
+            except ValueError:
+                await interaction.response.send_message("Invalid amount!", ephemeral=True)
+                return
+        
+        project = self.menu.projects[self.menu.current_index]
+        project['funded'] += amount
+        await self.menu.cog.update_balance(interaction.user, -amount)
+        
+        if project['funded'] >= project['goal']:
+            await interaction.response.send_message(f"Project {project['name']} has been fully funded! 🎉", ephemeral=True)
+            self.menu.projects.pop(self.menu.current_index)
+        else:
+            await self.menu.update_message()
+            await interaction.response.defer()
+
+class FundCog(commands.Cog):
+    def __init__(self, bot: Red):
+        self.bot = bot
+        self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
+        self.projects = [
+            {"name": "Build a Library", "goal": 5000, "funded": 0},
+            {"name": "Upgrade the Town Square", "goal": 3000, "funded": 0}
+        ]
+    
+    async def get_balance(self, user: discord.Member):
+        return await self.config.user(user).master_balance()
+    
+    async def update_balance(self, user: discord.Member, amount: int):
+        balance = await self.get_balance(user)
+        new_balance = max(0, balance + amount)
+        await self.config.user(user).master_balance.set(new_balance)
+        return new_balance
+    
+    @commands.command()
+    async def fund(self, ctx):
+        """Open the funding menu for server projects."""
+        if not self.projects:
+            await ctx.send("No ongoing projects at the moment.")
+            return
+        
+        menu = FundingMenu(self, ctx, self.projects)
+        embed = discord.Embed(
+            title=f"{self.projects[0]['name']}",
+            description=f"Total Needed: {self.projects[0]['goal']} WellCoins\nFunded: {self.projects[0]['funded']} WellCoins",
+            color=discord.Color.gold()
+        )
+        menu.message = await ctx.send(embed=embed, view=menu)
