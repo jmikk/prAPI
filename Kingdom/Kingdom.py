@@ -1,5 +1,8 @@
+import random
+import asyncio
 import discord
-from redbot.core import commands, Config
+from collections import Counter
+from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 from discord.ui import View, Button, InputText, Modal
 
@@ -28,9 +31,11 @@ class FundingMenu(View):
         project = self.projects[self.current_index]
         embed = discord.Embed(
             title=f"{project['name']}",
-            description=f"Total Needed: {project['goal']} WellCoins\nFunded: {project['funded']} WellCoins",
+            description=f"{project['description']}\n\nTotal Needed: {project['goal']} WellCoins\nFunded: {project['funded']} WellCoins",
             color=discord.Color.gold()
         )
+        if 'thumbnail' in project:
+            embed.set_thumbnail(url=project['thumbnail'])
         await self.message.edit(embed=embed, view=self)
     
     async def previous_project(self, interaction: discord.Interaction):
@@ -84,10 +89,7 @@ class FundCog(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
-        self.projects = [
-            {"name": "Build a Library", "goal": 5000, "funded": 0},
-            {"name": "Upgrade the Town Square", "goal": 3000, "funded": 0}
-        ]
+        self.projects = []
     
     async def get_balance(self, user: discord.Member):
         return await self.config.user(user).master_balance()
@@ -108,7 +110,24 @@ class FundCog(commands.Cog):
         menu = FundingMenu(self, ctx, self.projects)
         embed = discord.Embed(
             title=f"{self.projects[0]['name']}",
-            description=f"Total Needed: {self.projects[0]['goal']} WellCoins\nFunded: {self.projects[0]['funded']} WellCoins",
+            description=f"{self.projects[0]['description']}\n\nTotal Needed: {self.projects[0]['goal']} WellCoins\nFunded: {self.projects[0]['funded']} WellCoins",
             color=discord.Color.gold()
         )
+        if 'thumbnail' in self.projects[0]:
+            embed.set_thumbnail(url=self.projects[0]['thumbnail'])
         menu.message = await ctx.send(embed=embed, view=menu)
+    
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
+    async def add_project(self, ctx, name: str, goal: int, thumbnail: str, *, description: str):
+        """Admin only: Add a new server project with a thumbnail."""
+        if goal <= 0:
+            await ctx.send("Goal must be a positive number.")
+            return
+        
+        new_project = {"name": name, "description": description, "goal": goal, "funded": 0, "thumbnail": thumbnail}
+        self.projects.append(new_project)
+        await ctx.send(f"Project '{name}' added with a goal of {goal} WellCoins!")
+
+async def setup(bot):
+    await bot.add_cog(FundCog(bot))
