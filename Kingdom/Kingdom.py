@@ -67,6 +67,16 @@ class Kingdom(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.config.register_guild(projects=[], completed_projects=[])
+        self.config.register_user(balance=0)
+    
+    async def get_balance(self, user: discord.Member):
+        return await self.config.user(user).balance()
+    
+    async def update_balance(self, user: discord.Member, amount: int):
+        balance = await self.get_balance(user)
+        new_balance = max(0, balance + amount)
+        await self.config.user(user).balance.set(new_balance)
+        return new_balance
     
     async def get_projects(self, guild):
         return await self.config.guild(guild).projects()
@@ -142,3 +152,6 @@ class Kingdom(commands.Cog):
         for project in completed_projects:
             embed.add_field(name=project['name'], value=f"{project['description']}\nTotal Funded: {project['goal']} WellCoins", inline=False)
         await ctx.send(embed=embed)
+
+async def setup(bot):
+    await bot.add_cog(Kingdom(bot))
