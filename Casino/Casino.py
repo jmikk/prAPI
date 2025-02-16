@@ -149,6 +149,11 @@ class Casino(commands.Cog):
         color2 = "🟥 Red" if number in red_numbers else "⬛ Black" if number in black_numbers else "🟩 Green"
         even_or_odd = "even" if number % 2 == 0 and number != 0 else "odd" if number != 0 else "neither"
         
+        # Store result in history
+        self.roulette_history.append(number)
+        if len(self.roulette_history) > 100:
+            self.roulette_history.pop(0)
+        
         # Simulate rolling effect
         message = await ctx.send("Roulette wheel spinning... 🎡")
         for _ in range(3):
@@ -177,3 +182,26 @@ class Casino(commands.Cog):
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"🎡 {color2} {number}\n{result_text} New balance: {new_balance} WellCoins.")
 
+    @commands.command()
+    async def roulette_history(self, ctx):
+        """Display statistics of the last 100 roulette rolls."""
+        if not self.roulette_history:
+            return await ctx.send("No rolls recorded yet.")
+        
+        red_numbers = {1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36}
+        black_numbers = {2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35}
+        
+        count_numbers = Counter(self.roulette_history)
+        total_reds = sum(1 for num in self.roulette_history if num in red_numbers)
+        total_blacks = sum(1 for num in self.roulette_history if num in black_numbers)
+        total_evens = sum(1 for num in self.roulette_history if num % 2 == 0 and num != 0)
+        total_odds = sum(1 for num in self.roulette_history if num % 2 == 1)
+        
+        embed = discord.Embed(title="Roulette Roll History", color=discord.Color.gold())
+        embed.add_field(name="Most Common Numbers", value="\n".join(f"{num}: {count}" for num, count in count_numbers.most_common(5)), inline=False)
+        embed.add_field(name="Total Reds", value=str(total_reds), inline=True)
+        embed.add_field(name="Total Blacks", value=str(total_blacks), inline=True)
+        embed.add_field(name="Total Evens", value=str(total_evens), inline=True)
+        embed.add_field(name="Total Odds", value=str(total_odds), inline=True)
+        
+        await ctx.send(embed=embed)
