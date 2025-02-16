@@ -16,7 +16,10 @@ class FundingMenu(View):
         self.current_index = 0
         
         self.fund_button = Button(label="Fund", style=discord.ButtonStyle.green)
-        self.fund_button.callback = self.fund_project
+        try:
+            self.fund_button.callback = self.fund_project
+        except Exception as e:
+            print(f"Error initializing fund button: {e}")
         
         self.left_button = Button(label="◀", style=discord.ButtonStyle.blurple)
         self.left_button.callback = self.previous_project
@@ -52,9 +55,12 @@ class FundingMenu(View):
         await interaction.response.defer()
     
     async def fund_project(self, interaction: discord.Interaction):
-        user_balance = await self.cog.get_balance(interaction.user)
-        modal = FundModal(self, user_balance)
-        await interaction.response.send_modal(modal)
+        try:
+            user_balance = await self.cog.get_balance(interaction.user)
+            modal = FundModal(self, user_balance)
+            await interaction.response.send_modal(modal)
+        except Exception as e:
+            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
 class Kingdom(commands.Cog):
     def __init__(self, bot: Red):
