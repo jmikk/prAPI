@@ -8,6 +8,8 @@ class Casino(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
+        self.roulette_history = []  # Store last 100 rolls
+
 
     async def get_balance(self, user: discord.Member):
         return await self.config.user(user).master_balance()
