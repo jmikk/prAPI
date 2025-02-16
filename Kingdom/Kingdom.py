@@ -7,6 +7,49 @@ from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 from discord.ui import View, Button, TextInput, Modal
 
+class CompletedProjectsMenu(View):
+    def __init__(self, cog, ctx, projects):
+        super().__init__()
+        self.cog = cog
+        self.ctx = ctx
+        self.projects = projects
+        self.current_index = 0
+        
+        self.left_button = Button(label="◀", style=discord.ButtonStyle.blurple)
+        self.left_button.callback = self.previous_project
+        
+        self.right_button = Button(label="▶", style=discord.ButtonStyle.blurple)
+        self.right_button.callback = self.next_project
+        
+        self.add_item(self.left_button)
+        self.add_item(self.right_button)
+        
+    async def update_message(self):
+        if not self.projects:
+            await self.message.edit(content="No completed projects.", view=None)
+            return
+        
+        project = self.projects[self.current_index]
+        embed = discord.Embed(
+            title=f"{project['name']} (Completed)",
+            description=f"{project['description']}\n\nTotal Funded: {project['goal']} WellCoins",
+            color=discord.Color.green()
+        )
+        if 'thumbnail' in project:
+            embed.set_thumbnail(url=project['thumbnail'])
+        embed.set_footer(text=f"Project ID: {project['id']}")
+        await self.message.edit(embed=embed, view=self)
+    
+    async def previous_project(self, interaction: discord.Interaction):
+        self.current_index = (self.current_index - 1) % len(self.projects)
+        await self.update_message()
+        await interaction.response.defer()
+    
+    async def next_project(self, interaction: discord.Interaction):
+        self.current_index = (self.current_index + 1) % len(self.projects)
+        await self.update_message()
+        await interaction.response.defer()
+
 class FundingMenu(View):
     def __init__(self, cog, ctx, projects):
         super().__init__()
@@ -142,10 +185,17 @@ class Kingdom(commands.Cog):
             await ctx.send("No completed projects yet.")
             return
         
-        embed = discord.Embed(title="Completed Projects", color=discord.Color.green())
-        for project in completed_projects:
-            embed.add_field(name=project['name'], value=f"{project['description']}\nTotal Funded: {project['goal']} WellCoins", inline=False)
-        await ctx.send(embed=embed)
+        menu = CompletedProjectsMenu(self, ctx, completed_projects)
+        project = completed_projects[0]
+        embed = discord.Embed(
+            title=f"{project['name']} (Completed)",
+            description=f"{project['description']}\n\nTotal Funded: {project['goal']} WellCoins",
+            color=discord.Color.green()
+        )
+        if 'thumbnail' in project:
+            embed.set_thumbnail(url=project['thumbnail'])
+        embed.set_footer(text=f"Project ID: {project['id']}")
+        menu.message = await ctx.send(embed=embed, view=menu)
 
     @commands.command()
     async def fund(self, ctx):
@@ -188,3 +238,12 @@ class Kingdom(commands.Cog):
         projects.append(new_project)
         await self.update_projects(ctx.guild, projects)
         await ctx.send(f"Project '{name}' added with a goal of {goal} WellCoins! Project ID: {project_id}")
+
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
+    async def clear_completed_projects(self, ctx):
+        """Admin only: Clears all completed projects."""
+        await self.config.guild(ctx.guild).completed_projects.set([])
+        await ctx.send("All completed projects have been cleared.")
+
+
