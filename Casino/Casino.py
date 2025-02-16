@@ -145,7 +145,9 @@ class Casino(commands.Cog):
         number = random.randint(0, 36)
         red_numbers = {1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36}
         black_numbers = {2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35}
-        color = "🟥Red" if number in red_numbers else "⬛Black" if number in black_numbers else "🟩Green"
+        color = "red" if number in red_numbers else "black" if number in black_numbers else "green"
+        color2 = "🟥Red" if number in red_numbers else "⬛Black" if number in black_numbers else "🟩Green"
+
         even_or_odd = "even" if number % 2 == 0 and number != 0 else "odd" if number != 0 else "neither"
         
         # Simulate rolling effect
@@ -166,7 +168,7 @@ class Casino(commands.Cog):
         elif call.lower() == even_or_odd:
             payout = bet * 2
         
-        result_text = f"Roulette landed on {color} {number}."
+        result_text = f"Roulette landed on {color2} {number}."
         if payout > 0:
             result_text += " You win! 🎉"
         else:
