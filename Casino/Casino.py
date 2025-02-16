@@ -66,10 +66,10 @@ class Casino(commands.Cog):
         message = await ctx.send("Spinning... 🎰")
         
         slots = []
-        for _ in range(3):
+        for _ in range(5):
             slots = [random.choice(emojis) for _ in range(3)]
             await message.edit(content=f"{' | '.join(slots)}\n{' | '.join(slots)}\n{' | '.join(slots)}")
-            await asyncio.sleep(1)
+            await asyncio.sleep(.5)
         
         payout = 0
         if slots.count("🍒") == 2:
