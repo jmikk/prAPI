@@ -18,22 +18,39 @@ class Casino(commands.Cog):
         await self.config.user(user).master_balance.set(new_balance)
         return new_balance
 
-    @commands.command()
     @commands.admin_or_permissions(administrator=True)
-    async def coinflip(self, ctx, bet: int, call_it=None):
-        """Flip a coin and win or lose your bet (House Edge: 52% loss, 48% win)"""
+    async def coinflip(self, ctx, bet: int, call: str = None):
+        """Flip a coin with animated message updates. You can call Heads or Tails, but it does not affect the odds."""
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
         
+        coin_faces = ["🪙 Heads", "🪙 Tails"]
+        message = await ctx.send("Flipping the coin... 🪙")
+        
+        for _ in range(3):
+            temp_flip = random.choice(coin_faces)
+            await message.edit(content=f"{temp_flip}\nFlipping... 🪙")
+            await asyncio.sleep(0.5)
+        
         outcome = random.choices(["win", "lose"], weights=[48, 52])[0]
-        if outcome == "win":
-            winnings = bet
-            new_balance = await self.update_balance(ctx.author, winnings)
-            await ctx.send(f"You won! Your new balance is {new_balance} WellCoins.")
+        final_flip = "🪙 Heads" if outcome == "win" else "🪙 Tails"
+        
+        if call and call.lower() in ["heads", "tails"]:
+            user_call = call.capitalize()
+            result_text = f"You called {user_call}. "
         else:
-            new_balance = await self.update_balance(ctx.author, -bet)
-            await ctx.send(f"You lost! Your new balance is {new_balance} WellCoins.")
+            result_text = ""
+        
+        if (outcome == "win" and call and call.lower() == "heads") or (outcome == "lose" and call and call.lower() == "tails"):
+            winnings = bet
+            result_text += "You win! 🎉"
+        else:
+            winnings = -bet
+            result_text += "You lost! 😢"
+        
+        new_balance = await self.update_balance(ctx.author, winnings)
+        await message.edit(content=f"{final_flip}\n{result_text} New balance: {new_balance} WellCoins.")
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
