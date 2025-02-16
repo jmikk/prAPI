@@ -239,11 +239,4 @@ class Kingdom(commands.Cog):
         await self.update_projects(ctx.guild, projects)
         await ctx.send(f"Project '{name}' added with a goal of {goal} WellCoins! Project ID: {project_id}")
 
-    @commands.command()
-    @commands.admin_or_permissions(administrator=True)
-    async def clear_completed_projects(self, ctx):
-        """Admin only: Clears all completed projects."""
-        await self.config.guild(ctx.guild).completed_projects.set([])
-        await ctx.send("All completed projects have been cleared.")
-
 
