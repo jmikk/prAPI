@@ -1,6 +1,8 @@
 import random
 import discord
 from redbot.core import commands, Config, checks
+import asyncio
+
 
 class Casino(commands.Cog):
     def __init__(self, bot):
