@@ -18,6 +18,7 @@ class Casino(commands.Cog):
         await self.config.user(user).master_balance.set(new_balance)
         return new_balance
 
+    @commands.command()
     @commands.admin_or_permissions(administrator=True)
     async def coinflip(self, ctx, bet: int, call: str = None):
         """Flip a coin with animated message updates. You can call Heads or Tails, but it does not affect the odds."""
