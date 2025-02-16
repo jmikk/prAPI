@@ -85,7 +85,7 @@ class FundModal(Modal):
             await self.menu.update_message()
             await interaction.response.defer()
 
-class FundCog(commands.Cog):
+class Kingdom(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
