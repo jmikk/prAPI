@@ -155,7 +155,7 @@ class Casino(commands.Cog):
         
         # Store result in history
         self.roulette_history.append(number)
-        if len(self.roulette_history) > 100:
+        if len(self.roulette_history) > 20:
             self.roulette_history.pop(0)
         
         # Simulate rolling effect
@@ -188,7 +188,7 @@ class Casino(commands.Cog):
 
     @commands.command()
     async def roulette_history(self, ctx):
-        """Display statistics of the last 100 roulette rolls."""
+        """Display statistics of the last 20 roulette rolls."""
         if not self.roulette_history:
             return await ctx.send("No rolls recorded yet.")
 
@@ -204,8 +204,8 @@ class Casino(commands.Cog):
         
         embed = discord.Embed(title="Roulette Roll History", color=discord.Color.gold())
         embed.add_field(name="Most Common Numbers", value="\n".join(f"{num}: {count}" for num, count in count_numbers.most_common(5)), inline=False)
-        embed.add_field(name="Total Reds", value=str(total_reds), inline=True)
-        embed.add_field(name="Total Blacks", value=str(total_blacks), inline=True)
+        embed.add_field(name="Total Reds 🟥", value=str(total_reds), inline=True)
+        embed.add_field(name="Total Blacks ⬛", value=str(total_blacks), inline=True)
         embed.add_field(name="Total Evens", value=str(total_evens), inline=True)
         embed.add_field(name="Total Odds", value=str(total_odds), inline=True)
         
