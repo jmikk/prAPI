@@ -18,7 +18,7 @@ class Casino(commands.Cog):
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
-    async def coinflip(self, ctx, bet: int):
+    async def coinflip(self, ctx, bet: int, call_it=None):
         """Flip a coin and win or lose your bet (House Edge: 52% loss, 48% win)"""
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
@@ -41,8 +41,8 @@ class Casino(commands.Cog):
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
         
-        player_roll = random.randint(1, 5)
-        house_roll = random.randint(1, 6)
+        player_roll = random.randint(1, 6)
+        house_roll = random.choices([1, 2, 3, 4, 5, 6], weights=[5, 10, 15, 20, 25, 30])[0]
         
         if player_roll > house_roll:
             winnings = bet
@@ -55,24 +55,36 @@ class Casino(commands.Cog):
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
     async def slots(self, ctx, bet: int):
-        """Play a slot machine (Jackpot = 10x, small win = 3x, mostly losses)"""
+        """Play a slot machine with emojis and live message updates."""
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
         
-        outcome = random.choices(["jackpot", "win", "lose"], weights=[5, 20, 75])[0]
+        emojis = ["🍒", "🍋", "🍊", "🍉", "⭐", "💎", "🌸"]
+        message = await ctx.send("Spinning... 🎰")
         
-        if outcome == "jackpot":
-            winnings = bet * 10
-            new_balance = await self.update_balance(ctx.author, winnings)
-            await ctx.send(f"JACKPOT! You won {winnings} WellCoins. New balance: {new_balance}")
-        elif outcome == "win":
-            winnings = bet * 3
-            new_balance = await self.update_balance(ctx.author, winnings)
-            await ctx.send(f"You won {winnings} WellCoins! New balance: {new_balance}")
+        slots = []
+        for _ in range(3):
+            slots = [random.choice(emojis) for _ in range(3)]
+            await message.edit(content=f"{' | '.join(slots)}")
+            await asyncio.sleep(1)
+        
+        payout = 0
+        if slots.count("🍒") == 2:
+            payout = bet * 3
+            result_text = "Two cherries! 🍒 You win 3x your bet!"
+        elif len(set(slots)) == 1:
+            payout = bet * 10
+            result_text = "Three of a kind! 🎉 You win 10x your bet!"
+        elif slots.count("🌸") == 3:
+            payout = bet * 50
+            result_text = "JACKPOT! 🌸🌸🌸 You hit the cherry blossoms jackpot!"
         else:
-            new_balance = await self.update_balance(ctx.author, -bet)
-            await ctx.send(f"You lost! New balance: {new_balance} WellCoins.")
+            payout = -bet
+            result_text = "You lost! 😢"
+        
+        new_balance = await self.update_balance(ctx.author, payout)
+        await message.edit(content=f"{' | '.join(slots)}\n{result_text} New balance: {new_balance} WellCoins.")
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
