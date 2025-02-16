@@ -142,3 +142,30 @@ class Kingdom(commands.Cog):
         for project in completed_projects:
             embed.add_field(name=project['name'], value=f"{project['description']}\nTotal Funded: {project['goal']} WellCoins", inline=False)
         await ctx.send(embed=embed)
+
+    @commands.command()
+    async def fund(self, ctx):
+        """Open the funding menu for server projects."""
+        projects = await self.get_projects(ctx.guild)
+        if not projects:
+            await ctx.send("No ongoing projects at the moment.")
+            return
+        
+        menu = FundingMenu(self, ctx, projects)
+        embed = discord.Embed(title="Funding Projects", color=discord.Color.gold())
+        menu.message = await ctx.send(embed=embed, view=menu)
+    
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
+    async def add_project(self, ctx, name: str, goal: int, thumbnail: str, *, description: str):
+        """Admin only: Add a new server project with a thumbnail."""
+        if goal <= 0:
+            await ctx.send("Goal must be a positive number.")
+            return
+        
+        projects = await self.get_projects(ctx.guild)
+        project_id = str(uuid.uuid4())[:8]  # Generate a unique ID
+        new_project = {"id": project_id, "name": name, "description": description, "goal": goal, "funded": 0, "thumbnail": thumbnail}
+        projects.append(new_project)
+        await self.update_projects(ctx.guild, projects)
+        await ctx.send(f"Project '{name}' added with a goal of {goal} WellCoins! Project ID: {project_id}")
