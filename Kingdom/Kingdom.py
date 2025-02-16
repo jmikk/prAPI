@@ -98,9 +98,13 @@ class FundModal(Modal):
             completed_projects = await self.menu.cog.get_completed_projects(interaction.guild)
             completed_projects.append(project)
             await self.menu.cog.update_completed_projects(interaction.guild, completed_projects)
+            await self.menu.cog.update_projects(interaction.guild, self.menu.projects)  # Update project list in config
+
         else:
             await self.menu.update_message()
             await interaction.response.defer()
+            await self.menu.cog.update_projects(interaction.guild, self.menu.projects)  # Update project list in config
+
 
 class Kingdom(commands.Cog):
     def __init__(self, bot: Red):
