@@ -63,7 +63,7 @@ class Casino(commands.Cog):
             return await ctx.send("Invalid bet amount.")
         
         emojis = ["🍒", "🍋", "🍊", "🍉", "⭐", "💎", "🌸"]
-        weighted_emojis = ["🍒"] * 10 + ["🍋"] * 12 + ["🍊"] * 15 + ["🍉"] * 18 + ["⭐"] * 20 + ["💎"] * 20 + ["🌸"] * 5
+        weighted_emojis = ["🍒"] * 8 + ["🍋"] * 15 + ["🍊"] * 18 + ["🍉"] * 20 + ["⭐"] * 22 + ["💎"] * 22 + ["🌸"] * 3
         
         message = await ctx.send("🎰 Rolling the slots... 🎰")
         
@@ -83,13 +83,13 @@ class Casino(commands.Cog):
         result_text = "You lost! 😢"
         
         if flat_grid.count("🍒") >= 2:
-            payout = bet * 2
-            result_text = "Two or more cherries! 🍒 You win 2x your bet!"
+            payout = bet * 1.5
+            result_text = "Two or more cherries! 🍒 You win 1.5x your bet!"
         if any(row.count(row[0]) == 3 for row in grid) or any(col.count(col[0]) == 3 for col in zip(*grid)):
-            payout = max(payout, bet * 5)
-            result_text = "Three of a kind in a row or column! 🎉 You win 5x your bet!"
+            payout = max(payout, bet * 4)
+            result_text = "Three of a kind in a row or column! 🎉 You win 4x your bet!"
         if flat_grid.count("🌸") == 3:
-            payout = bet * 25
+            payout = bet * 20
             result_text = "JACKPOT! 🌸🌸🌸 You hit the cherry blossoms jackpot!"
         
         if payout == 0:
