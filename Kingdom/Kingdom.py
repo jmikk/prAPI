@@ -62,6 +62,39 @@ class FundingMenu(View):
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
+class FundModal(Modal):
+    def __init__(self, menu, user_balance):
+        super().__init__(title="Fund Project")
+        self.menu = menu
+        self.user_balance = user_balance
+        self.input = TextInput(label="Amount to Donate", placeholder=f"Max: {user_balance}")
+        self.add_item(self.input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        amount = self.input.value.lower()
+        if amount == "all":
+            amount = self.user_balance
+        else:
+            try:
+                amount = int(amount)
+                if amount <= 0 or amount > self.user_balance:
+                    raise ValueError
+            except ValueError:
+                await interaction.response.send_message("Invalid amount!", ephemeral=True)
+                return
+        
+        project = self.menu.projects[self.menu.current_index]
+        project['funded'] += amount
+        await self.menu.cog.update_balance(interaction.user, -amount)
+
+        if project['funded'] >= project['goal']:
+            await interaction.response.send_message(f"Project {project['name']} has been fully funded! 🎉", ephemeral=True)
+            self.menu.projects.pop(self.menu.current_index)
+        else:
+            await self.menu.update_message()
+            await interaction.response.defer()
+
+
 class Kingdom(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
