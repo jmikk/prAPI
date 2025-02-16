@@ -3,6 +3,8 @@ import discord
 from redbot.core import commands, Config, checks
 import asyncio
 from collections import Counter
+from redbot.core.commands import cooldown, BucketType
+
 
 
 
