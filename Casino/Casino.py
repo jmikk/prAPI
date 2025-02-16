@@ -29,11 +29,6 @@ class Casino(commands.Cog):
         coin_faces = ["🪙 Heads", "🪙 Tails"]
         message = await ctx.send("Flipping the coin... 🪙")
         
-        for _ in range(3):
-            temp_flip = random.choice(coin_faces)
-            await message.edit(content=f"{temp_flip}\nFlipping... 🪙")
-            await asyncio.sleep(0.5)
-        
         outcome = random.choices(["win", "lose"], weights=[48, 52])[0]
         final_flip = "🪙 Heads" if outcome == "win" else "🪙 Tails"
         
