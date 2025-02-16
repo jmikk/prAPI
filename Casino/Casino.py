@@ -152,7 +152,7 @@ class Casino(commands.Cog):
         message = await ctx.send("Roulette wheel spinning... 🎡")
         for _ in range(3):
             temp_number = random.randint(0, 36)
-            temp_color = "red" if temp_number in red_numbers else "black" if temp_number in black_numbers else "green"
+            temp_color = "🟥red🟥" if temp_number in red_numbers else "⬛black⬛" if temp_number in black_numbers else "🟩green🟩"
             await message.edit(content=f"🎡 {temp_color.capitalize()} {temp_number}\nSpinning...")
             await asyncio.sleep(0.5)
         
