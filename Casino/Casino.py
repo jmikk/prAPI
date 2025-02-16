@@ -135,26 +135,44 @@ class Casino(commands.Cog):
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
-    async def roulette(self, ctx, bet: int, choice: str):
-        """Play roulette (Red/Black = 2x, Number (0-36) = 35x)"""
+    async def roulette(self, ctx, bet: int, call: str):
+        """Play roulette. Bet on a number (0-36), red, black, even, or odd."""
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
         
-        result = random.randint(0, 36)
-        color = "red" if result % 2 == 0 else "black"
+        # Roulette wheel setup
+        number = random.randint(0, 36)
+        red_numbers = {1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36}
+        black_numbers = {2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35}
+        color = "red" if number in red_numbers else "black" if number in black_numbers else "green"
+        even_or_odd = "even" if number % 2 == 0 and number != 0 else "odd" if number != 0 else "neither"
+        
+        # Simulate rolling effect
+        message = await ctx.send("Roulette wheel spinning... 🎡")
+        for _ in range(3):
+            temp_number = random.randint(0, 36)
+            temp_color = "red" if temp_number in red_numbers else "black" if temp_number in black_numbers else "green"
+            await message.edit(content=f"🎡 {temp_color.capitalize()} {temp_number}\nSpinning...")
+            await asyncio.sleep(0.5)
+        
+        # Determine winnings
         payout = 0
-        
-        if choice.lower() in ["red", "black"]:
-            if choice.lower() == color:
-                payout = bet * 2
-        elif choice.isdigit() and 0 <= int(choice) <= 36:
-            if int(choice) == result:
+        if call.isdigit() and 0 <= int(call) <= 36:
+            if int(call) == number:
                 payout = bet * 35
+        elif call.lower() == color:
+            payout = bet * 2
+        elif call.lower() == even_or_odd:
+            payout = bet * 2
         
+        result_text = f"Roulette landed on {color.capitalize()} {number}."
         if payout > 0:
-            new_balance = await self.update_balance(ctx.author, payout)
-            await ctx.send(f"Roulette landed on {result} ({color}). You won {payout} WellCoins! New balance: {new_balance}")
+            result_text += " You win! 🎉"
         else:
-            new_balance = await self.update_balance(ctx.author, -bet)
-            await ctx.send(f"Roulette landed on {result} ({color}). You lost! New balance: {new_balance} WellCoins.")
+            payout = -bet
+            result_text += " You lost! 😢"
+        
+        new_balance = await self.update_balance(ctx.author, payout)
+        await message.edit(content=f"🎡 {color.capitalize()} {number}\n{result_text} New balance: {new_balance} WellCoins.")
+
