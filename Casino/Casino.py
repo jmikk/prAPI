@@ -68,7 +68,7 @@ class Casino(commands.Cog):
         slots = []
         for _ in range(3):
             slots = [random.choice(emojis) for _ in range(3)]
-            await message.edit(content=f"{' | '.join(slots)}\n' | '.join(slots)}\n' | '.join(slots)}")
+            await message.edit(content=f"{' | '.join(slots)}\n{' | '.join(slots)}\n{' | '.join(slots)}")
             await asyncio.sleep(1)
         
         payout = 0
