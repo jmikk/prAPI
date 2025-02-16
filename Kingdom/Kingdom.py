@@ -142,6 +142,3 @@ class Kingdom(commands.Cog):
         for project in completed_projects:
             embed.add_field(name=project['name'], value=f"{project['description']}\nTotal Funded: {project['goal']} WellCoins", inline=False)
         await ctx.send(embed=embed)
-
-async def setup(bot):
-    await bot.add_cog(Kingdom(bot))
