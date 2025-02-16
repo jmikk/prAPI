@@ -6,6 +6,7 @@ from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 from discord.ui import View, Button, InputText, Modal
 
+
 class FundingMenu(View):
     def __init__(self, cog, ctx, projects):
         super().__init__()
