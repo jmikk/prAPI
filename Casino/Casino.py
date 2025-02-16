@@ -146,15 +146,14 @@ class Casino(commands.Cog):
         red_numbers = {1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36}
         black_numbers = {2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35}
         color = "red" if number in red_numbers else "black" if number in black_numbers else "green"
-        color2 = "🟥Red" if number in red_numbers else "⬛Black" if number in black_numbers else "🟩Green"
-
+        color2 = "🟥 Red" if number in red_numbers else "⬛ Black" if number in black_numbers else "🟩 Green"
         even_or_odd = "even" if number % 2 == 0 and number != 0 else "odd" if number != 0 else "neither"
         
         # Simulate rolling effect
         message = await ctx.send("Roulette wheel spinning... 🎡")
         for _ in range(3):
             temp_number = random.randint(0, 36)
-            temp_color = "🟥Red" if temp_number in red_numbers else "⬛Black" if temp_number in black_numbers else "🟩Green"
+            temp_color = "🟥 Red" if temp_number in red_numbers else "⬛ Black" if temp_number in black_numbers else "🟩 Green"
             await message.edit(content=f"🎡 {temp_color} {temp_number}\nSpinning...")
             await asyncio.sleep(0.5)
         
@@ -163,9 +162,9 @@ class Casino(commands.Cog):
         if call.isdigit() and 0 <= int(call) <= 36:
             if int(call) == number:
                 payout = bet * 35
-        elif call.lower() == color[:1]:
+        elif call.lower() in ["red", "black"] and call.lower() == color:
             payout = bet * 2
-        elif call.lower() == even_or_odd:
+        elif call.lower() in ["even", "odd"] and call.lower() == even_or_odd:
             payout = bet * 2
         
         result_text = f"Roulette landed on {color2} {number}."
@@ -176,5 +175,5 @@ class Casino(commands.Cog):
             result_text += " You lost! 😢"
         
         new_balance = await self.update_balance(ctx.author, payout)
-        await message.edit(content=f"🎡 {color.capitalize()} {number}\n{result_text} New balance: {new_balance} WellCoins.")
+        await message.edit(content=f"🎡 {color2} {number}\n{result_text} New balance: {new_balance} WellCoins.")
 
