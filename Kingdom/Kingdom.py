@@ -239,4 +239,22 @@ class Kingdom(commands.Cog):
         await self.update_projects(ctx.guild, projects)
         await ctx.send(f"Project '{name}' added with a goal of {goal} WellCoins! Project ID: {project_id}")
 
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
+    async def remove_project(self, ctx, project_id: str):
+        """Admin only: Removes a project by ID from ongoing or completed projects."""
+        projects = await self.get_projects(ctx.guild)
+        completed_projects = await self.get_completed_projects(ctx.guild)
+        
+        updated_projects = [p for p in projects if p['id'] != project_id]
+        updated_completed_projects = [p for p in completed_projects if p['id'] != project_id]
+        
+        if len(updated_projects) == len(projects) and len(updated_completed_projects) == len(completed_projects):
+            await ctx.send("No project found with that ID.")
+            return
+        
+        await self.update_projects(ctx.guild, updated_projects)
+        await self.update_completed_projects(ctx.guild, updated_completed_projects)
+        await ctx.send(f"Project with ID {project_id} has been removed.")
+
 
