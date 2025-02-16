@@ -43,7 +43,7 @@ class Casino(commands.Cog):
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
         
-        dice_emojis = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"]
+        dice_emojis = ["# ⚀", "# ⚁", "# ⚂", "# ⚃", "# ⚄", "# ⚅"]
         message = await ctx.send("🎲 Rolling dice... 🎲")
         
         for _ in range(3):
