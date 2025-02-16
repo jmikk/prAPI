@@ -23,6 +23,7 @@ class Casino(commands.Cog):
         return new_balance
 
     @commands.command()
+    @cooldown(1, 3, BucketType.guild)
     @commands.admin_or_permissions(administrator=True)
     async def coinflip(self, ctx, bet: int, call: str = None):
         """Flip a coin with animated message updates. You can call Heads or Tails, but it does not affect the odds."""
@@ -62,6 +63,7 @@ class Casino(commands.Cog):
         await message.edit(content=f"{final_flip}\n{result_text} New balance: {new_balance} WellCoins.")
 
     @commands.command()
+    @cooldown(1, 3, BucketType.guild)
     @commands.admin_or_permissions(administrator=True)
     async def dice(self, ctx, bet: int):
         """Roll dice against the house with animated graphics."""
@@ -94,6 +96,7 @@ class Casino(commands.Cog):
         await message.edit(content=f"Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: {new_balance} WellCoins.")
 
     @commands.command()
+    @cooldown(1, 3, BucketType.guild)
     @commands.admin_or_permissions(administrator=True)
     async def slots(self, ctx, bet: int):
         """Play a 3x3 slot machine with emojis and live message updates."""
@@ -138,6 +141,7 @@ class Casino(commands.Cog):
         await message.edit(content=f"{display}\n{result_text} New balance: {new_balance} WellCoins.")
 
     @commands.command()
+    @cooldown(1, 3, BucketType.guild)
     @commands.admin_or_permissions(administrator=True)
     async def roulette(self, ctx, bet: int, call: str):
         """Play roulette. Bet on a number (0-36), red, black, even, or odd."""
