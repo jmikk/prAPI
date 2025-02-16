@@ -129,5 +129,3 @@ class FundCog(commands.Cog):
         self.projects.append(new_project)
         await ctx.send(f"Project '{name}' added with a goal of {goal} WellCoins!")
 
-async def setup(bot):
-    await bot.add_cog(FundCog(bot))
