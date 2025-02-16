@@ -23,6 +23,14 @@ class Casino(commands.Cog):
     async def coinflip(self, ctx, bet: int, call: str = None):
         """Flip a coin with animated message updates. You can call Heads or Tails, but it does not affect the odds."""
         balance = await self.get_balance(ctx.author)
+        if call.lower() == "head":
+            call = "heads"
+        if call.lower() == "tail":
+            call = "tails"
+
+        if not call == "heads" and not call == "tails":
+            return
+        
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
         
