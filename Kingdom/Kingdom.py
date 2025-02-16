@@ -1,6 +1,7 @@
 import random
 import asyncio
 import discord
+import uuid
 from collections import Counter
 from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
@@ -37,6 +38,7 @@ class FundingMenu(View):
         )
         if 'thumbnail' in project:
             embed.set_thumbnail(url=project['thumbnail'])
+        embed.set_footer(text=f"Project ID: {project['id']}")
         await self.message.edit(embed=embed, view=self)
     
     async def previous_project(self, interaction: discord.Interaction):
@@ -58,27 +60,30 @@ class Kingdom(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
-        self.projects = []
-        self.completed_projects = []
+        self.config.register_guild(projects=[], completed_projects=[])
     
-    async def get_balance(self, user: discord.Member):
-        return await self.config.user(user).master_balance()
+    async def get_projects(self, guild):
+        return await self.config.guild(guild).projects()
     
-    async def update_balance(self, user: discord.Member, amount: int):
-        balance = await self.get_balance(user)
-        new_balance = max(0, balance + amount)
-        await self.config.user(user).master_balance.set(new_balance)
-        return new_balance
+    async def get_completed_projects(self, guild):
+        return await self.config.guild(guild).completed_projects()
+    
+    async def update_projects(self, guild, projects):
+        await self.config.guild(guild).projects.set(projects)
+    
+    async def update_completed_projects(self, guild, completed_projects):
+        await self.config.guild(guild).completed_projects.set(completed_projects)
     
     @commands.command()
     async def fund(self, ctx):
         """Open the funding menu for server projects."""
-        if not self.projects:
+        projects = await self.get_projects(ctx.guild)
+        if not projects:
             await ctx.send("No ongoing projects at the moment.")
             return
         
-        menu = FundingMenu(self, ctx, self.projects)
-        project = self.projects[0]
+        menu = FundingMenu(self, ctx, projects)
+        project = projects[0]
         percentage_funded = (project['funded'] / project['goal']) * 100
         embed = discord.Embed(
             title=f"{project['name']}",
@@ -87,6 +92,7 @@ class Kingdom(commands.Cog):
         )
         if 'thumbnail' in project:
             embed.set_thumbnail(url=project['thumbnail'])
+        embed.set_footer(text=f"Project ID: {project['id']}")
         menu.message = await ctx.send(embed=embed, view=menu)
     
     @commands.command()
@@ -97,21 +103,39 @@ class Kingdom(commands.Cog):
             await ctx.send("Goal must be a positive number.")
             return
         
-        new_project = {"name": name, "description": description, "goal": goal, "funded": 0, "thumbnail": thumbnail}
-        self.projects.append(new_project)
-        await ctx.send(f"Project '{name}' added with a goal of {goal} WellCoins!")
+        projects = await self.get_projects(ctx.guild)
+        project_id = str(uuid.uuid4())[:8]  # Generate a unique ID
+        new_project = {"id": project_id, "name": name, "description": description, "goal": goal, "funded": 0, "thumbnail": thumbnail}
+        projects.append(new_project)
+        await self.update_projects(ctx.guild, projects)
+        await ctx.send(f"Project '{name}' added with a goal of {goal} WellCoins! Project ID: {project_id}")
+    
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
+    async def delete_project(self, ctx, project_id: str):
+        """Admin only: Delete a project by ID."""
+        projects = await self.get_projects(ctx.guild)
+        updated_projects = [p for p in projects if p['id'] != project_id]
+        
+        if len(updated_projects) == len(projects):
+            await ctx.send("No project found with that ID.")
+            return
+        
+        await self.update_projects(ctx.guild, updated_projects)
+        await ctx.send(f"Project with ID {project_id} has been deleted.")
     
     @commands.command()
     async def completed_projects(self, ctx):
         """View completed projects."""
-        if not self.completed_projects:
+        completed_projects = await self.get_completed_projects(ctx.guild)
+        if not completed_projects:
             await ctx.send("No completed projects yet.")
             return
         
         embed = discord.Embed(title="Completed Projects", color=discord.Color.green())
-        for project in self.completed_projects:
+        for project in completed_projects:
             embed.add_field(name=project['name'], value=f"{project['description']}\nTotal Funded: {project['goal']} WellCoins", inline=False)
         await ctx.send(embed=embed)
 
 async def setup(bot):
-    await bot.add_cog(FundCog(bot))
+    await bot.add_cog(Kingdom(bot))
