@@ -57,7 +57,7 @@ class Casino(commands.Cog):
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
     async def slots(self, ctx, bet: int):
-        """Play a slot machine with emojis and live message updates."""
+        """Play a 3x3 slot machine with emojis and live message updates."""
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
@@ -65,28 +65,31 @@ class Casino(commands.Cog):
         emojis = ["🍒", "🍋", "🍊", "🍉", "⭐", "💎", "🌸"]
         message = await ctx.send("Spinning... 🎰")
         
-        slots = []
-        for _ in range(5):
-            slots = [random.choice(emojis) for _ in range(3)]
-            await message.edit(content=f"{' | '.join(slots)}\n{' | '.join(slots)}\n{' | '.join(slots)}")
-            await asyncio.sleep(.5)
+        grid = []
+        for _ in range(3):
+            grid.append([random.choice(emojis) for _ in range(3)])
+            display = "\n".join([" | ".join(row) for row in grid])
+            await message.edit(content=f"{display}\nSpinning...")
+            await asyncio.sleep(0.5)
         
         payout = 0
-        if slots.count("🍒") == 2:
+        flat_grid = [emoji for row in grid for emoji in row]
+        if flat_grid.count("🍒") >= 2:
             payout = bet * 3
-            result_text = "Two cherries! 🍒 You win 3x your bet!"
-        elif len(set(slots)) == 1:
-            payout = bet * 10
-            result_text = "Three of a kind! 🎉 You win 10x your bet!"
-        elif slots.count("🌸") == 3:
+            result_text = "Two or more cherries! 🍒 You win 3x your bet!"
+        if any(row.count(row[0]) == 3 for row in grid) or any(col.count(col[0]) == 3 for col in zip(*grid)):
+            payout = max(payout, bet * 10)
+            result_text = "Three of a kind in a row or column! 🎉 You win 10x your bet!"
+        if flat_grid.count("🌸") == 3:
             payout = bet * 50
             result_text = "JACKPOT! 🌸🌸🌸 You hit the cherry blossoms jackpot!"
-        else:
+        if payout == 0:
             payout = -bet
             result_text = "You lost! 😢"
         
         new_balance = await self.update_balance(ctx.author, payout)
-        await message.edit(content=f"{' | '.join(slots)}\n{result_text} New balance: {new_balance} WellCoins.")
+        display = "\n".join([" | ".join(row) for row in grid])
+        await message.edit(content=f"{display}\n{result_text} New balance: {new_balance} WellCoins.")
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
