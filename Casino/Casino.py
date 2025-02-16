@@ -153,7 +153,7 @@ class Casino(commands.Cog):
         for _ in range(3):
             temp_number = random.randint(0, 36)
             temp_color = "🟥Red" if temp_number in red_numbers else "⬛Black" if temp_number in black_numbers else "🟩Green"
-            await message.edit(content=f"🎡 {temp_color.capitalize()} {temp_number}\nSpinning...")
+            await message.edit(content=f"🎡 {temp_color} {temp_number}\nSpinning...")
             await asyncio.sleep(0.5)
         
         # Determine winnings
@@ -161,12 +161,12 @@ class Casino(commands.Cog):
         if call.isdigit() and 0 <= int(call) <= 36:
             if int(call) == number:
                 payout = bet * 35
-        elif call.lower() == color:
+        elif call.lower() == color[:1]:
             payout = bet * 2
         elif call.lower() == even_or_odd:
             payout = bet * 2
         
-        result_text = f"Roulette landed on {color.capitalize()} {number}."
+        result_text = f"Roulette landed on {color} {number}."
         if payout > 0:
             result_text += " You win! 🎉"
         else:
