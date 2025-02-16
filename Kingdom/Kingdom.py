@@ -29,9 +29,10 @@ class FundingMenu(View):
         
     async def update_message(self):
         project = self.projects[self.current_index]
+        percentage_funded = (project['funded'] / project['goal']) * 100
         embed = discord.Embed(
             title=f"{project['name']}",
-            description=f"{project['description']}\n\nTotal Needed: {project['goal']} WellCoins\nFunded: {project['funded']} WellCoins",
+            description=f"{project['description']}\n\nTotal Needed: {project['goal']} WellCoins\nFunded: {project['funded']} WellCoins ({percentage_funded:.2f}% Funded)",
             color=discord.Color.gold()
         )
         if 'thumbnail' in project:
@@ -53,43 +54,12 @@ class FundingMenu(View):
         modal = FundModal(self, user_balance)
         await interaction.response.send_modal(modal)
 
-class FundModal(Modal):
-    def __init__(self, menu, user_balance):
-        super().__init__(title="Fund Project")
-        self.menu = menu
-        self.user_balance = user_balance
-        self.input = TextInput(label="Amount to Donate", placeholder=f"Max: {user_balance}")
-        self.add_item(self.input)
-    
-    async def on_submit(self, interaction: discord.Interaction):
-        amount = self.input.value.lower()
-        if amount == "all":
-            amount = self.user_balance
-        else:
-            try:
-                amount = int(amount)
-                if amount <= 0 or amount > self.user_balance:
-                    raise ValueError
-            except ValueError:
-                await interaction.response.send_message("Invalid amount!", ephemeral=True)
-                return
-        
-        project = self.menu.projects[self.menu.current_index]
-        project['funded'] += amount
-        await self.menu.cog.update_balance(interaction.user, -amount)
-        
-        if project['funded'] >= project['goal']:
-            await interaction.response.send_message(f"Project {project['name']} has been fully funded! 🎉", ephemeral=True)
-            self.menu.projects.pop(self.menu.current_index)
-        else:
-            await self.menu.update_message()
-            await interaction.response.defer()
-
-class Kingdom(commands.Cog):
+class FundCog(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.projects = []
+        self.completed_projects = []
     
     async def get_balance(self, user: discord.Member):
         return await self.config.user(user).master_balance()
@@ -108,13 +78,15 @@ class Kingdom(commands.Cog):
             return
         
         menu = FundingMenu(self, ctx, self.projects)
+        project = self.projects[0]
+        percentage_funded = (project['funded'] / project['goal']) * 100
         embed = discord.Embed(
-            title=f"{self.projects[0]['name']}",
-            description=f"{self.projects[0]['description']}\n\nTotal Needed: {self.projects[0]['goal']} WellCoins\nFunded: {self.projects[0]['funded']} WellCoins",
+            title=f"{project['name']}",
+            description=f"{project['description']}\n\nTotal Needed: {project['goal']} WellCoins\nFunded: {project['funded']} WellCoins ({percentage_funded:.2f}% Funded)",
             color=discord.Color.gold()
         )
-        if 'thumbnail' in self.projects[0]:
-            embed.set_thumbnail(url=self.projects[0]['thumbnail'])
+        if 'thumbnail' in project:
+            embed.set_thumbnail(url=project['thumbnail'])
         menu.message = await ctx.send(embed=embed, view=menu)
     
     @commands.command()
@@ -128,6 +100,18 @@ class Kingdom(commands.Cog):
         new_project = {"name": name, "description": description, "goal": goal, "funded": 0, "thumbnail": thumbnail}
         self.projects.append(new_project)
         await ctx.send(f"Project '{name}' added with a goal of {goal} WellCoins!")
+    
+    @commands.command()
+    async def completed_projects(self, ctx):
+        """View completed projects."""
+        if not self.completed_projects:
+            await ctx.send("No completed projects yet.")
+            return
+        
+        embed = discord.Embed(title="Completed Projects", color=discord.Color.green())
+        for project in self.completed_projects:
+            embed.add_field(name=project['name'], value=f"{project['description']}\nTotal Funded: {project['goal']} WellCoins", inline=False)
+        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(FundCog(bot))
