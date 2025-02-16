@@ -103,12 +103,12 @@ class Kingdom(commands.Cog):
         self.config.register_user(balance=0)
     
     async def get_balance(self, user: discord.Member):
-        return await self.config.user(user).balance()
+        return await self.config.user(user).master_balance()
     
     async def update_balance(self, user: discord.Member, amount: int):
         balance = await self.get_balance(user)
         new_balance = max(0, balance + amount)
-        await self.config.user(user).balance.set(new_balance)
+        await self.config.user(user).master_balance.set(new_balance)
         return new_balance
     
     async def get_projects(self, guild):
