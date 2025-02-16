@@ -38,21 +38,34 @@ class Casino(commands.Cog):
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
     async def dice(self, ctx, bet: int):
-        """Roll a dice against the house (House rolls 1-6, Player rolls 1-5)"""
+        """Roll dice against the house with animated graphics."""
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
         
+        dice_emojis = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"]
+        message = await ctx.send("🎲 Rolling dice... 🎲")
+        
+        for _ in range(3):
+            temp_player_roll = random.choice(dice_emojis)
+            temp_house_roll = random.choice(dice_emojis)
+            await message.edit(content=f"Player: {temp_player_roll} | House: {temp_house_roll}\nRolling... 🎲")
+            await asyncio.sleep(0.5)
+        
         player_roll = random.randint(1, 6)
         house_roll = random.choices([1, 2, 3, 4, 5, 6], weights=[5, 10, 15, 20, 25, 30])[0]
+        player_emoji = dice_emojis[player_roll - 1]
+        house_emoji = dice_emojis[house_roll - 1]
         
         if player_roll > house_roll:
-            winnings = bet
-            new_balance = await self.update_balance(ctx.author, winnings)
-            await ctx.send(f"You rolled {player_roll}, house rolled {house_roll}. You win! New balance: {new_balance} WellCoins.")
+            winnings = bet * 2
+            result_text = "You win! 🎉"
         else:
-            new_balance = await self.update_balance(ctx.author, -bet)
-            await ctx.send(f"You rolled {player_roll}, house rolled {house_roll}. You lose! New balance: {new_balance} WellCoins.")
+            winnings = -bet
+            result_text = "You lost! 😢"
+        
+        new_balance = await self.update_balance(ctx.author, winnings)
+        await message.edit(content=f"Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: {new_balance} WellCoins.")
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
