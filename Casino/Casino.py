@@ -29,6 +29,7 @@ class Casino(commands.Cog):
             call = "tails"
 
         if not call == "heads" and not call == "tails":
+            await ctx.send("Sorry bad call please use ``heads`` or ``tails``)
             return
         
         if bet <= 0 or bet > balance:
