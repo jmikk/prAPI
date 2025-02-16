@@ -150,10 +150,25 @@ class Kingdom(commands.Cog):
         if not projects:
             await ctx.send("No ongoing projects at the moment.")
             return
-        
+    
         menu = FundingMenu(self, ctx, projects)
-        embed = discord.Embed(title="Funding Projects", color=discord.Color.gold())
+        project = projects[0]  # Ensure the first project is displayed properly
+        percentage_funded = (project['funded'] / project['goal']) * 100
+        
+        embed = discord.Embed(
+            title=f"{project['name']}",
+            description=f"{project['description']}\n\nTotal Needed: {project['goal']} WellCoins\n"
+                        f"Funded: {project['funded']} WellCoins ({percentage_funded:.2f}% Funded)",
+            color=discord.Color.gold()
+        )
+        
+        if 'thumbnail' in project:
+            embed.set_thumbnail(url=project['thumbnail'])
+        
+        embed.set_footer(text=f"Project ID: {project['id']}")
+        
         menu.message = await ctx.send(embed=embed, view=menu)
+
     
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
