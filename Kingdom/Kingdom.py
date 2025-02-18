@@ -483,7 +483,7 @@ class Kingdom(commands.Cog):
     @commands.command()
     async def my_personal_projects(self, ctx):
         """View and fund your personal projects, only showing those with prerequisites met."""
-        projects = await self.get_incomplete_personal_projects(ctx.guild)
+        projects = await self.get_incomplete_personal_projects(ctx.author, ctx.guild)
         completed_projects = await self.get_completed_personal_projects(ctx.author)
         available_projects = [p for p in projects if all(prereq in completed_projects for prereq in p['prerequisites'])]
         
