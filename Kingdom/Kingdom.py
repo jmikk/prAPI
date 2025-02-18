@@ -479,3 +479,18 @@ class Kingdom(commands.Cog):
         personal_projects.remove(project)
         await self.update_personal_projects(ctx.author, personal_projects)
         await ctx.send(f"Removed personal project '{project['name']}'.")
+
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
+    async def dump_completed_projects(self, ctx):
+        """Dump all completed personal projects."""
+        completed_projects = await self.get_completed_personal_projects(ctx.author)
+        if not completed_projects:
+            await ctx.send("You have not completed any personal projects yet.")
+            return
+        
+        embed = discord.Embed(title="Completed Personal Projects", color=discord.Color.green())
+        for project_id, project_name in completed_projects.items():
+            embed.add_field(name=project_name, value=f"Project ID: {project_id}", inline=False)
+        
+        await ctx.send(embed=embed)
