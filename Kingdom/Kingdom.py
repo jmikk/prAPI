@@ -7,6 +7,52 @@ from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 from discord.ui import View, Button, TextInput, Modal
 
+
+class AdminProjectList(View):
+    def __init__(self, cog, ctx, projects):
+        super().__init__()
+        self.cog = cog
+        self.ctx = ctx
+        self.projects = projects
+        self.current_index = 0
+        self.items_per_page = 25
+
+        self.left_button = Button(label="◀", style=discord.ButtonStyle.blurple)
+        self.left_button.callback = self.previous_page
+        
+        self.right_button = Button(label="▶", style=discord.ButtonStyle.blurple)
+        self.right_button.callback = self.next_page
+        
+        self.add_item(self.left_button)
+        self.add_item(self.right_button)
+
+    async def update_message(self):
+        start = self.current_index * self.items_per_page
+        end = start + self.items_per_page
+        projects_page = self.projects[start:end]
+
+        if not projects_page:
+            await self.message.edit(content="No projects available.", view=None)
+            return
+
+        embed = discord.Embed(title="All Projects and Prerequisites", color=discord.Color.gold())
+        for project in projects_page:
+            prereqs = ', '.join(project['prerequisites']) if project['prerequisites'] else "None"
+            embed.add_field(name=project['name'], value=f"Prerequisites: {prereqs}", inline=False)
+
+        embed.set_footer(text=f"Page {self.current_index + 1} of {((len(self.projects) - 1) // self.items_per_page) + 1}")
+        await self.message.edit(embed=embed, view=self)
+    
+    async def previous_page(self, interaction: discord.Interaction):
+        self.current_index = (self.current_index - 1) % ((len(self.projects) - 1) // self.items_per_page + 1)
+        await self.update_message()
+        await interaction.response.defer()
+    
+    async def next_page(self, interaction: discord.Interaction):
+        self.current_index = (self.current_index + 1) % ((len(self.projects) - 1) // self.items_per_page + 1)
+        await self.update_message()
+        await interaction.response.defer()
+
 class CompletedPersonalProjectsMenu(View):
     def __init__(self, cog, user, projects):
         super().__init__()
@@ -507,3 +553,17 @@ class Kingdom(commands.Cog):
             embed.add_field(name=project_name, value=f"Project ID: {project_id}", inline=False)
         
         await ctx.send(embed=embed)
+
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
+    async def list_all_projects(self, ctx):
+        """Admin only: List all projects and their prerequisites, paginated 25 per embed."""
+        projects = await self.get_personal_projects(ctx.guild)
+        if not projects:
+            await ctx.send("No projects available.")
+            return
+
+        menu = AdminProjectList(self, ctx, projects)
+        menu.message = await ctx.send(embed=discord.Embed(title="Loading...", color=discord.Color.gold()), view=menu)
+        await menu.update_message()
+
