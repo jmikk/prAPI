@@ -403,6 +403,7 @@ class Kingdom(commands.Cog):
         await ctx.send(f"Project with ID {project_id} has been removed.")
 
     @commands.command()
+    @commands.admin_or_permissions(administrator=True)
     async def add_personal_project(self, ctx, name: str, goal: int, *, prerequisites: str = "None"):
         """Add a personal project (optional prerequisites)."""
         if goal <= 0:
@@ -465,6 +466,7 @@ class Kingdom(commands.Cog):
         menu.message = await ctx.send(embed=embed, view=menu)
 
     @commands.command()
+    @commands.admin_or_permissions(administrator=True)
     async def remove_personal_project(self, ctx, project_id: str):
         """Remove a personal project by ID."""
         personal_projects = await self.get_personal_projects(ctx.author)
