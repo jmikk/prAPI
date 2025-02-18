@@ -184,12 +184,10 @@ class FundPersonalModal(Modal):
             completed_projects = await self.menu.cog.get_completed_personal_projects(interaction.user)
             completed_projects.append(project)
             await self.menu.cog.update_completed_personal_projects(interaction.user, completed_projects)
-            await self.menu.cog.update_personal_projects(interaction.user, self.menu.projects)  # Update project list in config
 
         else:
             await self.menu.update_message()
             await interaction.response.defer()
-            await self.menu.cog.update_personal_projects(interaction.guild, self.menu.projects)  # Update project list in config
 
 
 class CompletedProjectsMenu(View):
@@ -341,14 +339,20 @@ class Kingdom(commands.Cog):
         self.config.register_guild(projects=[], completed_projects=[])
         self.config.register_user(personal_projects=[], completed_personal_projectz=[])
 
-    async def get_personal_projects(self, user):
-        return await self.config.user(user).personal_projects()
+    async def get_incomplete_personal_projects(self, user, guild):
+        all_projects = await self.get_personal_projects(guild)
+        completed_projects = await self.get_completed_personal_projects(user)
+        incomplete_projects = [p for p in all_projects if p['id'] not in completed_projects]
+        return incomplete_projects
+
+    async def get_personal_projects(self, guild):
+        return await self.config.guild(guild).personal_projects()
 
     async def get_completed_personal_projects(self, user):
         return await self.config.user(user).completed_personal_projectz()
     
-    async def update_personal_projects(self, user, projects):
-        await self.config.user(user).personal_projects.set(projects)
+    async def update_personal_projects(self, guild, projects):
+        await self.config.guild(guild).personal_projects.set(projects)
 
     async def update_completed_personal_projects(self, user, completed_projects):
         await self.config.user(user).completed_personal_projectz.set(completed_projects)
@@ -465,7 +469,7 @@ class Kingdom(commands.Cog):
         project_id = name.lower().replace(" ", "_")
         prereq_list = [p.strip().lower().replace(" ", "_") for p in prerequisites.split(",") if p.strip()] if prerequisites.lower() != "none" else []
         
-        personal_projects = await self.get_personal_projects(ctx.author)
+        personal_projects = await self.get_personal_projects(ctx.guild)
         for project in personal_projects:
             if project['id'] == project_id:
                 await ctx.send("You already have a project with this name.")
@@ -473,13 +477,13 @@ class Kingdom(commands.Cog):
         
         new_project = {"id": project_id, "name": name, "goal": goal, "funded": 0, "prerequisites": prereq_list, "thumbnail": thumbnail}
         personal_projects.append(new_project)
-        await self.update_personal_projects(ctx.author, personal_projects)
+        await self.update_personal_projects(ctx.guild, personal_projects)
         await ctx.send(f"Added personal project '{name}' with a goal of {goal} WellCoins!")
 
     @commands.command()
     async def my_personal_projects(self, ctx):
         """View and fund your personal projects, only showing those with prerequisites met."""
-        projects = await self.get_personal_projects(ctx.author)
+        projects = await self.get_incomplete_personal_projects(ctx.guild)
         completed_projects = await self.get_completed_personal_projects(ctx.author)
         available_projects = [p for p in projects if all(prereq in completed_projects for prereq in p['prerequisites'])]
         
@@ -525,7 +529,7 @@ class Kingdom(commands.Cog):
     @commands.admin_or_permissions(administrator=True)
     async def remove_personal_project(self, ctx, project_id: str):
         """Admin only: Removes a project by ID from ongoing or completed projects."""
-        projects = await self.get_personal_projects(ctx.author)
+        projects = await self.get_personal_projects(ctx.guild)
         completed_projects = await self.get_completed_personal_projects(ctx.author)
         
         updated_projects = [p for p in projects if p['id'] != project_id]
@@ -535,7 +539,7 @@ class Kingdom(commands.Cog):
             await ctx.send("No project found with that ID.")
             return
         
-        await self.update_personal_projects(ctx.author, updated_projects)
+        await self.update_personal_projects(ctx.guild, updated_projects)
         await self.update_completed_personal_projects(ctx.author, updated_completed_projects)
         await ctx.send(f"Project with ID {project_id} has been removed.")
 
