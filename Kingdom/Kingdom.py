@@ -51,12 +51,15 @@ class CompletedPersonalProjectsMenu(View):
         await interaction.response.defer()
 
 class PersonalFundingMenu(View):
-    def __init__(self, cog, user, projects):
+    def __init__(self, cog, user, projects, completed_projects):
         super().__init__()
         self.cog = cog
         self.user = user
-        self.projects = projects
+        self.projects = [p for p in projects if all(prereq in completed_projects for prereq in p['prerequisites'])]
         self.current_index = 0
+
+        if not self.projects:
+            return
 
         self.fund_button = Button(label="Fund", style=discord.ButtonStyle.green)
         self.fund_button.callback = self.fund_project
@@ -73,7 +76,7 @@ class PersonalFundingMenu(View):
 
     async def update_message(self):
         if not self.projects:
-            await self.message.edit(content="No personal projects available.", view=None)
+            await self.message.edit(content="No personal projects available or prerequisites not met.", view=None)
             return
         
         project = self.projects[self.current_index]
@@ -429,14 +432,17 @@ class Kingdom(commands.Cog):
 
     @commands.command()
     async def my_personal_projects(self, ctx):
-        """View and fund your personal projects."""
+        """View and fund your personal projects, only showing those with prerequisites met."""
         projects = await self.get_personal_projects(ctx.author)
-        if not projects:
-            await ctx.send("You have no personal projects.")
+        completed_projects = await self.get_completed_personal_projects(ctx.author)
+        available_projects = [p for p in projects if all(prereq in completed_projects for prereq in p['prerequisites'])]
+        
+        if not available_projects:
+            await ctx.send("No personal projects available or prerequisites not met.")
             return
         
-        menu = PersonalFundingMenu(self, ctx.author, projects)
-        project = projects[0]
+        menu = PersonalFundingMenu(self, ctx.author, available_projects, completed_projects)
+        project = available_projects[0]
         percentage_funded = (project['funded'] / project['goal']) * 100
         
         embed = discord.Embed(
