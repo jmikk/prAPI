@@ -287,19 +287,19 @@ class Kingdom(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.config.register_guild(projects=[], completed_projects=[])
-        self.config.register_user(personal_projects=[], completed_personal_projects=[])
+        self.config.register_user(personal_projects=[], completed_personal_projectz=[])
 
     async def get_personal_projects(self, user):
         return await self.config.user(user).personal_projects()
 
     async def get_completed_personal_projects(self, user):
-        return await self.config.user(user).completed_personal_projects()
+        return await self.config.user(user).completed_personal_projectz()
     
     async def update_personal_projects(self, user, projects):
         await self.config.user(user).personal_projects.set(projects)
 
     async def update_completed_personal_projects(self, user, completed_projects):
-        await self.config.user(user).completed_personal_projects.set(completed_projects)
+        await self.config.user(user).completed_personal_projectz.set(completed_projects)
         
     async def get_balance(self, user: discord.Member):
         return await self.config.user(user).master_balance()
