@@ -404,8 +404,8 @@ class Kingdom(commands.Cog):
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
-    async def add_personal_project(self, ctx, name: str, goal: int, *, prerequisites: str = "None"):
-        """Add a personal project (optional prerequisites)."""
+    async def add_personal_project(self, ctx, name: str, goal: int, thumbnail: str, *, prerequisites: str = "None"):
+        """Add a personal project (optional prerequisites) with a thumbnail."""
         if goal <= 0:
             await ctx.send("Goal must be a positive number.")
             return
@@ -419,7 +419,7 @@ class Kingdom(commands.Cog):
                 await ctx.send("You already have a project with this name.")
                 return
         
-        new_project = {"id": project_id, "name": name, "goal": goal, "funded": 0, "prerequisites": prereq_list}
+        new_project = {"id": project_id, "name": name, "goal": goal, "funded": 0, "prerequisites": prereq_list, "thumbnail": thumbnail}
         personal_projects.append(new_project)
         await self.update_personal_projects(ctx.author, personal_projects)
         await ctx.send(f"Added personal project '{name}' with a goal of {goal} WellCoins!")
