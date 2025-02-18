@@ -465,20 +465,24 @@ class Kingdom(commands.Cog):
         embed.set_footer(text=f"Project ID: {project['id']}")
         menu.message = await ctx.send(embed=embed, view=menu)
 
+
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
     async def remove_personal_project(self, ctx, project_id: str):
-        """Remove a personal project by ID."""
-        personal_projects = await self.get_personal_projects(ctx.author)
-        project = next((p for p in personal_projects if p['id'] == project_id), None)
+        """Admin only: Removes a project by ID from ongoing or completed projects."""
+        projects = await self.get_personal_projects(ctx.guild)
+        completed_projects = await self.get_completed_personal_projects(ctx.guild)
         
-        if not project:
-            await ctx.send("Project not found.")
+        updated_projects = [p for p in projects if p['id'] != project_id]
+        updated_completed_projects = [p for p in completed_projects if p['id'] != project_id]
+        
+        if len(updated_projects) == len(projects) and len(updated_completed_projects) == len(completed_projects):
+            await ctx.send("No project found with that ID.")
             return
         
-        personal_projects.remove(project)
-        await self.update_personal_projects(ctx.author, personal_projects)
-        await ctx.send(f"Removed personal project '{project['name']}'.")
+        await self.update_personal_projects(ctx.guild, updated_projects)
+        await self.update_completed_personal_projects(ctx.guild, updated_completed_projects)
+        await ctx.send(f"Project with ID {project_id} has been removed.")
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
