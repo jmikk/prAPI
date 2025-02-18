@@ -7,6 +7,49 @@ from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 from discord.ui import View, Button, TextInput, Modal
 
+class CompletedPersonalProjectsMenu(View):
+    def __init__(self, cog, user, projects):
+        super().__init__()
+        self.cog = cog
+        self.user = user
+        self.projects = projects
+        self.current_index = 0
+        
+        self.left_button = Button(label="◀", style=discord.ButtonStyle.blurple)
+        self.left_button.callback = self.previous_project
+        
+        self.right_button = Button(label="▶", style=discord.ButtonStyle.blurple)
+        self.right_button.callback = self.next_project
+        
+        self.add_item(self.left_button)
+        self.add_item(self.right_button)
+        
+    async def update_message(self):
+        if not self.projects:
+            await self.message.edit(content="No completed personal projects.", view=None)
+            return
+        
+        project = self.projects[self.current_index]
+        embed = discord.Embed(
+            title=f"{project['name']} (Completed)",
+            description=f"Goal: {project['goal']} WellCoins\nFunded: {project['goal']} WellCoins",
+            color=discord.Color.green()
+        )
+        if 'thumbnail' in project:
+            embed.set_thumbnail(url=project['thumbnail'])
+        embed.set_footer(text=f"Project ID: {project['id']}")
+        await self.message.edit(embed=embed, view=self)
+    
+    async def previous_project(self, interaction: discord.Interaction):
+        self.current_index = (self.current_index - 1) % len(self.projects)
+        await self.update_message()
+        await interaction.response.defer()
+    
+    async def next_project(self, interaction: discord.Interaction):
+        self.current_index = (self.current_index + 1) % len(self.projects)
+        await self.update_message()
+        await interaction.response.defer()
+
 class PersonalFundingMenu(View):
     def __init__(self, cog, user, projects):
         super().__init__()
@@ -40,6 +83,8 @@ class PersonalFundingMenu(View):
             description=f"Goal: {project['goal']} WellCoins\nFunded: {project['funded']} WellCoins ({percentage_funded:.2f}% Funded)\nPrerequisites: {', '.join(project['prerequisites']) if project['prerequisites'] else 'None'}",
             color=discord.Color.blue()
         )
+        if 'thumbnail' in project:
+            embed.set_thumbnail(url=project['thumbnail'])
         embed.set_footer(text=f"Project ID: {project['id']}")
         await self.message.edit(embed=embed, view=self)
 
@@ -89,7 +134,7 @@ class FundPersonalModal(Modal):
             completed_projects[project['id']] = project['name']
             await self.menu.cog.update_completed_personal_projects(self.menu.user, completed_projects)
             await self.menu.cog.update_personal_projects(self.menu.user, self.menu.projects)
-            await interaction.response.send_message(f"Personal project '{project['name']}' is fully funded and completed! 🎉")
+            await interaction.response.send_message(f"Personal project '{project['name']}' is fully funded and completed! 🎉",ephemeral=True)
         else:
             await self.menu.update_message()
             await interaction.response.defer()
@@ -407,10 +452,17 @@ class Kingdom(commands.Cog):
             await ctx.send("You have not completed any personal projects yet.")
             return
         
-        embed = discord.Embed(title="Your Completed Projects", color=discord.Color.green())
-        for project_id, project_name in completed_projects.items():
-            embed.add_field(name=project_name, value=f"Project ID: {project_id}", inline=False)
-        await ctx.send(embed=embed)
+        menu = CompletedPersonalProjectsMenu(self, ctx.author, completed_projects)
+        project = completed_projects[0]
+        embed = discord.Embed(
+            title=f"{project['name']} (Completed)",
+            description=f"Goal: {project['goal']} WellCoins\nFunded: {project['goal']} WellCoins",
+            color=discord.Color.green()
+        )
+        if 'thumbnail' in project:
+            embed.set_thumbnail(url=project['thumbnail'])
+        embed.set_footer(text=f"Project ID: {project['id']}")
+        menu.message = await ctx.send(embed=embed, view=menu)
 
     @commands.command()
     async def remove_personal_project(self, ctx, project_id: str):
