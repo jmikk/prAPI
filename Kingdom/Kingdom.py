@@ -553,7 +553,7 @@ class Kingdom(commands.Cog):
         for member in members:
             completed_projects = await self.get_completed_personal_projects(member)
             if completed_projects:
-                project_list = "\n".join(completed_projects)
+                project_list = "\n".join(f"{p['name']} (ID: {p['id']})" for p in completed_projects)
                 embed.add_field(name=f"{member.display_name}", value=project_list, inline=False)
         
         if not embed.fields:
