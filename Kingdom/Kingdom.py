@@ -119,7 +119,6 @@ class PersonalFundingMenu(View):
         self.add_item(self.left_button)
         self.add_item(self.fund_button)
         self.add_item(self.right_button)
-        self.update_message()
 
     async def update_message(self):
         if not self.projects:
