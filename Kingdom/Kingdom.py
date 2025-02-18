@@ -287,7 +287,7 @@ class Kingdom(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.config.register_guild(projects=[], completed_projects=[])
-        self.config.register_user(personal_projects=[], completed_personal_projects={})
+        self.config.register_user(personal_projects=[], completed_personal_projects=[])
 
     async def get_personal_projects(self, user):
         return await self.config.user(user).personal_projects()
