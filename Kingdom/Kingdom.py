@@ -141,46 +141,8 @@ class FundPersonalModal(Modal):
         else:
             await self.menu.update_message()
             await interaction.response.defer()
-            await self.menu.cog.update_projects(interaction.guild, self.menu.projects)  # Update project list in config
+            await self.menu.cog.update_personal_projects(interaction.guild, self.menu.projects)  # Update project list in config
 
-
-#OLD
-class FundPersonalModal(Modal):
-    def __init__(self, menu, user_balance):
-        super().__init__(title="Fund Personal Project")
-        self.menu = menu
-        self.user_balance = user_balance
-        self.input = TextInput(label="Amount to Donate", placeholder=f"Max: {user_balance}")
-        self.add_item(self.input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        amount = self.input.value.lower()
-        if amount == "all":
-            amount = self.user_balance
-        else:
-            try:
-                amount = int(amount)
-                if amount <= 0 or amount > self.user_balance:
-                    raise ValueError
-            except ValueError:
-                await interaction.response.send_message("Invalid amount!", ephemeral=True)
-                return
-        
-        project = self.menu.projects[self.menu.current_index]
-        project['funded'] += amount
-        await self.menu.cog.update_balance(self.menu.user, -amount)
-        
-        if project['funded'] >= project['goal']:
-            self.menu.projects.pop(self.menu.current_index)
-            completed_projects = await self.menu.cog.get_completed_personal_projects(self.menu.user)
-            completed_projects[project['id']] = project['name']
-            await self.menu.cog.update_completed_personal_projects(self.menu.user, completed_projects)
-            await self.menu.cog.update_personal_projects(self.menu.user, self.menu.projects)
-            await interaction.response.send_message(f"Personal project '{project['name']}' is fully funded and completed! 🎉",ephemeral=True)
-        else:
-            await self.menu.update_message()
-            await interaction.response.defer()
-            await self.menu.cog.update_personal_projects(self.menu.user, self.menu.projects)
 
 class CompletedProjectsMenu(View):
     def __init__(self, cog, ctx, projects):
