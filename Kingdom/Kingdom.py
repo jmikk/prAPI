@@ -359,8 +359,8 @@ class Kingdom(commands.Cog):
                 incomplete_projects.append(project)
             else:
                 debug_message += f"\nSkipping {project['name']} - Missing prerequisites: {missing_prereqs}"
-            await user.send(debug_message)  # Sends debugging info to the user
-            return incomplete_projects
+        await user.send(debug_message)  # Sends debugging info to the user
+        return incomplete_projects
 
 
     async def get_personal_projects(self, guild):
