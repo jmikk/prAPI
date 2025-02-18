@@ -336,8 +336,8 @@ class Kingdom(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
-        self.config.register_guild(projects=[], completed_projects=[])
-        self.config.register_user(personal_projects=[], completed_personal_projectz=[])
+        self.config.register_guild(projects=[], completed_projects=[],personal_projects=[])
+        self.config.register_user(completed_personal_projectz=[])
 
     async def get_incomplete_personal_projects(self, user, guild):
         all_projects = await self.get_personal_projects(guild)
