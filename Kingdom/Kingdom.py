@@ -38,7 +38,7 @@ class AdminProjectList(View):
         embed = discord.Embed(title="All Projects and Prerequisites", color=discord.Color.gold())
         for project in projects_page:
             prereqs = ', '.join(project['prerequisites']) if project['prerequisites'] else "None"
-            embed.add_field(name=project['name'], value=f"Prerequisites: {prereqs}", inline=False)
+            embed.add_field(name=f"{project['name']}: {project['id']}, value=f"Prerequisites: {prereqs}", inline=False)
 
         embed.set_footer(text=f"Page {self.current_index + 1} of {((len(self.projects) - 1) // self.items_per_page) + 1}")
         await self.message.edit(embed=embed, view=self)
@@ -593,10 +593,5 @@ class Kingdom(commands.Cog):
         menu.message = await ctx.send(embed=discord.Embed(title="Loading...", color=discord.Color.gold()), view=menu)
         await menu.update_message()
 
-    @commands.command()
-    async def debug_completed_projects(self, ctx):
-        """Debug: Show stored completed projects."""
-        completed_projects = await self.get_completed_personal_projects(ctx.author)
-        await ctx.send(f"Your completed projects: {completed_projects}")
 
 
