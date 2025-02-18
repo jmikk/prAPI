@@ -416,7 +416,6 @@ class NexusExchange(commands.Cog):
                 channel = self.bot.get_channel(data["daily_channel"])
                 if channel:
                      #daily Loop stuff 
-                    await channel.send("This is your daily message!")
                     ad_text = self.get_random_ad()
                     if ad_text:
                         try:
