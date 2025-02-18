@@ -547,14 +547,18 @@ class Kingdom(commands.Cog):
     @commands.admin_or_permissions(administrator=True)
     async def dump_completed_projects(self, ctx):
         """Dump all completed personal projects."""
-        completed_projects = await self.get_completed_personal_projects(ctx.author)
-        if not completed_projects:
-            await ctx.send("You have not completed any personal projects yet.")
-            return
+        members = ctx.guild.members
+        embed = discord.Embed(title="All Completed Personal Projects", color=discord.Color.green())
         
-        embed = discord.Embed(title="Completed Personal Projects", color=discord.Color.green())
-        for project_id, project_name in completed_projects.items():
-            embed.add_field(name=project_name, value=f"Project ID: {project_id}", inline=False)
+        for member in members:
+            completed_projects = await self.get_completed_personal_projects(member)
+            if completed_projects:
+                project_list = "\n".join(completed_projects)
+                embed.add_field(name=f"{member.display_name}", value=project_list, inline=False)
+        
+        if not embed.fields:
+            await ctx.send("No completed personal projects found.")
+            return
         
         await ctx.send(embed=embed)
 
