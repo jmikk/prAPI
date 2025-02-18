@@ -583,3 +583,10 @@ class Kingdom(commands.Cog):
         menu.message = await ctx.send(embed=discord.Embed(title="Loading...", color=discord.Color.gold()), view=menu)
         await menu.update_message()
 
+    @commands.command()
+    async def debug_completed_projects(self, ctx):
+        """Debug: Show stored completed projects."""
+        completed_projects = await self.get_completed_personal_projects(ctx.author)
+        await ctx.send(f"Your completed projects: {completed_projects}")
+
+
