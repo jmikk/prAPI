@@ -342,7 +342,7 @@ class Kingdom(commands.Cog):
     async def get_incomplete_personal_projects(self, user, guild):
         all_projects = await self.get_personal_projects(guild)
         completed_projects = await self.get_completed_personal_projects(user)
-        incomplete_projects = [p for p in all_projects if p['id'] not in completed_projects]
+        incomplete_projects = [p for p in all_projects if p['id'] not in [c['id'] for c in completed_projects]]
         return incomplete_projects
 
     async def get_personal_projects(self, guild):
