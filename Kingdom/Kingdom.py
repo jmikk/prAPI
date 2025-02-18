@@ -338,19 +338,28 @@ class Kingdom(commands.Cog):
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.config.register_guild(projects=[], completed_projects=[],personal_projects=[])
         self.config.register_user(completed_personal_projectz=[])
-
+    
     async def get_incomplete_personal_projects(self, user, guild):
         all_projects = await self.get_personal_projects(guild)
         completed_projects = await self.get_completed_personal_projects(user)
-        
+    
+        # Extract IDs from completed projects
         completed_project_ids = {p["id"] for p in completed_projects}
     
-        incomplete_projects = [
-            p for p in all_projects 
-            if p["id"] not in completed_project_ids and all(prereq in completed_project_ids for prereq in p["prerequisites"])
-        ]
+        debug_message = f"Completed Projects: {completed_project_ids}\nChecking projects..."
         
-        return incomplete_projects
+        incomplete_projects = []
+        for project in all_projects:
+            if project["id"] in completed_project_ids:
+                continue  # Skip already completed projects
+    
+            missing_prereqs = [prereq for prereq in project["prerequisites"] if prereq not in completed_project_ids]
+    
+            if not missing_prereqs:  # Only add if all prereqs are met
+                incomplete_projects.append(project)
+            else:
+                debug_message += f"\nSkipping {project['name']} - Missing prerequisites: {missing_prereqs}"
+            return incomplete_projects
 
 
     async def get_personal_projects(self, guild):
