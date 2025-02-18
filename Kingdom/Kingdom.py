@@ -103,7 +103,6 @@ class PersonalFundingMenu(View):
         modal = FundPersonalModal(self, user_balance)
         await interaction.response.send_modal(modal)
 
-#new!
 class FundPersonalModal(Modal):
     def __init__(self, menu, user_balance):
         super().__init__(title="Fund Project")
@@ -133,10 +132,10 @@ class FundPersonalModal(Modal):
             await self.menu.update_message()
             await interaction.response.send_message(f"Project {project['name']} has been fully funded! 🎉")
             self.menu.projects.pop(self.menu.current_index)
-            completed_projects = await self.menu.cog.get_completed_personal_projects(interaction.guild)
+            completed_projects = await self.menu.cog.get_completed_personal_projects(interaction.user)
             completed_projects.append(project)
-            await self.menu.cog.update_completed_personal_projects(interaction.guild, completed_projects)
-            await self.menu.cog.update_personal_projects(interaction.guild, self.menu.projects)  # Update project list in config
+            await self.menu.cog.update_completed_personal_projects(interaction.user, completed_projects)
+            await self.menu.cog.update_personal_projects(interaction.user, self.menu.projects)  # Update project list in config
 
         else:
             await self.menu.update_message()
