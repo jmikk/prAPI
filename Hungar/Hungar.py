@@ -583,7 +583,7 @@ class SponsorView(View):
         
         self.boost_options = [
             SelectOption(label=f"+{i} Boost ({cost} Gold)", value=str(i))
-            for i in range(1, day_count+1)
+            for i in range(1, day_count+1+1)
         ]
         self.boost_select = Select(
             placeholder="Select the boost amount...",
