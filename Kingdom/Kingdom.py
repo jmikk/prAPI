@@ -101,7 +101,8 @@ class PersonalFundingMenu(View):
         super().__init__()
         self.cog = cog
         self.user = user
-        self.projects = [p for p in projects if all(prereq in completed_projects for prereq in p['prerequisites'])]
+        completed_project_ids = {p['id'] for p in completed_projects}  # Extract just the IDs
+        self.projects = [p for p in projects if all(prereq in completed_project_ids for prereq in p['prerequisites'])]
         self.current_index = 0
 
         if not self.projects:
@@ -501,6 +502,7 @@ class Kingdom(commands.Cog):
 
         available_projects = await self.get_personal_projects(ctx.guild)
         completed_projects = await self.get_completed_personal_projects(ctx.author)
+        
         menu = PersonalFundingMenu(self, ctx.author, available_projects, completed_projects)
         project = available_projects[0]
         percentage_funded = (project['funded'] / project['goal']) * 100
