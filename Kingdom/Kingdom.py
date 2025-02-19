@@ -682,7 +682,7 @@ class Kingdom(commands.Cog):
                 await ctx.send(f"Skipping row (invalid format): {row}")
                 continue
 
-            name, goal, thumbnail, prerequisites, description = row
+            name, goal, thumbnail, prerequisites = row
             try:
                 goal = int(goal)
                 if goal <= 0:
