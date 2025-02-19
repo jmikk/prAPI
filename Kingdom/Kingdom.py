@@ -7,7 +7,7 @@ from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 from discord.ui import View, Button, TextInput, Modal
 import csv
-
+import io
 
 class AdminProjectList(View):
     def __init__(self, cog, ctx, projects):
