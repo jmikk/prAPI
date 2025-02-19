@@ -1020,10 +1020,8 @@ class ActionSelectionView(View):
         
         if feast_active:
             self.add_item(ActionButton(cog, "Feast"))
-        
-
-
-        self.add_item(SponsorButton(cog))
+        if not feast_active:
+            self.add_item(SponsorButton(cog))
 
 
         # Only add the Betting Button on Day 0 and Day 1
