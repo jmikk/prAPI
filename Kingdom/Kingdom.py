@@ -516,6 +516,7 @@ class Kingdom(commands.Cog):
         menu.message = await ctx.send(embed=embed, view=menu)
 
         available_projects = self.get_personal_projects(ctx.guild)
+        completed_projects = self.get_completed_personal_projects(ctx.user)
         menu = PersonalFundingMenu(self, ctx.author, available_projects, completed_projects)
         project = available_projects[0]
         percentage_funded = (project['funded'] / project['goal']) * 100
