@@ -678,7 +678,7 @@ class Kingdom(commands.Cog):
         added_projects = []
 
         for row in csv_reader:
-            if len(row) < 5:
+            if len(row) < 4:
                 await ctx.send(f"Skipping row (invalid format): {row}")
                 continue
 
