@@ -1808,9 +1808,9 @@ class Hungar(commands.Cog):
                 if random.random() < 0.75:  # 75% chance to find an item
                     stat = random.choice(["Def", "Str", "Con", "Wis"])
                     if stat == "HP":
-                        boost = random.randint(5,10)
+                        boost = random.randint(10,20)
                     else:
-                        boost = random.randint(1, 3)
+                        boost = random.randint(1, 10)
                     player_data["items"].append((stat, boost))
 
                     
@@ -1824,7 +1824,7 @@ class Hungar(commands.Cog):
                 else:
                     threshold = 1 / (1 + player_data["stats"]["Wis"] / 10)  # Scale slows the decrease
                     if random.random() < threshold:
-                        damage = random.randint(1,5)
+                        damage = random.randint(1,3)
                         player_data["stats"]["HP"]=player_data["stats"]["HP"] - damage
 
                         effect = await self.load_file(
