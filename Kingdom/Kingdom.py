@@ -343,26 +343,19 @@ class Kingdom(commands.Cog):
         all_projects = await self.get_personal_projects(guild)
         completed_projects = await self.get_completed_personal_projects(user)
     
-        # Extract IDs from completed projects
         completed_project_ids = {p["id"] for p in completed_projects}
     
-        debug_message = f"Completed Projects: {completed_project_ids}\nChecking projects..."
-        
         incomplete_projects = []
         for project in all_projects:
             if project["id"] in completed_project_ids:
-                continue  # Skip already completed projects
+                continue  # Skip if already completed
     
-            missing_prereqs = [prereq for prereq in project["prerequisites"] if prereq not in completed_project_ids]
-    
-            if not missing_prereqs:  # Only add if all prereqs are met
+            # Check if all prerequisites are completed
+            if all(prereq in completed_project_ids for prereq in project["prerequisites"]):
                 incomplete_projects.append(project)
-                debug_message += f"|{project}|"
-            else:
-                debug_message += f"\nSkipping {project['name']} - Missing prerequisites: {missing_prereqs}"
-
-        await user.send(debug_message)  # Sends debugging info to the user
+    
         return incomplete_projects
+
 
 
     async def get_personal_projects(self, guild):
@@ -504,12 +497,24 @@ class Kingdom(commands.Cog):
     async def my_personal_projects(self, ctx):
         """View and fund your personal projects, only showing those with prerequisites met."""
         projects = await self.get_incomplete_personal_projects(ctx.author, ctx.guild)
-        completed_projects = await self.get_completed_personal_projects(ctx.author)
-        available_projects = [p for p in projects if all(prereq in completed_projects for prereq in p['prerequisites'])]
-        
-        if not available_projects:
+    
+        if not projects:
             await ctx.send("No personal projects available or prerequisites not met.")
             return
+        
+        menu = PersonalFundingMenu(self, ctx.author, projects, await self.get_completed_personal_projects(ctx.author))
+        project = projects[0]
+        percentage_funded = (project['funded'] / project['goal']) * 100
+        
+        embed = discord.Embed(
+            title=f"{project['name']}",
+            description=f"Goal: {project['goal']} WellCoins\nFunded: {project['funded']} WellCoins ({percentage_funded:.2f}% Funded)\nPrerequisites: {', '.join(project['prerequisites']) if project['prerequisites'] else 'None'}",
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text=f"Project ID: {project['id']}")
+    
+        menu.message = await ctx.send(embed=embed, view=menu)
+
         
         menu = PersonalFundingMenu(self, ctx.author, available_projects, completed_projects)
         project = available_projects[0]
