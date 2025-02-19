@@ -353,6 +353,8 @@ class Kingdom(commands.Cog):
             # Check if all prerequisites are completed
             if all(prereq in completed_project_ids for prereq in project["prerequisites"]):
                 incomplete_projects.append(project)
+            else: 
+                await user.send(project)
     
         return incomplete_projects
 
