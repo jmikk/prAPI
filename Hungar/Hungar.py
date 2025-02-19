@@ -577,8 +577,10 @@ class SponsorView(View):
         self.add_item(self.stat_select)
 
         # Boost amount selection dropdown
+        #      cost = self.selected_boost * 50 + (int(day_count) * 10) + 100
+
         self.boost_options = [
-            SelectOption(label=f"+{i} Boost ({20 * i + (day_count) * 10} Gold)", value=str(i))
+            SelectOption(label=f"+{i} Boost ({50 * i + (day_count) * 10 + 100} Gold)", value=str(i))
             for i in range(1, 11)
         ]
         self.boost_select = Select(
@@ -1855,7 +1857,7 @@ class Hungar(commands.Cog):
 
             # Find a target in priority order, excluding the hunter themselves
             target_id = None
-            for target_list in [targeted_hunters, targeted_looters, targeted_resters]:
+            for target_list in [targeted_looters,targeted_hunters, targeted_resters]:
                 while target_list:
                     potential_target = target_list.pop(0)
                     if potential_target != hunter_id and potential_target not in hunted:
@@ -1871,7 +1873,7 @@ class Hungar(commands.Cog):
             target = players[target_id]
 
             target_defense = target["stats"]["Def"] + random.randint(1+int((target["stats"]["Con"]/4)), 10+int(target["stats"]["Con"]))
-            hunter_str = hunter["stats"]["Str"] + random.randint(1+int(target["stats"]["Wis"]/4), 10+int(hunter["stats"]["Wis"]))
+            hunter_str = hunter["stats"]["Str"] + random.randint(1+int(target["stats"]["Wis"]/4), 10+int(hunter["stats"]["Wis"])+target_defense)
             damage = abs(hunter_str - target_defense)
 
             if damage < 2:
