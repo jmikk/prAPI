@@ -599,9 +599,21 @@ class Kingdom(commands.Cog):
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
-    async def add_projects_csv(self, ctx):
-        """Admin only: Upload a CSV file to mass-add server projects."""
-        await ctx.send("Please upload a CSV file with project details. The format should be: `name,goal,thumbnail,description`")
+    async def add_projects_csv(self, ctx, project_type: str):
+        """
+        Admin only: Upload a CSV file to mass-add projects.
+        Usage:
+            - `!add_projects_csv server` to add **server projects**
+            - `!add_projects_csv personal` to add **personal projects**
+        CSV Format:
+            - **Server Projects**: `name,goal,thumbnail,description`
+            - **Personal Projects**: `name,goal,thumbnail,prerequisites (comma-separated),description`
+        """
+        if project_type.lower() not in ["server", "personal"]:
+            await ctx.send("Invalid project type. Use `server` or `personal`.")
+            return
+
+        await ctx.send("Please upload a CSV file with project details.")
 
         def check(m):
             return m.author == ctx.author and m.attachments and m.attachments[0].filename.endswith(".csv")
@@ -613,46 +625,99 @@ class Kingdom(commands.Cog):
             csv_text = file_content.decode("utf-8")
             csv_reader = csv.reader(io.StringIO(csv_text))
 
-            projects = await self.get_projects(ctx.guild)
-            added_projects = []
-
-            for row in csv_reader:
-                if len(row) < 4:
-                    await ctx.send(f"Skipping row (invalid format): {row}")
-                    continue
-
-                name, goal, thumbnail, description = row
-                try:
-                    goal = int(goal)
-                    if goal <= 0:
-                        await ctx.send(f"Skipping '{name}' (invalid goal value: {goal})")
-                        continue
-                except ValueError:
-                    await ctx.send(f"Skipping '{name}' (goal must be an integer)")
-                    continue
-
-                project_id = str(uuid.uuid4())[:8]
-                new_project = {
-                    "id": project_id,
-                    "name": name,
-                    "description": description,
-                    "goal": goal,
-                    "funded": 0,
-                    "thumbnail": thumbnail
-                }
-
-                projects.append(new_project)
-                added_projects.append(name)
-
-            await self.update_projects(ctx.guild, projects)
-
-            if added_projects:
-                await ctx.send(f"Successfully added {len(added_projects)} projects:\n" + "\n".join(added_projects))
+            if project_type.lower() == "server":
+                await self._process_server_projects(ctx, csv_reader)
             else:
-                await ctx.send("No valid projects were added.")
+                await self._process_personal_projects(ctx, csv_reader)
 
         except asyncio.TimeoutError:
             await ctx.send("You took too long to upload a file. Please try again.")
 
+    async def _process_server_projects(self, ctx, csv_reader):
+        """Processes and adds server-wide projects from CSV."""
+        projects = await self.get_projects(ctx.guild)
+        added_projects = []
+
+        for row in csv_reader:
+            if len(row) < 3:
+                await ctx.send(f"Skipping row (invalid format): {row}")
+                continue
+
+            name, goal, thumbnail = row
+            try:
+                goal = int(goal)
+                if goal <= 0:
+                    await ctx.send(f"Skipping '{name}' (invalid goal value: {goal})")
+                    continue
+            except ValueError:
+                await ctx.send(f"Skipping '{name}' (goal must be an integer)")
+                continue
+
+            project_id = str(uuid.uuid4())[:8]
+            new_project = {
+                "id": project_id,
+                "name": name,
+                "goal": goal,
+                "funded": 0,
+                "thumbnail": thumbnail
+            }
+
+            projects.append(new_project)
+            added_projects.append(name)
+
+        await self.update_projects(ctx.guild, projects)
+
+        if added_projects:
+            await ctx.send(f"Successfully added {len(added_projects)} server projects:\n" + "\n".join(added_projects))
+        else:
+            await ctx.send("No valid server projects were added.")
+
+    async def _process_personal_projects(self, ctx, csv_reader):
+        """Processes and adds personal projects from CSV."""
+        personal_projects = await self.get_personal_projects(ctx.guild)
+        added_projects = []
+
+        for row in csv_reader:
+            if len(row) < 5:
+                await ctx.send(f"Skipping row (invalid format): {row}")
+                continue
+
+            name, goal, thumbnail, prerequisites, description = row
+            try:
+                goal = int(goal)
+                if goal <= 0:
+                    await ctx.send(f"Skipping '{name}' (invalid goal value: {goal})")
+                    continue
+            except ValueError:
+                await ctx.send(f"Skipping '{name}' (goal must be an integer)")
+                continue
+
+            project_id = name.lower().replace(" ", "_")
+            prereq_list = [p.strip().lower().replace(" ", "_") for p in prerequisites.split(",") if p.strip()] if prerequisites.lower() != "none" else []
+
+            # Ensure the project is unique
+            for project in personal_projects:
+                if project['id'] == project_id:
+                    await ctx.send(f"Skipping '{name}' (duplicate project name)")
+                    continue
+
+            new_project = {
+                "id": project_id,
+                "name": name,
+                "goal": goal,
+                "funded": 0,
+                "prerequisites": prereq_list,
+                "thumbnail": thumbnail
+            }
+
+            personal_projects.append(new_project)
+            added_projects.append(name)
+
+        await self.update_personal_projects(ctx.guild, personal_projects)
+
+        if added_projects:
+            await ctx.send(f"Successfully added {len(added_projects)} personal projects:\n" + "\n".join(added_projects))
+        else:
+            await ctx.send("No valid personal projects were added.")
 
 
