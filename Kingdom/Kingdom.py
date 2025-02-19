@@ -121,6 +121,16 @@ class PersonalFundingMenu(View):
         self.add_item(self.fund_button)
         self.add_item(self.right_button)
 
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        """
+        This method is automatically called before any button interaction.
+        It prevents interactions from users who are not the project owner.
+        """
+        if interaction.user.id != self.user.id:
+            await interaction.response.send_message("You are not the owner of this project menu!", ephemeral=True)
+            return False
+        return True
+
     async def update_message(self):
         if not self.projects:
             await self.message.edit(content="No personal projects available or prerequisites not met.", view=None)
