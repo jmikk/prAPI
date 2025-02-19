@@ -496,24 +496,6 @@ class Kingdom(commands.Cog):
     @commands.command()
     async def my_personal_projects(self, ctx):
         """View and fund your personal projects, only showing those with prerequisites met."""
-        projects = await self.get_incomplete_personal_projects(ctx.author, ctx.guild)
-    
-        if not projects:
-            await ctx.send("No personal projects available or prerequisites not met.")
-            return
-        
-        menu = PersonalFundingMenu(self, ctx.author, projects, await self.get_completed_personal_projects(ctx.author))
-        project = projects[0]
-        percentage_funded = (project['funded'] / project['goal']) * 100
-        
-        embed = discord.Embed(
-            title=f"{project['name']}",
-            description=f"Goal: {project['goal']} WellCoins\nFunded: {project['funded']} WellCoins ({percentage_funded:.2f}% Funded)\nPrerequisites: {', '.join(project['prerequisites']) if project['prerequisites'] else 'None'}",
-            color=discord.Color.blue()
-        )
-        embed.set_footer(text=f"Project ID: {project['id']}")
-    
-        menu.message = await ctx.send(embed=embed, view=menu)
 
         available_projects = await self.get_personal_projects(ctx.guild)
         completed_projects = await self.get_completed_personal_projects(ctx.author)
@@ -527,7 +509,6 @@ class Kingdom(commands.Cog):
             color=discord.Color.blue()
         )
         embed.set_footer(text=f"Project ID: {project['id']}")
-        
         menu.message = await ctx.send(embed=embed, view=menu)
 
     @commands.command()
