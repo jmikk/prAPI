@@ -6,6 +6,7 @@ from collections import Counter
 from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 from discord.ui import View, Button, TextInput, Modal
+import csv
 
 
 class AdminProjectList(View):
@@ -595,6 +596,63 @@ class Kingdom(commands.Cog):
         menu = AdminProjectList(self, ctx, projects)
         menu.message = await ctx.send(embed=discord.Embed(title="Loading...", color=discord.Color.gold()), view=menu)
         await menu.update_message()
+
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
+    async def add_projects_csv(self, ctx):
+        """Admin only: Upload a CSV file to mass-add server projects."""
+        await ctx.send("Please upload a CSV file with project details. The format should be: `name,goal,thumbnail,description`")
+
+        def check(m):
+            return m.author == ctx.author and m.attachments and m.attachments[0].filename.endswith(".csv")
+
+        try:
+            msg = await self.bot.wait_for("message", check=check, timeout=60)
+            attachment = msg.attachments[0]
+            file_content = await attachment.read()
+            csv_text = file_content.decode("utf-8")
+            csv_reader = csv.reader(io.StringIO(csv_text))
+
+            projects = await self.get_projects(ctx.guild)
+            added_projects = []
+
+            for row in csv_reader:
+                if len(row) < 4:
+                    await ctx.send(f"Skipping row (invalid format): {row}")
+                    continue
+
+                name, goal, thumbnail, description = row
+                try:
+                    goal = int(goal)
+                    if goal <= 0:
+                        await ctx.send(f"Skipping '{name}' (invalid goal value: {goal})")
+                        continue
+                except ValueError:
+                    await ctx.send(f"Skipping '{name}' (goal must be an integer)")
+                    continue
+
+                project_id = str(uuid.uuid4())[:8]
+                new_project = {
+                    "id": project_id,
+                    "name": name,
+                    "description": description,
+                    "goal": goal,
+                    "funded": 0,
+                    "thumbnail": thumbnail
+                }
+
+                projects.append(new_project)
+                added_projects.append(name)
+
+            await self.update_projects(ctx.guild, projects)
+
+            if added_projects:
+                await ctx.send(f"Successfully added {len(added_projects)} projects:\n" + "\n".join(added_projects))
+            else:
+                await ctx.send("No valid projects were added.")
+
+        except asyncio.TimeoutError:
+            await ctx.send("You took too long to upload a file. Please try again.")
 
 
 
