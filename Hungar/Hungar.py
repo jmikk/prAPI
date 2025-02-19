@@ -580,7 +580,7 @@ class SponsorView(View):
         #      cost = self.selected_boost * 50 + (int(day_count) * 10) + 100
 
         self.boost_options = [
-            SelectOption(label=f"+{i} Boost ({50 * i + (day_count) * 10 + 100} Gold)", value=str(i))
+            SelectOption(label=f"+{i} Boost ({50 * i + (day_count * day_count) * 10 + 100} Gold)", value=str(i))
             for i in range(1, 11)
         ]
         self.boost_select = Select(
@@ -643,7 +643,7 @@ class SponsorView(View):
             day_count = await self.cog.config.guild(guild).day_counter()
             
             user_gold = await self.cog.config.user(interaction.user).gold()
-            cost = self.selected_boost * 50 + (int(day_count) * 10) + 100
+            cost = self.selected_boost * 50 + (int(day_count) * int(day_count) * 10) + 100
 
             if cost > user_gold:
                 await interaction.response.send_message(
