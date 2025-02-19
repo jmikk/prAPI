@@ -607,7 +607,7 @@ class Kingdom(commands.Cog):
             - `!add_projects_csv personal` to add **personal projects**
         CSV Format:
             - **Server Projects**: `name,goal,thumbnail,description`
-            - **Personal Projects**: `name,goal,thumbnail,prerequisites (comma-separated),description`
+            - **Personal Projects**: `name,goal,thumbnail,prerequisites (comma-separated)`
         """
         if project_type.lower() not in ["server", "personal"]:
             await ctx.send("Invalid project type. Use `server` or `personal`.")
