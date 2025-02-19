@@ -357,10 +357,10 @@ class Kingdom(commands.Cog):
     
             if not missing_prereqs:  # Only add if all prereqs are met
                 incomplete_projects.append(project)
+                debug_message += f"|{project}|"
             else:
                 debug_message += f"\nSkipping {project['name']} - Missing prerequisites: {missing_prereqs}"
-        await user.send(completed_projects)
-        await user.send("stuff")
+
         await user.send(debug_message)  # Sends debugging info to the user
         return incomplete_projects
 
