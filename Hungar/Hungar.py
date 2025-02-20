@@ -1730,7 +1730,7 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).day_counter.set(day_counter)
 
         if day_counter > 15:
-            reduction = (day_counter - 15) // 3   
+            reduction = day_counter - 14 * .05
             
             event_outcomes.append("A mysterious mist has descended upon the arena, sapping the abilites of all participants!")
 
@@ -1741,7 +1741,7 @@ class Hungar(commands.Cog):
                 # Choose a random stat to reduce
                 stats = ["Def", "Str", "Con", "Wis"]
                 stat_to_reduce = max(stats, key=lambda stat: player_data["stats"][stat])
-                player_data["stats"][stat_to_reduce] -= reduction
+                player_data["stats"][stat_to_reduce] = player_data["stats"][stat_to_reduce] - (reduction * player_data["stats"][stat_to_reduce])
 
                 # Check if the player dies
                 if player_data["stats"][stat_to_reduce] <= 0:
