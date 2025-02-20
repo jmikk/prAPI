@@ -1859,7 +1859,7 @@ class Hungar(commands.Cog):
 
             # Find a target in priority order, excluding the hunter themselves
             target_id = None
-            for target_list in [targeted_looters,targeted_hunters, targeted_resters]:
+            for target_list in [targeted_looters, targeted_hunters, targeted_resters]:
                 while target_list:
                     potential_target = target_list.pop(0)
                     if potential_target != hunter_id and potential_target not in hunted:
@@ -1875,7 +1875,7 @@ class Hungar(commands.Cog):
             target = players[target_id]
 
             target_defense = target["stats"]["Def"] + random.randint(1+int((target["stats"]["Con"]/4)), 10+int(target["stats"]["Con"]))
-            hunter_str = hunter["stats"]["Str"] + random.randint(1+int(target["stats"]["Wis"]/4), 10+int(hunter["stats"]["Wis"])+target_defense)
+            hunter_str = hunter["stats"]["Str"] + random.randint(1+int(target["stats"]["Wis"]/4), 10+int(hunter["stats"]["Wis"]))
             damage = abs(hunter_str - target_defense)
 
             if damage < 2:
@@ -1915,7 +1915,7 @@ class Hungar(commands.Cog):
                         )
                         hunter["items"] = []
             else:
-                if hunter_str > target_defense:
+                if hunter_str > target_defense or random.randint(1,10) == 10:
                     target["stats"]["HP"] -= damage
                     
                     effect = await self.load_file(
