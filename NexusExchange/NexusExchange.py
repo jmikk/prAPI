@@ -1121,7 +1121,7 @@ class NexusExchange(commands.Cog):
                 ad_text = self.get_random_ad()
                 if ad_text:
                     try:
-                        await channel.send(ad_text)
+                        await message.channel.send(ad_text)
                          #end of daily Loops stuff
                     except discord.Forbidden:
                         print(f"Missing permissions to send messages in {channel.id}")
