@@ -1113,13 +1113,11 @@ class NexusExchange(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         """Reward users for chatting."""
-
-
         if message.channel.id == 1098644885797609495:
             guild = message.guild
             count = await self.config.guild(guild).Message_count()
             await self.config.guild(guild).Message_count.set(count+1)
-            if count % 5:
+            if count % 5 == 0:
                 ad_text = self.get_random_ad()
                 if ad_text:
                     try:
