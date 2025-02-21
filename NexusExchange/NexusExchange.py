@@ -31,7 +31,8 @@ class NexusExchange(commands.Cog):
             coins_per_message=1,  # WellCoins per valid message
             message_cooldown=10,  # Cooldown in seconds to prevent farming
             blacklisted_channels=[],  # List of channel IDs where WellCoins are NOT earned# {"currency_name": {"config_id": int, "rate": float}}
-            min_message_length=20,  # Minimum message length to earn rewards
+            min_message_length=20,
+            Message_count=0,# Minimum message length to earn rewards
 
         )
         self.ads_folder = "ads"  # Folder where ad text files are stored
@@ -1113,7 +1114,7 @@ class NexusExchange(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         """Reward users for chatting."""
-        if message.channel.id == 1098644885797609495:
+        if message.channel.id == 1098673276064120842:
             guild = message.guild
             count = await self.config.guild(guild).Message_count()
             await self.config.guild(guild).Message_count.set(count+1)
