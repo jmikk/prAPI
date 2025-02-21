@@ -411,18 +411,7 @@ class NexusExchange(commands.Cog):
     async def daily_task(self):
         now = datetime.utcnow().strftime("%H")  # Get current time in HH:MM format
         guilds = await self.config.all_guilds()
-        for guild_id, data in guilds.items():
-            if data["daily_channel"] and data["daily_time"] == now:
-                channel = self.bot.get_channel(data["daily_channel"])
-                if channel:
-                     #daily Loop stuff 
-                    ad_text = self.get_random_ad()
-                    if ad_text:
-                        try:
-                            await channel.send(ad_text)
-                            #end of daily Loops stuff
-                        except discord.Forbidden:
-                                print(f"Missing permissions to send messages in {channel.id}")
+        
     
 
     async def fetch_wa_data(self,hall):
@@ -1124,6 +1113,21 @@ class NexusExchange(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         """Reward users for chatting."""
+
+
+        if message.channel.id == 1098644885797609495:
+            guild = message.guild
+            count = await self.config.guild(guild).Message_count()
+            await self.config.guild(guild).Message_count.set(count+1)
+            if count % 5:
+                ad_text = self.get_random_ad()
+                if ad_text:
+                    try:
+                        await channel.send(ad_text)
+                         #end of daily Loops stuff
+                    except discord.Forbidden:
+                        print(f"Missing permissions to send messages in {channel.id}")
+        
         if message.author.bot or not message.guild:
             return  # Ignore bot messages and DMs
 
