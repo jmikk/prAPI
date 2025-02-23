@@ -12,8 +12,6 @@ import traceback
 from discord.utils import get
 
 
-
-
 class EqualizerButton(Button):
     """Button for the Gamemaster to balance the game by bringing all tributes up to the same total stat value."""
     
