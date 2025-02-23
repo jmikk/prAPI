@@ -1525,7 +1525,7 @@ class Hungar(commands.Cog):
 
     async def endGame(self, ctx):
         """End the game and announce the winner."""
-        winner_id="689266891302502501"
+        winner_id=689266891302502501
         winner="None"
         guild = ctx.guild
         config = await self.config.guild(guild).all()
