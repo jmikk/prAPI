@@ -1750,9 +1750,8 @@ class Hungar(commands.Cog):
 
                 # Check if the player dies
                 if player_data["stats"][stat_to_reduce] <= 0:
-                    player_data["alive"] = False
-                    event_outcomes.append(f"{player_data['name']} succumbed to the mist and perished.")
-                    player_data["items"] = []  # Drop all items
+                    player_data["stats"][stat_to_reduce] = 1
+                    event_outcomes.append(f"{player_data['name']} nearly succumb to the mist and perished.")
 
 
 
