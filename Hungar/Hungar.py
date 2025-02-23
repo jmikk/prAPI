@@ -1732,6 +1732,10 @@ class Hungar(commands.Cog):
 
         if day_counter > 15:
             reduction = day_counter - 14 * .05
+            reduction = reduction / 100
+
+            if reduction > .5:
+                reduction = .5
             
             event_outcomes.append("A mysterious mist has descended upon the arena, sapping the abilites of all participants!")
 
