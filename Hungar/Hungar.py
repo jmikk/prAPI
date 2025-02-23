@@ -466,7 +466,7 @@ class HungerGamesAI:
 
         # Random stat to boost
         stat_to_boost = random.choice(["Def", "Str", "Con", "Wis", "HP"])
-        boost_amount = random.randint(1, 10)  # Normal random boost amount
+        boost_amount = random.randint(1, 5)  # Normal random boost amount
 
         # Apply sponsorship
         selected_tribute["stats"][stat_to_boost] += boost_amount
