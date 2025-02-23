@@ -1525,8 +1525,8 @@ class Hungar(commands.Cog):
 
     async def endGame(self, ctx):
         """End the game and announce the winner."""
-        winner_id=689266891302502501
-        winner=689266891302502501
+        winner_id=""
+        winner=""
         guild = ctx.guild
         config = await self.config.guild(guild).all()
         players = config["players"]
@@ -1690,7 +1690,8 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).elimination_leaderboard.set([])  # Reset leaderboard
         file = f"Hunger_Games.txt"
         async with aiofiles.open(file, mode="a") as file:  # "a" for append mode
-            await file.write(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!\n")  
+            if winner:
+                await file.write(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!\n")  
 
         file_name = "Hunger_Games.txt"
         async with aiofiles.open(file_name, mode='r') as file:
