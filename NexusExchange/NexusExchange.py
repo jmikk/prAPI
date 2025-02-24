@@ -32,7 +32,8 @@ class NexusExchange(commands.Cog):
             message_cooldown=10,  # Cooldown in seconds to prevent farming
             blacklisted_channels=[],  # List of channel IDs where WellCoins are NOT earned# {"currency_name": {"config_id": int, "rate": float}}
             min_message_length=20,
-            Message_count=0,# Minimum message length to earn rewards
+            Message_count=0,
+            "telegrams": {},# Minimum message length to earn rewards
 
         )
         self.ads_folder = "ads"  # Folder where ad text files are stored
@@ -49,9 +50,161 @@ class NexusExchange(commands.Cog):
             daily_wellcoins=0,  # Total WellCoins from the last dispatch
             weekly_wellcoins=0,
             last_update=0,  # Timestamp of the last daily update
-            last_weekly_update=0,  # Timestamp of the last weekly update
+            last_weekly_update=0,
+            "nations": {}# Timestamp of the last weekly update
         )
+
+        self.API_URL = "https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=nations"
+        self.USER_AGENT = "9006"
+        self.MAX_NATIONS_PER_TG = 8
+        self.MAX_BUTTONS_PER_ROW = 5
+        self.MAX_ROWS_PER_MESSAGE = 5  # Discord allows 5 rows of buttons per message
+
+        # Create SQLite database
+        self.conn = sqlite3.connect(self.DB_FILE)
+        self.cursor = self.conn.cursor()
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS nations (
+                name TEXT PRIMARY KEY,
+                days_in_region INTEGER
+            )
+            """
+        )
+        self.conn.commit()
         self.daily_task.start()  # Start the daily loop
+
+
+
+
+    async def fetch_nations(self):
+        """Fetch nations from the NationStates API."""
+        headers = {"User-Agent": self.USER_AGENT}
+        response = requests.get(self.API_URL, headers=headers)
+        if response.status_code != 200:
+            return []
+
+        try:
+            xml_data = response.text
+            start_tag, end_tag = "<NATIONS>", "</NATIONS>"
+            start_index = xml_data.find(start_tag) + len(start_tag)
+            end_index = xml_data.find(end_tag)
+            nations = xml_data[start_index:end_index].split(":")
+            return [n for n in nations if n]
+        except Exception:
+            return []
+
+    async def update_nation_days(self):
+        """Update nation days in region using config instead of a database."""
+        nations = await self.fetch_nations()
+        if not nations:
+            return
+
+        nation_data = await self.config.nations()
+        for nation in nations:
+            if nation in nation_data:
+                nation_data[nation] += 1
+            else:
+                nation_data[nation] = 1  # New nation starts at 1 day
+
+        await self.config.nations.set(nation_data)
+
+    async def generate_tg_links(self, nations_to_send, code):
+        """Generate TG links."""
+        tg_links = []
+        for i in range(0, len(nations_to_send), self.MAX_NATIONS_PER_TG):
+            tg_batch = nations_to_send[i : i + self.MAX_NATIONS_PER_TG]
+            tg_link = f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(tg_batch)}&message={code}&generated_by=TGer&run_by={self.USER_AGENT}"
+            tg_links.append(tg_link)
+        return tg_links
+
+    @commands.command()
+    async def viewtgs(self, ctx):
+        """View the current TGs in the config."""
+        tg_data = await self.config.guild(ctx.guild).telegrams()
+        if not tg_data:
+            await ctx.send("No TGs found.")
+            return
+
+        embed = discord.Embed(title="Scheduled TGs", color=discord.Color.blue())
+        for day, code in tg_data.items():
+            embed.add_field(name=f"Day {day}", value=f"`{code}`", inline=False)
+
+        await ctx.send(embed=embed)
+
+    @commands.command()
+    async def addtg(self, ctx, days: int, *, tg_code: str):
+        """Add a new TG to the config."""
+        tg_data = await self.config.guild(ctx.guild).telegrams()
+        if days in tg_data:
+            await ctx.send(f"A TG already exists for **{days} days**. Use `[p]removetg {days}` first.")
+            return
+
+        tg_data[days] = tg_code
+        await self.config.guild(ctx.guild).telegrams.set(tg_data)
+        await ctx.send(f"✅ Added TG for **{days} days** with code `{tg_code}`.")
+
+    @commands.command()
+    async def removetg(self, ctx, days: int):
+        """Remove a TG from the config."""
+        tg_data = await self.config.guild(ctx.guild).telegrams()
+        if days not in tg_data:
+            await ctx.send(f"No TG found for **{days} days**.")
+            return
+
+        del tg_data[days]
+        await self.config.guild(ctx.guild).telegrams.set(tg_data)
+        await ctx.send(f"🗑 Removed TG for **{days} days**.")
+
+    @commands.command()
+    async def sendtgs(self, ctx):
+        """Trigger the sending of TG buttons in a normal message."""
+        await self.update_nation_days()
+        tg_data = await self.config.guild(ctx.guild).telegrams()
+        nation_data = await self.config.nations()
+
+        if not tg_data:
+            await ctx.send("No TGs scheduled.")
+            return
+
+        all_buttons = []
+        total_buttons = 0
+
+        for days_required, code in tg_data.items():
+            nations_to_send = [nation for nation, days in nation_data.items() if days == days_required]
+
+            if not nations_to_send:
+                continue  # Skip if no nations match the criteria
+
+            tg_links = await self.generate_tg_links(nations_to_send, code)
+
+            button_row = []
+            for link in tg_links:
+                button = discord.ui.Button(label=f"Send TG ({days_required} Days)", style=discord.ButtonStyle.url, url=link)
+                button_row.append(button)
+                total_buttons += 1
+
+                if len(button_row) == self.MAX_BUTTONS_PER_ROW:
+                    all_buttons.append(discord.ui.ActionRow(*button_row))
+                    button_row = []
+
+                if len(all_buttons) >= self.MAX_ROWS_PER_MESSAGE:
+                    break
+
+            if button_row and len(all_buttons) < self.MAX_ROWS_PER_MESSAGE:
+                all_buttons.append(discord.ui.ActionRow(*button_row))
+
+            if len(all_buttons) >= self.MAX_ROWS_PER_MESSAGE:
+                break
+
+        if not all_buttons:
+            await ctx.send("No nations need TGs today.")
+            return
+
+        await ctx.send(f"@here - **Daily Telegrams are ready!** ({total_buttons} buttons)", components=all_buttons)
+
+
+    
 
 
     async def fetch_bank_data(self):
