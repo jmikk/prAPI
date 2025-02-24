@@ -131,7 +131,7 @@ class NexusExchange(commands.Cog):
             return
 
         embed = discord.Embed(title="Scheduled TGs", color=discord.Color.blue())
-            embed.add_field(name=f"Day", value=f"`{tg_data[:1000]}`", inline=False)
+        embed.add_field(name=f"Day", value=f"`{tg_data[:1000]}`", inline=False)
 
         await ctx.send(embed=embed)
         
