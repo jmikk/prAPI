@@ -175,6 +175,8 @@ class NexusExchange(commands.Cog):
         total_buttons = 0
 
         for days_required, code in tg_data.items():
+            await ctx.send(days_required)
+            await ctx.send(code)
             nations_to_send = [nation for nation, days in nation_data.items() if days == days_required]
 
             if not nations_to_send:
