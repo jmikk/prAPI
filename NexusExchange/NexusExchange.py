@@ -123,6 +123,20 @@ class NexusExchange(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
+    async def viewnations(self, ctx):
+        """View the current TGs in the config."""
+        tg_data = await self.config.nations()
+        if not tg_data:
+            await ctx.send("No TGs found.")
+            return
+
+        embed = discord.Embed(title="Scheduled TGs", color=discord.Color.blue())
+            embed.add_field(name=f"Day", value=f"`{tg_data[:1000]}`", inline=False)
+
+        await ctx.send(embed=embed)
+        
+
+    @commands.command()
     async def addtg(self, ctx, days: int, *, tg_code: str):
         """Add a new TG to the config."""
         tg_data = await self.config.guild(ctx.guild).telegrams()
