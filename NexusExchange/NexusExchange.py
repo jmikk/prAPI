@@ -143,6 +143,12 @@ class NexusExchange(commands.Cog):
         await ctx.send(f"✅ Added TG for **{days} days** with code `{tg_code}`.")
 
     @commands.command()
+    async def dumpnat(self, ctx, days: int, *, tg_code: str):
+        """Add a new TG to the config."""
+        await self.config.nations.set({})
+        await ctx.send(f"✅ dumped all nations`.")
+
+    @commands.command()
     async def removetg(self, ctx, days: int):
         """Remove a TG from the config."""
         tg_data = await self.config.guild(ctx.guild).telegrams()
