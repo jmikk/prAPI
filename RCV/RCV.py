@@ -7,7 +7,7 @@ class RCV(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1983746508234, force_registration=True)
+        self.config = Config.get_conf(self, identifier=1984, force_registration=True)
         self.config.register_guild(
             elections={}
         )
