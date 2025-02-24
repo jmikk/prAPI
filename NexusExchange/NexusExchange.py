@@ -189,14 +189,20 @@ class NexusExchange(commands.Cog):
                 total_buttons += 1
 
                 if len(button_row) == self.MAX_BUTTONS_PER_ROW:
-                    all_buttons.append(discord.ui.View(*button_row))
+                    view = discord.ui.View()
+                    for button in button_row:
+                        view.add_item(button)
+                    all_buttons.append(view)    
+
                     button_row = []
 
                 if len(all_buttons) >= self.MAX_ROWS_PER_MESSAGE:
                     break
 
             if button_row and len(all_buttons) < self.MAX_ROWS_PER_MESSAGE:
-                all_buttons.append(discord.ui.View(*button_row))
+                for button in button_row:
+                    view.add_item(button)
+                all_buttons.append(view)    
 
             if len(all_buttons) >= self.MAX_ROWS_PER_MESSAGE:
                 break
