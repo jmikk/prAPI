@@ -64,43 +64,37 @@ class NexusExchange(commands.Cog):
 
         self.daily_task.start()  # Start the daily loop
 
-
-
-
     async def fetch_nations(self):
-        """Fetch nations from the NationStates API."""
+        """Fetch nations from the NationStates API asynchronously."""
         headers = {"User-Agent": self.USER_AGENT}
-        response = requests.get(self.API_URL, headers=headers)
-        if response.status_code != 200:
-            return []
+        async with aiohttp.ClientSession() as session:
+            async with session.get(self.API_URL, headers=headers) as response:
+                if response.status != 200:
+                    return []
 
-        try:
-            xml_data = response.text
-            start_tag, end_tag = "<NATIONS>", "</NATIONS>"
-            start_index = xml_data.find(start_tag) + len(start_tag)
-            end_index = xml_data.find(end_tag)
-            nations = xml_data[start_index:end_index].split(":")
-            return [n for n in nations if n]
-        except Exception:
-            return []
+                xml_data = await response.text()
+                start_tag, end_tag = "<NATIONS>", "</NATIONS>"
+                start_index = xml_data.find(start_tag) + len(start_tag)
+                end_index = xml_data.find(end_tag)
+                nations = xml_data[start_index:end_index].split(":")
+                return [n for n in nations if n]
 
+    
     async def update_nation_days(self):
-        """Update nation days in region using config instead of a database."""
+        """Update nation days in region asynchronously."""
         nations = await self.fetch_nations()
         if not nations:
             return
 
         nation_data = await self.config.nations()
         for nation in nations:
-            if nation in nation_data:
-                nation_data[nation] += 1
-            else:
-                nation_data[nation] = 1  # New nation starts at 1 day
+            nation_data[nation] = nation_data.get(nation, 0) + 1  # Increment day count
 
         await self.config.nations.set(nation_data)
+        
 
     async def generate_tg_links(self, nations_to_send, code):
-        """Generate TG links."""
+        """Generate TG links asynchronously."""
         tg_links = []
         for i in range(0, len(nations_to_send), self.MAX_NATIONS_PER_TG):
             tg_batch = nations_to_send[i : i + self.MAX_NATIONS_PER_TG]
@@ -162,7 +156,7 @@ class NexusExchange(commands.Cog):
 
     @commands.command()
     async def sendtgs(self, ctx):
-        """Trigger the sending of TG buttons in a normal message."""
+        """Trigger the sending of TG buttons in a normal message asynchronously."""
         await self.update_nation_days()
         tg_data = await self.config.guild(ctx.guild).telegrams()
         nation_data = await self.config.nations()
@@ -189,14 +183,14 @@ class NexusExchange(commands.Cog):
                 total_buttons += 1
 
                 if len(button_row) == self.MAX_BUTTONS_PER_ROW:
-                    all_buttons.append(discord.ui.ActionRow(*button_row))
+                    all_buttons.append(discord.ui.View(*button_row))
                     button_row = []
 
                 if len(all_buttons) >= self.MAX_ROWS_PER_MESSAGE:
                     break
 
             if button_row and len(all_buttons) < self.MAX_ROWS_PER_MESSAGE:
-                all_buttons.append(discord.ui.ActionRow(*button_row))
+                all_buttons.append(discord.ui.View(*button_row))
 
             if len(all_buttons) >= self.MAX_ROWS_PER_MESSAGE:
                 break
@@ -205,7 +199,12 @@ class NexusExchange(commands.Cog):
             await ctx.send("No nations need TGs today.")
             return
 
-        await ctx.send(f"@here - **Daily Telegrams are ready!** ({total_buttons} buttons)", components=all_buttons)
+        view = discord.ui.View()
+        for row in all_buttons:
+            for button in row.children:
+                view.add_item(button)
+
+        await ctx.send(f"@here - **Daily Telegrams are ready!** ({total_buttons} buttons)", view=view)
 
 
     
