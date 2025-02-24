@@ -60,18 +60,6 @@ class NexusExchange(commands.Cog):
         self.MAX_BUTTONS_PER_ROW = 5
         self.MAX_ROWS_PER_MESSAGE = 5  # Discord allows 5 rows of buttons per message
 
-        # Create SQLite database
-        self.conn = sqlite3.connect(self.DB_FILE)
-        self.cursor = self.conn.cursor()
-        self.cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS nations (
-                name TEXT PRIMARY KEY,
-                days_in_region INTEGER
-            )
-            """
-        )
-        self.conn.commit()
         self.daily_task.start()  # Start the daily loop
 
 
