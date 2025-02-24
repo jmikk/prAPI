@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import re
 import urllib.parse  
 import html
+import requests
 
 
 class NexusExchange(commands.Cog):
