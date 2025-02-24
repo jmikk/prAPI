@@ -160,7 +160,6 @@ class NexusExchange(commands.Cog):
         await self.config.guild(ctx.guild).telegrams.set(tg_data)
         await ctx.send(f"🗑 Removed TG for **{days} days**.")
 
-    @commands.command()
     async def sendtgs(self, ctx):
         """Trigger the sending of TG buttons in a normal message asynchronously."""
         await self.update_nation_days()
@@ -578,8 +577,11 @@ class NexusExchange(commands.Cog):
 
     @tasks.loop(hours=1)
     async def daily_task(self):
-        now = datetime.utcnow().strftime("%H")  # Get current time in HH:MM format
-        guilds = await self.config.all_guilds()
+        now = datetime.datetime.utcnow()
+        if now.hour == 17:
+             # Run the `[p]sendtgs` command
+            ctx = self.bot.get_context(await self.bot.get_channel(1343661925694705775).send("Running daily TGs..."))
+            await self.sendtgs(ctx)
         
     
 
