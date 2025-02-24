@@ -33,7 +33,7 @@ class NexusExchange(commands.Cog):
             blacklisted_channels=[],  # List of channel IDs where WellCoins are NOT earned# {"currency_name": {"config_id": int, "rate": float}}
             min_message_length=20,
             Message_count=0,
-            "telegrams": {},# Minimum message length to earn rewards
+            telegrams = {},# Minimum message length to earn rewards
 
         )
         self.ads_folder = "ads"  # Folder where ad text files are stored
@@ -51,7 +51,7 @@ class NexusExchange(commands.Cog):
             weekly_wellcoins=0,
             last_update=0,  # Timestamp of the last daily update
             last_weekly_update=0,
-            "nations": {}# Timestamp of the last weekly update
+            nations = {}# Timestamp of the last weekly update
         )
 
         self.API_URL = "https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=nations"
