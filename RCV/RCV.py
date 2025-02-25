@@ -80,7 +80,12 @@ class RCV(commands.Cog):
 
         votes = list(election["votes"].values())
         candidates = election["candidates"]
-        await ctx.send(votes)
+
+        # ✅ Display the original votes first
+        formatted_votes = "\n".join(f"Voter {idx + 1}: {', '.join(vote) if vote else 'No Vote'}"
+                                    for idx, vote in enumerate(votes))
+
+        await ctx.send(f"📜 **Original Votes:**\n```{formatted_votes}```")
 
         # ✅ Fix: Await the async function
         winner, rounds, exhausted_votes = await self.run_ranked_choice_voting(
@@ -91,6 +96,7 @@ class RCV(commands.Cog):
         del elections[election_name]
         await self.config.guild(ctx.guild).elections.set(elections)
 
+        # ✅ Display the rounds and results separately
         result_msg = f"**📊 Election '{election_name.capitalize()}' Results:**\n\n"
 
         for round_num, (tally, eliminated, exhausted) in enumerate(rounds, 1):
@@ -105,6 +111,7 @@ class RCV(commands.Cog):
 
         result_msg += f"🏆 **Winner: {winner.capitalize()}!** 🎉"
         await ctx.send(result_msg)
+
 
 
 
