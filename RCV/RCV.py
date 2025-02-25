@@ -80,8 +80,11 @@ class RCV(commands.Cog):
 
         votes = list(election["votes"].values())
         candidates = election["candidates"]
-        
-        winner, rounds, exhausted_votes = self.run_ranked_choice_voting(candidates, votes, votes)
+
+        # ✅ Fix: Await the async function
+        winner, rounds, exhausted_votes = await self.run_ranked_choice_voting(
+            candidates, votes, votes, admin_id=ctx.author.id, ctx=ctx
+        )
 
         # Mark election as closed
         del elections[election_name]
@@ -95,23 +98,13 @@ class RCV(commands.Cog):
             result_msg += (
                 f"**🔄 Round {round_num}** (Total Votes: {total_votes}):\n"
                 f"{round_result}\n"
-                f"❌ **Eliminated:** {eliminated.capitalize()}\n"
+                f"❌ **Eliminated:** {', '.join(eliminated).capitalize() if isinstance(eliminated, list) else eliminated.capitalize()}\n"
                 f"💨 **Exhausted Ballots:** {exhausted}\n\n"
-            )
-
-        # Ensure the final round is displayed if it wasn't added before
-        if rounds:
-            final_tally = rounds[-1][0]  # Last round's tally
-            total_final_votes = sum(final_tally.values()) + exhausted_votes
-            final_round_display = "\n".join(f"🗳 **{c.capitalize()}**: {t} votes" for c, t in final_tally.items())
-
-            result_msg += (
-                f"**🏁 Final Round (Total Votes: {total_final_votes}):**\n"
-                f"{final_round_display}\n\n"
             )
 
         result_msg += f"🏆 **Winner: {winner.capitalize()}!** 🎉"
         await ctx.send(result_msg)
+
 
 
 
