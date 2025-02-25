@@ -81,7 +81,7 @@ class RCV(commands.Cog):
         votes = list(election["votes"].values())
         candidates = election["candidates"]
         
-        winner, rounds, exhausted_votes = self.run_ranked_choice_voting(candidates, votes)
+        winner, rounds, exhausted_votes = self.run_ranked_choice_voting(candidates, votes, votes)
 
         # Mark election as closed
         del elections[election_name]
