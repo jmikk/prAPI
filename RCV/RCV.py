@@ -81,27 +81,19 @@ class RCV(commands.Cog):
         votes = list(election["votes"].values())
         candidates = election["candidates"]
         
-        winner, rounds = self.run_ranked_choice_voting(candidates, votes)
+        winner, rounds, exhausted_votes = self.run_ranked_choice_voting(candidates, votes)
 
-        election["status"] = "closed"
+        # Mark election as closed
+        del elections[election_name]
         await self.config.guild(ctx.guild).elections.set(elections)
 
         result_msg = f"**Election '{election_name.capitalize()}' Results:**\n\n"
-        for round_num, (tally, eliminated) in enumerate(rounds, 1):
+        for round_num, (tally, eliminated, exhausted) in enumerate(rounds, 1):
             round_result = "\n".join(f"{c.capitalize()}: {t}" for c, t in tally.items())
-            result_msg += f"**Round {round_num}**:\n{round_result}\nEliminated: {eliminated.capitalize()}\n\n"
+            result_msg += f"**Round {round_num}**:\n{round_result}\nEliminated: {eliminated.capitalize()}\nExhausted Ballots: {exhausted}\n\n"
         
         result_msg += f"🏆 **Winner: {winner.capitalize()}!**"
         await ctx.send(result_msg)
-        elections = await self.config.guild(ctx.guild).elections()
-        election_name = election_name.lower()
-
-        if election_name not in elections:
-            return await ctx.send("No such election exists.")
-
-        del elections[election_name]
-        await self.config.guild(ctx.guild).elections.set(elections)
-        
 
     @commands.guild_only()
     @commands.admin()
@@ -127,6 +119,7 @@ class RCV(commands.Cog):
             # Count only first-choice votes
             vote_counts = defaultdict(int)
             total_valid_votes = 0
+            current_exhausted = 0  # Count exhausted ballots in this round only
     
             for vote in votes:
                 while vote:  # Ensure we are only counting valid votes
@@ -139,7 +132,9 @@ class RCV(commands.Cog):
                         vote.pop(0)  # Remove invalid/removed candidates
     
                 if not vote:  # Ballot has no remaining valid choices
-                    exhausted_votes += 1
+                    current_exhausted += 1  # Count this ballot as exhausted
+    
+            exhausted_votes += current_exhausted  # Keep track of total exhausted votes
     
             # Check if a candidate has a majority (>50% of total valid votes)
             for candidate, count in vote_counts.items():
