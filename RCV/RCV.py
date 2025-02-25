@@ -2,7 +2,7 @@ from redbot.core import commands, Config
 import discord
 from collections import defaultdict
 
-class RankedChoiceVoting(commands.Cog):
+class RCV(commands.Cog):
     """A cog for running Ranked Choice Voting elections."""
 
     def __init__(self, bot):
