@@ -122,31 +122,38 @@ class RCV(commands.Cog):
         """Perform ranked choice voting (instant-runoff) and return the winner with rounds breakdown."""
         rounds = []
         candidate_votes = defaultdict(int)
-
+        exhausted_votes = 0
+    
+        # Initial Tally
         for vote in votes:
-            if vote:
-                candidate_votes[vote[0]] += 1  
-
+            if vote:  # Ignore empty votes
+                candidate_votes[vote[0]] += 1
+            else:
+                exhausted_votes += 1  # Count completely empty votes
+    
         while True:
-            total_votes = sum(candidate_votes.values())
-            if not total_votes:
-                return "No valid votes", rounds
-
-            threshold = total_votes / 2
-            sorted_candidates = sorted(candidate_votes.items(), key=lambda x: x[1])
-
-            if sorted_candidates[-1][1] > threshold:
-                return sorted_candidates[-1][0], rounds
-
-            eliminated = sorted_candidates[0][0]
-            rounds.append((dict(candidate_votes), eliminated))
-
+            total_valid_votes = sum(candidate_votes.values())  # Only count active votes
+            if not total_valid_votes:
+                return "No valid votes", rounds, exhausted_votes
+    
+            threshold = total_valid_votes / 2
+            sorted_candidates = sorted(candidate_votes.items(), key=lambda x: x[1], reverse=True)
+    
+            if sorted_candidates[0][1] > threshold:
+                return sorted_candidates[0][0], rounds, exhausted_votes  # Winner found!
+    
+            eliminated = sorted_candidates[-1][0]  # Now eliminates the lowest-ranked candidate
+            rounds.append((dict(candidate_votes), eliminated, exhausted_votes))
+    
             del candidate_votes[eliminated]
-
+    
+            new_exhausted = 0
             for vote in votes:
                 if vote and vote[0] == eliminated:
                     vote.pop(0)
                     if vote:
                         candidate_votes[vote[0]] += 1
-
-        return "Error", rounds
+                    else:
+                        new_exhausted += 1  # Ballot has no more valid choices
+    
+            exhausted_votes += new_exhausted
