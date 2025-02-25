@@ -34,7 +34,7 @@ class RCV(commands.Cog):
         await self.config.guild(ctx.guild).elections.set(elections)
 
         candidate_list = "\n".join(f"- {c.capitalize()}" for c in candidates)
-        await ctx.send(f"Election '{election_name.capitalize()}' started! Candidates:\n{candidate_list}\nUse `!vote {election_name} <ranked choices>` to vote.")
+        await ctx.send(f"Election '{election_name.capitalize()}' started! Candidates:\n{candidate_list}\nUse `$vote {election_name} <ranked choices>` to vote.")
 
     @commands.guild_only()
     @commands.command()
