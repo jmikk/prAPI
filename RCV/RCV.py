@@ -98,9 +98,21 @@ class RCV(commands.Cog):
                 f"❌ **Eliminated:** {eliminated.capitalize()}\n"
                 f"💨 **Exhausted Ballots:** {exhausted}\n\n"
             )
-        
+
+        # Ensure the final round is displayed if it wasn't added before
+        if rounds:
+            final_tally = rounds[-1][0]  # Last round's tally
+            total_final_votes = sum(final_tally.values()) + exhausted_votes
+            final_round_display = "\n".join(f"🗳 **{c.capitalize()}**: {t} votes" for c, t in final_tally.items())
+
+            result_msg += (
+                f"**🏁 Final Round (Total Votes: {total_final_votes}):**\n"
+                f"{final_round_display}\n\n"
+            )
+
         result_msg += f"🏆 **Winner: {winner.capitalize()}!** 🎉"
         await ctx.send(result_msg)
+
 
 
     @commands.guild_only()
@@ -144,9 +156,15 @@ class RCV(commands.Cog):
     
             exhausted_votes += current_exhausted  # Keep track of total exhausted votes
     
+            # If only one candidate remains, they are the winner
+            if len(vote_counts) == 1:
+                rounds.append((dict(vote_counts), "None (Final Round)", exhausted_votes))
+                return list(vote_counts.keys())[0], rounds, exhausted_votes  # Last candidate wins
+
             # Check if a candidate has a majority (>50% of total valid votes)
             for candidate, count in vote_counts.items():
                 if count > total_valid_votes / 2:
+                    rounds.append((dict(vote_counts), "None (Majority Reached)", exhausted_votes))
                     return candidate, rounds, exhausted_votes  # Winner found!
     
             # If no winner, find the lowest-ranked candidate and remove them
@@ -162,4 +180,5 @@ class RCV(commands.Cog):
                     vote.pop(0)
     
             candidates.remove(lowest_candidate)  # Remove from valid candidates list
+
 
