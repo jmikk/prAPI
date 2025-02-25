@@ -124,11 +124,7 @@ class RCV(commands.Cog):
         await ctx.send(f"Election '{election_name.capitalize()}' has been canceled.")
     
     async def run_ranked_choice_voting(self, candidates, votes, original_votes, admin_id=None, ctx=None):
-        """Perform ranked choice voting (instant-runoff) with bulk tie elimination.
-        
-        - Eliminates all candidates tied for the lowest spot.
-        - If all remaining candidates are tied, the admin picks an elimination.
-        """
+        """Perform ranked choice voting (instant-runoff) with bulk tie elimination."""
         rounds = []
         exhausted_votes = 0
 
@@ -171,7 +167,7 @@ class RCV(commands.Cog):
             min_votes = min(vote_counts.values())
             lowest_candidates = [c for c in vote_counts if vote_counts[c] == min_votes]
 
-            # If all remaining candidates are tied, admin must decide
+            # **Fix: If all remaining candidates are tied, admin must decide**
             if len(lowest_candidates) == len(vote_counts):
                 if admin_id and ctx:
                     return await self.admin_tiebreaker(ctx, admin_id, original_votes, rounds, exhausted_votes)
@@ -182,12 +178,13 @@ class RCV(commands.Cog):
             for eliminated_candidate in lowest_candidates:
                 candidates.remove(eliminated_candidate)
 
-            rounds.append((dict(vote_counts), lowest_candidates, exhausted_votes))
+            rounds.append((dict(vote_counts), lowest_candidates, exhausted_votes))  # Ensure rounds are recorded
 
             # Remove eliminated candidates from votes
             for vote in votes:
                 while vote and vote[0] in lowest_candidates:
                     vote.pop(0)  # Remove all tied lowest candidates
+
 
     async def admin_tiebreaker(self, ctx, admin_id, original_votes, rounds, exhausted_votes):
         """Prompts the admin to break a full tie by reviewing original votes."""
@@ -195,11 +192,20 @@ class RCV(commands.Cog):
         if not admin:
             return "Admin decision required", rounds, exhausted_votes  # Admin not found
 
+        if not rounds:
+            return "No rounds available to reference for tiebreaking.", rounds, exhausted_votes
+
         # Generate a tally of original votes for admin review
         original_first_counts = defaultdict(int)
+        remaining_candidates = list(rounds[-1][0].keys()) if rounds else []
+
         for vote in original_votes:
-            if vote and vote[0] in rounds[-1][0]:  # Only include remaining candidates
+            if vote and vote[0] in remaining_candidates:  # Only include remaining candidates
                 original_first_counts[vote[0]] += 1
+
+        # If no candidates are found, return an error message
+        if not original_first_counts:
+            return "No valid candidates remaining for tiebreaking.", rounds, exhausted_votes
 
         result_msg = "**🏁 Tiebreaker Required: All remaining candidates are tied!**\n"
         result_msg += "Admin, please choose which candidate to eliminate based on original votes:\n\n"
@@ -213,4 +219,5 @@ class RCV(commands.Cog):
             return "Admin decision required, but DM failed.", rounds, exhausted_votes
 
         return "Admin decision pending", rounds, exhausted_votes  # Wait for admin input
+
 
