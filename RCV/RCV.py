@@ -80,6 +80,7 @@ class RCV(commands.Cog):
 
         votes = list(election["votes"].values())
         candidates = election["candidates"]
+        await ctx.send(votes)
 
         # ✅ Fix: Await the async function
         winner, rounds, exhausted_votes = await self.run_ranked_choice_voting(
