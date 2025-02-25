@@ -130,17 +130,21 @@ class RCV(commands.Cog):
         await self.config.guild(ctx.guild).elections.set(elections)
         await ctx.send(f"Election '{election_name.capitalize()}' has been canceled.")
     
-    def run_ranked_choice_voting(self, candidates, votes, original_votes, admin_id=None):
-        """Perform ranked choice voting (instant-runoff) with tie-breaking rules using original votes."""
+    async def run_ranked_choice_voting(self, candidates, votes, original_votes, admin_id=None, ctx=None):
+        """Perform ranked choice voting (instant-runoff) with bulk tie elimination.
+        
+        - Eliminates all candidates tied for the lowest spot.
+        - If all remaining candidates are tied, the admin picks an elimination.
+        """
         rounds = []
         exhausted_votes = 0
-    
+
         while True:
             # Count only first-choice votes in the current round
             vote_counts = defaultdict(int)
             total_valid_votes = 0
             current_exhausted = 0  # Count exhausted ballots in this round only
-    
+
             for vote in votes:
                 while vote:  # Ensure we are only counting valid votes
                     first_choice = vote[0]
@@ -150,12 +154,12 @@ class RCV(commands.Cog):
                         break  # Move to the next voter's ballot
                     else:
                         vote.pop(0)  # Remove invalid/removed candidates
-    
+
                 if not vote:  # Ballot has no remaining valid choices
                     current_exhausted += 1  # Count this ballot as exhausted
-    
+
             exhausted_votes += current_exhausted  # Keep track of total exhausted votes
-    
+
             # If only one candidate remains, they are the winner
             if len(vote_counts) == 1:
                 rounds.append((dict(vote_counts), "None (Final Round)", exhausted_votes))
@@ -166,67 +170,54 @@ class RCV(commands.Cog):
                 if count > total_valid_votes / 2:
                     rounds.append((dict(vote_counts), "None (Majority Reached)", exhausted_votes))
                     return candidate, rounds, exhausted_votes  # Winner found!
-    
-            # Find the lowest-ranked candidate in the current round
+
+            # Find the lowest-ranked candidates in the current round
             if not vote_counts:
                 return "No valid votes", rounds, exhausted_votes  # No one left
 
-            lowest_candidates = self.find_lowest_ranked_candidate(vote_counts, votes, original_votes)
+            min_votes = min(vote_counts.values())
+            lowest_candidates = [c for c in vote_counts if vote_counts[c] == min_votes]
 
-            if len(lowest_candidates) == 1:
-                eliminated_candidate = lowest_candidates[0]
-            else:
-                if admin_id:
-                    # Admin must cast the deciding vote
-                    eliminated_candidate = lowest_candidates[0]  # Placeholder for admin decision
+            # If all remaining candidates are tied, admin must decide
+            if len(lowest_candidates) == len(vote_counts):
+                if admin_id and ctx:
+                    return await self.admin_tiebreaker(ctx, admin_id, original_votes, rounds, exhausted_votes)
                 else:
-                    eliminated_candidate = lowest_candidates[0]  # Default to first in tie list
-            
-            rounds.append((dict(vote_counts), eliminated_candidate, exhausted_votes))
+                    return "Admin decision required", rounds, exhausted_votes  # Should not happen without admin
 
-            # Remove the eliminated candidate from all votes
+            # Otherwise, eliminate all tied lowest candidates
+            for eliminated_candidate in lowest_candidates:
+                candidates.remove(eliminated_candidate)
+
+            rounds.append((dict(vote_counts), lowest_candidates, exhausted_votes))
+
+            # Remove eliminated candidates from votes
             for vote in votes:
-                if vote and vote[0] == eliminated_candidate:
-                    vote.pop(0)
+                while vote and vote[0] in lowest_candidates:
+                    vote.pop(0)  # Remove all tied lowest candidates
 
-            candidates.remove(eliminated_candidate)  # Remove from valid candidates list
+    async def admin_tiebreaker(self, ctx, admin_id, original_votes, rounds, exhausted_votes):
+        """Prompts the admin to break a full tie by reviewing original votes."""
+        admin = ctx.guild.get_member(admin_id)
+        if not admin:
+            return "Admin decision required", rounds, exhausted_votes  # Admin not found
 
-    def find_lowest_ranked_candidate(self, vote_counts, votes, original_votes):
-        """Finds the lowest-ranked candidate using original votes for tie-breaking."""
-        min_votes = min(vote_counts.values())
-        tied_candidates = [c for c in vote_counts if vote_counts[c] == min_votes]
-
-        if len(tied_candidates) == 1:
-            return tied_candidates  # Only one candidate is the lowest
-
-        # If tied, use the original first-choice votes
+        # Generate a tally of original votes for admin review
         original_first_counts = defaultdict(int)
         for vote in original_votes:
-            if vote and vote[0] in tied_candidates:
+            if vote and vote[0] in rounds[-1][0]:  # Only include remaining candidates
                 original_first_counts[vote[0]] += 1
 
-        min_first_votes = min(original_first_counts.values(), default=0)
-        tied_candidates = [c for c in original_first_counts if original_first_counts[c] == min_first_votes]
+        result_msg = "**🏁 Tiebreaker Required: All remaining candidates are tied!**\n"
+        result_msg += "Admin, please choose which candidate to eliminate based on original votes:\n\n"
+        for candidate, count in original_first_counts.items():
+            result_msg += f"🗳 **{candidate.capitalize()}**: {count} original first-choice votes\n"
 
-        if len(tied_candidates) == 1:
-            return tied_candidates  # Found a unique lowest-ranked candidate
+        # Send admin a DM to pick the eliminated candidate
+        try:
+            dm_message = await admin.send(result_msg)
+        except discord.Forbidden:
+            return "Admin decision required, but DM failed.", rounds, exhausted_votes
 
-        # Tie-break by checking second-choice votes from original ballots
-        for rank in range(1, max(len(v) for v in original_votes if v) + 1):
-            ranked_counts = defaultdict(int)
-            for vote in original_votes:
-                if len(vote) > rank and vote[rank] in tied_candidates:
-                    ranked_counts[vote[rank]] += 1
-            
-            if ranked_counts:
-                min_secondary_votes = min(ranked_counts.values())
-                tied_candidates = [c for c in ranked_counts if ranked_counts[c] == min_secondary_votes]
-
-                if len(tied_candidates) == 1:
-                    return tied_candidates  # Found a unique lowest-ranked candidate
-
-        return tied_candidates  # Still tied (admin must decide)
-
-
-
+        return "Admin decision pending", rounds, exhausted_votes  # Wait for admin input
 
