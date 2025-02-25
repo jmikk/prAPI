@@ -87,13 +87,21 @@ class RCV(commands.Cog):
         del elections[election_name]
         await self.config.guild(ctx.guild).elections.set(elections)
 
-        result_msg = f"**Election '{election_name.capitalize()}' Results:**\n\n"
+        result_msg = f"**📊 Election '{election_name.capitalize()}' Results:**\n\n"
+
         for round_num, (tally, eliminated, exhausted) in enumerate(rounds, 1):
-            round_result = "\n".join(f"{c.capitalize()}: {t}" for c, t in tally.items())
-            result_msg += f"**Round {round_num}**:\n{round_result}\nEliminated: {eliminated.capitalize()}\nExhausted Ballots: {exhausted}\n\n"
+            total_votes = sum(tally.values()) + exhausted  # Active votes + exhausted ballots
+            round_result = "\n".join(f"🗳 **{c.capitalize()}**: {t} votes" for c, t in tally.items())
+            result_msg += (
+                f"**🔄 Round {round_num}** (Total Votes: {total_votes}):\n"
+                f"{round_result}\n"
+                f"❌ **Eliminated:** {eliminated.capitalize()}\n"
+                f"💨 **Exhausted Ballots:** {exhausted}\n\n"
+            )
         
-        result_msg += f"🏆 **Winner: {winner.capitalize()}!**"
+        result_msg += f"🏆 **Winner: {winner.capitalize()}!** 🎉"
         await ctx.send(result_msg)
+
 
     @commands.guild_only()
     @commands.admin()
@@ -154,3 +162,4 @@ class RCV(commands.Cog):
                     vote.pop(0)
     
             candidates.remove(lowest_candidate)  # Remove from valid candidates list
+
