@@ -118,42 +118,44 @@ class RCV(commands.Cog):
         await self.config.guild(ctx.guild).elections.set(elections)
         await ctx.send(f"Election '{election_name.capitalize()}' has been canceled.")
 
-    def run_ranked_choice_voting(self, candidates, votes):
-        """Perform ranked choice voting (instant-runoff) and return the winner with rounds breakdown."""
-        rounds = []
-        candidate_votes = defaultdict(int)
-        exhausted_votes = 0
-    
-        # Initial Tally
+def run_ranked_choice_voting(self, candidates, votes):
+    """Perform ranked choice voting (instant-runoff) with direct list modification."""
+    rounds = []
+    exhausted_votes = 0
+
+    while True:
+        # Count only first-choice votes
+        vote_counts = defaultdict(int)
+        total_valid_votes = 0
+
         for vote in votes:
-            if vote:  # Ignore empty votes
-                candidate_votes[vote[0]] += 1
-            else:
-                exhausted_votes += 1  # Count completely empty votes
-    
-        while True:
-            total_valid_votes = sum(candidate_votes.values())  # Only count active votes
-            if not total_valid_votes:
-                return "No valid votes", rounds, exhausted_votes
-    
-            threshold = total_valid_votes / 2
-            sorted_candidates = sorted(candidate_votes.items(), key=lambda x: x[1], reverse=True)
-    
-            if sorted_candidates[0][1] > threshold:
-                return sorted_candidates[0][0], rounds, exhausted_votes  # Winner found!
-    
-            eliminated = sorted_candidates[-1][0]  # Now eliminates the lowest-ranked candidate
-            rounds.append((dict(candidate_votes), eliminated, exhausted_votes))
-    
-            del candidate_votes[eliminated]
-    
-            new_exhausted = 0
-            for vote in votes:
-                if vote and vote[0] == eliminated:
-                    vote.pop(0)
-                    if vote:
-                        candidate_votes[vote[0]] += 1
-                    else:
-                        new_exhausted += 1  # Ballot has no more valid choices
-    
-            exhausted_votes += new_exhausted
+            while vote:  # Ensure we are only counting valid votes
+                first_choice = vote[0]
+                if first_choice in candidates:  # Make sure it's still a valid candidate
+                    vote_counts[first_choice] += 1
+                    total_valid_votes += 1
+                    break  # Move to the next voter's ballot
+                else:
+                    vote.pop(0)  # Remove invalid/removed candidates
+
+            if not vote:  # Ballot has no remaining valid choices
+                exhausted_votes += 1
+
+        # Check if a candidate has a majority (>50% of total valid votes)
+        for candidate, count in vote_counts.items():
+            if count > total_valid_votes / 2:
+                return candidate, rounds, exhausted_votes  # Winner found!
+
+        # If no winner, find the lowest-ranked candidate and remove them
+        if not vote_counts:
+            return "No valid votes", rounds, exhausted_votes  # No one left
+
+        lowest_candidate = min(vote_counts, key=vote_counts.get)  # Candidate with fewest votes
+        rounds.append((dict(vote_counts), lowest_candidate, exhausted_votes))
+
+        # Remove the eliminated candidate from all votes
+        for vote in votes:
+            if vote and vote[0] == lowest_candidate:
+                vote.pop(0)
+
+        candidates.remove(lowest_candidate)  # Remove from valid candidates list
