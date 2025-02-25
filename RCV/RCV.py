@@ -118,44 +118,44 @@ class RCV(commands.Cog):
         await self.config.guild(ctx.guild).elections.set(elections)
         await ctx.send(f"Election '{election_name.capitalize()}' has been canceled.")
 
-def run_ranked_choice_voting(self, candidates, votes):
-    """Perform ranked choice voting (instant-runoff) with direct list modification."""
-    rounds = []
-    exhausted_votes = 0
-
-    while True:
-        # Count only first-choice votes
-        vote_counts = defaultdict(int)
-        total_valid_votes = 0
-
-        for vote in votes:
-            while vote:  # Ensure we are only counting valid votes
-                first_choice = vote[0]
-                if first_choice in candidates:  # Make sure it's still a valid candidate
-                    vote_counts[first_choice] += 1
-                    total_valid_votes += 1
-                    break  # Move to the next voter's ballot
-                else:
-                    vote.pop(0)  # Remove invalid/removed candidates
-
-            if not vote:  # Ballot has no remaining valid choices
-                exhausted_votes += 1
-
-        # Check if a candidate has a majority (>50% of total valid votes)
-        for candidate, count in vote_counts.items():
-            if count > total_valid_votes / 2:
-                return candidate, rounds, exhausted_votes  # Winner found!
-
-        # If no winner, find the lowest-ranked candidate and remove them
-        if not vote_counts:
-            return "No valid votes", rounds, exhausted_votes  # No one left
-
-        lowest_candidate = min(vote_counts, key=vote_counts.get)  # Candidate with fewest votes
-        rounds.append((dict(vote_counts), lowest_candidate, exhausted_votes))
-
-        # Remove the eliminated candidate from all votes
-        for vote in votes:
-            if vote and vote[0] == lowest_candidate:
-                vote.pop(0)
-
-        candidates.remove(lowest_candidate)  # Remove from valid candidates list
+    def run_ranked_choice_voting(self, candidates, votes):
+        """Perform ranked choice voting (instant-runoff) with direct list modification."""
+        rounds = []
+        exhausted_votes = 0
+    
+        while True:
+            # Count only first-choice votes
+            vote_counts = defaultdict(int)
+            total_valid_votes = 0
+    
+            for vote in votes:
+                while vote:  # Ensure we are only counting valid votes
+                    first_choice = vote[0]
+                    if first_choice in candidates:  # Make sure it's still a valid candidate
+                        vote_counts[first_choice] += 1
+                        total_valid_votes += 1
+                        break  # Move to the next voter's ballot
+                    else:
+                        vote.pop(0)  # Remove invalid/removed candidates
+    
+                if not vote:  # Ballot has no remaining valid choices
+                    exhausted_votes += 1
+    
+            # Check if a candidate has a majority (>50% of total valid votes)
+            for candidate, count in vote_counts.items():
+                if count > total_valid_votes / 2:
+                    return candidate, rounds, exhausted_votes  # Winner found!
+    
+            # If no winner, find the lowest-ranked candidate and remove them
+            if not vote_counts:
+                return "No valid votes", rounds, exhausted_votes  # No one left
+    
+            lowest_candidate = min(vote_counts, key=vote_counts.get)  # Candidate with fewest votes
+            rounds.append((dict(vote_counts), lowest_candidate, exhausted_votes))
+    
+            # Remove the eliminated candidate from all votes
+            for vote in votes:
+                if vote and vote[0] == lowest_candidate:
+                    vote.pop(0)
+    
+            candidates.remove(lowest_candidate)  # Remove from valid candidates list
