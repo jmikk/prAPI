@@ -93,6 +93,15 @@ class RCV(commands.Cog):
         
         result_msg += f"🏆 **Winner: {winner.capitalize()}!**"
         await ctx.send(result_msg)
+        elections = await self.config.guild(ctx.guild).elections()
+        election_name = election_name.lower()
+
+        if election_name not in elections:
+            return await ctx.send("No such election exists.")
+
+        del elections[election_name]
+        await self.config.guild(ctx.guild).elections.set(elections)
+        
 
     @commands.guild_only()
     @commands.admin()
