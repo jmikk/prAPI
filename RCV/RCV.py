@@ -178,6 +178,19 @@ class RCV(commands.Cog):
 
             # **Fix: If 'nay' is the ONLY lowest-ranked candidate, remove the next lowest**
             if lowest_candidates == ["nay"]:
+
+                # **Check if the lowest-voted candidate is also the highest-voted one**
+                max_votes = max(vote_counts.values())  # Get the highest vote count
+                highest_candidates = [c for c in vote_counts if vote_counts[c] == max_votes]
+    
+                # If the lowest and highest candidates are the same, trigger admin tiebreaker
+                if set(lowest_candidates) == set(highest_candidates):
+                    if admin_id and ctx:
+                        return await self.admin_tiebreaker(ctx, admin_id, original_votes, rounds, exhausted_votes)
+                    else:
+                        return "Admin decision required", rounds, exhausted_votes
+
+                
                 sorted_candidates = sorted(vote_counts.items(), key=lambda x: x[1])
                 for candidate, count in sorted_candidates:
                     if candidate != "nay":
