@@ -129,7 +129,7 @@ class RCV(commands.Cog):
         await ctx.send(f"Election '{election_name.capitalize()}' has been canceled.")
     
     async def run_ranked_choice_voting(self, candidates, votes, original_votes, admin_id=None, ctx=None):
-        """Perform ranked choice voting (instant-runoff) with bulk tie elimination, skipping 'nay' if it's the lowest."""
+        """Perform ranked choice voting (instant-runoff) with bulk tie elimination, ensuring 'nay' is handled properly."""
         rounds = []
         exhausted_votes = 0
 
@@ -172,32 +172,30 @@ class RCV(commands.Cog):
             min_votes = min(vote_counts.values())
             lowest_candidates = [c for c in vote_counts if vote_counts[c] == min_votes]
 
-            # **Fix: If 'nay' is in the lowest-ranked list, skip it and remove the next lowest candidate instead**
+            # **Check if the lowest-voted candidate is also the highest-voted one**
+            max_votes = max(vote_counts.values())  # Get the highest vote count
+            highest_candidates = [c for c in vote_counts if vote_counts[c] == max_votes]
+
+            # If the lowest and highest candidates are the same, trigger admin tiebreaker
+            if set(lowest_candidates) == set(highest_candidates):
+                if admin_id and ctx:
+                    return await self.admin_tiebreaker(ctx, admin_id, original_votes, rounds, exhausted_votes)
+                else:
+                    return "Admin decision required", rounds, exhausted_votes
+
+            # **Handle 'nay' separately**
             if "nay" in lowest_candidates and len(lowest_candidates) > 1:
-                lowest_candidates.remove("nay")  # Skip removing 'nay'
+                lowest_candidates.remove("nay")  # Skip removing 'nay' if others exist
 
-            # **Fix: If 'nay' is the ONLY lowest-ranked candidate, remove the next lowest**
             if lowest_candidates == ["nay"]:
-
-                # **Check if the lowest-voted candidate is also the highest-voted one**
-                max_votes = max(vote_counts.values())  # Get the highest vote count
-                highest_candidates = [c for c in vote_counts if vote_counts[c] == max_votes]
-    
-                # If the lowest and highest candidates are the same, trigger admin tiebreaker
-                if set(lowest_candidates) == set(highest_candidates):
-                    if admin_id and ctx:
-                        return await self.admin_tiebreaker(ctx, admin_id, original_votes, rounds, exhausted_votes)
-                    else:
-                        return "Admin decision required", rounds, exhausted_votes
-
-                
+                # Find next lowest candidate
                 sorted_candidates = sorted(vote_counts.items(), key=lambda x: x[1])
                 for candidate, count in sorted_candidates:
                     if candidate != "nay":
                         lowest_candidates = [candidate]  # Remove the next lowest instead
                         break
 
-            # **Fix: If all remaining candidates are tied, admin must decide**
+            # **If all remaining candidates are tied, admin must decide**
             if len(lowest_candidates) == len(vote_counts):
                 if admin_id and ctx:
                     return await self.admin_tiebreaker(ctx, admin_id, original_votes, rounds, exhausted_votes)
@@ -214,6 +212,7 @@ class RCV(commands.Cog):
             for vote in votes:
                 while vote and vote[0] in lowest_candidates:
                     vote.pop(0)  # Remove all tied lowest candidates
+
 
 
 
