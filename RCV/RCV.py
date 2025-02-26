@@ -232,6 +232,7 @@ class RCV(commands.Cog):
         result_msg += "Admin, please choose which candidate to eliminate based on original votes:\n\n"
         for candidate, count in original_first_counts.items():
             result_msg += f"🗳 **{candidate.capitalize()}**: {count} original first-choice votes\n"
+        result_msg += original_votes
 
         # Send admin a DM to pick the eliminated candidate
         try:
