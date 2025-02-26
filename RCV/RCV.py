@@ -111,9 +111,6 @@ class RCV(commands.Cog):
         await ctx.send(result_msg)
 
 
-
-
-
     @commands.guild_only()
     @commands.command()
     async def cancel_election(self, ctx, election_name: str):
@@ -214,7 +211,7 @@ class RCV(commands.Cog):
 
 
     async def admin_tiebreaker(self, ctx, admin_id, original_votes, rounds, exhausted_votes):
-        """Prompts the admin to break a full tie by reviewing original votes."""
+        """Cycles through rounds to break ties before prompting the admin for a decision."""
         admin = ctx.guild.get_member(admin_id)
         if not admin:
             return "Admin decision required", rounds, exhausted_votes  # Admin not found
@@ -222,37 +219,57 @@ class RCV(commands.Cog):
         if not rounds:
             return "Admin decision required.", rounds, exhausted_votes
 
-        # Generate a tally of original votes for admin review
-        original_first_counts = defaultdict(int)
         remaining_candidates = list(rounds[-1][0].keys()) if rounds else []
 
-        for vote in original_votes:
-            if vote and vote[0] in remaining_candidates:  # Only include remaining candidates
-                original_first_counts[vote[0]] += 1
+        # Cycle through each round's votes to attempt resolving the tie
+        for round_index, (vote_tally, eliminated, exhausted) in enumerate(rounds):
+            round_counts = defaultdict(int)
 
-        # If no candidates are found, return an error message
-        if not original_first_counts:
-            return "No valid candidates remaining for tiebreaking.", rounds, exhausted_votes
+            for vote in original_votes:
+                if len(vote) > round_index and vote[round_index] in remaining_candidates:
+                    round_counts[vote[round_index]] += 1
 
-        result_msg = "**🏁 Tiebreaker Required: All remaining candidates are tied!**\n"
+            # If one candidate has the most votes in this round, return them as the loser
+            max_votes = max(round_counts.values(), default=0)
+            min_votes = min(round_counts.values(), default=0)
+            lowest_candidates = [c for c in round_counts if round_counts[c] == min_votes]
+
+            # If we find a single lowest candidate, return them as the eliminated one
+            if len(lowest_candidates) == 1:
+                eliminated_candidate = lowest_candidates[0]
+                return eliminated_candidate, rounds, exhausted_votes
+
+            # If all candidates are still tied, move to the next round
+
+        # If still tied after all rounds, prompt the admin to pick a candidate
+        result_msg = "**🏁 Tiebreaker Required: All remaining candidates are still tied!**\n"
         result_msg += "Admin, please choose which candidate to eliminate based on original votes:\n\n"
-        for candidate, count in original_first_counts.items():
-            result_msg += f"🗳 **{candidate.capitalize()}**: {count} original first-choice votes\n"
-        
+
+        # Generate a final tally from all rounds for admin review
+        final_counts = defaultdict(int)
+        for vote in original_votes:
+            for choice in vote:
+                if choice in remaining_candidates:
+                    final_counts[choice] += 1
+
+        for candidate, count in final_counts.items():
+            result_msg += f"🗳 **{candidate.capitalize()}**: {count} total votes across all rounds\n"
+
         # Format the original votes for readability
         formatted_votes = "\n".join(f"Voter {idx + 1}: {', '.join(vote) if vote else 'No Vote'}"
                                     for idx, vote in enumerate(original_votes))
-        
+
         # Append the formatted votes to the admin message
-        result_msg += f"\n\n**📜 Original Votes:**\n```{formatted_votes}```"
+        result_msg += f"\n\n**📜 Original Votes Across Rounds:**\n```{formatted_votes}```"
 
         # Send admin a DM to pick the eliminated candidate
         try:
-            dm_message = await admin.send(result_msg)
+            await admin.send(result_msg)
         except discord.Forbidden:
             return "Admin decision required, but DM failed.", rounds, exhausted_votes
 
         return "Admin decision pending", rounds, exhausted_votes  # Wait for admin input
+
 
     @commands.guild_only()
     @commands.command()
