@@ -220,7 +220,7 @@ class RCV(commands.Cog):
             return "Admin decision required", rounds, exhausted_votes  # Admin not found
 
         if not rounds:
-            return "No rounds available to reference for tiebreaking.", rounds, exhausted_votes
+            return "Admin decision required.", rounds, exhausted_votes
 
         # Generate a tally of original votes for admin review
         original_first_counts = defaultdict(int)
