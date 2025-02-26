@@ -193,7 +193,7 @@ class RCV(commands.Cog):
                 if admin_id and ctx:
                     return await self.admin_tiebreaker(ctx, admin_id, original_votes, rounds, exhausted_votes)
                 else:
-                    return "Admin decision required", rounds, exhausted_votes
+                    return await self.admin_tiebreaker(ctx, admin_id, original_votes, rounds, exhausted_votes)
     
             # Eliminate all candidates with the lowest votes (excluding 'nay' if preserved)
             for eliminated_candidate in lowest_candidates:
