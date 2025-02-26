@@ -11,7 +11,6 @@ class RCV(commands.Cog):
         self.config.register_guild(elections={})
 
     @commands.guild_only()
-    @commands.admin()
     @commands.command()
     async def start_election(self, ctx, election_name: str, *candidates: str):
         """Start a ranked choice voting election."""
@@ -64,7 +63,6 @@ class RCV(commands.Cog):
         await ctx.send(f"Your vote for '{election_name.capitalize()}' has been recorded!")
 
     @commands.guild_only()
-    @commands.admin()
     @commands.command()
     async def tally(self, ctx, election_name: str):
         """Tally the votes for a ranked choice election and determine the winner."""
@@ -117,7 +115,6 @@ class RCV(commands.Cog):
 
 
     @commands.guild_only()
-    @commands.admin()
     @commands.command()
     async def cancel_election(self, ctx, election_name: str):
         """Cancel an ongoing election."""
@@ -249,7 +246,6 @@ class RCV(commands.Cog):
         return "Admin decision pending", rounds, exhausted_votes  # Wait for admin input
 
     @commands.guild_only()
-    @commands.admin()
     @commands.command()
     async def add_test_ballot(self, ctx, election_name: str, *choices: str):
         """Add a test ballot manually to an election."""
