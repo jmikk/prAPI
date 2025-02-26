@@ -129,89 +129,86 @@ class RCV(commands.Cog):
         await ctx.send(f"Election '{election_name.capitalize()}' has been canceled.")
     
     async def run_ranked_choice_voting(self, candidates, votes, original_votes, admin_id=None, ctx=None):
-        """Perform ranked choice voting (instant-runoff) with bulk tie elimination, ensuring 'nay' is handled properly."""
+        """Perform ranked choice voting (instant-runoff) with specific handling for 'nay' and tie scenarios."""
         rounds = []
         exhausted_votes = 0
-
+    
         while True:
-            # Count only first-choice votes in the current round
+            # Count first-choice votes in the current round
             vote_counts = defaultdict(int)
             total_valid_votes = 0
-            current_exhausted = 0  # Count exhausted ballots in this round only
-
+            current_exhausted = 0
+    
             for vote in votes:
-                while vote:  # Ensure we are only counting valid votes
+                while vote:
                     first_choice = vote[0]
-                    if first_choice in candidates:  # Make sure it's still a valid candidate
+                    if first_choice in candidates:
                         vote_counts[first_choice] += 1
                         total_valid_votes += 1
-                        break  # Move to the next voter's ballot
+                        break
                     else:
                         vote.pop(0)  # Remove invalid/removed candidates
-
-                if not vote:  # Ballot has no remaining valid choices
-                    current_exhausted += 1  # Count this ballot as exhausted
-
-            exhausted_votes += current_exhausted  # Keep track of total exhausted votes
-
-            # If only one candidate remains, they are the winner
-            if len(vote_counts) == 1:
-                rounds.append((dict(vote_counts), "None (Final Round)", exhausted_votes))
-                return list(vote_counts.keys())[0], rounds, exhausted_votes  # Last candidate wins
-
-            # Check if a candidate has a majority (>50% of total valid votes)
+    
+                if not vote:
+                    current_exhausted += 1  # Ballot has no remaining valid choices
+    
+            exhausted_votes += current_exhausted
+    
+            # Check for a majority winner
             for candidate, count in vote_counts.items():
                 if count > total_valid_votes / 2:
                     rounds.append((dict(vote_counts), "None (Majority Reached)", exhausted_votes))
                     return candidate, rounds, exhausted_votes  # Winner found!
-
-            # Find the lowest-ranked candidates in the current round
+    
+            # Identify the lowest and highest vote counts
             if not vote_counts:
-                return "No valid votes", rounds, exhausted_votes  # No one left
-
+                return "No valid votes", rounds, exhausted_votes  # No candidates left
+    
             min_votes = min(vote_counts.values())
+            max_votes = max(vote_counts.values())
             lowest_candidates = [c for c in vote_counts if vote_counts[c] == min_votes]
-
-            # **Check if the lowest-voted candidate is also the highest-voted one**
-            max_votes = max(vote_counts.values())  # Get the highest vote count
             highest_candidates = [c for c in vote_counts if vote_counts[c] == max_votes]
-
-            # If the lowest and highest candidates are the same, trigger admin tiebreaker
-            if set(lowest_candidates) == set(highest_candidates):
-                if admin_id and ctx:
-                    return await self.admin_tiebreaker(ctx, admin_id, original_votes, rounds, exhausted_votes)
+    
+            # Special handling when 'nay' is the lowest-voted candidate
+            if "nay" in lowest_candidates:
+                if len(lowest_candidates) == 1:
+                    # If 'nay' is the sole lowest, check if the next lowest is tied for the most votes
+                    next_min_votes = min(v for c, v in vote_counts.items() if c != "nay")
+                    next_lowest_candidates = [c for c in vote_counts if vote_counts[c] == next_min_votes]
+    
+                    if next_min_votes == max_votes:
+                        # Next lowest is tied for the most votes; trigger admin tiebreaker
+                        if admin_id and ctx:
+                            return await self.admin_tiebreaker(ctx, admin_id, original_votes, rounds, exhausted_votes)
+                        else:
+                            return "Admin decision required", rounds, exhausted_votes
+                    else:
+                        # Eliminate 'nay' and continue
+                        candidates.remove("nay")
+                        rounds.append((dict(vote_counts), ["nay"], exhausted_votes))
+                        continue
                 else:
-                    return "Admin decision required", rounds, exhausted_votes
-
-            # **Handle 'nay' separately**
-            if "nay" in lowest_candidates and len(lowest_candidates) > 1:
-                lowest_candidates.remove("nay")  # Skip removing 'nay' if others exist
-
-            if lowest_candidates == ["nay"]:
-                # Find next lowest candidate
-                sorted_candidates = sorted(vote_counts.items(), key=lambda x: x[1])
-                for candidate, count in sorted_candidates:
-                    if candidate != "nay":
-                        lowest_candidates = [candidate]  # Remove the next lowest instead
-                        break
-
-            # **If all remaining candidates are tied, admin must decide**
+                    # Multiple candidates tied for lowest, including 'nay'
+                    lowest_candidates.remove("nay")  # Preserve 'nay' for now
+    
+            # If all remaining candidates are tied, trigger admin tiebreaker
             if len(lowest_candidates) == len(vote_counts):
                 if admin_id and ctx:
                     return await self.admin_tiebreaker(ctx, admin_id, original_votes, rounds, exhausted_votes)
                 else:
-                    return "Admin decision required", rounds, exhausted_votes  # Should not happen without admin
-
-            # Otherwise, eliminate all tied lowest candidates (excluding 'nay' when necessary)
+                    return "Admin decision required", rounds, exhausted_votes
+    
+            # Eliminate all candidates with the lowest votes (excluding 'nay' if preserved)
             for eliminated_candidate in lowest_candidates:
                 candidates.remove(eliminated_candidate)
-
-            rounds.append((dict(vote_counts), lowest_candidates, exhausted_votes))  # Ensure rounds are recorded
-
+    
+            rounds.append((dict(vote_counts), lowest_candidates, exhausted_votes))
+    
             # Remove eliminated candidates from votes
             for vote in votes:
                 while vote and vote[0] in lowest_candidates:
-                    vote.pop(0)  # Remove all tied lowest candidates
+                    vote.pop(0)
+    
 
 
 
