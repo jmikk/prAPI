@@ -211,52 +211,37 @@ class RCV(commands.Cog):
 
 
     async def admin_tiebreaker(self, ctx, admin_id, original_votes, rounds, exhausted_votes):
-        """Cycles through rounds to break ties, using original votes if no rounds exist before prompting the admin."""
+        """Break ties by checking original votes round-by-round until a candidate with the lowest votes is found."""
         admin = ctx.guild.get_member(admin_id)
         if not admin:
             return "Admin decision required", rounds, exhausted_votes  # Admin not found
 
-        remaining_candidates = list(rounds[-1][0].keys()) if rounds else set(c for vote in original_votes for c in vote)
+        remaining_candidates = list(rounds[-1][0].keys()) if rounds else []
 
-        # If there are no rounds, use the original votes to determine elimination
-        if not rounds:
-            original_first_counts = defaultdict(int)
-
-            for vote in original_votes:
-                if vote and vote[0] in remaining_candidates:
-                    original_first_counts[vote[0]] += 1
-
-            if original_first_counts:
-                min_votes = min(original_first_counts.values())
-                lowest_candidates = [c for c in original_first_counts if original_first_counts[c] == min_votes]
-
-                # If we find a single lowest candidate, eliminate them
-                if len(lowest_candidates) == 1:
-                    return lowest_candidates[0], rounds, exhausted_votes
-
-                # If all candidates in original votes are tied, proceed to admin decision
-
-        # Cycle through each round's votes to attempt resolving the tie
-        for round_index, (vote_tally, eliminated, exhausted) in enumerate(rounds):
-            round_counts = defaultdict(int)
+        # Cycle through the original votes, checking round by round to break the tie
+        for round_index in range(len(original_votes[0])):  # Iterate through ballot ranks
+            tied_counts = defaultdict(int)
 
             for vote in original_votes:
                 if len(vote) > round_index and vote[round_index] in remaining_candidates:
-                    round_counts[vote[round_index]] += 1
+                    tied_counts[vote[round_index]] += 1
 
-            # If one candidate has the fewest votes in this round, return them as the eliminated one
-            min_votes = min(round_counts.values(), default=0)
-            lowest_candidates = [c for c in round_counts if round_counts[c] == min_votes]
+            # Only keep the tied candidates in the count
+            tied_counts = {k: v for k, v in tied_counts.items() if k in remaining_candidates}
 
-            if len(lowest_candidates) == 1:
-                eliminated_candidate = lowest_candidates[0]
-                return eliminated_candidate, rounds, exhausted_votes
+            if tied_counts:
+                min_votes = min(tied_counts.values())
+                lowest_candidates = [c for c in tied_counts if tied_counts[c] == min_votes]
 
-        # If still tied after all checks, prompt the admin to pick a candidate
+                # If a single lowest candidate is found, eliminate them
+                if len(lowest_candidates) == 1:
+                    return lowest_candidates[0], rounds, exhausted_votes
+
+        # If we exhausted all rounds and still have a tie, admin must decide
         result_msg = "**🏁 Tiebreaker Required: All remaining candidates are still tied!**\n"
         result_msg += "Admin, please choose which candidate to eliminate based on original votes:\n\n"
 
-        # Generate a final tally from all rounds for admin review
+        # Generate a final tally from original votes for admin review
         final_counts = defaultdict(int)
         for vote in original_votes:
             for choice in vote:
@@ -280,6 +265,7 @@ class RCV(commands.Cog):
             return "Admin decision required, but DM failed.", rounds, exhausted_votes
 
         return "Admin decision pending", rounds, exhausted_votes  # Wait for admin input
+
 
 
 
