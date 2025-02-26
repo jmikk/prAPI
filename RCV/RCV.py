@@ -241,4 +241,36 @@ class RCV(commands.Cog):
 
         return "Admin decision pending", rounds, exhausted_votes  # Wait for admin input
 
+    @commands.guild_only()
+    @commands.admin()
+    @commands.command()
+    async def add_test_ballot(self, ctx, election_name: str, *choices: str):
+        """Add a test ballot manually to an election."""
+        elections = await self.config.guild(ctx.guild).elections()
+        election_name = election_name.lower()
+
+        if election_name not in elections:
+            return await ctx.send("No such election exists.")
+
+        election = elections[election_name]
+        if election["status"] != "open":
+            return await ctx.send("This election has ended.")
+
+        candidates = set(election["candidates"])
+        choices = [c.lower() for c in choices]
+
+        if not set(choices).issubset(candidates):
+            return await ctx.send("Invalid ballot! Your choices must be from the listed candidates.")
+
+        if len(choices) != len(set(choices)):
+            return await ctx.send("Duplicate candidates detected! Ensure each choice is unique.")
+
+        # Use a special ID for test ballots to avoid conflicts with real voters
+        test_voter_id = f"test_{len(election['votes']) + 1}"
+        election["votes"][test_voter_id] = choices  # Adds test ballot
+
+        await self.config.guild(ctx.guild).elections.set(elections)
+        await ctx.send(f"✅ Test ballot added for '{election_name.capitalize()}': {', '.join(choices)}")
+
+
 
