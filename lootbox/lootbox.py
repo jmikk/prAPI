@@ -147,7 +147,7 @@ class lootbox(commands.Cog):
                     return
 
                 data = await response.text()
-                await ctx.send(data[1000:])
+                await ctx.send(data[:1000])
 
                 cards = self.parse_cards(data, season, categories)
 
