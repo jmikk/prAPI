@@ -71,6 +71,7 @@ class lootbox(commands.Cog):
     @checks.admin_or_permissions(manage_guild=True)
     async def nationname(self, ctx, *, nationname: str):
         """Set the nationName for the loot box prizes."""
+        nationname = nationname.replace(" ","_").lower()
         await self.config.nationName.set(nationname)
         await ctx.send(f"Nation Name set to {nationname}")
 
@@ -99,6 +100,7 @@ class lootbox(commands.Cog):
         await ctx.send(recipient)
         season = await self.config.season()
         nationname = await self.config.nationName()
+        await ctx.send(nationname)
         categories = await self.config.categories()
         useragent = await self.config.useragent()
         cooldown = await self.config.cooldown()
@@ -145,6 +147,8 @@ class lootbox(commands.Cog):
                     return
 
                 data = await response.text()
+                await ctx.send(data)
+
                 cards = self.parse_cards(data, season, categories)
 
                 if not cards:
