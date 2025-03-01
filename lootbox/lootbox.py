@@ -97,10 +97,10 @@ class lootbox(commands.Cog):
             await ctx.send("Make sure to put your nation in after openlootbox")
             return
         recipient =  "_".join(recipient)
-        await ctx.send(recipient)
+        #await ctx.send(recipient)
         season = await self.config.season()
         nationname = await self.config.nationName()
-        await ctx.send(nationname)
+        #await ctx.send(nationname)
         categories = await self.config.categories()
         useragent = await self.config.useragent()
         cooldown = await self.config.cooldown()
@@ -147,7 +147,7 @@ class lootbox(commands.Cog):
                     return
 
                 data = await response.text()
-                await ctx.send(data[:1000])
+                #await ctx.send(data[:1000])
 
                 cards = self.parse_cards(data, season, categories)
 
