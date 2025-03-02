@@ -81,7 +81,7 @@ class prAPI(commands.Cog):
             r = await self.api_request(data=data)
             output = "oopsie doodle"
             if "region=the_wellspring" in r.text:
-                output = r.text.replace('<NATION id="warden_of_the_spring">\n<SUCCESS>Your message has been lodged! &lt;a href="',"")
+                output = r.text.replace('<NATION id="the_phoenix_of_the_spring">\n<SUCCESS>Your message has been lodged! &lt;a href="',"")
                 output = output.replace('"&gt;&lt;span class="smalltext"&gt;View your post.&lt;/span&gt;&lt;/a&gt;</SUCCESS>\n</NATION>',"")
 
         QOTD_id = 1115271309404942439
