@@ -573,10 +573,10 @@ class NexusExchange(commands.Cog):
 
         await ctx.send(f"Rewards have been distributed for substantial RMB posts in The Wellspring!{count}/{scan}  {last_time}")
 
-    @tasks.loop(hours=1)
+    @tasks.loop(minutes=1)
     async def daily_task(self):
         now = datetime.datetime.utcnow()
-        if now.hour == 18:
+        if now.minute == 53:
             channel = self.bot.get_channel(1214216647976554556)
             if channel:
                 
