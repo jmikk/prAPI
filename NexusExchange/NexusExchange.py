@@ -64,6 +64,7 @@ class NexusExchange(commands.Cog):
         self.MAX_ROWS_PER_MESSAGE = 5  # Discord allows 5 rows of buttons per message
 
         self.daily_task.start()  # Start the daily loop
+        
 
     async def fetch_nations(self):
         """Fetch nations from the NationStates API asynchronously."""
@@ -579,14 +580,18 @@ class NexusExchange(commands.Cog):
         if now.minute == 58:
             channel = self.bot.get_channel(1214216647976554556)
             if channel:
-                
-                message = await channel.send("Paying time...")
-                ctx = await self.bot.get_context(message)
-                
-                await channel.send("Paying Endorcers...")
-                await self.pay_endorsers(channel)
-                await channel.send("Paying voters...")
-                await self.reward_voters(channel)
+                try:
+                    message = await channel.send("Paying time...")
+                    ctx = await self.bot.get_context(message)
+                    
+                    await channel.send("Paying Endorcers...")
+                    await self.pay_endorsers(channel)
+                    await channel.send("Paying voters...")
+                    await self.reward_voters(channel)
+                except Exception as e:
+                    await channel.send(e)
+
+                    
                 
     
 
