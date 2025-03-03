@@ -591,9 +591,13 @@ class NexusExchange(commands.Cog):
             except Exception as e:
                 await channel.send(e)
 
-                    
-                
-    
+   
+    @commands.command()
+    @commands.admin()
+    async def check_loop(self, ctx):
+        """Check if the daily_task loop is running."""
+        is_running = self.daily_task.is_running()
+        await ctx.send(f"🔄 Daily task running: **{is_running}**")    
 
     async def fetch_wa_data(self,hall):
         """Fetches WA voting data from NationStates API"""
