@@ -592,7 +592,7 @@ class NexusExchange(commands.Cog):
     @tasks.loop(hours=1)
     async def daily_task(self):
         now = datetime.utcnow()
-        if now.hour == 19:
+        if now.hour == 20:
             channel = self.bot.get_channel(1214216647976554556)
             if channel:
                 try:
