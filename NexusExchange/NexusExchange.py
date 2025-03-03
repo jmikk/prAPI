@@ -583,7 +583,7 @@ class NexusExchange(commands.Cog):
              # Run the `[p]sendtgs` command
             #ctx = self.bot.get_context(await self.bot.get_channel(1343661925694705775).send("Running daily TGs..."))
             #await self.sendtgs(ctx)
-            ctx = self.bot.get_context(await self.bot.get_channel(1214216647976554556).send("Running daily TGs..."))
+            ctx = self.bot.get_context(await self.bot.get_channel(1214216647976554556).send("Paying Endorcers..."))
             self.pay_endorsers(ctx)
 
 
