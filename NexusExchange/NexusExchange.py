@@ -575,16 +575,24 @@ class NexusExchange(commands.Cog):
 
         await ctx.send(f"Rewards have been distributed for substantial RMB posts in The Wellspring!{count}/{scan}  {last_time}")
 
-
     @tasks.loop(hours=1)
     async def daily_task(self):
         now = datetime.datetime.utcnow()
         if now.hour == 18:
-             # Run the `[p]sendtgs` command
-            #ctx = self.bot.get_context(await self.bot.get_channel(1343661925694705775).send("Running daily TGs..."))
-            #await self.sendtgs(ctx)
-            ctx = self.bot.get_context(await self.bot.get_channel(1214216647976554556).send("Paying Endorcers..."))
-            await self.pay_endorsers(ctx)
+            channel = self.bot.get_channel(1214216647976554556)
+            if channel:
+                
+                message = await channel.send("Paying time...")
+                ctx = await self.bot.get_context(message)
+                
+                await channel.send("Paying Endorcers...")
+                await self.pay_endorsers(ctx)
+                await channel.send("Paying voters...")
+                await self.reward_voters(ctx)
+                
+
+                
+                
 
 
         
@@ -608,11 +616,11 @@ class NexusExchange(commands.Cog):
         votes_for = {n.text.lower() for n in root.findall(".//VOTES_FOR/N")}
         votes_against = {n.text.lower() for n in root.findall(".//VOTES_AGAINST/N")}
 
-        if "9006" in votes_for:
+        if "well-sprung_jack" in votes_for:
             return "for"
-        elif "9006" in votes_against:
+        elif "well-sprung_jack" in votes_against:
             return "against"
-        return None  # 9006 hasn't voted
+        return None  # well-sprung_jack hasn't voted
     
     async def reward_users(self, user_votes, vote_9006_council1, vote_9006_council2):
         """Rewards users who voted the same as '9006' in either or both councils"""
@@ -645,8 +653,7 @@ class NexusExchange(commands.Cog):
                 new_balance = data["master_balance"] + reward
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
 
-    @commands.command()
-    @commands.admin_or_permissions(manage_guild=True)
+
     async def reward_voters(self, ctx):
         """Check votes and reward users who voted the same as '9006' in either WA Council"""
         await ctx.send("Fetching WA vote data for both councils...")
@@ -678,7 +685,7 @@ class NexusExchange(commands.Cog):
         # Reward users
         await self.reward_users(user_votes, vote_9006_council1, vote_9006_council2)
 
-        await ctx.send(f"Users who voted the same as [nation]9006[/nation] have been rewarded! (10 for one match, 20 for both)")
+        await ctx.send(f"Users who voted the same as [nation]well-sprung_jack[/nation] have been rewarded!")
         
         
 
