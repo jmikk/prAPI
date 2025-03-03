@@ -444,8 +444,6 @@ class NexusExchange(commands.Cog):
                     return None
                 return await response.text()
 
-    @commands.command()
-    @commands.admin_or_permissions(manage_guild=True)
     async def pay_endorsers(self, ctx):
         """Pays 10 WellCoins to all users who endorsed 9006"""
         await ctx.send("Fetching endorsements from NationStates API...")
@@ -586,16 +584,10 @@ class NexusExchange(commands.Cog):
                 ctx = await self.bot.get_context(message)
                 
                 await channel.send("Paying Endorcers...")
-                await self.pay_endorsers(ctx)
+                await self.pay_endorsers(channel)
                 await channel.send("Paying voters...")
-                await self.reward_voters(ctx)
+                await self.reward_voters(channel)
                 
-
-                
-                
-
-
-        
     
 
     async def fetch_wa_data(self,hall):
