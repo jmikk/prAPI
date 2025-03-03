@@ -70,6 +70,17 @@ class NexusExchange(commands.Cog):
         if not self.daily_task.is_running():
             self.daily_task.start()
 
+    @commands.command()
+    @commands.admin()
+    async def start_loop(self, ctx):
+        """Manually start the daily task loop if it's not running."""
+        if self.daily_task.is_running():
+            await ctx.send("✅ The daily task loop is already running.")
+        else:
+            self.daily_task.start()
+            await ctx.send("🔄 Daily task loop has been started.")    
+
+
     
     async def fetch_nations(self):
         """Fetch nations from the NationStates API asynchronously."""
