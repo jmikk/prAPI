@@ -63,9 +63,14 @@ class NexusExchange(commands.Cog):
         self.MAX_BUTTONS_PER_ROW = 5
         self.MAX_ROWS_PER_MESSAGE = 5  # Discord allows 5 rows of buttons per message
 
-        self.daily_task.start()  # Start the daily loop
         
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if not self.daily_task.is_running():
+            self.daily_task.start()
+
+    
     async def fetch_nations(self):
         """Fetch nations from the NationStates API asynchronously."""
         headers = {"User-Agent": self.USER_AGENT}
