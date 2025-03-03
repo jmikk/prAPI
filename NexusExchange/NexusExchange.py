@@ -577,19 +577,19 @@ class NexusExchange(commands.Cog):
     @tasks.loop(minutes=1)
     async def daily_task(self):
         now = datetime.datetime.utcnow()
-        if now.minute == 13:
-            channel = self.bot.get_channel(1214216647976554556)
-            if channel:
-                try:
-                    message = await channel.send("Paying time...")
-                    ctx = await self.bot.get_context(message)
-                    
-                    await channel.send("Paying Endorcers...")
-                    await self.pay_endorsers(channel)
-                    await channel.send("Paying voters...")
-                    await self.reward_voters(channel)
-                except Exception as e:
-                    await channel.send(e)
+        #if now.minute == 13:
+        channel = self.bot.get_channel(1214216647976554556)
+        if channel:
+            try:
+                message = await channel.send("Paying time...")
+                ctx = await self.bot.get_context(message)
+                
+                await channel.send("Paying Endorcers...")
+                await self.pay_endorsers(channel)
+                await channel.send("Paying voters...")
+                await self.reward_voters(channel)
+            except Exception as e:
+                await channel.send(e)
 
                     
                 
