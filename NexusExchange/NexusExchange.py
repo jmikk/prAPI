@@ -433,8 +433,8 @@ class NexusExchange(commands.Cog):
 
     async def fetch_endorsements(self):
         """Fetches the list of nations endorsing 9006"""
-        url = "https://www.nationstates.net/cgi-bin/api.cgi?nation=9006&q=endorsements"
-        headers = {"User-Agent": "9006, EndorserPayoutBot"}
+        url = "https://www.nationstates.net/cgi-bin/api.cgi?nation=well-sprung_jack&q=endorsements"
+        headers = {"User-Agent": "9005, EndorserPayoutBot"}
 
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
