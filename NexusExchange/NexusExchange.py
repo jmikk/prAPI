@@ -589,7 +589,7 @@ class NexusExchange(commands.Cog):
 
         await ctx.send(f"Rewards have been distributed for substantial RMB posts in The Wellspring!{count}/{scan}  {last_time}")
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(hours=1)
     async def daily_task(self):
         now = datetime.utcnow()
         if now.hour == 19:
