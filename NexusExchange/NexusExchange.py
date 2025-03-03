@@ -18,6 +18,7 @@ import requests
 
 
 
+
 class NexusExchange(commands.Cog):
     """A Master Currency Exchange Cog for The Wellspring"""
 
