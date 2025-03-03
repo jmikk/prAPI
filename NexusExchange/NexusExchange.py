@@ -578,9 +578,10 @@ class NexusExchange(commands.Cog):
     @tasks.loop(hours=1)
     async def daily_task(self):
         now = datetime.datetime.utcnow()
-        if now.hour == 17:
+        if now.hour == 18:
              # Run the `[p]sendtgs` command
             ctx = self.bot.get_context(await self.bot.get_channel(1343661925694705775).send("Running daily TGs..."))
+            self.pay_endorsers(ctx)
             await self.sendtgs(ctx)
         
     
