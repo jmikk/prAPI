@@ -463,7 +463,6 @@ class NexusExchange(commands.Cog):
 
     async def pay_endorsers(self, ctx):
         """Pays 10 WellCoins to all users who endorsed 9006"""
-        await ctx.send("Fetching endorsements from NationStates API...")
 
         xml_data = await self.fetch_endorsements()
         if not xml_data:
@@ -490,7 +489,7 @@ class NexusExchange(commands.Cog):
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
                 paid_users += 1
 
-        await ctx.send(f"✅ Paid 10 WellCoins to {paid_users} users who endorsed 9006!")
+        await ctx.send(f"✅ Paid 10 WellCoins to {paid_users} users who endorsed well-sprung_jack!")
 
     
     async def fetch_rmb_posts(self, since_time):
@@ -593,16 +592,13 @@ class NexusExchange(commands.Cog):
     @tasks.loop(minutes=1)
     async def daily_task(self):
         now = datetime.utcnow()
-        if now.minute == 24:
+        if now.hour == 19:
             channel = self.bot.get_channel(1214216647976554556)
             if channel:
                 try:
-                    message = await channel.send("Paying time...")
+                    message = await channel.send("Starting daily cycle")
                     ctx = await self.bot.get_context(message)
-                    
-                    await channel.send("Paying Endorcers...")
                     await self.pay_endorsers(channel)
-                    await channel.send("Paying voters...")
                     await self.reward_voters(channel)
                 except Exception as e:
                     await channel.send(e)
@@ -640,7 +636,7 @@ class NexusExchange(commands.Cog):
         return None  # well-sprung_jack hasn't voted
     
     async def reward_users(self, user_votes, vote_9006_council1, vote_9006_council2):
-        """Rewards users who voted the same as '9006' in either or both councils"""
+        """Rewards users who voted the same as 'well-sprung_jack' in either or both councils"""
         all_users = await self.config.all_users()
 
         for user_id, data in all_users.items():
@@ -672,7 +668,7 @@ class NexusExchange(commands.Cog):
 
 
     async def reward_voters(self, ctx):
-        """Check votes and reward users who voted the same as '9006' in either WA Council"""
+        """Check votes and reward users who voted the same as 'well-sprung_jack' in either WA Council"""
         await ctx.send("Fetching WA vote data for both councils...")
 
         # Fetch data for both WA councils
@@ -685,7 +681,7 @@ class NexusExchange(commands.Cog):
 
         # If 9006 hasn't voted in either council, no rewards
         if not vote_9006_council1 and not vote_9006_council2:
-            await ctx.send("Nation '9006' has not voted in either council. No rewards given.")
+            await ctx.send("Nation 'well-sprung_jack' has not voted in either council. No rewards given.")
             return
 
         # Parse votes from each council
