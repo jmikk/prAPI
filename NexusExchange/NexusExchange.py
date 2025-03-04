@@ -641,7 +641,7 @@ class NexusExchange(commands.Cog):
             if not user:
                 continue  # Skip users not found in the guild
     
-            has_endorsed_nation = any(nation.lower().replace(" ","_") in endorsers for nation.lower().replace(" ","_") in linked_nations)
+            has_endorsed_nation = any(nation in endorsers for nation in linked_nations)
     
             if has_endorsed_nation:
 
