@@ -543,7 +543,7 @@ class NexusExchange(commands.Cog):
     
             # Find Discord users linked to this nation
             for user_id, data in all_users.items():
-            linked_nations = data.get("linked_nations", [])
+                linked_nations = data.get("linked_nations", [])
                 if nation.lower().replace(" ","_") in linked_nations:
                     user = self.bot.get_user(user_id)
                     if not user:
