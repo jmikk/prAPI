@@ -450,7 +450,7 @@ class NexusExchange(commands.Cog):
         self.daily_task.cancel()
 
     async def fetch_endorsements(self):
-        """Fetches the list of nations endorsing 9006"""
+        """Fetches the list of nations endorsing well-spring_jack"""
         url = "https://www.nationstates.net/cgi-bin/api.cgi?nation=well-sprung_jack&q=endorsements"
         headers = {"User-Agent": "9005, EndorserPayoutBot"}
 
@@ -598,11 +598,84 @@ class NexusExchange(commands.Cog):
                 try:
                     message = await channel.send("Starting daily cycle")
                     ctx = await self.bot.get_context(message)
+                    await self.wanderChk(channel)
                     await self.pay_endorsers(channel)
                     await self.reward_voters(channel)
                 except Exception as e:
                     await channel.send(e)
 
+    @commands.command()
+    @commands.admin()
+    async def wanderChk(self, ctx):
+        """Check if the daily_task loop is running and manage roles based on endorsements."""
+        xml_data = await self.fetch_endorsements()
+        if not xml_data:
+            await ctx.send("Failed to retrieve endorsements. Try again later.")
+            return
+    
+        # Parse XML to get endorsed nations
+        root = ET.fromstring(xml_data)
+        endorsements_text = root.find(".//ENDORSEMENTS").text
+        endorsers = set(endorsements_text.split(",")) if endorsements_text else set()
+    
+        if not endorsers:
+            await ctx.send("No endorsers found.")
+            return
+    
+        # Role ID to be assigned/removed
+        role_id = 1098673767858843648
+        role = ctx.guild.get_role(role_id)
+        if not role:
+            await ctx.send("Role not found. Please check the role ID.")
+            return
+    
+        # Get all users from config
+        all_users = await self.config.all_users()
+        gained_role = 0
+        lost_role = 0
+    
+        for user_id, data in all_users.items():
+            linked_nations = data.get("linked_nations", [])
+            user = ctx.guild.get_member(int(user_id))
+            if not user:
+                continue  # Skip users not found in the guild
+    
+            has_endorsed_nation = any(nation in endorsers for nation in linked_nations)
+    
+            if has_endorsed_nation:
+
+                if role not in user.roles:
+                    await user.add_roles(role)
+                    gained_role += 1
+            else:
+                # Remove role if they have it but no endorsed nation
+                if role in user.roles:
+                    await user.remove_roles(role)
+                    lost_role += 1
+    
+        await ctx.send(f"✅ {gained_role} users gained the Wanderer Role.\n❌ {lost_role} users lost the Wanderer Role.")
+
+
+        # Parse XML to get endorsed nations
+        root = ET.fromstring(xml_data)
+        endorsements_text = root.find(".//ENDORSEMENTS").text
+        endorsers = set(endorsements_text.split(",")) if endorsements_text else set()
+
+        if not endorsers:
+            await ctx.send("No endorsers found.")
+            return
+    
+        # Get all users from config
+        all_users = await self.config.all_users()
+        paid_users = 0
+    
+        for user_id, data in all_users.items():
+            linked_nations = data.get("linked_nations", [])
+            if any(nation in endorsers for nation in linked_nations):
+                new_balance = data["master_balance"] + 10
+                await self.config.user_from_id(user_id).master_balance.set(new_balance)
+                paid_users += 1
+        
    
     @commands.command()
     @commands.admin()
@@ -623,7 +696,7 @@ class NexusExchange(commands.Cog):
                 return await response.text()
 
     async def get_9006_vote(self, xml_data):
-        """Parses XML and finds how nation '9006' voted"""
+        """Parses XML and finds how nation 'well-sprung_jack' voted"""
         root = ET.fromstring(xml_data)
 
         votes_for = {n.text.lower() for n in root.findall(".//VOTES_FOR/N")}
