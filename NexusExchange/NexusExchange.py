@@ -484,7 +484,7 @@ class NexusExchange(commands.Cog):
         paid_users = 0
 
         for user_id, data in all_users.items():
-            linked_nations = data.get("linked_nations", [])
+            linked_nations = data.get("linked_nations", []).lower().replace(" ","_")
             if any(nation in endorsers for nation in linked_nations):
                 new_balance = data["master_balance"] + 10
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
@@ -543,7 +543,7 @@ class NexusExchange(commands.Cog):
     
             # Find Discord users linked to this nation
             for user_id, data in all_users.items():
-                linked_nations = data.get("linked_nations", [])
+                linked_nations = data.get("linked_nations", []).lower().replace(" ","_")
                 if nation in linked_nations:
                     user = self.bot.get_user(user_id)
                     if not user:
@@ -636,7 +636,7 @@ class NexusExchange(commands.Cog):
         lost_role = 0
     
         for user_id, data in all_users.items():
-            linked_nations = data.get("linked_nations", [])
+            linked_nations = data.get("linked_nations", []).lower().replace(" ","_")
             user = ctx.guild.get_member(int(user_id))
             if not user:
                 continue  # Skip users not found in the guild
@@ -671,7 +671,7 @@ class NexusExchange(commands.Cog):
         paid_users = 0
     
         for user_id, data in all_users.items():
-            linked_nations = data.get("linked_nations", [])
+            linked_nations = data.get("linked_nations", []).lower().replace(" ","_")
             if any(nation in endorsers for nation in linked_nations):
                 new_balance = data["master_balance"] + 10
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
@@ -714,7 +714,7 @@ class NexusExchange(commands.Cog):
         all_users = await self.config.all_users()
 
         for user_id, data in all_users.items():
-            linked_nations = data.get("linked_nations", [])
+            linked_nations = data.get("linked_nations", []).lower().replace(" ","_")
             if not linked_nations:
                 continue  # Skip users with no linked nations
 
@@ -1521,7 +1521,7 @@ class NexusExchange(commands.Cog):
                 if result.strip() == "1":
                     async with self.config.user(ctx.author).linked_nations() as nations:
                         if nation_name not in nations:
-                            nations.append(nation_name)
+                            nations.append(nation_name.lower().replace(" ","_")
                         await ctx.send(f"✅ Successfully linked your NationStates nation: **{nation_name}**")
                 else:
                     await ctx.send("❌ Verification failed. Make sure you entered the correct code and try again.")
