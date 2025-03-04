@@ -1637,6 +1637,24 @@ class NexusExchange(commands.Cog):
     
         # Send file to Discord
         await ctx.send(file=discord.File(filename))
+    
+    @commands.command()
+    @commands.admin()
+    async def fix_linked_nations(self, ctx):
+        """Normalize all linked nations by making them lowercase and replacing spaces with underscores."""
+        all_users = await self.config.all_users()
+        updated_count = 0
+    
+        for user_id, data in all_users.items():
+            linked_nations = data.get("linked_nations", [])
+            if linked_nations:
+                # Normalize each nation name
+                normalized_nations = [nation.lower().replace(" ", "_") for nation in linked_nations]
+                await self.config.user_from_id(user_id).linked_nations.set(normalized_nations)
+                updated_count += 1
+    
+        await ctx.send(f"✅ Updated linked nations for {updated_count} users.")
+
 
 
 
