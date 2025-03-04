@@ -1541,6 +1541,7 @@ class NexusExchange(commands.Cog):
     @commands.command()
     async def unlinknation(self, ctx, nation_name: str):
         """Unlink a specific NationStates nation from your Discord account."""
+        nation_name = nation_name.lower().replace(" ","_")
         async with self.config.user(ctx.author).linked_nations() as nations:
             if nation_name in nations:
                 nations.remove(nation_name)
