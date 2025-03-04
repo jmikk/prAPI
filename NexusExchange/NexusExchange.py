@@ -484,8 +484,8 @@ class NexusExchange(commands.Cog):
         paid_users = 0
 
         for user_id, data in all_users.items():
-            linked_nations = data.get("linked_nations", []).lower().replace(" ","_")
-            if any(nation in endorsers for nation in linked_nations):
+        linked_nations = data.get("linked_nations", [])
+            if any(nation.lower().replace(" ","_") in endorsers for nation.lower().replace(" ","_") in linked_nations):
                 new_balance = data["master_balance"] + 10
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
                 paid_users += 1
@@ -543,8 +543,8 @@ class NexusExchange(commands.Cog):
     
             # Find Discord users linked to this nation
             for user_id, data in all_users.items():
-                linked_nations = data.get("linked_nations", []).lower().replace(" ","_")
-                if nation in linked_nations:
+            linked_nations = data.get("linked_nations", [])
+                if nation.lower().replace(" ","_") in linked_nations:
                     user = self.bot.get_user(user_id)
                     if not user:
                         continue
@@ -636,12 +636,12 @@ class NexusExchange(commands.Cog):
         lost_role = 0
     
         for user_id, data in all_users.items():
-            linked_nations = data.get("linked_nations", []).lower().replace(" ","_")
+        linked_nations = data.get("linked_nations", [])
             user = ctx.guild.get_member(int(user_id))
             if not user:
                 continue  # Skip users not found in the guild
     
-            has_endorsed_nation = any(nation in endorsers for nation in linked_nations)
+            has_endorsed_nation = any(nation.lower().replace(" ","_") in endorsers for nation.lower().replace(" ","_") in linked_nations)
     
             if has_endorsed_nation:
 
@@ -671,8 +671,8 @@ class NexusExchange(commands.Cog):
         paid_users = 0
     
         for user_id, data in all_users.items():
-            linked_nations = data.get("linked_nations", []).lower().replace(" ","_")
-            if any(nation in endorsers for nation in linked_nations):
+        linked_nations = data.get("linked_nations", [])
+            if any(nation.lower().replace(" ","_") in endorsers for nation.lower().replace(" ","_") in linked_nations):
                 new_balance = data["master_balance"] + 10
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
                 paid_users += 1
@@ -714,7 +714,7 @@ class NexusExchange(commands.Cog):
         all_users = await self.config.all_users()
 
         for user_id, data in all_users.items():
-            linked_nations = data.get("linked_nations", []).lower().replace(" ","_")
+        linked_nations = data.get("linked_nations", [])
             if not linked_nations:
                 continue  # Skip users with no linked nations
 
@@ -722,7 +722,7 @@ class NexusExchange(commands.Cog):
             matching_council_2 = False
 
             for nation in linked_nations:
-                nation = nation.lower()
+                nation = nation.lower().replace(" ","_")
                 if vote_9006_council1 and nation in user_votes["council1"]:
                     matching_council_1 = True
                 if vote_9006_council2 and nation in user_votes["council2"]:
@@ -1598,22 +1598,6 @@ class NexusExchange(commands.Cog):
         await self.config.user(user).master_balance.set(user_balance - amount)
         await ctx.send(f"🚨 {user.mention} has been fined `{amount}` WellCoins by Gob on behalf the goverment!")
     
-    @commands.command()
-    async def migrate_nations(self, ctx):
-        """Migrate old linked_nation data to linked_nations."""
-        all_users = await self.config.all_users()
-        migrated_count = 0
-        
-        for user_id, data in all_users.items():
-            if "linked_nation" in data and data["linked_nation"]:
-                async with self.config.user_from_id(user_id).linked_nations() as nations:
-                    if data["linked_nation"] not in nations:
-                        nations.append(data["linked_nation"])
-                await self.config.user_from_id(user_id).linked_nation.clear()
-                migrated_count += 1
-        
-        await ctx.send(f"✅ Migration complete! {migrated_count} users had their nations migrated.")
-
     async def update_wellcoin_snapshots(self, total_wellcoins):
         """Updates daily and weekly WellCoin snapshots"""
         last_daily = await self.config.daily_wellcoins()
