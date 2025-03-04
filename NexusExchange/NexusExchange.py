@@ -714,7 +714,7 @@ class NexusExchange(commands.Cog):
         all_users = await self.config.all_users()
 
         for user_id, data in all_users.items():
-        linked_nations = data.get("linked_nations", [])
+            linked_nations = data.get("linked_nations", [])
             if not linked_nations:
                 continue  # Skip users with no linked nations
 
