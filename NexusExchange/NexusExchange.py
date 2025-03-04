@@ -636,7 +636,7 @@ class NexusExchange(commands.Cog):
         lost_role = 0
     
         for user_id, data in all_users.items():
-        linked_nations = data.get("linked_nations", [])
+            linked_nations = data.get("linked_nations", [])
             user = ctx.guild.get_member(int(user_id))
             if not user:
                 continue  # Skip users not found in the guild
