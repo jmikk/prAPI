@@ -1633,5 +1633,27 @@ class NexusExchange(commands.Cog):
             await self.config.set_raw("last_weekly_update", value=int(datetime.utcnow().timestamp()))
 
 
+    @commands.command()
+    @commands.admin()
+    async def dump_users(self, ctx):
+        """Dump all user data from config into a JSON file."""
+        all_users = await self.config.all_users()
+    
+        if not all_users:
+            await ctx.send("No user data found.")
+            return
+    
+        # Create a filename with timestamp
+        filename = f"user_dump_{datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')}.json"
+    
+        # Save data to a file
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(all_users, f, indent=4)
+    
+        # Send file to Discord
+        await ctx.send(file=discord.File(filename))
+
+
+
 
 
