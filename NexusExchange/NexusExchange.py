@@ -485,7 +485,7 @@ class NexusExchange(commands.Cog):
 
         for user_id, data in all_users.items():
             linked_nations = data.get("linked_nations", [])
-            if any(nation.lower().replace(" ","_") in endorsers for nation.lower().replace(" ","_") in linked_nations):
+            if any(nation in endorsers for nation in linked_nations):
                 new_balance = data["master_balance"] + 10
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
                 paid_users += 1
@@ -672,7 +672,7 @@ class NexusExchange(commands.Cog):
     
         for user_id, data in all_users.items():
         linked_nations = data.get("linked_nations", [])
-            if any(nation.lower().replace(" ","_") in endorsers for nation.lower().replace(" ","_") in linked_nations):
+            if any(nation in endorsers for nation in linked_nations):
                 new_balance = data["master_balance"] + 10
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
                 paid_users += 1
