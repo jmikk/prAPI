@@ -671,7 +671,7 @@ class NexusExchange(commands.Cog):
         paid_users = 0
     
         for user_id, data in all_users.items():
-        linked_nations = data.get("linked_nations", [])
+            linked_nations = data.get("linked_nations", [])
             if any(nation in endorsers for nation in linked_nations):
                 new_balance = data["master_balance"] + 10
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
