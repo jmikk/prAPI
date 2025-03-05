@@ -231,7 +231,7 @@ class CompletedProjectsMenu(View):
         project = self.projects[self.current_index]
         top_donors = sorted(project.get("donors", {}).items(), key=lambda x: x[1], reverse=True)[:3]
         donor_text = "\n".join([f"{donor}: {amount} WellCoins" for donor, amount in top_donors]) if top_donors else "No donors yet."
-        
+        percentage_funded = (project['funded'] / project['goal']) * 100 if project['goal'] > 0 else 0
         embed = discord.Embed(
             title=f"{project['name']}",
             description=f"{project['description']}\n\nTotal Needed: {project['goal']} WellCoins\n"
