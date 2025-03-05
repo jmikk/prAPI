@@ -1,3 +1,111 @@
+from redbot.core import commands, Config
+import discord
+from collections import defaultdict, Counter
+
+class RCV(commands.Cog):
+    """A cog for running Ranked Choice Voting elections."""
+
+    def __init__(self, bot):
+        self.bot = bot
+        self.config = Config.get_conf(self, identifier=1983746508234, force_registration=True)
+        self.config.register_guild(elections={})
+
+    @commands.guild_only()
+    @commands.command()
+    async def start_election(self, ctx, election_name: str, *candidates: str):
+        """Start a ranked choice voting election."""
+        if not candidates:
+            return await ctx.send("You must provide at least two candidates.")
+
+        elections = await self.config.guild(ctx.guild).elections()
+        election_name = election_name.lower()
+
+        if election_name in elections:
+            return await ctx.send(f"An election named '{election_name}' is already running.")
+
+        candidates = [c.lower() for c in candidates]
+
+        elections[election_name] = {
+            "candidates": candidates,
+            "votes": {},
+            "status": "open"
+        }
+        await self.config.guild(ctx.guild).elections.set(elections)
+
+        candidate_list = "\n".join(f"- {c.capitalize()}" for c in candidates)
+        await ctx.send(f"Election '{election_name.capitalize()}' started! Candidates:\n{candidate_list}\nUse `$vote {election_name} <ranked choices>` to vote.")
+
+    @commands.guild_only()
+    @commands.command()
+    async def vote(self, ctx, election_name: str, *choices: str):
+        """Vote in a ranked choice election by listing candidates in order of preference."""
+        elections = await self.config.guild(ctx.guild).elections()
+        election_name = election_name.lower()
+
+        if election_name not in elections:
+            return await ctx.send("No such election exists.")
+
+        election = elections[election_name]
+        if election["status"] != "open":
+            return await ctx.send("This election has ended.")
+
+        candidates = set(election["candidates"])
+        choices = [c.lower() for c in choices]
+
+        if not set(choices).issubset(candidates):
+            return await ctx.send("Invalid vote! Your choices must be from the listed candidates.")
+
+        if len(choices) != len(set(choices)):
+            return await ctx.send("Duplicate candidates detected! Ensure each choice is unique.")
+
+        election["votes"][str(ctx.author.id)] = choices  # Overwrites previous vote
+        await self.config.guild(ctx.guild).elections.set(elections)
+        await ctx.send(f"Your vote for '{election_name.capitalize()}' has been recorded!")
+
+    @commands.guild_only()
+    @commands.command()
+    async def cancel_election(self, ctx, election_name: str):
+        """Cancel an ongoing election."""
+        elections = await self.config.guild(ctx.guild).elections()
+        election_name = election_name.lower()
+
+        if election_name not in elections:
+            return await ctx.send("No such election exists.")
+
+        del elections[election_name]
+        await self.config.guild(ctx.guild).elections.set(elections)
+        await ctx.send(f"Election '{election_name.capitalize()}' has been canceled.")
+
+    @commands.guild_only()
+    @commands.command()
+    async def add_test_ballot(self, ctx, election_name: str, *choices: str):
+        """Add a test ballot manually to an election."""
+        elections = await self.config.guild(ctx.guild).elections()
+        election_name = election_name.lower()
+
+        if election_name not in elections:
+            return await ctx.send("No such election exists.")
+
+        election = elections[election_name]
+        if election["status"] != "open":
+            return await ctx.send("This election has ended.")
+
+        candidates = set(election["candidates"])
+        choices = [c.lower() for c in choices]
+
+        if not set(choices).issubset(candidates):
+            return await ctx.send("Invalid ballot! Your choices must be from the listed candidates.")
+
+        if len(choices) != len(set(choices)):
+            return await ctx.send("Duplicate candidates detected! Ensure each choice is unique.")
+
+        # Use a special ID for test ballots to avoid conflicts with real voters
+        test_voter_id = f"test_{len(election['votes']) + 1}"
+        election["votes"][test_voter_id] = choices  # Adds test ballot
+
+        await self.config.guild(ctx.guild).elections.set(elections)
+        await ctx.send(f"✅ Test ballot added for '{election_name.capitalize()}': {', '.join(choices)}")
+
     @commands.guild_only()
     @commands.command()
     async def tally(self, ctx, election_name: str):
@@ -94,3 +202,7 @@
         elections.pop(election_name, None)  # Remove election safely
         await self.config.guild(ctx.guild).elections.set(elections)
         return await ctx.send("⚠️ **Election remains tied after all rounds. No winner determined.**")
+
+
+
+
