@@ -131,7 +131,7 @@ class RCV(commands.Cog):
         first_round_votes = Counter(v[0] for v in votes.values() if v)
         
         # Remove candidates with 0 votes in the first round, but ensure 'ney' is not eliminated
-        candidates -= {cand for cand in candidates if first_round_votes[cand] == 0 and cand != "ney"}
+        candidates -= {cand for cand in candidates if first_round_votes[cand] == 0 and cand != "nay"}
 
         rounds = []
         last_round = None
@@ -166,7 +166,7 @@ class RCV(commands.Cog):
             
             # Find the lowest vote-getters, but ensure 'ney' is not eliminated
             min_votes = min(round_results.values())
-            lowest_candidates = {cand for cand, count in round_results.items() if count == min_votes and cand != "ney"}
+            lowest_candidates = {cand for cand, count in round_results.items() if count == min_votes and cand != "nay"}
             
             # Eliminate lowest-ranked candidates
             candidates -= lowest_candidates
@@ -179,11 +179,15 @@ class RCV(commands.Cog):
         remaining_candidates = sorted(first_round_votes.items(), key=lambda x: x[1], reverse=True)
         top_votes = remaining_candidates[0][1]
         top_candidates = [cand for cand, count in remaining_candidates if count == top_votes]
+
+              # Display all votes before initiating tiebreaker
+        all_votes_text = "\n".join(f"{voter}: {', '.join(choices)}" for voter, choices in votes.items())
+        await ctx.send(f"📜 **All Votes:**\n{all_votes_text}")
         
         if len(top_candidates) == 1:
             elections.pop(election_name, None)  # Remove election safely
             await self.config.guild(ctx.guild).elections.set(elections)
-            return await ctx.send(f"🏆 **{top_candidates[0].capitalize()} wins based on first-round votes!**")
+            return await ctx.send(f"🏆 **{top_candidates[0].capitalize()} wins based on first-round votes! In the Tie breaker round**")
         
         for round_number, round_result in enumerate(rounds[1:], start=2):
             for candidate in top_candidates:
@@ -197,7 +201,7 @@ class RCV(commands.Cog):
             if len(top_candidates) == 1:
                 elections.pop(election_name, None)  # Remove election safely
                 await self.config.guild(ctx.guild).elections.set(elections)
-                return await ctx.send(f"🏆 **{top_candidates[0].capitalize()} wins based on tiebreaker!**")
+                return await ctx.send(f"🏆 **{top_candidates[0].capitalize()} wins based on further round tiebreakers!**")
         
         elections.pop(election_name, None)  # Remove election safely
         await self.config.guild(ctx.guild).elections.set(elections)
