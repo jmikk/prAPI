@@ -77,10 +77,14 @@ class CompletedPersonalProjectsMenu(View):
             return
         
         project = self.projects[self.current_index]
+        top_donors = sorted(project.get("donors", {}).items(), key=lambda x: x[1], reverse=True)[:3]
+        donor_text = "\n".join([f"{donor}: {amount} WellCoins" for donor, amount in top_donors]) if top_donors else "No donors yet."
         embed = discord.Embed(
-            title=f"{project['name']} (Completed)",
-            description=f"Goal: {project['goal']} WellCoins\nFunded: {project['goal']} WellCoins",
-            color=discord.Color.green()
+            title=f"{project['name']}",
+            description=f"{project['description']}\n\nTotal Needed: {project['goal']} WellCoins\n"
+                        f"Funded: {project['funded']} WellCoins ({percentage_funded:.2f}% Funded)\n\n"
+                        f"**Top Donors:**\n{donor_text}",
+            color=discord.Color.gold()
         )
         if 'thumbnail' in project:
             embed.set_thumbnail(url=project['thumbnail'])
@@ -225,10 +229,15 @@ class CompletedProjectsMenu(View):
             return
         
         project = self.projects[self.current_index]
+        top_donors = sorted(project.get("donors", {}).items(), key=lambda x: x[1], reverse=True)[:3]
+        donor_text = "\n".join([f"{donor}: {amount} WellCoins" for donor, amount in top_donors]) if top_donors else "No donors yet."
+        
         embed = discord.Embed(
-            title=f"{project['name']} (Completed)",
-            description=f"{project['description']}\n\nTotal Funded: {project['goal']} WellCoins",
-            color=discord.Color.green()
+            title=f"{project['name']}",
+            description=f"{project['description']}\n\nTotal Needed: {project['goal']} WellCoins\n"
+                        f"Funded: {project['funded']} WellCoins ({percentage_funded:.2f}% Funded)\n\n"
+                        f"**Top Donors:**\n{donor_text}",
+            color=discord.Color.gold()
         )
         if 'thumbnail' in project:
             embed.set_thumbnail(url=project['thumbnail'])
