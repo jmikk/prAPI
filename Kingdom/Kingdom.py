@@ -276,9 +276,13 @@ class FundingMenu(View):
         
         project = self.projects[self.current_index]
         percentage_funded = (project['funded'] / project['goal']) * 100
+        top_donors = sorted(project.get("donors", {}).items(), key=lambda x: x[1], reverse=True)[:3]
+        donor_text = "\n".join([f"{donor}: {amount} WellCoins" for donor, amount in top_donors]) if top_donors else "No donors yet."
         embed = discord.Embed(
             title=f"{project['name']}",
-            description=f"{project['description']}\n\nTotal Needed: {project['goal']} WellCoins\nFunded: {project['funded']} WellCoins ({percentage_funded:.2f}% Funded)",
+            description=f"{project['description']}\n\nTotal Needed: {project['goal']} WellCoins\n"
+                        f"Funded: {project['funded']} WellCoins ({percentage_funded:.2f}% Funded)\n\n"
+                        f"**Top Donors:**\n{donor_text}",
             color=discord.Color.gold()
         )
         if 'thumbnail' in project:
@@ -327,6 +331,8 @@ class FundModal(Modal):
         
         project = self.menu.projects[self.menu.current_index]
         project['funded'] += amount
+        project.setdefault("donors", {})
+        project["donors"][interaction.user.display_name] = project["donors"].get(interaction.user.display_name, 0) + amount
         await self.menu.cog.update_balance(interaction.user, -amount)
 
         if project['funded'] >= project['goal']:
