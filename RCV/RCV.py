@@ -148,6 +148,8 @@ class RCV(commands.Cog):
             
             # Announce current round results
             result_text = "\n".join(f"{cand.capitalize()}: {count}" for cand, count in round_results.items())
+            del elections[election_name]  # Remove election after completion
+            await self.config.guild(ctx.guild).elections.set(elections)
             await ctx.send(f"**Round {len(rounds)} Results:**\n{result_text}")
             
             # Check if a candidate has a majority
@@ -181,8 +183,12 @@ class RCV(commands.Cog):
                         top_candidates = [cand for cand in top_candidates if round_result.get(cand, 0) == top_votes]
                     
                     if len(top_candidates) == 1:
+                        del elections[election_name]  # Remove election after completion
+                        await self.config.guild(ctx.guild).elections.set(elections)
                         return await ctx.send(f"🏆 **{top_candidates[0].capitalize()} wins based on tiebreaker!**")
-                
+                        
+                del elections[election_name]  # Remove election after completion
+                await self.config.guild(ctx.guild).elections.set(elections)
                 return await ctx.send("⚠️ **Election remains tied after all rounds. No winner determined.**")
 
 
