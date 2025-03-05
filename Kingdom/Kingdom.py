@@ -421,9 +421,12 @@ class Kingdom(commands.Cog):
         
         menu = CompletedProjectsMenu(self, ctx, completed_projects)
         project = completed_projects[0]
+        top_donors = sorted(project.get("donors", {}).items(), key=lambda x: x[1], reverse=True)[:3]
+        donor_text = "\n".join([f"{donor}: {amount} WellCoins" for donor, amount in top_donors]) if top_donors else "No donors yet."
         embed = discord.Embed(
             title=f"{project['name']} (Completed)",
-            description=f"{project['description']}\n\nTotal Funded: {project['goal']} WellCoins",
+            description=f"{project['description']}\n\nTotal Funded: {project['goal']} WellCoins\n\n"
+                        f"**Top Donors:**\n{donor_text}",
             color=discord.Color.green()
         )
         if 'thumbnail' in project:
