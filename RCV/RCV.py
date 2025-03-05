@@ -132,7 +132,7 @@ class RCV(commands.Cog):
         first_round_votes = Counter(v[0] for v in votes.values() if v)
 
                 # Remove candidates with 0 votes in the first round
-        candidates -= {cand for cand in candidates if first_round_votes[cand] == 0}
+        candidates -= {cand for cand in candidates if first_round_votes[cand] == 0 and cand != "ney"}
         
         while True:
             round_results = Counter()
@@ -160,7 +160,7 @@ class RCV(commands.Cog):
             
             # Find the lowest vote-getters
             min_votes = min(round_results.values())
-            lowest_candidates = {cand for cand, count in round_results.items() if count == min_votes}
+            lowest_candidates = {cand for cand, count in round_results.items() if count == min_votes and cand != "ney"}
             
             # Eliminate lowest-ranked candidates
             candidates -= lowest_candidates
