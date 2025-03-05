@@ -148,13 +148,14 @@ class RCV(commands.Cog):
             
             # Announce current round results
             result_text = "\n".join(f"{cand.capitalize()}: {count}" for cand, count in round_results.items())
-            del elections[election_name]  # Remove election after completion
-            await self.config.guild(ctx.guild).elections.set(elections)
+            
             await ctx.send(f"**Round {len(rounds)} Results:**\n{result_text}")
             
             # Check if a candidate has a majority
             for candidate, count in round_results.items():
                 if count > total_votes / 2:
+                    del elections[election_name]  # Remove election after completion
+                    await self.config.guild(ctx.guild).elections.set(elections)
                     return await ctx.send(f"🏆 **{candidate.capitalize()} wins with a majority!**")
             
             # Find the lowest vote-getters
