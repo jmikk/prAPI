@@ -1,6 +1,7 @@
 from redbot.core import commands, Config
 import discord
 from collections import defaultdict, Counter
+import io
 
 class RCV(commands.Cog):
     """A cog for running Ranked Choice Voting elections."""
@@ -180,9 +181,11 @@ class RCV(commands.Cog):
         top_votes = remaining_candidates[0][1]
         top_candidates = [cand for cand, count in remaining_candidates if count == top_votes]
 
-              # Display all votes before initiating tiebreaker
+        # Create a file with all votes before initiating tiebreaker
         all_votes_text = "\n".join(f"{voter}: {', '.join(choices)}" for voter, choices in votes.items())
-        await ctx.send(f"📜 **All Votes:**\n{all_votes_text}")
+        vote_file = io.BytesIO(all_votes_text.encode("utf-8"))
+        vote_file.name = f"{election_name}_votes.txt"
+        await ctx.send("📜 **All Votes:**", file=discord.File(vote_file))
         
         if len(top_candidates) == 1:
             elections.pop(election_name, None)  # Remove election safely
