@@ -130,6 +130,9 @@ class RCV(commands.Cog):
         candidates = set(election["candidates"])
         rounds = []
         first_round_votes = Counter(v[0] for v in votes.values() if v)
+
+                # Remove candidates with 0 votes in the first round
+        candidates -= {cand for cand in candidates if first_round_votes[cand] == 0}
         
         while True:
             round_results = Counter()
