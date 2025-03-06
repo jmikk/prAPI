@@ -193,6 +193,7 @@ class Casino(commands.Cog):
         await message.edit(content=f"🎡 {color2} {number}\n{result_text} New balance: {new_balance} WellCoins.")
 
     @commands.command()
+    @commands.admin_or_permissions(administrator=True)
     async def roulette_history(self, ctx):
         """Display statistics of the last 20 roulette rolls."""
         if not self.roulette_history:
