@@ -195,7 +195,7 @@ class FundPersonalModal(Modal):
 
         if project['funded'] >= project['goal']:
             await self.menu.update_message()
-            await interaction.response.send_message(f"Project {project['name']} has been fully funded! 🎉")
+            await interaction.response.send_message(f"Project {project['name']} has been fully funded! 🎉 <@207526562331885568>")
             self.menu.projects.pop(self.menu.current_index)
             completed_projects = await self.menu.cog.get_completed_personal_projects(interaction.user)
             completed_projects.append(project)
