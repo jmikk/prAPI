@@ -99,7 +99,6 @@ class Casino(commands.Cog):
 
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
-    @commands.admin_or_permissions(administrator=True)
     async def slots(self, ctx, bet: int):
         """Play a 3x3 slot machine with emojis and live message updates."""
         balance = await self.get_balance(ctx.author)
