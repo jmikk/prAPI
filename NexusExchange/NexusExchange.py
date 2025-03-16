@@ -1599,8 +1599,8 @@ class NexusExchange(commands.Cog):
                                 is_resident = any(nation in resendents for nation in linked_nations)
                         
                                 if is_resident:
-                    
                                     if role not in user.roles:
+                                        await ctx.send("Added Res")
                                         await user.add_roles(role)
                         await ctx.send(f"✅ Successfully linked your NationStates nation: **{nation_name}**")
                 else:
