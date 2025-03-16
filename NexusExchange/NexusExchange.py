@@ -1564,50 +1564,70 @@ class NexusExchange(commands.Cog):
     @commands.command()
     async def verifynation(self, ctx, nation_name: str, code: str):
         """Verify the NationStates nation using the provided verification code."""
+        formatted_nation = nation_name.lower().replace(" ", "_")
+
+        # Verify with NationStates API
         async with aiohttp.ClientSession() as session:
-            async with session.get(f"https://www.nationstates.net/cgi-bin/api.cgi?a=verify&nation={nation_name}&checksum={code}") as response:
+            async with session.get(
+                f"https://www.nationstates.net/cgi-bin/api.cgi?a=verify&nation={formatted_nation}&checksum={code}",
+                headers={"User-Agent": self.USER_AGENT}
+            ) as response:
                 result = await response.text()
-                
-                if result.strip() == "1":
-                    async with self.config.user(ctx.author).linked_nations() as nations:
-                        if nation_name not in nations:
-                            nations.append(nation_name.lower().replace(" ","_"))
-                            resendents = await self.fetch_nations()
-                            if not resendents:
-                                await ctx.send("Failed to retrieve resendents. Try again later.")
-                                return
-                    
-                            if not resendents:
-                                await ctx.send("No resendents found. Please let a Moderator know")
-                                return
-                        
-                            # Role ID to be assigned/removed
-                            role_id = 1098645868162338919
-                            role = ctx.guild.get_role(role_id)
-                            if not role:
-                                await ctx.send("Role not found. Please check the role ID.")
-                                return
-                        
-                            # Get this user's linked nations
-                            linked_nations = await self.config.user(ctx.author).linked_nations()
-                            is_resident = any(nation in resendents for nation in linked_nations)
-                            
-                            if is_resident:
-                                if role not in ctx.author.roles:
-                                    await ctx.author.add_roles(role)
-                                    await ctx.send("✅ You have been given the resident role.")
-                            else:
-                                await ctx.send("⚠️ You are verified but not listed as a resident. You should move a puppet nation into the region! https://www.nationstates.net/region=the_wellspring")
-                                role_id = 1098673447640518746
-                                role = ctx.guild.get_role(role_id)
-                                if not role:
-                                    await ctx.send("Role not found. Please check the role ID.")
-                                    return
-                                await ctx.author.add_roles(role)
-
-
-                else:
+                if result.strip() != "1":
                     await ctx.send("❌ Verification failed. Make sure you entered the correct code and try again.")
+                    return
+
+        # Save nation to user config if not already linked
+        async with self.config.user(ctx.author).linked_nations() as nations:
+            if formatted_nation not in nations:
+                nations.append(formatted_nation)
+
+        # Fetch residents from API
+        async with aiohttp.ClientSession() as session:
+            async with session.get(self.API_URL, headers={"User-Agent": self.USER_AGENT}) as response:
+                if response.status != 200:
+                    await ctx.send("Failed to retrieve residents. Try again later.")
+                    return
+
+                xml_data = await response.text()
+                start_tag, end_tag = "<NATIONS>", "</NATIONS>"
+                start_index = xml_data.find(start_tag) + len(start_tag)
+                end_index = xml_data.find(end_tag)
+                resident_list_raw = xml_data[start_index:end_index].split(":")
+                residents = [n.strip().lower() for n in resident_list_raw if n]
+
+        # Role IDs
+        resident_role_id = 1098645868162338919     # Role for residents
+        nonresident_role_id = 1098673447640518746  # Role for non-residents
+
+        # Get roles
+        resident_role = ctx.guild.get_role(resident_role_id)
+        nonresident_role = ctx.guild.get_role(nonresident_role_id)
+
+        if not resident_role or not nonresident_role:
+            await ctx.send("❌ One or more roles not found. Please check the role IDs.")
+            return
+
+        # Check residency and assign correct role
+        if formatted_nation in residents:
+            # Assign resident role
+            if resident_role not in ctx.author.roles:
+                await ctx.author.add_roles(resident_role)
+                await ctx.send("✅ You have been given the resident role.")
+            # Remove non-resident role if present
+            if nonresident_role in ctx.author.roles:
+                await ctx.author.remove_roles(nonresident_role)
+        else:
+            # Assign non-resident role
+            if nonresident_role not in ctx.author.roles:
+                await ctx.author.add_roles(nonresident_role)
+                await ctx.send("✅ You have been given the visitor role.")
+            # Remove resident role if present
+            if resident_role in ctx.author.roles:
+                await ctx.author.remove_roles(resident_role)
+
+        await ctx.send(f"✅ Successfully linked your NationStates nation: **{nation_name}**")
+
     
     @commands.command()
     async def mynation(self, ctx, user: discord.Member = None):
