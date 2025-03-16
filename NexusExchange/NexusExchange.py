@@ -1597,7 +1597,6 @@ class NexusExchange(commands.Cog):
                                     continue  # Skip users not found in the guild
                         
                                 is_resident = any(nation in resendents for nation in linked_nations)
-                                await ctx.send("Added Res2")
 
                                 if is_resident:
                                     await ctx.send("Added Res1")
