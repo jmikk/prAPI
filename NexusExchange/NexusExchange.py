@@ -1591,13 +1591,13 @@ class NexusExchange(commands.Cog):
                             # Get all users from config
                             all_users = await self.config.all_users()                        
                             for user_id, data in all_users.items():
-                                linked_nations = data.get("linked_nations", [])
+                                linked_nations = nation_name
                                 user = ctx.guild.get_member(int(user_id))
                                 if not user:
                                     continue  # Skip users not found in the guild
                         
                                 is_resident = any(nation in resendents for nation in linked_nations)
-                            await ctx.send("Added Res2")
+                                await ctx.send("Added Res2")
 
                                 if is_resident:
                                     await ctx.send("Added Res1")
