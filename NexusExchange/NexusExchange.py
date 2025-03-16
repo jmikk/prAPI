@@ -1588,22 +1588,24 @@ class NexusExchange(commands.Cog):
                                 await ctx.send("Role not found. Please check the role ID.")
                                 return
                         
-                            # Get all users from config
-                            all_users = await self.config.all_users()                        
-                            for user_id, data in all_users.items():
-                                linked_nations = nation_name
-                                user = ctx.guild.get_member(int(user_id))
-                                if not user:
-                                    continue  # Skip users not found in the guild
-                        
-                                is_resident = any(nation in resendents for nation in linked_nations)
+                            # Get this user's linked nations
+                            linked_nations = await self.config.user(ctx.author).linked_nations()
+                            is_resident = any(nation in resendents for nation in linked_nations)
+                            
+                            if is_resident:
+                                if role not in ctx.author.roles:
+                                    await ctx.author.add_roles(role)
+                                    await ctx.send("✅ You have been given the resident role.")
+                            else:
+                                await ctx.send("⚠️ You are verified but not listed as a resident. You should move a puppet nation into the region! https://www.nationstates.net/region=the_wellspring")
+                                role_id = 1098673447640518746
+                                role = ctx.guild.get_role(role_id)
+                                if not role:
+                                    await ctx.send("Role not found. Please check the role ID.")
+                                    return
+                                await ctx.author.add_roles(role)
 
-                                if is_resident:
-                                    await ctx.send("Added Res1")
-                                    if role not in user.roles:
-                                        await ctx.send("Added Res")
-                                        await user.add_roles(role)
-                        await ctx.send(f"✅ Successfully linked your NationStates nation: **{nation_name}**")
+
                 else:
                     await ctx.send("❌ Verification failed. Make sure you entered the correct code and try again.")
     
