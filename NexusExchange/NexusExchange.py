@@ -612,16 +612,11 @@ class NexusExchange(commands.Cog):
     @commands.admin()
     async def resChk(self, ctx):
         """Check if the daily_task loop is running and manage roles based on residency."""
-        xml_data = await self.fetch_nations()
-        if not xml_data:
-            await ctx.send("Failed to retrieve endorsements. Try again later.")
+        resendents = await self.fetch_nations()
+        if not resendents:
+            await ctx.send("Failed to retrieve resendents. Try again later.")
             return
-    
-        # Parse XML to get nations
-        root = ET.fromstring(xml_data)
-        res_text = root.find(".//NATIONS").text
-        resendents = set(res_text.split(",")) if res_text else set()
-    
+
         if not resendents:
             await ctx.send("No resendents found.")
             return
