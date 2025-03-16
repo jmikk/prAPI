@@ -1555,7 +1555,7 @@ class NexusExchange(commands.Cog):
         await ctx.send(f"Minimum message length set to {length} characters.")
 
     @commands.command()
-    async def linknation(self, ctx, nation_name: str):
+    async def linknation(self, ctx, nation_name*: str):
         """Link your NationStates nation to your Discord account."""
         verify_url = f"https://www.nationstates.net/page=verify_login"
         await ctx.send(f"To verify your NationStates nation, visit {verify_url} and copy the code in the box.")
