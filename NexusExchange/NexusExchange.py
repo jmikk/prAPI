@@ -600,10 +600,67 @@ class NexusExchange(commands.Cog):
                     message = await channel.send("Starting daily cycle")
                     ctx = await self.bot.get_context(message)
                     await self.wanderChk(channel)
+                    await self.resChk(channel)
                     await self.pay_endorsers(channel)
                     await self.reward_voters(channel)
                 except Exception as e:
                     await channel.send(e)
+
+
+
+    @commands.command()
+    @commands.admin()
+    async def resChk(self, ctx):
+        """Check if the daily_task loop is running and manage roles based on residency."""
+        xml_data = await self.fetch_nations()
+        if not xml_data:
+            await ctx.send("Failed to retrieve endorsements. Try again later.")
+            return
+    
+        # Parse XML to get nations
+        root = ET.fromstring(xml_data)
+        res_text = root.find(".//NATIONS").text
+        resendents = set(res_text.split(",")) if res_text else set()
+    
+        if not resendents:
+            await ctx.send("No resendents found.")
+            return
+    
+        # Role ID to be assigned/removed
+        role_id = 1098645868162338919
+        role = ctx.guild.get_role(role_id)
+        if not role:
+            await ctx.send("Role not found. Please check the role ID.")
+            return
+    
+        # Get all users from config
+        all_users = await self.config.all_users()
+        gained_role = 0
+        lost_role = 0
+    
+        for user_id, data in all_users.items():
+            linked_nations = data.get("linked_nations", [])
+            user = ctx.guild.get_member(int(user_id))
+            if not user:
+                continue  # Skip users not found in the guild
+    
+            is_resident = any(nation in resendents for nation in linked_nations)
+    
+            if is_resident:
+
+                if role not in user.roles:
+                    await user.add_roles(role)
+                    gained_role += 1
+            else:
+                # Remove role if they have it but no endorsed nation
+                if role in user.roles:
+                    #await user.remove_roles(role)
+                    lost_role += 1
+    
+        await ctx.send(f"✅ {gained_role} users gained the resident Role.\n❌ {lost_role} users lost the resident Role.")
+
+    def fetch_residents(self,ctx):
+        pass
 
     @commands.command()
     @commands.admin()
