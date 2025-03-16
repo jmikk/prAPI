@@ -654,8 +654,6 @@ class NexusExchange(commands.Cog):
     
         await ctx.send(f"✅ {gained_role} users gained the resident Role.\n❌ {lost_role} users lost the resident Role.")
 
-    def fetch_residents(self,ctx):
-        pass
 
     @commands.command()
     @commands.admin()
@@ -1574,6 +1572,36 @@ class NexusExchange(commands.Cog):
                     async with self.config.user(ctx.author).linked_nations() as nations:
                         if nation_name not in nations:
                             nations.append(nation_name.lower().replace(" ","_"))
+                            resendents = await self.fetch_nations()
+                            if not resendents:
+                                await ctx.send("Failed to retrieve resendents. Try again later.")
+                                return
+                    
+                            if not resendents:
+                                await ctx.send("No resendents found. Please let a Moderator know")
+                                return
+                        
+                            # Role ID to be assigned/removed
+                            role_id = 1098645868162338919
+                            role = ctx.guild.get_role(role_id)
+                            if not role:
+                                await ctx.send("Role not found. Please check the role ID.")
+                                return
+                        
+                            # Get all users from config
+                            all_users = await self.config.all_users()                        
+                            for user_id, data in all_users.items():
+                                linked_nations = data.get("linked_nations", [])
+                                user = ctx.guild.get_member(int(user_id))
+                                if not user:
+                                    continue  # Skip users not found in the guild
+                        
+                                is_resident = any(nation in resendents for nation in linked_nations)
+                        
+                                if is_resident:
+                    
+                                    if role not in user.roles:
+                                        await user.add_roles(role)
                         await ctx.send(f"✅ Successfully linked your NationStates nation: **{nation_name}**")
                 else:
                     await ctx.send("❌ Verification failed. Make sure you entered the correct code and try again.")
