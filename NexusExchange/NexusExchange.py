@@ -1599,7 +1599,7 @@ class NexusExchange(commands.Cog):
         # Role IDs
         resident_role_id = 1098645868162338919     # Role for residents
         nonresident_role_id = 1098673447640518746  # Role for non-residents
-
+        guild = self.bot.get_guild(1098644885797609492)
         # Get roles
         resident_role = ctx.guild.get_role(resident_role_id)
         nonresident_role = ctx.guild.get_role(nonresident_role_id)
