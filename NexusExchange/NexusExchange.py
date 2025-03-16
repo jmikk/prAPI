@@ -1638,10 +1638,14 @@ class NexusExchange(commands.Cog):
         user = user or ctx.author
         nations = await self.config.user(user).linked_nations()
         if nations:
-            nation_list = "\n".join(nations)
-            await ctx.send(f"🌍 {user.display_name}'s linked NationStates nations is: **{nation_list}**")
+            # Format each nation as a Discord hyperlink
+            nation_list = "\n".join(
+                f"[{n.replace('_', ' ').title()}](https://www.nationstates.net/nation={n})" for n in nations
+            )
+            await ctx.send(f"🌍 {user.display_name}'s linked NationStates nation(s):\n{nation_list}")
         else:
             await ctx.send(f"❌ {user.display_name} has not linked a NationStates nation yet.")
+
     
     
     @commands.command()
