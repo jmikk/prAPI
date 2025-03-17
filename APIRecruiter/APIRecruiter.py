@@ -135,6 +135,13 @@ class APIRecruiter(commands.Cog):
 
     @tasks.loop(seconds=60)
     async def recruitment_loop(self):
+        #debug output 
+        text = await resp.text()
+        if await self.config.debug_mode():
+            channel = await self.get_log_channel()
+            if channel:
+                await channel.send(f"Here!")
+        #end debug output
         blacklist = await self.config.blacklist_regions()
         sent_nations = await self.config.sent_nations()
         last_sent_time = await self.config.last_sent_time()
