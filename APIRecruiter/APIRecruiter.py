@@ -80,10 +80,9 @@ class APIRecruiter(commands.Cog):
             async with session.get(url) as resp:
                 #debug output 
                 text = await resp.text()
-                if await self.config.debug_mode():
-                    channel = await self.get_log_channel()
-                    if channel:
-                        await channel.send(f"XML Response:\n```xml\n{text[:1900]}\n```")
+                channel = await self.get_log_channel()
+                if channel:
+                    await channel.send(f"XML Response:\n```xml\n{text[:1900]}\n```")
                 #end debug output
                 if resp.status != 200:
                     return []
@@ -99,10 +98,9 @@ class APIRecruiter(commands.Cog):
     async def send_telegram(self, nation_name, attempt=1):
         #debug output 
         text = await resp.text()
-        if await self.config.debug_mode():
-            channel = await self.get_log_channel()
-            if channel:
-                await channel.send(f"Here Sending TG")
+        channel = await self.get_log_channel()
+        if channel:
+            await channel.send(f"Here Sending TG")
         #end debug output
         if attempt > 5:
             channel = await self.get_log_channel()
@@ -121,10 +119,9 @@ class APIRecruiter(commands.Cog):
             async with session.get(url) as resp:
                 #debug output 
                 text = await resp.text()
-                if await self.config.debug_mode():
-                    channel = await self.get_log_channel()
-                    if channel:
-                        await channel.send(f"XML Response:\n```xml\n{text[:1900]}\n```")
+                channel = await self.get_log_channel()
+                if channel:
+                    await channel.send(f"XML Response:\n```xml\n{text[:1900]}\n```")
                 #end debug output
                 if resp.status == 200:
                     await self.config.last_sent_time.set(int(time.time()))
@@ -144,10 +141,9 @@ class APIRecruiter(commands.Cog):
     async def recruitment_loop(self):
         #debug output 
         text = await resp.text()
-        if await self.config.debug_mode():
-            channel = await self.get_log_channel()
-            if channel:
-                await channel.send(f"Here!")
+        channel = await self.get_log_channel()
+        if channel:
+            await channel.send(f"Here!")
         #end debug output
         blacklist = await self.config.blacklist_regions()
         sent_nations = await self.config.sent_nations()
