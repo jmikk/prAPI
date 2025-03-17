@@ -118,8 +118,14 @@ class APIRecruiter(commands.Cog):
                     await self.config.sent_nations.set(sent)
                     total_sent = await self.config.total_tgs_sent()
                     await self.config.total_tgs_sent.set(total_sent + 1)
+                    channel = await self.get_log_channel()
+                    if channel:
+                        await channel.send(f"Sent TG to {nation_name}")
                     return True
                 elif resp.status == 429:
+                    channel = await self.get_log_channel()
+                    if channel:
+                        await channel.send(f"To soon!")
                     retry_after = int(resp.headers.get('X-Retry-After', 180))
                     await asyncio.sleep(retry_after)
                     return await self.send_telegram(nation_name, attempt + 1)
