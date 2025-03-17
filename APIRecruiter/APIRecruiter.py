@@ -131,7 +131,8 @@ class APIRecruiter(commands.Cog):
                     return await self.send_telegram(nation_name, attempt + 1)
                 channel = await self.get_log_channel()
                 if channel:
-                    await channel.send(f"{resp.text()[:1900]}")
+                    text = await resp.text()
+                    await channel.send(f"{text[:1900]}")
                 return False
 
     @tasks.loop(seconds=60)
