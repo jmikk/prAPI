@@ -268,7 +268,7 @@ class DailyNationTracker(commands.Cog):
         embed = discord.Embed(title="Nation Data (Page 1/{})".format(len(pages)), color=discord.Color.gold())
         for name, info in pages[0]:
             link = f"https://www.nationstates.net/nation={name}"
-            embed.add_field(name=f"[{name}]({link})", value=f"Days: {info['days']}", inline=False)
+            embed.add_field(name=f"{link}", value=f"Days: {info['days']}", inline=False)
 
         await ctx.send(embed=embed, view=view)
 
