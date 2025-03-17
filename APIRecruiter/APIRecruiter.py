@@ -78,6 +78,13 @@ class APIRecruiter(commands.Cog):
         url = "https://www.nationstates.net/cgi-bin/api.cgi?q=newnationdetails"
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(url) as resp:
+                #debug output 
+                text = await resp.text()
+                if await self.config.debug_mode():
+                    channel = await self.get_log_channel()
+                    if channel:
+                        await channel.send(f"XML Response:\n```xml\n{text[:1900]}\n```")
+                #end debug output
                 if resp.status != 200:
                     return []
                 text = await resp.text()
@@ -105,6 +112,13 @@ class APIRecruiter(commands.Cog):
         headers = {"User-Agent": user_agent}
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(url) as resp:
+                #debug output 
+                text = await resp.text()
+                if await self.config.debug_mode():
+                    channel = await self.get_log_channel()
+                    if channel:
+                        await channel.send(f"XML Response:\n```xml\n{text[:1900]}\n```")
+                #end debug output
                 if resp.status == 200:
                     await self.config.last_sent_time.set(int(time.time()))
                     sent = await self.config.sent_nations()
