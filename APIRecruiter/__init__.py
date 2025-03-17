@@ -1,4 +1,4 @@
-from .APIRecruiter.py import APIRecruiter.py
+from .APIRecruiter import APIRecruiter
 
 
 async def setup(bot):
