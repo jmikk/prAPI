@@ -29,35 +29,47 @@ class APIRecruiter(commands.Cog):
         self.recruitment_loop.cancel()
         self.daily_report.cancel()
 
+    async def get_log_channel(self):
+        return self.bot.get_channel(1098673276064120842)
+
     @commands.command()
     @commands.is_owner()
     async def settginfo(self, ctx, client_key: str, tgid: str, secret_key: str):
         await self.config.client_key.set(client_key)
         await self.config.tgid.set(tgid)
         await self.config.secret_key.set(secret_key)
-        await ctx.send("Telegram info set successfully.")
+        channel = await self.get_log_channel()
+        if channel:
+            await channel.send("Telegram info set successfully.")
 
     @commands.command()
     @commands.is_owner()
     async def setuseragent(self, ctx, *, user_agent: str):
         await self.config.user_agent.set(user_agent)
-        await ctx.send(f"User-Agent set to: {user_agent}")
+        channel = await self.get_log_channel()
+        if channel:
+            await channel.send(f"User-Agent set to: {user_agent}")
 
     @commands.command()
     async def addregionblacklist(self, ctx, *, region: str):
         region = region.lower().replace(" ", "_")
         blacklist = await self.config.blacklist_regions()
+        channel = await self.get_log_channel()
         if region not in blacklist:
             blacklist.append(region)
             await self.config.blacklist_regions.set(blacklist)
-            await ctx.send(f"Region '{region}' added to blacklist.")
+            if channel:
+                await channel.send(f"Region '{region}' added to blacklist.")
         else:
-            await ctx.send(f"Region '{region}' is already blacklisted.")
+            if channel:
+                await channel.send(f"Region '{region}' is already blacklisted.")
 
     @commands.command()
     async def showblacklist(self, ctx):
         blacklist = await self.config.blacklist_regions()
-        await ctx.send("Blacklisted Regions: " + ", ".join(blacklist))
+        channel = await self.get_log_channel()
+        if channel:
+            await channel.send("Blacklisted Regions: " + ", ".join(blacklist))
 
     async def fetch_new_nations(self):
         user_agent = await self.config.user_agent()
@@ -76,7 +88,13 @@ class APIRecruiter(commands.Cog):
                     nations.append((name, region))
                 return nations
 
-    async def send_telegram(self, nation_name):
+    async def send_telegram(self, nation_name, attempt=1):
+        if attempt > 5:
+            channel = await self.get_log_channel()
+            if channel:
+                await channel.send(f"Failed to send TG to {nation_name} after 5 attempts. Skipping.")
+            return False
+
         client_key = await self.config.client_key()
         tgid = await self.config.tgid()
         secret_key = await self.config.secret_key()
@@ -97,7 +115,7 @@ class APIRecruiter(commands.Cog):
                 elif resp.status == 429:
                     retry_after = int(resp.headers.get('X-Retry-After', 180))
                     await asyncio.sleep(retry_after)
-                    return await self.send_telegram(nation_name)
+                    return await self.send_telegram(nation_name, attempt + 1)
                 return False
 
     @tasks.loop(seconds=60)
@@ -137,9 +155,9 @@ class APIRecruiter(commands.Cog):
 
     @commands.command()
     async def manualreport(self, ctx):
-        await self.send_report(ctx.channel)
+        await self.send_report()
 
-    async def send_report(self, channel=None):
+    async def send_report(self):
         sent_nations = await self.config.sent_nations()
         last_report_count = await self.config.last_report_count()
         total_sent = await self.config.total_tgs_sent()
@@ -149,6 +167,7 @@ class APIRecruiter(commands.Cog):
         filename = f"tg_sent_{datetime.datetime.utcnow().strftime('%Y-%m-%d')}.txt"
 
         file = discord.File(fp=discord.File(fp=report_content.encode(), filename=filename), filename=filename)
+        channel = await self.get_log_channel()
         if channel:
             await channel.send(
                 content=(f"Recruitment Report:\nTotal TGs Sent: {total_sent}\n"
@@ -163,9 +182,13 @@ class APIRecruiter(commands.Cog):
         await self.config.sent_nations.set([])
         await self.config.last_report_count.set(0)
         await self.config.total_tgs_sent.set(0)
-        await ctx.send("Recruitment list and report count reset.")
+        channel = await self.get_log_channel()
+        if channel:
+            await channel.send("Recruitment list and report count reset.")
 
     @commands.command()
     async def getrecruitlist(self, ctx):
         total_sent = await self.config.total_tgs_sent()
-        await ctx.send(f"Total TGs sent: {total_sent}")
+        channel = await self.get_log_channel()
+        if channel:
+            await channel.send(f"Total TGs sent: {total_sent}")
