@@ -168,7 +168,19 @@ class APIRecruiter(commands.Cog):
 
     @recruitment_loop.before_loop
     async def before_loop(self):
+        #debug output 
+        text = await resp.text()
+        channel = await self.get_log_channel()
+        if channel:
+            await channel.send(f"pre check")
+        #end debug output
         await self.bot.wait_until_ready()
+                #debug output 
+        text = await resp.text()
+        channel = await self.get_log_channel()
+        if channel:
+            await channel.send(f"post check")
+        #end debug output
 
     @tasks.loop(hours=24)
     async def daily_report(self):
