@@ -203,7 +203,7 @@ class DailyNationTracker(commands.Cog):
 
         async with aiohttp.ClientSession() as session:
             while True:
-                url = f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=censusranks;scale=80&starts={start}"
+                url = f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=censusranks;scale=80&start={start}"
                 async with session.get(url, headers=headers) as resp:
                     if resp.status != 200:
                         await ctx.send(f"Failed to fetch census data at start={start}.")
