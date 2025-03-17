@@ -140,8 +140,6 @@ class APIRecruiter(commands.Cog):
         try:
             #debug output 
             channel = await self.get_log_channel()
-            if channel:
-                await channel.send(f"Here!")
             #end debug output
             blacklist = await self.config.blacklist_regions()
             sent_nations = await self.config.sent_nations()
