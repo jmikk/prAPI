@@ -234,8 +234,11 @@ class APIRecruiter(commands.Cog):
     @commands.is_owner()
     async def forcestartloops(self, ctx):
         if not self.recruitment_loop.is_running():
-            self.recruitment_loop.start()
-            await ctx.send("Recruitment loop started.")
+            try:
+                self.recruitment_loop.start()
+                await ctx.send("Recruitment loop started.")
+            except RuntimeError as e:
+                await ctx.send(f"Failed to start recruitment loop: {e}")
         else:
             await ctx.send("Recruitment loop is already running.")
     
