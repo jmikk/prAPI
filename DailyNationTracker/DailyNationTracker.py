@@ -113,6 +113,7 @@ class DailyNationTracker(commands.Cog):
 
         await channel.send(embed=embed, view=view)
 
+    @commands.has_role(1113108765315715092)
     @commands.command()
     async def settemplate(self, ctx, day: int, template_id: str):
         """Set the TG template ID for a specific day (format: %TEMPLATE-XXXXX%)."""
@@ -123,7 +124,8 @@ class DailyNationTracker(commands.Cog):
         self.templates[str(day)] = encoded_template
         self.save_templates()
         await ctx.send(f"Template for day {day} set to {encoded_template}")
-
+    
+    @commands.has_role(1113108765315715092)
     @commands.command()
     async def removetemplate(self, ctx, day: int):
         """Remove the TG template for a specific day."""
@@ -134,6 +136,7 @@ class DailyNationTracker(commands.Cog):
         else:
             await ctx.send(f"No template found for day {day}.")
 
+    @commands.has_role(1113108765315715092)
     @commands.command()
     async def listtemplates(self, ctx):
         """List all TG templates set for each day."""
@@ -143,12 +146,92 @@ class DailyNationTracker(commands.Cog):
             msg = "\n".join([f"Day {day}: {template}" for day, template in sorted(self.templates.items(), key=lambda x: int(x[0]))])
             await ctx.send(f"Current TG templates:\n{msg}")
 
+    @commands.has_role(1113108765315715092)
     @commands.command()
     async def resetnationdata(self, ctx):
         """Reset all nation data to start fresh."""
         self.nation_data = {}
         self.save_data()
         await ctx.send("All nation data has been reset to 0.")
+
+
+    @commands.has_role(1113108765315715092)
+    @commands.command()
+    async def sendonetg(self, ctx, day: int, template_id: str, *, mode: str = 'exact'):
+        """Send a one-off TG link to nations that are exactly or at least X days in the region.
+        Usage: !sendonetg <day> <TEMPLATE-XXXXX> [exact/atleast]
+        """
+        if not (template_id.startswith("%TEMPLATE-") and template_id.endswith("%")):
+            await ctx.send("Invalid template format. Please use: %TEMPLATE-XXXXX%")
+            return
+    
+        encoded_template = template_id.replace("%", "%25")
+        if mode.lower() == 'atleast':
+            nations_to_tg = [n for n, d in self.nation_data.items() if d["days"] >= day]
+        else:
+            nations_to_tg = [n for n, d in self.nation_data.items() if d["days"] == day]
+    
+        if not nations_to_tg:
+            await ctx.send("No nations match the criteria.")
+            return
+    
+        nation_chunks = [nations_to_tg[i:i+8] for i in range(0, len(nations_to_tg), 8)]
+        buttons = []
+        for i, chunk in enumerate(nation_chunks[:20]):
+            tg_link = f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(chunk)}&message={encoded_template}&generated_by=TW_daily_TGs__by_9005____instance_run_by_9005"
+            buttons.append(discord.ui.Button(label=f"One-Off TG {i+1}", url=tg_link, style=discord.ButtonStyle.link))
+    
+        view = discord.ui.View()
+        for button in buttons:
+            view.add_item(button)
+    
+        embed = discord.Embed(title="One-Off TG Links",
+                              description=f"Nations {'at least' if mode.lower() == 'atleast' else 'exactly'} {day} days in region.",
+                              color=discord.Color.green())
+        embed.set_footer(text=f"Generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    
+        await ctx.send(embed=embed, view=view)
+
+    @commands.has_role(1113108765315715092)
+    @commands.command()
+    async def importcensusdays(self, ctx):
+        """Import days from census rank scale 80. Uses rank score as days (rounded down)."""
+        await ctx.send("Starting import of census data...")
+        headers = {"User-Agent": "9005"}
+        start = 1
+        total_imported = 0
+
+        async with aiohttp.ClientSession() as session:
+            while True:
+                url = f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=censusranks;scale=80&starts={start}"
+                async with session.get(url, headers=headers) as resp:
+                    if resp.status != 200:
+                        await ctx.send(f"Failed to fetch census data at start={start}.")
+                        break
+                    text = await resp.text()
+                    root = ET.fromstring(text)
+                    nations = root.findall(".//NATION")
+
+                    if not nations:
+                        break
+
+                    for nation in nations:
+                        name = nation.find("NAME").text
+                        score = float(nation.find("SCORE").text)
+                        self.nation_data[name] = {"first_seen": "imported", "days": int(score)}
+                        total_imported += 1
+
+                    start += len(nations)
+
+                    remaining = int(resp.headers.get("X-Ratelimit-Remaining", 100))
+                    reset_time = int(resp.headers.get("X-Ratelimit-Reset", 10))
+                    if remaining < 20:
+                        await ctx.send(f"Sleeping for {reset_time} seconds due to rate limiting...")
+                        await asyncio.sleep(reset_time)
+
+        self.save_data()
+        await ctx.send(f"Import complete. Total nations updated: {total_imported}.")
+
 
 async def setup(bot):
     await bot.add_cog(DailyNationTracker(bot))
