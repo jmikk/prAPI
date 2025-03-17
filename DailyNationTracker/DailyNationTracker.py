@@ -251,7 +251,7 @@ class DailyNationTracker(commands.Cog):
                 embed = discord.Embed(title=f"Nation Data (Page {self.page + 1}/{len(self.data_pages)})", color=discord.Color.gold())
                 for name, info in self.data_pages[self.page]:
                     link = f"https://www.nationstates.net/nation={name}"
-                    embed.add_field(name=f"{name.capitalize}: {link}", value=f"Days: {info['days']}", inline=False)
+                    embed.add_field(name=f"{name.capitalize()}: {link}", value=f"Days: {info['days']}", inline=False)
                 await interaction.response.edit_message(embed=embed, view=self)
 
             @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary)
