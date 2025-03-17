@@ -6,6 +6,7 @@ import json
 import os
 from datetime import datetime
 
+
 class DailyNationTracker(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
