@@ -31,7 +31,7 @@ class APIRecruiter(commands.Cog):
         self.daily_report.cancel()
 
     async def get_log_channel(self):
-        return self.bot.fetch_channel(1098673276064120842)
+        return self.bot.get_channel(1098673276064120842)
 
     @commands.command()
     @commands.is_owner()
