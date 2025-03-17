@@ -79,6 +79,7 @@ class APIRecruiter(commands.Cog):
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(url) as resp:
                 #debug output 
+                text = resp.text()
                 channel = await self.get_log_channel()
                 if channel:
                     await channel.send(f"XML Response:\n```xml\n{text[:1900]}\n```")
@@ -116,6 +117,7 @@ class APIRecruiter(commands.Cog):
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(url) as resp:
                 #debug output 
+                text = resp.text()
                 channel = await self.get_log_channel()
                 if channel:
                     await channel.send(f"XML Response:\n```xml\n{text[:1900]}\n```")
@@ -171,17 +173,7 @@ class APIRecruiter(commands.Cog):
 
     @recruitment_loop.before_loop
     async def before_loop(self):
-        #debug output 
-        channel = await self.get_log_channel()
-        if channel:
-            await channel.send(f"pre check")
-        #end debug output
         await self.bot.wait_until_ready()
-                #debug output 
-        channel = await self.get_log_channel()
-        if channel:
-            await channel.send(f"post check")
-        #end debug output
 
     @tasks.loop(hours=24)
     async def daily_report(self):
