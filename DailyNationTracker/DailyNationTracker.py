@@ -106,7 +106,7 @@ class DailyNationTracker(commands.Cog):
         for button in buttons:
             view.add_item(button)
 
-        embed = discord.Embed(title="Daily TG Links", description=f"Nations in region for {threshold} days.", color=discord.Color.blue())
+        embed = discord.Embed(title="Daily TG Links", description=f"Nations in region for {threshold} days. {len(nations_to_tg) nations}", color=discord.Color.blue())
         embed.set_footer(text=f"Generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
 
         await channel.send(embed=embed, view=view)
