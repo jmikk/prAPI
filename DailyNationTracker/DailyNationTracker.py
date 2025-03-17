@@ -46,6 +46,9 @@ class DailyNationTracker(commands.Cog):
 
     @tasks.loop(hours=24)
     async def daily_task(self):
+        channel = self.bot.get_channel(self.channel_id)
+        if channel:
+            await channel.send("Started daily loop")
         await self.bot.wait_until_ready()
         new_nations = await self.get_nations()
         today = datetime.utcnow().strftime("%Y-%m-%d")
@@ -69,6 +72,8 @@ class DailyNationTracker(commands.Cog):
                 await self.send_tg_links(day_threshold, template)
             except ValueError:
                 continue
+        if channel:
+            await channel.send("Ended daily loop")
 
     async def get_nations(self):
         headers = {"User-Agent": "9005"}  # Preset header
