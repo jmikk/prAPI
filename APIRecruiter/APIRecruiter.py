@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 import time
 import re
 import datetime
+import traceback
 
 class APIRecruiter(commands.Cog):
     def __init__(self, bot):
@@ -165,9 +166,10 @@ class APIRecruiter(commands.Cog):
                     print(f"Sent TG to {name}")
                 break
         except Exception as e:
+            tb = traceback.format_exc()
             channel = await self.get_log_channel()
             if channel:
-                await channel.send(f"Error {e}")
+                await channel.send(f"Error {tb}[:1900]")
             
 
 
