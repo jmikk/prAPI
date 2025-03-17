@@ -129,6 +129,9 @@ class APIRecruiter(commands.Cog):
                     retry_after = int(resp.headers.get('X-Retry-After', 180))
                     await asyncio.sleep(retry_after)
                     return await self.send_telegram(nation_name, attempt + 1)
+                channel = await self.get_log_channel()
+                if channel:
+                    await channel.send(f"Flat Failed")
                 return False
 
     @tasks.loop(seconds=60)
