@@ -1508,7 +1508,7 @@ class Hungar(commands.Cog):
         if day_counter > 0 and day_counter % 10 == 0:
             day_duration = int(day_duration * 1.5)  # Feast days are longer
     
-        next_day_start = day_start + timedelta(seconds=day_duration) - timedelta(hours=6)
+        next_day_start = day_start + timedelta(seconds=day_duration) - timedelta(hours=5)
         next_day_start_timestamp = int(next_day_start.timestamp())  # Convert to Unix timestamp
 
                 # Save the updated day start time and duration
