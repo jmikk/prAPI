@@ -93,8 +93,6 @@ class APIRecruiter(commands.Cog):
     async def send_telegram(self, nation_name, attempt=1):
         #debug output 
         channel = await self.get_log_channel()
-        if channel:
-            await channel.send(f"Here Sending TG")
         #end debug output
         if attempt > 5:
             channel = await self.get_log_channel()
