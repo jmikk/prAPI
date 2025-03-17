@@ -48,7 +48,7 @@ class DailyNationTracker(commands.Cog):
     async def daily_task(self):
         channel = self.bot.get_channel(self.channel_id)
         if channel:
-            await channel.send("Started daily loop")
+            #await channel.send("Started daily loop")
         await self.bot.wait_until_ready()
         new_nations = await self.get_nations()
         today = datetime.utcnow().strftime("%Y-%m-%d")
@@ -73,7 +73,7 @@ class DailyNationTracker(commands.Cog):
             except ValueError:
                 continue
         if channel:
-            await channel.send("Ended daily loop")
+            await channel.send("Daily loop done!")
 
     async def get_nations(self):
         headers = {"User-Agent": "9005"}  # Preset header
@@ -231,6 +231,48 @@ class DailyNationTracker(commands.Cog):
 
         self.save_data()
         await ctx.send(f"Import complete. Total nations updated: {total_imported}.")
+
+
+    @commands.command()
+    async def viewnationdata(self, ctx):
+        """View all nation data with pagination."""
+        sorted_data = sorted(self.nation_data.items(), key=lambda x: (-x[1]['days'], x[0]))
+        pages = [sorted_data[i:i+10] for i in range(0, len(sorted_data), 10)]
+
+        if not pages:
+            await ctx.send("No nation data available.")
+            return
+
+        class Paginator(discord.ui.View):
+            def __init__(self, data_pages):
+                super().__init__(timeout=60)
+                self.data_pages = data_pages
+                self.page = 0
+
+            async def update_embed(self, interaction):
+                embed = discord.Embed(title=f"Nation Data (Page {self.page + 1}/{len(self.data_pages)})", color=discord.Color.gold())
+                for name, info in self.data_pages[self.page]:
+                    link = f"https://www.nationstates.net/nation={name}"
+                    embed.add_field(name=f"[{name}]({link})", value=f"Days: {info['days']}", inline=False)
+                await interaction.response.edit_message(embed=embed, view=self)
+
+            @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary)
+            async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
+                self.page = (self.page - 1) % len(self.data_pages)
+                await self.update_embed(interaction)
+
+            @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
+            async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+                self.page = (self.page + 1) % len(self.data_pages)
+                await self.update_embed(interaction)
+
+        view = Paginator(pages)
+        embed = discord.Embed(title="Nation Data (Page 1/{})".format(len(pages)), color=discord.Color.gold())
+        for name, info in pages[0]:
+            link = f"https://www.nationstates.net/nation={name}"
+            embed.add_field(name=f"[{name}]({link})", value=f"Days: {info['days']}", inline=False)
+
+        await ctx.send(embed=embed, view=view)
 
 
 async def setup(bot):
