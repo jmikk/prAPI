@@ -79,7 +79,6 @@ class APIRecruiter(commands.Cog):
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(url) as resp:
                 #debug output 
-                text = await resp.text()
                 channel = await self.get_log_channel()
                 if channel:
                     await channel.send(f"XML Response:\n```xml\n{text[:1900]}\n```")
@@ -97,7 +96,6 @@ class APIRecruiter(commands.Cog):
 
     async def send_telegram(self, nation_name, attempt=1):
         #debug output 
-        text = await resp.text()
         channel = await self.get_log_channel()
         if channel:
             await channel.send(f"Here Sending TG")
@@ -118,7 +116,6 @@ class APIRecruiter(commands.Cog):
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(url) as resp:
                 #debug output 
-                text = await resp.text()
                 channel = await self.get_log_channel()
                 if channel:
                     await channel.send(f"XML Response:\n```xml\n{text[:1900]}\n```")
@@ -139,44 +136,48 @@ class APIRecruiter(commands.Cog):
 
     @tasks.loop(seconds=60)
     async def recruitment_loop(self):
-        #debug output 
-        text = await resp.text()
-        channel = await self.get_log_channel()
-        if channel:
-            await channel.send(f"Here!")
-        #end debug output
-        blacklist = await self.config.blacklist_regions()
-        sent_nations = await self.config.sent_nations()
-        last_sent_time = await self.config.last_sent_time()
-        now = int(time.time())
+        try:
+            #debug output 
+            channel = await self.get_log_channel()
+            if channel:
+                await channel.send(f"Here!")
+            #end debug output
+            blacklist = await self.config.blacklist_regions()
+            sent_nations = await self.config.sent_nations()
+            last_sent_time = await self.config.last_sent_time()
+            now = int(time.time())
+    
+            if now - last_sent_time < 180:
+                return  # Wait for recruitment rate limit
+    
+            nations = await self.fetch_new_nations()
+            for name, region in nations:
+                if name in sent_nations:
+                    continue
+                if re.search(r"\d+$", name):
+                    continue  # Skip nations ending in numbers
+                if region.lower() in blacklist:
+                    continue
+                success = await self.send_telegram(name)
+                if success:
+                    print(f"Sent TG to {name}")
+                break
+        except Exception as e:
+            channel = await self.get_log_channel()
+            if channel:
+                await channel.send(f"Error {e}")
+            
 
-        if now - last_sent_time < 180:
-            return  # Wait for recruitment rate limit
-
-        nations = await self.fetch_new_nations()
-        for name, region in nations:
-            if name in sent_nations:
-                continue
-            if re.search(r"\d+$", name):
-                continue  # Skip nations ending in numbers
-            if region.lower() in blacklist:
-                continue
-            success = await self.send_telegram(name)
-            if success:
-                print(f"Sent TG to {name}")
-            break
 
     @recruitment_loop.before_loop
     async def before_loop(self):
         #debug output 
-        text = await resp.text()
         channel = await self.get_log_channel()
         if channel:
             await channel.send(f"pre check")
         #end debug output
         await self.bot.wait_until_ready()
                 #debug output 
-        text = await resp.text()
         channel = await self.get_log_channel()
         if channel:
             await channel.send(f"post check")
