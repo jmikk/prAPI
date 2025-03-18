@@ -25,14 +25,14 @@ class FantasyJobBoard(commands.Cog):
         """Commands for the Fantasy Job Board."""
         pass
 
-    @jobboard.command()
+    @quest.command()
     @commands.has_permissions(administrator=True)
     async def setrole(self, ctx, role: discord.Role):
         """Set the Quest Giver role to be pinged on quest completion."""
         await self.config.guild(ctx.guild).quest_giver_role.set(role.id)
         await ctx.send(f"Quest Giver role set to {role.mention}!")
 
-    @jobboard.command()
+    @quest.command()
     async def view(self, ctx):
         """View available quests."""
         quests = await self.config.guild(ctx.guild).quests()
@@ -52,7 +52,7 @@ class FantasyJobBoard(commands.Cog):
         for embed in embeds:
             await ctx.send(embed=embed)
 
-    @jobboard.command()
+    @quest.command()
     async def accept(self, ctx, quest_id: str):
         """Accept a quest by ID."""
         quests = await self.config.guild(ctx.guild).quests()
@@ -61,7 +61,7 @@ class FantasyJobBoard(commands.Cog):
             return
         await ctx.send(f"{ctx.author.mention} has accepted the quest: **{quests[quest_id]['title']}**")
 
-    @jobboard.command()
+    @quest.command()
     async def complete(self, ctx, quest_id: str):
         """Mark a quest as complete and notify the Quest Givers."""
         quests = await self.config.guild(ctx.guild).quests()
@@ -84,7 +84,7 @@ class FantasyJobBoard(commands.Cog):
             quests.pop(quest_id)
             await self.config.guild(ctx.guild).quests.set(quests)
 
-    @jobboard.command()
+    @quest.command()
     @commands.has_permissions(administrator=True)
     async def add(self, ctx, quest_id: str, title: str, reward: str, *, description: str):
         """Add a new one-time quest."""
@@ -99,7 +99,7 @@ class FantasyJobBoard(commands.Cog):
         await self.config.guild(ctx.guild).quests.set(quests)
         await ctx.send(f"Quest **{title}** added with ID `{quest_id}`.")
 
-    @jobboard.command()
+    @quest.command()
     @commands.has_permissions(administrator=True)
     async def addrecurring(self, ctx, quest_id: str, title: str, reward: str, recurrence_days: int, *, description: str):
         """Add a recurring quest that refreshes every X days."""
@@ -117,7 +117,7 @@ class FantasyJobBoard(commands.Cog):
             data['recurring'][quest_id] = recurring_data
         await ctx.send(f"Recurring quest **{title}** added with ID `{quest_id}` and refreshes every {recurrence_days} days.")
 
-    @jobboard.command()
+    @quest.command()
     @commands.has_permissions(administrator=True)
     async def remove(self, ctx, quest_id: str):
         """Remove a quest by ID."""
