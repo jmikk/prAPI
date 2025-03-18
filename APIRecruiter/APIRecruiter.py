@@ -156,6 +156,9 @@ class APIRecruiter(commands.Cog):
                 if region.lower() in blacklist:
                     continue
                 success = await self.send_telegram(name)
+                can_recruit = await self.check_can_recruit(name)
+                if not can_recruit:
+                    continue
                 if success:
                     print(f"Sent TG to {name}")
                 break
@@ -164,7 +167,28 @@ class APIRecruiter(commands.Cog):
             channel = await self.get_log_channel()
             if channel:
                 await channel.send(f"Error {tb}[:1900]")
-            
+
+
+    async def check_can_recruit(self, nation_name):
+        try:
+            user_agent = await self.config.user_agent()
+            headers = {"User-Agent": user_agent}
+            url = (f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation_name}" 
+                   f"&q=tgcanrecruit&from=the_wellspring")
+
+            async with aiohttp.ClientSession(headers=headers) as session:
+                async with session.get(url) as resp:
+                    if resp.status != 200:
+                        return False
+                    text = await resp.text()
+                    root = ET.fromstring(text)
+                    tgcanrecruit = root.find("TGCANRECRUIT")
+                    if tgcanrecruit is not None and tgcanrecruit.text == "1":
+                        return True
+        except Exception as e:
+            tb = traceback.format_exc()
+            print(f"Error checking can recruit:\n{tb}")
+        return False
 
 
     @recruitment_loop.before_loop
