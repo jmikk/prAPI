@@ -57,9 +57,9 @@ class prAPI(commands.Cog):
         prepare_data = {
                     "nation": nationname,
                     "c": "giftcard",
-                    "cardid": random_card['id'],
-                    "season": random_card['season'],
-                    "to": recipient,
+                    "cardid": ID,
+                    "season": Season,
+                    "to": giftie,
                     "mode": "prepare"
                 }
         prepare_headers = {
@@ -87,9 +87,9 @@ class prAPI(commands.Cog):
                 execute_data = {
                         "nation": nationname,
                         "c": "giftcard",
-                        "cardid": random_card['id'],
-                        "season": random_card['season'],
-                        "to": recipient,
+                        "cardid": ID,
+                        "season": Season,
+                        "to": giftie,
                         "mode": "execute",
                         "token": token
                     }
