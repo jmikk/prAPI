@@ -316,29 +316,26 @@ class prAPI(commands.Cog):
 
 
 
-    async def fetch_nations_list(self, query: str):
-        headers = {"User-Agent": await self.config.useragent()}
-        url = f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q={query}"
-        if query.lower() == "wanations":
-            query = "UNNATIONS"
-    
-        async with self.session.get(url, headers=headers) as response:
-            text = await response.text()  # Always await
-    
-            if response.status != 200:
-                # Return the raw text so the caller can handle/display it
-                return text
-    
-            try:
-                root = ET.fromstring(text)
-                region_element = root.find("REGION")
-                if region_element is None:
-                    return text  # Return raw response if REGION is missing
-    
-                nations_text = region_element.find(query.upper()).text
-                return nations_text.split(":") if nations_text else []
-            except ET.ParseError:
-                return text  # Return raw response if XML parse fails
 
-                
+        async def fetch_nations_list(self, query: str):
+            headers = {"User-Agent": await self.config.useragent()}
+            url = f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q={query}"
+    
+            async with self.session.get(url, headers=headers) as response:
+                text = await response.text()
+    
+                if response.status != 200:
+                    return text
+    
+                try:
+                    root = ET.fromstring(text)
+                    region_element = root.find("REGION")
+                    if region_element is None:
+                        return text
+    
+                    tag_name = "UNNATIONS" if query == "wanations" else "NATIONS"
+                    nations_text = region_element.find(tag_name).text
+                    return nations_text.split(":") if nations_text else []
+                except ET.ParseError:
+                    return text
 
