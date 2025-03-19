@@ -22,6 +22,10 @@ class prAPI(commands.Cog):
         self.config.register_global(**default_global)
         self.session = aiohttp.ClientSession()
 
+
+    def split_message(msg: str, max_len=1900):
+        return [msg[i:i+max_len] for i in range(0, len(msg), max_len)]
+
     def has_specific_role():
         async def predicate(ctx):
             role_id = 1113108765315715092
@@ -159,7 +163,8 @@ class prAPI(commands.Cog):
             prepare_text = await prepare_response.text()
             if prepare_response.status != 200:
                 await ctx.send("Failed to prepare RMB post.")
-                await ctx.send(prepare_text[:1900])
+                for part in split_message(current_wa_nations):
+                    await ctx.send(part)
                 return
     
             token = self.parse_token(prepare_text)
@@ -210,6 +215,8 @@ class prAPI(commands.Cog):
         current_all_nations = await self.fetch_nations_list("nations")
     
         if not current_wa_nations or not current_all_nations:
+            
+            
             await ctx.send(current_wa_nations[:1900])
             await ctx.send(current_all_nations[:1900])
 
@@ -261,7 +268,7 @@ class prAPI(commands.Cog):
             prepare_text = await prepare_response.text()
             if prepare_response.status != 200:
                 await ctx.send("Failed to prepare RMB post.")
-                await ctx.send(prepare_text[:1900])
+                await ctx.split_and_send(prepare_text)
                 return
     
             token = self.parse_token(prepare_text)
