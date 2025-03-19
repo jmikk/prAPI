@@ -193,7 +193,7 @@ class prAPI(commands.Cog):
 
     @commands.command()
     @commands.cooldown(1, 30, commands.BucketType.default)
-    @prAPI.has_specific_role()
+    @has_specific_role()
     async def QOTD(self, ctx, *, message: str):
         """Post the QOTD with nation shoutouts to the RMB of The Wellspring."""
         region = "the_wellspring"
