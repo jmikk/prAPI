@@ -317,25 +317,25 @@ class prAPI(commands.Cog):
 
 
 
-        async def fetch_nations_list(self, query: str):
-            headers = {"User-Agent": await self.config.useragent()}
-            url = f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q={query}"
+    async def fetch_nations_list(self, query: str):
+        headers = {"User-Agent": await self.config.useragent()}
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q={query}"
     
-            async with self.session.get(url, headers=headers) as response:
-                text = await response.text()
+        async with self.session.get(url, headers=headers) as response:
+            text = await response.text()
     
-                if response.status != 200:
+            if response.status != 200:
+                return text
+    
+            try:
+                root = ET.fromstring(text)
+                region_element = root.find("REGION")
+                if region_element is None:
                     return text
     
-                try:
-                    root = ET.fromstring(text)
-                    region_element = root.find("REGION")
-                    if region_element is None:
-                        return text
-    
-                    tag_name = "UNNATIONS" if query == "wanations" else "NATIONS"
-                    nations_text = region_element.find(tag_name).text
-                    return nations_text.split(":") if nations_text else []
-                except ET.ParseError:
-                    return text
+                tag_name = "UNNATIONS" if query == "wanations" else "NATIONS"
+                nations_text = region_element.find(tag_name).text
+                return nations_text.split(":") if nations_text else []
+            except ET.ParseError:
+                return text
 
