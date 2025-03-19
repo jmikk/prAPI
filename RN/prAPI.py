@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 
 
-class lootbox(commands.Cog):
+class prAPI(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
