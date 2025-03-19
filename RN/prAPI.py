@@ -345,7 +345,7 @@ class prAPI(commands.Cog):
     async def endo_lotto(self,ctx,name):
         # Fetch the XML data
         url = "https://www.nationstates.net/cgi-bin/api.cgi?nation=9006&q=endorsements"
-        headers = {"User-Agent": "9006"}
+        headers = {"User-Agent": "9005"}
         response = requests.get(url, headers=headers)
         
         # Parse the XML
@@ -360,3 +360,27 @@ class prAPI(commands.Cog):
         # Randomly select one of the names
         random_endorsement = random.choice(endorsements_list)
         await ctx.send(f"Here you go {random_endorsement}")
+
+    @commands.command(name="sendfile")
+    @commands.admin_or_permissions(administrator=True)
+    async def send_file(self, ctx, filename: str):
+        """
+        Sends a file located in the bot's directory.
+
+        Admin Only.
+
+        Usage: [p]sendfile filename.extension
+        Example: [p]sendfile example.txt
+        """
+        filepath = os.path.join(os.getcwd(), filename)
+
+        if not os.path.isfile(filepath):
+            await ctx.send(f"❌ File `{filename}` not found.")
+            return
+
+        try:
+            await ctx.send("📤 Sending file...", file=discord.File(fp=filepath))
+        except Exception as e:
+            await ctx.send(f"❌ Failed to send file: `{str(e)}`")
+
+
