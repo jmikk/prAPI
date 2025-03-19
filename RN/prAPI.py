@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 import requests
 import random
 import html
+import discord
 
 
 def is_owner_overridable():
