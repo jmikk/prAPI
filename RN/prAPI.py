@@ -8,6 +8,7 @@ import time
 import os
 from datetime import datetime
 
+
 class prAPI(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
