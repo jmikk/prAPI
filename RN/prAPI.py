@@ -188,3 +188,65 @@ class prAPI(commands.Cog):
             else:
                 await ctx.send("Failed to execute RMB post.")
                 await ctx.send(execute_text)
+
+    @commands.command()
+    @commands.cooldown(1, 30, commands.BucketType.default)
+    @has_specific_role()
+    async def QOTD(self, ctx, *, message: str):
+        """Admin Only: Post a message to a region's RMB."""
+        region = "the_wellspring"
+        useragent = await self.config.useragent()
+        password = await self.config.password()
+        nationname = await self.config.nationName()
+    
+        if not all([useragent, password, nationname]):
+            await ctx.send("Please ensure User-Agent, Nation Name, and Password are all set.")
+            return
+    
+        prepare_data = {
+            "nation": nationname,
+            "c": "rmbpost",
+            "region": region,
+            "text": message,
+            "mode": "prepare"
+        }
+        prepare_headers = {
+            "User-Agent": useragent,
+            "X-Password": password
+        }
+    
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
+            prepare_text = await prepare_response.text()
+            if prepare_response.status != 200:
+                await ctx.send("Failed to prepare RMB post.")
+                await ctx.send(prepare_text)
+                return
+    
+            token = self.parse_token(prepare_text)
+            x_pin = prepare_response.headers.get("X-Pin")
+    
+            if not token or not x_pin:
+                await ctx.send("Failed to retrieve the token or X-Pin for RMB post execution.")
+                await ctx.send(prepare_text)
+                return
+    
+        execute_data = {
+            "nation": nationname,
+            "c": "rmbpost",
+            "region": region,
+            "text": message,
+            "mode": "execute",
+            "token": token
+        }
+        execute_headers = {
+            "User-Agent": useragent,
+            "X-Pin": x_pin
+        }
+    
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
+            execute_text = await execute_response.text()
+            if execute_response.status == 200:
+                await ctx.send(f"Successfully posted to the RMB of {region}!")
+            else:
+                await ctx.send("Failed to execute RMB post.")
+                await ctx.send(execute_text)
