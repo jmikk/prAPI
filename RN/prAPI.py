@@ -38,7 +38,7 @@ class lootbox(commands.Cog):
         await ctx.send(f"Nation Name set to {nationname}")
 
     @commands.dm_only()
-    @cardset.command()
+    @commands.command()
     async def RN_password(self, ctx, *, password: str):
         """Set the password for the loot box prizes in DM."""
         await self.config.password.set(password)
