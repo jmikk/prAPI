@@ -20,6 +20,13 @@ class prAPI(commands.Cog):
         self.config.register_global(**default_global)
         self.session = aiohttp.ClientSession()
 
+    def has_specific_role():
+        async def predicate(ctx):
+            role_id = 1113108765315715092
+            return any(role.id == role_id for role in ctx.author.roles)
+        return commands.check(predicate)
+
+
     def cog_unload(self):
         asyncio.create_task(self.session.close())
 
@@ -40,6 +47,7 @@ class prAPI(commands.Cog):
 
     @commands.dm_only()
     @commands.command()
+    @checks.admin_or_permissions(manage_guild=True)
     async def RN_password(self, ctx, *, password: str):
         """Set the password for the loot box prizes in DM."""
         await self.config.password.set(password)
@@ -55,7 +63,8 @@ class prAPI(commands.Cog):
             return None
 
     @commands.command()
-    @commands.cooldown(1, 60, commands.BucketType.default)  # 1 use per 60 seconds
+    @commands.cooldown(1, 60, commands.BucketType.default)
+    @has_specific_role()# 1 use per 60 seconds
     async def gift_card(self, ctx, giftie: str, ID: str, Season: str):
         """Gift a card to a specified nation."""
         recipient = "_".join(giftie.split()).lower()
@@ -116,4 +125,66 @@ class prAPI(commands.Cog):
                 await ctx.send(f"Successfully gifted card ID {ID} (Season {Season}) to {recipient}!")
             else:
                 await ctx.send("Failed to execute the gift.")
+                await ctx.send(execute_text)
+
+    @commands.command()
+    @commands.cooldown(1, 30, commands.BucketType.default)
+    @has_specific_role()
+    async def rmb_post(self, ctx, region: str, *, message: str):
+        """Admin Only: Post a message to a region's RMB."""
+        region = region.replace(" ", "_").lower()
+        useragent = await self.config.useragent()
+        password = await self.config.password()
+        nationname = await self.config.nationName()
+    
+        if not all([useragent, password, nationname]):
+            await ctx.send("Please ensure User-Agent, Nation Name, and Password are all set.")
+            return
+    
+        prepare_data = {
+            "nation": nationname,
+            "c": "rmbpost",
+            "region": region,
+            "text": message,
+            "mode": "prepare"
+        }
+        prepare_headers = {
+            "User-Agent": useragent,
+            "X-Password": password
+        }
+    
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
+            prepare_text = await prepare_response.text()
+            if prepare_response.status != 200:
+                await ctx.send("Failed to prepare RMB post.")
+                await ctx.send(prepare_text)
+                return
+    
+            token = self.parse_token(prepare_text)
+            x_pin = prepare_response.headers.get("X-Pin")
+    
+            if not token or not x_pin:
+                await ctx.send("Failed to retrieve the token or X-Pin for RMB post execution.")
+                await ctx.send(prepare_text)
+                return
+    
+        execute_data = {
+            "nation": nationname,
+            "c": "rmbpost",
+            "region": region,
+            "text": message,
+            "mode": "execute",
+            "token": token
+        }
+        execute_headers = {
+            "User-Agent": useragent,
+            "X-Pin": x_pin
+        }
+    
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
+            execute_text = await execute_response.text()
+            if execute_response.status == 200:
+                await ctx.send(f"Successfully posted to the RMB of {region}!")
+            else:
+                await ctx.send("Failed to execute RMB post.")
                 await ctx.send(execute_text)
