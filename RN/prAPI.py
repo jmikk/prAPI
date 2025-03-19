@@ -326,9 +326,13 @@ class prAPI(commands.Cog):
             text = await response.text()
             try:
                 root = ET.fromstring(text)
-                nations_text = root.find(query.upper()).text
-                return nations_text.split(",") if nations_text else []
+                region_element = root.find("REGION")
+                if region_element is None:
+                    return []
+                nations_text = region_element.find(query.upper()).text
+                return nations_text.split(":") if nations_text else []
             except ET.ParseError:
                 return []
+    
                 
 
