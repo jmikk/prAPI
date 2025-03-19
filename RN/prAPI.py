@@ -215,14 +215,6 @@ class prAPI(commands.Cog):
         current_wa_nations = await self.fetch_nations_list("wanations")
         current_all_nations = await self.fetch_nations_list("nations")
 
-        if isinstance(current_wa_nations, str) or isinstance(current_all_nations, str):
-            await ctx.send("⚠️ Failed to fetch nation data.")
-            if isinstance(current_wa_nations, str):
-                await self.split_and_send(ctx, f"WA Nations API Response:\n{current_wa_nations}")
-            if isinstance(current_all_nations, str):
-                await self.split_and_send(ctx, f"All Nations API Response:\n{current_all_nations}")
-            return
-
         last_wa_nations = await self.config.last_wa_nations()
         last_all_nations = await self.config.last_all_nations()
 
