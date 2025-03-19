@@ -210,7 +210,9 @@ class prAPI(commands.Cog):
         current_all_nations = await self.fetch_nations_list("nations")
     
         if not current_wa_nations or not current_all_nations:
-            await ctx.send("Failed to fetch nation lists.")
+            await ctx.send(current_wa_nations[:1900])
+            await ctx.send(current_all_nations[:1900])
+
             return
     
         last_wa_nations = await self.config.last_wa_nations()
@@ -322,7 +324,7 @@ class prAPI(commands.Cog):
     
         async with self.session.get(url, headers=headers) as response:
             if response.status != 200:
-                return []
+                return response.text()
             text = await response.text()
             try:
                 root = ET.fromstring(text)
