@@ -23,8 +23,10 @@ class prAPI(commands.Cog):
         self.session = aiohttp.ClientSession()
 
 
-    def split_message(msg: str, max_len=1900):
-        return [msg[i:i+max_len] for i in range(0, len(msg), max_len)]
+    async def split_and_send(self, ctx_or_channel, message: str, max_len: int = 1900):
+        parts = [message[i:i + max_len] for i in range(0, len(message), max_len)]
+        for part in parts:
+            await ctx_or_channel.send(part)
 
     def has_specific_role():
         async def predicate(ctx):
