@@ -318,7 +318,7 @@ class prAPI(commands.Cog):
     async def fetch_nations_list(self, query: str):
         headers = {"User-Agent": await self.config.useragent()}
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q={query}"
-        if qurey.lower() == "wanations"
+        if qurey.lower() == "wanations":
             query = "UNNATIONS":
     
         async with self.session.get(url, headers=headers) as response:
