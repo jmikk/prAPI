@@ -52,7 +52,7 @@ class prAPI(commands.Cog):
         useragent = await self.config.useragent()
         headers = {"User-Agent": useragent}
         password = await self.config.password()
-       
+        nationname = await self.config.nationName()
         # Prepare the gift
         prepare_data = {
                     "nation": nationname,
