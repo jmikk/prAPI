@@ -224,20 +224,20 @@ class prAPI(commands.Cog):
         sections = [message]
     
         if featured_wa_nation:
-            sections.append(f"\n[spoiler=🌟 Featured WA Nation of the Day 🌟]\n[nation]{featured_wa_nation}[/nation]\n[/spoiler]")
+            sections.append(f"\n[spoiler=🌟 Featured WA Nation of the Day 🌟]\n[nation2]{featured_wa_nation}[/nation]\n[/spoiler]")
     
         if new_wa_nations:
-            wa_nation_lines = "\n".join(f"- [nation]{n}[/nation]" for n in new_wa_nations)
+            wa_nation_lines = "\n".join(f"- [nation2]{n}[/nation]" for n in new_wa_nations)
             sections.append(f"\n[spoiler=📣 Welcome our new WA Nations! 📣]\n{wa_nation_lines}\n[/spoiler]")
     
         if new_all_nations:
-            all_nation_lines = "\n".join(f"- [nation]{n}[/nation]" for n in new_all_nations)
+            all_nation_lines = "\n".join(f"- [nation2]{n}[/nation]" for n in new_all_nations)
             sections.append(f"\n[spoiler=🎉 Welcome our new Nations! 🎉]\n{all_nation_lines}\n[/spoiler]")
     
         sections.append(
             "\n[spoiler=Click here for info on how to subscribe to QOTD]"
             " This Question of the Day is brought to you by [region]The Wellspring[/region]. "
-            "To receive daily QOTDs, telegram me or [nation]9005[/nation]![/spoiler]"
+            "To receive daily QOTDs, telegram me or [nation2]9005[/nation]![/spoiler]"
         )
     
         full_message = "\n".join(sections)
