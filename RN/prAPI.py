@@ -333,7 +333,7 @@ class prAPI(commands.Cog):
                 if region_element is None:
                     return text
     
-                tag_name = "UNNATIONS" if query == "wanations" else "NATIONS"
+                tag_name = "unnations" if query == "wanations" else "NATIONS"
                 nations_text = region_element.find(tag_name).text
                 return nations_text.split(":") if nations_text else []
             except ET.ParseError:
