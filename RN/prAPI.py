@@ -22,14 +22,14 @@ class lootbox(commands.Cog):
 
         self.config.register_global(**default_global)
         
-    @command.command()
+    @commands.command()
     @checks.admin_or_permissions(manage_guild=True)
     async def RN_useragent(self, ctx, *, useragent: str):
         """Set the User-Agent header for the requests."""
         await self.config.useragent.set(useragent)
         await ctx.send(f"User-Agent set to {useragent}")
     
-    @command.command()
+    @commands.command()
     @checks.admin_or_permissions(manage_guild=True)
     async def RN_nationname(self, ctx, *, nationname: str):
         """Set the nationName for the loot box prizes."""
