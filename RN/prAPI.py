@@ -344,4 +344,28 @@ class prAPI(commands.Cog):
             except ET.ParseError:
                 return text
 
-
+    @commands.command()
+    @commands.cooldown(1, 30, commands.BucketType.default)
+    @has_specific_role()
+    async def prep_QOTD_data(self, ctx):
+        """Pre-fetch and save current WA and all nations for QOTD shout-outs."""
+        useragent = await self.config.useragent()
+        if not useragent:
+            await ctx.send("Please ensure User-Agent is set.")
+            return
+    
+        # Fetch nation data
+        current_wa_nations = await self.fetch_nations_list("wanations")
+        current_all_nations = await self.fetch_nations_list("nations")
+    
+        if not isinstance(current_wa_nations, list) or not isinstance(current_all_nations, list):
+            await ctx.send("Failed to fetch nation lists. Check API or User-Agent.")
+            return
+    
+        # Save to config
+        await self.config.last_wa_nations.set(current_wa_nations)
+        await self.config.last_all_nations.set(current_all_nations)
+    
+        await ctx.send("✅ QOTD data pre-populated. You're ready to post when needed!")
+    
+    
