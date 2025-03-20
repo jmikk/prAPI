@@ -14,6 +14,20 @@ class Casino(commands.Cog):
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.roulette_history = []  # Store last 100 rolls
 
+        self.total_bets = {
+        "coinflip": 0,
+        "dice": 0,
+        "slots": 0,
+        "roulette": 0,
+    }
+    
+    self.total_payouts = {
+        "coinflip": 0,
+        "dice": 0,
+        "slots": 0,
+        "roulette": 0,
+    }
+
 
     async def get_balance(self, user: discord.Member):
         return await self.config.user(user).master_balance()
@@ -41,7 +55,7 @@ class Casino(commands.Cog):
         
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
-        
+
         coin_faces = ["🪙 Heads", "🪙 Tails"]
         message = await ctx.send("Flipping the coin... 🪙")
         
@@ -63,6 +77,8 @@ class Casino(commands.Cog):
         
         new_balance = await self.update_balance(ctx.author, winnings)
         await message.edit(content=f"{final_flip}\n{result_text} New balance: {new_balance} WellCoins.")
+        self.total_bets["coinflip"] += bet
+        self.total_payouts["coinflip"] += max(0, winnings)
 
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
@@ -96,6 +112,9 @@ class Casino(commands.Cog):
         
         new_balance = await self.update_balance(ctx.author, winnings)
         await message.edit(content=f"Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: {new_balance} WellCoins.")
+        self.total_bets["dice"] += bet
+        self.total_payouts["dice"] += max(0, winnings)
+
 
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
@@ -140,6 +159,10 @@ class Casino(commands.Cog):
         
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"{display}\n{result_text} New balance: {new_balance} WellCoins.")
+       
+        self.total_bets["slots"] += bet
+        self.total_payouts["slots"] += max(0, payout)
+
 
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
@@ -190,6 +213,10 @@ class Casino(commands.Cog):
         
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"🎡 {color2} {number}\n{result_text} New balance: {new_balance} WellCoins.")
+        
+        self.total_bets["roulette"] += bet
+        self.total_payouts["roulette"] += max(0, payout)
+
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
@@ -216,3 +243,51 @@ class Casino(commands.Cog):
         embed.add_field(name="Total Odds", value=str(total_odds), inline=True)
         
         await ctx.send(embed=embed)
+
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
+    async def casinostats(self, ctx):
+        """Display casino stats: total bets, payouts, expected return, and hot/cold status."""
+        
+        # Expected ER (i.e., house payout rate, can be adjusted)
+        expected_returns = {
+            "coinflip": 0.48,  # Expected ER = 48%
+            "dice": 0.416,     # Expected ER = 41.6%
+            "slots": 0.85,     # Estimated ER = 85%
+            "roulette": 0.473  # Expected ER = 47.3%
+        }
+    
+        embed = discord.Embed(title="🎰 Casino Stats Report", color=discord.Color.purple())
+        total_net = 0
+    
+        for game in self.total_bets:
+            total_bet = self.total_bets[game]
+            total_payout = self.total_payouts[game]
+    
+            if total_bet == 0:
+                actual_er = 0.0
+            else:
+                actual_er = total_payout / total_bet  # Real return percentage
+            
+            expected_er = expected_returns[game]
+            net = total_bet - total_payout
+            total_net += net
+    
+            # Status based on comparison
+            status = "🔥 Hot" if actual_er > expected_er else "❄️ Cold"
+    
+            embed.add_field(
+                name=f"{game.capitalize()} {status}",
+                value=(
+                    f"💰 **Total Bet**: {total_bet}\n"
+                    f"🏆 **Total Payout**: {total_payout}\n"
+                    f"📊 **Actual ER**: {actual_er:.2%}\n"
+                    f"📈 **Expected ER**: {expected_er:.2%}\n"
+                    f"📉 **House Net**: {net}"
+                ),
+                inline=False
+            )
+    
+        embed.set_footer(text=f"🧮 Total House Profit: {total_net} WellCoins")
+        await ctx.send(embed=embed)
+    
