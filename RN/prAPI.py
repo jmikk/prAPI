@@ -193,6 +193,7 @@ class prAPI(commands.Cog):
         async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
             execute_text = await execute_response.text()
             if execute_response.status == 200:
+                await ctx.send(execute_response.text())
                 await ctx.send(f"Successfully posted to the RMB of {region}!")
             else:
                 await ctx.send("Failed to execute RMB post.")
@@ -212,53 +213,12 @@ class prAPI(commands.Cog):
             await ctx.send("Please ensure User-Agent, Nation Name, and Password are all set.")
             return
     
-        # Fetch nation data
-        current_wa_nations = await self.fetch_nations_list("wanations")
-        current_all_nations = await self.fetch_nations_list("nations")
-    
-        last_wa_nations = await self.config.last_wa_nations()
-        last_all_nations = await self.config.last_all_nations()
-    
-        new_wa_nations = [n for n in current_wa_nations if n not in last_wa_nations]
-        new_all_nations = [n for n in current_all_nations if n not in last_all_nations]
-        featured_wa_nation = random.choice(current_wa_nations) if current_wa_nations else None
-
-        await self.config.last_wa_nations.set(current_wa_nations)
-        await self.config.last_all_nations.set(current_all_nations)
-    
-        # Build message sections (DO NOT prepend message again)
-        sections = [message]
-    
-        if featured_wa_nation:
-            sections.append(f"\n[spoiler=🌟 Featured WA Nation of the Day 🌟]\n[nation2]{featured_wa_nation}[/nation]\n[/spoiler]")
-    
-        if new_wa_nations:
-            wa_lines = "\n".join(f"- [nation2]{n}[/nation]" for n in new_wa_nations)
-            sections.append(f"\n[spoiler=📣 Welcome our new WA Nations! 📣]\n{wa_lines}\n[/spoiler]")
-    
-        if new_all_nations:
-            all_lines = "\n".join(f"- [nation2]{n}[/nation]" for n in new_all_nations)
-            sections.append(f"\n[spoiler=🎉 Welcome our new Nations! 🎉]\n{all_lines}\n[/spoiler]")
-    
-        sections.append(
-            "\n[spoiler=Click here for info on how to subscribe to QOTD]"
-            " This Question of the Day is brought to you by [region]The Wellspring[/region]. "
-            "To receive daily QOTDs, telegram me or [nation2]9005[/nation]![/spoiler]"
-        )
-    
-        full_message = "\n".join(sections)
-    
-        # Check length
-        if len(full_message) > 9500:
-            await ctx.send(f"⚠️ Message too long ({len(full_message)} characters). Cannot post to RMB.")
-            return
-    
         # Prepare and post
         prepare_data = {
             "nation": nationname,
             "c": "rmbpost",
             "region": region,
-            "text": full_message,
+            "text": message,
             "mode": "prepare"
         }
         prepare_headers = {"User-Agent": useragent, "X-Password": password}
@@ -282,7 +242,7 @@ class prAPI(commands.Cog):
             "nation": nationname,
             "c": "rmbpost",
             "region": region,
-            "text": full_message,
+            "text": message,
             "mode": "execute",
             "token": token
         }
@@ -327,7 +287,6 @@ class prAPI(commands.Cog):
 
             if response.status != 200:
                 return text
-
             try:
                 root = ET.fromstring(text)
                 region_element = root.find("REGION")
