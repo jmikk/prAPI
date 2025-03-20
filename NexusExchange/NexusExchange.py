@@ -693,12 +693,12 @@ class NexusExchange(commands.Cog):
             if not user:
                 continue  # Skip users not found in the guild
 
-        if not linked_nations:
-            # No linked nations; remove role if present
-            if role in user.roles:
-                await user.remove_roles(role)
-                lost_role += 1
-            continue
+            if not linked_nations:
+                # No linked nations; remove role if present
+                if role in user.roles:
+                    await user.remove_roles(role)
+                    lost_role += 1
+                    continue
     
             has_endorsed_nation = any(nation in endorsers for nation in linked_nations)
     
