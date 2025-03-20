@@ -211,91 +211,6 @@ class prAPI(commands.Cog):
         if not all([useragent, password, nationname]):
             await ctx.send("Please ensure User-Agent, Nation Name, and Password are all set.")
             return
-
-
-                # Fetch nation data
-        current_wa_nations = await self.fetch_nations_list("wanations")
-        current_all_nations = await self.fetch_nations_list("nations")
-    
-        last_wa_nations = await self.config.last_wa_nations()
-        last_all_nations = await self.config.last_all_nations()
-    
-        new_wa_nations = [n for n in current_wa_nations if n not in last_wa_nations]
-        new_all_nations = [n for n in current_all_nations if n not in last_all_nations]
-        featured_wa_nation = random.choice(current_wa_nations) if current_wa_nations else None
-    
-        # Build message sections
-        sections = [message]
-    
-        if featured_wa_nation:
-            sections.append(f"\n[spoiler=🌟 Featured WA Nation of the Day 🌟]\n[nation2]{featured_wa_nation}[/nation]\n[/spoiler]")
-    
-        if new_wa_nations:
-            wa_lines = "\n".join(f"- [nation2]{n}[/nation]" for n in new_wa_nations)
-            sections.append(f"\n[spoiler=📣 Welcome our new WA Nations! 📣]\n{wa_lines}\n[/spoiler]")
-    
-        if new_all_nations:
-            all_lines = "\n".join(f"- [nation2]{n}[/nation]" for n in new_all_nations)
-            sections.append(f"\n[spoiler=🎉 Welcome our new Nations! 🎉]\n{all_lines}\n[/spoiler]")
-    
-        sections.append(
-            "\n[spoiler=Click here for info on how to subscribe to QOTD]"
-            " This Question of the Day is brought to you by [region]The Wellspring[/region]. "
-            "To receive daily QOTDs, telegram me or [nation2]9005[/nation]![/spoiler]"
-        )
-
-        full_message = message +"\n"+ "\n".join(sections)
-    
-        prepare_data = {
-            "nation": nationname,
-            "c": "rmbpost",
-            "region": region,
-            "text": full_message,
-            "mode": "prepare"
-        }
-        prepare_headers = {
-            "User-Agent": useragent,
-            "X-Password": password
-        }
-    
-        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
-            prepare_text = await prepare_response.text()
-            if prepare_response.status != 200:
-                await ctx.send("Failed to prepare RMB post.")
-                await ctx.send(prepare_response.status)
-                await ctx.send(useragent)
-                await ctx.send(nationname)
-
-                return
-    
-            token = self.parse_token(prepare_text)
-            x_pin = prepare_response.headers.get("X-Pin")
-    
-            if not token or not x_pin:
-                await ctx.send("Failed to retrieve the token or X-Pin for RMB post execution.")
-                await ctx.send(prepare_text)
-                return
-    
-        execute_data = {
-            "nation": nationname,
-            "c": "rmbpost",
-            "region": region,
-            "text": full_message,
-            "mode": "execute",
-            "token": token
-        }
-        execute_headers = {
-            "User-Agent": useragent,
-            "X-Pin": x_pin
-        }
-    
-        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
-            execute_text = await execute_response.text()
-            if execute_response.status == 200:
-                await ctx.send(f"Successfully posted to the RMB of {region}!")
-            else:
-                await ctx.send("Failed to execute RMB post.")
-                await ctx.send(execute_text)
     
         # Fetch nation data
         current_wa_nations = await self.fetch_nations_list("wanations")
@@ -308,7 +223,7 @@ class prAPI(commands.Cog):
         new_all_nations = [n for n in current_all_nations if n not in last_all_nations]
         featured_wa_nation = random.choice(current_wa_nations) if current_wa_nations else None
     
-        # Build message sections
+        # Build message sections (DO NOT prepend message again)
         sections = [message]
     
         if featured_wa_nation:
@@ -329,25 +244,75 @@ class prAPI(commands.Cog):
         )
     
         full_message = "\n".join(sections)
-        
-        if success:
-            await self.config.last_wa_nations.set(current_wa_nations)
-            await self.config.last_all_nations.set(current_all_nations)
     
-            log_channel_id = 1099398125061406770
-            ping_role_id = 1115271309404942439
-            log_channel = self.bot.get_channel(log_channel_id)
+        # Check length
+        if len(full_message) > 9500:
+            await ctx.send(f"⚠️ Message too long ({len(full_message)} characters). Cannot post to RMB.")
+            return
     
-            if log_channel:
-                await log_channel.send(f"{url_or_text} <@&{ping_role_id}>")
+        # Prepare and post
+        prepare_data = {
+            "nation": nationname,
+            "c": "rmbpost",
+            "region": region,
+            "text": full_message,
+            "mode": "prepare"
+        }
+        prepare_headers = {"User-Agent": useragent, "X-Password": password}
+    
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
+            prepare_text = await prepare_response.text()
+            if prepare_response.status != 200:
+                await ctx.send(f"Failed to prepare RMB post. Status: {prepare_response.status}")
+                await self.split_and_send(ctx, prepare_text)
+                return
+    
+            token = self.parse_token(prepare_text)
+            x_pin = prepare_response.headers.get("X-Pin")
+    
+            if not token or not x_pin:
+                await ctx.send("Failed to retrieve token or X-Pin for RMB post execution.")
+                await self.split_and_send(ctx, prepare_text)
+                return
+    
+        execute_data = {
+            "nation": nationname,
+            "c": "rmbpost",
+            "region": region,
+            "text": full_message,
+            "mode": "execute",
+            "token": token
+        }
+        execute_headers = {"User-Agent": useragent, "X-Pin": x_pin}
+    
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
+            execute_text = await execute_response.text()
+            if execute_response.status == 200:
+                try:
+                    root = ET.fromstring(execute_text)
+                    success_text = root.find("SUCCESS").text
+                    post_url_part = success_text.split('"')[0]
+                    full_url = f"https://www.nationstates.net{post_url_part}"
+                except Exception:
+                    full_url = "URL parse failed."
+    
+                await self.config.last_wa_nations.set(current_wa_nations)
+                await self.config.last_all_nations.set(current_all_nations)
+    
+                log_channel_id = 1099398125061406770
+                ping_role_id = 1115271309404942439
+                log_channel = self.bot.get_channel(log_channel_id)
+    
+                if log_channel:
+                    await log_channel.send(f"{full_url} <@&{ping_role_id}>")
+                else:
+                    await ctx.send("Post succeeded, but I couldn't find the log channel.")
+    
+                await ctx.send(f"✅ QOTD successfully posted to RMB of {region}!")
             else:
-                await ctx.send("Post succeeded, but I couldn't find the log channel.")
-    
-            await ctx.send(f"✅ QOTD successfully posted to RMB of {region}!")
-        else:
-            await self.split_and_send(ctx, result_message)
-            if url_or_text:
-                await self.split_and_send(ctx, url_or_text)
+                await ctx.send("Failed to execute RMB post.")
+                await self.split_and_send(ctx, execute_text)
+
 
 
 
