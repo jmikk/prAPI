@@ -281,8 +281,7 @@ class Casino(commands.Cog):
                 value=(
                     f"💰 **Total Bet**: {total_bet}\n"
                     f"🏆 **Total Payout**: {total_payout}\n"
-                    f"📊 **Actual ER**: {actual_er:.2%}\n"
-                    f"📈 **Expected ER**: {expected_er:.2%}\n"
+                    f"📊 **Actual Payout %**: {actual_er:.2%}\n"
                     f"📉 **House Net**: {net}"
                 ),
                 inline=False
