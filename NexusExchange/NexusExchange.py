@@ -638,6 +638,8 @@ class NexusExchange(commands.Cog):
             user = ctx.guild.get_member(int(user_id))
             if not user:
                 continue  # Skip users not found in the guild
+
+
     
             is_resident = any(nation in resendents for nation in linked_nations)
     
