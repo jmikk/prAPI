@@ -63,6 +63,12 @@ class NexusExchange(commands.Cog):
         self.MAX_NATIONS_PER_TG = 8
         self.MAX_BUTTONS_PER_ROW = 5
         self.MAX_ROWS_PER_MESSAGE = 5  # Discord allows 5 rows of buttons per message
+    
+        self.config.register_guild(
+        # ... existing config ...
+        welcome_message=None,  # Message to send when a new user joins
+        welcome_channel=None   # Optional: allow setting a specific channel
+    )
 
         
 
@@ -1774,6 +1780,67 @@ class NexusExchange(commands.Cog):
                 updated_count += 1
     
         await ctx.send(f"✅ Updated linked nations for {updated_count} users.")
+
+
+    @commands.guild_only()
+    @commands.admin()
+    @commands.command(name="setwelcome")
+    async def set_welcome_message(self, ctx, *, message: str):
+        """Set the welcome message for new members."""
+        await self.config.guild(ctx.guild).welcome_message.set(message)
+        await ctx.send(f"✅ Welcome message has been set to:\n\n{message}")
+
+    @commands.guild_only()
+    @commands.admin()
+    @commands.command(name="setwelcomechannel")
+    async def set_welcome_channel(self, ctx, channel: discord.TextChannel):
+        """Set the channel where the welcome message will be sent."""
+        await self.config.guild(ctx.guild).welcome_channel.set(channel.id)
+        await ctx.send(f"✅ Welcome messages will be sent in {channel.mention}.")
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        guild = member.guild
+        welcome_message = await self.config.guild(guild).welcome_message()
+        welcome_channel_id = await self.config.guild(guild).welcome_channel()
+        
+        if not welcome_message:
+            return  # No welcome message set
+    
+        # Format placeholders (e.g., {user}, {mention})
+        formatted_message = welcome_message.replace("{user}", member.name).replace("{mention}", member.mention)
+    
+        if welcome_channel_id:
+            channel = guild.get_channel(welcome_channel_id)
+        else:
+            # Default to system channel or first text channel
+            channel = guild.system_channel or discord.utils.get(guild.text_channels, permissions__send_messages=True)
+    
+        if channel:
+            try:
+                await channel.send(formatted_message)
+            except discord.Forbidden:
+                print(f"Missing permissions to send messages in {channel.id}")
+
+    
+    
+    @commands.guild_only()
+    @commands.admin()
+    @commands.command(name="viewwelcome")
+    async def view_welcome_message(self, ctx):
+        """View the current welcome message."""
+        message = await self.config.guild(ctx.guild).welcome_message()
+        channel_id = await self.config.guild(ctx.guild).welcome_channel()
+        channel = ctx.guild.get_channel(channel_id) if channel_id else None
+    
+        if not message:
+            await ctx.send("No welcome message set.")
+            return
+    
+        await ctx.send(f"📜 Welcome Message:\n{message}\n\n📢 Channel: {channel.mention if channel else 'Default system/first available channel'}")
+
+
+
 
 
 
