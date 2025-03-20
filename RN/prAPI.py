@@ -254,10 +254,18 @@ class prAPI(commands.Cog):
                 try:
                     root = ET.fromstring(execute_text)
                     success_text = root.find("SUCCESS").text
-                    post_url_part = success_text.split('"')[0]
-                    full_url = f"https://www.nationstates.net{post_url_part}"
+                
+                    # Extract URL from the href in the SUCCESS text
+                    import re
+                    match = re.search(r'href="([^"]+)"', execute_text)
+                    if match:
+                        post_url_part = match.group(1)
+                        full_url = f"https://www.nationstates.net{post_url_part}"
+                    else:
+                        full_url = "URL parse failed."
                 except Exception:
                     full_url = "URL parse failed."
+
     
                 log_channel_id = 1099398125061406770
                 ping_role_id = 1115271309404942439
