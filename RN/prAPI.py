@@ -256,7 +256,7 @@ class prAPI(commands.Cog):
             prepare_text = await prepare_response.text()
             if prepare_response.status != 200:
                 await ctx.send("Failed to prepare RMB post.")
-                await self.split_and_send(ctx, prepare_text)
+                await ctx.send(prepare_response.status)
                 return
 
             token = self.parse_token(prepare_text)
