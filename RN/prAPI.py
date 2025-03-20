@@ -193,7 +193,7 @@ class prAPI(commands.Cog):
         async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
             execute_text = await execute_response.text()
             if execute_response.status == 200:
-                await ctx.send(execute_response.text())
+                await ctx.send(await execute_response.text())
                 await ctx.send(f"Successfully posted to the RMB of {region}!")
             else:
                 await ctx.send("Failed to execute RMB post.")
