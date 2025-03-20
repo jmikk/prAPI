@@ -21,7 +21,7 @@ class Casino(commands.Cog):
         "roulette": 0,
     }
     
-    self.total_payouts = {
+        self.total_payouts = {
         "coinflip": 0,
         "dice": 0,
         "slots": 0,
