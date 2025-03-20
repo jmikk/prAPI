@@ -222,6 +222,9 @@ class prAPI(commands.Cog):
         new_wa_nations = [n for n in current_wa_nations if n not in last_wa_nations]
         new_all_nations = [n for n in current_all_nations if n not in last_all_nations]
         featured_wa_nation = random.choice(current_wa_nations) if current_wa_nations else None
+
+        await self.config.last_wa_nations.set(current_wa_nations)
+        await self.config.last_all_nations.set(current_all_nations)
     
         # Build message sections (DO NOT prepend message again)
         sections = [message]
@@ -296,9 +299,6 @@ class prAPI(commands.Cog):
                 except Exception:
                     full_url = "URL parse failed."
     
-                await self.config.last_wa_nations.set(current_wa_nations)
-                await self.config.last_all_nations.set(current_all_nations)
-    
                 log_channel_id = 1099398125061406770
                 ping_role_id = 1115271309404942439
                 log_channel = self.bot.get_channel(log_channel_id)
@@ -343,29 +343,4 @@ class prAPI(commands.Cog):
                 return nations_text.split(delimiter)
             except ET.ParseError:
                 return text
-
-    @commands.command()
-    @commands.cooldown(1, 30, commands.BucketType.default)
-    @has_specific_role()
-    async def prep_QOTD_data(self, ctx):
-        """Pre-fetch and save current WA and all nations for QOTD shout-outs."""
-        useragent = await self.config.useragent()
-        if not useragent:
-            await ctx.send("Please ensure User-Agent is set.")
-            return
-    
-        # Fetch nation data
-        current_wa_nations = await self.fetch_nations_list("wanations")
-        current_all_nations = await self.fetch_nations_list("nations")
-    
-        if not isinstance(current_wa_nations, list) or not isinstance(current_all_nations, list):
-            await ctx.send("Failed to fetch nation lists. Check API or User-Agent.")
-            return
-    
-        # Save to config
-        await self.config.last_wa_nations.set(current_wa_nations)
-        await self.config.last_all_nations.set(current_all_nations)
-    
-        await ctx.send("✅ QOTD data pre-populated. You're ready to post when needed!")
-    
     
