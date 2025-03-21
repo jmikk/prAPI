@@ -113,7 +113,7 @@ class NexusExchange(commands.Cog):
 
         nation_data = await self.config.nations()
         for nation in nations:
-            nation_data[nation] = nation_data.get(nation, 0) + 1  # Increment day count
+            nation_data[nation2] = nation_data.get(nation, 0) + 1  # Increment day count
 
         await self.config.nations.set(nation_data)
         
@@ -297,14 +297,14 @@ class NexusExchange(commands.Cog):
         medals = ["🥇", "🥈", "🥉"]  # Gold, Silver, Bronze
         
         richest_section = "\n".join([
-            f"[*][b]{medals[i]} {i+1}:[/b] [nation]{nation}[/nation] - [b]{balance} WellCoins[/b]"
+            f"[*][b]{medals[i]} {i+1}:[/b] [nation2]{nation}[/nation] - [b]{balance} WellCoins[/b]"
             for i, (nation, balance) in enumerate(top_richest)
         ])
 
 
         # Full bank listing
         full_bank_section = "\n".join([
-            f"[*][b][nation]{nation}[/nation][/b] - [b]{balance}: WellCoins[/b]"
+            f"[*][b][nation2]{nation}[/nation][/b] - [b]{balance}: WellCoins[/b]"
             for nation, balance in bank_data
         ])
 
@@ -671,10 +671,10 @@ class NexusExchange(commands.Cog):
         message_parts = []
         if new_nations:
             message_parts.append("🌸 Welcome to The Wellspring! 🌸\nA warm welcome to our newest nations:\n" +
-                                 ", ".join(f"[nation]{nation}[/nation]" for nation in new_nations))
+                                 ", ".join(f"[nation2]{nation}[/nation]" for nation in new_nations))
         if new_wa_nations:
             message_parts.append("⚖️ New WA Nations Alert! ⚖️\nJoin us in celebrating our newest World Assembly members:\n" +
-                                 ", ".join(f"[nation]{nation}[/nation]" for nation in new_wa_nations))
+                                 ", ".join(f"[nation2]{nation}[/nation]" for nation in new_wa_nations))
     
         if not message_parts:
             await ctx.send("No new nations or WA nations found since last check.")
@@ -961,7 +961,7 @@ class NexusExchange(commands.Cog):
         # Reward users
         await self.reward_users(user_votes, vote_9006_council1, vote_9006_council2)
 
-        await ctx.send(f"Users who voted the same as [nation]well-sprung_jack[/nation] have been rewarded!")
+        await ctx.send(f"Users who voted the same as [nation2]well-sprung_jack[/nation] have been rewarded!")
         
         
 
