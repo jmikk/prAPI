@@ -609,9 +609,133 @@ class NexusExchange(commands.Cog):
                     await self.resChk(channel)
                     await self.pay_endorsers(channel)
                     await self.reward_voters(channel)
+                    await self.newNation(channel)
                 except Exception as e:
                     await channel.send(e)
 
+    def parse_token(self, xml_data: str) -> str:
+        """Extracts the token from XML response."""
+        try:
+            root = ET.fromstring(xml_data)
+            token = root.find("SUCCESS").text
+            return token
+        except ET.ParseError:
+            return None
+
+    @commands.command()
+    @commands.admin()
+    async def newNation(self, ctx):
+        """Post a shoutout to all new nations and WA nations in The Wellspring."""
+        region = "the_wellspring"
+        nationname = await self.config.nationName()
+        password = await self.config.password()
+        useragent = await self.config.useragent()
+    
+        if not all([useragent, password, nationname]):
+            await ctx.send("Please ensure User-Agent, Nation Name, and Password are all set.")
+            return
+    
+        headers = {"User-Agent": useragent}
+    
+        # Fetch current nations and WA nations
+        async with aiohttp.ClientSession(headers=headers) as session:
+            # Nations
+            async with session.get(f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=nations") as resp_nations:
+                nations_data = await resp_nations.text()
+                start_tag, end_tag = "<NATIONS>", "</NATIONS>"
+                start_index = nations_data.find(start_tag) + len(start_tag)
+                end_index = nations_data.find(end_tag)
+                current_nations = set(nations_data[start_index:end_index].split(":"))
+    
+            # WA Nations
+            async with session.get(f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=wanations") as resp_wa:
+                wa_data = await resp_wa.text()
+                start_tag, end_tag = "<UNNATIONS>", "</UNNATIONS>"
+                start_index = wa_data.find(start_tag) + len(start_tag)
+                end_index = wa_data.find(end_tag)
+                current_wa_nations = set(wa_data[start_index:end_index].split(","))
+    
+        # Get stored previous lists from config
+        previous_nations = set(await self.config.get_raw("previous_nations", default=[]))
+        previous_wa_nations = set(await self.config.get_raw("previous_wa_nations", default=[]))
+    
+        # Determine new nations and new WA members
+        new_nations = current_nations - previous_nations
+        new_wa_nations = current_wa_nations - previous_wa_nations
+    
+        # Save current lists for next time
+        await self.config.set_raw("previous_nations", value=list(current_nations))
+        await self.config.set_raw("previous_wa_nations", value=list(current_wa_nations))
+    
+        # Format RMB message
+        message_parts = []
+        if new_nations:
+            message_parts.append("🌸 Welcome to The Wellspring! 🌸\nA warm welcome to our newest nations:\n" +
+                                 ", ".join(f"[nation]{nation}[/nation]" for nation in new_nations))
+        if new_wa_nations:
+            message_parts.append("⚖️ New WA Nations Alert! ⚖️\nJoin us in celebrating our newest World Assembly members:\n" +
+                                 ", ".join(f"[nation]{nation}[/nation]" for nation in new_wa_nations))
+    
+        if not message_parts:
+            await ctx.send("No new nations or WA nations found since last check.")
+            return
+    
+        final_message = "\n\n".join(message_parts)
+    
+        # Prepare RMB post
+        prepare_data = {
+            "nation": nationname,
+            "c": "rmbpost",
+            "region": region,
+            "text": final_message,
+            "mode": "prepare"
+        }
+        prepare_headers = {
+            "User-Agent": useragent,
+            "X-Password": password
+        }
+    
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
+                prepare_text = await prepare_response.text()
+                if prepare_response.status != 200:
+                    await ctx.send("Failed to prepare RMB post.")
+                    await ctx.send(prepare_text)
+                    return
+    
+                token = self.parse_token(prepare_text)
+                x_pin = prepare_response.headers.get("X-Pin")
+    
+                if not token or not x_pin:
+                    await ctx.send("Failed to retrieve the token or X-Pin for RMB post execution.")
+                    await ctx.send(prepare_text)
+                    return
+    
+        # Execute RMB post
+        execute_data = {
+            "nation": nationname,
+            "c": "rmbpost",
+            "region": region,
+            "text": final_message,
+            "mode": "execute",
+            "token": token
+        }
+        execute_headers = {
+            "User-Agent": useragent,
+            "X-Pin": x_pin
+        }
+    
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
+                execute_text = await execute_response.text()
+                if execute_response.status == 200:
+                    await ctx.send(f"✅ Successfully posted shout-out to RMB for {len(new_nations)} new nations and {len(new_wa_nations)} new WA nations!")
+                else:
+                    await ctx.send("Failed to execute RMB post.")
+                    await ctx.send(execute_text)
+
+
+        
 
 
     @commands.command()
