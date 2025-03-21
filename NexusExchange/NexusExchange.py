@@ -59,7 +59,7 @@ class NexusExchange(commands.Cog):
         )
 
         self.API_URL = "https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=nations"
-        self.USER_AGENT = "9006"
+        self.USER_AGENT = "9005"
         self.MAX_NATIONS_PER_TG = 8
         self.MAX_BUTTONS_PER_ROW = 5
         self.MAX_ROWS_PER_MESSAGE = 5  # Discord allows 5 rows of buttons per message
