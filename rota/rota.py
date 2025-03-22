@@ -276,13 +276,12 @@ class rota(commands.Cog):
             embed = discord.Embed(title=desc, color=discord.Color.purple())
 
             # Immediate next issue posting
-            desc_element = root.find('.//DESC')
             outcome_embed = discord.Embed(
                 title="The Fates have decided, enjoy the outcome.",
             )
-            embed.add_field(name="Fresh from the well", value=desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**"), inline=False)
+            outcome_embed.add_field(name="Fresh from the well", value=desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**"), inline=False)
             if top_stats:
-                embed.add_field(name="Top Stat Changes", value=top_stats, inline=False)
+                outcome_embed.add_field(name="Top Stat Changes", value=top_stats, inline=False)
                 
             outcome_embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/3/3c/Crystal_Clear_app_korganizer.png")
     
