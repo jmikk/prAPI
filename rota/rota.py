@@ -107,7 +107,7 @@ class rota(commands.Cog):
         await self.config.user_agent.set(user_agent)
         await ctx.send(f"Configuration updated: Nation='{nation}', Password='[HIDDEN]', User-Agent='{user_agent}'")
 
-    @tasks.loop(minutes=30)
+    @tasks.loop(minutes=1)
     async def check_activity(self):
         channel_id = 1323331769012846592
         channel = self.bot.get_channel(channel_id)
@@ -124,8 +124,10 @@ class rota(commands.Cog):
 
         last_activity = datetime.fromisoformat(last_activity_str)
         now = datetime.utcnow()
-        issue_time_limit = last_activity + timedelta(hours=24)
-        max_time_limit = last_activity + timedelta(days=5)
+        issue_time_limit = last_activity + timedelta(minutes=5)
+        max_time_limit = last_activity + timedelta(minutes=10)
+        #issue_time_limit = last_activity + timedelta(hours=24)
+        #max_time_limit = last_activity + timedelta(days=5)
 
         if now >= issue_time_limit or now >= max_time_limit:
             await self.submit_vote(channel)
