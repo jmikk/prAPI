@@ -625,13 +625,18 @@ class NexusExchange(commands.Cog):
             await ctx.send("One or both roles not found.")
             return
 
-        if role_a not in member.roles:
-            if role_b in member.roles:
+        removed_count = 0
+        for member in role_b.members:
+            if role_a not in member.roles:
                 try:
                     await member.remove_roles(role_b, reason="Missing required role.")
-                    await ctx.send(f"{member.mention} did not have {role_a.name} and {role_b.name} was removed.")
+                    removed_count += 1
                 except discord.Forbidden:
-                    await ctx.send("I don't have permission to remove that role.")
+                    await ctx.send(f"Cannot remove {role_b.name} from {member.mention} — insufficient permissions.")
+                except Exception as e:
+                    await ctx.send(f"Error removing role from {member.mention}: {e}")
+
+        await ctx.send(f"Finished. Removed {role_b.name} from {removed_count} member(s) who lacked {role_a.name}.")
 
     
 
