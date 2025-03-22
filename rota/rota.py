@@ -238,7 +238,7 @@ class rota(commands.Cog):
 
         await self.process_vote()
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(minutes=30)
     async def check_activity(self):
         active = await self.config.vote_active()
         if not active:
@@ -250,8 +250,8 @@ class rota(commands.Cog):
 
         last_activity = datetime.fromisoformat(last_activity_str)
         now = datetime.utcnow()
-        issue_time_limit = last_activity + timedelta(minutes=5)
-        max_time_limit = last_activity + timedelta(minutes=10)
+        issue_time_limit = last_activity + timedelta(hours=24)
+        max_time_limit = last_activity + timedelta(hours=120)
 
         if now >= issue_time_limit or now >= max_time_limit:
             await self.process_vote()
