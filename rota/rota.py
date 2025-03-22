@@ -205,6 +205,14 @@ class rota(commands.Cog):
             option_summaries[option_id] = title_summary
 
         await self.config.option_summaries.set(option_summaries)
+        role_id = 1130304387156279368
+            allowed_mentions = AllowedMentions(
+            everyone=False,  # Disables @everyone and @here mentions
+            users=True,      # Enables user mentions
+            roles=True       # Enables role mentions
+        )
+        await ctx.send(f"Once again I call upon <@&{role_id}> to decide you have 24 hours, this can be extended by dissusing in <#1323331769012846592>.  If you can't all agree I'll just thorw the issue away.",allowed_mentions=allowed_mentions)
+            
 
     @commands.command()
     async def endvote(self, ctx):
@@ -260,31 +268,27 @@ class rota(commands.Cog):
 
             desc = root.findtext(".//DESC", default="No description.")
             rankings = root.findall(".//RANK")
-            reclasses = root.findall(".//RECLASSIFY")
             headlines = [el.text for el in root.findall(".//HEADLINE")]
-            top_stats = sorted(rankings, key=lambda x: abs(float(x.find("CHANGE").text)), reverse=True)[:3]
+            top_stats = sorted(rankings, key=lambda x: abs(float(x.find("PCHANGE").text)), reverse=True)[:3]
 
             embed = discord.Embed(title=desc, color=discord.Color.purple())
 
-            stat_summary = ""
-            for stat in top_stats:
-                rank_id = stat.get("id")
-                stat_name = STAT_NAMES.get(rank_id, f"Rank {rank_id}")
-                change = stat.find("CHANGE").text
-                pchange = stat.find("PCHANGE").text
-                stat_summary += f"{stat_name}: {change} ({pchange}%)\n"
-
-            if stat_summary:
-                embed.add_field(name="Top Stat Changes", value=stat_summary, inline=False)
-
-            if reclasses:
-                reclass_text = "\n".join([f"{r.find('FROM').text} → {r.find('TO').text}" for r in reclasses])
-                embed.add_field(name="Policy Changes", value=reclass_text, inline=False)
-
-            if headlines:
-                embed.set_footer(text=random.choice(headlines))
-
-            await channel.send(embed=embed, file=discord.File(io.StringIO(xml_response), filename=f"issue_{issue_id}_option_{top_option}.xml"))
+            # Immediate next issue posting
+            desc_element = root.find('.//DESC')
+            outcome_embed = discord.Embed(
+                title="The Fates have decided, enjoy the outcome.",
+            )
+            embed.add_field(name="Fresh from the well", value=desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**"), inline=False)
+            if top_stats:
+                embed.add_field(name="Top Stat Changes", value=top_stats, inline=False)
+                
+            outcome_embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/3/3c/Crystal_Clear_app_korganizer.png")
+    
+            channel = self.bot.get_channel(RESULTS_CHANNEL_ID)
+            await channel.send(embed=outcome_embed)
+    
+            ctx = await self.bot.get_context(channel.last_message)
+            await ctx.invoke(self.bot.get_command("postissue"))
 
         await self.config.votes.clear()
         await self.config.issue_id.clear()
