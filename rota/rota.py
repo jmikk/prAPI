@@ -1,5 +1,6 @@
 import discord
-from redbot.core import commands, Config, tasks
+from redbot.core import commands, Config
+from discord import tasks
 import aiohttp
 import xml.etree.ElementTree as ET
 import asyncio
