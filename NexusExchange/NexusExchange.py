@@ -328,7 +328,7 @@ class NexusExchange(commands.Cog):
         # Dispatch content
         dispatch_content = f"""
 [background-block=#BAEBFA]
-[hr][center][img]https://i.imgur.com/8E2mi1l.png[/img][hr][/center]
+[hr][center][img]https://i.imgur.com/BDSuZJg.png[/img][hr][/center]
 [/background-block]
 
 [background-block=#2A6273]
