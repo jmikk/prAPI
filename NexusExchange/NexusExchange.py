@@ -362,7 +362,7 @@ class NexusExchange(commands.Cog):
 
 """
 
-        await ctx.send(self.post_dispatch(dispatch_content))
+        await ctx.send(await self.post_dispatch(dispatch_content))
         
     async def post_dispatch(self, dispatch_content):
         """Posts the updated dispatch to NationStates API"""
