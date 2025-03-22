@@ -497,7 +497,7 @@ class HungerGamesAI:
 
 class SponsorButton(Button):
     """Button to sponsor a random tribute with an item."""
-    def __init__(self, cog, guild, public_channel):
+    def __init__(self, cog):
         super().__init__(label="Sponsor a Random Tribute", style=discord.ButtonStyle.success)
         self.cog = cog
         self.guild = guild
