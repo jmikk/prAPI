@@ -1981,8 +1981,23 @@ class NexusExchange(commands.Cog):
     
         await ctx.send(f"📜 Welcome Message:\n{message}\n\n📢 Channel: {channel.mention if channel else 'Default system/first available channel'}")
 
-
-
+    @commands.guild_only()
+    @commands.admin()
+    @commands.command(name="dropnation")
+    async def drop_nation(self, ctx, nation_name: str):
+        """Admin command to remove a nation from all users' linked nations."""
+        formatted_nation = nation_name.lower().replace(" ", "_")
+        all_users = await self.config.all_users()
+        dropped_count = 0
+    
+        for user_id, data in all_users.items():
+            linked_nations = data.get("linked_nations", [])
+            if formatted_nation in linked_nations:
+                linked_nations.remove(formatted_nation)
+                await self.config.user_from_id(user_id).linked_nations.set(linked_nations)
+                dropped_count += 1
+    
+        await ctx.send(f"✅ Nation `{formatted_nation}` was removed from `{dropped_count}` user(s)' linked nations.")
 
 
 
