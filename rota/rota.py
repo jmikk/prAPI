@@ -12,6 +12,7 @@ from discord import AllowedMentions
 
 API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 RESULTS_CHANNEL_ID = 1130324894031290428  # Channel for outputting results
+issues_channel = 1098673276064120842
 
 # Example face URLs categorized by gender
 FACE_IMAGES = {
@@ -173,6 +174,7 @@ class rota(commands.Cog):
     @commands.command()
     @commands.guild_only()
     async def postissue(self, ctx):
+        issues_channel = ctx.channel
         xml_data = await self.fetch_issues()
         root = ET.fromstring(xml_data)
 
@@ -267,7 +269,6 @@ class rota(commands.Cog):
             headline = root.findtext(".//HEADLINE", default="No headlines.")
             embed = discord.Embed(title="Issue Dismissed", description=headline, color=discord.Color.red())
             embed.set_footer(text=f"Issue #{issue_id} was dismissed due to no votes.")
-            await channel.send(embed=embed, file=discord.File(io.StringIO(xml_response), filename=f"issue_{issue_id}_dismissed.xml"))
         else:
             option_counts = {}
             for opt in votes.values():
@@ -303,7 +304,7 @@ class rota(commands.Cog):
                 
             outcome_embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/3/3c/Crystal_Clear_app_korganizer.png")
     
-            channel = self.bot.get_channel(RESULTS_CHANNEL_ID)
+            channel = self.bot.get_channel(issues_channel)
             await channel.send(embed=outcome_embed)
 
         await self.config.votes.clear()
