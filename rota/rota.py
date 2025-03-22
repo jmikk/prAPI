@@ -220,4 +220,17 @@ class rota(commands.Cog):
 
 class VoteButton(discord.ui.Button):
     def __init__(self, option_id, label):
-        super().__init__(
+        super().__init__(label=label, style=discord.ButtonStyle.primary)
+        self.option_id = option_id
+
+    async def callback(self, interaction: discord.Interaction):
+        cog = interaction.client.get_cog("rota")
+        if not cog:
+            await interaction.response.send_message("Voting system is currently unavailable.", ephemeral=True)
+            return
+
+        votes = await cog.config.votes()
+        votes[str(interaction.user.id)] = self.option_id
+        await cog.config.votes.set(votes)
+        await cog.config.last_activity.set(datetime.utcnow().isoformat())
+        await interaction.response.send_message(f"Your vote for Option {self.option_id} has been recorded.", ephemeral=True)
