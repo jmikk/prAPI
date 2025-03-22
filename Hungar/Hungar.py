@@ -500,12 +500,15 @@ class SponsorButton(Button):
     def __init__(self, cog):
         super().__init__(label="Sponsor a Random Tribute", style=discord.ButtonStyle.success)
         self.cog = cog
-        self.guild = guild
-        self.public_channel = public_channel  # Store public channel
 
     async def callback(self, interaction: Interaction):
         user = interaction.user
-        guild_config = await self.cog.config.guild(self.guild).all()
+        guild = interaction.guild  # Get the guild from the interaction
+        if guild is None:
+            await interaction.response.send_message("This interaction must be used in a server.", ephemeral=True)
+            return
+
+        guild_config = await self.cog.config.guild(guild).all()
         players = guild_config["players"]
         alive_players = [p for p in players.values() if p["alive"]]
 
@@ -525,20 +528,21 @@ class SponsorButton(Button):
 
         # Select a random tribute
         tribute = random.choice(alive_players)
-        stat = random.choice(["Def", "Str", "Con", "Wis","HP"])
+        stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
         boost = random.randint(1, 10)
         tribute["stats"][stat] += boost
 
         # Save updated player data
-        await self.cog.config.guild(self.guild).players.set(players)
+        await self.cog.config.guild(guild).players.set(players)
 
-        # Announce sponsorship
-        await self.public_channel.send(
+        # Announce sponsorship in the same channel as the interaction
+        await interaction.channel.send(
             f"🎁 **{user.display_name}** sponsored **{tribute['name']}** with a **+{boost} boost to {stat}**!"
         )
 
-        # Defer interaction response
+        # Defer interaction response to avoid 'interaction failed'
         await interaction.response.defer()
+
 
 
 
