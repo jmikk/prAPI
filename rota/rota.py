@@ -16,15 +16,60 @@ RESULTS_CHANNEL_ID = 1130324894031290428  # Channel for outputting results
 FACE_IMAGES = {
     "male": [
         "https://randomuser.me/api/portraits/men/1.jpg",
+        "https://randomuser.me/api/portraits/men/2.jpg",
         "https://randomuser.me/api/portraits/men/3.jpg",
-        "https://randomuser.me/api/portraits/men/5.jpg"
+        "https://randomuser.me/api/portraits/men/4.jpg",
+        "https://randomuser.me/api/portraits/men/5.jpg",
+        "https://randomuser.me/api/portraits/men/6.jpg",
+        "https://randomuser.me/api/portraits/men/7.jpg",
+        "https://randomuser.me/api/portraits/men/8.jpg",
+        "https://randomuser.me/api/portraits/men/9.jpg",
+        "https://randomuser.me/api/portraits/men/10.jpg",
+        "https://randomuser.me/api/portraits/men/11.jpg",
+        "https://randomuser.me/api/portraits/men/12.jpg",
+        "https://randomuser.me/api/portraits/men/13.jpg",
+        "https://randomuser.me/api/portraits/men/14.jpg",
+        "https://randomuser.me/api/portraits/men/15.jpg",
+        "https://randomuser.me/api/portraits/men/16.jpg",
+        "https://randomuser.me/api/portraits/men/17.jpg",
+        "https://randomuser.me/api/portraits/men/18.jpg",
+        "https://randomuser.me/api/portraits/men/19.jpg",
+        "https://randomuser.me/api/portraits/men/20.jpg",
+        "https://randomuser.me/api/portraits/men/21.jpg",
     ],
     "female": [
+        "https://randomuser.me/api/portraits/women/1.jpg",
         "https://randomuser.me/api/portraits/women/2.jpg",
-        "https://randomuser.me/api/portraits/women/4.jpg"
+        "https://randomuser.me/api/portraits/women/3.jpg",
+        "https://randomuser.me/api/portraits/women/4.jpg",
+        "https://randomuser.me/api/portraits/women/5.jpg",
+        "https://randomuser.me/api/portraits/women/6.jpg",
+        "https://randomuser.me/api/portraits/women/7.jpg",
+        "https://randomuser.me/api/portraits/women/8.jpg",
+        "https://randomuser.me/api/portraits/women/9.jpg",
+        "https://randomuser.me/api/portraits/women/10.jpg",
+        "https://randomuser.me/api/portraits/women/11.jpg",
+        "https://randomuser.me/api/portraits/women/12.jpg",
+        "https://randomuser.me/api/portraits/women/13.jpg",
+        "https://randomuser.me/api/portraits/women/14.jpg",
+        "https://randomuser.me/api/portraits/women/15.jpg",
+        "https://randomuser.me/api/portraits/women/16.jpg",
+        "https://randomuser.me/api/portraits/women/17.jpg",
+        "https://randomuser.me/api/portraits/women/18.jpg",
+        "https://randomuser.me/api/portraits/women/19.jpg",
+        "https://randomuser.me/api/portraits/women/20.jpg",
+        
     ],
     "neutral": [
-        "https://randomuser.me/api/portraits/lego/1.jpg"
+        "https://randomuser.me/api/portraits/lego/1.jpg",
+        "https://randomuser.me/api/portraits/lego/2.jpg",
+        "https://randomuser.me/api/portraits/lego/3.jpg",
+        "https://randomuser.me/api/portraits/lego/4.jpg",
+        "https://randomuser.me/api/portraits/lego/5.jpg",
+        "https://randomuser.me/api/portraits/lego/6.jpg",
+        "https://randomuser.me/api/portraits/lego/7.jpg",
+        "https://randomuser.me/api/portraits/lego/8.jpg",
+        "https://randomuser.me/api/portraits/lego/9.jpg",
     ]
 }
 
