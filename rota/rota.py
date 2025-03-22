@@ -206,7 +206,7 @@ class rota(commands.Cog):
 
         await self.config.option_summaries.set(option_summaries)
         role_id = 1130304387156279368
-            allowed_mentions = AllowedMentions(
+        allowed_mentions = AllowedMentions(
             everyone=False,  # Disables @everyone and @here mentions
             users=True,      # Enables user mentions
             roles=True       # Enables role mentions
