@@ -496,67 +496,51 @@ class HungerGamesAI:
         
 
 class SponsorButton(Button):
-    def __init__(self, cog):
-        super().__init__(label="Sponsor a Tribute", style=discord.ButtonStyle.danger)
+    """Button to sponsor a random tribute with an item."""
+    def __init__(self, cog, guild, public_channel):
+        super().__init__(label="Sponsor a Random Tribute", style=discord.ButtonStyle.success)
         self.cog = cog
+        self.guild = guild
+        self.public_channel = public_channel  # Store public channel
 
     async def callback(self, interaction: Interaction):
-        try:
-            guild = interaction.guild
-            players = await self.cog.config.guild(guild).players()
-            
-            user_id = str(interaction.user.id)  # Get the sponsor's user ID
-           
-            # Create options for tributes using nicknames or usernames
-            tribute_options = []
-            for player_id, player in players.items():
-                if player["alive"] and player_id != user_id:
-                    if player_id.isdigit():  # Check if it's a real user
-                        member = guild.get_member(int(player_id))
-                        if member:
-                            display_name = member.nick or member.name  # Use nickname or fallback to username
-                            tribute_options.append((display_name, player_id))
+        user = interaction.user
+        guild_config = await self.cog.config.guild(self.guild).all()
+        players = guild_config["players"]
+        alive_players = [p for p in players.values() if p["alive"]]
 
-            stats = ["Def","Str","Con","Wis","HP"]
+        if not alive_players:
+            await interaction.response.send_message("No tributes are alive to sponsor!", ephemeral=True)
+            return
 
-            if not tribute_options:
-                await interaction.response.send_message("There are no living tributes to sponsor.", ephemeral=True)
-                return
+        # Get the user's gold from user config
+        user_gold = await self.cog.config.user(user).gold()
 
-            # Send the sponsor view
-            day_count = await self.cog.config.guild(guild).day_counter()
+        if user_gold < 100:
+            await interaction.response.send_message("You need at least 100 gold to sponsor a tribute!", ephemeral=True)
+            return
 
-            guild = interaction.guild
-            day_count = await self.cog.config.guild(guild).day_counter()
-            
-            user_gold = await self.cog.config.user(interaction.user).gold()
-            cost = 10 * (day_count)
+        # Deduct 100 gold
+        await self.cog.config.user(user).gold.set(user_gold - 100)
 
-            if cost > user_gold:
-                await interaction.response.send_message(
-                    f"You don't have enough gold. Sponsorship requires {cost} gold, but you only have {user_gold}.",
-                    ephemeral=True
-                )
-                return
+        # Select a random tribute
+        tribute = random.choice(alive_players)
+        stat = random.choice(["Def", "Str", "Con", "Wis","HP"])
+        boost = random.randint(1, 10)
+        tribute["stats"][stat] += boost
 
-            players = await self.cog.config.guild(self.guild).players()
-            tribute = random.choice(tribute_options)
-            tribute["stats"][random.choice(stats)] += random.choice([1,2,3,4,5,6,7,8,9,10])
+        # Save updated player data
+        await self.cog.config.guild(self.guild).players.set(players)
 
-            # Deduct gold
-            await self.cog.config.user(self.user).gold.set(user_gold - cost)
-            await self.cog.config.guild(self.guild).players.set(players)
+        # Announce sponsorship
+        await self.public_channel.send(
+            f"🎁 **{user.display_name}** sponsored **{tribute['name']}** with a **+{boost} boost to {stat}**!"
+        )
 
-            tribute_name = tribute["name"]
-            channel = interaction.channel
-            await channel.send(f"🎁 **Someone** sponsored **{tribute_name}** with a +{self.selected_boost} boost to {self.selected_stat}!")
-
-            await interaction.response.defer()
+        # Defer interaction response
+        await interaction.response.defer()
 
 
-        except Exception as e:
-            error_message = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-            await interaction.response.send_message(f"An error occurred: {error_message}", ephemeral=True)
 
 
 
