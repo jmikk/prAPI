@@ -101,17 +101,19 @@ class rota(commands.Cog):
 
     def cog_unload(self):
         self.check_activity.cancel()
-
     def summarize_option(option_id, text):
-        title_match = re.search(r'(Dr\.|Mr\.|Mrs\.|Ms\.)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?', text)
+        # Match titles and capture full names if both first and last are capitalized
+        title_match = re.search(r'(Dr\.|Mr\.|Mrs\.|Ms\.)\s+([A-Z][a-z]+)(?:\s+([A-Z][a-z]+))?', text)
         if title_match:
-            return title_match.group(0)
+            title = title_match.group(1)
+            first_name = title_match.group(2)
+            last_name = title_match.group(3)
+            if last_name:
+                return f"{title} {first_name} {last_name}"
+            else:
+                return f"{title} {first_name}"
     
         minister_match = re.search(r'Minister (?:for|of) [A-Z][a-z]+(?:\s+[A-Z][a-z]+)*', text)
-        if minister_match:
-            return minister_match.group(0)
-
-        CEO_match = re.search(r'CEO (?:for|of) [A-Z][a-z]+(?:\s+[A-Z][a-z]+)*', text)
         if minister_match:
             return minister_match.group(0)
     
@@ -120,6 +122,8 @@ class rota(commands.Cog):
         proper_nouns = [word for word in words[1:] if word.istitle()]
         if proper_nouns:
             return proper_nouns[0]
+    
+        return f"Option {option_id}"  # Default fallback
     
         return f"Option {option_id}"  # Default fallback
 
