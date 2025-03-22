@@ -1,6 +1,6 @@
 import discord
 from redbot.core import commands, Config
-from discord import tasks
+from discord.ext import tasks
 import aiohttp
 import xml.etree.ElementTree as ET
 import asyncio
@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 
-class rota(commands.Cog):
+class Rota(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=9007)
