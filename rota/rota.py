@@ -279,6 +279,13 @@ class rota(commands.Cog):
             headlines = [el.text for el in root.findall(".//HEADLINE")]
             top_stats = sorted(rankings, key=lambda x: abs(float(x.find("PCHANGE").text)), reverse=True)[:3]
 
+            for rank in top_stats:
+                rank_id = rank.get("id")
+                stat_name = STAT_NAMES.get(rank_id, f"Rank {rank_id}")
+                change = rank.find("CHANGE").text
+                pchange = rank.find("PCHANGE").text
+                stat_summary += f"{stat_name}: {change} ({pchange}%)\n"
+
             embed = discord.Embed(title=desc, color=discord.Color.purple())
 
             # Immediate next issue posting
@@ -286,8 +293,8 @@ class rota(commands.Cog):
                 title="The Fates have decided, enjoy the outcome.",
             )
             outcome_embed.add_field(name="Fresh from the well", value=desc.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**"), inline=False)
-            if top_stats:
-                outcome_embed.add_field(name="Top Stat Changes", value=top_stats, inline=False)
+            if stat_summary:
+                outcome_embed.add_field(name="Top Stat Changes", value=stat_summary, inline=False)
                 
             outcome_embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/3/3c/Crystal_Clear_app_korganizer.png")
     
