@@ -110,6 +110,10 @@ class rota(commands.Cog):
         minister_match = re.search(r'Minister (?:for|of) [A-Z][a-z]+(?:\s+[A-Z][a-z]+)*', text)
         if minister_match:
             return minister_match.group(0)
+
+        CEO_match = re.search(r'CEO (?:for|of) [A-Z][a-z]+(?:\s+[A-Z][a-z]+)*', text)
+        if minister_match:
+            return minister_match.group(0)
     
         # Split words and skip the first word when searching for capitalized proper nouns
         words = text.split()
