@@ -1791,7 +1791,7 @@ class Hungar(commands.Cog):
                     player_data["stats"]["HP"] += damage
                     event_outcomes.append(f"{player_data['name']} nursed their wounds and healed for {damage} points of damage.")
                 
-                if not player_data["items"] and random.randint(1, int(player_data["stats"]["Con"])) < 5:  # No items to use, take damage instead
+                if not player_data["items"] and random.randint(1, int(player_data["stats"]["Con"])) < 10:  # No items to use, take damage instead
                     damage = random.randint(1, 3)
                     player_data["stats"]["HP"] -= damage
                     event_outcomes.append(f"{player_data['name']} has hunger pangs and takes {damage} points of damage.")
@@ -1801,6 +1801,8 @@ class Hungar(commands.Cog):
                         event_outcomes.append(f"{player_data['name']} starved to death.")
                     continue
                 else:
+                    if not player_data["items"]:
+                        continue
                     try:
                         item = player_data["items"].pop()
                     except:
