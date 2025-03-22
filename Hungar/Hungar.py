@@ -526,21 +526,31 @@ class SponsorButton(Button):
         # Deduct 100 gold
         await self.cog.config.user(user).gold.set(user_gold - 100)
 
-        # Select a random tribute
-        tribute = random.choice(alive_players)
-        stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
-        boost = random.randint(1, 10)
-        tribute["stats"][stat] += boost
-
-        # Save updated player data
-        await self.cog.config.guild(guild).players.set(players)
-
-        # Announce sponsorship in the same channel as the interaction
-        await interaction.channel.send(
-            f"🎁 **{user.display_name}** sponsored **{tribute['name']}** with a **+{boost} boost to {stat}**!"
-        )
-
-        # Defer interaction response to avoid 'interaction failed'
+        if random.randint(1, 100) <= 5:
+            run = 20
+        else:
+            run = 1
+        for _ in range(run)
+            # Select a random tribute
+            tribute = random.choice(alive_players)
+            stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
+            boost = random.randint(1, 10)
+            tribute["stats"][stat] += boost
+    
+            # Save updated player data
+            await self.cog.config.guild(guild).players.set(players)
+    
+            # Announce sponsorship in the same channel as the interaction
+            if run == 1:
+                await interaction.channel.send(
+                    f"🎁 **{user.display_name}** sponsored **{tribute['name']}** with a **+{boost} boost to {stat}**!"
+                )
+            else:
+                await interaction.channel.send(
+                    f"🎁 The Audience Loved that and is sending a shower of gifts: **{tribute['name']}** with a **+{boost} boost to {stat}**! "
+                )
+    
+            # Defer interaction response to avoid 'interaction failed'
         await interaction.response.defer()
 
 
