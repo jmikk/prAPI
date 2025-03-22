@@ -42,11 +42,13 @@ class rota(commands.Cog):
         self.check_activity.cancel()
 
     def summarize_option(self, text):
-        # Try to find proper nouns as title
+        # Match title case names or titles with names (Dr. John Doe)
+        match = re.search(r'(Dr\.|Mr\.|Mrs\.|Ms\.)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?', text)
+        if match:
+            return match.group(0)
         proper_nouns = re.findall(r'\b[A-Z][a-z]+\b', text)
         if proper_nouns:
             return proper_nouns[0]
-        # Fallback to first 12 words
         words = text.split()
         summary = ' '.join(words[:12]) + ('...' if len(words) > 12 else '')
         return summary
@@ -152,20 +154,6 @@ class rota(commands.Cog):
 
         await self.process_vote()
 
-    @commands.command()
-    async def stoprota(self, ctx):
-        """Stop the rota voting loop."""
-        await self.config.vote_active.set(False)
-        await ctx.send("Rota voting loop stopped.")
-
-    @commands.command()
-    async def setrota(self, ctx, nation: str, password: str, user_agent: str):
-        """Set the NationStates nation, password, and user agent."""
-        await self.config.nation.set(nation)
-        await self.config.password.set(password)
-        await self.config.user_agent.set(user_agent)
-        await ctx.send(f"Configuration updated: Nation='{nation}', Password='[HIDDEN]', User-Agent='{user_agent}'")
-
     @tasks.loop(minutes=1)
     async def check_activity(self):
         active = await self.config.vote_active()
@@ -194,10 +182,11 @@ class rota(commands.Cog):
 
         if not votes:
             xml_response = await self.answer_issue(issue_id, -1)
-            desc = ET.fromstring(xml_response).find(".//HEADLINE")
-            summary = desc.text if desc is not None else "No headlines."
-            await channel.send(f"No votes were cast. Issue #{issue_id} dismissed.\n**Headline:** {summary}",
-                               file=discord.File(io.StringIO(xml_response), filename=f"issue_{issue_id}_dismissed.xml"))
+            root = ET.fromstring(xml_response)
+            headline = root.findtext(".//HEADLINE", default="No headlines.")
+            embed = discord.Embed(title="Issue Dismissed", description=headline, color=discord.Color.red())
+            embed.set_footer(text=f"Issue #{issue_id} was dismissed due to no votes.")
+            await channel.send(embed=embed, file=discord.File(io.StringIO(xml_response), filename=f"issue_{issue_id}_dismissed.xml"))
         else:
             option_counts = {}
             for opt in votes.values():
@@ -205,15 +194,35 @@ class rota(commands.Cog):
 
             top_option = max(option_counts, key=option_counts.get)
 
-            option_summaries = await self.config.option_summaries()
-            summary_line = option_summaries.get(top_option, f"Option {top_option}")
-
             xml_response = await self.answer_issue(issue_id, top_option)
             root = ET.fromstring(xml_response)
-            desc = root.find(".//DESC")
-            result_summary = desc.text if desc is not None else "No description."
-            await channel.send(f"Issue #{issue_id} answered with: \n**{summary_line}**\n**Result:** {result_summary}",
-                               file=discord.File(io.StringIO(xml_response), filename=f"issue_{issue_id}_option_{top_option}.xml"))
+
+            desc = root.findtext(".//DESC", default="No description.")
+            rankings = root.findall(".//RANK")
+            reclasses = root.findall(".//RECLASSIFY")
+            headlines = [el.text for el in root.findall(".//HEADLINE")]
+            top_stats = sorted(rankings, key=lambda x: abs(float(x.find("CHANGE").text)), reverse=True)[:3]
+
+            embed = discord.Embed(title=desc, color=discord.Color.purple())
+
+            stat_summary = ""
+            for stat in top_stats:
+                rank_id = stat.get("id")
+                change = stat.find("CHANGE").text
+                pchange = stat.find("PCHANGE").text
+                stat_summary += f"Rank {rank_id}: {change} ({pchange}%)\n"
+
+            if stat_summary:
+                embed.add_field(name="Top Stat Changes", value=stat_summary, inline=False)
+
+            if reclasses:
+                reclass_text = "\n".join([f"{r.find('FROM').text} → {r.find('TO').text}" for r in reclasses])
+                embed.add_field(name="Policy Changes", value=reclass_text, inline=False)
+
+            if headlines:
+                embed.set_footer(text=random.choice(headlines))
+
+            await channel.send(embed=embed, file=discord.File(io.StringIO(xml_response), filename=f"issue_{issue_id}_option_{top_option}.xml"))
 
         await self.config.votes.clear()
         await self.config.issue_id.clear()
@@ -227,13 +236,4 @@ class VoteButton(discord.ui.Button):
         self.option_id = option_id
 
     async def callback(self, interaction: discord.Interaction):
-        cog = interaction.client.get_cog("rota")
-        if not cog:
-            await interaction.response.send_message("Voting system is currently unavailable.", ephemeral=True)
-            return
-
-        votes = await cog.config.votes()
-        votes[str(interaction.user.id)] = self.option_id
-        await cog.config.votes.set(votes)
-        await cog.config.last_activity.set(datetime.utcnow().isoformat())
-        await interaction.response.send_message(f"Your vote for Option {self.option_id} has been recorded.", ephemeral=True)
+        cog =
