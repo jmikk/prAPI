@@ -1623,19 +1623,21 @@ class Hungar(commands.Cog):
                         inline=False)
             await ctx.send(embed=kill_embed)
     
-        # **Calculate total bets placed on the winner**
-        total_bet_on_winner = 0
-        for user_id, user_data in all_users.items():
-            bets = user_data.get("bets", {})
-            if winner_id in bets:
-                total_bet_on_winner += bets[winner_id]["amount"]
+            # Calculate total pot from all user bets
+            total_pot = 0
+            for user_id, user_data in all_users.items():
+                bets = user_data.get("bets", {})
+                total_pot += sum(bet["amount"] for bet in bets.values())
+            
+            # Include all NPC (AI) bets
+            for tribute_data in players.values():
+                npc_bets = tribute_data.get("bets", {}).get("AI", [])
+                for ai_bet in npc_bets:
+                    total_pot += ai_bet["amount"]
+            
+            # Award 50% of total pot to the winner
+            winner_bonus = int(total_pot * 0.5)  # 50% of total pot
 
-        # **Include AI bets**
-        winner_bets = players.get(winner_id, {}).get("bets", {})
-        ai_bets = winner_bets.get("AI", [])
-
-        for ai_bet in ai_bets:
-            total_bet_on_winner += ai_bet["amount"]
 
                 # Distribute winnings
         for user_id, user_data in all_users.items():
@@ -1650,8 +1652,6 @@ class Hungar(commands.Cog):
             await self.config.user_from_id(user_id).gold.set(user_gold)
             await self.config.user_from_id(user_id).bets.set({})
 
-                # **Award 50% of total bets to the winner**
-        winner_bonus = int(total_bet_on_winner * 0.5)  # 50% of total bets
         if winner_bonus > 0 and not winner.get("is_npc", False):  # Only give to real players
             winner_gold = await self.config.user_from_id(int(winner_id)).gold()
             winner_gold = winner_bonus + winner_gold
