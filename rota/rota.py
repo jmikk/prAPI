@@ -286,15 +286,27 @@ class rota(commands.Cog):
     
             channel = self.bot.get_channel(RESULTS_CHANNEL_ID)
             await channel.send(embed=outcome_embed)
-    
-            ctx = await self.bot.get_context(channel.last_message)
-            await ctx.invoke(self.bot.get_command("postissue"))
 
         await self.config.votes.clear()
         await self.config.issue_id.clear()
         await self.config.last_activity.clear()
         await self.config.vote_active.set(False)
         await self.config.option_summaries.clear()
+    
+        ctx = await self.bot.get_context(channel.last_message)
+        await ctx.invoke(self.bot.get_command("postissue"))
+    
+    @commands.command()
+    @commands.is_owner()
+    async def setrota(self, ctx, nation: str, password: str, *, user_agent: str):
+        """Set Nation, Password, and User Agent for Rota cog."""
+        await self.config.nation.set(nation)
+        await self.config.password.set(password)
+        await self.config.user_agent.set(user_agent)
+        await ctx.send(f"Rota config set:\nNation: {nation}\nUser-Agent: {user_agent}")
+    
+    
+            
 
 class VoteButton(discord.ui.Button):
     def __init__(self, option_id, label):
