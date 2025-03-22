@@ -1,5 +1,5 @@
-from .prAPI import prAPI
+from .rota import rota
 
 
 async def setup(bot):
-    await bot.add_cog(prAPI(bot))
+    await bot.add_cog(rota(bot))
