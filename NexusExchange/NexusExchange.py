@@ -361,6 +361,9 @@ class NexusExchange(commands.Cog):
 [/box]
 
 """
+
+        await ctx.send(self.post_dispatch(dispatch_content))
+        
     async def post_dispatch(self, dispatch_content):
         """Posts the updated dispatch to NationStates API"""
         nationname = await self.config.nationName()  # Nation that owns the dispatch
