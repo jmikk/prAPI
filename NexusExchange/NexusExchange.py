@@ -308,9 +308,6 @@ class NexusExchange(commands.Cog):
             for nation, balance in bank_data
         ])
 
-        # Random ad selection
-        server_ad = self.get_random_ad()
-
         # Update historical snapshots
         await self.update_wellcoin_snapshots(total_wellcoins)
     
@@ -353,9 +350,6 @@ class NexusExchange(commands.Cog):
 [/box]
 [box]
 [background-block=#BAEBFA]
-[hr][center][font=georgia][color=#2A6273][b][size=150]🌍 Server Ad 🌍[/size][/b][/color][/font][/center][hr]
-{server_ad}
-[/background-block]
 [/box]
 [box]
 [background-block=#2A6273]
@@ -397,11 +391,11 @@ class NexusExchange(commands.Cog):
             "nation": nationname,
             "c": "dispatch",
             "dispatch": "edit",
-            "dispatchid": "2618850",
+            "dispatchid": "2633980",
             "title": "WellCoins: Bank of The Wellspring",
             "text": dispatch_content,
-            "category": "8",
-            "subcategory": "845",
+            "category": "5",
+            "subcategory": "515",
             "mode": "prepare"
         }
 
@@ -428,11 +422,11 @@ class NexusExchange(commands.Cog):
                     "nation": nationname,
                     "c": "dispatch",
                     "dispatch": "edit",
-                    "dispatchid": "2618850",
+                    "dispatchid": "2633980",
                     "title": "WellCoins: Bank of The Wellspring",
                     "text": dispatch_content,
-                    "category": "8",
-                    "subcategory": "845",
+                    "category": "5",
+                    "subcategory": "515",
                     "mode": "execute",
                     "token": token
                 }
