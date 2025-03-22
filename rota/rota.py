@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import asyncio
 import random
 import io
+import re
 from datetime import datetime, timedelta
 
 API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
@@ -41,6 +42,11 @@ class rota(commands.Cog):
         self.check_activity.cancel()
 
     def summarize_option(self, text):
+        # Try to find proper nouns as title
+        proper_nouns = re.findall(r'\b[A-Z][a-z]+\b', text)
+        if proper_nouns:
+            return proper_nouns[0]
+        # Fallback to first 12 words
         words = text.split()
         summary = ' '.join(words[:12]) + ('...' if len(words) > 12 else '')
         return summary
@@ -123,15 +129,16 @@ class rota(commands.Cog):
             gender = self.detect_gender(option_text)
             face_url = random.choice(FACE_IMAGES.get(gender, FACE_IMAGES["neutral"]))
 
-            embed = discord.Embed(title=f"Option {option_id}", description=option_text, color=discord.Color.green())
+            title_summary = self.summarize_option(option_text)
+
+            embed = discord.Embed(title=title_summary, description=option_text, color=discord.Color.green())
             embed.set_thumbnail(url=face_url)
 
             view = discord.ui.View(timeout=None)
             view.add_item(VoteButton(option_id=option_id, label=f"Vote for Option {option_id}"))
             await ctx.send(embed=embed, view=view)
 
-            summary = self.summarize_option(option_text)
-            option_summaries[option_id] = summary
+            option_summaries[option_id] = title_summary
 
         await self.config.option_summaries.set(option_summaries)
 
