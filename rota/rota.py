@@ -279,6 +279,7 @@ class rota(commands.Cog):
             headlines = [el.text for el in root.findall(".//HEADLINE")]
             top_stats = sorted(rankings, key=lambda x: abs(float(x.find("PCHANGE").text)), reverse=True)[:3]
 
+            stat_summary=""
             for rank in top_stats:
                 rank_id = rank.get("id")
                 stat_name = STAT_NAMES.get(rank_id, f"Rank {rank_id}")
