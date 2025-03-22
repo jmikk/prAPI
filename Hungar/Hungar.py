@@ -515,7 +515,7 @@ class SponsorButton(Button):
                         member = guild.get_member(int(player_id))
                         if member:
                             display_name = member.nick or member.name  # Use nickname or fallback to username
-                            tribute_options.append(display_name, player_id))
+                            tribute_options.append((display_name, player_id))
 
             stats = ["Def","Str","Con","Wis","HP"]
 
