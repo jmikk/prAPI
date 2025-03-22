@@ -94,6 +94,7 @@ class rota(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=9007)
+        USER_CONFIG = Config.get_conf(None, identifier=345678654456, force_registration=True)
         self.config.register_global(
             votes={}, last_activity=None, issue_id=None, nation="",
             password="", user_agent="rota by 9005", vote_active=False
@@ -306,6 +307,23 @@ class rota(commands.Cog):
     
             channel = self.bot.get_channel(issues_channel)
             await channel.send(embed=outcome_embed)
+            
+            top_option = max(option_counts, key=option_counts.get)
+            # Reward 100 wellcoins to those who voted for the winning option
+            for user_id_str, voted_option in votes.items():
+                if voted_option == top_option:
+                    user = self.bot.get_user(int(user_id_str))
+                    if user:
+                        user_config = USER_CONFIG.get_user(user)
+                        current_balance = await user_config.master_balance()
+                        await user_config.master_balance.set(current_balance + 100)
+                else:
+                    user = self.bot.get_user(int(user_id_str))
+                    if user:
+                        user_config = USER_CONFIG.get_user(user)
+                        current_balance = await user_config.master_balance()
+                        await user_config.master_balance.set(current_balance + 10)
+
 
         await self.config.votes.clear()
         await self.config.issue_id.clear()
