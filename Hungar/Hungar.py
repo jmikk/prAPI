@@ -1801,7 +1801,10 @@ class Hungar(commands.Cog):
                         event_outcomes.append(f"{player_data['name']} starved to death.")
                     continue
                 else:
-                    item = player_data["items"].pop()
+                    try:
+                        item = player_data["items"].pop()
+                    except:
+                        item = ("Con" , 21)
                     stat, boost = item
                     player_data["stats"][stat] += boost
                     event_outcomes.append(f"{player_data['name']} rested and used a {stat} boost item (+{boost}).")
