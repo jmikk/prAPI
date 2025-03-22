@@ -103,6 +103,7 @@ class rota(commands.Cog):
         self.check_activity.cancel()
 
     def summarize_option(option_id, text):
+        text = text[1:]
         title_match = re.search(r'(Dr\.|Mr\.|Mrs\.|Ms\.)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?', text)
         if title_match:
             return title_match.group(0)
