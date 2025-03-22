@@ -4,9 +4,26 @@ from discord.ext import tasks
 import aiohttp
 import xml.etree.ElementTree as ET
 import asyncio
+import random
 from datetime import datetime, timedelta
 
 API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
+
+# Example face URLs categorized by gender
+FACE_IMAGES = {
+    "male": [
+        "https://randomuser.me/api/portraits/men/1.jpg",
+        "https://randomuser.me/api/portraits/men/3.jpg",
+        "https://randomuser.me/api/portraits/men/5.jpg"
+    ],
+    "female": [
+        "https://randomuser.me/api/portraits/women/2.jpg",
+        "https://randomuser.me/api/portraits/women/4.jpg"
+    ],
+    "neutral": [
+        "https://randomuser.me/api/portraits/lego/1.jpg"
+    ]
+}
 
 class rota(commands.Cog):
     def __init__(self, bot):
@@ -51,6 +68,19 @@ class rota(commands.Cog):
             async with session.post(API_URL, headers=headers, data=data) as resp:
                 return await resp.text()
 
+    def detect_gender(self, text):
+        text = text.lower()
+        female_keywords = [" she ", " her ", " woman", " girl", " niece"]
+        male_keywords = [" he ", " his ", " man", " boy", " uncle"]
+
+        for word in female_keywords:
+            if word in text:
+                return "female"
+        for word in male_keywords:
+            if word in text:
+                return "male"
+        return "neutral"
+
     @commands.command()
     @commands.guild_only()
     async def postissue(self, ctx):
@@ -68,20 +98,28 @@ class rota(commands.Cog):
         text = issue.find("TEXT").text
 
         options = issue.findall("OPTION")
-        view = discord.ui.View(timeout=None)
-
-        for option in options:
-            option_id = option.get("id")
-            label = option.text[:80]  # Shorten label if too long
-            view.add_item(VoteButton(option_id=option_id, label=label))
 
         await self.config.votes.clear()
         await self.config.issue_id.set(issue_id)
         await self.config.last_activity.set(datetime.utcnow().isoformat())
         await self.config.vote_active.set(True)
 
-        embed = discord.Embed(title=title, description=text, color=discord.Color.blue())
-        await ctx.send(embed=embed, view=view)
+        issue_embed = discord.Embed(title=title, description=text, color=discord.Color.blue())
+        await ctx.send(embed=issue_embed)
+
+        for option in options:
+            option_id = option.get("id")
+            option_text = option.text
+
+            gender = self.detect_gender(option_text)
+            face_url = random.choice(FACE_IMAGES.get(gender, FACE_IMAGES["neutral"]))
+
+            embed = discord.Embed(title=f"Option {option_id}", description=option_text, color=discord.Color.green())
+            embed.set_thumbnail(url=face_url)
+
+            view = discord.ui.View(timeout=None)
+            view.add_item(VoteButton(option_id=option_id, label=f"Vote for Option {option_id}"))
+            await ctx.send(embed=embed, view=view)
 
     @commands.command()
     async def endvote(self, ctx):
@@ -126,8 +164,6 @@ class rota(commands.Cog):
         now = datetime.utcnow()
         issue_time_limit = last_activity + timedelta(minutes=5)
         max_time_limit = last_activity + timedelta(minutes=10)
-        #issue_time_limit = last_activity + timedelta(hours=24)
-        #max_time_limit = last_activity + timedelta(days=5)
 
         if now >= issue_time_limit or now >= max_time_limit:
             await self.submit_vote(channel)
@@ -159,7 +195,7 @@ class rota(commands.Cog):
 
 class VoteButton(discord.ui.Button):
     def __init__(self, option_id, label):
-        super().__init__(label=f"Vote Option {option_id}", style=discord.ButtonStyle.primary)
+        super().__init__(label=label, style=discord.ButtonStyle.primary)
         self.option_id = option_id
 
     async def callback(self, interaction: discord.Interaction):
