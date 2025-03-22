@@ -530,7 +530,7 @@ class SponsorButton(Button):
             run = 20
         else:
             run = 1
-        for _ in range(run)
+        for _ in range(run):
             # Select a random tribute
             tribute = random.choice(alive_players)
             stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
