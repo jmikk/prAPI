@@ -280,7 +280,7 @@ class rota(commands.Cog):
             outcome_embed = discord.Embed(
                 title="The Fates have decided, enjoy the outcome.",
             )
-            outcome_embed.add_field(name="Fresh from the well", value=desc_element.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**"), inline=False)
+            outcome_embed.add_field(name="Fresh from the well", value=desc.text.replace("<i>","*").replace("</i>","*").replace("<b>","**").replace("</b>","**"), inline=False)
             if top_stats:
                 outcome_embed.add_field(name="Top Stat Changes", value=top_stats, inline=False)
                 
