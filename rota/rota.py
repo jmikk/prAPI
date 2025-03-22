@@ -7,9 +7,6 @@ import asyncio
 import random
 import io
 from datetime import datetime, timedelta
-from sumy.parsers.plaintext import PlaintextParser
-from sumy.nlp.tokenizers import Tokenizer
-from sumy.summarizers.lsa import LsaSummarizer
 
 API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 RESULTS_CHANNEL_ID = 1130324894031290428  # Channel for outputting results
@@ -35,8 +32,8 @@ class rota(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=9007)
         self.config.register_global(
-            votes={}, last_activity=None, issue_id=None, nation="testlandia",
-            password="hunter2", user_agent="UserAgent Example", vote_active=False
+            votes={}, last_activity=None, issue_id=None, nation="",
+            password="", user_agent="rota by 9005", vote_active=False
         )
         self.check_activity.start()
 
@@ -44,10 +41,9 @@ class rota(commands.Cog):
         self.check_activity.cancel()
 
     def summarize_option(self, text):
-        parser = PlaintextParser.from_string(text, Tokenizer("english"))
-        summarizer = LsaSummarizer()
-        summary_sentences = summarizer(parser.document, 1)
-        return str(summary_sentences[0]) if summary_sentences else text[:100]
+        words = text.split()
+        summary = ' '.join(words[:12]) + ('...' if len(words) > 12 else '')
+        return summary
 
     async def fetch_issues(self):
         nation = await self.config.nation()
