@@ -7,13 +7,13 @@ from datetime import datetime, timedelta
 
 API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 
-class rota(commands.Cog):
+class Rota(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890)
+        self.config = Config.get_conf(self, identifier=9007)
         self.config.register_global(
-            votes={}, last_activity=None, issue_id=None, nation="the_phoenix_of_the_spring",
-            password="", user_agent="UserAgent Example", vote_active=False
+            votes={}, last_activity=None, issue_id=None, nation="testlandia",
+            password="hunter2", user_agent="UserAgent Example", vote_active=False
         )
         self.check_activity.start()
 
@@ -123,23 +123,23 @@ class rota(commands.Cog):
 
     async def submit_vote(self, channel):
         votes = await self.config.votes()
+        issue_id = await self.config.issue_id()
+
         if not votes:
-            await channel.send("No votes were cast. Issue dismissed.")
-            issue_id = await self.config.issue_id()
             xml_response = await self.answer_issue(issue_id, -1)
-            await channel.send(f"Dismissed Issue #{issue_id}. Response:\n```
-{xml_response}```")
+            formatted_response = f"Dismissed Issue #{issue_id}. Response:\n```xml\n{xml_response}\n```"
+            await channel.send("No votes were cast. Issue dismissed.")
+            await channel.send(formatted_response)
         else:
             option_counts = {}
             for opt in votes.values():
                 option_counts[opt] = option_counts.get(opt, 0) + 1
 
             top_option = max(option_counts, key=option_counts.get)
-            issue_id = await self.config.issue_id()
 
             xml_response = await self.answer_issue(issue_id, top_option)
-            await channel.send(f"Issue #{issue_id} answered with Option #{top_option}. Response:\n```
-{xml_response}```")
+            formatted_response = f"Issue #{issue_id} answered with Option #{top_option}. Response:\n```xml\n{xml_response}\n```"
+            await channel.send(formatted_response)
 
         await self.config.votes.clear()
         await self.config.issue_id.clear()
@@ -152,7 +152,11 @@ class VoteButton(discord.ui.Button):
         self.option_id = option_id
 
     async def callback(self, interaction: discord.Interaction):
-        cog: Rota = interaction.client.get_cog("Rota")
+        cog = interaction.client.get_cog("Rota")
+        if not cog:
+            await interaction.response.send_message("Voting system is currently unavailable.", ephemeral=True)
+            return
+
         votes = await cog.config.votes()
         votes[str(interaction.user.id)] = self.option_id
         await cog.config.votes.set(votes)
