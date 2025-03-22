@@ -768,7 +768,7 @@ class NexusExchange(commands.Cog):
             else:
                 # Remove role if they have it but no endorsed nation
                 if role in user.roles:
-                    #await user.remove_roles(role)
+                    await user.remove_roles(role)
                     lost_role += 1
     
         await ctx.send(f"✅ {gained_role} users gained the resident Role.\n❌ {lost_role} users lost the resident Role.")
