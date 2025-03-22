@@ -272,7 +272,12 @@ class prAPI(commands.Cog):
                 log_channel = self.bot.get_channel(log_channel_id)
     
                 if log_channel:
-                    await log_channel.send(f"{full_url} <@&{ping_role_id}>")
+                    allowed_mentions = AllowedMentions(
+                    everyone=False,  # Disables @everyone and @here mentions
+                    users=True,      # Enables user mentions
+                    roles=True       # Enables role mentions
+                )
+                    await log_channel.send(f"{full_url} <@&{ping_role_id}>",allowed_mentions=allowed_mentions)
                 else:
                     await ctx.send("Post succeeded, but I couldn't find the log channel.")
     
