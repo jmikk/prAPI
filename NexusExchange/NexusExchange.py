@@ -598,6 +598,7 @@ class NexusExchange(commands.Cog):
                     await self.newNation(channel)
                     await asyncio.sleep(10)
                     await self.post_bank_dispatch(channel)
+                    await self.citChk(channel)
                 except Exception as e:
                     await channel.send(e)
 
@@ -609,6 +610,8 @@ class NexusExchange(commands.Cog):
             return token
         except ET.ParseError:
             return None
+
+    
 
     @commands.command()
     @commands.admin()
@@ -724,6 +727,7 @@ class NexusExchange(commands.Cog):
 
         
 
+    
 
     @commands.command()
     @commands.admin()
