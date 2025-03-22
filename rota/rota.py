@@ -56,16 +56,20 @@ class rota(commands.Cog):
     def cog_unload(self):
         self.check_activity.cancel()
 
-    def summarize_option(self, text):
-        match = re.search(r'(Dr\.|Mr\.|Mrs\.|Ms\.)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?', text)
-        if match:
-            return match.group(0)
+    def summarize_option(option_id, text):
+        title_match = re.search(r'(Dr\.|Mr\.|Mrs\.|Ms\.)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?', text)
+        if title_match:
+            return title_match.group(0)
+    
+        minister_match = re.search(r'Minister (?:for|of) [A-Z][a-z]+(?:\s+[A-Z][a-z]+)*', text)
+        if minister_match:
+            return minister_match.group(0)
+    
         proper_nouns = re.findall(r'\b[A-Z][a-z]+\b', text)
         if proper_nouns:
             return proper_nouns[0]
-        words = text.split()
-        summary = ' '.join(words[:12]) + ('...' if len(words) > 12 else '')
-        return summary
+    
+        return f"Option {option_id}"  # Default fallback
 
     async def fetch_issues(self):
         nation = await self.config.nation()
