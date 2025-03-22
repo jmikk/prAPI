@@ -306,6 +306,7 @@ class rota(commands.Cog):
         await self.config.last_activity.clear()
         await self.config.vote_active.set(False)
         await self.config.option_summaries.clear()
+        await self.config.max_time_limit.clear()
     
         ctx = await self.bot.get_context(channel.last_message)
         await ctx.invoke(self.bot.get_command("postissue"))
