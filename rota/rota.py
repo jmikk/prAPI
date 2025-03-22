@@ -28,6 +28,21 @@ FACE_IMAGES = {
     ]
 }
 
+# Map of rank IDs to human-readable stat names (examples)
+STAT_NAMES = {
+    "0": "Civil Rights",
+    "5": "Economy",
+    "7": "Political Freedoms",
+    "8": "Education",
+    "9": "Healthcare",
+    "13": "Safety",
+    "14": "Defense",
+    "16": "Environment",
+    "17": "Technology",
+    "19": "Culture",
+    # Add more mappings as needed
+}
+
 class rota(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -42,7 +57,6 @@ class rota(commands.Cog):
         self.check_activity.cancel()
 
     def summarize_option(self, text):
-        # Match title case names or titles with names (Dr. John Doe)
         match = re.search(r'(Dr\.|Mr\.|Mrs\.|Ms\.)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?', text)
         if match:
             return match.group(0)
@@ -99,7 +113,6 @@ class rota(commands.Cog):
     @commands.command()
     @commands.guild_only()
     async def postissue(self, ctx):
-        """Fetch and post the latest issue with voting buttons."""
         xml_data = await self.fetch_issues()
         root = ET.fromstring(xml_data)
 
@@ -146,7 +159,6 @@ class rota(commands.Cog):
 
     @commands.command()
     async def endvote(self, ctx):
-        """Force end the current vote and submit the answer."""
         active = await self.config.vote_active()
         if not active:
             await ctx.send("No active vote to end.")
@@ -208,9 +220,10 @@ class rota(commands.Cog):
             stat_summary = ""
             for stat in top_stats:
                 rank_id = stat.get("id")
+                stat_name = STAT_NAMES.get(rank_id, f"Rank {rank_id}")
                 change = stat.find("CHANGE").text
                 pchange = stat.find("PCHANGE").text
-                stat_summary += f"Rank {rank_id}: {change} ({pchange}%)\n"
+                stat_summary += f"{stat_name}: {change} ({pchange}%)\n"
 
             if stat_summary:
                 embed.add_field(name="Top Stat Changes", value=stat_summary, inline=False)
@@ -236,4 +249,21 @@ class VoteButton(discord.ui.Button):
         self.option_id = option_id
 
     async def callback(self, interaction: discord.Interaction):
-        cog =
+        cog = interaction.client.get_cog("rota")
+        if not cog:
+            await interaction.response.send_message("Voting system is currently unavailable.", ephemeral=True)
+            return
+
+        # Record the vote
+        votes = await cog.config.votes()
+        votes[str(interaction.user.id)] = self.option_id
+        await cog.config.votes.set(votes)
+
+        # Update last activity to extend vote timer
+        await cog.config.last_activity.set(datetime.utcnow().isoformat())
+
+        await interaction.response.send_message(
+            f"Your vote for Option {self.option_id} has been recorded.",
+            ephemeral=True
+        )
+
