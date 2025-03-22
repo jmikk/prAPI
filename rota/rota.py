@@ -8,6 +8,7 @@ import random
 import io
 import re
 from datetime import datetime, timedelta
+from discord import AllowedMentions
 
 API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 RESULTS_CHANNEL_ID = 1130324894031290428  # Channel for outputting results
