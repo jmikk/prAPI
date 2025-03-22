@@ -103,7 +103,6 @@ class rota(commands.Cog):
         self.check_activity.cancel()
 
     def summarize_option(option_id, text):
-        text = text[1:]
         title_match = re.search(r'(Dr\.|Mr\.|Mrs\.|Ms\.)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?', text)
         if title_match:
             return title_match.group(0)
@@ -112,7 +111,9 @@ class rota(commands.Cog):
         if minister_match:
             return minister_match.group(0)
     
-        proper_nouns = re.findall(r'\b[A-Z][a-z]+\b', text)
+        # Split words and skip the first word when searching for capitalized proper nouns
+        words = text.split()
+        proper_nouns = [word for word in words[1:] if word.istitle()]
         if proper_nouns:
             return proper_nouns[0]
     
