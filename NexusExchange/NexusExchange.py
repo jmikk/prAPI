@@ -596,6 +596,7 @@ class NexusExchange(commands.Cog):
                     await self.pay_endorsers(channel)
                     await self.reward_voters(channel)
                     await self.newNation(channel)
+                    await asyncio.sleep(10)
                     await self.post_bank_dispatch(channel)
                 except Exception as e:
                     await channel.send(e)
