@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 
-class Rota(commands.Cog):
+class rota(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
