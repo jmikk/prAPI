@@ -611,6 +611,28 @@ class NexusExchange(commands.Cog):
         except ET.ParseError:
             return None
 
+    @commands.command()
+    @commands.admin()
+    async def citChk(self, ctx):
+        """Checks if a member has Role A, and removes Role B if not."""
+        role_a_id = 1098645868162338919  # Role A: Required Role
+        role_b_id = 1098646004250726420  # Role B: Role to Remove
+
+        role_a = ctx.guild.get_role(role_a_id)
+        role_b = ctx.guild.get_role(role_b_id)
+
+        if not role_a or not role_b:
+            await ctx.send("One or both roles not found.")
+            return
+
+        if role_a not in member.roles:
+            if role_b in member.roles:
+                try:
+                    await member.remove_roles(role_b, reason="Missing required role.")
+                    await ctx.send(f"{member.mention} did not have {role_a.name} and {role_b.name} was removed.")
+                except discord.Forbidden:
+                    await ctx.send("I don't have permission to remove that role.")
+
     
 
     @commands.command()
