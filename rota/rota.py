@@ -11,10 +11,10 @@ API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 class rota(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=9007)
+        self.config = Config.get_conf(self, identifier=1234567890)
         self.config.register_global(
-            votes={}, last_activity=None, issue_id=None, nation="testlandia",
-            password="hunter2", user_agent="UserAgent Example", vote_active=False
+            votes={}, last_activity=None, issue_id=None, nation="the_phoenix_of_the_spring",
+            password="", user_agent="9005 using ROTA", vote_active=False
         )
         self.check_activity.start()
 
