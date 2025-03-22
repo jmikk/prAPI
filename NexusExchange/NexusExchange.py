@@ -294,7 +294,7 @@ class NexusExchange(commands.Cog):
 
         # Top 3 richest users with proper medals
         top_richest = bank_data[:3]
-        medals = ["🥇", "🥈", "🥉"]  # Gold, Silver, Bronze
+        medals = ["[1st]", "[2nd]", "[3rd]"]  # Gold, Silver, Bronze
         
         richest_section = "\n".join([
             f"[*][b]{medals[i]} {i+1}:[/b] [nation]{nation}[/nation] - [b]{balance} WellCoins[/b]"
@@ -337,30 +337,21 @@ class NexusExchange(commands.Cog):
 
 [box]
 [background-block=#BAEBFA]
-[center][font=georgia][color=#2A6273][b][size=150]💰 Top 3 Richest Users 💰[/size][/b][/color][/font][/center]
-[list]{richest_section}
-[/list]
+[center][font=georgia][color=#2A6273][b][size=150]$ Top 3 Richest Users $[/size][/b][/color][/font][/center]
+[list]{richest_section}[/list]
 [/background-block]
 [/box]
+
 [box]
 [background-block=#2A6273]
-[hr][center][font=georgia][color=#BAEBFA][b][size=150]📢 Shoutout Space 📢[/size][/b][/color][/font][/center][hr]
-[i]Want to give someone a shout out here is your chance! Your message here for only 100 Wellcoins![/i]
+[hr][center][font=georgia][color=#BAEBFA][b][size=150]Full Bank Listings[/size][/b][/color][/font][/center][hr]
+[list]{full_bank_section}[/list]
 [/background-block]
 [/box]
+
 [box]
 [background-block=#BAEBFA]
-[/box]
-[box]
-[background-block=#2A6273]
-[hr][center][font=georgia][color=#BAEBFA][b][size=150]🏦 Full Bank Listings 🏦[/size][/b][/color][/font][/center][hr]
-[list]{full_bank_section}
-[/list]
-[/background-block]
-[/box]
-[box]
-[background-block=#BAEBFA]
-[hr][center][font=georgia][color=#2A6273][b][size=150]📊 Fun Stats 📊[/size][/b][/color][/font][/center][hr]
+[hr][center][font=georgia][color=#2A6273][b][size=150]Fun Stats[/size][/b][/color][/font][/center][hr]
 [list]
 [*]Total WellCoins in circulation: [b]{total_wellcoins}[/b]
 [*]Change since yesterday: {daily_change_str}
@@ -368,6 +359,7 @@ class NexusExchange(commands.Cog):
 [/list]
 [/background-block]
 [/box]
+
 """
         await ctx.send(await self.post_dispatch(dispatch_content))
         await ctx.send("✅ Dispatch ready! Copy and post it on NationStates manually.")
