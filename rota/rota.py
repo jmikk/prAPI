@@ -310,6 +310,7 @@ class rota(commands.Cog):
         await self.config.max_time_limit.clear()
     
         ctx = await self.bot.get_context(channel.last_message)
+        await asyncio.sleep(300)  # 300 seconds = 5 minutes
         await ctx.invoke(self.bot.get_command("postissue"))
     
     @commands.command()
