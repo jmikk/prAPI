@@ -190,6 +190,7 @@ class rota(commands.Cog):
         for option in options:
             option_id = option.get("id")
             option_text = option.text
+            option_text = option_text.replace("</i>","*").replace("<i>","*").replace("</b>","**").replace("<b>","**")
 
             gender = self.detect_gender(option_text)
             face_url = random.choice(FACE_IMAGES.get(gender, FACE_IMAGES["neutral"]))
