@@ -11,10 +11,10 @@ API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 class rota(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890)
+        self.config = Config.get_conf(self, identifier=9007)
         self.config.register_global(
-            votes={}, last_activity=None, issue_id=None, nation="the_phoenix_of_the_spring",
-            password="", user_agent="9005 using ROTA", vote_active=False
+            votes={}, last_activity=None, issue_id=None, nation="testlandia",
+            password="hunter2", user_agent="UserAgent Example", vote_active=False
         )
         self.check_activity.start()
 
@@ -99,6 +99,14 @@ class rota(commands.Cog):
         await self.config.vote_active.set(False)
         await ctx.send("Rota voting loop stopped.")
 
+    @commands.command()
+    async def setrota(self, ctx, nation: str, password: str, user_agent: str):
+        """Set the NationStates nation, password, and user agent."""
+        await self.config.nation.set(nation)
+        await self.config.password.set(password)
+        await self.config.user_agent.set(user_agent)
+        await ctx.send(f"Configuration updated: Nation='{nation}', Password='[HIDDEN]', User-Agent='{user_agent}'")
+
     @tasks.loop(minutes=30)
     async def check_activity(self):
         channel_id = 1323331769012846592
@@ -153,7 +161,7 @@ class VoteButton(discord.ui.Button):
         self.option_id = option_id
 
     async def callback(self, interaction: discord.Interaction):
-        cog = interaction.client.get_cog("Rota")
+        cog = interaction.client.get_cog("rota")
         if not cog:
             await interaction.response.send_message("Voting system is currently unavailable.", ephemeral=True)
             return
