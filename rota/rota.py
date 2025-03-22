@@ -130,28 +130,7 @@ class rota(commands.Cog):
             await ctx.send("No active vote to end.")
             return
 
-        votes = await self.config.votes()
-        issue_id = await self.config.issue_id()
-
-        if not votes:
-            xml_response = await self.answer_issue(issue_id, -1)
-            file = discord.File(fp=io.StringIO(xml_response), filename=f"issue_{issue_id}_dismissed.xml")
-            await ctx.send("No votes were cast. Issue dismissed.", file=file)
-        else:
-            option_counts = {}
-            for opt in votes.values():
-                option_counts[opt] = option_counts.get(opt, 0) + 1
-
-            top_option = max(option_counts, key=option_counts.get)
-
-            xml_response = await self.answer_issue(issue_id, top_option)
-            file = discord.File(fp=io.StringIO(xml_response), filename=f"issue_{issue_id}_option_{top_option}.xml")
-            await ctx.send(f"Issue #{issue_id} answered with Option #{top_option}.", file=file)
-
-        await self.config.votes.clear()
-        await self.config.issue_id.clear()
-        await self.config.last_activity.clear()
-        await self.config.vote_active.set(False)
+        await self.process_vote(ctx.channel)
 
     @commands.command()
     async def stoprota(self, ctx):
@@ -188,16 +167,18 @@ class rota(commands.Cog):
         max_time_limit = last_activity + timedelta(minutes=10)
 
         if now >= issue_time_limit or now >= max_time_limit:
-            await self.submit_vote(channel)
+            await self.process_vote(channel)
 
-    async def submit_vote(self, channel):
+    async def process_vote(self, channel):
         votes = await self.config.votes()
         issue_id = await self.config.issue_id()
 
         if not votes:
             xml_response = await self.answer_issue(issue_id, -1)
-            file = discord.File(fp=io.StringIO(xml_response), filename=f"issue_{issue_id}_dismissed.xml")
-            await channel.send("No votes were cast. Issue dismissed.", file=file)
+            desc = ET.fromstring(xml_response).find(".//HEADLINE")
+            summary = desc.text if desc is not None else "No headlines."
+            await channel.send(f"No votes were cast. Issue #{issue_id} dismissed.\n**Headline:** {summary}",
+                               file=discord.File(io.StringIO(xml_response), filename=f"issue_{issue_id}_dismissed.xml"))
         else:
             option_counts = {}
             for opt in votes.values():
@@ -206,8 +187,11 @@ class rota(commands.Cog):
             top_option = max(option_counts, key=option_counts.get)
 
             xml_response = await self.answer_issue(issue_id, top_option)
-            file = discord.File(fp=io.StringIO(xml_response), filename=f"issue_{issue_id}_option_{top_option}.xml")
-            await channel.send(f"Issue #{issue_id} answered with Option #{top_option}.", file=file)
+            root = ET.fromstring(xml_response)
+            desc = root.find(".//DESC")
+            summary = desc.text if desc is not None else "No description."
+            await channel.send(f"Issue #{issue_id} answered with Option #{top_option}.\n**Result:** {summary}",
+                               file=discord.File(io.StringIO(xml_response), filename=f"issue_{issue_id}_option_{top_option}.xml"))
 
         await self.config.votes.clear()
         await self.config.issue_id.clear()
