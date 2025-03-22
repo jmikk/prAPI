@@ -7,8 +7,12 @@ import asyncio
 import random
 import io
 from datetime import datetime, timedelta
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lsa import LsaSummarizer
 
 API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
+RESULTS_CHANNEL_ID = 1130324894031290428  # Channel for outputting results
 
 # Example face URLs categorized by gender
 FACE_IMAGES = {
@@ -38,6 +42,12 @@ class rota(commands.Cog):
 
     def cog_unload(self):
         self.check_activity.cancel()
+
+    def summarize_option(self, text):
+        parser = PlaintextParser.from_string(text, Tokenizer("english"))
+        summarizer = LsaSummarizer()
+        summary_sentences = summarizer(parser.document, 1)
+        return str(summary_sentences[0]) if summary_sentences else text[:100]
 
     async def fetch_issues(self):
         nation = await self.config.nation()
@@ -108,6 +118,8 @@ class rota(commands.Cog):
         issue_embed = discord.Embed(title=title, description=text, color=discord.Color.blue())
         await ctx.send(embed=issue_embed)
 
+        option_summaries = {}
+
         for option in options:
             option_id = option.get("id")
             option_text = option.text
@@ -122,6 +134,11 @@ class rota(commands.Cog):
             view.add_item(VoteButton(option_id=option_id, label=f"Vote for Option {option_id}"))
             await ctx.send(embed=embed, view=view)
 
+            summary = self.summarize_option(option_text)
+            option_summaries[option_id] = summary
+
+        await self.config.option_summaries.set(option_summaries)
+
     @commands.command()
     async def endvote(self, ctx):
         """Force end the current vote and submit the answer."""
@@ -130,7 +147,7 @@ class rota(commands.Cog):
             await ctx.send("No active vote to end.")
             return
 
-        await self.process_vote(ctx.channel)
+        await self.process_vote()
 
     @commands.command()
     async def stoprota(self, ctx):
@@ -148,11 +165,6 @@ class rota(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def check_activity(self):
-        channel_id = 1323331769012846592
-        channel = self.bot.get_channel(channel_id)
-        if not channel:
-            return
-
         active = await self.config.vote_active()
         if not active:
             return
@@ -167,9 +179,13 @@ class rota(commands.Cog):
         max_time_limit = last_activity + timedelta(minutes=10)
 
         if now >= issue_time_limit or now >= max_time_limit:
-            await self.process_vote(channel)
+            await self.process_vote()
 
-    async def process_vote(self, channel):
+    async def process_vote(self):
+        channel = self.bot.get_channel(RESULTS_CHANNEL_ID)
+        if not channel:
+            return
+
         votes = await self.config.votes()
         issue_id = await self.config.issue_id()
 
@@ -186,31 +202,22 @@ class rota(commands.Cog):
 
             top_option = max(option_counts, key=option_counts.get)
 
+            option_summaries = await self.config.option_summaries()
+            summary_line = option_summaries.get(top_option, f"Option {top_option}")
+
             xml_response = await self.answer_issue(issue_id, top_option)
             root = ET.fromstring(xml_response)
             desc = root.find(".//DESC")
-            summary = desc.text if desc is not None else "No description."
-            await channel.send(f"Issue #{issue_id} answered with Option #{top_option}.\n**Result:** {summary}",
+            result_summary = desc.text if desc is not None else "No description."
+            await channel.send(f"Issue #{issue_id} answered with: \n**{summary_line}**\n**Result:** {result_summary}",
                                file=discord.File(io.StringIO(xml_response), filename=f"issue_{issue_id}_option_{top_option}.xml"))
 
         await self.config.votes.clear()
         await self.config.issue_id.clear()
         await self.config.last_activity.clear()
         await self.config.vote_active.set(False)
+        await self.config.option_summaries.clear()
 
 class VoteButton(discord.ui.Button):
     def __init__(self, option_id, label):
-        super().__init__(label=label, style=discord.ButtonStyle.primary)
-        self.option_id = option_id
-
-    async def callback(self, interaction: discord.Interaction):
-        cog = interaction.client.get_cog("rota")
-        if not cog:
-            await interaction.response.send_message("Voting system is currently unavailable.", ephemeral=True)
-            return
-
-        votes = await cog.config.votes()
-        votes[str(interaction.user.id)] = self.option_id
-        await cog.config.votes.set(votes)
-        await cog.config.last_activity.set(datetime.utcnow().isoformat())
-        await interaction.response.send_message(f"Your vote for Option {self.option_id} has been recorded.", ephemeral=True)
+        super().__init__(
