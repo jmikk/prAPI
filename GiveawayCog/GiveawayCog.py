@@ -364,6 +364,14 @@ class GiveawayCog(commands.Cog):
         msg = "\n".join([f"{g['day'].title()} | Role ID: {g['role_id']} | Value: {g['value_tier']} | Starts: {g['start_time']}" for g in scheduled])
         await ctx.send(f"Scheduled Giveaways:\n{msg}")
 
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
+    async def clearscheduled(self, ctx):
+        """Clear all scheduled giveaways for this server."""
+        await self.config.guild(ctx.guild).scheduled_giveaways.set([])
+        await ctx.send("All scheduled giveaways have been cleared for this server.")
+
+
 
 class GiveawayButtonView(discord.ui.View):
     def __init__(self, role_id, card_data, card_link, role, end_time):
