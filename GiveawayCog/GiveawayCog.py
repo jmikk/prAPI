@@ -164,6 +164,7 @@ class GiveawayCog(commands.Cog):
             x_pin = prepare_response.headers.get("X-Pin")
 
             if not token or not x_pin:
+                await ctx.send(prepare_response.text())
                 await ctx.send("Failed to retrieve the token or X-Pin for gift execution.")
                 return
 
