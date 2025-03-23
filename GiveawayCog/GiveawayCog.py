@@ -42,7 +42,7 @@ class GiveawayCog(commands.Cog):
         if not card_data:
             return await ctx.send("Failed to fetch card info from NationStates API.")
 
-        end_time = datetime.utcnow() - timedelta(hours=5) + timedelta(minutes=length_in_days)
+        end_time = datetime.utcnow() - timedelta(hours=5) + timedelta(days=length_in_days)
         channel = ctx.guild.get_channel(channel_id)
         role_id = role.id if role else None
         view = GiveawayButtonView(role_id, card_data, card_link, role, end_time)
@@ -55,13 +55,12 @@ class GiveawayCog(commands.Cog):
     @commands.admin_or_permissions(administrator=True)
     @commands.command()
     async def cancelgiveaway(self, ctx, message_id: int):
-        """Cancel a giveaway by message ID."""
         task = self.giveaway_tasks.pop(message_id, None)
         if task:
             task.cancel()
             await ctx.send(f"Giveaway with message ID {message_id} has been canceled.")
         else:
-            await ctx.send("No active giveaway with that message ID was found.")
+            await ctx.send("No active giveaway with that message ID found.")
 
     def parse_card_link(self, link):
         try:
@@ -97,18 +96,72 @@ class GiveawayCog(commands.Cog):
         entrants = view.get_entrants()
         if entrants:
             winner = random.choice(entrants)
-            await self.config.winner_map.set_raw(
-                str(winner.id),
-                value={
-                    "message_id": message.id,
-                    "cardid": view.card_data["cardid"],
-                    "season": view.card_data["season"],
-                    "timestamp": int(datetime.utcnow().timestamp())
-                }
-            )
+            user_claims = await self.config.winner_map.get_raw(str(winner.id), default=[])
+            user_claims.append({
+                "message_id": message.id,
+                "cardid": view.card_data["cardid"],
+                "season": view.card_data["season"],
+                "timestamp": int(datetime.utcnow().timestamp())
+            })
+            await self.config.winner_map.set_raw(str(winner.id), value=user_claims)
             await message.reply(f"Giveaway ended! Congratulations {winner.mention}, you won the card giveaway! Use `!claimcards <destination>` to tell Gob where to send your card.")
         else:
             await message.reply("Giveaway ended! No entrants.")
+
+    @commands.command()
+    async def claimcards(self, ctx, *, destination: str):
+        try:
+            user_claims = await self.config.winner_map.get_raw(str(ctx.author.id), default=[])
+            if not user_claims:
+                return await ctx.send("You have no unclaimed giveaways.")
+
+            useragent = "9007"
+            password = await self.config.password()
+            nationname = await self.config.nationname()
+            if not password or not nationname:
+                return await ctx.send("Nation name or password is not set. Use `setnation` and `setpassword` commands.")
+
+            log_channel_id = await self.config.guild(ctx.guild).log_channel()
+            log_channel = ctx.guild.get_channel(log_channel_id) if log_channel_id else None
+            x_pin = None
+
+            for idx, claim_info in enumerate(user_claims):
+                card_id = claim_info["cardid"]
+                season = claim_info["season"]
+                if log_channel:
+                    await log_channel.send(f"{ctx.author.mention} claimed card ID {card_id} (Season {season}) to be sent to {destination}.")
+
+                prepare_data = {
+                    "nation": nationname, "c": "giftcard", "cardid": card_id, "season": season,
+                    "to": destination, "mode": "prepare"
+                }
+                prepare_headers = {"User-Agent": useragent, "X-Password": password}
+                async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
+                    prepare_text = await prepare_response.text()
+                    if prepare_response.status != 200:
+                        return await ctx.send("Failed to prepare the gift.")
+                    token = self.parse_token(prepare_text)
+                    if not token:
+                        return await ctx.send("Failed to retrieve the token for gift execution.")
+                    if idx == 0:
+                        x_pin = prepare_response.headers.get("X-Pin")
+                        if not x_pin:
+                            return await ctx.send("Failed to retrieve the X-Pin for gift execution.")
+
+                execute_data = {
+                    "nation": nationname, "c": "giftcard", "cardid": card_id, "season": season,
+                    "to": destination, "mode": "execute", "token": token
+                }
+                execute_headers = {"User-Agent": useragent, "X-Pin": x_pin}
+                async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
+                    if execute_response.status != 200:
+                        return await ctx.send("Failed to execute the gift.")
+
+            await self.config.winner_map.set_raw(str(ctx.author.id), value=[])
+            await ctx.send("Successfully claimed and gifted all cards!")
+
+        except Exception as e:
+            await self.log_error(ctx, str(e))
 
     @commands.admin_or_permissions(administrator=True)
     @commands.command()
@@ -117,14 +170,9 @@ class GiveawayCog(commands.Cog):
             winner_map = await self.config.winner_map.all()
             if not winner_map:
                 return await ctx.send("There are no unclaimed giveaways.")
-
-            grouped_claims = {}
-            for uid, info in winner_map.items():
-                user_id = int(uid)
-                grouped_claims.setdefault(user_id, []).append(info)
-
             messages = []
-            for user_id, claims in grouped_claims.items():
+            for user_id_str, claims in winner_map.items():
+                user_id = int(user_id_str)
                 user = ctx.guild.get_member(user_id)
                 user_name = user.display_name if user else f"User ID {user_id}"
                 claims_text = "\n".join([
@@ -132,10 +180,8 @@ class GiveawayCog(commands.Cog):
                     for claim in claims
                 ])
                 messages.append(f"**{user_name}**\n{claims_text}")
-
             for chunk in [messages[i:i+5] for i in range(0, len(messages), 5)]:
                 await ctx.send("\n\n".join(chunk))
-
         except Exception as e:
             await self.log_error(ctx, str(e))
 
