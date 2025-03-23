@@ -214,21 +214,33 @@ class GiveawayCog(commands.Cog):
         except Exception as e:
             await self.log_error(ctx, str(e))
 
+    @commands.admin_or_permissions(administrator=True)
     @commands.command()
     async def viewclaims(self, ctx):
-        """View your current unclaimed cards."""
+        """Admin command to view all unclaimed cards."""
         try:
             winner_map = await self.config.winner_map.all()
-            user_claims = [(uid, info) for uid, info in winner_map.items() if int(uid) == ctx.author.id]
 
-            if not user_claims:
-                return await ctx.send("You have no unclaimed giveaways.")
+            if not winner_map:
+                return await ctx.send("There are no unclaimed giveaways.")
 
-            claim_list = "\n".join([
-                f"Card ID {info['cardid']} (Season {info['season']}) - Won on <t:{int(info['timestamp'])}:F>"
-                for uid, info in user_claims
-            ])
-            await ctx.send(f"Your unclaimed cards:\n{claim_list}")
+            grouped_claims = {}
+            for uid, info in winner_map.items():
+                user_id = int(uid)
+                grouped_claims.setdefault(user_id, []).append(info)
+
+            messages = []
+            for user_id, claims in grouped_claims.items():
+                user = ctx.guild.get_member(user_id)
+                user_name = user.display_name if user else f"User ID {user_id}"
+                claims_text = "\n".join([
+                    f"Card ID {claim['cardid']} (Season {claim['season']}) - Won on <t:{int(claim['timestamp'])}:F>"
+                    for claim in claims
+                ])
+                messages.append(f"**{user_name}**\n{claims_text}")
+
+            for chunk in [messages[i:i+5] for i in range(0, len(messages), 5)]:
+                await ctx.send("\n\n".join(chunk))
 
         except Exception as e:
             await self.log_error(ctx, str(e))
@@ -236,9 +248,10 @@ class GiveawayCog(commands.Cog):
     def parse_token(self, text):
         try:
             root = ET.fromstring(text)
-            return root.findtext("SUCCESS")
+            return root.findtext("TOKEN")
         except ET.ParseError:
             return None
+
 
 class GiveawayButtonView(discord.ui.View):
     def __init__(self, role_id, card_data, card_link, role, end_time):
