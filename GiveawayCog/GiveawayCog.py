@@ -16,6 +16,8 @@ class GiveawayCog(commands.Cog):
         self.session = aiohttp.ClientSession()
         self.giveaway_tasks = {}
         self.scheduler.start()
+        self.scheduled_giveaways = []
+
 
     
     def cog_unload(self):
