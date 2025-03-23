@@ -14,6 +14,128 @@ class GiveawayCog(commands.Cog):
         self.config.register_global(nationname=None, password=None)
         self.session = aiohttp.ClientSession()
         self.giveaway_tasks = {}
+        self.scheduler.start()
+
+    
+    def cog_unload(self):
+        self.scheduler.cancel()
+
+    @tasks.loop(hours=12)
+    async def scheduler(self):
+        now = datetime.utcnow()
+        for giveaway in self.scheduled_giveaways:
+            if now >= giveaway['start_time'] and not giveaway['started']:
+                await self.run_giveaway(giveaway)
+
+    @commands.command()
+    @commands.is_owner()
+    async def schedule_giveaway(self, ctx, day: str, role: discord.Role = None, length_days: int = 2, value: str = "any"):
+        """Schedule a recurring giveaway on a day of the week for a specific role and value tier."""
+        days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        if day.lower() not in days:
+            return await ctx.send("Invalid day. Please choose a valid day.")
+
+        value = value.lower()
+        if value not in ["low", "mid", "high", "any"]:
+            return await ctx.send("Invalid value. Choose from low, mid, high, or any.")
+
+        next_run = self.next_weekday(datetime.utcnow(), days.index(day.lower()))
+        self.scheduled_giveaways.append({
+            'day': day.lower(),
+            'role_id': role.id if role else None,
+            'length_days': length_days,
+            'value_tier': value,
+            'start_time': next_run,
+            'started': False
+        })
+        await ctx.send(f"Scheduled giveaway for {day.title()}s with role {role.mention if role else 'Everyone'} and value tier '{value}'.")
+
+    
+    def next_weekday(self, d, weekday):
+        days_ahead = weekday - d.weekday()
+        if days_ahead <= 0:
+            days_ahead += 7
+        return d + timedelta(days=days_ahead)
+
+    async def run_giveaway(self, giveaway):
+        try:
+            nationname = await self.config.nationname()
+            cards = await self.fetch_deck(nationname)
+            legendary_cards = [c for c in cards if c['category'] == 'legendary']
+
+            claimed = await self.config.claimed_cards()
+            active = await self.config.active_giveaways()
+            available_cards = [c for c in legendary_cards if f"{c['cardid']}_{c['season']}" not in claimed and f"{c['cardid']}_{c['season']}" not in active]
+
+            if not available_cards:
+                return
+
+            # Sort by market value
+            available_cards.sort(key=lambda x: float(x['market_value']))
+            count = len(available_cards)
+            selected_card = None
+
+            if giveaway['value_tier'] == "low":
+                selected_card = random.choice(available_cards[:max(1, count // 4)])
+            elif giveaway['value_tier'] == "mid":
+                start = count // 4
+                end = 3 * count // 4
+                selected_card = random.choice(available_cards[start:end])
+            elif giveaway['value_tier'] == "high":
+                selected_card = random.choice(available_cards[3 * count // 4:])
+            else:
+                selected_card = random.choice(available_cards)
+
+            await self.config.active_giveaways.set(active + [f"{selected_card['cardid']}_{selected_card['season']}"])
+
+            guilds = self.bot.guilds
+            for guild in guilds:
+                channel_id = await self.config.guild(guild).giveaway_channel()
+                if not channel_id:
+                    continue
+
+                channel = guild.get_channel(channel_id)
+                end_time = datetime.utcnow() + timedelta(days=giveaway['length_days'])
+
+                embed = discord.Embed(title=f"Giveaway: Legendary Card",
+                                      description=f"Card ID: {selected_card['cardid']} (Season {selected_card['season']})\nValue: {selected_card['market_value']}",
+                                      color=discord.Color.gold())
+                embed.add_field(name="Ends", value=f"<t:{int(end_time.timestamp())}:R>")
+                embed.set_footer(text="Click to enter!")
+
+                view = discord.ui.View()
+                view.add_item(discord.ui.Button(label="Enter", style=discord.ButtonStyle.green))
+                await channel.send(embed=embed, view=view)
+
+                giveaway['started'] = True
+
+        except Exception as e:
+            for guild in self.bot.guilds:
+                log_channel_id = await self.config.guild(guild).log_channel()
+                log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
+                if log_channel:
+                    await log_channel.send(f"Error in scheduled giveaway: {e}")
+
+    async def fetch_deck(self, nationname):
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname={nationname}"
+        headers = {"User-Agent": "9007"}
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers) as response:
+                if response.status != 200:
+                    return []
+                data = await response.text()
+                root = ET.fromstring(data)
+                cards = []
+                for card in root.find("DECK"):
+                    cards.append({
+                        "cardid": card.findtext("CARDID"),
+                        "category": card.findtext("CATEGORY"),
+                        "market_value": card.findtext("MARKET_VALUE"),
+                        "season": card.findtext("SEASON")
+                    })
+                return cards
+
+
 
     async def log_error(self, ctx, error):
         log_channel_id = await self.config.guild(ctx.guild).log_channel()
