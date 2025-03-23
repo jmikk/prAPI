@@ -23,16 +23,17 @@ class GiveawayCog(commands.Cog):
         self.scheduler.cancel()
 
     @tasks.loop(hours=12)
-    for guild in self.bot.guilds:
-        scheduled = await self.config.guild(guild).scheduled_giveaways()
-        updated = []
-        for giveaway in scheduled:
-            start_time = datetime.fromisoformat(giveaway['start_time'])
-            if now >= start_time and not giveaway['started']:
-                await self.run_giveaway(giveaway, guild)
-                giveaway['started'] = True
-            updated.append(giveaway)
-        await self.config.guild(guild).scheduled_giveaways.set(updated)
+    async def scheduler(self):
+        for guild in self.bot.guilds:
+            scheduled = await self.config.guild(guild).scheduled_giveaways()
+            updated = []
+            for giveaway in scheduled:
+                start_time = datetime.fromisoformat(giveaway['start_time'])
+                if now >= start_time and not giveaway['started']:
+                    await self.run_giveaway(giveaway, guild)
+                    giveaway['started'] = True
+                updated.append(giveaway)
+            await self.config.guild(guild).scheduled_giveaways.set(updated)
 
 
     @commands.command()
