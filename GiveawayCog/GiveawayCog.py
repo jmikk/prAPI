@@ -11,8 +11,10 @@ class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=9006)
-        self.config.register_guild(giveaway_channel=None)
+        self.config.register_guild(giveaway_channel=None, log_channel=None)
+        self.config.register_global(winner_map={}, nationname=None, password=None)
         self.giveaway_tasks = {}
+        self.session = aiohttp.ClientSession()
 
     @commands.guild_only()
     @commands.admin_or_permissions(manage_guild=True)
@@ -21,6 +23,28 @@ class GiveawayCog(commands.Cog):
         """Set the channel where giveaways will be posted."""
         await self.config.guild(ctx.guild).giveaway_channel.set(channel.id)
         await ctx.send(f"Giveaway channel set to {channel.mention}.")
+
+    @commands.guild_only()
+    @commands.admin_or_permissions(manage_guild=True)
+    @commands.command()
+    async def setlogchannel(self, ctx, channel: discord.TextChannel):
+        """Set the channel where card claims will be logged."""
+        await self.config.guild(ctx.guild).log_channel.set(channel.id)
+        await ctx.send(f"Log channel set to {channel.mention}.")
+
+    @commands.is_owner()
+    @commands.command()
+    async def setnation(self, ctx, *, nationname: str):
+        """Set the NationStates nation name used for gifting cards."""
+        await self.config.nationname.set(nationname)
+        await ctx.send(f"Nation name set to: {nationname}")
+
+    @commands.is_owner()
+    @commands.command()
+    async def setpassword(self, ctx, *, password: str):
+        """Set the NationStates API password for gifting cards."""
+        await self.config.password.set(password)
+        await ctx.send("Password has been set.")
 
     @commands.guild_only()
     @commands.admin_or_permissions(manage_guild=True)
@@ -82,9 +106,93 @@ class GiveawayCog(commands.Cog):
         entrants = view.get_entrants()
         if entrants:
             winner = random.choice(entrants)
-            await message.reply(f"Giveaway ended! Congratulations {winner.mention}, you won the card giveaway! Please let the Host know where you want your card sent!")
+            await self.config.winner_map.set_raw(str(winner.id), value={"message_id": message.id, "cardid": view.card_data["cardid"], "season": view.card_data["season"]})
+            await message.reply(f"Giveaway ended! Congratulations {winner.mention}, you won the card giveaway! Use `!claimcard <destination>` to tell Gob where to send your card.")
         else:
             await message.reply("Giveaway ended! No entrants.")
+
+    @commands.command()
+    async def claimcard(self, ctx, *, destination: str):
+        """Winner claims their card and specifies where it should be sent."""
+        winner_map = await self.config.winner_map.all()
+        claim_info = winner_map.get(str(ctx.author.id))
+        if not claim_info:
+            return await ctx.send("You have no unclaimed giveaways.")
+
+        card_id = claim_info["cardid"]
+        season = claim_info["season"]
+
+        # Log the claim
+        log_channel_id = await self.config.guild(ctx.guild).log_channel()
+        log_channel = ctx.guild.get_channel(log_channel_id) if log_channel_id else None
+        if log_channel:
+            await log_channel.send(f"{ctx.author.mention} claimed card ID {card_id} (Season {season}) to be sent to {destination}.")
+
+        await self.gift_card(ctx, destination, card_id, season)
+        await self.config.winner_map.clear_raw(str(ctx.author.id))
+
+    async def gift_card(self, ctx, giftie: str, ID: str, Season: str):
+        recipient = "_".join(giftie.split()).lower()
+        useragent = "9007"
+        password = await self.config.password()
+        nationname = await self.config.nationname()
+
+        if not password or not nationname:
+            await ctx.send("Nation name or password is not set. Use `setnation` and `setpassword` commands.")
+            return
+
+        prepare_data = {
+            "nation": nationname,
+            "c": "giftcard",
+            "cardid": ID,
+            "season": Season,
+            "to": giftie,
+            "mode": "prepare"
+        }
+        prepare_headers = {
+            "User-Agent": useragent,
+            "X-Password": password
+        }
+
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
+            prepare_text = await prepare_response.text()
+            if prepare_response.status != 200:
+                await ctx.send("Failed to prepare the gift.")
+                return
+
+            token = self.parse_token(prepare_text)
+            x_pin = prepare_response.headers.get("X-Pin")
+
+            if not token or not x_pin:
+                await ctx.send("Failed to retrieve the token or X-Pin for gift execution.")
+                return
+
+        execute_data = {
+            "nation": nationname,
+            "c": "giftcard",
+            "cardid": ID,
+            "season": Season,
+            "to": giftie,
+            "mode": "execute",
+            "token": token
+        }
+        execute_headers = {
+            "User-Agent": useragent,
+            "X-Pin": x_pin
+        }
+
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
+            if execute_response.status == 200:
+                await ctx.send(f"Successfully gifted card ID {ID} (Season {Season}) to {recipient}!")
+            else:
+                await ctx.send("Failed to execute the gift.")
+
+    def parse_token(self, text):
+        try:
+            root = ET.fromstring(text)
+            return root.findtext("TOKEN")
+        except ET.ParseError:
+            return None
 
 class GiveawayButtonView(discord.ui.View):
     def __init__(self, role_id, card_data, card_link, role, end_time):
