@@ -118,7 +118,7 @@ class GiveawayCog(commands.Cog):
             await log_channel.send(f"Error occurred: {error}")
         await ctx.send("An error occurred. Please reach out to <@207526562331885568> for help.")
 
-   @commands.command()
+    @commands.command()
     async def claimcards(self, ctx, *, destination: str):
         """Claim all unclaimed cards and specify where to send them."""
         try:
