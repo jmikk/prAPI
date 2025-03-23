@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import random
 from discord.ext import tasks
 
+
 class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -38,7 +39,7 @@ class GiveawayCog(commands.Cog):
         if not card_data:
             return await ctx.send("Failed to fetch card info from NationStates API.")
 
-        end_time = datetime.utcnow() + timedelta(minutes=length_in_days)
+        end_time = datetime.utcnow() + timedelta(minutes=length_in_days) - timedelta(hours=5)
         embed = self.create_giveaway_embed(card_data, card_link, role, end_time)
 
         channel = ctx.guild.get_channel(channel_id)
