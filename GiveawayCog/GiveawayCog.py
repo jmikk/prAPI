@@ -123,6 +123,22 @@ class GiveawayCog(commands.Cog):
     async def setnation(self, ctx, *, nationname: str):
         await self.config.nationname.set(nationname)
         await ctx.send(f"Nation name set to: {nationname}")
+    
+    @commands.admin_or_permissions(administrator=True)
+    @commands.command()
+    async def cancelgiveaway(self, ctx, message_id: int):
+        """Cancel an active giveaway by its message ID."""
+        task = self.giveaway_tasks.pop(message_id, None)
+        if task:
+            task.cancel()
+            await ctx.send(f"Giveaway with message ID {message_id} has been canceled.")
+            log_channel_id = await self.config.guild(ctx.guild).log_channel()
+            log_channel = ctx.guild.get_channel(log_channel_id) if log_channel_id else None
+            if log_channel:
+                await log_channel.send(f"Giveaway canceled manually for message ID {message_id}.")
+        else:
+            await ctx.send("No active giveaway found with that message ID.")
+
 
     @commands.is_owner()
     @commands.command()
