@@ -1,5 +1,5 @@
-from .FantasyJobBoard import FantasyJobBoard
+from .prAPI import prAPI
 
 
 async def setup(bot):
-    await bot.add_cog(FantasyJobBoard(bot))
+    await bot.add_cog(prAPI(bot))
