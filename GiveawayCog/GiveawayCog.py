@@ -37,7 +37,7 @@ class GiveawayCog(commands.Cog):
         if not card_data:
             return await ctx.send("Failed to fetch card info from NationStates API.")
 
-        end_time = datetime.utcnow() + timedelta(days=length_in_days)
+        end_time = datetime.utcnow() + timedelta(minutes=length_in_days)
         embed = self.create_giveaway_embed(card_data, card_link, role, end_time)
 
         channel = ctx.guild.get_channel(channel_id)
