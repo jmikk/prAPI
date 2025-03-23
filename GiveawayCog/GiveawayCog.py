@@ -292,7 +292,7 @@ class GiveawayCog(commands.Cog):
             if not card_data:
                 return await ctx.send("Failed to fetch card info from NationStates API.")
     
-            end_time = datetime.utcnow() - timedelta(hours=5) + timedelta(seconds=length_in_days)
+            end_time = datetime.utcnow() - timedelta(hours=5) + timedelta(days=length_in_days)
             channel = ctx.guild.get_channel(channel_id)
             role_id = role.id if role else None
     
