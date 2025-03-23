@@ -7,7 +7,6 @@ import random
 from discord.ext import tasks
 
 
-
 class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -43,9 +42,9 @@ class GiveawayCog(commands.Cog):
         end_time = datetime.utcnow() - timedelta(hours=5) + timedelta(minutes=length_in_days) 
         channel = ctx.guild.get_channel(channel_id)
         role_id = role.id if role else None
-        view = GiveawayButtonView(role_id)
-        embed = self.create_giveaway_embed(card_data, card_link, role, end_time, len(view.entrants))
-        message = await channel.send(embed=embed, view=view)
+        view = GiveawayButtonView(role_id, card_data, card_link, role, end_time)
+        message = await channel.send(embed=view.create_embed(), view=view)
+        view.message = message
 
         self.giveaway_tasks[message.id] = self.bot.loop.create_task(self.end_giveaway(message, view, end_time))
 
@@ -76,22 +75,6 @@ class GiveawayCog(commands.Cog):
                     "market_value": root.findtext("MARKET_VALUE")
                 }
 
-    def create_giveaway_embed(self, card_data, link, role, end_time, entrant_count):
-        embed = discord.Embed(
-            title=f"Giveaway: {card_data['name']} ({card_data['category'].title()})",
-            description=f"A {card_data['category'].title()} card is up for grabs!",
-            url=link,
-            color=discord.Color.gold()
-        )
-        embed.set_thumbnail(url=f"https://www.nationstates.net/images/flags/{card_data['flag']}")
-        embed.add_field(name="Market Value", value=f"{card_data['market_value']}", inline=True)
-        eligible_role = role.mention if role else "Everyone"
-        embed.add_field(name="Eligible Role", value=eligible_role, inline=True)
-        embed.add_field(name="Ends", value=f"<t:{int(end_time.timestamp())}:R>", inline=False)
-        embed.add_field(name="Entrants", value=str(entrant_count), inline=False)
-        embed.set_footer(text="Click the button below to enter!")
-        return embed
-
     async def end_giveaway(self, message, view, end_time):
         await discord.utils.sleep_until(end_time)
         await view.disable_all_items()
@@ -104,10 +87,15 @@ class GiveawayCog(commands.Cog):
             await message.reply("Giveaway ended! No entrants.")
 
 class GiveawayButtonView(discord.ui.View):
-    def __init__(self, role_id):
+    def __init__(self, role_id, card_data, card_link, role, end_time):
         super().__init__(timeout=None)
         self.entrants = set()
         self.role_id = role_id
+        self.card_data = card_data
+        self.card_link = card_link
+        self.role = role
+        self.end_time = end_time
+        self.message = None
 
     @discord.ui.button(label="Enter Giveaway", style=discord.ButtonStyle.green)
     async def enter(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -117,6 +105,10 @@ class GiveawayButtonView(discord.ui.View):
         self.entrants.add(interaction.user)
         await interaction.response.send_message("You have entered the giveaway!", ephemeral=True)
 
+        # Update the embed with the new entrant count
+        if self.message:
+            await self.message.edit(embed=self.create_embed(), view=self)
+
     def get_entrants(self):
         return list(self.entrants)
 
@@ -124,3 +116,19 @@ class GiveawayButtonView(discord.ui.View):
         for item in self.children:
             item.disabled = True
         self.stop()
+
+    def create_embed(self):
+        embed = discord.Embed(
+            title=f"Giveaway: {self.card_data['name']} ({self.card_data['category'].title()})",
+            description=f"A {self.card_data['category'].title()} card is up for grabs!",
+            url=self.card_link,
+            color=discord.Color.gold()
+        )
+        embed.set_thumbnail(url=f"https://www.nationstates.net/images/flags/{self.card_data['flag']}")
+        embed.add_field(name="Market Value", value=f"{self.card_data['market_value']}", inline=True)
+        eligible_role = self.role.mention if self.role else "Everyone"
+        embed.add_field(name="Eligible Role", value=eligible_role, inline=True)
+        embed.add_field(name="Ends", value=f"<t:{int(self.end_time.timestamp())}:R>", inline=False)
+        embed.add_field(name="Entrants", value=str(len(self.entrants)), inline=False)
+        embed.set_footer(text="Click the button below to enter!")
+        return embed
