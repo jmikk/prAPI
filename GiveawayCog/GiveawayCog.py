@@ -66,7 +66,11 @@ class GiveawayCog(commands.Cog):
                     "nation": nationname, "c": "giftcard", "cardid": card_id, "season": season,
                     "to": destination, "mode": "prepare"
                 }
-                prepare_headers = {"User-Agent": useragent, "X-Password": password}
+                if not x_pin:
+                    prepare_headers = {"User-Agent": useragent, "X-Password": password}
+                else: 
+                    prepare_headers = {"User-Agent": useragent, "X-Pin": x_pin}
+
 
                 async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
                     prepare_text = await prepare_response.text()
@@ -129,7 +133,7 @@ class GiveawayCog(commands.Cog):
     def parse_token(self, text):
         try:
             root = ET.fromstring(text)
-            return root.findtext("TOKEN")
+            return root.findtext("SUCCESS")
         except ET.ParseError:
             return None
     
