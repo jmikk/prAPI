@@ -118,82 +118,33 @@ class GiveawayCog(commands.Cog):
             await log_channel.send(f"Error occurred: {error}")
         await ctx.send("An error occurred. Please reach out to <@207526562331885568> for help.")
 
+    @commands.admin_or_permissions(administrator=True)
     @commands.command()
-    async def claimcards(self, ctx, *, destination: str):
-        """Claim all unclaimed cards and specify where to send them."""
+    async def viewclaims(self, ctx):
+        """Admin command to view all unclaimed cards."""
         try:
             winner_map = await self.config.winner_map.all()
-            user_claims = [(uid, info) for uid, info in winner_map.items() if int(uid) == ctx.author.id]
 
-            if not user_claims:
-                return await ctx.send("You have no unclaimed giveaways.")
+            if not winner_map:
+                return await ctx.send("There are no unclaimed giveaways.")
 
-            useragent = "9007"
-            password = await self.config.password()
-            nationname = await self.config.nationname()
+            grouped_claims = {}
+            for uid, info in winner_map.items():
+                user_id = int(uid)
+                grouped_claims.setdefault(user_id, []).append(info)
 
-            if not password or not nationname:
-                return await ctx.send("Nation name or password is not set. Use `setnation` and `setpassword` commands.")
+            messages = []
+            for user_id, claims in grouped_claims.items():
+                user = ctx.guild.get_member(user_id)
+                user_name = user.display_name if user else f"User ID {user_id}"
+                claims_text = "\n".join([
+                    f"Card ID {claim['cardid']} (Season {claim['season']}) - Won on <t:{int(claim.get('timestamp', 0))}:F>"
+                    for claim in claims
+                ])
+                messages.append(f"**{user_name}**\n{claims_text}")
 
-            log_channel_id = await self.config.guild(ctx.guild).log_channel()
-            log_channel = ctx.guild.get_channel(log_channel_id) if log_channel_id else None
-
-            x_pin = None
-
-            for idx, (uid, claim_info) in enumerate(user_claims):
-                card_id = claim_info["cardid"]
-                season = claim_info["season"]
-
-                if log_channel:
-                    await log_channel.send(f"{ctx.author.mention} claimed card ID {card_id} (Season {season}) to be sent to {destination}.")
-
-                prepare_data = {
-                    "nation": nationname,
-                    "c": "giftcard",
-                    "cardid": card_id,
-                    "season": season,
-                    "to": destination,
-                    "mode": "prepare"
-                }
-                prepare_headers = {
-                    "User-Agent": useragent,
-                    "X-Password": password
-                }
-
-                async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
-                    prepare_text = await prepare_response.text()
-                    if prepare_response.status != 200:
-                        return await ctx.send("Failed to prepare the gift.")
-
-                    token = self.parse_token(prepare_text)
-                    if not token:
-                        return await ctx.send("Failed to retrieve the token for gift execution.")
-                    if idx == 0:
-                        x_pin = prepare_response.headers.get("X-Pin")
-                        if not x_pin:
-                            return await ctx.send("Failed to retrieve the X-Pin for gift execution.")
-
-                execute_data = {
-                    "nation": nationname,
-                    "c": "giftcard",
-                    "cardid": card_id,
-                    "season": season,
-                    "to": destination,
-                    "mode": "execute",
-                    "token": token
-                }
-                execute_headers = {
-                    "User-Agent": useragent,
-                    "X-Pin": x_pin
-                }
-
-                async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
-                    if execute_response.status != 200:
-                        return await ctx.send("Failed to execute the gift.")
-
-                await self.config.winner_map.clear_raw(uid)
-
-            await ctx.send("Successfully claimed and gifted all cards!")
+            for chunk in [messages[i:i+5] for i in range(0, len(messages), 5)]:
+                await ctx.send("\n\n".join(chunk))
 
         except Exception as e:
             await self.log_error(ctx, str(e))
