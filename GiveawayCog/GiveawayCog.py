@@ -334,7 +334,18 @@ class GiveawayCog(commands.Cog):
                     "flag": root.findtext("FLAG"),
                     "market_value": root.findtext("MARKET_VALUE")
                 }
-
+    @commands.command()
+    @commands.is_owner()
+    async def cancel_giveaway(self, ctx, cardid: int, season: int):
+        """Cancel an active giveaway for a specific card ID and season."""
+        card_key = f"{cardid}_{season}"
+        active = await self.config.active_giveaways()
+        if card_key in active:
+            active.remove(card_key)
+            await self.config.active_giveaways.set(active)
+            await ctx.send(f"Giveaway for card ID {cardid} season {season} has been canceled.")
+        else:
+            await ctx.send("No active giveaway found for that card.")
 
 class GiveawayButtonView(discord.ui.View):
     def __init__(self, role_id, card_data, card_link, role, end_time):
