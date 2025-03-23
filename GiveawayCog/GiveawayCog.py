@@ -10,13 +10,12 @@ class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=9006)
-        self.config.register_guild(giveaway_channel=None, log_channel=None)
+        self.config.register_guild(giveaway_channel=None, log_channel=None,scheduled_giveaways=[])
         self.config.register_user(wins=[])
         self.config.register_global(nationname=None, password=None)
         self.session = aiohttp.ClientSession()
         self.giveaway_tasks = {}
         self.scheduler.start()
-        self.scheduled_giveaways = []
 
 
     
@@ -24,11 +23,17 @@ class GiveawayCog(commands.Cog):
         self.scheduler.cancel()
 
     @tasks.loop(hours=12)
-    async def scheduler(self):
-        now = datetime.utcnow()
-        for giveaway in self.scheduled_giveaways:
-            if now >= giveaway['start_time'] and not giveaway['started']:
-                await self.run_giveaway(giveaway)
+    for guild in self.bot.guilds:
+        scheduled = await self.config.guild(guild).scheduled_giveaways()
+        updated = []
+        for giveaway in scheduled:
+            start_time = datetime.fromisoformat(giveaway['start_time'])
+            if now >= start_time and not giveaway['started']:
+                await self.run_giveaway(giveaway, guild)
+                giveaway['started'] = True
+            updated.append(giveaway)
+        await self.config.guild(guild).scheduled_giveaways.set(updated)
+
 
     @commands.command()
     @commands.is_owner()
@@ -43,24 +48,25 @@ class GiveawayCog(commands.Cog):
             return await ctx.send("Invalid value. Choose from low, mid, high, or any.")
 
         next_run = self.next_weekday(datetime.utcnow(), days.index(day.lower()))
-        self.scheduled_giveaways.append({
+        scheduled = await self.config.guild(ctx.guild).scheduled_giveaways()
+        scheduled.append({
             'day': day.lower(),
             'role_id': role.id if role else None,
             'length_days': length_days,
             'value_tier': value,
-            'start_time': next_run,
+            'start_time': next_run.isoformat(),
             'started': False
         })
-        await ctx.send(f"Scheduled giveaway for {day.title()}s with role {role.mention if role else 'Everyone'} and value tier '{value}'.")
-
-    
+        await self.config.guild(ctx.guild).scheduled_giveaways.set(scheduled)
+        
+            
     def next_weekday(self, d, weekday):
         days_ahead = weekday - d.weekday()
         if days_ahead <= 0:
             days_ahead += 7
         return d + timedelta(days=days_ahead)
 
-    async def run_giveaway(self, giveaway):
+    async def run_giveaway(self, giveaway,guild):
         try:
             nationname = await self.config.nationname()
             cards = await self.fetch_deck(nationname)
@@ -90,27 +96,25 @@ class GiveawayCog(commands.Cog):
                 selected_card = random.choice(available_cards)
 
             await self.config.active_giveaways.set(active + [f"{selected_card['cardid']}_{selected_card['season']}"])
+            channel_id = await self.config.guild(guild).giveaway_channel()
+            if not channel_id:
+                return
+            channel = guild.get_channel(channel_id)
 
-            guilds = self.bot.guilds
-            for guild in guilds:
-                channel_id = await self.config.guild(guild).giveaway_channel()
-                if not channel_id:
-                    continue
+            channel = guild.get_channel(channel_id)
+            end_time = datetime.utcnow() + timedelta(days=giveaway['length_days'])
 
-                channel = guild.get_channel(channel_id)
-                end_time = datetime.utcnow() + timedelta(days=giveaway['length_days'])
-
-                embed = discord.Embed(title=f"Giveaway: Legendary Card",
+            embed = discord.Embed(title=f"Giveaway: Legendary Card",
                                       description=f"Card ID: {selected_card['cardid']} (Season {selected_card['season']})\nValue: {selected_card['market_value']}",
                                       color=discord.Color.gold())
-                embed.add_field(name="Ends", value=f"<t:{int(end_time.timestamp())}:R>")
-                embed.set_footer(text="Click to enter!")
+            embed.add_field(name="Ends", value=f"<t:{int(end_time.timestamp())}:R>")
+            embed.set_footer(text="Click to enter!")
 
-                view = discord.ui.View()
-                view.add_item(discord.ui.Button(label="Enter", style=discord.ButtonStyle.green))
-                await channel.send(embed=embed, view=view)
+            view = discord.ui.View()
+            view.add_item(discord.ui.Button(label="Enter", style=discord.ButtonStyle.green))
+            await channel.send(embed=embed, view=view)
 
-                giveaway['started'] = True
+            giveaway['started'] = True
 
         except Exception as e:
             for guild in self.bot.guilds:
@@ -349,6 +353,16 @@ class GiveawayCog(commands.Cog):
             await ctx.send(f"Giveaway for card ID {cardid} season {season} has been canceled.")
         else:
             await ctx.send("No active giveaway found for that card.")
+
+    @commands.command()
+    async def viewscheduled(self, ctx):
+        scheduled = await self.config.guild(ctx.guild).scheduled_giveaways()
+        if not scheduled:
+            await ctx.send("No scheduled giveaways.")
+            return
+        msg = "\n".join([f"{g['day'].title()} | Role ID: {g['role_id']} | Value: {g['value_tier']} | Starts: {g['start_time']}" for g in scheduled])
+        await ctx.send(f"Scheduled Giveaways:\n{msg}")
+
 
 class GiveawayButtonView(discord.ui.View):
     def __init__(self, role_id, card_data, card_link, role, end_time):
