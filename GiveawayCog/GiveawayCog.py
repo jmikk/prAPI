@@ -58,7 +58,7 @@ class GiveawayCog(commands.Cog):
 
     async def fetch_card_info(self, card_id, season):
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info;cardid={card_id};season={season}"
-        headers = {"User-Agent": "9006"}
+        headers = {"User-Agent": "9007"}
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
                 if response.status != 200:
