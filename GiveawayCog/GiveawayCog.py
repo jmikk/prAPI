@@ -98,7 +98,7 @@ class GiveawayCog(commands.Cog):
         entrants = view.get_entrants()
         if entrants:
             winner = random.choice(entrants)
-            await message.reply(f"Giveaway ended! Congratulations {winner.mention}, you won the card giveaway!")
+            await message.reply(f"Giveaway ended! Congratulations {winner.mention}, you won the card giveaway! Please let the Host know where you want your card sent!")
         else:
             await message.reply("Giveaway ended! No entrants.")
 
