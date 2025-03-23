@@ -274,7 +274,7 @@ class Casino(commands.Cog):
             total_net += net
     
             # Status based on comparison
-            status = "🔥 Hot" if actual_er > expected_er else "❄️ Cold"
+            status = "🔥 Hot" if actual_er + 20 > expected_er else "❄️ Cold"
     
             embed.add_field(
                 name=f"{game.capitalize()} {status}",
