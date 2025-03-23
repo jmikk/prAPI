@@ -201,7 +201,7 @@ class GiveawayCog(commands.Cog):
     def parse_token(self, text):
         try:
             root = ET.fromstring(text)
-            return root.findtext("TOKEN")
+            return root.findtext("SUCCESS")
         except ET.ParseError:
             return None
 
