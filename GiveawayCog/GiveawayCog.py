@@ -40,11 +40,10 @@ class GiveawayCog(commands.Cog):
             return await ctx.send("Failed to fetch card info from NationStates API.")
 
         end_time = datetime.utcnow() - timedelta(hours=5) + timedelta(minutes=length_in_days) 
-        embed = self.create_giveaway_embed(card_data, card_link, role, end_time)
-
         channel = ctx.guild.get_channel(channel_id)
         role_id = role.id if role else None
         view = GiveawayButtonView(role_id)
+        embed = self.create_giveaway_embed(card_data, card_link, role, end_time, len(view.entrants))
         message = await channel.send(embed=embed, view=view)
 
         self.giveaway_tasks[message.id] = self.bot.loop.create_task(self.end_giveaway(message, view, end_time))
@@ -76,7 +75,7 @@ class GiveawayCog(commands.Cog):
                     "market_value": root.findtext("MARKET_VALUE")
                 }
 
-    def create_giveaway_embed(self, card_data, link, role, end_time):
+    def create_giveaway_embed(self, card_data, link, role, end_time, entrant_count):
         embed = discord.Embed(
             title=f"Giveaway: {card_data['name']} ({card_data['category'].title()})",
             description=f"A {card_data['category'].title()} card is up for grabs!",
@@ -88,6 +87,7 @@ class GiveawayCog(commands.Cog):
         eligible_role = role.mention if role else "Everyone"
         embed.add_field(name="Eligible Role", value=eligible_role, inline=True)
         embed.add_field(name="Ends", value=f"<t:{int(end_time.timestamp())}:R>", inline=False)
+        embed.add_field(name="Entrants", value=str(entrant_count), inline=False)
         embed.set_footer(text="Click the button below to enter!")
         return embed
 
