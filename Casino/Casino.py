@@ -245,7 +245,6 @@ class Casino(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @commands.admin_or_permissions(administrator=True)
     async def casinostats(self, ctx):
         """Display casino stats: total bets, payouts, expected return, and hot/cold status."""
         
@@ -274,7 +273,7 @@ class Casino(commands.Cog):
             total_net += net
     
             # Status based on comparison
-            status = "🔥 Hot" if actual_er + 20 > expected_er else "❄️ Cold"
+            status = "🔥 Hot" if actual_er + 30 > expected_er else "❄️ Cold"
     
             embed.add_field(
                 name=f"{game.capitalize()} {status}",
