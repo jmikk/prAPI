@@ -1,9 +1,10 @@
 import discord
-from redbot.core import commands, Config, tasks
+from redbot.core import commands, Config
 import aiohttp
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 import random
+from discord.ext import tasks
 
 class GiveawayCog(commands.Cog):
     def __init__(self, bot):
