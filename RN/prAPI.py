@@ -7,7 +7,7 @@ import discord
 import time
 import os
 from datetime import datetime
-
+from discord import AllowedMentions
 
 class prAPI(commands.Cog):
     def __init__(self, bot: Red):
