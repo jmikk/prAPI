@@ -107,7 +107,7 @@ class GiveawayCog(commands.Cog):
         if entrants:
             winner = random.choice(entrants)
             await self.config.winner_map.set_raw(str(winner.id), value={"message_id": message.id, "cardid": view.card_data["cardid"], "season": view.card_data["season"]})
-            await message.reply(f"Giveaway ended! Congratulations {winner.mention}, you won the card giveaway! Use `!claimcard <destination>` to tell Gob where to send your card.")
+            await message.reply(f"Giveaway ended! Congratulations {winner.mention}, you won the card giveaway! Use `$claimcard <destination>` to tell Gob where to send your card.")
         else:
             await message.reply("Giveaway ended! No entrants.")
 
