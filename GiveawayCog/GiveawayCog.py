@@ -7,6 +7,7 @@ import random
 from discord.ext import tasks
 
 
+
 class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
