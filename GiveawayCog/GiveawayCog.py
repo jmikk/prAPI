@@ -118,12 +118,12 @@ class GiveawayCog(commands.Cog):
             await log_channel.send(f"Error occurred: {error}")
         await ctx.send("An error occurred. Please reach out to <@207526562331885568> for help.")
 
-    @commands.command()
-    async def claimcard(self, ctx, *, destination: str):
+   @commands.command()
+    async def claimcards(self, ctx, *, destination: str):
         """Claim all unclaimed cards and specify where to send them."""
         try:
             winner_map = await self.config.winner_map.all()
-            user_claims = {uid: info for uid, info in winner_map.items() if int(uid) == ctx.author.id}
+            user_claims = [(uid, info) for uid, info in winner_map.items() if int(uid) == ctx.author.id]
 
             if not user_claims:
                 return await ctx.send("You have no unclaimed giveaways.")
@@ -135,13 +135,12 @@ class GiveawayCog(commands.Cog):
             if not password or not nationname:
                 return await ctx.send("Nation name or password is not set. Use `setnation` and `setpassword` commands.")
 
-            # Prepare log channel
             log_channel_id = await self.config.guild(ctx.guild).log_channel()
             log_channel = ctx.guild.get_channel(log_channel_id) if log_channel_id else None
 
             x_pin = None
 
-            for uid, claim_info in user_claims.items():
+            for idx, (uid, claim_info) in enumerate(user_claims):
                 card_id = claim_info["cardid"]
                 season = claim_info["season"]
 
@@ -167,11 +166,12 @@ class GiveawayCog(commands.Cog):
                         return await ctx.send("Failed to prepare the gift.")
 
                     token = self.parse_token(prepare_text)
-                    if not x_pin:
+                    if not token:
+                        return await ctx.send("Failed to retrieve the token for gift execution.")
+                    if idx == 0:
                         x_pin = prepare_response.headers.get("X-Pin")
-
-                    if not token or not x_pin:
-                        return await ctx.send(prepare_text)
+                        if not x_pin:
+                            return await ctx.send("Failed to retrieve the X-Pin for gift execution.")
 
                 execute_data = {
                     "nation": nationname,
@@ -191,9 +191,44 @@ class GiveawayCog(commands.Cog):
                     if execute_response.status != 200:
                         return await ctx.send("Failed to execute the gift.")
 
-                await self.config.winner_map.clear_raw(str(ctx.author.id))
+                await self.config.winner_map.clear_raw(uid)
 
             await ctx.send("Successfully claimed and gifted all cards!")
+
+        except Exception as e:
+            await self.log_error(ctx, str(e))
+
+    @commands.admin_or_permissions(administrator=True)
+    @commands.command()
+    async def clearclaims(self, ctx, user: discord.User):
+        """Clear all unclaimed cards for a user."""
+        try:
+            winner_map = await self.config.winner_map.all()
+            user_claims = [uid for uid in winner_map if int(uid) == user.id]
+
+            for uid in user_claims:
+                await self.config.winner_map.clear_raw(uid)
+
+            await ctx.send(f"Cleared all unclaimed cards for {user.mention}.")
+
+        except Exception as e:
+            await self.log_error(ctx, str(e))
+
+    @commands.command()
+    async def viewclaims(self, ctx):
+        """View your current unclaimed cards."""
+        try:
+            winner_map = await self.config.winner_map.all()
+            user_claims = [(uid, info) for uid, info in winner_map.items() if int(uid) == ctx.author.id]
+
+            if not user_claims:
+                return await ctx.send("You have no unclaimed giveaways.")
+
+            claim_list = "\n".join([
+                f"Card ID {info['cardid']} (Season {info['season']}) - Won on <t:{int(info['timestamp'])}:F>"
+                for uid, info in user_claims
+            ])
+            await ctx.send(f"Your unclaimed cards:\n{claim_list}")
 
         except Exception as e:
             await self.log_error(ctx, str(e))
