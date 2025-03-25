@@ -12,7 +12,7 @@ from discord import AllowedMentions
 
 API_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 RESULTS_CHANNEL_ID = 1130324894031290428  # Channel for outputting results
-issues_channel = 1098673276064120842
+issues_channel = 1130324894031290428
 
 # Example face URLs categorized by gender
 FACE_IMAGES = {
