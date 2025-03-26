@@ -16,20 +16,25 @@ class NationProfile(commands.Cog):
             "animal": None,
             "currency": None,
             "capital": None,
-            "history": []  # List of dicts with keys: title, text, image
+            "history": []
         }
 
         self.config.register_user(**default_user)
 
     @commands.command()
-    async def nation(self, ctx):
-        """View or set up your nation profile."""
-        data = await self.config.user(ctx.author).all()
-        
+    async def nation(self, ctx, member: Optional[discord.Member] = None):
+        """View your or another user's nation profile."""
+        target = member or ctx.author
+        data = await self.config.user(target).all()
+
         if not data["nation"]:
-            await self.setup_questionnaire(ctx)
-        else:
-            await self.show_nation_embed(ctx, data)
+            if target == ctx.author:
+                await self.setup_questionnaire(ctx)
+            else:
+                await ctx.send("That user has not set up a nation profile.")
+            return
+
+        await self.show_nation_embed(ctx, target, data)
 
     @commands.command()
     async def addhistory(self, ctx, title: str, image_url: Optional[str] = None, *, text: str):
@@ -80,10 +85,10 @@ class NationProfile(commands.Cog):
 
         await ctx.send("Your nation profile has been saved! Use `!nation` again to view it.")
 
-    async def show_nation_embed(self, ctx, data):
+    async def show_nation_embed(self, ctx, user, data):
         embed = discord.Embed(
             title=f"{data['nation']}",
-            description="Your nation's profile",
+            description=f"{user.display_name}'s nation profile",
             color=discord.Color.blue()
         )
         embed.add_field(name="Population", value=data["population"], inline=False)
@@ -91,30 +96,53 @@ class NationProfile(commands.Cog):
         embed.add_field(name="Currency", value=data["currency"], inline=False)
         embed.add_field(name="Capital", value=data["capital"], inline=False)
 
-        view = NationView(self)
+        view = NationView(self, user)
         await ctx.send(embed=embed, view=view)
 
 class NationView(discord.ui.View):
-    def __init__(self, cog):
+    def __init__(self, cog, target_user):
         super().__init__(timeout=None)
         self.cog = cog
+        self.user = target_user
+        self.page_index = 0
 
-    @discord.ui.button(label="View History", style=discord.ButtonStyle.primary, custom_id="nation_view_history")
-    async def view_history(self, interaction: discord.Interaction, button: discord.ui.Button):
-        user = interaction.user
-        data = await self.cog.config.user(user).all()
-        history = data.get("history", [])
-
+    @discord.ui.button(label="⏪ Previous", style=discord.ButtonStyle.secondary)
+    async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        history = await self.cog.config.user(self.user).history()
         if not history:
-            await interaction.response.send_message("You have no history pages set yet.", ephemeral=True)
+            await interaction.response.send_message("No history to display.", ephemeral=True)
             return
 
-        page = history[0]
+        self.page_index = (self.page_index - 1) % len(history)
+        await self.update_embed(interaction, history)
+
+    @discord.ui.button(label="View History", style=discord.ButtonStyle.primary)
+    async def view_history(self, interaction: discord.Interaction, button: discord.ui.Button):
+        history = await self.cog.config.user(self.user).history()
+        if not history:
+            await interaction.response.send_message("This user has no history pages set yet.", ephemeral=True)
+            return
+
+        self.page_index = 0
+        await self.update_embed(interaction, history)
+
+    @discord.ui.button(label="Next ⏩", style=discord.ButtonStyle.secondary)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        history = await self.cog.config.user(self.user).history()
+        if not history:
+            await interaction.response.send_message("No history to display.", ephemeral=True)
+            return
+
+        self.page_index = (self.page_index + 1) % len(history)
+        await self.update_embed(interaction, history)
+
+    async def update_embed(self, interaction: discord.Interaction, history):
+        page = history[self.page_index]
         embed = discord.Embed(title=page["title"], description=page["text"], color=discord.Color.dark_purple())
         if page.get("image"):
             embed.set_thumbnail(url=page["image"])
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        embed.set_footer(text=f"Page {self.page_index + 1} of {len(history)}")
+        await interaction.response.edit_message(embed=embed, view=self)
 
 async def setup(bot: Red):
     await bot.add_cog(NationProfile(bot))
