@@ -74,6 +74,26 @@ class NationProfile(commands.Cog):
         view = NationView(self)
         await ctx.send(embed=embed, view=view)
 
+    @commands.command()
+    async def addhistory(self, ctx, title: str, image_url: Optional[str] = None, *, text: str):
+        """Add a history entry to your nation's profile."""
+        entry = {"title": title, "text": text, "image": image_url}
+        history = await self.config.user(ctx.author).history()
+        history.append(entry)
+        await self.config.user(ctx.author).history.set(history)
+        await ctx.send(f"History page titled '{title}' added.")
+
+    @commands.command()
+    async def removehistory(self, ctx, index: int):
+        """Remove a history page by its index (starting at 1)."""
+        history = await self.config.user(ctx.author).history()
+        if 0 < index <= len(history):
+            removed = history.pop(index - 1)
+            await self.config.user(ctx.author).history.set(history)
+            await ctx.send(f"Removed history page titled '{removed['title']}'.")
+        else:
+            await ctx.send("Invalid index. Use a number corresponding to the history page you want to remove.")
+
 class NationView(discord.ui.View):
     def __init__(self, cog):
         super().__init__(timeout=None)
