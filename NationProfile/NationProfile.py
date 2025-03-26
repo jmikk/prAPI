@@ -149,10 +149,10 @@ class NationProfile(commands.Cog):
                 await ctx.send("You took too long to respond. Setup cancelled.")
                 return
             flag = flag_msg.content.strip()
-            if any(flag.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif", ".webp"]):
+            if any(flag.lower().startswith(ext) for ext in ["http", "https", "www"]):
                 break
             else:
-                await ctx.send("That doesn't look like a valid image URL. Please send a direct link to a .png, .jpg, .jpeg, .gif, or .webp image.")
+                await ctx.send("That doesn't look like a valid image URL.")
 
         await self.config.user(ctx.author).set({
             "nation": nation,
