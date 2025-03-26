@@ -89,7 +89,7 @@ class NationProfile(commands.Cog):
         await ctx.send("Welcome to your Nation Profile setup! What is your nation's name?")
         nation = (await self.bot.wait_for('message', check=check)).content
 
-        await ctx.send("What is your nation's population? (between 1 and 60)")
+        await ctx.send("What is your nation's population? (between 1 (for 100,000) and 60 (6,000,000) ")
         while True:
             try:
                 population_input = await self.bot.wait_for('message', check=check)
