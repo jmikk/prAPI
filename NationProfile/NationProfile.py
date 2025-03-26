@@ -10,14 +10,14 @@ class NationProfile(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
 
-        await self.config.user(ctx.author).set({
-            "nation": nation,
-            "population": population,
-            "animal": animal,
-            "currency": currency,
-            "capital": capital
-        })
-
+        default_user = {
+            "nation": None,
+            "population": None,
+            "animal": None,
+            "currency": None,
+            "capital": None,
+            "history": []  # List of dicts with keys: title, text, image
+        }
 
         self.config.register_user(**default_user)
 
@@ -50,13 +50,13 @@ class NationProfile(commands.Cog):
         await ctx.send("What is your capital city?")
         capital = (await self.bot.wait_for('message', check=check)).content
 
-        await self.config.user(ctx.author).set(
-            nation=nation,
-            population=population,
-            animal=animal,
-            currency=currency,
-            capital=capital
-        )
+        await self.config.user(ctx.author).set({
+            "nation": nation,
+            "population": population,
+            "animal": animal,
+            "currency": currency,
+            "capital": capital
+        })
 
         await ctx.send("Your nation profile has been saved! Use `!nation` again to view it.")
 
