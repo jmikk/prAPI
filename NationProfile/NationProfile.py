@@ -6,7 +6,6 @@ from typing import Optional
 class NationProfile(commands.Cog):
     """A cog for storing and displaying RP nation profiles."""
 
-    
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
@@ -17,6 +16,7 @@ class NationProfile(commands.Cog):
             "animal": None,
             "currency": None,
             "capital": None,
+            "flag": None,
             "history": []
         }
 
@@ -56,9 +56,6 @@ class NationProfile(commands.Cog):
     async def removehistory(self, ctx, index: int):
         """Remove a history page by its index (starting at 1)."""
         history = await self.config.user(ctx.author).history()
-        if index == 1:
-            await ctx.send("You cannot delete your basic nation info page. If you need to change it, use the `!resetnation` command and redo the setup.")
-            return
         if 0 < index <= len(history):
             removed = history.pop(index - 1)
             await self.config.user(ctx.author).history.set(history)
@@ -72,10 +69,6 @@ class NationProfile(commands.Cog):
         history = await self.config.user(ctx.author).history()
         if 0 < index <= len(history):
             entry = history[index - 1]
-            if index == 1:
-                await ctx.send("This is your nation info page. To edit it, please use `!resetnation` instead.")
-                return
-
             if title:
                 entry["title"] = title
             if text:
@@ -119,12 +112,16 @@ class NationProfile(commands.Cog):
         await ctx.send("What is your capital city?")
         capital = (await self.bot.wait_for('message', check=check)).content
 
+        await ctx.send("Please provide a link to your national flag image (URL):")
+        flag = (await self.bot.wait_for('message', check=check)).content
+
         await self.config.user(ctx.author).set({
             "nation": nation,
             "population": population,
             "animal": animal,
             "currency": currency,
-            "capital": capital
+            "capital": capital,
+            "flag": flag
         })
 
         await ctx.send("Your nation profile has been saved! Use `!nation` again to view it.")
@@ -139,6 +136,9 @@ class NationProfile(commands.Cog):
         embed.add_field(name="National Animal", value=data["animal"], inline=False)
         embed.add_field(name="Currency", value=data["currency"], inline=False)
         embed.add_field(name="Capital", value=data["capital"], inline=False)
+
+        if data.get("flag"):
+            embed.set_thumbnail(url=data["flag"])
 
         view = NationView(self, user)
         await ctx.send(embed=embed, view=view)
