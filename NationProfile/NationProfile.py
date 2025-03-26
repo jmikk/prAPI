@@ -2,6 +2,7 @@ import discord
 from redbot.core import commands, Config
 from redbot.core.bot import Red
 from typing import Optional
+import io
 
 class NationProfile(commands.Cog):
     """A cog for storing and displaying RP nation profiles."""
