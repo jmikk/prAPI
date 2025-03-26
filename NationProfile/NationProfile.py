@@ -2,7 +2,6 @@ import discord
 from redbot.core import commands, Config
 from redbot.core.bot import Red
 from typing import Optional
-import io
 
 class NationProfile(commands.Cog):
     """A cog for storing and displaying RP nation profiles."""
@@ -24,21 +23,6 @@ class NationProfile(commands.Cog):
         self.config.register_user(**default_user)
 
     @commands.command()
-    async def nation(self, ctx, member: Optional[discord.Member] = None):
-        """View your or another user's nation profile."""
-        target = member or ctx.author
-        data = await self.config.user(target).all()
-
-        if not data["nation"]:
-            if target == ctx.author:
-                await self.setup_questionnaire(ctx)
-            else:
-                await ctx.send("That user has not set up a nation profile.")
-            return
-
-        await self.show_nation_embed(ctx, target, data)
-
-    @commands.command()
     async def exportnation(self, ctx, member: Optional[discord.Member] = None):
         """Export a nation's full profile and history to a text file."""
         target = member or ctx.author
@@ -55,18 +39,38 @@ class NationProfile(commands.Cog):
             f"Currency: {data['currency']}",
             f"Capital: {data['capital']}",
             f"Flag: {data['flag'] if data['flag'] else 'None'}",
-            "\n--- History ---"
+            "
+--- History ---"
         ]
 
         for i, page in enumerate(data["history"], 1):
-            lines.append(f"\nPage {i} - {page.get('title', 'Untitled')}")
+            lines.append(f"
+Page {i} - {page.get('title', 'Untitled')}")
             lines.append(page.get("text", "No text."))
             if page.get("image"):
                 lines.append(f"Image: {page['image']}")
 
-        content = "\n".join(lines)
-        file = discord.File(fp=discord.File(io.StringIO(content), filename=f"{data['nation']}_profile.txt"))
+        content = "
+".join(lines)
+        import io  # Ensure this is at the top of your file if not already present
+        file = discord.File(io.StringIO(content), filename=f"{data['nation'].replace(' ', '_')}_profile.txt")
         await ctx.send(f"Here is the exported profile for {data['nation']}:", file=file)
+
+
+    @commands.command()
+    async def nation(self, ctx, member: Optional[discord.Member] = None):
+        """View your or another user's nation profile."""
+        target = member or ctx.author
+        data = await self.config.user(target).all()
+
+        if not data["nation"]:
+            if target == ctx.author:
+                await self.setup_questionnaire(ctx)
+            else:
+                await ctx.send("That user has not set up a nation profile.")
+            return
+
+        await self.show_nation_embed(ctx, target, data)
 
     @commands.command()
     async def resetnation(self, ctx):
@@ -127,26 +131,25 @@ class NationProfile(commands.Cog):
 
         await ctx.send("What is your nation's population? (between 100,000 and 6,000,000)")
         while True:
-            try:
+        try:
                 population_input = await self.bot.wait_for('message', check=check, timeout=60)
-                raw_pop = int(population_input.content.replace(",", ""))
-                if 100000 <= raw_pop <= 6000000:
-                    population = f"{raw_pop:,}"
-                    break
-                else:
-                    await ctx.send("Please enter a number between 100,000 and 6,000,000.")
-            except asyncio.TimeoutError:
-                await ctx.send("You took too long to respond. Setup cancelled.")
-                return
-            except ValueError:
-                await ctx.send("Please enter a valid number.")
             raw_pop = int(population_input.content.replace(",", ""))
             if 100000 <= raw_pop <= 6000000:
                 population = f"{raw_pop:,}"
                 break
             else:
                 await ctx.send("Please enter a number between 100,000 and 6,000,000.")
-
+            except asyncio.TimeoutError:
+                await ctx.send("You took too long to respond. Setup cancelled.")
+                return
+                raw_pop = int(population_input.content.replace(",", ""))
+                if 100000 <= raw_pop <= 6000000:
+                    population = f"{raw_pop:,}"
+                    break
+                else:
+                    await ctx.send("Please enter a number between 100,000 and 6,000,000.")
+            except ValueError:
+                await ctx.send("Please enter a valid number.")
 
         await ctx.send("What is your national animal?")
         try:
@@ -180,10 +183,10 @@ class NationProfile(commands.Cog):
                 await ctx.send("You took too long to respond. Setup cancelled.")
                 return
             flag = flag_msg.content.strip()
-            if any(flag.lower().startswith(ext) for ext in ["http", "https", "www"]):
+            if any(flag.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif", ".webp"]):
                 break
             else:
-                await ctx.send("That doesn't look like a valid image URL.")
+                await ctx.send("That doesn't look like a valid image URL. Please send a direct link to a .png, .jpg, .jpeg, .gif, or .webp image.")
 
         await self.config.user(ctx.author).set({
             "nation": nation,
@@ -207,7 +210,7 @@ class NationProfile(commands.Cog):
         embed.add_field(name="Currency", value=data["currency"], inline=False)
         embed.add_field(name="Capital", value=data["capital"], inline=False)
 
-        if data.get("flag") and any(data["flag"].lower().startswith(ext) for ext in ["http", "https", "www"]):
+        if data.get("flag") and any(data["flag"].lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif", ".webp"]):
             embed.set_thumbnail(url=data["flag"])
 
         view = NationView(self, user)
