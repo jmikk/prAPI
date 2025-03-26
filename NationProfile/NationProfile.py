@@ -65,6 +65,29 @@ class NationProfile(commands.Cog):
         else:
             await ctx.send("Invalid index. Use a number corresponding to the history page you want to remove.")
 
+    @commands.command()
+    async def edithistory(self, ctx, index: int, title: Optional[str] = None, image_url: Optional[str] = None, *, text: Optional[str] = None):
+        """Edit a history entry by index (starting at 1). Leave fields blank to keep unchanged."""
+        history = await self.config.user(ctx.author).history()
+        if 0 < index <= len(history):
+            entry = history[index - 1]
+            if index == 1:
+                await ctx.send("This is your nation info page. To edit it, please use `!resetnation` instead.")
+                return
+
+            if title:
+                entry["title"] = title
+            if text:
+                entry["text"] = text
+            if image_url is not None:
+                entry["image"] = image_url
+
+            history[index - 1] = entry
+            await self.config.user(ctx.author).history.set(history)
+            await ctx.send(f"Updated history entry #{index}.")
+        else:
+            await ctx.send("Invalid index. Use a number corresponding to the history page you want to edit.")
+
     async def setup_questionnaire(self, ctx):
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel
@@ -142,16 +165,6 @@ class NationView(discord.ui.View):
             return
 
         self.page_index = (self.page_index - 1) % len(history)
-        await self.update_embed(interaction, history)
-
-    @discord.ui.button(label="View History", style=discord.ButtonStyle.primary)
-    async def view_history(self, interaction: discord.Interaction, button: discord.ui.Button):
-        history = await self.cog.config.user(self.user).history()
-        if not history:
-            await interaction.response.send_message("This user has no history pages set yet.", ephemeral=True)
-            return
-
-        self.page_index = 0
         await self.update_embed(interaction, history)
 
     @discord.ui.button(label="Next ⏩", style=discord.ButtonStyle.secondary)
