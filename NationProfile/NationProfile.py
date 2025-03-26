@@ -95,7 +95,7 @@ class NationProfile(commands.Cog):
                 population_input = await self.bot.wait_for('message', check=check)
                 multiplier = int(population_input.content.replace(",",""))
                 if 100000 <= multiplier <= 60000000:
-                    population = f"{population:,}"
+                    population = f"{multiplier:,}"
                     break
                 else:
                     await ctx.send("Please enter a number between 100,000 and for 6,000,000.")
