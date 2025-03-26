@@ -176,7 +176,7 @@ class NationProfile(commands.Cog):
         embed.add_field(name="Currency", value=data["currency"], inline=False)
         embed.add_field(name="Capital", value=data["capital"], inline=False)
 
-        if data.get("flag") and any(data["flag"].lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif", ".webp"]):
+        if data.get("flag") and any(data["flag"].lower().startswith(ext) for ext in ["http", "https", "www"]):
             embed.set_thumbnail(url=data["flag"])
 
         view = NationView(self, user)
