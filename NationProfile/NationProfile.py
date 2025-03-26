@@ -129,12 +129,12 @@ class NationProfile(commands.Cog):
         while True:
             try:
                 population_input = await self.bot.wait_for('message', check=check, timeout=60)
-            raw_pop = int(population_input.content.replace(",", ""))
-            if 100000 <= raw_pop <= 6000000:
-                population = f"{raw_pop:,}"
-                break
-            else:
-                await ctx.send("Please enter a number between 100,000 and 6,000,000.")
+                raw_pop = int(population_input.content.replace(",", ""))
+                if 100000 <= raw_pop <= 6000000:
+                    population = f"{raw_pop:,}"
+                    break
+                else:
+                    await ctx.send("Please enter a number between 100,000 and 6,000,000.")
             except asyncio.TimeoutError:
                 await ctx.send("You took too long to respond. Setup cancelled.")
                 return
