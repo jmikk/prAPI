@@ -97,8 +97,7 @@ class NationProfile(commands.Cog):
         await ctx.send("What is your nation's population? (between 100,000 and 6,000,000)")
         while True:
             try:
-                try:
-                population_input = await self.bot.wait_for('message', check=check, timeout=60)
+                    population_input = await self.bot.wait_for('message', check=check, timeout=60)
             except asyncio.TimeoutError:
                 await ctx.send("You took too long to respond. Setup cancelled.")
                 return
