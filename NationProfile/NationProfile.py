@@ -126,14 +126,6 @@ class NationProfile(commands.Cog):
             "capital": capital
         })
 
-        # Save front page as first history entry
-        entry = {
-            "title": f"{nation} — Basic Info",
-            "text": f"**Population:** {population}\n**National Animal:** {animal}\n**Currency:** {currency}\n**Capital:** {capital}",
-            "image": None
-        }
-        await self.config.user(ctx.author).history.set([entry])
-
         await ctx.send("Your nation profile has been saved! Use `!nation` again to view it.")
 
     async def show_nation_embed(self, ctx, user, data):
