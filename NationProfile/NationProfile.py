@@ -93,8 +93,8 @@ class NationProfile(commands.Cog):
         while True:
             try:
                 population_input = await self.bot.wait_for('message', check=check)
-                multiplier = int(population_input.content)
-                if 1 <= multiplier <= 60:
+                multiplier = int(population_input.content.replace(",",""))
+                if 100000 <= multiplier <= 60000000:
                     population = f"{population:,}"
                     break
                 else:
