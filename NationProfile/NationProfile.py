@@ -55,6 +55,9 @@ class NationProfile(commands.Cog):
     async def removehistory(self, ctx, index: int):
         """Remove a history page by its index (starting at 1)."""
         history = await self.config.user(ctx.author).history()
+        if index == 1:
+            await ctx.send("You cannot delete your basic nation info page. If you need to change it, use the `!resetnation` command and redo the setup.")
+            return
         if 0 < index <= len(history):
             removed = history.pop(index - 1)
             await self.config.user(ctx.author).history.set(history)
@@ -69,16 +72,17 @@ class NationProfile(commands.Cog):
         await ctx.send("Welcome to your Nation Profile setup! What is your nation's name?")
         nation = (await self.bot.wait_for('message', check=check)).content
 
-        await ctx.send("What is your nation's population? (100,000 to 6,000,000)")
+        await ctx.send("What is your nation's population? (between 1 and 60)")
         while True:
             try:
                 population_input = await self.bot.wait_for('message', check=check)
-                population = int(population_input.content.replace(",", ""))
-                if 100000 <= population <= 6000000:
+                multiplier = int(population_input.content)
+                if 1 <= multiplier <= 60:
+                    population = multiplier * 100_000
                     population = f"{population:,}"
                     break
                 else:
-                    await ctx.send("Population must be between 100,000 and 6,000,000.")
+                    await ctx.send("Please enter a number between 1 (for 100,000) and 60 (for 6,000,000).")
             except ValueError:
                 await ctx.send("Please enter a valid number.")
 
@@ -98,6 +102,14 @@ class NationProfile(commands.Cog):
             "currency": currency,
             "capital": capital
         })
+
+        # Save front page as first history entry
+        entry = {
+            "title": f"{nation} — Basic Info",
+            "text": f"**Population:** {population}\n**National Animal:** {animal}\n**Currency:** {currency}\n**Capital:** {capital}",
+            "image": None
+        }
+        await self.config.user(ctx.author).history.set([entry])
 
         await ctx.send("Your nation profile has been saved! Use `!nation` again to view it.")
 
