@@ -89,16 +89,16 @@ class NationProfile(commands.Cog):
         await ctx.send("Welcome to your Nation Profile setup! What is your nation's name?")
         nation = (await self.bot.wait_for('message', check=check)).content
 
-        await ctx.send("What is your nation's population? (between 100,000 and 6,000,000")
+        await ctx.send("What is your nation's population? (between 100,000 and 6,000,000)")
         while True:
             try:
                 population_input = await self.bot.wait_for('message', check=check)
-                multiplier = int(population_input.content.replace(",",""))
-                if 100000 <= multiplier <= 60000000:
-                    population = f"{multiplier:,}"
+                raw_pop = int(population_input.content.replace(",", ""))
+                if 100000 <= raw_pop <= 6000000:
+                    population = f"{raw_pop:,}"
                     break
                 else:
-                    await ctx.send("Please enter a number between 100,000 and for 6,000,000.")
+                    await ctx.send("Please enter a number between 100,000 and 6,000,000.")
             except ValueError:
                 await ctx.send("Please enter a valid number.")
 
