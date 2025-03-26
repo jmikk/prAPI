@@ -39,7 +39,7 @@ class NationProfile(commands.Cog):
             f"Currency: {data['currency']}",
             f"Capital: {data['capital']}",
             f"Flag: {data['flag'] if data['flag'] else 'None'}",
-            ","--- History ---"
+            ,"--- History ---"
         ]
 
         for i, page in enumerate(data["history"], 1):
