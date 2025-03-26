@@ -104,17 +104,18 @@ class NationProfile(commands.Cog):
                     break
                 else:
                     await ctx.send("Please enter a number between 100,000 and 6,000,000.")
-                except asyncio.TimeoutError:
-                    await ctx.send("You took too long to respond. Setup cancelled.")
-                    return
-                    raw_pop = int(population_input.content.replace(",", ""))
-                    if 100000 <= raw_pop <= 6000000:
-                        population = f"{raw_pop:,}"
-                        break
-                    else:
-                        await ctx.send("Please enter a number between 100,000 and 6,000,000.")
-                except ValueError:
-                    await ctx.send("Please enter a valid number.")
+            except asyncio.TimeoutError:
+                await ctx.send("You took too long to respond. Setup cancelled.")
+                return
+            except ValueError:
+                await ctx.send("Please enter a valid number.")
+            raw_pop = int(population_input.content.replace(",", ""))
+            if 100000 <= raw_pop <= 6000000:
+            population = f"{raw_pop:,}"
+            break
+            else:
+                await ctx.send("Please enter a number between 100,000 and 6,000,000.")
+
 
         await ctx.send("What is your national animal?")
         try:
