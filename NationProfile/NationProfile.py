@@ -132,7 +132,7 @@ class NationView(discord.ui.View):
         super().__init__(timeout=None)
         self.cog = cog
         self.user = target_user
-        self.page_index = 0
+        self.page_index = -1
 
     @discord.ui.button(label="⏪ Previous", style=discord.ButtonStyle.secondary)
     async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
