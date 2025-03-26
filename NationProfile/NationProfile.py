@@ -37,6 +37,12 @@ class NationProfile(commands.Cog):
         await self.show_nation_embed(ctx, target, data)
 
     @commands.command()
+    async def resetnation(self, ctx):
+        """Reset your nation profile and history."""
+        await self.config.user(ctx.author).clear()
+        await ctx.send("Your nation profile and history have been reset.")
+
+    @commands.command()
     async def addhistory(self, ctx, title: str, image_url: Optional[str] = None, *, text: str):
         """Add a history entry to your nation's profile."""
         entry = {"title": title, "text": text, "image": image_url}
@@ -63,8 +69,18 @@ class NationProfile(commands.Cog):
         await ctx.send("Welcome to your Nation Profile setup! What is your nation's name?")
         nation = (await self.bot.wait_for('message', check=check)).content
 
-        await ctx.send("What is your nation's population?")
-        population = (await self.bot.wait_for('message', check=check)).content
+        await ctx.send("What is your nation's population? (100,000 to 6,000,000)")
+        while True:
+            try:
+                population_input = await self.bot.wait_for('message', check=check)
+                population = int(population_input.content.replace(",", ""))
+                if 100000 <= population <= 6000000:
+                    population = f"{population:,}"
+                    break
+                else:
+                    await ctx.send("Population must be between 100,000 and 6,000,000.")
+            except ValueError:
+                await ctx.send("Please enter a valid number.")
 
         await ctx.send("What is your national animal?")
         animal = (await self.bot.wait_for('message', check=check)).content
