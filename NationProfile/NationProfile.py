@@ -111,8 +111,8 @@ class NationProfile(commands.Cog):
                 await ctx.send("Please enter a valid number.")
             raw_pop = int(population_input.content.replace(",", ""))
             if 100000 <= raw_pop <= 6000000:
-            population = f"{raw_pop:,}"
-            break
+                population = f"{raw_pop:,}"
+                break
             else:
                 await ctx.send("Please enter a number between 100,000 and 6,000,000.")
 
