@@ -39,20 +39,16 @@ class NationProfile(commands.Cog):
             f"Currency: {data['currency']}",
             f"Capital: {data['capital']}",
             f"Flag: {data['flag'] if data['flag'] else 'None'}",
-            "
---- History ---"
+            ","--- History ---"
         ]
 
         for i, page in enumerate(data["history"], 1):
-            lines.append(f"
-Page {i} - {page.get('title', 'Untitled')}")
+            lines.append(f"Page {i} - {page.get('title', 'Untitled')}")
             lines.append(page.get("text", "No text."))
             if page.get("image"):
                 lines.append(f"Image: {page['image']}")
 
-        content = "
-".join(lines)
-        import io  # Ensure this is at the top of your file if not already present
+        content = " ".join(lines)
         file = discord.File(io.StringIO(content), filename=f"{data['nation'].replace(' ', '_')}_profile.txt")
         await ctx.send(f"Here is the exported profile for {data['nation']}:", file=file)
 
