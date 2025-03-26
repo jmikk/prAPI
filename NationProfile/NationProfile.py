@@ -10,14 +10,14 @@ class NationProfile(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
 
-        default_user = {
-            "nation": None,
-            "population": None,
-            "animal": None,
-            "currency": None,
-            "capital": None,
-            "history": []  # List of dicts with keys: title, text, image
-        }
+        await self.config.user(ctx.author).set({
+            "nation": nation,
+            "population": population,
+            "animal": animal,
+            "currency": currency,
+            "capital": capital
+        })
+
 
         self.config.register_user(**default_user)
 
