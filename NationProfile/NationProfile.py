@@ -87,12 +87,21 @@ class NationProfile(commands.Cog):
             return m.author == ctx.author and m.channel == ctx.channel
 
         await ctx.send("Welcome to your Nation Profile setup! What is your nation's name?")
-        nation = (await self.bot.wait_for('message', check=check)).content
+        try:
+            nation_msg = await self.bot.wait_for('message', check=check, timeout=60)
+            nation = nation_msg.content
+        except asyncio.TimeoutError:
+            await ctx.send("You took too long to respond. Setup cancelled.")
+            return
 
         await ctx.send("What is your nation's population? (between 100,000 and 6,000,000)")
         while True:
             try:
-                population_input = await self.bot.wait_for('message', check=check)
+                try:
+                population_input = await self.bot.wait_for('message', check=check, timeout=60)
+            except asyncio.TimeoutError:
+                await ctx.send("You took too long to respond. Setup cancelled.")
+                return
                 raw_pop = int(population_input.content.replace(",", ""))
                 if 100000 <= raw_pop <= 6000000:
                     population = f"{raw_pop:,}"
@@ -103,16 +112,41 @@ class NationProfile(commands.Cog):
                 await ctx.send("Please enter a valid number.")
 
         await ctx.send("What is your national animal?")
-        animal = (await self.bot.wait_for('message', check=check)).content
+        try:
+            animal_msg = await self.bot.wait_for('message', check=check, timeout=60)
+            animal = animal_msg.content
+        except asyncio.TimeoutError:
+            await ctx.send("You took too long to respond. Setup cancelled.")
+            return
 
         await ctx.send("What is your currency called?")
-        currency = (await self.bot.wait_for('message', check=check)).content
+        try:
+            currency_msg = await self.bot.wait_for('message', check=check, timeout=60)
+            currency = currency_msg.content
+        except asyncio.TimeoutError:
+            await ctx.send("You took too long to respond. Setup cancelled.")
+            return
 
         await ctx.send("What is your capital city?")
-        capital = (await self.bot.wait_for('message', check=check)).content
+        try:
+            capital_msg = await self.bot.wait_for('message', check=check, timeout=60)
+            capital = capital_msg.content
+        except asyncio.TimeoutError:
+            await ctx.send("You took too long to respond. Setup cancelled.")
+            return
 
         await ctx.send("Please provide a link to your national flag image (URL):")
-        flag = (await self.bot.wait_for('message', check=check)).content
+        while True:
+            try:
+                flag_msg = await self.bot.wait_for('message', check=check, timeout=60)
+            except asyncio.TimeoutError:
+                await ctx.send("You took too long to respond. Setup cancelled.")
+                return
+            flag = flag_msg.content.strip()
+            if any(flag.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif", ".webp"]):
+                break
+            else:
+                await ctx.send("That doesn't look like a valid image URL. Please send a direct link to a .png, .jpg, .jpeg, .gif, or .webp image.")
 
         await self.config.user(ctx.author).set({
             "nation": nation,
@@ -136,7 +170,7 @@ class NationProfile(commands.Cog):
         embed.add_field(name="Currency", value=data["currency"], inline=False)
         embed.add_field(name="Capital", value=data["capital"], inline=False)
 
-        if data.get("flag"):
+        if data.get("flag") and any(data["flag"].lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif", ".webp"]):
             embed.set_thumbnail(url=data["flag"])
 
         view = NationView(self, user)
