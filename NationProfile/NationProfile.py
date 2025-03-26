@@ -38,6 +38,36 @@ class NationProfile(commands.Cog):
         await self.show_nation_embed(ctx, target, data)
 
     @commands.command()
+    async def exportnation(self, ctx, member: Optional[discord.Member] = None):
+        """Export a nation's full profile and history to a text file."""
+        target = member or ctx.author
+        data = await self.config.user(target).all()
+
+        if not data["nation"]:
+            await ctx.send("That user has not set up a nation profile.")
+            return
+
+        lines = [
+            f"Nation: {data['nation']}",
+            f"Population: {data['population']}",
+            f"National Animal: {data['animal']}",
+            f"Currency: {data['currency']}",
+            f"Capital: {data['capital']}",
+            f"Flag: {data['flag'] if data['flag'] else 'None'}",
+            "\n--- History ---"
+        ]
+
+        for i, page in enumerate(data["history"], 1):
+            lines.append(f"\nPage {i} - {page.get('title', 'Untitled')}")
+            lines.append(page.get("text", "No text."))
+            if page.get("image"):
+                lines.append(f"Image: {page['image']}")
+
+        content = "\n".join(lines)
+        file = discord.File(fp=discord.File(io.StringIO(content), filename=f"{data['nation']}_profile.txt"))
+        await ctx.send(f"Here is the exported profile for {data['nation']}:", file=file)
+
+    @commands.command()
     async def resetnation(self, ctx):
         """Reset your nation profile and history."""
         await self.config.user(ctx.author).clear()
