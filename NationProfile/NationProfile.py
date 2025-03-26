@@ -39,7 +39,7 @@ class NationProfile(commands.Cog):
             f"Currency: {data['currency']}",
             f"Capital: {data['capital']}",
             f"Flag: {data['flag'] if data['flag'] else 'None'}",
-            ,"--- History ---"
+            "--- History ---"
         ]
 
         for i, page in enumerate(data["history"], 1):
@@ -49,7 +49,7 @@ class NationProfile(commands.Cog):
                 lines.append(f"Image: {page['image']}")
 
         content = " ".join(lines)
-        file = discord.File(io.StringIO(content), filename=f"{data['nation'].replace(' ', '_')}_profile.txt")
+        file = discord.File(fp=io.StringIO(content), filename=f"{data['nation'].replace(' ', '_')}_profile.txt")
         await ctx.send(f"Here is the exported profile for {data['nation']}:", file=file)
 
 
