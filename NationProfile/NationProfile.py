@@ -6,6 +6,7 @@ from typing import Optional
 class NationProfile(commands.Cog):
     """A cog for storing and displaying RP nation profiles."""
 
+    
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
