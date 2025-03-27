@@ -41,9 +41,18 @@ class NexusExchange(commands.Cog):
 
         )
         self.ads_folder = "ads"  # Folder where ad text files are stored
-        
-        self.config.register_user(master_balance=0, xp=0, last_message_time=0, linked_nations=[],last_rmb_post_time=0,bank_total=0)
 
+
+        self.config.register_user(
+            master_balance=0,
+            xp=0,
+            last_message_time=0,
+            linked_nations=[],
+            last_rmb_post_time=0,
+            bank_total=0,
+            loan_amount=0,  # Current loan
+            loan_days=0     # Days since loan started
+        )
             # Lootbox configuration
         self.config.register_global(
             season=[3,4],
