@@ -631,6 +631,7 @@ class NexusExchange(commands.Cog):
         if now.hour == 20:
             channel = self.bot.get_channel(1214216647976554556)
             if channel:
+                loan_log = []
                 try:
                     message = await channel.send("Starting daily cycle")
                     ctx = await self.bot.get_context(message)
@@ -642,6 +643,14 @@ class NexusExchange(commands.Cog):
                     await asyncio.sleep(10)
                     await self.post_bank_dispatch(channel)
                     await self.citChk(channel)
+                
+                    # Loan processing
+                    all_users = await self.config.all_users()
+                    for user_id in all_users:
+                        await self.process_user_loan(int(user_id), loan_log)
+    
+                    if loan_log:
+                        await channel.send("📋 **Loan Status Summary**\n" + "\n".join(loan_log))
                 except Exception as e:
                     await channel.send(e)
 
@@ -653,6 +662,144 @@ class NexusExchange(commands.Cog):
             return token
         except ET.ParseError:
             return None
+
+
+    @commands.command()
+    async def repay_loan(self, ctx, amount: int):
+        """Repay part or all of your loan."""
+        user = ctx.author
+        data = self.config.user(user)
+        loan = await data.loan_amount()
+        balance = await data.master_balance()
+    
+        if loan <= 0:
+            return await ctx.send("🎉 You don't have a loan to repay.")
+    
+        if amount <= 0:
+            return await ctx.send("❌ Enter a valid repayment amount.")
+    
+        if amount > balance:
+            return await ctx.send("❌ You don't have that much on hand.")
+    
+        payment = min(amount, loan)
+        await data.master_balance.set(balance - payment)
+        await data.loan_amount.set(loan - payment)
+    
+        await ctx.send(f"✅ You repaid `{payment}` WellCoins. Remaining loan: `{loan - payment}`.")
+
+    async def process_user_loan(self, user_id: int, loan_log: list):
+        """Handle loan interest, repayments, XP penalties, and send reminders."""
+        user_conf = self.config.user_from_id(user_id)
+        loan = await user_conf.loan_amount()
+        days = await user_conf.loan_days()
+    
+        if loan <= 0:
+            return
+    
+        new_loan = int(loan * 1.05)
+        days += 1
+        repay_amount = new_loan - loan
+    
+        bank = await user_conf.bank_total()
+        wallet = await user_conf.master_balance()
+        xp = await user_conf.xp()
+    
+        auto_paid = 0
+        went_negative = False
+    
+        if days >= 7:
+            # Attempt to auto-repay from bank
+            if bank > 0:
+                from_bank = min(bank, repay_amount)
+                bank -= from_bank
+                repay_amount -= from_bank
+                new_loan -= from_bank
+                auto_paid += from_bank
+    
+            # Attempt to auto-repay from wallet (only before day 14)
+            if days < 14 and repay_amount > 0 and wallet > 0:
+                from_wallet = min(wallet, repay_amount)
+                wallet -= from_wallet
+                repay_amount -= from_wallet
+                new_loan -= from_wallet
+                auto_paid += from_wallet
+    
+            # After 14 days, allow wallet to go negative to cover remaining loan
+            if days >= 14 and repay_amount > 0:
+                wallet -= repay_amount
+                new_loan -= repay_amount
+                auto_paid += repay_amount
+                went_negative = True
+    
+            # Apply growing XP penalty starting day 8
+            if days > 7:
+                penalty = 5 * (days - 7)
+                xp = max(0, xp - penalty)
+                await user_conf.xp.set(xp)
+    
+        # Update values
+        await user_conf.bank_total.set(bank)
+        await user_conf.master_balance.set(wallet)
+        await user_conf.loan_amount.set(new_loan)
+        await user_conf.loan_days.set(days)
+    
+        # Log for monitor channel
+        loan_log.append(
+            f"<@{user_id}> | Owes: `{new_loan}` | Day: {days} | "
+            f"Paid: `{auto_paid}` | {'💀 Wallet NEGATIVE' if went_negative else '✅ Partial/Full auto-repay'}"
+        )
+    
+        # DM user
+        user = self.bot.get_user(user_id)
+        if user:
+            try:
+                currency = await self.config.guild(user.guilds[0]).master_currency_name() if user.guilds else "WellCoins"
+                msg = (
+                    f"📢 **Loan Reminder**\n"
+                    f"💸 You currently owe `{new_loan}` {currency}.\n"
+                    f"📆 Loan Age: `{days}` day(s)\n"
+                )
+                if days <= 7:
+                    msg += "🕊️ You're in your **grace period**. No auto-payments or penalties yet.\n"
+                elif days < 14:
+                    msg += (
+                        f"⏳ You’ve passed the 7-day grace period. Auto-payments are being made "
+                        f"from your bank and wallet if possible. You also lose XP daily.\n"
+                    )
+                else:
+                    msg += (
+                        f"⚠️ You're past 14 days! Wallet is allowed to go negative to cover your loan. "
+                        f"XP loss continues until loan is repaid.\n"
+                    )
+    
+                msg += "\nUse `!repay_loan <amount>` in the server to pay back your loan."
+                await user.send(msg)
+            except:
+                pass  # DM failed
+
+
+
+    @commands.command()
+    async def take_loan(self, ctx, amount: int):
+        """Take out a WellCoin loan. Loans grow 5% daily."""
+        if amount <= 0:
+            return await ctx.send("❌ You must borrow a positive amount.")
+        
+        user = ctx.author
+        data = self.config.user(user)
+        current_loan = await data.loan_amount()
+    
+        if current_loan > 0:
+            return await ctx.send("❌ You already have an unpaid loan!")
+    
+        await data.loan_amount.set(amount)
+        await data.loan_days.set(0)
+        current_balance = await data.master_balance()
+        await data.master_balance.set(current_balance + amount)
+    
+        await ctx.send(f"💸 You took a loan of `{amount}` WellCoins. Interest is 5% daily. Repay it soon!")
+
+
 
     @commands.command()
     @commands.admin()
