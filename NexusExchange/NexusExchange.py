@@ -579,7 +579,31 @@ class NexusExchange(commands.Cog):
     
         return scan, len(user_post_counts)
 
-        
+
+    @commands.command()
+    async def bank_withdraw(self, ctx, amount: int):
+        """Withdraw WellCoins from your bank into your on-hand balance."""
+        user = ctx.author
+        user_data = self.config.user(user)
+        guild_data = self.config.guild(ctx.guild)
+    
+        if amount <= 0:
+            return await ctx.send("❌ You must withdraw a positive amount.")
+    
+        bank_balance = await user_data.bank_total()
+    
+        if amount > bank_balance:
+            return await ctx.send(f"❌ You only have `{bank_balance}` WellCoins in your bank.")
+    
+        new_bank_balance = bank_balance - amount
+        new_wallet_balance = await user_data.master_balance() + amount
+    
+        await user_data.bank_total.set(new_bank_balance)
+        await user_data.master_balance.set(new_wallet_balance)
+    
+        currency = await guild_data.master_currency_name()
+        await ctx.send(f"🏧 You withdrew `{amount}` {currency} from your bank.\n💰 New on-hand balance: `{new_wallet_balance}` {currency}.")
+
 
     @commands.command()
     @commands.admin_or_permissions(manage_guild=True)
