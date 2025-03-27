@@ -1449,22 +1449,32 @@ class NexusExchange(commands.Cog):
     @commands.command()
     async def balance(self, ctx, currency_name: str = None):
         """Check your balance of WellCoins or a specific mini-currency."""
+        user_data = self.config.user(ctx.author)
+        
         if currency_name is None:
-            balance = await self.config.user(ctx.author).master_balance()
-            await ctx.send(f"You have `{balance}` WellCoins.")
+            balance = await user_data.master_balance()
+            bank = await user_data.bank_total()
+            currency = await self.config.guild(ctx.guild).master_currency_name()
+            
+            msg = f"💰 You have `{balance}` {currency} on hand."
+            if bank > 0:
+                msg += f"\n🏦 You have `{bank}` {currency} in your bank."
+    
+            await ctx.send(msg)
         else:
-            currency_name = currency_name.lower().replace(" ","_")
+            currency_name = currency_name.lower().replace(" ", "_")
             exchange_rates = await self.config.guild(ctx.guild).exchange_rates()
-
+    
             if currency_name not in exchange_rates:
-                await ctx.send("This currency does not exist.")
+                await ctx.send("❌ This currency does not exist.")
                 return
-
+    
             config_id = exchange_rates[currency_name]["config_id"]
             mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
             user_balance = await mini_currency_config.user(ctx.author).get_raw(currency_name, default=0)
+    
+            await ctx.send(f"💱 You have `{user_balance}` `{currency_name}`.")
 
-            await ctx.send(f"You have `{user_balance}` `{currency_name}`.")
 
     @commands.guild_only()
     @commands.command()
