@@ -143,7 +143,7 @@ class NexusExchange(commands.Cog):
         current_bank = await user_data.bank_total()
         await user_data.bank_total.set(current_bank + deposit)
 
-        await ctx.send(f"✅ {humanize_number(deposit)} {await self.config.guild(ctx.guild).master_currency_name()} deposited into your bank. 💰")
+        await ctx.send(f"✅ {humanize_number(deposit)} {await self.config.guild(ctx.guild).master_currency_name()} deposited into your hole in the ground. 💰")
         
 
     @commands.command()
@@ -593,7 +593,7 @@ class NexusExchange(commands.Cog):
         bank_balance = await user_data.bank_total()
     
         if amount > bank_balance:
-            return await ctx.send(f"❌ You only have `{bank_balance}` WellCoins in your bank.")
+            return await ctx.send(f"❌ You only have `{bank_balance}` WellCoins in your hole in the ground.")
     
         new_bank_balance = bank_balance - amount
         new_wallet_balance = await user_data.master_balance() + amount
@@ -602,7 +602,7 @@ class NexusExchange(commands.Cog):
         await user_data.master_balance.set(new_wallet_balance)
     
         currency = await guild_data.master_currency_name()
-        await ctx.send(f"🏧 You withdrew `{amount}` {currency} from your bank.\n💰 New on-hand balance: `{new_wallet_balance}` {currency}.")
+        await ctx.send(f"🏧 You withdrew `{amount}` {currency} from your hole in the ground.\n💰 New on-hand balance: `{new_wallet_balance}` {currency}.")
 
 
     @commands.command()
@@ -1482,7 +1482,7 @@ class NexusExchange(commands.Cog):
             
             msg = f"💰 You have `{balance}` {currency} on hand."
             if bank > 0:
-                msg += f"\n🏦 You have `{bank}` {currency} in your bank."
+                msg += f"\n🏦 You have `{bank}` {currency} in your hole in the ground."
     
             await ctx.send(msg)
         else:
