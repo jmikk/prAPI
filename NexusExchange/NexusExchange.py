@@ -579,6 +579,51 @@ class NexusExchange(commands.Cog):
     
         return scan, len(user_post_counts)
 
+    @commands.command()
+    async def loan_status(self, ctx):
+        """Check your current loan balance and status."""
+        user_conf = self.config.user(ctx.author)
+        loan = await user_conf.loan_amount()
+        days = await user_conf.loan_days()
+        xp = await user_conf.xp()
+        bank = await user_conf.bank_total()
+        wallet = await user_conf.master_balance()
+    
+        if loan <= 0:
+            return await ctx.send("🎉 You currently have no outstanding loans.")
+    
+        currency = await self.config.guild(ctx.guild).master_currency_name()
+    
+        # Determine status
+        if days <= 7:
+            status = "🕊️ Grace period (no repayments or penalties yet)."
+        elif days < 14:
+            penalty = 5 * (days - 7)
+            status = (
+                f"⏳ Auto-repay from bank and wallet has started.\n"
+                f"📉 You're losing `{penalty}` XP per day."
+            )
+        else:
+            penalty = 5 * (days - 7)
+            status = (
+                f"⚠️ Loan is overdue! Wallet may be negative.\n"
+                f"📉 You're losing `{penalty}` XP per day."
+            )
+    
+        embed = discord.Embed(
+            title="📋 Loan Status",
+            color=discord.Color.red()
+        )
+        embed.add_field(name="💸 Amount Owed", value=f"`{loan}` {currency}", inline=True)
+        embed.add_field(name="📆 Days Since Loan", value=f"`{days}`", inline=True)
+        embed.add_field(name="🏦 Bank Balance", value=f"`{bank}`", inline=True)
+        embed.add_field(name="💰 Wallet Balance", value=f"`{wallet}`", inline=True)
+        embed.add_field(name="⭐ XP", value=f"`{xp}`", inline=True)
+        embed.add_field(name="⚙️ Status", value=status, inline=False)
+    
+        await ctx.send(embed=embed)
+
+
 
     @commands.command()
     async def bank_withdraw(self, ctx, amount: int):
