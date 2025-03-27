@@ -750,7 +750,7 @@ class NexusExchange(commands.Cog):
         if loan <= 0:
             return
     
-        new_loan = int(loan * 1.05)
+        new_loan = int(loan * 1.05+)+1
         days += 1
         repay_amount = new_loan - loan
     
@@ -846,7 +846,7 @@ class NexusExchange(commands.Cog):
         if current_loan > 0:
             return await ctx.send("❌ You already have an unpaid loan!")
     
-        await data.loan_amount.set(amount)
+        await data.loan_amount.set(int(amount+amount*1.05+1))
         await data.loan_days.set(0)
         current_balance = await data.master_balance()
         await data.master_balance.set(current_balance + amount)
