@@ -750,7 +750,7 @@ class NexusExchange(commands.Cog):
         if loan <= 0:
             return
     
-        new_loan = int(loan * 1.05+)+1
+        new_loan = int(loan * 1.05)+1
         days += 1
         repay_amount = new_loan - loan
     
