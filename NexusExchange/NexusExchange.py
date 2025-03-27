@@ -2243,6 +2243,37 @@ class NexusExchange(commands.Cog):
                 dropped_count += 1
     
         await ctx.send(f"✅ Nation `{formatted_nation}` was removed from `{dropped_count}` user(s)' linked nations.")
+    
+    @commands.command()
+    @commands.guild_only()
+    async def xpleaderboard(self, ctx):
+        """Show the top 10 users with the most XP."""
+        all_users = await self.config.all_users()
+        xp_data = []
+    
+        for user_id, data in all_users.items():
+            xp = data.get("xp", 0)
+            if xp > 0:
+                xp_data.append((user_id, xp))
+    
+        if not xp_data:
+            return await ctx.send("No XP data found!")
+    
+        # Sort by XP descending and grab top 10
+        top_users = sorted(xp_data, key=lambda x: x[1], reverse=True)[:10]
+    
+        embed = discord.Embed(
+            title="🏆 XP Leaderboard",
+            description="Top 10 users with the most XP",
+            color=discord.Color.gold()
+        )
+    
+        for i, (user_id, xp) in enumerate(top_users, start=1):
+            user = self.bot.get_user(int(user_id)) or f"<@{user_id}>"
+            embed.add_field(name=f"#{i}", value=f"{user} — `{xp}` XP", inline=False)
+    
+        await ctx.send(embed=embed)
+
 
 
 
