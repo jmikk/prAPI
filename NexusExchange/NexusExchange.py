@@ -16,7 +16,7 @@ import urllib.parse
 import html
 import requests
 import json
-
+from redbot.core.utils.chat_formatting import humanize_number
 
 
 
@@ -42,7 +42,7 @@ class NexusExchange(commands.Cog):
         )
         self.ads_folder = "ads"  # Folder where ad text files are stored
         
-        self.config.register_user(master_balance=0, xp=0, last_message_time=0, linked_nations=[],last_rmb_post_time=0)
+        self.config.register_user(master_balance=0, xp=0, last_message_time=0, linked_nations=[],last_rmb_post_time=0,bank_total=0)
 
             # Lootbox configuration
         self.config.register_global(
@@ -126,6 +126,25 @@ class NexusExchange(commands.Cog):
             tg_link = f"https://www.nationstates.net/page=compose_telegram?tgto={','.join(tg_batch)}&message={code}&generated_by=TGer&run_by={self.USER_AGENT}"
             tg_links.append(tg_link)
         return tg_links
+
+    @commands.command()
+    async def bank_deposit(self, ctx, deposit: int):
+        """Deposit WellCoins into your bank."""
+        user = ctx.author
+        user_data = self.config.user(user)
+        balance = await user_data.master_balance()
+
+        if deposit <= 0:
+            return await ctx.send("❌ You must deposit a positive amount.")
+        if deposit > balance:
+            return await ctx.send(f"❌ You only have {humanize_number(balance)} {await self.config.guild(ctx.guild).master_currency_name()} available.")
+
+        await user_data.master_balance.set(balance - deposit)
+        current_bank = await user_data.bank_total()
+        await user_data.bank_total.set(current_bank + deposit)
+
+        await ctx.send(f"✅ {humanize_number(deposit)} {await self.config.guild(ctx.guild).master_currency_name()} deposited into your bank. 💰")
+        
 
     @commands.command()
     async def viewtgs(self, ctx):
