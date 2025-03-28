@@ -37,6 +37,7 @@ class NexusExchange(commands.Cog):
             blacklisted_channels=[],  # List of channel IDs where WellCoins are NOT earned# {"currency_name": {"config_id": int, "rate": float}}
             min_message_length=20,
             Message_count=0,
+            Message_count_spam=0,
             telegrams = {},# Minimum message length to earn rewards
 
         )
@@ -1847,6 +1848,18 @@ class NexusExchange(commands.Cog):
 
         if len(message.content.strip()) < await self.config.guild(message.guild).min_message_length():
             return  # Ignore low-effort messages
+         
+        if message.channel.id == 1098668923345448970:
+            guild = message.guild
+            count = await self.config.guild(guild).Message_count_spam()
+            await self.config.guild(guild).Message_count_spam.set(count+1)
+            if count % 100 == 0:
+                ad_text = self.get_random_ad()
+                if ad_text:
+                    try:
+                        await message.channel.send(ad_text)
+                    except discord.Forbidden:
+                        print(f"Missing permissions to send messages in {channel.id}")
             
         if message.channel.id == 1098644885797609495:
             guild = message.guild
