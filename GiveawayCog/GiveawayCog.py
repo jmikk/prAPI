@@ -15,15 +15,18 @@ class GiveawayCog(commands.Cog):
         self.config.register_global(nationname=None, password=None)
         self.session = aiohttp.ClientSession()
         self.giveaway_tasks = {}
+        #self.scheduler.start()
+
+
+    async def cog_load(self):
         self.scheduler.start()
 
-
-    
     def cog_unload(self):
         self.scheduler.cancel()
 
     @tasks.loop(hours=12)
     async def scheduler(self):
+        now = datetime.utcnow()  # ← Fix: define 'now'
         for guild in self.bot.guilds:
             scheduled = await self.config.guild(guild).scheduled_giveaways()
             updated = []
