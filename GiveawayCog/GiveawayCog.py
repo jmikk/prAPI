@@ -12,7 +12,7 @@ class GiveawayCog(commands.Cog):
         self.config = Config.get_conf(self, identifier=9006)
         self.config.register_guild(giveaway_channel=None, log_channel=None,scheduled_giveaways=[])
         self.config.register_user(wins=[])
-        self.config.register_global(nationname=None, password=None)
+        self.config.register_global(nationname=None, password=None, claimed_cards=[], active_giveaways=[])
         self.session = aiohttp.ClientSession()
         self.giveaway_tasks = {}
         #self.scheduler.start()
