@@ -690,6 +690,8 @@ class NexusExchange(commands.Cog):
                 try:
                     message = await channel.send("Starting daily cycle")
                     ctx = await self.bot.get_context(message)
+                    await self.serverChk(channel)
+
                     await self.wanderChk(channel)
                     await self.resChk(channel)
                     await self.pay_endorsers(channel)
@@ -717,6 +719,22 @@ class NexusExchange(commands.Cog):
             return token
         except ET.ParseError:
             return None
+    
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def serverChk(self,ctx)
+    """Remove user config for users who are no longer in the server."""
+        all_users = await self.config.all_users()
+        guild = ctx.guild
+        removed = 0
+
+        for user_id in list(all_users.keys()):
+            member = guild.get_member(user_id)
+            if member is None:
+                await self.config.user(discord.Object(id=user_id)).clear()
+                removed += 1
+
+        await ctx.send(f"✅ Cleared config for {removed} users who are no longer in this server.")
 
 
     @commands.command()
