@@ -288,7 +288,7 @@ class GiveawayCog(commands.Cog):
     
     @commands.admin_or_permissions(administrator=True)
     @commands.command()
-    async def startgiveaway(self, ctx, length_in_days: int, card_link: str, role: discord.Role = None):
+    async def startgiveaway2(self, ctx, length_in_days: int, card_link: str, role: discord.Role = None):
         """Start a giveaway for a specific card and role."""
         try:
             channel_id = await self.config.guild(ctx.guild).giveaway_channel()
