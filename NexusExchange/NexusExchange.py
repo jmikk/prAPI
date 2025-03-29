@@ -723,7 +723,7 @@ class NexusExchange(commands.Cog):
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def serverChk(self,ctx):
-    """Remove user config for users who are no longer in the server."""
+        """Remove user config for users who are no longer in the server."""
         all_users = await self.config.all_users()
         guild = ctx.guild
         removed = 0
