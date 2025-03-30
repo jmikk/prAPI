@@ -334,8 +334,8 @@ class prAPI(commands.Cog):
                 "–": "-",  # en dash
                 "…": "...",
             }
-            for bad, good in replacements.items():
-                title = title.replace(bad, good)
+        for bad, good in replacements.items():
+            title = title.replace(bad, good)
         if not ctx.message.attachments:
             await ctx.send("❌ Please attach a `.txt` file with the dispatch content.")
             return
