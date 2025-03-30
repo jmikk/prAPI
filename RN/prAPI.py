@@ -365,7 +365,7 @@ class prAPI(commands.Cog):
             # Step 1: Prepare
             async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", headers=headers_prepare, data=payload) as resp:
                 prepare_text = await resp.text()
-                if resp.status != 200 or "token" not in prepare_text:
+                if resp.status != 200 or "SUCCESS" not in prepare_text:
                     await ctx.send(f"❌ Prepare failed:\n{box(prepare_text[:1900])}")
                     return
 
