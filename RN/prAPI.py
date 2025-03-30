@@ -329,7 +329,6 @@ class prAPI(commands.Cog):
             return
 
         attachment = ctx.message.attachments[0]
-        text = attachment.decode("utf-8")
         
         if not attachment.filename.endswith(".txt"):
             await ctx.send("❌ Only `.txt` files are supported.")
@@ -338,6 +337,17 @@ class prAPI(commands.Cog):
         try:
             content = await attachment.read()
             text = content.decode("utf-8")
+            replacements = {
+                "’": "'",
+                "‘": "'",
+                "“": '"',
+                "”": '"',
+                "—": "-",  # em dash
+                "–": "-",  # en dash
+                "…": "...",
+            }
+            for bad, good in replacements.items():
+                text = text.replace(bad, good)
         except Exception as e:
             await ctx.send(f"❌ Failed to read file: `{e}`")
             return
