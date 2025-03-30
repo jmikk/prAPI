@@ -8,6 +8,7 @@ import time
 import os
 from datetime import datetime
 from discord import AllowedMentions
+from redbot.core.utils.chat_formatting import box
 
 class prAPI(commands.Cog):
     def __init__(self, bot: Red):
@@ -315,4 +316,59 @@ class prAPI(commands.Cog):
                 return nations_text.split(delimiter)
             except ET.ParseError:
                 return text
+
+    @commands.command()
+    async def postdispatch(self, ctx, title: str, *, text: str):
+        """Post a dispatch to the NationStates API using prepare/execute pattern."""
+        settings = await self.config.all()
+        nation = settings["nationName"]
+        useragent = settings["useragent"]
+        password = settings["password"]
+
+        headers_prepare = {
+            "User-Agent": useragent,
+            "X-Password": password
+        }
+
+        payload = {
+            "nation": nation,
+            "c": "dispatch",
+            "dispatch": "add",
+            "title": title,
+            "text": text,
+            "category": "1",     # IC
+            "subcategory": "105", # WA Affairs
+            "mode": "prepare"
+        }
+
+        async with aiohttp.ClientSession() as session:
+            # Step 1: Prepare
+            async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", headers=headers_prepare, data=payload) as resp:
+                prepare_text = await resp.text()
+                if resp.status != 200 or "token" not in prepare_text:
+                    await ctx.send(f"Prepare failed: {box(prepare_text)}")
+                    return
+
+                # Parse token from response
+                try:
+                    token = prepare_text.split("token>")[1].split("<")[0]
+                except IndexError:
+                    await ctx.send(f"Failed to parse token: {box(prepare_text)}")
+                    return
+
+            # Step 2: Execute
+            headers_execute = {
+                "User-Agent": useragent,
+                "X-Pin": password  # Used for execute
+            }
+
+            payload["mode"] = "execute"
+            payload["token"] = token
+
+            async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", headers=headers_execute, data=payload) as resp:
+                execute_text = await resp.text()
+                if resp.status != 200:
+                    await ctx.send(f"Execute failed: {box(execute_text)}")
+                else:
+                    await ctx.send("✅ Dispatch successfully posted!")
     
