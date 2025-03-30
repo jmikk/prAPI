@@ -318,8 +318,27 @@ class prAPI(commands.Cog):
                 return text
 
     @commands.command()
-    async def postdispatch(self, ctx, title: str, *, text: str):
-        """Post a dispatch to the NationStates API using prepare/execute pattern."""
+    async def postdispatch(self, ctx, category: int, subcategory:int, title: str):
+        """
+        Upload a text file containing the dispatch content, and post it to NationStates.
+        Usage: !postdispatch "Your Title" (then upload the file with the command)
+        """
+        if not ctx.message.attachments:
+            await ctx.send("❌ Please attach a `.txt` file with the dispatch content.")
+            return
+
+        attachment = ctx.message.attachments[0]
+        if not attachment.filename.endswith(".txt"):
+            await ctx.send("❌ Only `.txt` files are supported.")
+            return
+
+        try:
+            content = await attachment.read()
+            text = content.decode("utf-8")
+        except Exception as e:
+            await ctx.send(f"❌ Failed to read file: `{e}`")
+            return
+
         settings = await self.config.all()
         nation = settings["nationName"]
         useragent = settings["useragent"]
@@ -336,8 +355,8 @@ class prAPI(commands.Cog):
             "dispatch": "add",
             "title": title,
             "text": text,
-            "category": "1",     # IC
-            "subcategory": "105", # WA Affairs
+            "category": category,     
+            "subcategory": subcategory, 
             "mode": "prepare"
         }
 
@@ -346,20 +365,20 @@ class prAPI(commands.Cog):
             async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", headers=headers_prepare, data=payload) as resp:
                 prepare_text = await resp.text()
                 if resp.status != 200 or "token" not in prepare_text:
-                    await ctx.send(f"Prepare failed: {box(prepare_text)}")
+                    await ctx.send(f"❌ Prepare failed:\n{box(prepare_text[:1900])}")
                     return
 
                 # Parse token from response
                 try:
-                    token = prepare_text.split("token>")[1].split("<")[0]
+                    token = prepare_text.split("SUCCESS>")[1].split("<")[0]
                 except IndexError:
-                    await ctx.send(f"Failed to parse token: {box(prepare_text)}")
+                    await ctx.send(f"❌ Failed to parse token:\n{box(prepare_text[:1900])}")
                     return
 
             # Step 2: Execute
             headers_execute = {
                 "User-Agent": useragent,
-                "X-Pin": password  # Used for execute
+                "X-Pin": password
             }
 
             payload["mode"] = "execute"
@@ -368,7 +387,7 @@ class prAPI(commands.Cog):
             async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", headers=headers_execute, data=payload) as resp:
                 execute_text = await resp.text()
                 if resp.status != 200:
-                    await ctx.send(f"Execute failed: {box(execute_text)}")
+                    await ctx.send(f"❌ Execute failed:\n{box(execute_text[:1900])}")
                 else:
                     await ctx.send("✅ Dispatch successfully posted!")
     
