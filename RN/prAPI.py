@@ -324,6 +324,10 @@ class prAPI(commands.Cog):
         Upload a text file containing the dispatch content, and post it to NationStates.
         Usage: $postdispatch "Your Title" (then upload the file with the command)
         """
+        required_role_id = 1113108765315715092
+        if not any(role.id == required_role_id for role in ctx.author.roles):
+            await ctx.send("❌ You do not have permission to use this command.")
+            return    
 
         replacements = {
                 "’": "'",
