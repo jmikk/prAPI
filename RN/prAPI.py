@@ -413,5 +413,10 @@ class prAPI(commands.Cog):
                 if resp.status != 200:
                     await ctx.send(f"❌ Execute failed:\n{box(execute_text[:1900])}")
                 else:
-                    await ctx.send(f"✅ Dispatch successfully posted! {box(execute_text[:1900])}")
+                    # Extract the href content inside the SUCCESS tag
+                    match = re.search(r'&lt;a href="([^"]+)"&gt;', response)
+                    if match:
+                        relative_url = match.group(1)
+                        full_url = f"https://www.nationstates.net{relative_url}"
+                        await ctx.send(full_url)
     
