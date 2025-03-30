@@ -324,6 +324,18 @@ class prAPI(commands.Cog):
         Upload a text file containing the dispatch content, and post it to NationStates.
         Usage: $postdispatch "Your Title" (then upload the file with the command)
         """
+
+        replacements = {
+                "’": "'",
+                "‘": "'",
+                "“": '"',
+                "”": '"',
+                "—": "-",  # em dash
+                "–": "-",  # en dash
+                "…": "...",
+            }
+            for bad, good in replacements.items():
+                title = title.replace(bad, good)
         if not ctx.message.attachments:
             await ctx.send("❌ Please attach a `.txt` file with the dispatch content.")
             return
