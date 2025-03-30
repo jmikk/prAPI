@@ -413,5 +413,5 @@ class prAPI(commands.Cog):
                 if resp.status != 200:
                     await ctx.send(f"❌ Execute failed:\n{box(execute_text[:1900])}")
                 else:
-                    await ctx.send("✅ Dispatch successfully posted!")
+                    await ctx.send(f"✅ Dispatch successfully posted! {box(execute_text[:1900])}")
     
