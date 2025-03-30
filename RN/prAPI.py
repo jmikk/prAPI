@@ -319,7 +319,7 @@ class prAPI(commands.Cog):
                 return text
 
     @commands.command()
-    async def postdispatch(self, ctx, category: int, subcategory:int, title: str):
+    async def postdispatch(self, ctx, category: int, subcategory:int,*, title: str):
         """
         Upload a text file containing the dispatch content, and post it to NationStates.
         Usage: $postdispatch "Your Title" (then upload the file with the command)
@@ -329,6 +329,8 @@ class prAPI(commands.Cog):
             return
 
         attachment = ctx.message.attachments[0]
+        text = attachment.decode("utf-8")
+        
         if not attachment.filename.endswith(".txt"):
             await ctx.send("❌ Only `.txt` files are supported.")
             return
