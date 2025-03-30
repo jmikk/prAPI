@@ -1691,33 +1691,41 @@ class NexusExchange(commands.Cog):
 
     @commands.guild_only()
     @commands.command()
-    async def balance(self, ctx, currency_name: str = None):
-        """Check your balance of WellCoins or a specific mini-currency."""
-        user_data = self.config.user(ctx.author)
-        
+    async def balance(self, ctx, member: discord.Member = None, currency_name: str = None):
+        """
+        Check your or another member's balance of WellCoins, XP, or a specific mini-currency.
+        Usage: [p]balance [@member] [currency_name]
+        """
+        member = member or ctx.author
+        user_data = self.config.user(member)
+        guild_data = self.config.guild(ctx.guild)
+
         if currency_name is None:
             balance = await user_data.master_balance()
             bank = await user_data.bank_total()
-            currency = await self.config.guild(ctx.guild).master_currency_name()
-            
-            msg = f"💰 You have `{balance}` {currency} on hand."
+            currency = await guild_data.master_currency_name()
+            xp = await user_data.xp()
+
+            msg = f"**Balance for {member.display_name}:**\n"
+            msg += f"💰 On hand: `{balance}` {currency}\n"
             if bank > 0:
-                msg += f"\n🏦 You have `{bank}` {currency} in your hole in the ground."
-    
+                msg += f"🏦 In bank: `{bank}` {currency}\n"
+            msg += f"⭐ XP: `{xp}`"
             await ctx.send(msg)
         else:
             currency_name = currency_name.lower().replace(" ", "_")
-            exchange_rates = await self.config.guild(ctx.guild).exchange_rates()
-    
+            exchange_rates = await guild_data.exchange_rates()
+
             if currency_name not in exchange_rates:
                 await ctx.send("❌ This currency does not exist.")
                 return
-    
+
             config_id = exchange_rates[currency_name]["config_id"]
             mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
-            user_balance = await mini_currency_config.user(ctx.author).get_raw(currency_name, default=0)
-    
-            await ctx.send(f"💱 You have `{user_balance}` `{currency_name}`.")
+            user_balance = await mini_currency_config.user(member).get_raw(currency_name, default=0)
+
+            await ctx.send(f"💱 {member.display_name} has `{user_balance}` `{currency_name}`.")
+
 
 
     @commands.guild_only()
