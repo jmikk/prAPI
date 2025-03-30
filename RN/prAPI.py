@@ -368,7 +368,7 @@ class prAPI(commands.Cog):
                 if resp.status != 200 or "SUCCESS" not in prepare_text:
                     await ctx.send(f"❌ Prepare failed:\n{box(prepare_text[:1900])}")
                     return
-
+                xpin = resp.headers.get("X-Pin")
                 match = re.search(r"<SUCCESS>(.*?)</SUCCESS>", prepare_text)
                 if not match:
                     await ctx.send(f"❌ Could not find token in response:\n{box(prepare_text[:1900])}")
@@ -378,7 +378,7 @@ class prAPI(commands.Cog):
             # Step 2: Execute
             headers_execute = {
                 "User-Agent": useragent,
-                "X-Pin": password
+                "X-Pin": xpin
             }
 
             payload["mode"] = "execute"
