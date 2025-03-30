@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 from discord import AllowedMentions
 from redbot.core.utils.chat_formatting import box
+import re
 
 class prAPI(commands.Cog):
     def __init__(self, bot: Red):
@@ -321,7 +322,7 @@ class prAPI(commands.Cog):
     async def postdispatch(self, ctx, category: int, subcategory:int, title: str):
         """
         Upload a text file containing the dispatch content, and post it to NationStates.
-        Usage: !postdispatch "Your Title" (then upload the file with the command)
+        Usage: $postdispatch "Your Title" (then upload the file with the command)
         """
         if not ctx.message.attachments:
             await ctx.send("❌ Please attach a `.txt` file with the dispatch content.")
@@ -368,12 +369,11 @@ class prAPI(commands.Cog):
                     await ctx.send(f"❌ Prepare failed:\n{box(prepare_text[:1900])}")
                     return
 
-                # Parse token from response
-                try:
-                    token = prepare_text.split("SUCCESS>")[1].split("<")[0]
-                except IndexError:
-                    await ctx.send(f"❌ Failed to parse token:\n{box(prepare_text[:1900])}")
+                match = re.search(r"<SUCCESS>(.*?)</SUCCESS>", prepare_text)
+                if not match:
+                    await ctx.send(f"❌ Could not find token in response:\n{box(prepare_text[:1900])}")
                     return
+                token = match.group(1)
 
             # Step 2: Execute
             headers_execute = {
