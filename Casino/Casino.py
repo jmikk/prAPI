@@ -44,6 +44,9 @@ class Casino(commands.Cog):
     async def coinflip(self, ctx, bet: int, call: str = None):
         """Flip a coin with animated message updates. You can call Heads or Tails, but it does not affect the odds."""
         balance = await self.get_balance(ctx.author)
+        if not call:
+            call = random.choices(["heads", "tails"], weights=[48, 52])[0]
+
         if call.lower() == "head":
             call = "heads"
         if call.lower() == "tail":
@@ -60,15 +63,24 @@ class Casino(commands.Cog):
         message = await ctx.send("Flipping the coin... 🪙")
         
         outcome = random.choices(["win", "lose"], weights=[48, 52])[0]
-        final_flip = "🪙 Heads" if outcome == "win" else "🪙 Tails"
-        
+        if outcome == "win":
+            if call == "heads":
+                final_flip = "🪙 Heads"
+            if call == "tails":
+                final_flip = "🪙 Tails"
+        else:
+            if call == "heads":
+                final_flip = "🪙 Tails"
+            if call == "tails":
+                final_flip = "🪙 Heads"
+                    
         if call and call.lower() in ["heads", "tails"]:
             user_call = call.capitalize()
             result_text = f"You called {user_call}. "
         else:
             result_text = ""
         
-        if (outcome == "win" and call and call.lower() == "heads") or (outcome == "lose" and call and call.lower() == "tails"):
+        if outcome == "win":
             winnings = bet
             result_text += "You win! 🎉"
         else:
