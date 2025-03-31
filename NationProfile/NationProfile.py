@@ -120,7 +120,7 @@ class NationProfile(commands.Cog):
         await ctx.send_modal(modal)
 
 
-    async def show_nation_embed(self, ctx, user, data):
+    async def show_nation_embed(self, interaction: discord.Interaction, user, data):
         embed = discord.Embed(
             title=f"{data['nation']}",
             description=f"{user.display_name}'s nation profile",
@@ -134,7 +134,8 @@ class NationProfile(commands.Cog):
             embed.set_thumbnail(url=data["flag"])
 
         view = NationView(self, user)
-        await ctx.send(embed=embed, view=view)
+        await interaction.response.send_message(embed=embed, view=view)
+
 
 class NationSetupModal(discord.ui.Modal, title="Nation Profile Setup"):
     nation = discord.ui.TextInput(label="Nation Name", max_length=100)
