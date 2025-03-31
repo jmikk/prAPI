@@ -1210,7 +1210,8 @@ class NexusExchange(commands.Cog):
                 new_balance = data["master_balance"] + reward
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
 
-
+    @commands.command()
+    @commands.admin()
     async def reward_voters(self, ctx):
         """Check votes and reward users who voted the same as 'well-sprung_jack' in either WA Council"""
         await ctx.send("Fetching WA vote data for both councils...")
