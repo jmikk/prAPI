@@ -55,19 +55,19 @@ class NationProfile(commands.Cog):
 
 
     @app_commands.command(name="nation", description="View your or another user's nation profile.")
-    async def nation(self, ctx, member: Optional[discord.Member] = None):
-        """View your or another user's nation profile."""
-        target = member or interaction.user  # ✅ Correct        
+    async def nation(self, interaction: discord.Interaction, member: Optional[discord.Member] = None):
+        target = member or interaction.user
         data = await self.config.user(target).all()
-
+    
         if not data["nation"]:
-            if target == ctx.author:
-                await self.setup_questionnaire(ctx)
+            if target == interaction.user:
+                await interaction.response.send_modal(NationSetupModal(self, interaction.user))
             else:
-                await ctx.send("That user has not set up a nation profile.")
+                await interaction.response.send_message("That user has not set up a nation profile.", ephemeral=True)
             return
+    
+        await self.show_nation_embed(interaction, target, data)
 
-        await self.show_nation_embed(ctx, target, data)
 
     @commands.command()
     @commands.has_permissions(administrator=True)
