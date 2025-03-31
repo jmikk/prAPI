@@ -53,7 +53,7 @@ class NationProfile(commands.Cog):
         await ctx.send(f"Here is the exported profile for {data['nation']}:", file=file)
 
 
-    @hybrid_command.command()
+    @hybrid_command(name="nation")
     async def nation(self, ctx, member: Optional[discord.Member] = None):
         """View your or another user's nation profile."""
         target = member or ctx.author
