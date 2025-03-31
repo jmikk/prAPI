@@ -142,7 +142,7 @@ class NationSetupModal(discord.ui.Modal, title="Nation Profile Setup"):
     population = discord.ui.TextInput(label="Population (100,000 - 6,000,000)", placeholder="e.g., 1,000,000")
     currency = discord.ui.TextInput(label="Currency Name", max_length=100)
     capital = discord.ui.TextInput(label="Capital City", max_length=100)
-    flag = discord.ui.TextInput(label="Flag Image URL (.png, .jpg, .gif, etc.)", required=False)
+    flag = discord.ui.TextInput(label="Flag Image URL ", required=False)
 
     def __init__(self, cog, user):
         super().__init__(timeout=300)
@@ -160,10 +160,6 @@ class NationSetupModal(discord.ui.Modal, title="Nation Profile Setup"):
             await interaction.response.send_message("Invalid population number.", ephemeral=True)
             return
 
-        flag_url = self.flag.value.strip()
-        if flag_url and not any(flag_url.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif", ".webp"]):
-            await interaction.response.send_message("Flag must be a direct image URL (.png, .jpg, etc).", ephemeral=True)
-            return
 
         await self.cog.config.user(self.user).set({
             "nation": self.nation.value,
