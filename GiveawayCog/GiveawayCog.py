@@ -303,7 +303,7 @@ class GiveawayCog(commands.Cog):
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
-    async def setgiveawaychannel(self, ctx, channel: discord.TextChannel = None):
+    async def setgiveawaychannel2(self, ctx, channel: discord.TextChannel = None):
         """Set the channel where giveaways will be posted."""
         if not channel:
             channel = ctx.channel  # Default to the channel the command was run in
