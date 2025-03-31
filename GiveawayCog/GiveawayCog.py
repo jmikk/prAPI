@@ -451,6 +451,6 @@ class GiveawayButtonView(discord.ui.View):
         embed.add_field(name="Entrants", value=str(len(self.entrants)), inline=False)
         embed.set_footer(text="Click the button to enter!")
         # Inside your embed-building logic:
-        thumbnail_url = self.build_card_thumbnail_url(card_data["name"], card_data["season"], card_data["cardid"])
+        thumbnail_url = self.build_card_thumbnail_url(self.card_data["name"], self.card_data["season"], self.card_data["cardid"])
         embed.set_thumbnail(url=thumbnail_url)
         return embed
