@@ -1,5 +1,6 @@
 import discord
 from redbot.core import commands, Config
+from redbot.core.commands import Context, hybrid_command
 from redbot.core.bot import Red
 from typing import Optional
 import io
@@ -52,7 +53,7 @@ class NationProfile(commands.Cog):
         await ctx.send(f"Here is the exported profile for {data['nation']}:", file=file)
 
 
-    @commands.command()
+    @hybrid_command.command()
     async def nation(self, ctx, member: Optional[discord.Member] = None):
         """View your or another user's nation profile."""
         target = member or ctx.author
