@@ -10,9 +10,9 @@ class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=9006)
-        self.config.register_guild(giveaway_channel=None, log_channel=None,scheduled_giveaways=[])
+        self.config.register_guild(giveaway_channel=None, log_channel=None,scheduled_giveaways=[],nationname=None, password=None,)
         self.config.register_user(wins=[])
-        self.config.register_global(nationname=None, password=None, claimed_cards=[], active_giveaways=[])
+        self.config.register_global( claimed_cards=[], active_giveaways=[])
         self.session = aiohttp.ClientSession()
         self.giveaway_tasks = {}
         #self.scheduler.start()
@@ -74,7 +74,7 @@ class GiveawayCog(commands.Cog):
 
     async def run_giveaway(self, giveaway, guild):
         try:
-            nationname = await self.config.nationname()
+            nnationname = await self.config.guild(guild).nationname()
             cards = await self.fetch_deck(nationname)
             legendary_cards = [c for c in cards if c["category"] == "legendary"]
     
@@ -197,8 +197,8 @@ class GiveawayCog(commands.Cog):
                 return await ctx.send("You have no unclaimed giveaways.")
 
             useragent = "9007"
-            password = await self.config.password()
-            nationname = await self.config.nationname()
+            password = await self.config.guild(ctx.guild).password()
+            nationname = await self.config.guild(ctx.guild).nationname()
             if not password or not nationname:
                 return await ctx.send("Nation name or password not set. Use `setnation` and `setpassword`.")
 
