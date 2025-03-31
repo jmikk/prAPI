@@ -144,7 +144,7 @@ class GiveawayCog(commands.Cog):
 
     async def fetch_deck(self, nationname):
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname={nationname}"
-        headers = {"User-Agent": "9007"}
+        headers = {"User-Agent": "9005"}
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
                 if response.status != 200:
