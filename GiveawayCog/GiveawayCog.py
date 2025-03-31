@@ -39,6 +39,8 @@ class GiveawayCog(commands.Cog):
             await self.config.guild(guild).scheduled_giveaways.set(updated)
 
 
+
+
     @commands.command()
     @commands.is_owner()
     async def schedule_giveaway(self, ctx, day: str, role: discord.Role = None, length_days: int = 2, value: str = "any"):
@@ -429,6 +431,11 @@ class GiveawayButtonView(discord.ui.View):
             item.disabled = True
         self.stop()
 
+        # Build custom card thumbnail URL
+    def build_card_thumbnail_url(name: str, season: str, cardid: str) -> str:
+        formatted_name = name.lower().replace(" ", "_")
+        return f"https://www.nationstates.net/images/cards/s{season}/uploads/{formatted_name}__{cardid}"
+
     def create_embed(self):
         embed = discord.Embed(
             title=f"Giveaway: {self.card_data['name']} ({self.card_data['category'].title()})",
@@ -443,4 +450,7 @@ class GiveawayButtonView(discord.ui.View):
         embed.add_field(name="Ends", value=f"<t:{int(self.end_time.timestamp())}:R>", inline=False)
         embed.add_field(name="Entrants", value=str(len(self.entrants)), inline=False)
         embed.set_footer(text="Click the button to enter!")
+        # Inside your embed-building logic:
+        thumbnail_url = build_card_thumbnail_url(card_data["name"], card_data["season"], card_data["cardid"])
+        embed.set_thumbnail(url=thumbnail_url)
         return embed
