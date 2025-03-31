@@ -298,6 +298,17 @@ class GiveawayCog(commands.Cog):
             return root.findtext("SUCCESS")
         except ET.ParseError:
             return None
+
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
+    async def setgiveawaychannel(self, ctx, channel: discord.TextChannel = None):
+        """Set the channel where giveaways will be posted."""
+        if not channel:
+            channel = ctx.channel  # Default to the channel the command was run in
+    
+        await self.config.guild(ctx.guild).giveaway_channel.set(channel.id)
+        await ctx.send(f"Giveaway channel set to {channel.mention}.")
+
     
     @commands.admin_or_permissions(administrator=True)
     @commands.command()
