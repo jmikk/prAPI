@@ -57,7 +57,8 @@ class NationProfile(commands.Cog):
     @app_commands.command(name="nation", description="View your or another user's nation profile.")
     async def nation(self, ctx, member: Optional[discord.Member] = None):
         """View your or another user's nation profile."""
-        target = member or interaction.user  # ✅ Correct        data = await self.config.user(target).all()
+        target = member or interaction.user  # ✅ Correct        
+        data = await self.config.user(target).all()
 
         if not data["nation"]:
             if target == ctx.author:
