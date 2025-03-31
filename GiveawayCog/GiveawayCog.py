@@ -438,8 +438,8 @@ class GiveawayButtonView(discord.ui.View):
 
     def create_embed(self):
         embed = discord.Embed(
-            title=f"Giveaway: {self.card_data['name']} ({self.card_data['category'].title()})",
-            description=f"A {self.card_data['category'].title()} Season:{self.card_data['season']} card is up for grabs!",
+            title=f"Giveaway: {self.card_data['name']} ({self.card_data['category'].title()} Season:{self.card_data['season']})",
+            description=f"A {self.card_data['category'].title()} card is up for grabs!",
             url=self.card_link,
             color=discord.Color.gold()
         )
