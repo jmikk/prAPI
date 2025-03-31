@@ -70,6 +70,7 @@ class NationProfile(commands.Cog):
         await self.show_nation_embed(ctx, target, data)
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def resetnation(self, ctx):
         """Reset your nation profile and history."""
         await self.config.user(ctx.author).clear()
