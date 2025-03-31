@@ -691,15 +691,35 @@ class NexusExchange(commands.Cog):
                     message = await channel.send("Starting daily cycle")
                     ctx = await self.bot.get_context(message)
                     await self.serverChk(channel)
-
-                    await self.wanderChk(channel)
-                    await self.resChk(channel)
-                    await self.pay_endorsers(channel)
-                    await self.reward_voters(channel)
-                    await self.newNation(channel)
+                    try:
+                        await self.wanderChk(channel)
+                    except Exception as e:
+                        await channel.send(e)
+                    try:
+                        await self.resChk(channel)
+                    except Exception as e:
+                        await channel.send(e)
+                    try:
+                        await self.pay_endorsers(channel)
+                    except Exception as e:
+                        await channel.send(e)
+                    try:
+                        await self.reward_voters(channel)
+                    except Exception as e:
+                        await channel.send(e)
+                    try: 
+                        await self.newNation(channel)
+                    except Exception as e:
+                        await channel.send(e)
                     await asyncio.sleep(10)
-                    await self.post_bank_dispatch(channel)
-                    await self.citChk(channel)
+                    try:
+                        await self.post_bank_dispatch(channel)
+                    except Exception as e:
+                        await channel.send(e)
+                    try:
+                        await self.citChk(channel)
+                    except Exception as e:
+                        await channel.send(e)
                 
                     # Loan processing
                     all_users = await self.config.all_users()
