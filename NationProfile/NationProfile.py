@@ -160,7 +160,7 @@ class NationSetupModal(discord.ui.Modal, title="Nation Profile Setup"):
             await interaction.response.send_message("Invalid population number.", ephemeral=True)
             return
 
-
+        flag_url = self.flag.value.strip()
         await self.cog.config.user(self.user).set({
             "nation": self.nation.value,
             "population": population,
