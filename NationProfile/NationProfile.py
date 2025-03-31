@@ -14,7 +14,6 @@ class NationProfile(commands.Cog):
         default_user = {
             "nation": None,
             "population": None,
-            "animal": None,
             "currency": None,
             "capital": None,
             "flag": None,
@@ -36,7 +35,6 @@ class NationProfile(commands.Cog):
         lines = [
             f"Nation: {data['nation']}",
             f"Population: {data['population']}",
-            f"National Animal: {data['animal']}",
             f"Currency: {data['currency']}",
             f"Capital: {data['capital']}",
             f"Flag: {data['flag'] if data['flag'] else 'None'}",
@@ -127,7 +125,6 @@ class NationProfile(commands.Cog):
             color=discord.Color.blue()
         )
         embed.add_field(name="Population", value=data["population"], inline=False)
-        embed.add_field(name="National Animal", value=data["animal"], inline=False)
         embed.add_field(name="Currency", value=data["currency"], inline=False)
         embed.add_field(name="Capital", value=data["capital"], inline=False)
 
@@ -140,7 +137,6 @@ class NationProfile(commands.Cog):
 class NationSetupModal(discord.ui.Modal, title="Nation Profile Setup"):
     nation = discord.ui.TextInput(label="Nation Name", max_length=100)
     population = discord.ui.TextInput(label="Population (100,000 - 6,000,000)", placeholder="e.g., 1,000,000")
-    animal = discord.ui.TextInput(label="National Animal", max_length=100)
     currency = discord.ui.TextInput(label="Currency Name", max_length=100)
     capital = discord.ui.TextInput(label="Capital City", max_length=100)
     flag = discord.ui.TextInput(label="Flag Image URL (.png, .jpg, .gif, etc.)", required=False)
@@ -169,7 +165,6 @@ class NationSetupModal(discord.ui.Modal, title="Nation Profile Setup"):
         await self.cog.config.user(self.user).set({
             "nation": self.nation.value,
             "population": population,
-            "animal": self.animal.value,
             "currency": self.currency.value,
             "capital": self.capital.value,
             "flag": flag_url or None
