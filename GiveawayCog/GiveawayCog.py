@@ -432,7 +432,7 @@ class GiveawayButtonView(discord.ui.View):
         self.stop()
 
         # Build custom card thumbnail URL
-    def build_card_thumbnail_url(name: str, season: str, cardid: str) -> str:
+    def build_card_thumbnail_url(self, name: str, season: str, cardid: str) -> str:
         formatted_name = name.lower().replace(" ", "_")
         return f"https://www.nationstates.net/images/cards/s{season}/uploads/{formatted_name}__{cardid}"
 
