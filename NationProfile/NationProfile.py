@@ -115,86 +115,9 @@ class NationProfile(commands.Cog):
             await ctx.send("Invalid index. Use a number corresponding to the history page you want to edit.")
 
     async def setup_questionnaire(self, ctx):
-        def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
+        modal = NationSetupModal(self, ctx.author)
+        await ctx.send_modal(modal)
 
-        await ctx.send("Welcome to your Nation Profile setup! What is your nation's name?")
-        try:
-            nation_msg = await self.bot.wait_for('message', check=check, timeout=60)
-            nation = nation_msg.content
-        except asyncio.TimeoutError:
-            await ctx.send("You took too long to respond. Setup cancelled.")
-            return
-
-        await ctx.send("What is your nation's population? (between 100,000 and 6,000,000)")
-        while True:
-            try:
-                population_input = await self.bot.wait_for('message', check=check, timeout=60)
-                raw_pop = int(population_input.content.replace(",", ""))
-                if 100000 <= raw_pop <= 6000000:
-                    population = f"{raw_pop:,}"
-                    break
-                else:
-                    await ctx.send("Please enter a number between 100,000 and 6,000,000.")
-            except asyncio.TimeoutError:
-                await ctx.send("You took too long to respond. Setup cancelled.")
-                return
-                raw_pop = int(population_input.content.replace(",", ""))
-                if 100000 <= raw_pop <= 6000000:
-                    population = f"{raw_pop:,}"
-                    break
-                else:
-                    await ctx.send("Please enter a number between 100,000 and 6,000,000.")
-            except ValueError:
-                await ctx.send("Please enter a valid number.")
-
-        await ctx.send("What is your national animal?")
-        try:
-            animal_msg = await self.bot.wait_for('message', check=check, timeout=60)
-            animal = animal_msg.content
-        except asyncio.TimeoutError:
-            await ctx.send("You took too long to respond. Setup cancelled.")
-            return
-
-        await ctx.send("What is your currency called?")
-        try:
-            currency_msg = await self.bot.wait_for('message', check=check, timeout=60)
-            currency = currency_msg.content
-        except asyncio.TimeoutError:
-            await ctx.send("You took too long to respond. Setup cancelled.")
-            return
-
-        await ctx.send("What is your capital city?")
-        try:
-            capital_msg = await self.bot.wait_for('message', check=check, timeout=60)
-            capital = capital_msg.content
-        except asyncio.TimeoutError:
-            await ctx.send("You took too long to respond. Setup cancelled.")
-            return
-
-        await ctx.send("Please provide a link to your national flag image (URL):")
-        while True:
-            try:
-                flag_msg = await self.bot.wait_for('message', check=check, timeout=60)
-            except asyncio.TimeoutError:
-                await ctx.send("You took too long to respond. Setup cancelled.")
-                return
-            flag = flag_msg.content.strip()
-            if any(flag.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif", ".webp"]):
-                break
-            else:
-                await ctx.send("That doesn't look like a valid image URL. Please send a direct link to a .png, .jpg, .jpeg, .gif, or .webp image.")
-
-        await self.config.user(ctx.author).set({
-            "nation": nation,
-            "population": population,
-            "animal": animal,
-            "currency": currency,
-            "capital": capital,
-            "flag": flag
-        })
-
-        await ctx.send("Your nation profile has been saved! Use `!nation` again to view it.")
 
     async def show_nation_embed(self, ctx, user, data):
         embed = discord.Embed(
@@ -212,6 +135,47 @@ class NationProfile(commands.Cog):
 
         view = NationView(self, user)
         await ctx.send(embed=embed, view=view)
+
+class NationSetupModal(discord.ui.Modal, title="Nation Profile Setup"):
+    nation = discord.ui.TextInput(label="Nation Name", max_length=100)
+    population = discord.ui.TextInput(label="Population (100,000 - 6,000,000)", placeholder="e.g., 1,000,000")
+    animal = discord.ui.TextInput(label="National Animal", max_length=100)
+    currency = discord.ui.TextInput(label="Currency Name", max_length=100)
+    capital = discord.ui.TextInput(label="Capital City", max_length=100)
+    flag = discord.ui.TextInput(label="Flag Image URL (.png, .jpg, .gif, etc.)", required=False)
+
+    def __init__(self, cog, user):
+        super().__init__(timeout=300)
+        self.cog = cog
+        self.user = user
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            raw_pop = int(self.population.value.replace(",", ""))
+            if not (100_000 <= raw_pop <= 6_000_000):
+                await interaction.response.send_message("Population must be between 100,000 and 6,000,000.", ephemeral=True)
+                return
+            population = f"{raw_pop:,}"
+        except ValueError:
+            await interaction.response.send_message("Invalid population number.", ephemeral=True)
+            return
+
+        flag_url = self.flag.value.strip()
+        if flag_url and not any(flag_url.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif", ".webp"]):
+            await interaction.response.send_message("Flag must be a direct image URL (.png, .jpg, etc).", ephemeral=True)
+            return
+
+        await self.cog.config.user(self.user).set({
+            "nation": self.nation.value,
+            "population": population,
+            "animal": self.animal.value,
+            "currency": self.currency.value,
+            "capital": self.capital.value,
+            "flag": flag_url or None
+        })
+
+        await interaction.response.send_message("Your nation profile has been saved! Use `/nation` to view it.", ephemeral=True)
+
 
 class NationView(discord.ui.View):
     def __init__(self, cog, target_user):
