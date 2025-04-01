@@ -2,11 +2,6 @@ import discord
 from redbot.core import commands, Config
 from discord.ext import tasks  
 import random
-import matplotlib.pyplot as plt
-import io
-from discord import File
-
-
 
 class StockMarket(commands.Cog):
     def __init__(self, bot):
@@ -33,7 +28,7 @@ class StockMarket(commands.Cog):
     async def price_updater(self):
         await self.recalculate_all_stock_prices()
 
-    @tasks.loop(hours=24)  # once a week
+    @tasks.loop(hours=168)  # once a week
     async def week_changer(self):
         new_week = random.choices(
             ["good", "bad", "great", "ugly"],
@@ -56,9 +51,9 @@ class StockMarket(commands.Cog):
 
                 # Flat change based on market week
                 if market_week == "great":
-                    market_change = random.randint(3, 6) if random.random() < 0.85 else random.randint(-1, 0)
+                    market_change = random.randint(2, 5) if random.random() < 0.85 else random.randint(-1, 0)
                 elif market_week == "good":
-                    market_change = random.randint(2, 4) if random.random() < 0.7 else random.randint(-1, 0)
+                    market_change = random.randint(1, 3) if random.random() < 0.7 else random.randint(-1, 0)
                 elif market_week == "bad":
                     market_change = random.randint(-3, -1) if random.random() < 0.7 else random.randint(0, 1)
                 elif market_week == "ugly":
@@ -75,8 +70,11 @@ class StockMarket(commands.Cog):
                 new_price = round(data["price"] + change + tag_bonus, 2)
 
                 if new_price <= 0:
-                    del stocks[stock_name]
-                    continue
+                    if random.random() < 0.5:
+                        del stocks[stock_name]
+                        continue
+                    else:
+                        new_price = 1.0
 
                 new_price = max(1.0, new_price)
 
@@ -277,7 +275,10 @@ class StockMarket(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def stockchart(self, ctx, name: str, range: str = "month"):
         """View a chart of stock prices over time. Range: day, week, month, year"""
-        await ctx.send("This takes a moment or two")
+        import matplotlib.pyplot as plt
+        import io
+        from discord import File
+
         name = name.upper()
         stock_data = await self.config.stocks()
         stock = stock_data.get(name)
@@ -327,16 +328,6 @@ class StockMarket(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def adjusttag(self, ctx, tag: str, value: int):
-        """Admin: Adjust a tag's influence value."""
-        tag = tag.lower()
-        async with self.config.tags() as tags:
-            tags[tag] = value
-        await self.recalculate_all_stock_prices()
-        await ctx.send(f"✅ Tag `{tag}` updated to {value:.2f}. All related stocks adjusted.")
-
-    @commands.command()
-    @commands.has_permissions(administrator=True)
     async def deletestock(self, ctx, name: str):
         """Delete a stock and remove it from all user portfolios."""
         name = name.upper()
@@ -353,3 +344,13 @@ class StockMarket(commands.Cog):
                 del user_data["avg_buy_prices"][name]
 
         await ctx.send(f"🗑️ Stock `{name}` has been deleted and removed from all users.")
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def adjusttag(self, ctx, tag: str, value: int):
+        """Admin: Adjust a tag's influence value."""
+        tag = tag.lower()
+        async with self.config.tags() as tags:
+            tags[tag] = value
+        await self.recalculate_all_stock_prices()
+        await ctx.send(f"✅ Tag `{tag}` updated to {value:.2f}. All related stocks adjusted.")
