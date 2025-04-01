@@ -229,13 +229,16 @@ class StockMarket(commands.Cog):
         user = ctx.author
         user_stocks = await self.config.user(user).stocks()
         all_stocks = await self.config.stocks()
+        avg_prices = await self.config.user(user).avg_buy_prices()
 
         if not user_stocks:
             return await ctx.send("You don't own any stocks.")
 
-        lines = [f"**{user.display_name}'s Portfolio**"]
+        total_value = 0
+        total_cost = 0
+        embed = discord.Embed(title=f"📁 {user.display_name}'s Portfolio")
+
         for stock, amount in user_stocks.items():
-            avg_prices = await self.config.user(user).avg_buy_prices()
             if stock in all_stocks:
                 current_price = all_stocks[stock]["price"]
             else:
@@ -243,9 +246,24 @@ class StockMarket(commands.Cog):
             avg_price = avg_prices.get(stock, current_price)
             percent_change = ((current_price - avg_price) / avg_price) * 100 if avg_price else 0
             status = " (Delisted)" if stock not in all_stocks else ""
-            lines.append(f"`{stock}`: {amount} shares @ {current_price:.2f} coins (Δ {percent_change:+.2f}%)" + status)
+            embed.add_field(
+                name=stock,
+                value=f"{amount} shares @ {current_price:.2f} coins (Δ {percent_change:+.2f}%)" + status,
+                inline=False
+            )
+            total_value += current_price * amount
+            total_cost += avg_price * amount
 
-        await ctx.send("".join(lines))
+        net_change = total_value - total_cost
+        if net_change > 0:
+            embed.color = discord.Color.green()
+        elif net_change < 0:
+            embed.color = discord.Color.red()
+        else:
+            embed.color = discord.Color.purple()
+
+        embed.set_footer(text=f"Net Portfolio Change: {net_change:+.2f} coins")
+        await ctx.send(embed=embed)
 
     @commands.command()
     @commands.has_permissions(administrator=True)
@@ -295,10 +313,12 @@ class StockMarket(commands.Cog):
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def simulatetime(self, ctx, hours: int):
-        """Simulate X hours of stock market activity."""
-        for _ in range(hours):
+        """Simulate X hours of stock market activity, including weekly changes."""
+        for i in range(hours):
             await self.recalculate_all_stock_prices()
-        await ctx.send(f"🕒 Simulated {hours} hour(s) of market activity.")
+            if (i + 1) % 168 == 0:
+                await self.week_changer()
+        await ctx.send(f"🕒 Simulated {hours} hour(s) of market activity (including week changes).")
 
     @commands.command()
     @commands.has_permissions(administrator=True)
