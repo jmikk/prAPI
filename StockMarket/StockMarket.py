@@ -86,6 +86,7 @@ class StockMarket(commands.Cog):
                 data["sells"] = 0
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def liststocks(self, ctx):
         """List all available stocks and their prices."""
         stocks = await self.config.stocks()
@@ -93,12 +94,13 @@ class StockMarket(commands.Cog):
         if not stocks:
             return await ctx.send("No stocks available.")
 
-        msg = f"**Market Condition: {market_week.title()} Week**\n\n**Available Stocks:**\n"
+        msg = f"**Market Condition: {**\n\n**Available Stocks:**\n"
         for name, data in stocks.items():
             msg += f"`{name}` - {data['price']:.2f} coins\n"
         await ctx.send(msg)
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def viewstock(self, ctx, name: str):
         """View a specific stock's details."""
         stocks = await self.config.stocks()
@@ -110,6 +112,7 @@ class StockMarket(commands.Cog):
         await ctx.send(f"**{name.upper()}**\nPrice: {stock['price']:.2f} coins\nTags: {tag_str}")
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def buystock(self, ctx, name: str, amount: int):
         """Buy shares of a stock."""
         name = name.upper()
@@ -140,6 +143,7 @@ class StockMarket(commands.Cog):
         await ctx.send(f"Bought {amount} shares of {name} for {price:.2f} coins.")
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def sellstock(self, ctx, name: str, amount: int):
         """Sell shares of a stock."""
         name = name.upper()
@@ -193,6 +197,7 @@ class StockMarket(commands.Cog):
         await ctx.send(f"✅ Created stock `{name}` at {starting_price:.2f} coins.")
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def myportfolio(self, ctx):
         """View your stock holdings and percent change."""
         user = ctx.author
@@ -216,6 +221,7 @@ class StockMarket(commands.Cog):
         await ctx.send("".join(lines))
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def stockchart(self, ctx, name: str, range: str = "month"):
         """View a chart of stock prices over time. Range: day, week, month, year"""
         import matplotlib.pyplot as plt
