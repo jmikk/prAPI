@@ -212,8 +212,7 @@ class StockMarket(commands.Cog):
             else:
                 lines.append(f"`{stock}`: {amount} shares (Delisted)")
 
-        await ctx.send("
-".join(lines))
+        await ctx.send("".join(lines))
 
     @commands.command()
     async def stockchart(self, ctx, name: str, range: str = "month"):
