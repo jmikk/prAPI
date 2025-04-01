@@ -6,7 +6,7 @@ import random
 class StockMarket(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
+        self.config = Config.get_conf(self, identifier=345678654456, force_registration=True)
 
         self.config.register_user(stocks={},avg_buy_prices={})  # {"STOCK_NAME": amount_owned}
         
