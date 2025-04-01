@@ -7,9 +7,8 @@ class StockMarket(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890, force_registration=True)
 
-        self.config.register_user(stocks={},
-            avg_buy_prices={}  # {"STOCK_NAME": amount_owned}
-        )
+        self.config.register_user(stocks={},avg_buy_prices={})  # {"STOCK_NAME": amount_owned}
+        
 
         self.config.register_global(
             stocks={},  # {"STOCK_NAME": {"price": 100, "tags": {"tech": 2}, "volatility": [-3, 3], ...}}
