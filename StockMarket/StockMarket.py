@@ -33,7 +33,7 @@ class StockMarket(commands.Cog):
     async def price_updater(self):
         await self.recalculate_all_stock_prices()
 
-    @tasks.loop(hours=168)  # once a week
+    @tasks.loop(hours=24)  # once a week
     async def week_changer(self):
         new_week = random.choices(
             ["good", "bad", "great", "ugly"],
