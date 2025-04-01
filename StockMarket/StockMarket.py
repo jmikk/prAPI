@@ -94,7 +94,7 @@ class StockMarket(commands.Cog):
         if not stocks:
             return await ctx.send("No stocks available.")
 
-        msg = f"**Market Condition: {**\n\n**Available Stocks:**\n"
+        msg = "**Available Stocks:**\n"
         for name, data in stocks.items():
             msg += f"`{name}` - {data['price']:.2f} coins\n"
         await ctx.send(msg)
