@@ -171,8 +171,6 @@ class StockMarket(commands.Cog):
         user = ctx.author
         stocks = await self.config.stocks()
         stock = stocks.get(name)
-        if not stock:
-            return await ctx.send("Stock not found.")
 
         async with self.config.user(user).stocks() as owned:
             if owned.get(name, 0) < amount:
