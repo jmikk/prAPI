@@ -1,5 +1,6 @@
 import discord
-from redbot.core import commands, Config, tasks
+from redbot.core import commands, Config
+from discord.ext import tasks  
 import random
 
 class StockMarket(commands.Cog):
