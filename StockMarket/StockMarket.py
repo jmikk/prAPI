@@ -94,10 +94,16 @@ class StockMarket(commands.Cog):
         if not stocks:
             return await ctx.send("No stocks available.")
 
-        msg = "**Available Stocks:**\n"
+        embed = discord.Embed(
+            title="📈 Stock Market",
+            description=f"**Market Condition:** {market_week.title()} Week",
+            color=discord.Color.green()
+        )
+
         for name, data in stocks.items():
-            msg += f"`{name}` - {data['price']:.2f} coins\n"
-        await ctx.send(msg)
+            embed.add_field(name=f"{name}", value=f"Price: {data['price']:.2f} coins", inline=False)
+
+        await ctx.send(embed=embed)
 
     @commands.command()
     @commands.has_permissions(administrator=True)
@@ -108,8 +114,18 @@ class StockMarket(commands.Cog):
         if not stock:
             return await ctx.send("Stock not found.")
 
-        tag_str = ", ".join(f"{t} ({w})" for t, w in stock["tags"].items())
-        await ctx.send(f"**{name.upper()}**\nPrice: {stock['price']:.2f} coins\nTags: {tag_str}")
+        tag_str = ", ".join(f"{t} ({w})" for t, w in stock["tags"].items()) or "None"
+        vol_str = str(stock.get("volatility", "None"))
+
+        embed = discord.Embed(
+            title=f"📊 {name.upper()} Details",
+            description=f"Price: {stock['price']:.2f} coins",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Tags", value=tag_str, inline=False)
+        embed.add_field(name="Volatility", value=vol_str, inline=False)
+
+        await ctx.send(embed=embed)
 
     @commands.command()
     @commands.has_permissions(administrator=True)
@@ -207,18 +223,27 @@ class StockMarket(commands.Cog):
         if not user_stocks:
             return await ctx.send("You don't own any stocks.")
 
-        lines = [f"**{user.display_name}'s Portfolio**"]
+        embed = discord.Embed(
+            title=f"📒 {user.display_name}'s Portfolio",
+            color=discord.Color.purple()
+        )
+
+        avg_prices = await self.config.user(user).avg_buy_prices()
+
         for stock, amount in user_stocks.items():
             if stock in all_stocks:
                 current_price = all_stocks[stock]["price"]
-                avg_prices = await self.config.user(user).avg_buy_prices()
                 avg_price = avg_prices.get(stock, current_price)
                 percent_change = ((current_price - avg_price) / avg_price) * 100 if avg_price else 0
-                lines.append(f"`{stock}`: {amount} shares @ {current_price:.2f} coins (Δ {percent_change:+.2f}%)")
+                embed.add_field(
+                    name=f"{stock}",
+                    value=f"Shares: {amount}\nCurrent: {current_price:.2f} coins\nΔ {percent_change:+.2f}%",
+                    inline=False
+                )
             else:
-                lines.append(f"`{stock}`: {amount} shares (Delisted)")
+                embed.add_field(name=stock, value="Shares: {amount}\nStatus: Delisted", inline=False)
 
-        await ctx.send("".join(lines))
+        await ctx.send(embed=embed)
 
     @commands.command()
     @commands.has_permissions(administrator=True)
