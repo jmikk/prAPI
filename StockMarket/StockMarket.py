@@ -56,9 +56,9 @@ class StockMarket(commands.Cog):
 
                 # Flat change based on market week
                 if market_week == "great":
-                    market_change = random.randint(2, 5) if random.random() < 0.85 else random.randint(-1, 0)
+                    market_change = random.randint(3, 6) if random.random() < 0.85 else random.randint(-1, 0)
                 elif market_week == "good":
-                    market_change = random.randint(1, 3) if random.random() < 0.7 else random.randint(-1, 0)
+                    market_change = random.randint(2, 4) if random.random() < 0.7 else random.randint(-1, 0)
                 elif market_week == "bad":
                     market_change = random.randint(-3, -1) if random.random() < 0.7 else random.randint(0, 1)
                 elif market_week == "ugly":
