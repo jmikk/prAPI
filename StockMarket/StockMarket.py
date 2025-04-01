@@ -176,6 +176,11 @@ class StockMarket(commands.Cog):
             if owned.get(name, 0) < amount:
                 return await ctx.send("You don't own that many shares.")
             owned[name] -= amount
+            if owned[name] <= 0:
+                del owned[name]
+                async with self.config.user(user).avg_buy_prices() as prices:
+                    if name in prices:
+                        del prices[name]
 
         earnings = stock["price"] * amount if stock else 0
         bal = await self.economy_config.user(user).master_balance()
