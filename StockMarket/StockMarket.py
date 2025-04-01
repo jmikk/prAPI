@@ -6,8 +6,8 @@ import random
 class StockMarket(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=345678654456, force_registration=True)
-
+        self.config = Config.get_conf(self, identifier="SM9003", force_registration=True)
+        self.economy_config = Config.get_conf(None, identifier=345678654456, force_registration=False)
         self.config.register_user(stocks={},avg_buy_prices={})  # {"STOCK_NAME": amount_owned}
         
 
@@ -120,11 +120,11 @@ class StockMarket(commands.Cog):
             return await ctx.send("Stock not found.")
 
         price = stock["price"] * amount
-        bal = await self.config.user(user).master_balance()
+        bal = await self.economy_config.user(user).master_balance()
         if bal < price:
             return await ctx.send("You don't have enough funds.")
 
-        await self.config.user(user).master_balance.set(bal - price)
+        await self.economy_config.user(user).master_balance.set(bal - price)       
         async with self.config.user(user).stocks() as owned:
             previous_amount = owned.get(name, 0)
             owned[name] = previous_amount + amount
@@ -155,8 +155,8 @@ class StockMarket(commands.Cog):
             owned[name] -= amount
 
         earnings = stock["price"] * amount
-        bal = await self.config.user(user).master_balance()
-        await self.config.user(user).master_balance.set(bal + earnings)
+        bal = await self.economy_config.user(user).master_balance()
+        await self.economy_config.user(user).master_balance.set(bal + earnings)
 
         async with self.config.stocks() as s:
             s[name]["sells"] += amount
