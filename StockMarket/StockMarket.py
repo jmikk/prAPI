@@ -334,3 +334,22 @@ class StockMarket(commands.Cog):
             tags[tag] = value
         await self.recalculate_all_stock_prices()
         await ctx.send(f"✅ Tag `{tag}` updated to {value:.2f}. All related stocks adjusted.")
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def deletestock(self, ctx, name: str):
+        """Delete a stock and remove it from all user portfolios."""
+        name = name.upper()
+        async with self.config.stocks() as stocks:
+            if name not in stocks:
+                return await ctx.send("Stock not found.")
+            del stocks[name]
+
+        all_users = await self.config.all_users()
+        for user_id, user_data in all_users.items():
+            if "stocks" in user_data and name in user_data["stocks"]:
+                del user_data["stocks"][name]
+            if "avg_buy_prices" in user_data and name in user_data["avg_buy_prices"]:
+                del user_data["avg_buy_prices"][name]
+
+        await ctx.send(f"🗑️ Stock `{name}` has been deleted and removed from all users.")
