@@ -2,6 +2,11 @@ import discord
 from redbot.core import commands, Config
 from discord.ext import tasks  
 import random
+import matplotlib.pyplot as plt
+import io
+from discord import File
+
+
 
 class StockMarket(commands.Cog):
     def __init__(self, bot):
@@ -269,10 +274,7 @@ class StockMarket(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def stockchart(self, ctx, name: str, range: str = "month"):
         """View a chart of stock prices over time. Range: day, week, month, year"""
-        import matplotlib.pyplot as plt
-        import io
-        from discord import File
-
+        await ctx.send("This takes a moment or two")
         name = name.upper()
         stock_data = await self.config.stocks()
         stock = stock_data.get(name)
