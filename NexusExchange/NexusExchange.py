@@ -974,7 +974,7 @@ class NexusExchange(commands.Cog):
             message_parts.append("""Welcome to The Wellspring!
 A land of magic, wonder, and community, where your voice adds to the chorus echoing across our region.
 
-We’re so glad you’ve arrived! Whether you're here to shape stories, dive into diplomacy, or simply enjoy the peaceful flow of conversation, you’ve found the right place.
+We are so glad you have arrived! Whether you're here to shape stories, dive into diplomacy, or simply enjoy the peaceful flow of conversation, you have found the right place.
 
 First Steps to Jump into the Spring:
 
@@ -985,13 +985,13 @@ First Steps to Jump into the Spring:
     Endorse our Delegate: [nation]Well-Sprung Jack[/nation]
 
     Endorse our Keepers:
-      • [nation=islands_of_ventro]Islands of Ventro[/nation]
-      • [nation=kakastania]Kakastania[/nation]
+    [nation=islands_of_ventro]Islands of Ventro[/nation]
+    [nation=kakastania]Kakastania[/nation]
 
 Joining the World Assembly and endorsing our keepers helps protect [region]The Wellspring[/region] from outside threats and gives us more influence in shaping the world around us. It makes our region stronger, safer, and more united.
 
 Join our Discord!
-This is the heart of our region — where roleplay, chat, events, and worldbuilding come to life.
+This is the heart of our region, where roleplay, chat, events, and worldbuilding come to life.
 https://discord.gg/VxQ3n9zSxh
 
 Helpful Resources:
@@ -1000,7 +1000,7 @@ Helpful Resources:
 
     [url=https://www.nationstates.net/page=dispatch/id=1023447]How to NationStates (New Nation Guide)[/url]
 
-    [url=https://www.nationstates.net/page=display_region_rmb/region=the_wellspring]RMB — Make sure to introduce yourself![/url]""")
+    [url=https://www.nationstates.net/page=display_region_rmb/region=the_wellspring]RMB Make sure to introduce yourself![/url]""")
             message_parts.append("[spoiler=Welcome to The Wellspring!]\nA warm welcome to our newest nations:\n" + ", ".join(f"[nation]{nation}[/nation]" for nation in new_nations)+"[/spoiler]")
         if new_wa_nations:
             message_parts.append("[spoiler=New WA Nations Alert!] \nJoin us in celebrating our newest World Assembly members:\n" +
