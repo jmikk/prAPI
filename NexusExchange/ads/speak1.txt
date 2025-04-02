@@ -1,5 +1,5 @@
 😩 Tired of that once-proud witty bio, goofy profile pic, and deep status?
-✨ Use /create_character to craft a character & set a profile!
-💬 Then, /speak to send messages as them!
+✨ Use ```/create_character``` to craft a character & set a profile!
+💬 Then, ```/speak``` to send messages as them!
 
 🚀 Let your imagination run wild! 
