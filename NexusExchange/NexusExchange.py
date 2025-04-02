@@ -1000,7 +1000,7 @@ Helpful Resources:
 
     [url=https://www.nationstates.net/page=dispatch/id=1023447]How to NationStates (New Nation Guide)[/url]
 
-    [url=https://www.nationstates.net/page=display_region_rmb/region=the_wellspring]RMB — Make sure to introduce yourself![/url]"""
+    [url=https://www.nationstates.net/page=display_region_rmb/region=the_wellspring]RMB — Make sure to introduce yourself![/url]""")
             message_parts.append("[spoiler=Welcome to The Wellspring!]\nA warm welcome to our newest nations:\n" + ", ".join(f"[nation]{nation}[/nation]" for nation in new_nations)+"[/spoiler]")
         if new_wa_nations:
             message_parts.append("[spoiler=New WA Nations Alert!] \nJoin us in celebrating our newest World Assembly members:\n" +
