@@ -40,7 +40,6 @@ class Casino(commands.Cog):
 
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
-    @commands.admin_or_permissions(administrator=True)
     async def coinflip(self, ctx, bet: int, call: str = None):
         """Flip a coin with animated message updates. You can call Heads or Tails, but it does not affect the odds."""
         balance = await self.get_balance(ctx.author)
