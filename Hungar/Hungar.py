@@ -84,17 +84,17 @@ class EqualizerButton(Button):
 
 
 class CheckGoldButton(Button):
-    """Button to display the user's current gold"""
+    """Button to display the user's current Wellcoins"""
 
     def __init__(self, cog):
-        super().__init__(label="Check gold", style=discord.ButtonStyle.secondary)
+        super().__init__(label="Check Wellcoins", style=discord.ButtonStyle.secondary)
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
         try:
             user_id = interaction.user
-            gold = await self.cog.config.user(user_id).gold()
-            await interaction.response.send_message(f"You have {gold} gold.", ephemeral=True)
+            gold = await self.cog.config_gold.user(user_id).master_balance()
+            await interaction.response.send_message(f"You have {gold} Wellcoins.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
@@ -517,14 +517,14 @@ class SponsorButton(Button):
             return
 
         # Get the user's gold from user config
-        user_gold = await self.cog.config.user(user).gold()
+        user_gold = await self.cog.config_gold.user(user).master_balance()
 
-        if user_gold < 100:
-            await interaction.response.send_message("You need at least 100 gold to sponsor a tribute!", ephemeral=True)
+        if user_gold < 10:
+            await interaction.response.send_message("You need at least 10 Wellcoins to sponsor a tribute!", ephemeral=True)
             return
 
         # Deduct 100 gold
-        await self.cog.config.user(user).gold.set(user_gold - 100)
+        await self.cog.config_gold.user(user).master_balance.set(user_gold - 10)
 
         if random.randint(1, 100) <= 5:
             run = 20
@@ -589,13 +589,13 @@ class ViewBidsButton(Button):
                         total_bets += bet_amount
                         member = guild.get_member(int(user_id))
                         if member:
-                            details.append(f"{member.nick}: {bet_amount} gold")
+                            details.append(f"{member.nick}: {bet_amount} Wellcoins")
 
                 # Include AI bets
                 ai_bets = tribute_bets.get("AI", [])
                 for ai_bet in ai_bets:
                     total_bets += ai_bet["amount"]
-                    details.append(f"{ai_bet['name']}: {ai_bet['amount']} gold")
+                    details.append(f"{ai_bet['name']}: {ai_bet['amount']} Wellcoins")
 
                 if total_bets > 0:
                     bid_totals[player_id] = total_bets
@@ -633,7 +633,7 @@ class ViewBidsButton(Button):
 
                 embed.add_field(
                     name=f"#{rank} {tribute_name} (District {district})",
-                    value=f"Total Bets: {total_bet} gold\n{details_text}",
+                    value=f"Total Bets: {total_bet} Wellcoins\n{details_text}",
                     inline=False
                 )
 
@@ -702,11 +702,11 @@ class BettingView(View):
 
         # Bet amount selection dropdown
         self.amount_options = [
-            SelectOption(label="10 Gold", value="10"),
-            SelectOption(label="50 Gold", value="50"),
-            SelectOption(label="100 Gold", value="100"),
-            SelectOption(label="1000 Gold", value="1000"),
-            SelectOption(label="All Gold", value="all")
+            SelectOption(label="10 Wellcoins", value="10"),
+            SelectOption(label="50 Wellcoins", value="50"),
+            SelectOption(label="100 Wellcoins", value="100"),
+            SelectOption(label="1000 Wellcoins", value="1000"),
+            SelectOption(label="All Wellcoins", value="all")
         ]
         self.amount_select = Select(
             placeholder="Select bet amount...",
@@ -764,20 +764,20 @@ class BettingView(View):
         """Handles bet confirmation."""
         try:
             guild = interaction.guild
-            user_gold = await self.cog.config.user(interaction.user).gold()
+            user_gold = await self.cog.config_gold.user(interaction.user).master_balance()
 
             # Determine the bet amount
             bet_amount = user_gold if self.selected_amount == "all" else int(self.selected_amount)
 
             if bet_amount > user_gold:
                 await interaction.response.send_message(
-                    f"You don't have enough gold to place this bet. You have {user_gold} gold.",
+                    f"You don't have enough Wellcoins to place this bet. You have {user_gold} Wellcoins.",
                     ephemeral=True
                 )
                 return
 
             # Deduct gold and save the bet
-            await self.cog.config.user(interaction.user).gold.set(user_gold - bet_amount)
+            await self.cog.config_config.user(interaction.user).master_balance.set(user_gold - bet_amount)
             user_bets = await self.cog.config.user(interaction.user).bets()
 
             if self.selected_tribute in user_bets:
@@ -796,7 +796,7 @@ class BettingView(View):
             tribute_name = players[self.selected_tribute]["name"]
 
             await interaction.response.send_message(
-                f"💰 You placed a bet of **{bet_amount} gold** on **{tribute_name}**. Good luck!",
+                f"💰 You placed a bet of **{bet_amount} Wellcoins** on **{tribute_name}**. Good luck!",
                 ephemeral=True
             )
         except Exception as e:
@@ -960,6 +960,7 @@ class Hungar(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=1234567890)
+        self.config_gold = Config.get_conf(None, identifier=345678654456, force_registration=False)
         self.config.register_guild(
             districts={},
             players={},
@@ -1049,9 +1050,9 @@ class Hungar(commands.Cog):
             await ctx.author.add_roles(role)
         
         # Award 100 gold to the player in user config
-        user_gold = await self.config.user(ctx.author).gold()
-        user_gold += 100
-        await self.config.user(ctx.author).gold.set(user_gold)
+        user_gold = await self.config_gold.user(ctx.author).master_balance()
+        user_gold += 10
+        await self.config_gold.user(ctx.author).master_balance.set(user_gold)
     
 
         # Assign random district and stats
@@ -1237,7 +1238,7 @@ class Hungar(commands.Cog):
                 continue
         
             ai_name = random.choice(npc_names)
-            bet_amount = random.randint(50, 500)  # Random bet between 50 and 500 gold
+            bet_amount = random.randint(5, 50)  # Random bet between 50 and 500 gold
         
             # Save the bet to the AI bettors dictionary for announcements
             ai_bettors[ai_name] = {
@@ -1409,53 +1410,47 @@ class Hungar(commands.Cog):
 
     async def endGame(self, ctx):
         """End the game and announce the winner."""
-        winner_id=""
-        winner=""
-        winner_bonus=0
+        winner_id = ""
+        winner = ""
+        winner_bonus = 0
         guild = ctx.guild
         config = await self.config.guild(guild).all()
         players = config["players"]
         leaderboard = config.get("elimination_leaderboard", [])
-        all_users = await self.config.all_users()  # Fetch all users
-    
+        all_users = await self.config.all_users()
         alive_players = [player for player in players.values() if player["alive"]]
-        WLboard = config.get("WLboard",{})
-
-        role = get(guild.roles, name="Tribute")
+        WLboard = config.get("WLboard", {})
     
+        role = get(guild.roles, name="Tribute")
         if role:
             for member in guild.members:
                 if role in member.roles:
-                    await member.remove_roles(role)    
-
-
-        # 🛑 **Disable GameMaster Dashboard if it exists**
+                    await member.remove_roles(role)
+    
+        # Lock GameMaster Dashboard
         dashboard_channel_id = config.get("dashboard_channel_id")
         dashboard_message_id = config.get("dashboard_message_id")
-    
         if dashboard_channel_id and dashboard_message_id:
             dashboard_channel = guild.get_channel(dashboard_channel_id)
             if dashboard_channel:
                 try:
                     message = await dashboard_channel.fetch_message(dashboard_message_id)
                     if message:
-                        # Create a **disabled version** of the GameMaster dashboard
                         disabled_view = GameMasterView(self, guild, None)
                         for item in disabled_view.children:
-                            item.disabled = True  # Disable all buttons
-                        
+                            item.disabled = True
                         await message.edit(content="🔒 **Game Over!** The GameMaster dashboard is now locked.", view=disabled_view)
                 except discord.NotFound:
                     print("Dashboard message not found, skipping lockout.")
-
+    
+        # Declare winner
         if alive_players:
             winner = alive_players[0]
             winner_id = next((pid for pid, pdata in players.items() if pdata == winner), None)
-            if not alive_players[0].get("is_npc", False):
-                WLboard = config.get("WLboard",{})
+            if not winner.get("is_npc", False):
                 winner_data = WLboard.get(winner_id, {
-                "name": winner["name"],
-                "wins": 0,
+                    "name": winner["name"],
+                    "wins": 0,
                 })
                 winner_data["wins"] += 1
                 WLboard[winner_id] = winner_data
@@ -1463,13 +1458,10 @@ class Hungar(commands.Cog):
             await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
         else:
             await ctx.send("The game is over! No one survived.")
-
     
         # Send elimination leaderboard
         if leaderboard:
-            leaderboard.sort(key=lambda x: x["day"])  # Sort by elimination day
-            
-            # Create the elimination leaderboard embed
+            leaderboard.sort(key=lambda x: x["day"])
             elim_embed = discord.Embed(
                 title="🏅 Elimination Leaderboard 🏅",
                 description="Here are the players eliminated so far:",
@@ -1483,12 +1475,8 @@ class Hungar(commands.Cog):
                 )
             await ctx.send(embed=elim_embed)
     
-            # Fetch player data and sort by kill count
-            guild_data = await self.config.guild(ctx.guild).all()
-            players = guild_data["players"]
+            # Kill leaderboard
             sorted_players = sorted(players.values(), key=lambda p: len(p["kill_list"]), reverse=True)
-            
-            # Create the kill leaderboard embed
             kill_embed = discord.Embed(
                 title="🏆 Kill Leaderboard 🏆",
                 description="Here are the top killers:",
@@ -1496,63 +1484,53 @@ class Hungar(commands.Cog):
             )
             for i, player in enumerate(sorted_players, start=1):
                 kills = len(player["kill_list"])
-                if kills == 1:
-                    kill_embed.add_field(
-                        name="",
-                        value=f"**{i}.** {player['name']}: {kills} kill\nKilled: {', '.join(player['kill_list'])}",
-                        inline=False)
-                else:
-                    kill_embed.add_field(
-                        name="",
-                        value=f"**{i}.** {player['name']}: {kills} kills\nKilled: {', '.join(player['kill_list'])}",
-                        inline=False)
+                kill_text = "kill" if kills == 1 else "kills"
+                kill_embed.add_field(
+                    name="",
+                    value=f"**{i}.** {player['name']}: {kills} {kill_text}\nKilled: {', '.join(player['kill_list'])}",
+                    inline=False
+                )
             await ctx.send(embed=kill_embed)
     
-            # Calculate total pot from all user bets
+            # Calculate total pot
             total_pot = 0
-            for user_id, user_data in all_users.items():
+            for user_data in all_users.values():
                 bets = user_data.get("bets", {})
                 total_pot += sum(bet["amount"] for bet in bets.values())
-            
-            # Include all NPC (AI) bets
+    
             for tribute_data in players.values():
                 npc_bets = tribute_data.get("bets", {}).get("AI", [])
                 for ai_bet in npc_bets:
                     total_pot += ai_bet["amount"]
-            
-            # Award 50% of total pot to the winner
-            winner_bonus = int(total_pot * 0.5)  # 50% of total pot
-
-
-                # Distribute winnings
+    
+            winner_bonus = int(total_pot * 0.5)
+    
+        # Distribute winnings to users
         for user_id, user_data in all_users.items():
             bets = user_data.get("bets", {})
-            user_gold = user_data.get("gold", 0)
-    
+            user_balance = await self.config_gold.user_from_id(user_id).master_balance()
             for tribute_id, bet_data in bets.items():
                 if tribute_id == winner_id:
-                    # Pay double the bet amount + daily earnings for the winner
-                    user_gold += bet_data["amount"] * 2
-                    # Clear bets after game ends
-            await self.config.user_from_id(user_id).gold.set(user_gold)
+                    user_balance += bet_data["amount"] * 2
+            await self.config_gold.user_from_id(user_id).master_balance.set(user_balance)
             await self.config.user_from_id(user_id).bets.set({})
-
-        if winner_bonus > 0 and not winner.get("is_npc", False):  # Only give to real players
-            winner_gold = await self.config.user_from_id(int(winner_id)).gold()
-            winner_gold = winner_bonus + winner_gold
-            await self.config.user_from_id(int(winner_id)).gold.set(winner_gold)
-            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!")
-
-
-
-            # Update total kill counts for each player
+    
+        # Give bonus to winner
+        if winner_bonus > 0 and not winner.get("is_npc", False):
+            winner_balance = await self.config_gold.user_from_id(int(winner_id)).master_balance()
+            winner_balance += winner_bonus
+            await self.config_gold.user_from_id(int(winner_id)).master_balance.set(winner_balance)
+            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** from the bets placed on them!")
+    
+        # Update kill counts
         for player_id, player_data in players.items():
             if not player_data.get("is_npc") and player_data["kill_list"]:
                 user_id = int(player_id)
                 total_kills = len(player_data["kill_list"])
                 current_kill_count = await self.config.user_from_id(user_id).kill_count()
                 await self.config.user_from_id(user_id).kill_count.set(current_kill_count + total_kills)
-
+    
+        # Reset game state
         await self.config.guild(guild).clear()
         await self.config.guild(guild).set({
             "districts": {},
@@ -1561,42 +1539,38 @@ class Hungar(commands.Cog):
             "day_duration": 120,
             "day_start": None,
             "day_counter": 0,
-            "WLboard": WLboard,  # Preserve leaderboard data
+            "WLboard": WLboard,
         })
-        
-        all_users = await self.config.all_users()
-        for user_id, user_data in all_users.items():
-            await self.config.user_from_id(user_id).bets.set({})
-
     
-        # Reset players
+        for user_id in all_users:
+            await self.config.user_from_id(user_id).bets.set({})
+    
         await self.config.guild(guild).players.set({})
         await self.config.guild(guild).game_active.set(False)
-        await self.config.guild(guild).elimination_leaderboard.set([])  # Reset leaderboard
-        file = f"Hunger_Games.txt"
-        async with aiofiles.open(file, mode="a") as file:  # "a" for append mode
+        await self.config.guild(guild).elimination_leaderboard.set([])
+    
+        # Log result
+        file = "Hunger_Games.txt"
+        async with aiofiles.open(file, mode="a") as f:
             if winner:
-                await file.write(f"💰 {winner['name']} receives **{winner_bonus} gold** from the bets placed on them!\n")  
-
-        file_name = "Hunger_Games.txt"
-        async with aiofiles.open(file_name, mode='r') as file:
-            file_content = await file.read()
+                await f.write(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** from the bets placed on them!\n")
+    
+        async with aiofiles.open(file, mode='r') as f:
+            file_content = await f.read()
     
         member_dict = {str(member.id): (member.nick or member.name) for member in guild.members}
-        
         for user_id, nickname in member_dict.items():
             mention = f"<@{user_id}>"
             if mention in file_content:
                 file_content = file_content.replace(mention, nickname)
     
-        async with aiofiles.open(file_name, mode='w') as file:
-            await file.write(file_content)
-        
-        await ctx.send(file=discord.File("Hunger_Games.txt"))
+        async with aiofiles.open(file, mode='w') as f:
+            await f.write(file_content)
+    
+        await ctx.send(file=discord.File(file))
+        if os.path.exists(file):
+            os.remove(file)
 
-
-        if os.path.exists("Hunger_Games.txt"):
-            os.remove("Hunger_Games.txt")
         
 
     async def process_day(self, ctx):
@@ -1999,7 +1973,7 @@ class Hungar(commands.Cog):
         
         for user_id, user_data in all_users.items():
             bets = user_data.get("bets", {})
-            user_gold = user_data.get("gold", 0)
+            user_gold = await self.config_gold.user_from_id(user_id).master_balance()
 
             day_counter = config.get("day_counter", 0)
 
@@ -2010,7 +1984,7 @@ class Hungar(commands.Cog):
                     bet_data["daily_earnings"] += daily_return
                     user_gold += daily_return
         
-            await self.config.user_from_id(user_id).gold.set(user_gold)
+            await self.config_gold.user_from_id(user_id).gold.set(master_balance)
             await self.config.user_from_id(user_id).bets.set(bets)
 
     @hunger.command()
@@ -2071,9 +2045,9 @@ class Hungar(commands.Cog):
             await ctx.send("Bet amount must be greater than zero.")
             return
     
-        user_gold = await self.config.user(ctx.author).gold()
+        user_gold = await self.config_gold.user(ctx.author).master_balance()
         if amount > user_gold:
-            await ctx.send("You don't have enough gold to place that bet. You can always play in the games to earn money.")
+            await ctx.send("You don't have enough Wellcoins to place that bet. You can always play in the games to earn money or chat a little in the server.")
             return
     
         guild = ctx.guild
@@ -2108,20 +2082,20 @@ class Hungar(commands.Cog):
         await self.config.user(ctx.author).bets.set(user_bets)
     
         # Deduct gold
-        await self.config.user(ctx.author).gold.set(user_gold - amount)
+        await self.config_gold.user(ctx.author).master_balance.set(user_gold - amount)
     
         tribute_name = players[tribute_id]["name"]
-        await ctx.send(f"{ctx.author.mention} has placed a bet of {amount} gold on {tribute_name}. Good luck!")
+        await ctx.send(f"{ctx.author.mention} has placed a bet of {amount} Wellcoins on {tribute_name}. Good luck!")
     
     @hunger.command()
-    async def check_gold(self, ctx):
-        """Check your current gold."""
-        user_gold = await self.config.user(ctx.author).gold()
-        await ctx.send(f"{ctx.author.mention}, you currently have {user_gold} gold.")
+    async def check_wellcoins(self, ctx):
+        """Check your current wellcoins."""
+        user_gold = await self.config_gold.user(ctx.author).master_balance()
+        await ctx.send(f"{ctx.author.mention}, you currently have {user_gold} Wellcoins.")
 
     @hunger.command()
     async def leaderboard(self, ctx):
-        """Display leaderboards for total kills and gold."""
+        """Display leaderboards for total kills and Wellcoins."""
         all_users = await self.config.all_users()
         guild_config = await self.config.guild(ctx.guild).all()
         
@@ -2129,13 +2103,6 @@ class Hungar(commands.Cog):
         kill_leaderboard = sorted(
             all_users.items(),
             key=lambda x: x[1].get("kill_count", 0),
-            reverse=True
-        )
-        
-        # Gather and sort gold counts
-        gold_leaderboard = sorted(
-            all_users.items(),
-            key=lambda x: x[1].get("gold", 0),
             reverse=True
         )
         
@@ -2165,16 +2132,8 @@ class Hungar(commands.Cog):
                 for idx, winner in enumerate(sorted_winners[:3])
             )
             embed.add_field(name="Top Winners", value=winner_text or "No data", inline=False)
-    
-        # Add top players by gold
-        if gold_leaderboard:
-            gold_text = "\n".join(
-                f"**{ctx.guild.get_member(int(user_id)).mention}**: {data['gold']} gold"
-                for user_id, data in gold_leaderboard[:5]
-                if ctx.guild.get_member(int(user_id))  # Ensure the user exists in the guild
-            )
-            embed.add_field(name="Top Richest Players", value=gold_text or "No data", inline=False)
-    
+
+        
         await ctx.send(embed=embed)
 
         WLboard = guild_config.get("WLboard", [])
@@ -2182,11 +2141,11 @@ class Hungar(commands.Cog):
     @hunger.command()
     @commands.admin()
     async def reset_leaderboard(self, ctx):
-        """Reset all user kill counts and gold."""
+        """Reset all user kill counts and Wellcoins."""
         all_users = await self.config.all_users()
         for user_id in all_users:
             await self.config.user_from_id(int(user_id)).kill_count.set(0)
-            await self.config.user_from_id(int(user_id)).gold.set(0)
+            #await self.config.user_from_id(int(user_id)).gold.set(0)
         await ctx.send("Leaderboards have been reset.")
 
 
@@ -2202,7 +2161,7 @@ class Hungar(commands.Cog):
             name="1. Sign Up",
             value=(
                 "Use the `!hunger signup` command to join the game. "
-                "You'll be assigned to a random district and given stats like Strength, Defense, Wisdom, Constitution, and HP. Your family is also sent 100 gold pre-bereavement gift."
+                "You'll be assigned to a random district and given stats like Strength, Defense, Wisdom, Constitution, and HP. Your family is also sent 100 Wellcoins pre-bereavement gift."
             ),
             inline=False
         )
@@ -2242,14 +2201,14 @@ class Hungar(commands.Cog):
         embed.add_field(
             name="6. Leaderboards",
             value=(
-                "Check your kills and gold with `!hunger leaderboard`. Compete for top spots in kills and gold on the leaderboards!"
+                "Check your kills `!hunger leaderboard`. Compete for top spots in kills on the leaderboards!"
             ),
             inline=False
         )
         embed.add_field(
             name="7. Sponsoring",
             value=(
-                "If you just fall in love with one of the tributes you can spend gold to help them out, use the sponsor button on any day to send them an item."
+                "If you just fall in love with one of the tributes you can spend Wellcoins to help them out, use the sponsor button on any day to send a gift into the arena."
             ),
             inline=False
         )
