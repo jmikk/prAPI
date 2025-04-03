@@ -1984,7 +1984,7 @@ class Hungar(commands.Cog):
                     bet_data["daily_earnings"] += daily_return
                     user_gold += daily_return
         
-            await self.config_gold.user_from_id(user_id).gold.set(master_balance)
+            await self.config_gold.user_from_id(user_id).master_balance.set(user_gold)
             await self.config.user_from_id(user_id).bets.set(bets)
 
     @hunger.command()
