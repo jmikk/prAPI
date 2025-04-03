@@ -765,42 +765,46 @@ class BettingView(View):
         try:
             guild = interaction.guild
             user_gold = await self.cog.config_gold.user(interaction.user).master_balance()
-
+    
             # Determine the bet amount
             bet_amount = user_gold if self.selected_amount == "all" else int(self.selected_amount)
-
+    
             if bet_amount > user_gold:
                 await interaction.response.send_message(
                     f"You don't have enough Wellcoins to place this bet. You have {user_gold} Wellcoins.",
                     ephemeral=True
                 )
                 return
-
-            # Deduct gold and save the bet
+    
+            # Deduct from user's balance
             await self.cog.config_gold.user(interaction.user).master_balance.set(user_gold - bet_amount)
+    
+            # Load existing bets
             user_bets = await self.cog.config.user(interaction.user).bets()
-
+    
+            # Add to existing bet or create a new one
             if self.selected_tribute in user_bets:
-                await interaction.response.send_message(
-                    "You have already placed a bet on this tribute.", ephemeral=True
-                )
-                return
-
-            user_bets[self.selected_tribute] = {
-                "amount": bet_amount,
-                "daily_earnings": 0
-            }
+                user_bets[self.selected_tribute]["amount"] += bet_amount
+            else:
+                user_bets[self.selected_tribute] = {
+                    "amount": bet_amount,
+                    "daily_earnings": 0
+                }
+    
+            # Save updated bets
             await self.cog.config.user(interaction.user).bets.set(user_bets)
-
+    
+            # Get tribute name to display
             players = await self.cog.config.guild(guild).players()
             tribute_name = players[self.selected_tribute]["name"]
-
+    
             await interaction.response.send_message(
-                f"💰 You placed a bet of **{bet_amount} Wellcoins** on **{tribute_name}**. Good luck!",
-                ephemeral=True
+                f"💰 A bet of **{bet_amount} Wellcoins** has been added to **{tribute_name}**!"
             )
+    
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+
 
 
 class ViewTributesButton(Button):
