@@ -702,10 +702,12 @@ class BettingView(View):
 
         # Bet amount selection dropdown
         self.amount_options = [
+            SelectOption(label="10 Wellcoins", value="1"),
             SelectOption(label="10 Wellcoins", value="10"),
             SelectOption(label="50 Wellcoins", value="50"),
             SelectOption(label="100 Wellcoins", value="100"),
             SelectOption(label="1000 Wellcoins", value="1000"),
+            SelectOption(label="10 Wellcoins", value="10000"),
             SelectOption(label="All Wellcoins", value="all")
         ]
         self.amount_select = Select(
