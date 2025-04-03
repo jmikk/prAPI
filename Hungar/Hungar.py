@@ -777,7 +777,7 @@ class BettingView(View):
                 return
 
             # Deduct gold and save the bet
-            await self.cog.config_config.user(interaction.user).master_balance.set(user_gold - bet_amount)
+            await self.cog.config_gold.user(interaction.user).master_balance.set(user_gold - bet_amount)
             user_bets = await self.cog.config.user(interaction.user).bets()
 
             if self.selected_tribute in user_bets:
