@@ -50,12 +50,12 @@ class RogueLiteNation(commands.Cog):
         root = ET.fromstring(xml_data)
         prank_dict = {}
         for scale in root.find("CENSUS"):
-            scale_id = int(scale.attrib["id"])
+            scale_id = scale.attrib["id"]
             prank_tag = scale.find("PRANK")
             if prank_tag is not None and prank_tag.text is not None:
                 # PRANK is a percentage rank, convert to raw scale (0-100% where 0 is best)
                 # We'll invert it so higher = better (like a score): 100 - prank
-                prank = 100 - int(prank_tag.text)
+                prank = 100 - prank_tag.text
                 prank_dict[scale_id] = prank
         return prank_dict
 
