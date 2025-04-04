@@ -1,5 +1,5 @@
-from .prAPI import prAPI
+from .RogueLiteNation import RogueLiteNation
 
 
 async def setup(bot):
-    await bot.add_cog(prAPI(bot))
+    await bot.add_cog(RogueLiteNation(bot))
