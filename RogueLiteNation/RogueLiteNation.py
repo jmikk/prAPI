@@ -55,7 +55,7 @@ class RogueLiteNation(commands.Cog):
             if prank_tag is not None and prank_tag.text is not None:
                 # PRANK is a percentage rank, convert to raw scale (0-100% where 0 is best)
                 # We'll invert it so higher = better (like a score): 100 - prank
-                prank = 100 - prank_tag.text
+                prank = 100 - float(prank_tag.text)
                 prank_dict[scale_id] = prank
         return prank_dict
 
