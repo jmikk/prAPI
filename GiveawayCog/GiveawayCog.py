@@ -269,7 +269,7 @@ class GiveawayCog(commands.Cog):
     @commands.is_owner()
     @commands.command()
     async def setnation(self, ctx, *, nationname: str):
-        await self.config.nationname.set(nationname)
+        await self.config.guild(ctx.guild).nationname.set(nationname)
         await ctx.send(f"Nation name set to: {nationname}")
     
     @commands.admin_or_permissions(administrator=True)
@@ -291,7 +291,7 @@ class GiveawayCog(commands.Cog):
     @commands.is_owner()
     @commands.command()
     async def setpassword(self, ctx, *, password: str):
-        await self.config.password.set(password)
+        await self.config.guild(ctx.guild).password.set(password)
         await ctx.send("Password has been set.")
 
     def parse_token(self, text):
