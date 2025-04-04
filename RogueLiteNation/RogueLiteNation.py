@@ -37,11 +37,10 @@ class RogueLiteNation(commands.Cog):
             "good": [44, 34, 39, 40, 7, 6],
             "money": [18, 19, 16, 10, 23, 20, 1, 79, 22, 13, 76, 12, 11, 24, 15, 25, 14, 21]
         }
-        self.MAX_RANK = 200000
 
     async def get_nation_stats(self, nation):
-        url = f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation.lower().replace(' ', '_')};q=census;scale=all;mode=prank"
-        headers = {"User-Agent": "9005 Redbot-Roguelite/1.0"}
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation.lower().replace(' ', '_')};q=census;scale=all;mode=score"
+        headers = {"User-Agent": "Redbot-Roguelite/1.0"}
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as resp:
                 text = await resp.text()
@@ -49,43 +48,43 @@ class RogueLiteNation(commands.Cog):
 
     def parse_census_xml(self, xml_data):
         root = ET.fromstring(xml_data)
-        rank_dict = {}
+        prank_dict = {}
         for scale in root.find("CENSUS"):
             scale_id = int(scale.attrib["id"])
-            rank = int(scale.find("PRANK").text)
-            rank_dict[scale_id] = rank
-        return rank_dict
+            prank = int(scale.find("PRANK").text)
+            prank_dict[scale_id] = prank
+        return prank_dict
 
-    def calculate_spectrum(self, ranks, ids):
-        return sum(self.MAX_RANK - ranks.get(i, self.MAX_RANK) for i in ids)
+    def calculate_spectrum(self, pranks, ids):
+        return sum(pranks.get(i, 0) for i in ids)
 
-    def calculate_dual_stat(self, ranks, side_a_ids, side_b_ids):
-        return self.calculate_spectrum(ranks, side_a_ids) - self.calculate_spectrum(ranks, side_b_ids)
+    def calculate_dual_stat(self, pranks, side_a_ids, side_b_ids):
+        return self.calculate_spectrum(pranks, side_a_ids) - self.calculate_spectrum(pranks, side_b_ids)
 
-    def calculate_all_stats(self, ranks):
+    def calculate_all_stats(self, pranks):
         return {
-            "insight_vs_instinct": self.calculate_dual_stat(ranks, self.SCALE_IDS["wit"], self.SCALE_IDS["instinct"]),
-            "faith_vs_allegiance": self.calculate_dual_stat(ranks, self.SCALE_IDS["faith"], self.SCALE_IDS["allegiance"]),
-            "good_vs_evil": self.calculate_dual_stat(ranks, self.SCALE_IDS["good"], self.SCALE_IDS["evil"]),
-            "gems": self.calculate_spectrum(ranks, self.SCALE_IDS["money"])
+            "insight_vs_instinct": self.calculate_dual_stat(pranks, self.SCALE_IDS["wit"], self.SCALE_IDS["instinct"]),
+            "faith_vs_allegiance": self.calculate_dual_stat(pranks, self.SCALE_IDS["faith"], self.SCALE_IDS["allegiance"]),
+            "good_vs_evil": self.calculate_dual_stat(pranks, self.SCALE_IDS["good"], self.SCALE_IDS["evil"]),
+            "gems": self.calculate_spectrum(pranks, self.SCALE_IDS["money"])
         }
 
     @commands.command()
-    async def buildnation(self, ctx, *, nation: str):
+    async def setnation(self, ctx, *, nation: str):
         """Set your NationStates nation."""
         await self.config.user(ctx.author).nation.set(nation)
-        await self.refreshstats(ctx)
+        await ctx.send(f"Nation set to **{nation}**!")
 
     @commands.command()
     async def refreshstats(self, ctx):
         """Refresh your base stats from your NationStates nation."""
         nation = await self.config.user(ctx.author).nation()
         if not nation:
-            return await ctx.send("You need to build your nation first using `$buildnation <name>`.")
-        ranks = await self.get_nation_stats(nation)
-        base_stats = self.calculate_all_stats(ranks)
+            return await ctx.send("You need to set your nation first using `!setnation <name>`.")
+        pranks = await self.get_nation_stats(nation)
+        base_stats = self.calculate_all_stats(pranks)
         await self.config.user(ctx.author).base_stats.set(base_stats)
-        await ctx.send(f"Base stats set from **{nation}**!")
+        await ctx.send(f"Base stats refreshed from **{nation}**!")
 
     @commands.command()
     async def mystats(self, ctx):
