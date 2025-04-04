@@ -39,7 +39,7 @@ class RogueLiteNation(commands.Cog):
         }
 
     async def get_nation_stats(self, nation):
-        url = f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation.lower().replace(' ', '_')};q=census;scale=all;mode=score"
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation.lower().replace(' ', '_')};q=census;scale=all;mode=prank"
         headers = {"User-Agent": "Redbot-Roguelite/1.0"}
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as resp:
