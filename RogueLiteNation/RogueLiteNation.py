@@ -51,8 +51,10 @@ class RogueLiteNation(commands.Cog):
         prank_dict = {}
         for scale in root.find("CENSUS"):
             scale_id = int(scale.attrib["id"])
-            prank = int(scale.find("PRANK").text)
-            prank_dict[scale_id] = prank
+            prank_tag = scale.find("PRANK")
+            if prank_tag is not None and prank_tag.text is not None:
+                prank = int(prank_tag.text)
+                prank_dict[scale_id] = prank
         return prank_dict
 
     def calculate_spectrum(self, pranks, ids):
@@ -70,7 +72,7 @@ class RogueLiteNation(commands.Cog):
         }
 
     @commands.command()
-    async def buildnation(self, ctx, *, nation: str):
+    async def setnation(self, ctx, *, nation: str):
         """Set your NationStates nation."""
         await self.config.user(ctx.author).nation.set(nation)
         await ctx.send(f"Nation set to **{nation}**!")
