@@ -70,7 +70,7 @@ class RogueLiteNation(commands.Cog):
         }
 
     @commands.command()
-    async def setnation(self, ctx, *, nation: str):
+    async def buildnation(self, ctx, *, nation: str):
         """Set your NationStates nation."""
         await self.config.user(ctx.author).nation.set(nation)
         await ctx.send(f"Nation set to **{nation}**!")
