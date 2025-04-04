@@ -74,7 +74,6 @@ class RogueLiteNation(commands.Cog):
     async def buildnation(self, ctx, *, nation: str):
         """Set your NationStates nation."""
         await self.config.user(ctx.author).nation.set(nation)
-        await ctx.send(f"Nation set to **{nation}**!")
         await self.refreshstats(ctx)
 
     @commands.command()
@@ -82,11 +81,11 @@ class RogueLiteNation(commands.Cog):
         """Refresh your base stats from your NationStates nation."""
         nation = await self.config.user(ctx.author).nation()
         if not nation:
-            return await ctx.send("You need to set your nation first using `!setnation <name>`.")
+            return await ctx.send("You need to build your nation first using `$buildnation <name>`.")
         ranks = await self.get_nation_stats(nation)
         base_stats = self.calculate_all_stats(ranks)
         await self.config.user(ctx.author).base_stats.set(base_stats)
-        await ctx.send(f"Base stats refreshed from **{nation}**!")
+        await ctx.send(f"Base stats set from **{nation}**!")
 
     @commands.command()
     async def mystats(self, ctx):
