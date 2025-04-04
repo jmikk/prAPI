@@ -52,7 +52,7 @@ class RogueLiteNation(commands.Cog):
         rank_dict = {}
         for scale in root.find("CENSUS"):
             scale_id = int(scale.attrib["id"])
-            rank = int(scale.find("RANK").text)
+            rank = int(scale.find("PRANK").text)
             rank_dict[scale_id] = rank
         return rank_dict
 
