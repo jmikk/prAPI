@@ -87,6 +87,7 @@ class RogueLiteNation(commands.Cog):
         if not nation:
             return await ctx.send("You need to set your nation first using `!setnation <name>`.")
         pranks = await self.get_nation_stats(nation)
+        await ctx.send(pranks)
         base_stats = self.calculate_all_stats(pranks)
         await self.config.user(ctx.author).base_stats.set(base_stats)
         await ctx.send(f"Base stats refreshed from **{nation}**!")
