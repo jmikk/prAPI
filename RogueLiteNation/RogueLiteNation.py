@@ -53,8 +53,6 @@ class RogueLiteNation(commands.Cog):
             scale_id = scale.attrib["id"]
             prank_tag = scale.find("PRANK")
             if prank_tag is not None and prank_tag.text is not None:
-                # PRANK is a percentage rank, convert to raw scale (0-100% where 0 is best)
-                # We'll invert it so higher = better (like a score): 100 - prank
                 prank = (100 - float(prank_tag.text)) / 100
                 prank_dict[scale_id] = prank
         return prank_dict
@@ -90,7 +88,6 @@ class RogueLiteNation(commands.Cog):
         if not nation:
             return await ctx.send("You need to set your nation first using `!setnation <name>`.")
         pranks = await self.get_nation_stats(nation)
-        await ctx.send(pranks)
         base_stats = self.calculate_all_stats(pranks)
         await self.config.user(ctx.author).base_stats.set(base_stats)
         await ctx.send(f"Base stats refreshed from **{nation}**!")
