@@ -107,7 +107,7 @@ class RogueLiteNation(commands.Cog):
         embed = discord.Embed(title=f"{ctx.author.display_name}'s Stats", color=discord.Color.green())
 
         name, val = resolve_dual("insight", "instinct", base["insight_vs_instinct"])
-        embed.add_field(name=name, value=str(val), inline=False)
+        embed.add_field(name=name, value=f"{val:.2f}", inline=False)
 
         name, val = resolve_dual("faith", "allegiance", base["faith_vs_allegiance"])
         embed.add_field(name=name, value=str(val), inline=False)
@@ -115,7 +115,7 @@ class RogueLiteNation(commands.Cog):
         name, val = resolve_dual("good", "evil", base["good_vs_evil"])
         embed.add_field(name=name, value=str(val), inline=False)
 
-        embed.add_field(name="Gems", value=str(base["gems"] + bonus.get("gems", 0)), inline=False)
+        embed.add_field(name="Gems", value=f"{base['gems'] + bonus.get('gems', 0):.2f}", inline=False)
 
         wellcoins = await self.shared_config.user(ctx.author).master_balance()
         embed.add_field(name="Wellcoins", value=str(wellcoins), inline=False)
