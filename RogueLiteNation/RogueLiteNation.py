@@ -60,10 +60,13 @@ class RogueLiteNation(commands.Cog):
         return prank_dict
 
     def calculate_spectrum(self, pranks, ids):
-        return sum(pranks.get(i, 0) for i in ids)
+        total = sum(pranks.get(str(i), 0) for i in ids)
+        normalized = (total / len(ids)) * 9 + 1  # Normalize to range 1–10
+        return normalized
 
     def calculate_dual_stat(self, pranks, side_a_ids, side_b_ids):
-        return self.calculate_spectrum(pranks, side_a_ids) - self.calculate_spectrum(pranks, side_b_ids)
+        score = self.calculate_spectrum(pranks, side_a_ids) - self.calculate_spectrum(pranks, side_b_ids)
+        return score
 
     def calculate_all_stats(self, pranks):
         return {
