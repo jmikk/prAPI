@@ -62,11 +62,11 @@ class RogueLiteNation(commands.Cog):
     def calculate_spectrum(self, pranks, ids):
         total = sum(pranks.get(str(i), 0) for i in ids)
         normalized = (total / len(ids)) * 9 + 1  # Normalize to range 1–10
-        return normalized
+        return int(normalized)
 
     def calculate_dual_stat(self, pranks, side_a_ids, side_b_ids):
         score = self.calculate_spectrum(pranks, side_a_ids) - self.calculate_spectrum(pranks, side_b_ids)
-        return score
+        return int(score)
 
     def calculate_all_stats(self, pranks):
         return {
@@ -110,7 +110,7 @@ class RogueLiteNation(commands.Cog):
         embed = discord.Embed(title=f"{ctx.author.display_name}'s Stats", color=discord.Color.green())
 
         name, val = resolve_dual("insight", "instinct", base["insight_vs_instinct"])
-        embed.add_field(name=name, value=f"{val:.2f}", inline=False)
+        embed.add_field(name=name, value=str(val), inline=False)
 
         name, val = resolve_dual("faith", "allegiance", base["faith_vs_allegiance"])
         embed.add_field(name=name, value=str(val), inline=False)
@@ -118,7 +118,7 @@ class RogueLiteNation(commands.Cog):
         name, val = resolve_dual("good", "evil", base["good_vs_evil"])
         embed.add_field(name=name, value=str(val), inline=False)
 
-        embed.add_field(name="Gems", value=f"{base['gems'] + bonus.get('gems', 0):.2f}", inline=False)
+        embed.add_field(name="Gems", value=str(int(base['gems'] + bonus.get('gems', 0))), inline=False)
 
         wellcoins = await self.shared_config.user(ctx.author).master_balance()
         embed.add_field(name="Wellcoins", value=str(wellcoins), inline=False)
