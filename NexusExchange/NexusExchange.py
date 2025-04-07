@@ -905,6 +905,7 @@ class NexusExchange(commands.Cog):
     @is_citizen()
     async def take_loan(self, ctx, amount: int):
         """Take out a WellCoin loan. Loans grow 5% daily."""
+        user = ctx.author
         data = self.config.user(user)
 
         if amount <= 0:
@@ -914,7 +915,6 @@ class NexusExchange(commands.Cog):
         if current_balance <= 0:
             return await ctx.send("❌ You must have a posative balance to take out a loan from the bank")
         
-        user = ctx.author
         current_loan = await data.loan_amount()
     
         if current_loan > 0:
