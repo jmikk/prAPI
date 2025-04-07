@@ -153,8 +153,7 @@ class NexusExchange(commands.Cog):
         current_bank = await user_data.bank_total()
         await user_data.bank_total.set(current_bank + deposit)
 
-        await ctx.send(f"✅ {humanize_number(deposit)} {await self.config.guild(ctx.guild).master_currency_name()} deposited into your bank account
-        . 💰")
+        await ctx.send(f"✅ {humanize_number(deposit)} {await self.config.guild(ctx.guild).master_currency_name()} deposited into your bank account. 💰")
         
 
     @commands.command()
