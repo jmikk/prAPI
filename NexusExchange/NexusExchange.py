@@ -153,7 +153,8 @@ class NexusExchange(commands.Cog):
         current_bank = await user_data.bank_total()
         await user_data.bank_total.set(current_bank + deposit)
 
-        await ctx.send(f"✅ {humanize_number(deposit)} {await self.config.guild(ctx.guild).master_currency_name()} deposited into your hole in the ground. 💰")
+        await ctx.send(f"✅ {humanize_number(deposit)} {await self.config.guild(ctx.guild).master_currency_name()} deposited into your bank account
+        . 💰")
         
 
     @commands.command()
@@ -648,7 +649,7 @@ class NexusExchange(commands.Cog):
         bank_balance = await user_data.bank_total()
     
         if amount > bank_balance:
-            return await ctx.send(f"❌ You only have `{bank_balance}` WellCoins in your hole in the ground.")
+            return await ctx.send(f"❌ You only have `{bank_balance}` WellCoins in your bank account.")
     
         new_bank_balance = bank_balance - amount
         new_wallet_balance = await user_data.master_balance() + amount
@@ -657,7 +658,7 @@ class NexusExchange(commands.Cog):
         await user_data.master_balance.set(new_wallet_balance)
     
         currency = await guild_data.master_currency_name()
-        await ctx.send(f"🏧 You withdrew `{amount}` {currency} from your hole in the ground.\n💰 New on-hand balance: `{new_wallet_balance}` {currency}.")
+        await ctx.send(f"🏧 You withdrew `{amount}` {currency} from your bank account.\n💰 New on-hand balance: `{new_wallet_balance}` {currency}.")
 
 
     @commands.command()
@@ -720,12 +721,10 @@ class NexusExchange(commands.Cog):
                         await self.citChk(channel)
                     except Exception as e:
                         await channel.send(e)
-                
                     # Loan processing
                     all_users = await self.config.all_users()
                     for user_id in all_users:
                         await self.process_user_loan(int(user_id), loan_log)
-    
                     if loan_log:
                         await channel.send("📋 **Loan Status Summary**\n" + "\n".join(loan_log))
                 except Exception as e:
