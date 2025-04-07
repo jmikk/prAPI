@@ -19,6 +19,12 @@ import json
 from redbot.core.utils.chat_formatting import humanize_number
 
 
+def is_citizen():
+    async def predicate(ctx):
+        citizen_role_id = 1098646004250726420  # Replace with your actual Citizen role ID
+        return discord.utils.get(ctx.author.roles, id=citizen_role_id) is not None
+    return commands.check(predicate)
+
 
 class NexusExchange(commands.Cog):
     """A Master Currency Exchange Cog for The Wellspring"""
@@ -138,6 +144,7 @@ class NexusExchange(commands.Cog):
         return tg_links
 
     @commands.command()
+    @is_citizen()
     async def bank_deposit(self, ctx, deposit: int):
         """Deposit WellCoins into your bank."""
         user = ctx.author
@@ -636,6 +643,7 @@ class NexusExchange(commands.Cog):
 
 
     @commands.command()
+    @is_citizen()
     async def bank_withdraw(self, ctx, amount: int):
         """Withdraw WellCoins from your bank into your on-hand balance."""
         user = ctx.author
@@ -894,6 +902,7 @@ class NexusExchange(commands.Cog):
 
 
     @commands.command()
+    @is_citizen()
     async def take_loan(self, ctx, amount: int):
         """Take out a WellCoin loan. Loans grow 5% daily."""
         if amount <= 0:
