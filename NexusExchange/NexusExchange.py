@@ -727,6 +727,11 @@ class NexusExchange(commands.Cog):
                         await self.process_user_loan(int(user_id), loan_log)
                     if loan_log:
                         await channel.send("📋 **Loan Status Summary**\n" + "\n".join(loan_log))
+                    
+                    try:
+                        await self.apply_bank_interest(channel)
+                    except Exception as e:
+                        await channel.send(f"Error applying bank interest: {e}")
                 except Exception as e:
                     await channel.send(e)
 
@@ -738,6 +743,24 @@ class NexusExchange(commands.Cog):
             return token
         except ET.ParseError:
             return None
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def apply_bank_interest(self, channel):
+        """Apply 1% interest to every user's bank balance."""
+        all_users = await self.config.all_users()
+        updated_users = 0
+    
+        for user_id, data in all_users.items():
+            bank = data.get("bank_total", 0)
+            if bank > 0:
+                interest = max(1, int(bank * 0.01))  # Ensure at least 1 coin is earned
+                new_total = bank + interest
+                await self.config.user_from_id(user_id).bank_total.set(new_total)
+                updated_users += 1
+    
+        await channel.send(f"🏦 Applied 1% interest to `{updated_users}` bank accounts.")
+
     
     @commands.command()
     @commands.has_permissions(administrator=True)
