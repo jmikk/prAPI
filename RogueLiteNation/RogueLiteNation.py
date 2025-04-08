@@ -248,33 +248,44 @@ class SkillTreeView(View):
         async def callback(interaction: Interaction):
             if interaction.user.id != self.user.id:
                 return await interaction.response.send_message("This is not your skill tree!", ephemeral=True)
+        
+            try:
+                path, total_cost = self.get_unlock_path(skill_id)
+                if self.gems < total_cost:
+                    return await interaction.response.send_message(
+                        f"You need {total_cost} 💎 to unlock **{label}** and its prerequisites. You have {self.gems}.",
+                        ephemeral=False  # Make public
+                    )
+        
+                # Deduct gems
+                self.gems -= total_cost
+                await self.cog.config.user(self.user).base_stats.set_raw("gems", self.gems)
+        
+                # Unlock all in path
+                unlocked = set(await self.cog.config.user(self.user).unlocked_skills())
+                bonuses = await self.cog.config.user(self.user).bonus_stats()
+        
+                for sid in path:
+                    skill = self.skilltree[sid]
+                    unlocked.add(sid)
+                    for stat, value in skill.get("bonus", {}).items():
+                        bonuses[stat] = bonuses.get(stat, 0) + value
+        
+                await self.cog.config.user(self.user).unlocked_skills.set(list(unlocked))
+                await self.cog.config.user(self.user).bonus_stats.set(bonuses)
+        
+                await interaction.response.send_message(
+                    f"✅ Unlocked: {', '.join(self.skilltree[s]['name'] for s in path)} (💎 {total_cost})",
+                    ephemeral=False
+                )
+        
+            except Exception as e:
+                await interaction.response.send_message(
+                    f"❌ Something went wrong: `{e}`",
+                    ephemeral=False
+                )
+                raise  # Optional: remove this if you don't want it in the bot logs
 
-            path, total_cost = self.get_unlock_path(skill_id)
-            if self.gems < total_cost:
-                return await interaction.response.send_message(f"You need {total_cost} 💎 to unlock **{label}** and its prerequisites.", ephemeral=True)
-
-            # Deduct gems
-            self.gems -= total_cost
-            await self.cog.config.user(self.user).base_stats.set_raw("gems", self.gems)
-
-            # Unlock all in path
-            unlocked = set(await self.cog.config.user(self.user).unlocked_skills())
-            bonuses = await self.cog.config.user(self.user).bonus_stats()
-
-            for sid in path:
-                skill = self.skilltree[sid]
-                unlocked.add(sid)
-                for stat, value in skill.get("bonus", {}).items():
-                    bonuses[stat] = bonuses.get(stat, 0) + value
-
-            await self.cog.config.user(self.user).unlocked_skills.set(list(unlocked))
-            await self.cog.config.user(self.user).bonus_stats.set(bonuses)
-
-            await interaction.response.send_message(f"✅ Unlocked: {', '.join(self.skilltree[s]['name'] for s in path)}", ephemeral=True)
-
-        btn = Button(label=label, custom_id=skill_id, style=ButtonStyle.success)
-        btn.callback = callback
-        self.add_item(btn)
 
     def get_unlock_path(self, skill_id):
         # Recursively figure out all locked prereqs
