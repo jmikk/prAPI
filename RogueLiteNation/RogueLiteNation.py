@@ -23,7 +23,7 @@ class RogueLiteNation(commands.Cog):
                 "good_vs_evil": 0,
                 "gems": 0
             },
-            unlocked_skills=[]
+            unlocked_skills=[],
             bonus_stats={
                 "insight": 0,
                 "instinct": 0,
