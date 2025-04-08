@@ -105,7 +105,7 @@ class rota(commands.Cog):
         self.check_activity.cancel()
 
     async def cog_load(self):
-        self.check_activity.start()
+        #self.check_activity.start()
 
     def summarize_option(option_id, text):
         # Match titles and capture full names if both first and last are capitalized
