@@ -124,7 +124,8 @@ class rota(commands.Cog):
     
         # Split words and skip the first word when searching for capitalized proper nouns
         words = text.split()
-        proper_nouns = [word for word in words[1:] if word.istitle()]
+        ignored_words = {"I", "Our", "We", "My", "Your", "The", "This", "That", "A", "An", "It", "You"}
+        proper_nouns = [word for word in words[1:] if word.istitle() and word not in ignored_words]
         if proper_nouns:
             return proper_nouns[0]
     
