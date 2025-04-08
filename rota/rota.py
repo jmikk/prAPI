@@ -185,6 +185,8 @@ class rota(commands.Cog):
         await self.config.last_activity.clear()
         await self.config.vote_active.set(False)
         await self.config.option_summaries.clear()
+        await self.check_activity.cancel()
+
     
         await ctx.send("🔴 The current issue cycle has been forcefully stopped and reset.")
 
