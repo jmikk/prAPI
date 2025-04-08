@@ -99,7 +99,6 @@ class rota(commands.Cog):
             votes={}, last_activity=None, issue_id=None, nation="",
             password="", user_agent="rota by 9005", vote_active=False
         )
-        self.check_activity.start()
 
     def cog_unload(self):
         self.check_activity.cancel()
