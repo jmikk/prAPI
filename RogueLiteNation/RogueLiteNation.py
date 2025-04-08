@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 from discord.ui import View, Button
 from discord import Interaction, Embed, ButtonStyle
 import os
+import json
 
 class RogueLiteNation(commands.Cog):
     def __init__(self, bot):
