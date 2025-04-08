@@ -266,7 +266,7 @@ class GameMasterEventButton(Button):
 class SponsorRandomTributeButton(Button):
     """Button to sponsor a random tribute with an item."""
     def __init__(self, cog, guild,public_channel):
-        super().__init__(label="Sponsor a Random Tribute", style=discord.ButtonStyle.success)
+        super().__init__(label="Sponsor a Random Tribute (10 Wellcoins)", style=discord.ButtonStyle.success)
         self.cog = cog
         self.guild = guild
         self.public_channel = public_channel  # Store public channel
