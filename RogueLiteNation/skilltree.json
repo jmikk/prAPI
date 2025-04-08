@@ -1,0 +1,36 @@
+self.SKILL_TREE = {
+    "root": {
+        "name": "Start of Journey",
+        "desc": "Begin your path as a nation of destiny.",
+        "cost": 0,
+        "unlocks": ["insight_boost", "gem_spark"]
+    },
+    "insight_boost": {
+        "name": "Insightful Traditions",
+        "desc": "+2 Insight bonus.",
+        "cost": 1,
+        "bonus": {"insight": 2},
+        "unlocks": ["faith_awakening"]
+    },
+    "gem_spark": {
+        "name": "Gem Spark",
+        "desc": "+5 Gems.",
+        "cost": 1,
+        "bonus": {"gems": 5},
+        "unlocks": ["greed_is_good"]
+    },
+    "faith_awakening": {
+        "name": "Faith Awakening",
+        "desc": "+2 Faith bonus.",
+        "cost": 2,
+        "bonus": {"faith": 2},
+        "unlocks": []
+    },
+    "greed_is_good": {
+        "name": "Greed is Good",
+        "desc": "Wellcoins earned from loot increased by 10%.",
+        "cost": 2,
+        "perk": "loot_income_boost",
+        "unlocks": []
+    }
+}
