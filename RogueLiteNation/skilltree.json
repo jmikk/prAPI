@@ -10,7 +10,7 @@
     "name": "Insightful Traditions",
     "desc": "+2 Insight bonus.",
     "cost": 1,
-    "gems": 10,
+    "gems": 5,
     "bonus": {"insight": 2},
     "unlocks": []
   }
