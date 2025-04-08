@@ -105,8 +105,8 @@ class rota(commands.Cog):
         self.check_activity.cancel()
 
     async def cog_load(self):
-        #self.check_activity.start()
-        pass
+        self.check_activity.start()
+        
     def summarize_option(option_id, text):
         # Match titles and capture full names if both first and last are capitalized
         title_match = re.search(r'(Dr\.|Mr\.|Mrs\.|Ms\.)\s+([A-Z][a-z]+)(?:\s+([A-Z][a-z]+))?', text)
