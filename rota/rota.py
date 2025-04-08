@@ -177,6 +177,19 @@ class rota(commands.Cog):
         return "neutral"
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def forcereset(self, ctx):
+        """Forcefully reset the current vote cycle and stop all issue activity."""
+        await self.config.votes.clear()
+        await self.config.issue_id.clear()
+        await self.config.last_activity.clear()
+        await self.config.vote_active.set(False)
+        await self.config.option_summaries.clear()
+    
+        await ctx.send("🔴 The current issue cycle has been forcefully stopped and reset.")
+
+
+    @commands.command()
     @commands.guild_only()
     async def postissue(self, ctx):
         issues_channel = ctx.channel
