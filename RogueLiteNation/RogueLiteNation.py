@@ -2,6 +2,73 @@ import discord
 from redbot.core import commands, Config
 import aiohttp
 import xml.etree.ElementTree as ET
+import json
+from pathlib import Path
+from discord.ui import View, Button
+
+class SkillTreeManager:
+    def __init__(self, tree_data):
+        self.tree_data = tree_data
+
+    def get_skill_node(self, category, path):
+        node = self.tree_data.get(category)
+        for key in path[1:]:  # skip 'root'
+            node = node.get("children", {}).get(key)
+            if node is None:
+                return None
+        return node
+
+def load_skill_tree():
+    with open(Path(__file__).parent / "skills.json", "r") as f:
+        return json.load(f)
+
+class SkillView(View):
+    def __init__(self, cog, ctx, category="general", path=None):
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.ctx = ctx
+        self.category = category
+        self.path = path or ["root"]
+        self.tree = load_skill_tree()
+        self.tree_manager = SkillTreeManager(self.tree)
+        self.skill = self.tree_manager.get_skill_node(category, self.path)
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.clear_items()
+
+        # Unlock Button
+        async def unlock_callback(interaction):
+            await self.cog.unlock_skill(self.ctx, self.category, self.path)
+            self.skill = self.tree_manager.get_skill_node(self.category, self.path)
+            self.update_buttons()
+            await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
+
+        self.add_item(Button(label="Unlock", style=discord.ButtonStyle.green))
+        self.children[-1].callback = unlock_callback
+
+        # Child Navigation
+        for key, child in self.skill.get("children", {}).items():
+            async def nav_callback(interaction, k=key):
+                self.path.append(k)
+                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
+                self.update_buttons()
+                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
+
+            self.add_item(Button(label=child["name"], style=discord.ButtonStyle.blurple))
+            self.children[-1].callback = nav_callback
+
+        # Back Button
+        if len(self.path) > 1:
+            async def back_callback(interaction):
+                self.path.pop()
+                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
+                self.update_buttons()
+                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
+
+            self.add_item(Button(label="⬅️ Back", style=discord.ButtonStyle.grey))
+            self.children[-1].callback = back_callback
+
 
 class RogueLiteNation(commands.Cog):
     def __init__(self, bot):
@@ -121,3 +188,77 @@ class RogueLiteNation(commands.Cog):
         embed.add_field(name="Wellcoins", value=str(wellcoins), inline=False)
 
         await ctx.send(embed=embed)
+
+    def get_skill_embed(self, skill, path):
+        embed = discord.Embed(title=skill["name"], description=skill["description"], color=discord.Color.gold())
+        embed.add_field(name="Cost", value=f"{skill['cost']} Gems", inline=True)
+        embed.add_field(name="Path", value="/".join(path), inline=True)
+        return embed
+
+    @commands.command()
+    async def viewskills(self, ctx, category: str = "general"):
+        """Open the skill tree viewer."""
+        view = SkillView(self, ctx, category)
+        skill = view.skill
+        embed = self.get_skill_embed(skill, view.path)
+        await ctx.send(embed=embed, view=view)
+
+    async def unlock_skill(self, ctx, category, path):
+        tree = load_skill_tree()
+        node = tree.get(category)
+        for key in path[1:]:
+            node = node.get("children", {}).get(key)
+        if not node:
+            return
+
+        user = ctx.author
+        user_config = self.config.user(user)
+        unlocked = await user_config.unlocked_skills()
+        path_key = f"{category}/{'/'.join(path)}"
+        if path_key in unlocked:
+            await ctx.send("You've already unlocked this skill!")
+            return
+
+        stats = await user_config.base_stats()
+        bonus = await user_config.bonus_stats()
+        total_gems = stats["gems"] + bonus["gems"]
+
+        if total_gems < node["cost"]:
+            await ctx.send("Not enough Gems!")
+            return
+
+        # Deduct gems (from bonus first)
+        if bonus["gems"] >= node["cost"]:
+            bonus["gems"] -= node["cost"]
+        else:
+            remaining = node["cost"] - bonus["gems"]
+            bonus["gems"] = 0
+            stats["gems"] -= remaining
+
+        # Apply bonuses
+        for stat, val in node.get("bonus", {}).items():
+            bonus[stat] = bonus.get(stat, 0) + val
+
+        await user_config.base_stats.set(stats)
+        await user_config.bonus_stats.set(bonus)
+        unlocked.append(path_key)
+        await user_config.unlocked_skills.set(unlocked)
+        await ctx.send(f"✅ You unlocked **{node['name']}**!")
+
+    @commands.command()
+    async def convertgems(self, ctx, amount: int):
+        """Convert Wellcoins to Gems at 10:1 rate."""
+        rate = 10
+        total_cost = amount * rate
+        user = ctx.author
+
+        wallet = await self.shared_config.user(user).master_balance()
+        if wallet < total_cost:
+            return await ctx.send("Not enough Wellcoins!")
+
+        await self.shared_config.user(user).master_balance.set(wallet - total_cost)
+        bonus = await self.config.user(user).bonus_stats()
+        bonus["gems"] += amount
+        await self.config.user(user).bonus_stats.set(bonus)
+        await ctx.send(f"Converted {total_cost} Wellcoins to {amount} Gems!")
+
