@@ -32,7 +32,7 @@ def load_skill_tree():
 
 class SkillView(View):
     async def initialize_buttons(self):
-        await await self.update_buttons()
+        await self.update_buttons()
     def __init__(self, cog, ctx, category="general", path=None):
         self.invoker = ctx.author
         super().__init__(timeout=60)
