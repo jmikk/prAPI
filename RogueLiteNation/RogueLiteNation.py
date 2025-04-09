@@ -19,8 +19,11 @@ class SkillTreeManager:
         return node
 
 def load_skill_tree():
-    with open(Path(__file__).parent / "skills.json", "r") as f:
-        return json.load(f)
+    try:
+        with open(Path(__file__).parent / "skills.json", "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}  # Return an empty tree if file doesn't exist
 
 class SkillView(View):
     def __init__(self, cog, ctx, category="general", path=None):
@@ -29,7 +32,7 @@ class SkillView(View):
         self.ctx = ctx
         self.category = category
         self.path = path or ["root"]
-        self.tree = load_skill_tree()
+        self.tree = cog.skill_tree_cache or {}
         self.tree_manager = SkillTreeManager(self.tree)
         self.skill = self.tree_manager.get_skill_node(category, self.path)
         self.update_buttons()
@@ -103,6 +106,7 @@ class RogueLiteNation(commands.Cog):
             unlocked_skills=[]
         )
 
+        self.skill_tree_cache = {}
         self.SCALE_IDS = {
             "wit": [75, 68, 36, 78, 70],
             "instinct": [54, 37, 9, 69, 67],
@@ -206,13 +210,14 @@ class RogueLiteNation(commands.Cog):
     @commands.command()
     async def viewskills(self, ctx, category: str = "general"):
         """Open the skill tree viewer."""
+        self.skill_tree_cache = await self.config.guild(ctx.guild).skill_tree()
         view = SkillView(self, ctx, category)
         skill = view.skill
         embed = self.get_skill_embed(skill, view.path)
         await ctx.send(embed=embed, view=view)
 
     async def unlock_skill(self, ctx, category, path):
-        tree = load_skill_tree()
+        tree = await self.config.guild(ctx.guild).skill_tree()
         node = tree.get(category)
         for key in path[1:]:
             node = node.get("children", {}).get(key)
@@ -252,6 +257,18 @@ class RogueLiteNation(commands.Cog):
         unlocked.append(path_key)
         await user_config.unlocked_skills.set(unlocked)
         await ctx.send(f"✅ You unlocked **{node['name']}**!")
+
+    @commands.command()
+    async def uploadskills(self, ctx, *, raw_json: str):
+        """Admin only: Upload a skill tree as JSON."""
+        try:
+            tree = json.loads(raw_json)
+        except json.JSONDecodeError as e:
+            return await ctx.send(f"Invalid JSON: {e}")
+
+        await self.config.guild(ctx.guild).skill_tree.set(tree)
+        self.skill_tree_cache = tree
+        await ctx.send("✅ Skill tree uploaded and saved!")
 
     @commands.command()
     async def convertgems(self, ctx, amount: int):
