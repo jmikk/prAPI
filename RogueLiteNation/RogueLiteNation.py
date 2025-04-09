@@ -222,7 +222,7 @@ class RogueLiteNation(commands.Cog):
         view = SkillView(self, ctx, category)
         skill = view.skill
         if skill is None:
-            return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.")
+            return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.\")
         embed = self.get_skill_embed(skill, view.path)
         await ctx.send(embed=embed, view=view)
 
@@ -269,16 +269,32 @@ class RogueLiteNation(commands.Cog):
         await ctx.send(f"✅ You unlocked **{node['name']}**!")
 
     @commands.command()
-    async def uploadskills(self, ctx, *, raw_json: str):
-        """Admin only: Upload a skill tree as JSON."""
+    async def uploadskills(self, ctx):
+        """Admin only: Upload a skill tree by attaching a JSON file."""
+        if not ctx.message.attachments:
+            return await ctx.send("Please attach a JSON file containing the skill tree.")
+
+        attachment = ctx.message.attachments[0]
+        if not attachment.filename.endswith(".json"):
+            return await ctx.send("The attached file must be a .json file.")
+
         try:
-            tree = json.loads(raw_json)
-        except json.JSONDecodeError as e:
-            return await ctx.send(f"Invalid JSON: {e}")
+            data = await attachment.read()
+            tree = json.loads(data.decode("utf-8"))
+        except Exception as e:
+            return await ctx.send(f"Failed to load JSON: {e}")
 
         await self.config.guild(ctx.guild).skill_tree.set(tree)
         self.skill_tree_cache = tree
         await ctx.send("✅ Skill tree uploaded and saved!")
+
+    @commands.command()
+    async def exportskills(self, ctx):
+        """Download the current skill tree as a JSON file."""
+        tree = await self.config.guild(ctx.guild).skill_tree()
+        json_data = json.dumps(tree, indent=2)
+        file = discord.File(fp=discord.utils._bytes(json_data), filename="skill_tree.json")
+        await ctx.send("Here is your current skill tree:", file=file)
 
     @commands.command()
     async def convertgems(self, ctx, amount: int):
