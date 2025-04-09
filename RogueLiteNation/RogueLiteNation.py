@@ -43,9 +43,9 @@ class SkillView(View):
         self.skill = self.tree_manager.get_skill_node(category, self.path)
         if self.skill is None:
             return
-        self.update_buttons()
+        await self.update_buttons()
 
-    def update_buttons(self):
+    async def update_buttons(self):
         self.clear_items()
 
         async def unlock_callback(interaction):
@@ -70,7 +70,7 @@ class SkillView(View):
             button.callback = unlock_callback
             self.add_item(button)
 
-        self.cog.bot.loop.create_task(add_unlock_button())
+        await add_unlock_button()
 
         if not self.skill:
             return
