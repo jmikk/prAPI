@@ -32,7 +32,7 @@ def load_skill_tree():
 
 class SkillView(View):
     async def initialize_buttons(self):
-        await self.update_buttons()
+        await await self.update_buttons()
     def __init__(self, cog, ctx, category="general", path=None):
         self.invoker = ctx.author
         super().__init__(timeout=60)
@@ -43,8 +43,6 @@ class SkillView(View):
         self.tree = cog.skill_tree_cache or {}
         self.tree_manager = SkillTreeManager(self.tree)
         self.skill = self.tree_manager.get_skill_node(category, self.path)
-        if self.skill is None:
-            return
         self.cog.bot.loop.create_task(self.initialize_buttons())
 
     async def update_buttons(self):
