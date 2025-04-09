@@ -35,6 +35,8 @@ class SkillView(View):
         self.tree = cog.skill_tree_cache or {}
         self.tree_manager = SkillTreeManager(self.tree)
         self.skill = self.tree_manager.get_skill_node(category, self.path)
+        if self.skill is None:
+            return
         self.update_buttons()
 
     def update_buttons(self):
@@ -58,6 +60,9 @@ class SkillView(View):
             self.add_item(button)
 
         self.cog.bot.loop.create_task(add_unlock_button())
+
+        if not self.skill:
+            return
 
         for key, child in self.skill.get("children", {}).items():
             async def nav_callback(interaction, k=key):
