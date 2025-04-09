@@ -37,17 +37,25 @@ class SkillView(View):
     def update_buttons(self):
         self.clear_items()
 
-        # Unlock Button
         async def unlock_callback(interaction):
             await self.cog.unlock_skill(self.ctx, self.category, self.path)
             self.skill = self.tree_manager.get_skill_node(self.category, self.path)
             self.update_buttons()
             await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
-        self.add_item(Button(label="Unlock", style=discord.ButtonStyle.green))
-        self.children[-1].callback = unlock_callback
+        async def check_unlocked():
+            path_key = f"{self.category}/{'/'.join(self.path)}"
+            unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
+            return path_key in unlocked
 
-        # Child Navigation
+        async def add_unlock_button():
+            is_unlocked = await check_unlocked()
+            button = Button(label="Unlock", style=discord.ButtonStyle.green, disabled=is_unlocked)
+            button.callback = unlock_callback
+            self.add_item(button)
+
+        self.cog.bot.loop.create_task(add_unlock_button())
+
         for key, child in self.skill.get("children", {}).items():
             async def nav_callback(interaction, k=key):
                 self.path.append(k)
@@ -58,7 +66,6 @@ class SkillView(View):
             self.add_item(Button(label=child["name"], style=discord.ButtonStyle.blurple))
             self.children[-1].callback = nav_callback
 
-        # Back Button
         if len(self.path) > 1:
             async def back_callback(interaction):
                 self.path.pop()
@@ -92,7 +99,8 @@ class RogueLiteNation(commands.Cog):
                 "good": 0,
                 "evil": 0,
                 "gems": 0
-            }
+            },
+            unlocked_skills=[]
         )
 
         self.SCALE_IDS = {
@@ -261,4 +269,3 @@ class RogueLiteNation(commands.Cog):
         bonus["gems"] += amount
         await self.config.user(user).bonus_stats.set(bonus)
         await ctx.send(f"Converted {total_cost} Wellcoins to {amount} Gems!")
-
