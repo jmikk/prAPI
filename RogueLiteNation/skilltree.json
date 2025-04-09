@@ -1,17 +1,28 @@
 {
-  "root": {
-    "name": "Start of Journey",
-    "desc": "Begin your path.",
-    "cost": 0,
-    "gems": 0,
-    "unlocks": ["insight_boost"]
+  "general": {
+    "root": {
+      "name": "Gem Hoarder",
+      "description": "Gain +5 Gems instantly.",
+      "cost": 10,
+      "bonus": {"gems": 5},
+      "children": {
+        "greedy_soul": {
+          "name": "Greedy Soul",
+          "description": "Gain +2 Gems per day.",
+          "cost": 20,
+          "bonus": {},
+          "children": {}
+        }
+      }
+    }
   },
-  "insight_boost": {
-    "name": "Insightful Traditions",
-    "desc": "+2 Insight bonus.",
-    "cost": 1,
-    "gems": 5,
-    "bonus": {"insight": 2},
-    "unlocks": []
+  "insight": {
+    "root": {
+      "name": "Focused Mind",
+      "description": "+1 Insight Bonus",
+      "cost": 15,
+      "bonus": {"insight": 1},
+      "children": {}
+    }
   }
 }
