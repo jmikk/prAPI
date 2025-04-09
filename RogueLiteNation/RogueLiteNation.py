@@ -208,6 +208,8 @@ class RogueLiteNation(commands.Cog):
         await ctx.send(embed=embed)
 
     def get_skill_embed(self, skill, path):
+        if skill is None:
+            return discord.Embed(title="Skill Not Found", description="This skill could not be found in the tree.", color=discord.Color.red())
         embed = discord.Embed(title=skill["name"], description=skill["description"], color=discord.Color.gold())
         embed.add_field(name="Cost", value=f"{skill['cost']} Gems", inline=True)
         embed.add_field(name="Path", value="/".join(path), inline=True)
@@ -219,6 +221,8 @@ class RogueLiteNation(commands.Cog):
         self.skill_tree_cache = await self.config.guild(ctx.guild).skill_tree()
         view = SkillView(self, ctx, category)
         skill = view.skill
+        if skill is None:
+            return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.\")
         embed = self.get_skill_embed(skill, view.path)
         await ctx.send(embed=embed, view=view)
 
