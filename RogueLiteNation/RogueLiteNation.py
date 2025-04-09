@@ -208,8 +208,8 @@ class RogueLiteNation(commands.Cog):
         await ctx.send(embed=embed)
 
     def get_skill_embed(self, skill, path):
-        if skill is None:
-            return discord.Embed(title="Skill Not Found", description="This skill could not be found in the tree.", color=discord.Color.red())
+        if skill is None or not isinstance(skill, dict) or "name" not in skill:
+            return discord.Embed(title="Skill Not Found", description="This skill could not be found or is malformed.", color=discord.Color.red())
         embed = discord.Embed(title=skill["name"], description=skill["description"], color=discord.Color.gold())
         embed.add_field(name="Cost", value=f"{skill['cost']} Gems", inline=True)
         embed.add_field(name="Path", value="/".join(path), inline=True)
