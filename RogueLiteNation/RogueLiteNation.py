@@ -61,13 +61,13 @@ class SkillView(View):
 
         async def add_unlock_button():
             is_unlocked = await check_unlocked()
-            button = Button(label="Unlock", style=discord.ButtonStyle.green, disabled=is_unlocked)
+            label = "Unlocked" if is_unlocked else f"Unlock ({self.skill.get('cost', '?')} Gems)"
+            button = Button(label=label, style=discord.ButtonStyle.green, disabled=is_unlocked)
             async def unlock_check(interaction):
                 if interaction.user != self.invoker:
                     return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
                 await unlock_callback(interaction)
             button.callback = unlock_check
-            button.callback = unlock_callback
             self.add_item(button)
 
         await add_unlock_button()
@@ -359,4 +359,3 @@ class RogueLiteNation(commands.Cog):
         bonus["gems"] += amount
         await self.config.user(user).bonus_stats.set(bonus)
         await ctx.send(f"Converted {total_cost} Wellcoins to {amount} Gems!")
-
