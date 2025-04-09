@@ -222,7 +222,7 @@ class RogueLiteNation(commands.Cog):
         view = SkillView(self, ctx, category)
         skill = view.skill
         if skill is None:
-            return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.\")
+            return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.")
         embed = self.get_skill_embed(skill, view.path)
         await ctx.send(embed=embed, view=view)
 
