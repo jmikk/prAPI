@@ -84,6 +84,7 @@ class RogueLiteNation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=789456123789, force_registration=True)
+        self.config.register_guild(skill_tree={})
         self.shared_config = Config.get_conf(None, identifier=345678654456, force_registration=True)
 
         self.config.register_user(
