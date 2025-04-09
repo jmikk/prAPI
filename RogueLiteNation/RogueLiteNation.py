@@ -43,7 +43,7 @@ class SkillView(View):
         self.skill = self.tree_manager.get_skill_node(category, self.path)
         if self.skill is None:
             return
-        await self.update_buttons()
+        self.cog.bot.loop.create_task(self.update_buttons())
 
     async def update_buttons(self):
         self.clear_items()
