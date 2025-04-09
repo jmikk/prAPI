@@ -359,3 +359,4 @@ class RogueLiteNation(commands.Cog):
         bonus["gems"] += amount
         await self.config.user(user).bonus_stats.set(bonus)
         await ctx.send(f"Converted {total_cost} Wellcoins to {amount} Gems!")
+
