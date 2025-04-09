@@ -32,6 +32,7 @@ def load_skill_tree():
 
 class SkillView(View):
     def __init__(self, cog, ctx, category="general", path=None):
+        self.invoker = ctx.author
         super().__init__(timeout=60)
         self.cog = cog
         self.ctx = ctx
@@ -61,6 +62,11 @@ class SkillView(View):
         async def add_unlock_button():
             is_unlocked = await check_unlocked()
             button = Button(label="Unlock", style=discord.ButtonStyle.green, disabled=is_unlocked)
+            async def unlock_check(interaction):
+                if interaction.user != self.invoker:
+                    return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
+                await unlock_callback(interaction)
+            button.callback = unlock_check
             button.callback = unlock_callback
             self.add_item(button)
 
@@ -70,13 +76,24 @@ class SkillView(View):
             return
 
         for key, child in self.skill.get("children", {}).items():
+            if not isinstance(child, dict) or "name" not in child:
+                continue
             async def nav_callback(interaction, k=key):
                 self.path.append(k)
                 self.skill = self.tree_manager.get_skill_node(self.category, self.path)
                 self.update_buttons()
                 await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
-            self.add_item(Button(label=child["name"], style=discord.ButtonStyle.blurple))
+            button = Button(label=child["name"], style=discord.ButtonStyle.blurple)
+            async def nav_callback(interaction, k=key):
+                if interaction.user != self.invoker:
+                    return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
+                self.path.append(k)
+                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
+                self.update_buttons()
+                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
+            button.callback = nav_callback
+            self.add_item(button)
             self.children[-1].callback = nav_callback
 
         if len(self.path) > 1:
@@ -86,7 +103,16 @@ class SkillView(View):
                 self.update_buttons()
                 await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
-            self.add_item(Button(label="⬅️ Back", style=discord.ButtonStyle.grey))
+            button = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
+            async def back_callback(interaction):
+                if interaction.user != self.invoker:
+                    return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
+                self.path.pop()
+                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
+                self.update_buttons()
+                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
+            button.callback = back_callback
+            self.add_item(button)
             self.children[-1].callback = back_callback
 
 
@@ -221,9 +247,25 @@ class RogueLiteNation(commands.Cog):
         return embed
 
     @commands.command()
-    async def viewskills(self, ctx, category: str = "general"):
+    async def viewskills(self, ctx, category: str = None):
         """Open the skill tree viewer."""
         self.skill_tree_cache = await self.config.guild(ctx.guild).skill_tree()
+        self.skill_tree_cache = await self.config.guild(ctx.guild).skill_tree()
+        if category is None:
+            if not self.skill_tree_cache:
+                return await ctx.send("No skill trees available. Upload one with `$uploadskills`.")
+            view = View()
+            for cat in self.skill_tree_cache:
+                button = Button(label=cat.title(), style=discord.ButtonStyle.blurple)
+                async def cat_callback(interaction, c=cat):
+                    if interaction.user != ctx.author:
+                        return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
+                    v = SkillView(self, ctx, c)
+                    skill = v.skill
+                    await interaction.response.edit_message(embed=self.get_skill_embed(skill, ["root"]), view=v)
+                button.callback = cat_callback
+                view.add_item(button)
+            return await ctx.send("Choose a skill tree:", view=view)
         view = SkillView(self, ctx, category)
         skill = view.skill
         if skill is None:
