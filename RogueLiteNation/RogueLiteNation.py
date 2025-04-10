@@ -6,120 +6,6 @@ import json
 from pathlib import Path
 from discord.ui import View, Button
 
-class SkillTreeManager:
-    def __init__(self, tree_data):
-        self.tree_data = tree_data
-
-    def get_skill_node(self, category, path):
-        node = self.tree_data.get(category)
-        if not node:
-            return None
-        if path == ["root"]:
-            return node.get("root")
-        node = node.get("root")
-        for key in path[1:]:
-            node = node.get("children", {}).get(key)
-            if node is None:
-                return None
-        return node
-
-    def has_unlocked_prerequisite(self, category, path, unlocked):
-        if len(path) <= 1:
-            return True  # root node, always available
-        parent_path = path[:-1]
-        parent_key = f"{category}/{'/'.join(parent_path)}"
-        return parent_key in unlocked
-
-def load_skill_tree():
-    try:
-        with open(Path(__file__).parent / "skills.json", "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-
-class SkillView(View):
-    def __init__(self, cog, ctx, category="general", path=None):
-        super().__init__(timeout=60)
-        self.cog = cog
-        self.ctx = ctx
-        self.category = category
-        self.path = path or ["root"]
-        self.tree = cog.skill_tree_cache or {}
-        self.tree_manager = SkillTreeManager(self.tree)
-        self.skill = self.tree_manager.get_skill_node(category, self.path)
-
-    async def prepare(self):
-        await self.update_buttons()
-
-    async def update_buttons(self):
-        self.clear_items()
-
-        def is_invoker(interaction):
-            return interaction.user.id == self.ctx.author.id
-        
-        unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
-        path_key = f"{self.category}/{'/'.join(self.path)}"
-        is_unlocked = path_key in unlocked
-
-         # Show unlock button only if not unlocked and prerequisites met
-        if not is_unlocked and self.tree_manager.has_unlocked_prerequisite(self.category, self.path, unlocked):
-            async def unlock_callback(interaction):
-                try:
-                    result = await self.cog.unlock_skill(self.ctx, self.category, self.path)
-                    if result is not None:
-                        await self.ctx.send(result)
-                except Exception as e:
-                    await self.ctx.send(f"An error occurred while trying to unlock the skill: {e}")
-
-                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                await self.update_buttons()
-                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
-
-            unlock_button = Button(label="Unlock", style=discord.ButtonStyle.green)
-            async def unlock_check(interaction):
-                if not is_invoker(interaction):
-                    await interaction.response.send_message("Only the command invoker can use this button.", ephemeral=True)
-                    return
-                await unlock_callback(interaction)
-            unlock_button.callback = unlock_check
-            unlock_button.callback = unlock_callback
-            self.add_item(unlock_button)
-
-        #nav buttons
-        if self.skill:
-            for key, child in self.skill.get("children", {}).items():
-                async def nav_callback(interaction, k=key):
-                    self.path.append(k)
-                    self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                    await self.update_buttons()
-                    await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
-
-                button = Button(label=child["name"], style=discord.ButtonStyle.blurple)
-                async def nav_check(interaction, k=key):
-                    if not is_invoker(interaction):
-                        await interaction.response.send_message("Only the command invoker can use this button.", ephemeral=True)
-                        return
-                    await nav_callback(interaction, k=k)
-                button.callback = nav_check
-                button.callback = nav_callback
-                self.add_item(button)
-
-        if len(self.path) > 1:
-            async def back_callback(interaction):
-                self.path.pop()
-                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                await self.update_buttons()
-                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
-
-            back_button = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
-            async def back_check(interaction):
-                if not is_invoker(interaction):
-                    await interaction.response.send_message("Only the command invoker can use this button.", ephemeral=True)
-                    return
-                await back_callback(interaction)
-            back_button.callback = back_check
-            back_button.callback = back_callback
-            self.add_item(back_button)
 
 class RogueLiteNation(commands.Cog):
     def __init__(self, bot):
@@ -240,48 +126,28 @@ class RogueLiteNation(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    def get_skill_embed(self, skill, path):
-        if skill is None:
-            return discord.Embed(title="Skill Not Found", description="This skill could not be found in the tree.", color=discord.Color.red())
-
-        path_key = f"general/{'/'.join(path)}"  # default category 'general'
-        embed = discord.Embed(title=skill["name"], description=skill["description"], color=discord.Color.gold())
-        embed.add_field(name="Cost", value=f"{skill['cost']} Gems", inline=True)
-        embed.add_field(name="Path", value="/".join(path), inline=True)
-
-        # Unlock status
-        unlocked_skills = self.config.get_identity("user")._defaults["unlocked_skills"]
-        status_emoji = "✅" if path_key in unlocked_skills else "🔒"
-        embed.add_field(name="Status", value=status_emoji, inline=True)
-
-        # Show unlock status
-        async def get_unlock_status():
-            unlocked = await self.config.user(self.ctx.author).unlocked_skills()
-            if path_key in unlocked:
-                return "✅ Skill is unlocked."
-            else:
-                parent_key = f"general/{'/'.join(path[:-1])}" if len(path) > 1 else None
-                if not parent_key or parent_key in unlocked:
-                    return "🔓 Available to unlock."
-                else:
-                    return "🔒 Prerequisite skill required."
-
-        return embed
 
     @commands.command()
-    async def viewskills(self, ctx, category: str = "general"):
-        self.skill_tree_cache = await self.config.guild(ctx.guild).skill_tree()
-        view = SkillView(self, ctx, category)
-        await view.prepare()
-        skill = view.skill
-        if skill is None:
-            return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.")
-        embed = self.get_skill_embed(skill, view.path)
-        "".join(available + locked[:10])  # Limit to 10 locked for display
-        await ctx.send(embed=embed, view=view)
+    async def uploadskills(self, ctx):
+        if not ctx.message.attachments:
+            return await ctx.send("Please attach a JSON file containing the skill tree.")
 
-    async def unlock_skill(self, ctx, category, path):
-        tree = await self.config.guild(ctx.guild).skill_tree()
+        attachment = ctx.message.attachments[0]
+        if not attachment.filename.endswith(".json"):
+            return await ctx.send("The attached file must be a .json file.")
+
+        try:
+            data = await attachment.read()
+            tree = json.loads(data.decode("utf-8"))
+        except Exception as e:
+            return await ctx.send(f"Failed to load JSON: {e}")
+
+        await self.config.guild(ctx.guild).skill_tree.set(tree)
+        self.skill_tree_cache = tree
+        await ctx.send("✅ Skill tree uploaded and saved!")
+
+      async def unlock_skill(self, user, category, path):
+        tree = await self.config.guild(user.guild).skill_tree()
         category_tree = tree.get(category)
         if not category_tree:
             return "Skill tree category not found."
@@ -294,12 +160,7 @@ class RogueLiteNation(commands.Cog):
                 node = node.get("children", {}).get(key)
                 if node is None:
                     return "Skill path is invalid."
-        for key in path[1:]:
-            node = node.get("children", {}).get(key)
-        if not node:
-            return "Skill not found."
 
-        user = ctx.author
         user_config = self.config.user(user)
         unlocked = await user_config.unlocked_skills()
         path_key = f"{category}/{'/'.join(path)}"
@@ -335,26 +196,6 @@ class RogueLiteNation(commands.Cog):
         unlocked.append(path_key)
         await user_config.unlocked_skills.set(unlocked)
         return f"✅ You unlocked **{node['name']}**!"
-
-
-    @commands.command()
-    async def uploadskills(self, ctx):
-        if not ctx.message.attachments:
-            return await ctx.send("Please attach a JSON file containing the skill tree.")
-
-        attachment = ctx.message.attachments[0]
-        if not attachment.filename.endswith(".json"):
-            return await ctx.send("The attached file must be a .json file.")
-
-        try:
-            data = await attachment.read()
-            tree = json.loads(data.decode("utf-8"))
-        except Exception as e:
-            return await ctx.send(f"Failed to load JSON: {e}")
-
-        await self.config.guild(ctx.guild).skill_tree.set(tree)
-        self.skill_tree_cache = tree
-        await ctx.send("✅ Skill tree uploaded and saved!")
 
     @commands.command()
     async def convertgems(self, ctx, amount: int):
