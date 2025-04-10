@@ -96,15 +96,16 @@ class SkillTreeView(View):
             if len(children_items) > page_size:
                 if self.page > 0:
                     async def prev_page(interaction):
+                        await interaction.response.defer()
                         if interaction.user.id != self.ctx.author.id:
-                            await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                            await interaction.response.followup("Only the command user can use this button.", ephemeral=True)
                             return
                         try:
                             self.page -= 1
                             await self.setup()
                             await interaction.message.edit(embed=self.get_embed(), view=self)
                         except Exception as e:
-                            await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                            await interaction.response.followup(f"❌ Error: {e}", ephemeral=True)
                             await self.ctx.send(f"Interaction error during prev page: {e}")
     
                     prev_btn = Button(label="⬅️ Prev", style=discord.ButtonStyle.grey)
@@ -113,15 +114,16 @@ class SkillTreeView(View):
     
                 if end < len(children_items):
                     async def next_page(interaction):
+                        await interaction.response.defer()    
                         if interaction.user.id != self.ctx.author.id:
-                            await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                            await interaction.response.followup("Only the command user can use this button.", ephemeral=True)
                             return
                         try:
                             self.page += 1
                             await self.setup()
                             await interaction.message.edit(embed=self.get_embed(), view=self)
                         except Exception as e:
-                            await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                            await interaction.response.followup(f"❌ Error: {e}", ephemeral=True)
                             await self.ctx.send(f"Interaction error during next page: {e}")
     
                     next_btn = Button(label="Next ➡️", style=discord.ButtonStyle.grey)
