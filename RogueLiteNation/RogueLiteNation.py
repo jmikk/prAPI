@@ -478,7 +478,7 @@ class RogueLiteNation(commands.Cog):
         description="Starting an adventure will consume **all your Gems** as payment for adventuring gear.💡 *Spend your Gems before starting if you want to use them!*",
             color=discord.Color.orange()
         )
-        view = ConfirmView()
+        view = ConfirmView(self)
         msg = await ctx.send(embed=confirm_embed, view=view)
         await view.wait()
 
