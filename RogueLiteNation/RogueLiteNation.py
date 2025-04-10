@@ -42,23 +42,23 @@ class SkillView(View):
         self.skill = self.tree_manager.get_skill_node(category, self.path)
         if self.skill is None:
             return
-        self.cog.bot.loop.create_task(self.update_buttons())
+        self.update_buttons()
 
     async def update_buttons(self):
         self.clear_items()
 
-        # Unlock button logic
         path_key = f"{self.category}/{'/'.join(self.path)}"
+        unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
         user_config = self.cog.config.user(self.ctx.author)
-        unlocked = await user_config.unlocked_skills()
-        base = await user_config.base_stats()
+        stats = await user_config.base_stats()
         bonus = await user_config.bonus_stats()
-        total_gems = base.get("gems", 0) + bonus.get("gems", 0)
-        cost = self.skill.get("cost", 0)
+        total_gems = stats["gems"] + bonus["gems"]
 
         if path_key not in unlocked:
+            cost = self.skill.get("cost", 0)
             label = f"Unlock ({cost} Gems)"
-            button = Button(label=label, style=discord.ButtonStyle.green, disabled=total_gems < cost)
+            disabled = total_gems < cost
+            button = Button(label=label, style=discord.ButtonStyle.green, disabled=disabled)
 
             async def unlock_callback(interaction):
                 if interaction.user != self.ctx.author:
@@ -71,9 +71,7 @@ class SkillView(View):
             button.callback = unlock_callback
             self.add_item(button)
 
-        
-
-        
+        self.cog.bot.loop.create_task(add_unlock_button())
 
         if not self.skill:
             return
