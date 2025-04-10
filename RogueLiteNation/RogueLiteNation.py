@@ -53,6 +53,9 @@ class SkillView(View):
 
     async def update_buttons(self):
         self.clear_items()
+
+        def is_invoker(interaction):
+            return interaction.user.id == self.ctx.author.id
         
         unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
         path_key = f"{self.category}/{'/'.join(self.path)}"
@@ -73,6 +76,12 @@ class SkillView(View):
                 await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
             unlock_button = Button(label="Unlock", style=discord.ButtonStyle.green)
+            async def unlock_check(interaction):
+                if not is_invoker(interaction):
+                    await interaction.response.send_message("Only the command invoker can use this button.", ephemeral=True)
+                    return
+                await unlock_callback(interaction)
+            unlock_button.callback = unlock_check
             unlock_button.callback = unlock_callback
             self.add_item(unlock_button)
 
@@ -86,6 +95,12 @@ class SkillView(View):
                     await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
                 button = Button(label=child["name"], style=discord.ButtonStyle.blurple)
+                async def nav_check(interaction, k=key):
+                    if not is_invoker(interaction):
+                        await interaction.response.send_message("Only the command invoker can use this button.", ephemeral=True)
+                        return
+                    await nav_callback(interaction, k=k)
+                button.callback = nav_check
                 button.callback = nav_callback
                 self.add_item(button)
 
@@ -97,6 +112,12 @@ class SkillView(View):
                 await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
             back_button = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
+            async def back_check(interaction):
+                if not is_invoker(interaction):
+                    await interaction.response.send_message("Only the command invoker can use this button.", ephemeral=True)
+                    return
+                await back_callback(interaction)
+            back_button.callback = back_check
             back_button.callback = back_callback
             self.add_item(back_button)
 
@@ -228,6 +249,11 @@ class RogueLiteNation(commands.Cog):
         embed.add_field(name="Cost", value=f"{skill['cost']} Gems", inline=True)
         embed.add_field(name="Path", value="/".join(path), inline=True)
 
+        # Unlock status
+        unlocked_skills = self.config.get_identity("user")._defaults["unlocked_skills"]
+        status_emoji = "✅" if path_key in unlocked_skills else "🔒"
+        embed.add_field(name="Status", value=status_emoji, inline=True)
+
         # Show unlock status
         async def get_unlock_status():
             unlocked = await self.config.user(self.ctx.author).unlocked_skills()
@@ -251,26 +277,7 @@ class RogueLiteNation(commands.Cog):
         if skill is None:
             return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.")
         embed = self.get_skill_embed(skill, view.path)
-        # Show unlocked and available skill info in the channel
-        unlocked = await self.config.user(ctx.author).unlocked_skills()
-        available = []
-        for key in unlocked:
-            available.append(f"✅ {key}")
-
-        tree = self.skill_tree_cache.get(category, {}).get("root", {})
-        def collect_paths(base_path, node):
-            paths = []
-            if node.get("children"):
-                for k, child in node["children"].items():
-                    full_path = f"{category}/{'/'.join(base_path + [k])}"
-                    if full_path not in unlocked:
-                        paths.append(f"🔓 {full_path}")
-                    paths += collect_paths(base_path + [k], child)
-            return paths
-
-        locked = collect_paths(["root"], tree)
-        skill_status = " ".join(available + locked[:10])  # Limit to 10 locked for display
-        embed.add_field(name="Skill Overview", value=skill_status or "No skills found.", inline=False)
+        ".join(available + locked[:10])  # Limit to 10 locked for display
         await ctx.send(embed=embed, view=view)
 
     async def unlock_skill(self, ctx, category, path):
