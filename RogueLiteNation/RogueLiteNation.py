@@ -32,7 +32,7 @@ def load_skill_tree():
 
 class SkillView(View):
     async def initialize_buttons(self):
-        await self.update_buttons()
+        await await self.update_buttons()
     def __init__(self, cog, ctx, category="general", path=None):
         self.invoker = ctx.author
         super().__init__(timeout=60)
@@ -72,6 +72,21 @@ class SkillView(View):
 
         await add_unlock_button()
 
+        # Navigation Buttons for each child skill
+        for key, child in self.skill.get("children", {}).items():
+            if not isinstance(child, dict) or "name" not in child:
+                continue
+            button = Button(label=child["name"], style=discord.ButtonStyle.blurple)
+            async def nav_callback(interaction, k=key):
+                if interaction.user != self.invoker:
+                    return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
+                self.path.append(k)
+                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
+                await self.update_buttons()
+                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
+            button.callback = nav_callback
+            self.add_item(button)
+
         if not self.skill:
             return
 
@@ -97,19 +112,13 @@ class SkillView(View):
             self.children[-1].callback = nav_callback
 
         if len(self.path) > 1:
-            async def back_callback(interaction):
-                self.path.pop()
-                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                self.update_buttons()
-                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
-
             button = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
             async def back_callback(interaction):
                 if interaction.user != self.invoker:
                     return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
                 self.path.pop()
                 self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                self.update_buttons()
+                await self.update_buttons()
                 await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
             button.callback = back_callback
             self.add_item(button)
