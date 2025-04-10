@@ -18,111 +18,114 @@ class SkillTreeView(View):
         self.page = 0
 
     async def setup(self):
-        self.clear_items()
-        unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
-        path_key = f"{self.category}/{'/'.join(self.path)}"
-
-        if path_key not in unlocked:
-            async def unlock_callback(interaction):
-                if interaction.user.id != self.ctx.author.id:
-                    await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
-                    return
-                try:
-                    result = await self.cog.unlock_skill(self.ctx.author, self.category, self.path)
-                    await interaction.response.send_message(result, ephemeral=True)
-                    await self.setup()
-                    await interaction.message.edit(embed=self.get_embed(), view=self)
-                except Exception as e:
-                    await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
-                    await self.ctx.send(f"Interaction error during unlock: {e}")
-
-            button = Button(label="Unlock", style=discord.ButtonStyle.green)
-            button.callback = unlock_callback
-            self.add_item(button)
-
-        children_items = list(self.skill.get("children", {}).items())
-        page_size = 5
-        start = self.page * page_size
-        end = start + page_size
-
-        for key, child in children_items[start:end]:
-            def make_button(k, child_data):
-                async def nav_callback(interaction):
+        try:
+            self.clear_items()
+            unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
+            path_key = f"{self.category}/{'/'.join(self.path)}"
+    
+            if path_key not in unlocked:
+                async def unlock_callback(interaction):
                     if interaction.user.id != self.ctx.author.id:
                         await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
                         return
                     try:
-                        self.path.append(k)
+                        result = await self.cog.unlock_skill(self.ctx.author, self.category, self.path)
+                        await interaction.response.send_message(result, ephemeral=True)
+                        await self.setup()
+                        await interaction.message.edit(embed=self.get_embed(), view=self)
+                    except Exception as e:
+                        await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                        await self.ctx.send(f"Interaction error during unlock: {e}")
+    
+                button = Button(label="Unlock", style=discord.ButtonStyle.green)
+                button.callback = unlock_callback
+                self.add_item(button)
+    
+            children_items = list(self.skill.get("children", {}).items())
+            page_size = 5
+            start = self.page * page_size
+            end = start + page_size
+    
+            for key, child in children_items[start:end]:
+                def make_button(k, child_data):
+                    async def nav_callback(interaction):
+                        if interaction.user.id != self.ctx.author.id:
+                            await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                            return
+                        try:
+                            self.path.append(k)
+                            self.skill = self._get_node()
+                            self.page = 0
+                            await self.setup()
+                            await interaction.message.edit(embed=self.get_embed(), view=self)
+                        except Exception as e:
+                            await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                            await self.ctx.send(f"Interaction error during navigation: {e}")
+    
+                    label = child_data.get("name", k)
+                    child_path_key = f"{self.category}/{'/'.join(self.path + [k])}"
+                    emoji = "✅" if child_path_key in unlocked else "🔒"
+                    button = Button(label=f"{emoji} {label}", style=discord.ButtonStyle.blurple)
+                    button.callback = nav_callback
+                    self.add_item(button)
+    
+                make_button(key, child)
+    
+            if len(self.path) > 1:
+                async def back_callback(interaction):
+                    if interaction.user.id != self.ctx.author.id:
+                        await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                        return
+                    try:
+                        self.path.pop()
                         self.skill = self._get_node()
                         self.page = 0
                         await self.setup()
                         await interaction.message.edit(embed=self.get_embed(), view=self)
                     except Exception as e:
                         await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
-                        await self.ctx.send(f"Interaction error during navigation: {e}")
+                        await self.ctx.send(f"Interaction error during back: {e}")
+    
+                back = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
+                back.callback = back_callback
+                self.add_item(back)
+    
+            if len(children_items) > page_size:
+                if self.page > 0:
+                    async def prev_page(interaction):
+                        if interaction.user.id != self.ctx.author.id:
+                            await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                            return
+                        try:
+                            self.page -= 1
+                            await self.setup()
+                            await interaction.message.edit(embed=self.get_embed(), view=self)
+                        except Exception as e:
+                            await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                            await self.ctx.send(f"Interaction error during prev page: {e}")
+    
+                    prev_btn = Button(label="⬅️ Prev", style=discord.ButtonStyle.grey)
+                    prev_btn.callback = prev_page
+                    self.add_item(prev_btn)
+    
+                if end < len(children_items):
+                    async def next_page(interaction):
+                        if interaction.user.id != self.ctx.author.id:
+                            await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                            return
+                        try:
+                            self.page += 1
+                            await self.setup()
+                            await interaction.message.edit(embed=self.get_embed(), view=self)
+                        except Exception as e:
+                            await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                            await self.ctx.send(f"Interaction error during next page: {e}")
+    
+                    next_btn = Button(label="Next ➡️", style=discord.ButtonStyle.grey)
+                    next_btn.callback = next_page
+                    self.add_item(next_btn)
+        except Exception as e:
 
-                label = child_data.get("name", k)
-                child_path_key = f"{self.category}/{'/'.join(self.path + [k])}"
-                emoji = "✅" if child_path_key in unlocked else "🔒"
-                button = Button(label=f"{emoji} {label}", style=discord.ButtonStyle.blurple)
-                button.callback = nav_callback
-                self.add_item(button)
-
-            make_button(key, child)
-
-        if len(self.path) > 1:
-            async def back_callback(interaction):
-                if interaction.user.id != self.ctx.author.id:
-                    await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
-                    return
-                try:
-                    self.path.pop()
-                    self.skill = self._get_node()
-                    self.page = 0
-                    await self.setup()
-                    await interaction.message.edit(embed=self.get_embed(), view=self)
-                except Exception as e:
-                    await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
-                    await self.ctx.send(f"Interaction error during back: {e}")
-
-            back = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
-            back.callback = back_callback
-            self.add_item(back)
-
-        if len(children_items) > page_size:
-            if self.page > 0:
-                async def prev_page(interaction):
-                    if interaction.user.id != self.ctx.author.id:
-                        await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
-                        return
-                    try:
-                        self.page -= 1
-                        await self.setup()
-                        await interaction.message.edit(embed=self.get_embed(), view=self)
-                    except Exception as e:
-                        await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
-                        await self.ctx.send(f"Interaction error during prev page: {e}")
-
-                prev_btn = Button(label="⬅️ Prev", style=discord.ButtonStyle.grey)
-                prev_btn.callback = prev_page
-                self.add_item(prev_btn)
-
-            if end < len(children_items):
-                async def next_page(interaction):
-                    if interaction.user.id != self.ctx.author.id:
-                        await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
-                        return
-                    try:
-                        self.page += 1
-                        await self.setup()
-                        await interaction.message.edit(embed=self.get_embed(), view=self)
-                    except Exception as e:
-                        await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
-                        await self.ctx.send(f"Interaction error during next page: {e}")
-
-                next_btn = Button(label="Next ➡️", style=discord.ButtonStyle.grey)
-                next_btn.callback = next_page
-                self.add_item(next_btn)
 
     def _get_node(self):
         node = self.skill_tree.get("root", {})
