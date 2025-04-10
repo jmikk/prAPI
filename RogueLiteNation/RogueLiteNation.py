@@ -6,53 +6,6 @@ import json
 from pathlib import Path
 from discord.ui import View, Button
 
-class UnlockedSkillsView(View):
-    def __init__(self, cog, ctx, unlocked_paths, skill_tree):
-        super().__init__(timeout=120)
-        self.cog = cog
-        self.ctx = ctx
-        self.unlocked_paths = unlocked_paths
-        self.skill_tree = skill_tree
-        self.page = 0
-        self.page_size = 5
-
-    def get_embed(self):
-        embed = discord.Embed(title=f"Unlocked Skills for {self.ctx.author.display_name}", color=discord.Color.green())
-        start = self.page * self.page_size
-        end = start + self.page_size
-        for path in self.unlocked_paths[start:end]:
-            parts = path.split("/")[1:]  # remove category
-            node = self.skill_tree.get(path.split("/")[0], {}).get("root", {})
-            for part in parts:
-                node = node.get("children", {}).get(part, {})
-            name = node.get("name", parts[-1])
-            desc = node.get("description", "No description provided.")
-            embed.add_field(name=f"✅ {name}", value=f"{desc}**Path**: `{path}`", inline=False)
-        embed.set_footer(text=f"Page {self.page + 1} of {(len(self.unlocked_paths) - 1) // self.page_size + 1}")
-        return embed
-
-    async def setup(self):
-        self.clear_items()
-        if self.page > 0:
-            async def prev_callback(interaction):
-                await interaction.response.defer()
-                self.page -= 1
-                await self.setup()
-                await interaction.message.edit(embed=self.get_embed(), view=self)
-            btn = Button(label="⬅️ Previous", style=discord.ButtonStyle.grey)
-            btn.callback = prev_callback
-            self.add_item(btn)
-    
-        if (self.page + 1) * self.page_size < len(self.unlocked_paths):
-            async def next_callback(interaction):
-                await interaction.response.defer()
-                self.page += 1
-                await self.setup()
-                await interaction.message.edit(embed=self.get_embed(), view=self)
-            btn = Button(label="Next ➡️", style=discord.ButtonStyle.grey)
-            btn.callback = next_callback
-            self.add_item(btn)
-
 class SkillTreeView(View):
     def __init__(self, cog, ctx, category):
         super().__init__(timeout=120)
@@ -337,19 +290,6 @@ class RogueLiteNation(commands.Cog):
         """Open the skill tree viewer."""
         self.skill_tree_cache = await self.config.guild(ctx.guild).skill_tree()
         view = SkillTreeView(self, ctx, category)
-        await view.setup()
-        await ctx.send(embed=view.get_embed(), view=view)
-
-
-    @commands.command()
-    async def viewunlocked(self, ctx):
-        """List all unlocked skills for the user with pagination."""
-        unlocked = await self.config.user(ctx.author).unlocked_skills()
-        if not unlocked:
-            return await ctx.send("You have not unlocked any skills yet.")
-
-        skill_tree = await self.config.guild(ctx.guild).skill_tree()
-        view = UnlockedSkillsView(self, ctx, unlocked, skill_tree)
         await view.setup()
         await ctx.send(embed=view.get_embed(), view=view)
 
