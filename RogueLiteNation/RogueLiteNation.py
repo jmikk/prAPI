@@ -598,13 +598,6 @@ class AdventureLogView(View):
         self.message = None
         self.update_buttons()
     
-    def update_buttons(self):
-        self.clear_items()
-        if self.page > 0:
-            self.add_item(Button(label="⬅️ Previous", style=discord.ButtonStyle.grey, custom_id="prev"))
-        if (self.page + 1) * self.per_page < len(self.entries):
-            self.add_item(Button(label="Next ➡️", style=discord.ButtonStyle.grey, custom_id="next"))
-    
     async def interaction_check(self, interaction: discord.Interaction):
         return True  # Optional: restrict to ctx.author
     
