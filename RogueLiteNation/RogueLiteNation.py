@@ -435,10 +435,11 @@ class RogueLiteNation(commands.Cog):
         """Begin an interactive adventure. Click to roll when you're ready."""
 
         class ConfirmView(View):
-            def __init__(self):
+            def __init__(self, cog):
                 super().__init__(timeout=30)
+                self.cog = cog
                 self.value = False
-
+        
             @discord.ui.button(label="Start Adventure (Spend All Gems)", style=discord.ButtonStyle.red)
             async def confirm(self, interaction: discord.Interaction, button: Button):
                 if interaction.user != ctx.author:
@@ -447,7 +448,7 @@ class RogueLiteNation(commands.Cog):
                 self.value = True
                 await interaction.response.edit_message(content="✅ Starting adventure...", view=None)
                 self.stop()
-
+        
             @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey)
             async def cancel(self, interaction: discord.Interaction, button: Button):
                 if interaction.user != ctx.author:
@@ -455,23 +456,21 @@ class RogueLiteNation(commands.Cog):
                     return
                 await interaction.response.edit_message(content="❌ Adventure canceled.", view=None)
                 self.stop()
-           
+        
             @discord.ui.button(label="View Stats", style=discord.ButtonStyle.blurple)
             async def view_stats(self, interaction: discord.Interaction, button: Button):
-                try:
-                    if interaction.user != ctx.author:
-                        await interaction.response.send_message("Only you can use this option.", ephemeral=True)
-                        return
-                    await ctx.invoke(self.cog.mystats)
-                except e:
-                    await interaction.response.send_message(e)
-
+                if interaction.user != ctx.author:
+                    await interaction.response.send_message("Only you can use this option.", ephemeral=True)
+                    return
+                await self.cog.mystats(ctx)
+        
             @discord.ui.button(label="View Skill Tree", style=discord.ButtonStyle.blurple)
             async def view_tree(self, interaction: discord.Interaction, button: Button):
                 if interaction.user != ctx.author:
                     await interaction.response.send_message("Only you can use this option.", ephemeral=True)
                     return
-                await self.viewskills(ctx)
+                await self.cog.viewskills(ctx)
+
                 
 
         confirm_embed = discord.Embed(
