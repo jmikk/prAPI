@@ -127,7 +127,9 @@ class SkillTreeView(View):
         except Exception as e:
             channel = self.cog.bot.get_channel(1098673276064120842)
             if channel:
-                await channel.send(f"Interaction error during navigation: {e}")            
+                await channel.send(f"Interaction error during navigation: {e}")
+                await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+
 
     def _get_node(self):
         try:
