@@ -583,10 +583,62 @@ class RogueLiteNation(commands.Cog):
         bonus["gems"] += reward
         await self.config.user(user).bonus_stats.set(bonus)
 
-        result_embed = discord.Embed(
+        view = AdventureLogView(log, reward)
+        view.message = await ctx.send(embed=view.get_embed(), view=view)
+
+
+
+class AdventureLogView(View):
+    def __init__(self, entries, reward, per_page=5):
+        super().__init__(timeout=60)
+        self.entries = entries
+        self.page = 0
+        self.per_page = per_page
+        self.reward = reward
+        self.message = None
+        self.update_buttons()
+    
+    def update_buttons(self):
+        self.clear_items()
+        if self.page > 0:
+            self.add_item(Button(label="⬅️ Previous", style=discord.ButtonStyle.grey, custom_id="prev"))
+        if (self.page + 1) * self.per_page < len(self.entries):
+            self.add_item(Button(label="Next ➡️", style=discord.ButtonStyle.grey, custom_id="next"))
+    
+    async def interaction_check(self, interaction: discord.Interaction):
+        return True  # Optional: restrict to ctx.author
+    
+    async def on_timeout(self):
+        if self.message:
+            for child in self.children:
+                child.disabled = True
+            await self.message.edit(view=self)
+    
+    async def interaction_callback(self, interaction: discord.Interaction):
+        if interaction.data["custom_id"] == "prev":
+            self.page -= 1
+        elif interaction.data["custom_id"] == "next":
+            self.page += 1
+            self.update_buttons()
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+    
+    def get_embed(self):
+        start = self.page * self.per_page
+        end = start + self.per_page
+        embed = discord.Embed(
             title="📜 Final Adventure Log",
-            description="".join(log),
+            description="\n\n".join(self.entries[start:end]),
             color=discord.Color.gold()
         )
-        result_embed.set_footer(text=f"You earned {reward} Gems!")
-        await ctx.send(embed=result_embed)
+        embed.set_footer(text=f"You earned {self.reward} Gems! | Page {self.page + 1} of {(len(self.entries) - 1) // self.per_page + 1}")
+        return embed
+    
+    @discord.ui.button(label="⬅️ Previous", style=discord.ButtonStyle.grey, row=0)
+    async def prev(self, interaction: discord.Interaction, button: Button):
+        await self.interaction_callback(interaction)
+    
+    @discord.ui.button(label="Next ➡️", style=discord.ButtonStyle.grey, row=0)
+    async def next(self, interaction: discord.Interaction, button: Button):
+        await self.interaction_callback(interaction)
+    
+   
