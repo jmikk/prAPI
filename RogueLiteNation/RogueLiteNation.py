@@ -140,7 +140,7 @@ class SkillTreeView(View):
         except Exception as e:
             channel = self.cog.bot.get_channel(1098673276064120842)
             if channel:
-                await channel.send(f"Interaction error during navigation: {e}")
+                channel.send(f"Interaction error during navigation: {e}")
 
     def get_embed(self):
         try:
@@ -155,7 +155,7 @@ class SkillTreeView(View):
         except Exception as e:
             channel = self.cog.bot.get_channel(1098673276064120842)
             if channel:
-                await channel.send(f"Interaction error during navigation: {e}")
+                channel.send(f"Interaction error during navigation: {e}")
 
 # Main cog class for managing the RogueLite Nation game logic
 class RogueLiteNation(commands.Cog):
