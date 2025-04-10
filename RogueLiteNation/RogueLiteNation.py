@@ -478,7 +478,7 @@ class RogueLiteNation(commands.Cog):
                         stop_adventure = True
                         roll = random.randint(1, 20)
                         total = roll + score
-                        log.append(f"⏱️ Timeout! Boss {challenge['name']} — Rolled {total}, needed {difficulty}. Defeated!")
+                        log.append(f"⏱️ Timeout! Boss {challenge['name']} — Rolled {total}, needed {difficulty}. Defeated!\n")
                         result = "You were defeated."
                         timeout_embed = discord.Embed(
                             title=f"🧠 Boss: {challenge['name']} (Timeout)",
@@ -497,12 +497,12 @@ class RogueLiteNation(commands.Cog):
                         roll = random.randint(1, 20)
                         total = roll + score
                         if total < difficulty:
-                            log.append(f"❌ Boss {challenge['name']} — Rolled {total}, needed {difficulty}. Defeated!")
+                            log.append(f"❌ Boss {challenge['name']} — Rolled {total}, needed {difficulty}. Defeated!\n")
                             result = "You were defeated."
                             nonlocal stop_adventure
                             stop_adventure = True
                         else:
-                            log.append(f"✅ Boss {challenge['name']} — Rolled {total}, survived!")
+                            log.append(f"✅ Boss {challenge['name']} — Rolled {total}, survived!\n")
                             result = "You survived the boss!"
                         new_embed = discord.Embed(
                             title=f"🧠 Boss: {challenge['name']}",
@@ -537,7 +537,7 @@ class RogueLiteNation(commands.Cog):
                         stop_adventure = True
                         roll = random.randint(1, 20)
                         total = roll + score
-                        log.append(f"⏱️ Timeout! {challenge['name']} — Rolled {total}, needed {difficulty}. Failed.")
+                        log.append(f"⏱️ Timeout! {challenge['name']} — Rolled {total}, needed {difficulty}. Failed.\n")
                         result = "You failed this challenge."
                         timeout_embed = discord.Embed(
                             title=f"⚔️ {challenge['name']} (Timeout)",
@@ -555,12 +555,12 @@ class RogueLiteNation(commands.Cog):
                         roll = random.randint(1, 20)
                         total = roll + score
                         if total < difficulty:
-                            log.append(f"❌ {challenge['name']} — Rolled {total}, needed {difficulty}. Failed.")
+                            log.append(f"❌ {challenge['name']} — Rolled {total}, needed {difficulty}. Failed.\n")
                             result = "You failed this challenge."
                             nonlocal stop_adventure
                             stop_adventure = True
                         else:
-                            log.append(f"✅ {challenge['name']} — Rolled {total}, success!")
+                            log.append(f"✅ {challenge['name']} — Rolled {total}, success!\n")
                             result = "You succeeded!"
                         new_embed = discord.Embed(
                             title=f"⚔️ {challenge['name']}",
