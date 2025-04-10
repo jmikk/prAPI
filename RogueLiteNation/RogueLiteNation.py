@@ -24,12 +24,13 @@ class SkillTreeView(View):
             path_key = f"{self.category}/{'/'.join(self.path)}"
     
             if path_key not in unlocked:
+                current_path = list(self.path)
                 async def unlock_callback(interaction):
                     if interaction.user.id != self.ctx.author.id:
                         await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
                         return
                     try:
-                        result = await self.cog.unlock_skill(self.ctx.author, self.category, self.path)
+                        result = await self.cog.unlock_skill(self.ctx.author, self.category, current_path)
                         await interaction.response.send_message(result, ephemeral=True)
                         await self.setup()
                         await interaction.message.edit(embed=self.get_embed(), view=self)
@@ -49,8 +50,9 @@ class SkillTreeView(View):
             for key, child in children_items[start:end]:
                 def make_button(k, child_data):
                     async def nav_callback(interaction):
+                        await interaction.response.defer()
                         if interaction.user.id != self.ctx.author.id:
-                            await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                            await interaction.response.followup("Only the command user can use this button.", ephemeral=True)
                             return
                         try:
                             self.path.append(k)
@@ -59,7 +61,7 @@ class SkillTreeView(View):
                             await self.setup()
                             await interaction.message.edit(embed=self.get_embed(), view=self)
                         except Exception as e:
-                            await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                            await interaction.response.followup(f"❌ Error: {e}", ephemeral=True)
                             await self.ctx.send(f"Interaction error during navigation: {e}")
     
                     label = child_data.get("name", k)
@@ -73,8 +75,9 @@ class SkillTreeView(View):
     
             if len(self.path) > 1:
                 async def back_callback(interaction):
+                    await interaction.response.defer()
                     if interaction.user.id != self.ctx.author.id:
-                        await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                        await interaction.response.followup("Only the command user can use this button.", ephemeral=True)
                         return
                     try:
                         self.path.pop()
@@ -83,7 +86,7 @@ class SkillTreeView(View):
                         await self.setup()
                         await interaction.message.edit(embed=self.get_embed(), view=self)
                     except Exception as e:
-                        await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                        await interaction.response.followup(f"❌ Error: {e}", ephemeral=True)
                         await self.ctx.send(f"Interaction error during back: {e}")
     
                 back = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
