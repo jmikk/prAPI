@@ -452,16 +452,18 @@ class RogueLiteNation(commands.Cog):
 
         log = []
         challenge_number = 0
-        base_difficulty = 5
+        base_difficulty = 1
         stop_adventure = False
 
         while not stop_adventure:
             challenge_number += 1
             is_boss = challenge_number % 5 == 0
             difficulty = base_difficulty + challenge_number
-            difficulty = difficulty * 5
+            
 
             if is_boss:
+                difficulty = (base_difficulty + challenge_number) * 5
+
                 challenge = random.choice(boss_challenges)
                 score = sum([
                     abs(stats["insight_vs_instinct"] + bonus.get("insight", 0) - bonus.get("instinct", 0)),
