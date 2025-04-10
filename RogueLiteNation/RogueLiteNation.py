@@ -26,13 +26,24 @@ class SkillTreeView(View):
         if path_key not in unlocked:
             # Unlock button
             async def unlock_callback(interaction):
+                try:
                 if interaction.user.id != self.ctx.author.id:
                     await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
                     return
                 result = await self.cog.unlock_skill(self.ctx.author, self.category, self.path)
-                await interaction.response.send_message(result, ephemeral=True)
-                await self.setup()
-                await interaction.message.edit(embed=self.get_embed(), view=self)
+                                    await interaction.response.send_message(result, ephemeral=True)
+                                    await self.setup()
+                                                                                                                    await interaction.message.edit(embed=self.get_embed(), view=self)
+                except Exception as e:
+                    await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                except Exception as e:
+                    await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                except Exception as e:
+                    await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                except Exception as e:
+                    await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                except Exception as e:
+                    await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
 
             button = Button(label="Unlock", style=discord.ButtonStyle.green)
             button.callback = unlock_callback
@@ -46,6 +57,7 @@ class SkillTreeView(View):
 
         for key, child in children_items[start:end]:
             async def nav_callback(interaction, k=key):
+                try:
                 if interaction.user.id != self.ctx.author.id:
                     await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
                     return
@@ -65,6 +77,7 @@ class SkillTreeView(View):
         # Add back button if not at root
         if len(self.path) > 1:
             async def back_callback(interaction):
+                try:
                 if interaction.user.id != self.ctx.author.id:
                     await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
                     return
@@ -82,6 +95,7 @@ class SkillTreeView(View):
         if len(children_items) > page_size:
             if self.page > 0:
                 async def prev_page(interaction):
+                try:
                     if interaction.user.id != self.ctx.author.id:
                         await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
                         return
@@ -95,6 +109,7 @@ class SkillTreeView(View):
 
             if end < len(children_items):
                 async def next_page(interaction):
+                try:
                     if interaction.user.id != self.ctx.author.id:
                         await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
                         return
@@ -347,6 +362,23 @@ class RogueLiteNation(commands.Cog):
         return f"✅ You unlocked **{node['name']}**!"
 
         # Command to convert Wellcoins into Gems
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def adminreset(self, ctx, member: discord.Member):
+        """Admin only: Reset a user's skill tree and bonus stats."""
+        await self.config.user(member).unlocked_skills.set([])
+        await self.config.user(member).bonus_stats.set({"insight": 0, "instinct": 0, "faith": 0, "allegiance": 0, "good": 0, "evil": 0, "gems": 0})
+        await ctx.send(f"{member.display_name}'s skills and bonuses have been reset.")
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def admingems(self, ctx, member: discord.Member, amount: int):
+        """Admin only: Add bonus gems to a user."""
+        bonus = await self.config.user(member).bonus_stats()
+        bonus["gems"] += amount
+        await self.config.user(member).bonus_stats.set(bonus)
+        await ctx.send(f"Added {amount} Gems to {member.display_name}.")
+
     @commands.command()
     async def convertgems(self, ctx, amount: int):
         rate = 10
