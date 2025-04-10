@@ -1,0 +1,23 @@
+[
+    {
+        "name": "Bridge of Illusions",
+        "desc": "A shimmering bridge tests your perception and logic.",
+        "dual_stat": "insight_vs_instinct",
+        "pos_stat": "insight",
+        "neg_stat": "instinct"
+    },
+    {
+        "name": "Shrine of Loyalty",
+        "desc": "You must prove your devotion to something greater than yourself.",
+        "dual_stat": "faith_vs_allegiance",
+        "pos_stat": "faith",
+        "neg_stat": "allegiance"
+    },
+    {
+        "name": "Village Under Siege",
+        "desc": "Will you save the villagers or abandon them to their fate?",
+        "dual_stat": "good_vs_evil",
+        "pos_stat": "good",
+        "neg_stat": "evil"
+    }
+]
