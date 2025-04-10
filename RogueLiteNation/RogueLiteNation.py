@@ -61,15 +61,16 @@ class SkillView(View):
          # Show unlock button only if not unlocked and prerequisites met
         if not is_unlocked and self.tree_manager.has_unlocked_prerequisite(self.category, self.path, unlocked):
             async def unlock_callback(interaction):
-        try:
-            result = await self.cog.unlock_skill(self.ctx, self.category, self.path)
-            if result is not None:
-                await self.ctx.send(result)  # Error or confirmation message
-        except Exception as e:
-        await self.ctx.send(f"An error occurred while trying to unlock the skill: {e}")
-    self.skill = self.tree_manager.get_skill_node(self.category, self.path)
+                try:
+                    result = await self.cog.unlock_skill(self.ctx, self.category, self.path)
+                    if result is not None:
+                        await self.ctx.send(result)
+                except Exception as e:
+                    await self.ctx.send(f"An error occurred while trying to unlock the skill: {e}")
+
+                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
     await self.update_buttons()
-                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
+    await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
             unlock_button = Button(label="Unlock", style=discord.ButtonStyle.green)
             unlock_button.callback = unlock_callback
