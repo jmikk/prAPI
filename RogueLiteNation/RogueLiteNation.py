@@ -131,31 +131,23 @@ class SkillTreeView(View):
                 await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
 
 
-    async def _get_node(self):
-        try:
-            node = self.skill_tree.get("root", {})
-            for key in self.path[1:]:
-                node = node.get("children", {}).get(key, {})
-            return node
-        except Exception as e:
-            channel = self.cog.bot.get_channel(1098673276064120842)
-            if channel:
-                await channel.send(f"Interaction error during navigation: {e}")
+     def _get_node(self):
+        node = self.skill_tree.get("root", {})
+        for key in self.path[1:]:
+            node = node.get("children", {}).get(key, {})
+        return node
 
-    async def get_embed(self):
-        try:
-            embed = discord.Embed(
+
+     def get_embed(self):
+        embed = discord.Embed(
                 title=self.skill.get("name", "Unknown Skill"),
                 description=self.skill.get("description", "No description provided."),
                 color=discord.Color.gold()
-            )
-            embed.add_field(name="Cost", value=f"{self.skill.get('cost', 0)} Gems", inline=True)
-            embed.add_field(name="Path", value="/".join(self.path), inline=True)
-            return embed
-        except Exception as e:
-            channel = self.cog.bot.get_channel(1098673276064120842)
-            if channel:
-                await channel.send(f"Interaction error during navigation: {e}")
+        )
+        embed.add_field(name="Cost", value=f"{self.skill.get('cost', 0)} Gems", inline=True)
+        embed.add_field(name="Path", value="/".join(self.path), inline=True)
+        return embed
+
 
 # Main cog class for managing the RogueLite Nation game logic
 class RogueLiteNation(commands.Cog):
