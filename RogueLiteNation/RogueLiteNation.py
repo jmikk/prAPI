@@ -46,7 +46,7 @@ class SkillTreeView(View):
                 await self.setup()
                 await interaction.message.edit(embed=self.get_embed(), view=self)
 
-                        label = child.get("name", key)
+            label = child.get("name", key)
             path_key = f"{self.category}/{'/'.join(self.path + [key])}"
             emoji = "✅" if path_key in unlocked else "🔒"
             button = Button(label=f"{emoji} {label}", style=discord.ButtonStyle.blurple)
