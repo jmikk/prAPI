@@ -455,6 +455,21 @@ class RogueLiteNation(commands.Cog):
                     return
                 await interaction.response.edit_message(content="❌ Adventure canceled.", view=None)
                 self.stop()
+           
+            @discord.ui.button(label="View Stats", style=discord.ButtonStyle.blurple)
+            async def view_stats(self, interaction: discord.Interaction, button: Button):
+                if interaction.user != ctx.author:
+                    await interaction.response.send_message("Only you can use this option.", ephemeral=True)
+                    return
+                await ctx.invoke(self.cog.mystats)
+
+            @discord.ui.button(label="View Skill Tree", style=discord.ButtonStyle.blurple)
+            async def view_tree(self, interaction: discord.Interaction, button: Button):
+                if interaction.user != ctx.author:
+                    await interaction.response.send_message("Only you can use this option.", ephemeral=True)
+                    return
+                await ctx.invoke(self.cog.viewskills)
+                
 
         confirm_embed = discord.Embed(
         title="Are you ready to adventure?",
