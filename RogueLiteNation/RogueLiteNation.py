@@ -430,7 +430,7 @@ class RogueLiteNation(commands.Cog):
 
     @commands.command()
     async def startadventure(self, ctx):
-        """Begin an interactive adventure with scaling challenges, boss fights, and auto-advancing rooms."""
+        """Begin an interactive adventure. Click to roll when you're ready."""
         import random
         from discord.ui import View, Button
 
@@ -458,74 +458,96 @@ class RogueLiteNation(commands.Cog):
         base_difficulty = 5
         stop_adventure = False
 
-        class AdventureView(View):
-            def __init__(self, cog):
-                super().__init__(timeout=15)
-                self.cog = cog
-                self.choice_made = False
-
-            async def on_timeout(self):
-                self.choice_made = True
-                self.stop()
-
-            @discord.ui.button(label="Continue", style=discord.ButtonStyle.green)
-            async def continue_button(self, interaction: discord.Interaction, button: Button):
-                if interaction.user.id != user.id:
-                    await interaction.response.send_message("Only the adventurer may continue.", ephemeral=True)
-                    return
-                self.choice_made = True
-                await interaction.response.defer()
-                self.stop()
-
         while not stop_adventure:
             challenge_number += 1
             is_boss = challenge_number % 5 == 0
             difficulty = base_difficulty + challenge_number
-            view = AdventureView(self)
 
             if is_boss:
                 challenge = random.choice(boss_challenges)
-                roll = random.randint(1, 20)
                 score = sum([
                     stats["insight_vs_instinct"] + bonus.get("insight", 0) - bonus.get("instinct", 0),
                     stats["faith_vs_allegiance"] + bonus.get("faith", 0) - bonus.get("allegiance", 0),
                     stats["good_vs_evil"] + bonus.get("good", 0) - bonus.get("evil", 0)
                 ])
+
+                class BossView(View):
+                    def __init__(self):
+                        super().__init__(timeout=30)
+
+                    @discord.ui.button(label="Face the Boss", style=discord.ButtonStyle.red)
+                    async def roll_button(self, interaction: discord.Interaction, button: Button):
+                        if interaction.user.id != user.id:
+                            await interaction.response.send_message("Only the adventurer may roll.", ephemeral=True)
+                            return
+                        roll = random.randint(1, 20)
+                        total = roll + score
+                        if total < difficulty:
+                            log.append(f"❌ Boss {challenge['name']} — Rolled {total}, needed {difficulty}. Defeated!")
+                            result = "You were defeated."
+                            nonlocal stop_adventure
+                            stop_adventure = True
+                        else:
+                            log.append(f"✅ Boss {challenge['name']} — Rolled {total}, survived!")
+                            result = "You survived the boss!"
+                        new_embed = discord.Embed(
+                            title=f"🧠 Boss: {challenge['name']}",
+                            description=f"{challenge['desc']} 🎲 You rolled {roll} + {score} = **{total}** **{result}**",
+                            color=discord.Color.red()
+                        )
+                        await interaction.response.edit_message(embed=new_embed, view=None)
+                        self.stop()
+
                 embed = discord.Embed(
                     title=f"🧠 Boss Challenge #{challenge_number}: {challenge['name']}",
-                    description=f"{challenge['desc']}Rolling against **{difficulty}**...",
+                    description=f"{challenge['desc']} Click below to attempt this boss (Difficulty: {difficulty})",
                     color=discord.Color.red()
                 )
+                view = BossView()
                 await ctx.send(embed=embed, view=view)
                 await view.wait()
-
-                roll_result = roll + score
-                if roll_result < difficulty:
-                    log.append(f"❌ Boss {challenge['name']} — Rolled {roll_result}, needed {difficulty}. Defeated!")
-                    break
-                else:
-                    log.append(f"✅ Boss {challenge['name']} — Rolled {roll_result}, survived!")
 
             else:
                 challenge = random.choice(normal_challenges)
                 dual = challenge["dual_stat"]
                 pos, neg = challenge["pos_stat"], challenge["neg_stat"]
                 score = stats[dual] + bonus.get(pos, 0) - bonus.get(neg, 0)
-                roll = random.randint(1, 20)
+
+                class ChallengeView(View):
+                    def __init__(self):
+                        super().__init__(timeout=30)
+
+                    @discord.ui.button(label="Take the Challenge", style=discord.ButtonStyle.green)
+                    async def roll_button(self, interaction: discord.Interaction, button: Button):
+                        if interaction.user.id != user.id:
+                            await interaction.response.send_message("Only the adventurer may roll.", ephemeral=True)
+                            return
+                        roll = random.randint(1, 20)
+                        total = roll + score
+                        if total < difficulty:
+                            log.append(f"❌ {challenge['name']} — Rolled {total}, needed {difficulty}. Failed.")
+                            result = "You failed this challenge."
+                            nonlocal stop_adventure
+                            stop_adventure = True
+                        else:
+                            log.append(f"✅ {challenge['name']} — Rolled {total}, success!")
+                            result = "You succeeded!"
+                        new_embed = discord.Embed(
+                            title=f"⚔️ {challenge['name']}",
+                            description=f"{challenge['desc']} 🎲 You rolled {roll} + {score} = **{total}** **{result}**",
+                            color=discord.Color.orange()
+                        )
+                        await interaction.response.edit_message(embed=new_embed, view=None)
+                        self.stop()
+
                 embed = discord.Embed(
                     title=f"⚔️ Challenge #{challenge_number}: {challenge['name']}",
-                    description=f"{challenge['desc']}Rolling against **{base_difficulty + challenge_number}**...",
+                    description=f"{challenge['desc']} Click below to take this challenge (Difficulty: {difficulty})",
                     color=discord.Color.orange()
                 )
+                view = ChallengeView()
                 await ctx.send(embed=embed, view=view)
                 await view.wait()
-
-                roll_result = roll + score
-                if roll_result < difficulty:
-                    log.append(f"❌ {challenge['name']} — Rolled {roll_result}, needed {difficulty}. Failed.")
-                    break
-                else:
-                    log.append(f"✅ {challenge['name']} — Rolled {roll_result}, success!")
 
         reward = challenge_number * 3
         bonus["gems"] += reward
