@@ -146,7 +146,7 @@ class RogueLiteNation(commands.Cog):
         self.skill_tree_cache = tree
         await ctx.send("✅ Skill tree uploaded and saved!")
 
-      async def unlock_skill(self, user, category, path):
+    async def unlock_skill(self, user, category, path):
         tree = await self.config.guild(user.guild).skill_tree()
         category_tree = tree.get(category)
         if not category_tree:
