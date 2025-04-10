@@ -240,7 +240,18 @@ class RogueLiteNation(commands.Cog):
 
     async def unlock_skill(self, ctx, category, path):
         tree = await self.config.guild(ctx.guild).skill_tree()
-        node = tree.get(category)
+        category_tree = tree.get(category)
+        if not category_tree:
+            return "Skill tree category not found."
+
+        if path == ["root"]:
+            node = category_tree.get("root")
+        else:
+            node = category_tree.get("root")
+            for key in path[1:]:
+                node = node.get("children", {}).get(key)
+                if node is None:
+                    return "Skill path is invalid."
         for key in path[1:]:
             node = node.get("children", {}).get(key)
         if not node:
