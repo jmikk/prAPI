@@ -34,6 +34,7 @@ class SkillTreeView(View):
                     await interaction.message.edit(embed=self.get_embed(), view=self)
                 except Exception as e:
                     await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                    await self.ctx.send(f"Interaction error during unlock: {e}")
 
             button = Button(label="Unlock", style=discord.ButtonStyle.green)
             button.callback = unlock_callback
@@ -50,11 +51,15 @@ class SkillTreeView(View):
                     if interaction.user.id != self.ctx.author.id:
                         await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
                         return
-                    self.path.append(k)
-                    self.skill = self._get_node()
-                    self.page = 0
-                    await self.setup()
-                    await interaction.message.edit(embed=self.get_embed(), view=self)
+                    try:
+                        self.path.append(k)
+                        self.skill = self._get_node()
+                        self.page = 0
+                        await self.setup()
+                        await interaction.message.edit(embed=self.get_embed(), view=self)
+                    except Exception as e:
+                        await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                        await self.ctx.send(f"Interaction error during navigation: {e}")
 
                 label = child_data.get("name", k)
                 child_path_key = f"{self.category}/{'/'.join(self.path + [k])}"
@@ -70,11 +75,15 @@ class SkillTreeView(View):
                 if interaction.user.id != self.ctx.author.id:
                     await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
                     return
-                self.path.pop()
-                self.skill = self._get_node()
-                self.page = 0
-                await self.setup()
-                await interaction.message.edit(embed=self.get_embed(), view=self)
+                try:
+                    self.path.pop()
+                    self.skill = self._get_node()
+                    self.page = 0
+                    await self.setup()
+                    await interaction.message.edit(embed=self.get_embed(), view=self)
+                except Exception as e:
+                    await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                    await self.ctx.send(f"Interaction error during back: {e}")
 
             back = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
             back.callback = back_callback
@@ -86,9 +95,13 @@ class SkillTreeView(View):
                     if interaction.user.id != self.ctx.author.id:
                         await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
                         return
-                    self.page -= 1
-                    await self.setup()
-                    await interaction.message.edit(embed=self.get_embed(), view=self)
+                    try:
+                        self.page -= 1
+                        await self.setup()
+                        await interaction.message.edit(embed=self.get_embed(), view=self)
+                    except Exception as e:
+                        await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                        await self.ctx.send(f"Interaction error during prev page: {e}")
 
                 prev_btn = Button(label="⬅️ Prev", style=discord.ButtonStyle.grey)
                 prev_btn.callback = prev_page
@@ -99,9 +112,13 @@ class SkillTreeView(View):
                     if interaction.user.id != self.ctx.author.id:
                         await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
                         return
-                    self.page += 1
-                    await self.setup()
-                    await interaction.message.edit(embed=self.get_embed(), view=self)
+                    try:
+                        self.page += 1
+                        await self.setup()
+                        await interaction.message.edit(embed=self.get_embed(), view=self)
+                    except Exception as e:
+                        await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+                        await self.ctx.send(f"Interaction error during next page: {e}")
 
                 next_btn = Button(label="Next ➡️", style=discord.ButtonStyle.grey)
                 next_btn.callback = next_page
@@ -122,6 +139,7 @@ class SkillTreeView(View):
         embed.add_field(name="Cost", value=f"{self.skill.get('cost', 0)} Gems", inline=True)
         embed.add_field(name="Path", value="/".join(self.path), inline=True)
         return embed
+
 
 
 # Main cog class for managing the RogueLite Nation game logic
