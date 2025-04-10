@@ -73,7 +73,7 @@ class SkillView(View):
 
         
 
-        self.cog.bot.loop.create_task(add_unlock_button())
+        
 
         if not self.skill:
             return
