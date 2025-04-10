@@ -597,7 +597,10 @@ class AdventureLogView(View):
         self.reward = reward
         self.message = None
         self.update_buttons()
-    
+
+    def update_buttons(self):
+        pass  # Do nothing — we're using @discord.ui.button buttons below
+
     async def interaction_check(self, interaction: discord.Interaction):
         return True  # Optional: restrict to ctx.author
     
