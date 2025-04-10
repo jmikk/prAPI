@@ -508,34 +508,12 @@ class RogueLiteNation(commands.Cog):
                 view.message = view.message = await ctx.send(embed=embed, view=view)
                 await view.wait()
                 if not view.children[0].disabled and view.message:
-                    roll = random.randint(1, 20)
-                    total = roll + score
-                    if total < difficulty:
-                        log.append(f"❌ Boss {challenge['name']} — Rolled {total}, needed {difficulty}. Defeated!")
-                        result = "You were defeated."
-                        stop_adventure = True
-                    else:
-                        log.append(f"✅ Boss {challenge['name']} — Rolled {total}, survived!")
-                        result = "You survived the boss!"
+                    stop_adventure = True
+                    log.append(f"❌ {challenge['name']} — Rolled {total}, needed {difficulty}. Failed.")
+                    result = "You failed this challenge."
                     timeout_embed = discord.Embed(
-                        title=f"🧠 Boss: {challenge['name']} (Auto-Roll)",
-                        description=f"{challenge['desc']} ⏱️ Timeout! 🎲 You rolled {roll} + {score} = **{total}** **{result}**",
-                        color=discord.Color.red()
-                    )
-                    await view.message.edit(embed=timeout_embed, view=None)
-                if not view.children[0].disabled and view.message:
-                    roll = random.randint(1, 20)
-                    total = roll + score
-                    if total < difficulty:
-                        log.append(f"❌ {challenge['name']} — Rolled {total}, needed {difficulty}. Failed.")
-                        result = "You failed this challenge."
-                        stop_adventure = True
-                    else:
-                        log.append(f"✅ {challenge['name']} — Rolled {total}, success!")
-                        result = "You succeeded!"
-                    timeout_embed = discord.Embed(
-                        title=f"⚔️ {challenge['name']} (Auto-Roll)",
-                        description=f"{challenge['desc']} ⏱️ Timeout! 🎲 You rolled {roll} + {score} = **{total}** **{result}**",
+                        title=f"⚔️ {challenge['name']}",
+                        description=f"{challenge['desc']} ⏱️ Timeout!",
                         color=discord.Color.orange()
                     )
                     await view.message.edit(embed=timeout_embed, view=None)
@@ -582,7 +560,17 @@ class RogueLiteNation(commands.Cog):
                 view = ChallengeView()
                 await ctx.send(embed=embed, view=view)
                 await view.wait()
-
+                if not view.children[0].disabled and view.message:
+                    stop_adventure = True
+                    log.append(f"❌ {challenge['name']}, needed {difficulty}. Failed.")
+                    result = "You failed this challenge."
+                    timeout_embed = discord.Embed(
+                        title=f"⚔️ {challenge['name']}",
+                        description=f"{challenge['desc']} ⏱️ Timeout!",
+                        color=discord.Color.orange()
+                    )
+                    await view.message.edit(embed=timeout_embed, view=None)
+                    
         reward = challenge_number * 3
         bonus["gems"] += reward
         await self.config.user(user).bonus_stats.set(bonus)
