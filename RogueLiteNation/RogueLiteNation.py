@@ -474,6 +474,7 @@ class RogueLiteNation(commands.Cog):
                 class BossView(View):
                     def __init__(self):
                         super().__init__(timeout=30)
+                        self.message = None
 
                     @discord.ui.button(label="Face the Boss", style=discord.ButtonStyle.red)
                     async def roll_button(self, interaction: discord.Interaction, button: Button):
@@ -504,8 +505,40 @@ class RogueLiteNation(commands.Cog):
                     color=discord.Color.red()
                 )
                 view = BossView()
-                await ctx.send(embed=embed, view=view)
+                view.message = view.message = await ctx.send(embed=embed, view=view)
                 await view.wait()
+                if not view.children[0].disabled and view.message:
+                    roll = random.randint(1, 20)
+                    total = roll + score
+                    if total < difficulty:
+                        log.append(f"❌ Boss {challenge['name']} — Rolled {total}, needed {difficulty}. Defeated!")
+                        result = "You were defeated."
+                        stop_adventure = True
+                    else:
+                        log.append(f"✅ Boss {challenge['name']} — Rolled {total}, survived!")
+                        result = "You survived the boss!"
+                    timeout_embed = discord.Embed(
+                        title=f"🧠 Boss: {challenge['name']} (Auto-Roll)",
+                        description=f"{challenge['desc']} ⏱️ Timeout! 🎲 You rolled {roll} + {score} = **{total}** **{result}**",
+                        color=discord.Color.red()
+                    )
+                    await view.message.edit(embed=timeout_embed, view=None)
+                if not view.children[0].disabled and view.message:
+                    roll = random.randint(1, 20)
+                    total = roll + score
+                    if total < difficulty:
+                        log.append(f"❌ {challenge['name']} — Rolled {total}, needed {difficulty}. Failed.")
+                        result = "You failed this challenge."
+                        stop_adventure = True
+                    else:
+                        log.append(f"✅ {challenge['name']} — Rolled {total}, success!")
+                        result = "You succeeded!"
+                    timeout_embed = discord.Embed(
+                        title=f"⚔️ {challenge['name']} (Auto-Roll)",
+                        description=f"{challenge['desc']} ⏱️ Timeout! 🎲 You rolled {roll} + {score} = **{total}** **{result}**",
+                        color=discord.Color.orange()
+                    )
+                    await view.message.edit(embed=timeout_embed, view=None)
 
             else:
                 challenge = random.choice(normal_challenges)
@@ -516,6 +549,7 @@ class RogueLiteNation(commands.Cog):
                 class ChallengeView(View):
                     def __init__(self):
                         super().__init__(timeout=30)
+                        self.message = None
 
                     @discord.ui.button(label="Take the Challenge", style=discord.ButtonStyle.green)
                     async def roll_button(self, interaction: discord.Interaction, button: Button):
