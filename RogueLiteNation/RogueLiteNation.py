@@ -12,12 +12,7 @@ class SkillTreeManager:
 
     def get_skill_node(self, category, path):
         node = self.tree_data.get(category)
-        if not node:
-            return None
-        if path == ["root"]:
-            return node.get("root")
-        node = node.get("root")
-        for key in path[1:]:
+        for key in path[1:]:  # skip 'root'
             node = node.get("children", {}).get(key)
             if node is None:
                 return None
@@ -31,10 +26,7 @@ def load_skill_tree():
         return {}  # Return an empty tree if file doesn't exist
 
 class SkillView(View):
-    async def initialize_buttons(self):
-        await  self.update_buttons()
     def __init__(self, cog, ctx, category="general", path=None):
-        self.invoker = ctx.author
         super().__init__(timeout=60)
         self.cog = cog
         self.ctx = ctx
@@ -43,9 +35,11 @@ class SkillView(View):
         self.tree = cog.skill_tree_cache or {}
         self.tree_manager = SkillTreeManager(self.tree)
         self.skill = self.tree_manager.get_skill_node(category, self.path)
-        self.cog.bot.loop.create_task(self.initialize_buttons())
+        if self.skill is None:
+            return
+        self.update_buttons()
 
-    async def update_buttons(self):
+    def update_buttons(self):
         self.clear_items()
 
         async def unlock_callback(interaction):
@@ -61,67 +55,33 @@ class SkillView(View):
 
         async def add_unlock_button():
             is_unlocked = await check_unlocked()
-            label = "Unlocked" if is_unlocked else f"Unlock ({self.skill.get('cost', '?')} Gems)"
-            button = Button(label=label, style=discord.ButtonStyle.green, disabled=is_unlocked)
-            async def unlock_check(interaction):
-                if interaction.user != self.invoker:
-                    return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
-                await unlock_callback(interaction)
-            button.callback = unlock_check
+            button = Button(label="Unlock", style=discord.ButtonStyle.green, disabled=is_unlocked)
+            button.callback = unlock_callback
             self.add_item(button)
 
-        await add_unlock_button()
-
-        # Navigation Buttons for each child skill
-        for key, child in self.skill.get("children", {}).items():
-            if not isinstance(child, dict) or "name" not in child:
-                continue
-            button = Button(label=child["name"], style=discord.ButtonStyle.blurple)
-            async def nav_callback(interaction, k=key):
-                if interaction.user != self.invoker:
-                    return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
-                self.path.append(k)
-                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                await self.update_buttons()
-                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
-            button.callback = nav_callback
-            self.add_item(button)
+        self.cog.bot.loop.create_task(add_unlock_button())
 
         if not self.skill:
             return
 
         for key, child in self.skill.get("children", {}).items():
-            if not isinstance(child, dict) or "name" not in child:
-                continue
             async def nav_callback(interaction, k=key):
                 self.path.append(k)
                 self.skill = self.tree_manager.get_skill_node(self.category, self.path)
                 self.update_buttons()
                 await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
-            button = Button(label=child["name"], style=discord.ButtonStyle.blurple)
-            async def nav_callback(interaction, k=key):
-                if interaction.user != self.invoker:
-                    return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
-                self.path.append(k)
-                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                self.update_buttons()
-                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
-            button.callback = nav_callback
-            self.add_item(button)
+            self.add_item(Button(label=child["name"], style=discord.ButtonStyle.blurple))
             self.children[-1].callback = nav_callback
 
         if len(self.path) > 1:
-            button = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
             async def back_callback(interaction):
-                if interaction.user != self.invoker:
-                    return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
                 self.path.pop()
                 self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                await self.update_buttons()
+                self.update_buttons()
                 await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
-            button.callback = back_callback
-            self.add_item(button)
+
+            self.add_item(Button(label="⬅️ Back", style=discord.ButtonStyle.grey))
             self.children[-1].callback = back_callback
 
 
@@ -248,37 +208,21 @@ class RogueLiteNation(commands.Cog):
         await ctx.send(embed=embed)
 
     def get_skill_embed(self, skill, path):
-        if skill is None or not isinstance(skill, dict) or "name" not in skill:
-            return discord.Embed(title="Skill Not Found", description="This skill could not be found or is malformed.", color=discord.Color.red())
+        if skill is None:
+            return discord.Embed(title="Skill Not Found", description="This skill could not be found in the tree.", color=discord.Color.red())
         embed = discord.Embed(title=skill["name"], description=skill["description"], color=discord.Color.gold())
         embed.add_field(name="Cost", value=f"{skill['cost']} Gems", inline=True)
         embed.add_field(name="Path", value="/".join(path), inline=True)
         return embed
 
     @commands.command()
-    async def viewskills(self, ctx, category: str = None):
+    async def viewskills(self, ctx, category: str = "general"):
         """Open the skill tree viewer."""
         self.skill_tree_cache = await self.config.guild(ctx.guild).skill_tree()
-        self.skill_tree_cache = await self.config.guild(ctx.guild).skill_tree()
-        if category is None:
-            if not self.skill_tree_cache:
-                return await ctx.send("No skill trees available. Upload one with `$uploadskills`.")
-            view = View()
-            for cat in self.skill_tree_cache:
-                button = Button(label=cat.title(), style=discord.ButtonStyle.blurple)
-                async def cat_callback(interaction, c=cat):
-                    if interaction.user != ctx.author:
-                        return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
-                    v = SkillView(self, ctx, c)
-                    skill = v.skill
-                    await interaction.response.edit_message(embed=self.get_skill_embed(skill, ["root"]), view=v)
-                button.callback = cat_callback
-                view.add_item(button)
-            return await ctx.send("Choose a skill tree:", view=view)
         view = SkillView(self, ctx, category)
         skill = view.skill
         if skill is None:
-            return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.")
+            return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.\")
         embed = self.get_skill_embed(skill, view.path)
         await ctx.send(embed=embed, view=view)
 
@@ -343,14 +287,6 @@ class RogueLiteNation(commands.Cog):
         await self.config.guild(ctx.guild).skill_tree.set(tree)
         self.skill_tree_cache = tree
         await ctx.send("✅ Skill tree uploaded and saved!")
-
-    @commands.command()
-    async def exportskills(self, ctx):
-        """Download the current skill tree as a JSON file."""
-        tree = await self.config.guild(ctx.guild).skill_tree()
-        json_data = json.dumps(tree, indent=2)
-        file = discord.File(fp=discord.utils._bytes(json_data), filename="skill_tree.json")
-        await ctx.send("Here is your current skill tree:", file=file)
 
     @commands.command()
     async def convertgems(self, ctx, amount: int):
