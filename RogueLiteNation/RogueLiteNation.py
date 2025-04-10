@@ -127,30 +127,33 @@ class SkillTreeView(View):
         except Exception as e:
             channel = self.cog.bot.get_channel(1098673276064120842)
             if channel:
-                await channel.send(f"Interaction error during navigation: {e}")
-            else:
-                await self.ctx.send("❌ Could not find error logging channel.")
-
-            
-
+                await channel.send(f"Interaction error during navigation: {e}")            
 
     def _get_node(self):
-        node = self.skill_tree.get("root", {})
-        for key in self.path[1:]:
-            node = node.get("children", {}).get(key, {})
-        return node
+        try:
+            node = self.skill_tree.get("root", {})
+            for key in self.path[1:]:
+                node = node.get("children", {}).get(key, {})
+            return node
+        except Exception as e:
+            channel = self.cog.bot.get_channel(1098673276064120842)
+            if channel:
+                await channel.send(f"Interaction error during navigation: {e}")
 
     def get_embed(self):
-        embed = discord.Embed(
-            title=self.skill.get("name", "Unknown Skill"),
-            description=self.skill.get("description", "No description provided."),
-            color=discord.Color.gold()
-        )
-        embed.add_field(name="Cost", value=f"{self.skill.get('cost', 0)} Gems", inline=True)
-        embed.add_field(name="Path", value="/".join(self.path), inline=True)
-        return embed
-
-
+        try:
+            embed = discord.Embed(
+                title=self.skill.get("name", "Unknown Skill"),
+                description=self.skill.get("description", "No description provided."),
+                color=discord.Color.gold()
+            )
+            embed.add_field(name="Cost", value=f"{self.skill.get('cost', 0)} Gems", inline=True)
+            embed.add_field(name="Path", value="/".join(self.path), inline=True)
+            return embed
+        except Exception as e:
+            channel = self.cog.bot.get_channel(1098673276064120842)
+            if channel:
+                await channel.send(f"Interaction error during navigation: {e}")
 
 # Main cog class for managing the RogueLite Nation game logic
 class RogueLiteNation(commands.Cog):
