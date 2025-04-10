@@ -277,7 +277,7 @@ class RogueLiteNation(commands.Cog):
         if skill is None:
             return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.")
         embed = self.get_skill_embed(skill, view.path)
-        ".join(available + locked[:10])  # Limit to 10 locked for display
+        "".join(available + locked[:10])  # Limit to 10 locked for display
         await ctx.send(embed=embed, view=view)
 
     async def unlock_skill(self, ctx, category, path):
