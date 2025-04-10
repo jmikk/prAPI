@@ -476,6 +476,22 @@ class RogueLiteNation(commands.Cog):
                         super().__init__(timeout=30)
                         self.message = None
 
+                    async def on_timeout(self):
+                        nonlocal stop_adventure
+                        stop_adventure = True
+                        roll = random.randint(1, 20)
+                        total = roll + score
+                        log.append(f"⏱️ Timeout! Boss {challenge['name']} — Rolled {total}, needed {difficulty}. Defeated!")
+                        result = "You were defeated."
+                        timeout_embed = discord.Embed(
+                            title=f"🧠 Boss: {challenge['name']} (Timeout)",
+                            description=f"{challenge['desc']} 🎲 Auto-roll: {roll} + {score} = **{total}** **{result}**",
+                            color=discord.Color.red()
+                        )
+                        if self.message:
+                            await self.message.edit(embed=timeout_embed, view=None)
+                        self.message = None
+
                     @discord.ui.button(label="Face the Boss", style=discord.ButtonStyle.red)
                     async def roll_button(self, interaction: discord.Interaction, button: Button):
                         if interaction.user.id != user.id:
@@ -507,16 +523,6 @@ class RogueLiteNation(commands.Cog):
                 view = BossView()
                 view.message = view.message = await ctx.send(embed=embed, view=view)
                 await view.wait()
-                if not view.children[0].disabled and view.message:
-                    stop_adventure = True
-                    log.append(f"❌ {challenge['name']} — Rolled {total}, needed {difficulty}. Failed.")
-                    result = "You failed this challenge."
-                    timeout_embed = discord.Embed(
-                        title=f"⚔️ {challenge['name']}",
-                        description=f"{challenge['desc']} ⏱️ Timeout!",
-                        color=discord.Color.orange()
-                    )
-                    await view.message.edit(embed=timeout_embed, view=None)
 
             else:
                 challenge = random.choice(normal_challenges)
@@ -528,6 +534,21 @@ class RogueLiteNation(commands.Cog):
                     def __init__(self):
                         super().__init__(timeout=30)
                         self.message = None
+
+                    async def on_timeout(self):
+                        nonlocal stop_adventure
+                        stop_adventure = True
+                        roll = random.randint(1, 20)
+                        total = roll + score
+                        log.append(f"⏱️ Timeout! {challenge['name']} — Rolled {total}, needed {difficulty}. Failed.")
+                        result = "You failed this challenge."
+                        timeout_embed = discord.Embed(
+                            title=f"⚔️ {challenge['name']} (Timeout)",
+                            description=f"{challenge['desc']} 🎲 Auto-roll: {roll} + {score} = **{total}** **{result}**",
+                            color=discord.Color.orange()
+                        )
+                        if self.message:
+                            await self.message.edit(embed=timeout_embed, view=None)
 
                     @discord.ui.button(label="Take the Challenge", style=discord.ButtonStyle.green)
                     async def roll_button(self, interaction: discord.Interaction, button: Button):
@@ -560,16 +581,6 @@ class RogueLiteNation(commands.Cog):
                 view = ChallengeView()
                 await ctx.send(embed=embed, view=view)
                 await view.wait()
-                if not view.children[0].disabled and view.message:
-                    stop_adventure = True
-                    log.append(f"❌ {challenge['name']}, needed {difficulty}. Failed.")
-                    result = "You failed this challenge."
-                    timeout_embed = discord.Embed(
-                        title=f"⚔️ {challenge['name']}",
-                        description=f"{challenge['desc']} ⏱️ Timeout!",
-                        color=discord.Color.orange()
-                    )
-                    await view.message.edit(embed=timeout_embed, view=None)
                     
         reward = challenge_number * 3
         bonus["gems"] += reward
