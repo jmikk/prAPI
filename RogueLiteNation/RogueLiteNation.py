@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 import json
 from pathlib import Path
 from discord.ui import View, Button
+
 class SkillTreeView(View):
     def __init__(self, cog, ctx, category):
         super().__init__(timeout=120)
@@ -44,22 +45,25 @@ class SkillTreeView(View):
         end = start + page_size
 
         for key, child in children_items[start:end]:
-            async def nav_callback(interaction, k=key):
-                if interaction.user.id != self.ctx.author.id:
-                    await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
-                    return
-                self.path.append(k)
-                self.skill = self._get_node()
-                self.page = 0
-                await self.setup()
-                await interaction.message.edit(embed=self.get_embed(), view=self)
+            def make_button(k, child_data):
+                async def nav_callback(interaction):
+                    if interaction.user.id != self.ctx.author.id:
+                        await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                        return
+                    self.path.append(k)
+                    self.skill = self._get_node()
+                    self.page = 0
+                    await self.setup()
+                    await interaction.message.edit(embed=self.get_embed(), view=self)
 
-            label = child.get("name", key)
-            path_key = f"{self.category}/{'/'.join(self.path + [key])}"
-            emoji = "✅" if path_key in unlocked else "🔒"
-            button = Button(label=f"{emoji} {label}", style=discord.ButtonStyle.blurple)
-            button.callback = nav_callback
-            self.add_item(button)
+                label = child_data.get("name", k)
+                child_path_key = f"{self.category}/{'/'.join(self.path + [k])}"
+                emoji = "✅" if child_path_key in unlocked else "🔒"
+                button = Button(label=f"{emoji} {label}", style=discord.ButtonStyle.blurple)
+                button.callback = nav_callback
+                self.add_item(button)
+
+            make_button(key, child)
 
         if len(self.path) > 1:
             async def back_callback(interaction):
@@ -118,9 +122,6 @@ class SkillTreeView(View):
         embed.add_field(name="Cost", value=f"{self.skill.get('cost', 0)} Gems", inline=True)
         embed.add_field(name="Path", value="/".join(self.path), inline=True)
         return embed
-
-
-
 
 
 # Main cog class for managing the RogueLite Nation game logic
