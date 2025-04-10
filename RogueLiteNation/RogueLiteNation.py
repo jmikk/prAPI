@@ -5,6 +5,8 @@ import xml.etree.ElementTree as ET
 import json
 from pathlib import Path
 from discord.ui import View, Button
+import random
+from discord.ui import View, Button
 
 class SkillTreeView(View):
     def __init__(self, cog, ctx, category):
@@ -431,8 +433,41 @@ class RogueLiteNation(commands.Cog):
     @commands.command()
     async def startadventure(self, ctx):
         """Begin an interactive adventure. Click to roll when you're ready."""
-        import random
-        from discord.ui import View, Button
+
+        class ConfirmView(View):
+            def __init__(self):
+                super().__init__(timeout=30)
+                self.value = False
+
+            @discord.ui.button(label="Start Adventure (Spend All Gems)", style=discord.ButtonStyle.red)
+            async def confirm(self, interaction: discord.Interaction, button: Button):
+                if interaction.user != ctx.author:
+                    await interaction.response.send_message("Only you can confirm your adventure.", ephemeral=True)
+                    return
+                self.value = True
+                await interaction.response.edit_message(content="✅ Starting adventure...", view=None)
+                self.stop()
+
+            @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey)
+            async def cancel(self, interaction: discord.Interaction, button: Button):
+                if interaction.user != ctx.author:
+                    await interaction.response.send_message("Only you can cancel this.", ephemeral=True)
+                    return
+                await interaction.response.edit_message(content="❌ Adventure canceled.", view=None)
+                self.stop()
+
+        confirm_embed = discord.Embed(
+        title="Are you ready to adventure?",
+        description="Starting an adventure will consume **all your Gems** as payment for adventuring gear.💡 *Spend your Gems before starting if you want to use them!*",
+            color=discord.Color.orange()
+        )
+        view = ConfirmView()
+        msg = await ctx.send(embed=confirm_embed, view=view)
+        await view.wait()
+
+        if not view.value:
+            return
+
 
         user = ctx.author
         stats = await self.config.user(user).base_stats()
