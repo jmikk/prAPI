@@ -47,30 +47,7 @@ class SkillView(View):
     async def update_buttons(self):
         self.clear_items()
 
-        # Unlock button logic
-        path_key = f"{self.category}/{'/'.join(self.path)}"
-        user_config = self.cog.config.user(self.ctx.author)
-        unlocked = await user_config.unlocked_skills()
-        base = await user_config.base_stats()
-        bonus = await user_config.bonus_stats()
-        total_gems = base.get("gems", 0) + bonus.get("gems", 0)
-        cost = self.skill.get("cost", 0)
-
-        if path_key not in unlocked:
-            label = f"Unlock ({cost} Gems)"
-            button = Button(label=label, style=discord.ButtonStyle.green, disabled=total_gems < cost)
-
-            async def unlock_callback(interaction):
-                if interaction.user != self.ctx.author:
-                    return await interaction.response.send_message("You're not allowed to use this button.", ephemeral=True)
-                await self.cog.unlock_skill(self.ctx, self.category, self.path)
-                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                await self.update_buttons()
-                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
-
-            button.callback = unlock_callback
-            self.add_item(button)
-
+        
         
 
         self.cog.bot.loop.create_task(add_unlock_button())
