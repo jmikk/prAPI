@@ -439,9 +439,6 @@ class RogueLiteNation(commands.Cog):
         bonus = await self.config.user(user).bonus_stats()
         total_gems = stats["gems"] + bonus["gems"]
 
-        if total_gems <= 0:
-            return await ctx.send("❌ You need some Gems to go adventuring!")
-
         stats["gems"] = 0
         bonus["gems"] = 0
         await self.config.user(user).base_stats.set(stats)
