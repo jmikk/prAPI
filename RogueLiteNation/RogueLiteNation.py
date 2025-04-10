@@ -228,11 +228,6 @@ class RogueLiteNation(commands.Cog):
         embed.add_field(name="Cost", value=f"{skill['cost']} Gems", inline=True)
         embed.add_field(name="Path", value="/".join(path), inline=True)
 
-        # Unlock status
-        unlocked_skills = self.config.get_identity("user")._defaults["unlocked_skills"]
-        status_emoji = "✅" if path_key in unlocked_skills else "🔒"
-        embed.add_field(name="Status", value=status_emoji, inline=True)
-
         # Show unlock status
         async def get_unlock_status():
             unlocked = await self.config.user(self.ctx.author).unlocked_skills()
@@ -274,8 +269,8 @@ class RogueLiteNation(commands.Cog):
             return paths
 
         locked = collect_paths(["root"], tree)
-        skill_status = "
-".join(available + locked[:10])  # Limit to 10 locked for display
+        skill_status = " ".join(available + locked[:10])  # Limit to 10 locked for display
+        embed.add_field(name="Skill Overview", value=skill_status or "No skills found.", inline=False)
         await ctx.send(embed=embed, view=view)
 
     async def unlock_skill(self, ctx, category, path):
