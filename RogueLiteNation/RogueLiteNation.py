@@ -340,16 +340,18 @@ class RogueLiteNation(commands.Cog):
         await view.setup()
         await ctx.send(embed=view.get_embed(), view=view)
 
+
     @commands.command()
     async def viewunlocked(self, ctx):
-        """List all unlocked skills for the user."""
+        """List all unlocked skills for the user with pagination."""
         unlocked = await self.config.user(ctx.author).unlocked_skills()
         if not unlocked:
             return await ctx.send("You have not unlocked any skills yet.")
 
-        embed = discord.Embed(title=f"Unlocked Skills for {ctx.author.display_name}", color=discord.Color.green())
-        embed.description = "".join(f"✅ {path}" for path in unlocked)
-        await ctx.send(embed=embed)
+        skill_tree = await self.config.guild(ctx.guild).skill_tree()
+        view = UnlockedSkillsView(self, ctx, unlocked, skill_tree)
+        await view.setup()
+        await ctx.send(embed=view.get_embed(), view=view)
 
     @commands.command()
     async def uploadskills(self, ctx):
