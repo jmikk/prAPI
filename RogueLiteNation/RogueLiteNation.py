@@ -268,8 +268,7 @@ class RogueLiteNation(commands.Cog):
             return await ctx.send("You have not unlocked any skills yet.")
 
         embed = discord.Embed(title=f"Unlocked Skills for {ctx.author.display_name}", color=discord.Color.green())
-        embed.description = "
-".join(f"✅ {path}" for path in unlocked)
+        embed.description = "".join(f"✅ {path}" for path in unlocked)
         await ctx.send(embed=embed)
 
     @commands.command()
