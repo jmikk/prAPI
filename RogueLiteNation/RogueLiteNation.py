@@ -1,3 +1,117 @@
+# SkillTreeView for navigating and unlocking skills
+class SkillTreeView(View):
+    def __init__(self, cog, ctx, category):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.ctx = ctx
+        self.category = category
+        self.path = ["root"]
+        self.skill_tree = cog.skill_tree_cache.get(category, {})
+        self.skill = self._get_node()
+
+    async def setup(self):
+        self.clear_items()
+        unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
+        path_key = f"{self.category}/{'/'.join(self.path)}"
+
+        if path_key not in unlocked:
+            # Unlock button
+            async def unlock_callback(interaction):
+                if interaction.user.id != self.ctx.author.id:
+                    await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                    return
+                result = await self.cog.unlock_skill(self.ctx.author, self.category, self.path)
+                await interaction.response.send_message(result, ephemeral=True)
+                await self.setup()
+                await interaction.message.edit(embed=self.get_embed(), view=self)
+
+            button = Button(label="Unlock", style=discord.ButtonStyle.green)
+            button.callback = unlock_callback
+            self.add_item(button)
+
+                # Add navigation buttons for each child, with visual indicators and pagination
+        children_items = list(self.skill.get("children", {}).items())
+        page_size = 5
+        self.page = getattr(self, 'page', 0)
+        start = self.page * page_size
+        end = start + page_size
+
+        for key, child in children_items[start:end]:
+            async def nav_callback(interaction, k=key):
+                if interaction.user.id != self.ctx.author.id:
+                    await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                    return
+                self.path.append(k)
+                self.skill = self._get_node()
+                await self.setup()
+                await interaction.message.edit(embed=self.get_embed(), view=self)
+
+                        label = child.get("name", key)
+            path_key = f"{self.category}/{'/'.join(self.path + [key])}"
+            emoji = "✅" if path_key in unlocked else "🔒"
+            button = Button(label=f"{emoji} {label}", style=discord.ButtonStyle.blurple)
+            button.callback = nav_callback
+            self.add_item(button)
+
+                # Add back button if not at root
+        if len(self.path) > 1:
+            async def back_callback(interaction):
+                if interaction.user.id != self.ctx.author.id:
+                    await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                    return
+                self.path.pop()
+                self.skill = self._get_node()
+                await self.setup()
+                await interaction.message.edit(embed=self.get_embed(), view=self)
+
+            back = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
+            back.callback = back_callback
+                        self.add_item(back)
+
+        # Add pagination buttons if necessary
+        if len(children_items) > page_size:
+            if self.page > 0:
+                async def prev_page(interaction):
+                    if interaction.user.id != self.ctx.author.id:
+                        await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                        return
+                    self.page -= 1
+                    await self.setup()
+                    await interaction.message.edit(embed=self.get_embed(), view=self)
+
+                prev_btn = Button(label="⬅️ Prev", style=discord.ButtonStyle.grey)
+                prev_btn.callback = prev_page
+                self.add_item(prev_btn)
+
+            if end < len(children_items):
+                async def next_page(interaction):
+                    if interaction.user.id != self.ctx.author.id:
+                        await interaction.response.send_message("Only the command user can use this button.", ephemeral=True)
+                        return
+                    self.page += 1
+                    await self.setup()
+                    await interaction.message.edit(embed=self.get_embed(), view=self)
+
+                next_btn = Button(label="Next ➡️", style=discord.ButtonStyle.grey)
+                next_btn.callback = next_page
+                self.add_item(next_btn)
+
+    def _get_node(self):
+        node = self.skill_tree.get("root", {})
+        for key in self.path[1:]:
+            node = node.get("children", {}).get(key, {})
+        return node
+
+    def get_embed(self):
+        embed = discord.Embed(
+            title=self.skill.get("name", "Unknown Skill"),
+            description=self.skill.get("description", "No description provided."),
+            color=discord.Color.gold()
+        )
+        embed.add_field(name="Cost", value=f"{self.skill.get('cost', 0)} Gems", inline=True)
+        embed.add_field(name="Path", value="/".join(self.path), inline=True)
+        return embed
+
 import discord
 from redbot.core import commands, Config
 import aiohttp
@@ -7,7 +121,9 @@ from pathlib import Path
 from discord.ui import View, Button
 
 
+# Main cog class for managing the RogueLite Nation game logic
 class RogueLiteNation(commands.Cog):
+        # Initialization and configuration setup
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=789456123789, force_registration=True)
@@ -45,6 +161,7 @@ class RogueLiteNation(commands.Cog):
             "money": [18, 19, 16, 10, 23, 20, 1, 79, 22, 13, 76, 12, 11, 24, 15, 25, 14, 21]
         }
 
+        # Fetch prank census stats from NationStates API
     async def get_nation_stats(self, nation):
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation.lower().replace(' ', '_')};q=census;scale=all;mode=prank"
         headers = {"User-Agent": "Redbot-Roguelite/1.0"}
@@ -53,6 +170,7 @@ class RogueLiteNation(commands.Cog):
                 text = await resp.text()
         return self.parse_census_xml(text)
 
+        # Parse XML data returned from NationStates census API
     def parse_census_xml(self, xml_data):
         root = ET.fromstring(xml_data)
         prank_dict = {}
@@ -64,15 +182,18 @@ class RogueLiteNation(commands.Cog):
                 prank_dict[scale_id] = prank
         return prank_dict
 
+        # Calculate an average score on a 1–10 scale for a set of scale IDs
     def calculate_spectrum(self, pranks, ids):
         total = sum(pranks.get(str(i), 0) for i in ids)
         normalized = (total / len(ids)) * 9 + 1
         return int(normalized)
 
+        # Compare two sets of IDs to produce a single stat score difference
     def calculate_dual_stat(self, pranks, side_a_ids, side_b_ids):
         score = self.calculate_spectrum(pranks, side_a_ids) - self.calculate_spectrum(pranks, side_b_ids)
         return int(score)
 
+        # Compute all stats from prank census data
     def calculate_all_stats(self, pranks):
         return {
             "insight_vs_instinct": self.calculate_dual_stat(pranks, self.SCALE_IDS["wit"], self.SCALE_IDS["instinct"]),
@@ -81,12 +202,14 @@ class RogueLiteNation(commands.Cog):
             "gems": self.calculate_spectrum(pranks, self.SCALE_IDS["money"])
         }
 
+        # Command to link your NationStates nation and pull stats
     @commands.command()
     async def buildnation(self, ctx, *, nation: str):
         await self.config.user(ctx.author).nation.set(nation)
         await ctx.send(f"Nation set to **{nation}**!")
         await self.refreshstats(ctx)
 
+        # Command to refresh your stats from NationStates based on your linked nation
     @commands.command()
     async def refreshstats(self, ctx):
         nation = await self.config.user(ctx.author).nation()
@@ -97,6 +220,7 @@ class RogueLiteNation(commands.Cog):
         await self.config.user(ctx.author).base_stats.set(base_stats)
         await ctx.send(f"Base stats refreshed from **{nation}**!")
 
+        # Command to view your calculated stat spectrum
     @commands.command()
     async def mystats(self, ctx):
         base = await self.config.user(ctx.author).base_stats()
@@ -127,6 +251,27 @@ class RogueLiteNation(commands.Cog):
         await ctx.send(embed=embed)
 
 
+        # Admin command to upload a skill tree JSON file
+    @commands.command()
+    async def viewskills(self, ctx, category: str = "general"):
+        """Open the skill tree viewer."""
+        self.skill_tree_cache = await self.config.guild(ctx.guild).skill_tree()
+        view = SkillTreeView(self, ctx, category)
+        await view.setup()
+        await ctx.send(embed=view.get_embed(), view=view)
+
+    @commands.command()
+    async def viewunlocked(self, ctx):
+        """List all unlocked skills for the user."""
+        unlocked = await self.config.user(ctx.author).unlocked_skills()
+        if not unlocked:
+            return await ctx.send("You have not unlocked any skills yet.")
+
+        embed = discord.Embed(title=f"Unlocked Skills for {ctx.author.display_name}", color=discord.Color.green())
+        embed.description = "
+".join(f"✅ {path}" for path in unlocked)
+        await ctx.send(embed=embed)
+
     @commands.command()
     async def uploadskills(self, ctx):
         if not ctx.message.attachments:
@@ -146,6 +291,7 @@ class RogueLiteNation(commands.Cog):
         self.skill_tree_cache = tree
         await ctx.send("✅ Skill tree uploaded and saved!")
 
+        # Core logic for unlocking a skill from the tree
     async def unlock_skill(self, user, category, path):
         tree = await self.config.guild(user.guild).skill_tree()
         category_tree = tree.get(category)
@@ -197,6 +343,7 @@ class RogueLiteNation(commands.Cog):
         await user_config.unlocked_skills.set(unlocked)
         return f"✅ You unlocked **{node['name']}**!"
 
+        # Command to convert Wellcoins into Gems
     @commands.command()
     async def convertgems(self, ctx, amount: int):
         rate = 10
