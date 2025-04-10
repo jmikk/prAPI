@@ -458,10 +458,13 @@ class RogueLiteNation(commands.Cog):
            
             @discord.ui.button(label="View Stats", style=discord.ButtonStyle.blurple)
             async def view_stats(self, interaction: discord.Interaction, button: Button):
-                if interaction.user != ctx.author:
-                    await interaction.response.send_message("Only you can use this option.", ephemeral=True)
-                    return
-                await ctx.invoke(self.cog.mystats)
+                try:
+                    if interaction.user != ctx.author:
+                        await interaction.response.send_message("Only you can use this option.", ephemeral=True)
+                        return
+                    await ctx.invoke(self.cog.mystats)
+                except e:
+                    await interaction.response.send_message(e)
 
             @discord.ui.button(label="View Skill Tree", style=discord.ButtonStyle.blurple)
             async def view_tree(self, interaction: discord.Interaction, button: Button):
