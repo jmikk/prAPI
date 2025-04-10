@@ -610,14 +610,6 @@ class AdventureLogView(View):
                 child.disabled = True
             await self.message.edit(view=self)
     
-    async def interaction_callback(self, interaction: discord.Interaction):
-        if interaction.data["custom_id"] == "prev":
-            self.page -= 1
-        elif interaction.data["custom_id"] == "next":
-            self.page += 1
-            self.update_buttons()
-        await interaction.response.edit_message(embed=self.get_embed(), view=self)
-    
     def get_embed(self):
         start = self.page * self.per_page
         end = start + self.per_page
@@ -628,13 +620,16 @@ class AdventureLogView(View):
         )
         embed.set_footer(text=f"You earned {self.reward} Gems! | Page {self.page + 1} of {(len(self.entries) - 1) // self.per_page + 1}")
         return embed
-    
+        
     @discord.ui.button(label="⬅️ Previous", style=discord.ButtonStyle.grey, row=0)
     async def prev(self, interaction: discord.Interaction, button: Button):
-        await self.interaction_callback(interaction)
+        self.page -= 1
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
     
     @discord.ui.button(label="Next ➡️", style=discord.ButtonStyle.grey, row=0)
     async def next(self, interaction: discord.Interaction, button: Button):
-        await self.interaction_callback(interaction)
+        self.page += 1
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
     
    
