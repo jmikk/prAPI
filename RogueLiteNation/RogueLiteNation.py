@@ -131,7 +131,7 @@ class SkillTreeView(View):
                 await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
 
 
-    def _get_node(self):
+    async def _get_node(self):
         try:
             node = self.skill_tree.get("root", {})
             for key in self.path[1:]:
@@ -140,9 +140,9 @@ class SkillTreeView(View):
         except Exception as e:
             channel = self.cog.bot.get_channel(1098673276064120842)
             if channel:
-                channel.send(f"Interaction error during navigation: {e}")
+                await channel.send(f"Interaction error during navigation: {e}")
 
-    def get_embed(self):
+    async def get_embed(self):
         try:
             embed = discord.Embed(
                 title=self.skill.get("name", "Unknown Skill"),
@@ -155,7 +155,7 @@ class SkillTreeView(View):
         except Exception as e:
             channel = self.cog.bot.get_channel(1098673276064120842)
             if channel:
-                channel.send(f"Interaction error during navigation: {e}")
+                await channel.send(f"Interaction error during navigation: {e}")
 
 # Main cog class for managing the RogueLite Nation game logic
 class RogueLiteNation(commands.Cog):
