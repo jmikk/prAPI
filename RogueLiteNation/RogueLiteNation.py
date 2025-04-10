@@ -399,81 +399,6 @@ class RogueLiteNation(commands.Cog):
         await ctx.send(f"Converted {total_cost} Wellcoins to {amount} Gems!")
 
     @commands.command()
-    async def startadventure(self, ctx):
-        """Begin an adventure with scaling challenges, bosses every 5 rooms, and uploaded encounters."""
-        import random
-
-        user = ctx.author
-        stats = await self.config.user(user).base_stats()
-        bonus = await self.config.user(user).bonus_stats()
-        total_gems = stats["gems"] + bonus["gems"]
-
-        if total_gems <= 0:
-            return await ctx.send("❌ You need some Gems to go adventuring!")
-
-        # Spend all gems
-        stats["gems"] = 0
-        bonus["gems"] = 0
-        await self.config.user(user).base_stats.set(stats)
-        await self.config.user(user).bonus_stats.set(bonus)
-
-        normal_challenges = await self.config.guild(ctx.guild).get_raw("challenges", default=[])
-        boss_challenges = await self.config.guild(ctx.guild).get_raw("bosses", default=[])
-
-        if not normal_challenges or not boss_challenges:
-            return await ctx.send("❌ No challenges or bosses uploaded! Admins must upload some using `!uploadchallenges` and `!uploadbosses`.")
-
-        log = []
-        challenge_number = 0
-        base_difficulty = 5
-
-        while True:
-            challenge_number += 1
-            is_boss = challenge_number % 5 == 0
-
-            if is_boss:
-                challenge = random.choice(boss_challenges)
-                roll = random.randint(1, 20)
-                score = sum([
-                    stats["insight_vs_instinct"] + bonus.get("insight", 0) - bonus.get("instinct", 0),
-                    stats["faith_vs_allegiance"] + bonus.get("faith", 0) - bonus.get("allegiance", 0),
-                    stats["good_vs_evil"] + bonus.get("good", 0) - bonus.get("evil", 0)
-                ])
-                difficulty = base_difficulty + challenge_number
-                log.append(f"🧠 **Boss: {challenge['name']}** — {challenge['desc']}Roll: {roll} vs Score: {score} vs Difficulty: {difficulty}")
-                if roll + score < difficulty:
-                    log.append("💀 You were defeated by the boss!")
-                    break
-                else:
-                    log.append("✅ You survived the boss fight!")
-            else:
-                challenge = random.choice(normal_challenges)
-                dual = challenge["dual_stat"]
-                pos, neg = challenge["pos_stat"], challenge["neg_stat"]
-                score = stats[dual] + bonus.get(pos, 0) - bonus.get(neg, 0)
-                roll = random.randint(1, 20)
-                difficulty = base_difficulty + challenge_number
-                log.append(f"⚔️ **{challenge['name']}** — {challenge['desc']}Roll: {roll} vs Score: {score} vs Difficulty: {difficulty}")
-                if roll + score < difficulty:
-                    log.append("❌ You failed this encounter!")
-                    break
-                else:
-                    log.append("✅ Success!")
-
-        reward = challenge_number * 3
-        bonus["gems"] += reward
-        await self.config.user(user).bonus_stats.set(bonus)
-
-        result_embed = discord.Embed(
-            title="🧭 Your Adventure Log",
-            description="".join(log),
-            color=discord.Color.purple()
-        )
-        result_embed.set_footer(text=f"You earned {reward} Gems!")
-
-        await ctx.send(embed=result_embed)
-
-    @commands.command()
     @commands.has_permissions(administrator=True)
     async def uploadchallenges(self, ctx):
         """Upload a JSON list of normal adventure challenges."""
@@ -502,3 +427,114 @@ class RogueLiteNation(commands.Cog):
             await ctx.send("✅ Bosses uploaded!")
         except Exception as e:
             await ctx.send(f"❌ Failed to load bosses: {e}")
+
+    @commands.command()
+    async def startadventure(self, ctx):
+        """Begin an interactive adventure with scaling challenges, boss fights, and auto-advancing rooms."""
+        import random
+        from discord.ui import View, Button
+
+        user = ctx.author
+        stats = await self.config.user(user).base_stats()
+        bonus = await self.config.user(user).bonus_stats()
+        total_gems = stats["gems"] + bonus["gems"]
+
+        if total_gems <= 0:
+            return await ctx.send("❌ You need some Gems to go adventuring!")
+
+        stats["gems"] = 0
+        bonus["gems"] = 0
+        await self.config.user(user).base_stats.set(stats)
+        await self.config.user(user).bonus_stats.set(bonus)
+
+        normal_challenges = await self.config.guild(ctx.guild).get_raw("challenges", default=[])
+        boss_challenges = await self.config.guild(ctx.guild).get_raw("bosses", default=[])
+
+        if not normal_challenges or not boss_challenges:
+            return await ctx.send("❌ No challenges or bosses uploaded! Admins must upload some using `!uploadchallenges` and `!uploadbosses`.")
+
+        log = []
+        challenge_number = 0
+        base_difficulty = 5
+        stop_adventure = False
+
+        class AdventureView(View):
+            def __init__(self, cog):
+                super().__init__(timeout=15)
+                self.cog = cog
+                self.choice_made = False
+
+            async def on_timeout(self):
+                self.choice_made = True
+                self.stop()
+
+            @discord.ui.button(label="Continue", style=discord.ButtonStyle.green)
+            async def continue_button(self, interaction: discord.Interaction, button: Button):
+                if interaction.user.id != user.id:
+                    await interaction.response.send_message("Only the adventurer may continue.", ephemeral=True)
+                    return
+                self.choice_made = True
+                await interaction.response.defer()
+                self.stop()
+
+        while not stop_adventure:
+            challenge_number += 1
+            is_boss = challenge_number % 5 == 0
+            difficulty = base_difficulty + challenge_number
+            view = AdventureView(self)
+
+            if is_boss:
+                challenge = random.choice(boss_challenges)
+                roll = random.randint(1, 20)
+                score = sum([
+                    stats["insight_vs_instinct"] + bonus.get("insight", 0) - bonus.get("instinct", 0),
+                    stats["faith_vs_allegiance"] + bonus.get("faith", 0) - bonus.get("allegiance", 0),
+                    stats["good_vs_evil"] + bonus.get("good", 0) - bonus.get("evil", 0)
+                ])
+                embed = discord.Embed(
+                    title=f"🧠 Boss Challenge #{challenge_number}: {challenge['name']}",
+                    description=f"{challenge['desc']}Rolling against **{difficulty}**...",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed, view=view)
+                await view.wait()
+
+                roll_result = roll + score
+                if roll_result < difficulty:
+                    log.append(f"❌ Boss {challenge['name']} — Rolled {roll_result}, needed {difficulty}. Defeated!")
+                    break
+                else:
+                    log.append(f"✅ Boss {challenge['name']} — Rolled {roll_result}, survived!")
+
+            else:
+                challenge = random.choice(normal_challenges)
+                dual = challenge["dual_stat"]
+                pos, neg = challenge["pos_stat"], challenge["neg_stat"]
+                score = stats[dual] + bonus.get(pos, 0) - bonus.get(neg, 0)
+                roll = random.randint(1, 20)
+                embed = discord.Embed(
+                    title=f"⚔️ Challenge #{challenge_number}: {challenge['name']}",
+                    description=f"{challenge['desc']}Rolling against **{base_difficulty + challenge_number}**...",
+                    color=discord.Color.orange()
+                )
+                await ctx.send(embed=embed, view=view)
+                await view.wait()
+
+                roll_result = roll + score
+                if roll_result < difficulty:
+                    log.append(f"❌ {challenge['name']} — Rolled {roll_result}, needed {difficulty}. Failed.")
+                    break
+                else:
+                    log.append(f"✅ {challenge['name']} — Rolled {roll_result}, success!")
+
+        reward = challenge_number * 3
+        bonus["gems"] += reward
+        await self.config.user(user).bonus_stats.set(bonus)
+
+        result_embed = discord.Embed(
+            title="📜 Final Adventure Log",
+            description="".join(log),
+            color=discord.Color.gold()
+        )
+        result_embed.set_footer(text=f"You earned {reward} Gems!")
+        await ctx.send(embed=result_embed)
