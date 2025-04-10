@@ -462,6 +462,7 @@ class RogueLiteNation(commands.Cog):
                 if interaction.user != ctx.author:
                     await interaction.response.send_message("Only you can use this option.", ephemeral=True)
                     return
+                await interaction.response.defer()
                 await self.cog.mystats(ctx)
         
             @discord.ui.button(label="View Skill Tree", style=discord.ButtonStyle.blurple)
@@ -469,6 +470,7 @@ class RogueLiteNation(commands.Cog):
                 if interaction.user != ctx.author:
                     await interaction.response.send_message("Only you can use this option.", ephemeral=True)
                     return
+                await interaction.response.defer()
                 await self.cog.viewskills(ctx)
 
                 
