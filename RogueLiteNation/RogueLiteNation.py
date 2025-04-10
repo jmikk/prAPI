@@ -459,6 +459,7 @@ class RogueLiteNation(commands.Cog):
             challenge_number += 1
             is_boss = challenge_number % 5 == 0
             difficulty = base_difficulty + challenge_number
+            difficulty = difficulty * 5
 
             if is_boss:
                 challenge = random.choice(boss_challenges)
