@@ -125,6 +125,13 @@ class SkillTreeView(View):
                     next_btn.callback = next_page
                     self.add_item(next_btn)
         except Exception as e:
+            channel = self.cog.bot.get_channel(1098673276064120842)
+            if channel:
+                await channel.send(f"Interaction error during navigation: {e}")
+            else:
+                await self.ctx.send("❌ Could not find error logging channel.")
+
+            
 
 
     def _get_node(self):
