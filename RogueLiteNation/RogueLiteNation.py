@@ -1,3 +1,11 @@
+import discord
+from redbot.core import commands, Config
+import aiohttp
+import xml.etree.ElementTree as ET
+import json
+from pathlib import Path
+from discord.ui import View, Button
+
 # SkillTreeView for navigating and unlocking skills
 class SkillTreeView(View):
     def __init__(self, cog, ctx, category):
@@ -8,6 +16,7 @@ class SkillTreeView(View):
         self.path = ["root"]
         self.skill_tree = cog.skill_tree_cache.get(category, {})
         self.skill = self._get_node()
+        self.page = 0
 
     async def setup(self):
         self.clear_items()
@@ -29,10 +38,9 @@ class SkillTreeView(View):
             button.callback = unlock_callback
             self.add_item(button)
 
-                # Add navigation buttons for each child, with visual indicators and pagination
+        # Add navigation buttons for each child, with visual indicators and pagination
         children_items = list(self.skill.get("children", {}).items())
         page_size = 5
-        self.page = getattr(self, 'page', 0)
         start = self.page * page_size
         end = start + page_size
 
@@ -43,6 +51,7 @@ class SkillTreeView(View):
                     return
                 self.path.append(k)
                 self.skill = self._get_node()
+                self.page = 0
                 await self.setup()
                 await interaction.message.edit(embed=self.get_embed(), view=self)
 
@@ -53,7 +62,7 @@ class SkillTreeView(View):
             button.callback = nav_callback
             self.add_item(button)
 
-                # Add back button if not at root
+        # Add back button if not at root
         if len(self.path) > 1:
             async def back_callback(interaction):
                 if interaction.user.id != self.ctx.author.id:
@@ -61,6 +70,7 @@ class SkillTreeView(View):
                     return
                 self.path.pop()
                 self.skill = self._get_node()
+                self.page = 0
                 await self.setup()
                 await interaction.message.edit(embed=self.get_embed(), view=self)
 
@@ -112,13 +122,7 @@ class SkillTreeView(View):
         embed.add_field(name="Path", value="/".join(self.path), inline=True)
         return embed
 
-import discord
-from redbot.core import commands, Config
-import aiohttp
-import xml.etree.ElementTree as ET
-import json
-from pathlib import Path
-from discord.ui import View, Button
+
 
 
 # Main cog class for managing the RogueLite Nation game logic
