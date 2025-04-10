@@ -222,9 +222,24 @@ class RogueLiteNation(commands.Cog):
     def get_skill_embed(self, skill, path):
         if skill is None:
             return discord.Embed(title="Skill Not Found", description="This skill could not be found in the tree.", color=discord.Color.red())
+
+        path_key = f"general/{'/'.join(path)}"  # default category 'general'
         embed = discord.Embed(title=skill["name"], description=skill["description"], color=discord.Color.gold())
         embed.add_field(name="Cost", value=f"{skill['cost']} Gems", inline=True)
         embed.add_field(name="Path", value="/".join(path), inline=True)
+
+        # Show unlock status
+        async def get_unlock_status():
+            unlocked = await self.config.user(self.ctx.author).unlocked_skills()
+            if path_key in unlocked:
+                return "✅ Skill is unlocked."
+            else:
+                parent_key = f"general/{'/'.join(path[:-1])}" if len(path) > 1 else None
+                if not parent_key or parent_key in unlocked:
+                    return "🔓 Available to unlock."
+                else:
+                    return "🔒 Prerequisite skill required."
+
         return embed
 
     @commands.command()
@@ -236,6 +251,27 @@ class RogueLiteNation(commands.Cog):
         if skill is None:
             return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.")
         embed = self.get_skill_embed(skill, view.path)
+        # Show unlocked and available skill info in the channel
+        unlocked = await self.config.user(ctx.author).unlocked_skills()
+        available = []
+        for key in unlocked:
+            available.append(f"✅ {key}")
+
+        tree = self.skill_tree_cache.get(category, {}).get("root", {})
+        def collect_paths(base_path, node):
+            paths = []
+            if node.get("children"):
+                for k, child in node["children"].items():
+                    full_path = f"{category}/{'/'.join(base_path + [k])}"
+                    if full_path not in unlocked:
+                        paths.append(f"🔓 {full_path}")
+                    paths += collect_paths(base_path + [k], child)
+            return paths
+
+        locked = collect_paths(["root"], tree)
+        skill_status = "
+".join(available + locked[:10])  # Limit to 10 locked for display
+        embed.add_field(name="Skill Overview", value=skill_status or "No skills found.", inline=False)
         await ctx.send(embed=embed, view=view)
 
     async def unlock_skill(self, ctx, category, path):
