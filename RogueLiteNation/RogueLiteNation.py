@@ -131,14 +131,14 @@ class SkillTreeView(View):
                 await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
 
 
-     def _get_node(self):
+    def _get_node(self):
         node = self.skill_tree.get("root", {})
         for key in self.path[1:]:
             node = node.get("children", {}).get(key, {})
         return node
 
 
-     def get_embed(self):
+    def get_embed(self):
         embed = discord.Embed(
                 title=self.skill.get("name", "Unknown Skill"),
                 description=self.skill.get("description", "No description provided."),
