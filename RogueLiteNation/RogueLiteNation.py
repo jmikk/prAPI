@@ -66,7 +66,7 @@ class SkillTreeView(View):
 
             back = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
             back.callback = back_callback
-                        self.add_item(back)
+            self.add_item(back)
 
         # Add pagination buttons if necessary
         if len(children_items) > page_size:
