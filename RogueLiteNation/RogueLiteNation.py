@@ -69,8 +69,8 @@ class SkillView(View):
                     await self.ctx.send(f"An error occurred while trying to unlock the skill: {e}")
 
                 self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-    await self.update_buttons()
-    await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
+                await self.update_buttons()
+                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
             unlock_button = Button(label="Unlock", style=discord.ButtonStyle.green)
             unlock_button.callback = unlock_callback
