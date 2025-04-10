@@ -468,7 +468,7 @@ class RogueLiteNation(commands.Cog):
                 if interaction.user != ctx.author:
                     await interaction.response.send_message("Only you can use this option.", ephemeral=True)
                     return
-                await ctx.invoke(self.cog.viewskills)
+                await self.viewskills(ctx)
                 
 
         confirm_embed = discord.Embed(
