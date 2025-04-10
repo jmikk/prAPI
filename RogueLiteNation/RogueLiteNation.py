@@ -12,12 +12,7 @@ class SkillTreeManager:
 
     def get_skill_node(self, category, path):
         node = self.tree_data.get(category)
-        if not node:
-            return None
-        if path == ["root"]:
-            return node.get("root")
-        node = node.get("root")
-        for key in path[1:]:
+        for key in path[1:]:  # skip 'root'
             node = node.get("children", {}).get(key)
             if node is None:
                 return None
@@ -42,13 +37,27 @@ class SkillView(View):
         self.skill = self.tree_manager.get_skill_node(category, self.path)
         if self.skill is None:
             return
-        self.cog.bot.loop.create_task(self.update_buttons())
+        self.update_buttons()
 
-    async def update_buttons(self):
+    def update_buttons(self):
         self.clear_items()
 
-        
-        
+        async def unlock_callback(interaction):
+            await self.cog.unlock_skill(self.ctx, self.category, self.path)
+            self.skill = self.tree_manager.get_skill_node(self.category, self.path)
+            self.update_buttons()
+            await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
+
+        async def check_unlocked():
+            path_key = f"{self.category}/{'/'.join(self.path)}"
+            unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
+            return path_key in unlocked
+
+        async def add_unlock_button():
+            is_unlocked = await check_unlocked()
+            button = Button(label="Unlock", style=discord.ButtonStyle.green, disabled=is_unlocked)
+            button.callback = unlock_callback
+            self.add_item(button)
 
         self.cog.bot.loop.create_task(add_unlock_button())
 
@@ -56,26 +65,14 @@ class SkillView(View):
             return
 
         for key, child in self.skill.get("children", {}).items():
-            label = child["name"]
-            child_path_key = f"{self.category}/{'/'.join(self.path + [key])}"
-            unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
-            if child_path_key in unlocked:
-                label = f"✅ {label}"
-            else:
-                label = f"🔒 {label}"
-
-            button = Button(label=label, style=discord.ButtonStyle.blurple)
-
             async def nav_callback(interaction, k=key):
-                if interaction.user != self.ctx.author:
-                    return await interaction.response.send_message("You're not allowed to use these buttons.", ephemeral=True)
                 self.path.append(k)
                 self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                await self.update_buttons()
+                self.update_buttons()
                 await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
-            button.callback = nav_callback
-            self.add_item(button)
+            self.add_item(Button(label=child["name"], style=discord.ButtonStyle.blurple))
+            self.children[-1].callback = nav_callback
 
         if len(self.path) > 1:
             async def back_callback(interaction):
