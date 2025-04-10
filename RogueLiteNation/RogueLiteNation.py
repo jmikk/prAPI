@@ -269,8 +269,7 @@ class RogueLiteNation(commands.Cog):
             return paths
 
         locked = collect_paths(["root"], tree)
-        skill_status = "
-".join(available + locked[:10])  # Limit to 10 locked for display
+        skill_status = " ".join(available + locked[:10])  # Limit to 10 locked for display
         embed.add_field(name="Skill Overview", value=skill_status or "No skills found.", inline=False)
         await ctx.send(embed=embed, view=view)
 
