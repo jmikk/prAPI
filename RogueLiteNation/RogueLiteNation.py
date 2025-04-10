@@ -12,7 +12,12 @@ class SkillTreeManager:
 
     def get_skill_node(self, category, path):
         node = self.tree_data.get(category)
-        for key in path[1:]:  # skip 'root'
+        if not node:
+            return None
+        if path == ["root"]:
+            return node.get("root")
+        node = node.get("root")
+        for key in path[1:]:
             node = node.get("children", {}).get(key)
             if node is None:
                 return None
@@ -216,13 +221,13 @@ class RogueLiteNation(commands.Cog):
         return embed
 
     @commands.command()
-    async def viewskills(self, ctx, category: str = "root"):
+    async def viewskills(self, ctx, category: str = "general"):
         """Open the skill tree viewer."""
         self.skill_tree_cache = await self.config.guild(ctx.guild).skill_tree()
         view = SkillView(self, ctx, category)
         skill = view.skill
         if skill is None:
-            return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `$uploadskills`.")
+            return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.")
         embed = self.get_skill_embed(skill, view.path)
         await ctx.send(embed=embed, view=view)
 
