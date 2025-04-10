@@ -12,7 +12,12 @@ class SkillTreeManager:
 
     def get_skill_node(self, category, path):
         node = self.tree_data.get(category)
-        for key in path[1:]:  # skip 'root'
+        if not node:
+            return None
+        if path == ["root"]:
+            return node.get("root")
+        node = node.get("root")
+        for key in path[1:]:
             node = node.get("children", {}).get(key)
             if node is None:
                 return None
