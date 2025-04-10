@@ -23,6 +23,13 @@ class SkillTreeManager:
                 return None
         return node
 
+    def has_unlocked_prerequisite(self, category, path, unlocked):
+        if len(path) <= 1:
+            return True  # root node, always available
+        parent_path = path[:-1]
+        parent_key = f"{category}/{'/'.join(parent_path)}"
+        return parent_key in unlocked
+
 def load_skill_tree():
     try:
         with open(Path(__file__).parent / "skills.json", "r") as f:
@@ -46,21 +53,26 @@ class SkillView(View):
 
     async def update_buttons(self):
         self.clear_items()
-
-        async def unlock_callback(interaction):
-            await self.cog.unlock_skill(self.ctx, self.category, self.path)
-            self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-            await self.update_buttons()
-            await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
-
-        path_key = f"{self.category}/{'/'.join(self.path)}"
+        
         unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
+        path_key = f"{self.category}/{'/'.join(self.path)}"
         is_unlocked = path_key in unlocked
 
-        unlock_button = Button(label="Unlock", style=discord.ButtonStyle.green, disabled=is_unlocked)
-        unlock_button.callback = unlock_callback
-        self.add_item(unlock_button)
+         # Show unlock button only if not unlocked and prerequisites met
+        if not is_unlocked and self.tree_manager.has_unlocked_prerequisite(self.category, self.path, unlocked):
+            async def unlock_callback(interaction):
+                result = await self.cog.unlock_skill(self.ctx, self.category, self.path)
+                if result is not None:
+                    await self.ctx.send(result)  # Error or confirmation message
+                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
+                await self.update_buttons()
+                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
+            unlock_button = Button(label="Unlock", style=discord.ButtonStyle.green)
+            unlock_button.callback = unlock_callback
+            self.add_item(unlock_button)
+
+        #nav buttons
         if self.skill:
             for key, child in self.skill.get("children", {}).items():
                 async def nav_callback(interaction, k=key):
@@ -228,23 +240,28 @@ class RogueLiteNation(commands.Cog):
         for key in path[1:]:
             node = node.get("children", {}).get(key)
         if not node:
-            return
+            return "Skill not found."
 
         user = ctx.author
         user_config = self.config.user(user)
         unlocked = await user_config.unlocked_skills()
         path_key = f"{category}/{'/'.join(path)}"
+
         if path_key in unlocked:
-            await ctx.send("You've already unlocked this skill!")
-            return
+            return "You've already unlocked this skill!"
+
+        if len(path) > 1:
+            parent_path = path[:-1]
+            parent_key = f"{category}/{'/'.join(parent_path)}"
+            if parent_key not in unlocked:
+                return "You must unlock the previous skill first."
 
         stats = await user_config.base_stats()
         bonus = await user_config.bonus_stats()
         total_gems = stats["gems"] + bonus["gems"]
 
         if total_gems < node["cost"]:
-            await ctx.send("Not enough Gems!")
-            return
+            return "Not enough Gems!"
 
         if bonus["gems"] >= node["cost"]:
             bonus["gems"] -= node["cost"]
@@ -260,7 +277,8 @@ class RogueLiteNation(commands.Cog):
         await user_config.bonus_stats.set(bonus)
         unlocked.append(path_key)
         await user_config.unlocked_skills.set(unlocked)
-        await ctx.send(f"✅ You unlocked **{node['name']}**!")
+        return f"✅ You unlocked **{node['name']}**!"
+
 
     @commands.command()
     async def uploadskills(self, ctx):
