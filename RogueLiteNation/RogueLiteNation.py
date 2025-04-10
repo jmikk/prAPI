@@ -28,7 +28,7 @@ def load_skill_tree():
         with open(Path(__file__).parent / "skills.json", "r") as f:
             return json.load(f)
     except FileNotFoundError:
-        return {}  # Return an empty tree if file doesn't exist
+        return {}
 
 class SkillView(View):
     def __init__(self, cog, ctx, category="general", path=None):
@@ -40,55 +40,49 @@ class SkillView(View):
         self.tree = cog.skill_tree_cache or {}
         self.tree_manager = SkillTreeManager(self.tree)
         self.skill = self.tree_manager.get_skill_node(category, self.path)
-        if self.skill is None:
-            return
-        self.update_buttons()
 
-    def update_buttons(self):
+    async def prepare(self):
+        await self.update_buttons()
+
+    async def update_buttons(self):
         self.clear_items()
 
         async def unlock_callback(interaction):
             await self.cog.unlock_skill(self.ctx, self.category, self.path)
             self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-            self.update_buttons()
+            await self.update_buttons()
             await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
-        async def check_unlocked():
-            path_key = f"{self.category}/{'/'.join(self.path)}"
-            unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
-            return path_key in unlocked
+        path_key = f"{self.category}/{'/'.join(self.path)}"
+        unlocked = await self.cog.config.user(self.ctx.author).unlocked_skills()
+        is_unlocked = path_key in unlocked
 
-        async def add_unlock_button():
-            is_unlocked = await check_unlocked()
-            button = Button(label="Unlock", style=discord.ButtonStyle.green, disabled=is_unlocked)
-            button.callback = unlock_callback
-            self.add_item(button)
+        unlock_button = Button(label="Unlock", style=discord.ButtonStyle.green, disabled=is_unlocked)
+        unlock_button.callback = unlock_callback
+        self.add_item(unlock_button)
 
-        self.cog.bot.loop.create_task(add_unlock_button())
+        if self.skill:
+            for key, child in self.skill.get("children", {}).items():
+                async def nav_callback(interaction, k=key):
+                    self.path.append(k)
+                    self.skill = self.tree_manager.get_skill_node(self.category, self.path)
+                    await self.update_buttons()
+                    await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
-        if not self.skill:
-            return
-
-        for key, child in self.skill.get("children", {}).items():
-            async def nav_callback(interaction, k=key):
-                self.path.append(k)
-                self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                self.update_buttons()
-                await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
-
-            self.add_item(Button(label=child["name"], style=discord.ButtonStyle.blurple))
-            self.children[-1].callback = nav_callback
+                button = Button(label=child["name"], style=discord.ButtonStyle.blurple)
+                button.callback = nav_callback
+                self.add_item(button)
 
         if len(self.path) > 1:
             async def back_callback(interaction):
                 self.path.pop()
                 self.skill = self.tree_manager.get_skill_node(self.category, self.path)
-                self.update_buttons()
+                await self.update_buttons()
                 await interaction.response.edit_message(embed=self.cog.get_skill_embed(self.skill, self.path), view=self)
 
-            self.add_item(Button(label="⬅️ Back", style=discord.ButtonStyle.grey))
-            self.children[-1].callback = back_callback
-
+            back_button = Button(label="⬅️ Back", style=discord.ButtonStyle.grey)
+            back_button.callback = back_callback
+            self.add_item(back_button)
 
 class RogueLiteNation(commands.Cog):
     def __init__(self, bot):
@@ -149,7 +143,7 @@ class RogueLiteNation(commands.Cog):
 
     def calculate_spectrum(self, pranks, ids):
         total = sum(pranks.get(str(i), 0) for i in ids)
-        normalized = (total / len(ids)) * 9 + 1  # Normalize to range 1–10
+        normalized = (total / len(ids)) * 9 + 1
         return int(normalized)
 
     def calculate_dual_stat(self, pranks, side_a_ids, side_b_ids):
@@ -166,14 +160,12 @@ class RogueLiteNation(commands.Cog):
 
     @commands.command()
     async def buildnation(self, ctx, *, nation: str):
-        """Set your NationStates nation."""
         await self.config.user(ctx.author).nation.set(nation)
         await ctx.send(f"Nation set to **{nation}**!")
         await self.refreshstats(ctx)
 
     @commands.command()
     async def refreshstats(self, ctx):
-        """Refresh your base stats from your NationStates nation."""
         nation = await self.config.user(ctx.author).nation()
         if not nation:
             return await ctx.send("You need to set your nation first using `!setnation <name>`.")
@@ -184,7 +176,6 @@ class RogueLiteNation(commands.Cog):
 
     @commands.command()
     async def mystats(self, ctx):
-        """View your current effective stats."""
         base = await self.config.user(ctx.author).base_stats()
         bonus = await self.config.user(ctx.author).bonus_stats()
 
@@ -222,9 +213,9 @@ class RogueLiteNation(commands.Cog):
 
     @commands.command()
     async def viewskills(self, ctx, category: str = "general"):
-        """Open the skill tree viewer."""
         self.skill_tree_cache = await self.config.guild(ctx.guild).skill_tree()
         view = SkillView(self, ctx, category)
+        await view.prepare()
         skill = view.skill
         if skill is None:
             return await ctx.send("No skill found at the root of this tree. Please upload a valid skill tree using `!uploadskills`.")
@@ -255,7 +246,6 @@ class RogueLiteNation(commands.Cog):
             await ctx.send("Not enough Gems!")
             return
 
-        # Deduct gems (from bonus first)
         if bonus["gems"] >= node["cost"]:
             bonus["gems"] -= node["cost"]
         else:
@@ -263,7 +253,6 @@ class RogueLiteNation(commands.Cog):
             bonus["gems"] = 0
             stats["gems"] -= remaining
 
-        # Apply bonuses
         for stat, val in node.get("bonus", {}).items():
             bonus[stat] = bonus.get(stat, 0) + val
 
@@ -275,7 +264,6 @@ class RogueLiteNation(commands.Cog):
 
     @commands.command()
     async def uploadskills(self, ctx):
-        """Admin only: Upload a skill tree by attaching a JSON file."""
         if not ctx.message.attachments:
             return await ctx.send("Please attach a JSON file containing the skill tree.")
 
@@ -295,7 +283,6 @@ class RogueLiteNation(commands.Cog):
 
     @commands.command()
     async def convertgems(self, ctx, amount: int):
-        """Convert Wellcoins to Gems at 10:1 rate."""
         rate = 10
         total_cost = amount * rate
         user = ctx.author
