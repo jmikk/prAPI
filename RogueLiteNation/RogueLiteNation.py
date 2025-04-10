@@ -466,9 +466,9 @@ class RogueLiteNation(commands.Cog):
             if is_boss:
                 challenge = random.choice(boss_challenges)
                 score = sum([
-                    stats["insight_vs_instinct"] + bonus.get("insight", 0) - bonus.get("instinct", 0),
-                    stats["faith_vs_allegiance"] + bonus.get("faith", 0) - bonus.get("allegiance", 0),
-                    stats["good_vs_evil"] + bonus.get("good", 0) - bonus.get("evil", 0)
+                    abs(stats["insight_vs_instinct"] + bonus.get("insight", 0) - bonus.get("instinct", 0)),
+                    abs(stats["faith_vs_allegiance"] + bonus.get("faith", 0) - bonus.get("allegiance", 0)),
+                    abs(stats["good_vs_evil"] + bonus.get("good", 0) + bonus.get("evil", 0))
                 ])
 
                 class BossView(View):
@@ -511,7 +511,7 @@ class RogueLiteNation(commands.Cog):
                 challenge = random.choice(normal_challenges)
                 dual = challenge["dual_stat"]
                 pos, neg = challenge["pos_stat"], challenge["neg_stat"]
-                score = stats[dual] + bonus.get(pos, 0) - bonus.get(neg, 0)
+                score = abs(stats[dual] + bonus.get(pos, 0) - bonus.get(neg, 0))
 
                 class ChallengeView(View):
                     def __init__(self):
