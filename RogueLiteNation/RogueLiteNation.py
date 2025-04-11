@@ -158,7 +158,8 @@ class SkillTreeView(View):
 
 # Main cog class for managing the RogueLite Nation game logic
 class RogueLiteNation(commands.Cog):
-        # Initialization and configuration setup
+        
+    # Initialization and configuration setup
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=789456123789, force_registration=True)
@@ -196,7 +197,18 @@ class RogueLiteNation(commands.Cog):
             "money": [18, 19, 16, 10, 23, 20, 1, 79, 22, 13, 76, 12, 11, 24, 15, 25, 14, 21]
         }
 
-        # Fetch prank census stats from NationStates API
+    
+    async def has_skill(self, user: discord.User, path: str) -> bool:
+        """
+        Check if a user has a specific skill unlocked.
+        :param user: The Discord user to check.
+        :param path: The full skill path string, like "general/root/combat/dual_wield".
+        :return: True if the skill is unlocked, False otherwise.
+        """
+        unlocked = await self.config.user(user).unlocked_skills()
+        return path in unlocked
+    
+    # Fetch prank census stats from NationStates API
     async def get_nation_stats(self, nation):
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation.lower().replace(' ', '_')};q=census;scale=all;mode=prank"
         headers = {"User-Agent": "Redbot-Roguelite/1.0"}
@@ -492,9 +504,9 @@ class RogueLiteNation(commands.Cog):
         stats = await self.config.user(user).base_stats()
         bonus = await self.config.user(user).bonus_stats()
         total_gems = stats["gems"] + bonus["gems"]
-
-        stats["gems"] = 0
-        bonus["gems"] = 0
+        if not has_skill(ctx.author,"root/wealth_watcher"):
+            stats["gems"] = 0
+            bonus["gems"] = 0
         await self.config.user(user).base_stats.set(stats)
         await self.config.user(user).bonus_stats.set(bonus)
 
