@@ -504,7 +504,7 @@ class RogueLiteNation(commands.Cog):
         stats = await self.config.user(user).base_stats()
         bonus = await self.config.user(user).bonus_stats()
         total_gems = stats["gems"] + bonus["gems"]
-        if not has_skill(ctx.author,"root/wealth_watcher"):
+        if not self.has_skill(ctx.author,"root/wealth_watcher"):
             stats["gems"] = 0
             bonus["gems"] = 0
         await self.config.user(user).base_stats.set(stats)
