@@ -1949,62 +1949,6 @@ class Hungar(commands.Cog):
         embed.add_field(name="❤️ **HP**", value=f"{player['stats']['HP']}", inline=True)
     
         await ctx.send(embed=embed, ephemeral=True)
-
-
-    @hunger.command()
-    async def place_bet(self, ctx, amount: int, *, tribute: str):
-        """Place a bet on a tribute."""
-
-        if not ("<" in tribute):
-            tribute = f"**{tribute}**"
-
-        tribute = tribute.strip()  # Clean up any extra spaces        
-        
-        if amount <= 0:
-            await ctx.send("Bet amount must be greater than zero.")
-            return
-    
-        user_gold = await self.config_gold.user(ctx.author).master_balance()
-        if amount > user_gold:
-            await ctx.send("You don't have enough Wellcoins to place that bet. You can always play in the games to earn money or chat a little in the server.")
-            return
-    
-        guild = ctx.guild
-        players = await self.config.guild(guild).players()
-        tribute = tribute.lower()
-
-        config = await self.config.guild(guild).all()
-        
-        day_counter = config.get("day_counter", 0)
-
-        # Restrict betting to days 1 and 2
-        if day_counter > 1:
-            await ctx.send("Betting is only allowed on Day 0 and Day 1.")
-            return
-    
-        # Validate tribute
-        tribute_id = next((pid for pid, pdata in players.items() if pdata["name"].lower() == tribute), None)
-        if not tribute_id:
-            await ctx.send("Tribute not found. Please check the name and try again.")
-            return
-    
-        # Save the bet
-        user_bets = await self.config.user(ctx.author).bets()
-        if tribute_id in user_bets:
-            await ctx.send("You have already placed a bet on this tribute.")
-            return
-    
-        user_bets[tribute_id] = {
-            "amount": amount,
-            "daily_earnings": 0
-        }
-        await self.config.user(ctx.author).bets.set(user_bets)
-    
-        # Deduct gold
-        await self.config_gold.user(ctx.author).master_balance.set(user_gold - amount)
-    
-        tribute_name = players[tribute_id]["name"]
-        await ctx.send(f"{ctx.author.mention} has placed a bet of {amount} Wellcoins on {tribute_name}. Good luck!")
     
     @hunger.command()
     async def check_wellcoins(self, ctx):
