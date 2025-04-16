@@ -10,6 +10,7 @@ from discord import Interaction, TextStyle, SelectOption
 import aiofiles
 import traceback
 from discord.utils import get
+from discord import app_commands
 
 
 class EqualizerButton(Button):
