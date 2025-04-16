@@ -642,86 +642,71 @@ class ViewBidsButton(Button):
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
 
-class BetModal(Modal, title="Place a Bet"):
-    def __init__(self, cog: commands.Cog, interaction: Interaction):
-        super().__init__(timeout=60)
-        self.cog = cog
-        self.interaction = interaction
-
-        self.tribute = TextInput(
-            label="Tribute (mention or name)",
-            placeholder="e.g., @Player or PlayerName",
-            required=True
-        )
-        self.amount = TextInput(
-            label="Bet Amount",
-            placeholder="Enter a number or 'all'",
-            required=True
-        )
-
-        self.add_item(self.tribute)
-        self.add_item(self.amount)
-
-    async def on_submit(self, interaction: Interaction):
-        tribute_input = self.tribute.value.strip()
-        bet_input = self.amount.value.strip().lower()
+    @app_commands.command(name="placebet", description="Place a bet on a tribute.")
+    @app_commands.describe(
+        tribute="Choose a living tribute",
+        amount="Amount of Wellcoins to bet (number or 'all')"
+    )
+    async def place_bet(self, interaction: Interaction, tribute: str, amount: str):
         guild = interaction.guild
+        user = interaction.user
 
-        try:
-            players = await self.cog.config.guild(guild).players()
+        current_day = await self.config.guild(guild).current_day()
+        if current_day not in (0, 1):
+            await interaction.response.send_message("❌ You can only place bets on Day 0 or Day 1.", ephemeral=True)
+            return
 
-            # Match tribute
-            tribute_id = None
-            for pid, pdata in players.items():
-                if not pdata.get("alive"):
-                    continue
-                if pid.isdigit() and tribute_input.startswith("<@") and tribute_input.strip("<@!>") == pid:
-                    tribute_id = pid
-                    break
-                elif pdata.get("name", "").lower() == tribute_input.lower():
-                    tribute_id = pid
-                    break
+        players = await self.config.guild(guild).players()
 
-            if not tribute_id:
-                await interaction.response.send_message("❌ No living tribute found with that name or mention.", ephemeral=True)
-                return
+        tribute_data = players.get(tribute)
+        if not tribute_data or not tribute_data.get("alive"):
+            await interaction.response.send_message("❌ That tribute isn't alive or doesn't exist.", ephemeral=True)
+            return
 
-            # Validate bet amount
-            user_gold = await self.cog.config_gold.user(interaction.user).master_balance()
+        user_gold = await self.config_gold.user(user).master_balance()
 
-            if bet_input == "all":
-                bet_amount = user_gold
-            else:
-                if not bet_input.isdigit():
-                    await interaction.response.send_message("❌ Invalid bet amount. Must be a number or 'all'.", ephemeral=True)
-                    return
-                bet_amount = int(bet_input)
+        if amount.lower() == "all":
+            bet_amount = user_gold
+        elif amount.isdigit():
+            bet_amount = int(amount)
+        else:
+            await interaction.response.send_message("❌ Invalid amount. Please enter a number or 'all'.", ephemeral=True)
+            return
 
-            if bet_amount <= 0 or bet_amount > user_gold:
-                await interaction.response.send_message(f"❌ You only have {user_gold} Wellcoins.", ephemeral=True)
-                return
-
-            # Deduct and record the bet
-            await self.cog.config_gold.user(interaction.user).master_balance.set(user_gold - bet_amount)
-
-            user_bets = await self.cog.config.user(interaction.user).bets()
-            if tribute_id in user_bets:
-                user_bets[tribute_id]["amount"] += bet_amount
-            else:
-                user_bets[tribute_id] = {"amount": bet_amount, "daily_earnings": 0}
-            await self.cog.config.user(interaction.user).bets.set(user_bets)
-
-            tribute_name = players[tribute_id]["name"]
+        if bet_amount <= 0 or bet_amount > user_gold:
             await interaction.response.send_message(
-                f"✅ You bet **{bet_amount} Wellcoins** on **{tribute_name}**!",
-                ephemeral=True
+                f"❌ You don't have enough Wellcoins. Your balance: {user_gold}", ephemeral=True
             )
+            return
 
-        except Exception as e:
-            await interaction.response.send_message(f"⚠️ An error occurred: {e}", ephemeral=True)
+        # Deduct and record the bet
+        await self.config_gold.user(user).master_balance.set(user_gold - bet_amount)
+        user_bets = await self.config.user(user).bets()
 
-    async def on_error(self, interaction: Interaction, error: Exception):
-        await interaction.response.send_message(f"Unexpected error: {error}", ephemeral=True)
+        if tribute in user_bets:
+            user_bets[tribute]["amount"] += bet_amount
+        else:
+            user_bets[tribute] = {"amount": bet_amount, "daily_earnings": 0}
+
+        await self.config.user(user).bets.set(user_bets)
+        await interaction.response.send_message(
+            f"💰 You bet **{bet_amount} Wellcoins** on **{tribute_data['name']}**!", ephemeral=True
+        )
+
+    @place_bet.autocomplete("tribute")
+    async def tribute_autocomplete(self, interaction: Interaction, current: str):
+        guild = interaction.guild
+        players = await self.config.guild(guild).players()
+        options = []
+
+        for pid, pdata in players.items():
+            if not pdata.get("alive"):
+                continue
+            name = pdata.get("name", "")
+            if current.lower() in name.lower():
+                options.append(app_commands.Choice(name=name, value=pid))
+
+        return options[:25]
 
 
 class BettingButton(Button):
