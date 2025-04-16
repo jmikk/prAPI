@@ -898,6 +898,10 @@ class Hungar(commands.Cog):
 
         self.ai_manager = HungerGamesAI(self)
 
+    async def cog_load(self):
+        self.bot.tree.add_command(self.place_bet)
+
+
 
     async def report_error(self, channel, error):
         """Send error details to a designated channel."""
