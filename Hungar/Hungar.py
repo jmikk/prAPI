@@ -1370,7 +1370,7 @@ class Hungar(commands.Cog):
     
         # Send elimination leaderboard
         if leaderboard:
-            leaderboard.sort(key=lambda x: x["day"])
+            leaderboard.sort(key=lambda x: x["day"])[:25]
             elim_embed = discord.Embed(
                 title="🏅 Elimination Leaderboard 🏅",
                 description="Here are the players eliminated so far:",
@@ -1385,7 +1385,7 @@ class Hungar(commands.Cog):
             await ctx.send(embed=elim_embed)
     
             # Kill leaderboard
-            sorted_players = sorted(players.values(), key=lambda p: len(p["kill_list"]), reverse=True)
+            sorted_players = sorted(players.values(), key=lambda p: len(p["kill_list"]), reverse=True)[:25]
             kill_embed = discord.Embed(
                 title="🏆 Kill Leaderboard 🏆",
                 description="Here are the top killers:",
