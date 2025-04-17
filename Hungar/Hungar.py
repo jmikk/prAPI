@@ -2273,42 +2273,49 @@ class Hungar(commands.Cog):
         guild = ctx.guild
         await self.config.guild(guild).players.clear()
         await ctx.send("All signups have been cleared. The player list has been reset.")
-
+    
     @app_commands.command(name="sponsor", description="Sponsor a tribute with a random stat boost.")
     @app_commands.describe(tribute="Select a tribute to sponsor")
     async def sponsor(self, interaction: Interaction, tribute: str):
-        guild = interaction.guild
-        user = interaction.user
-        config = await self.config.guild(guild).all()
-        players = config["players"]
-        day = config["day_count"]
+        try:
+            guild = interaction.guild
+            user = interaction.user
+            config = await self.config.guild(guild).all()
+            players = config["players"]
+            day = config["current_day"]
+    
+            # Cost increases as days go on
+            cost = 10 + (day * 5)
+            user_gold = await self.config_gold.user(user).master_balance()
+    
+            if tribute not in players or not players[tribute]["alive"]:
+                await interaction.response.send_message("❌ That tribute doesn't exist or is no longer alive.", ephemeral=True)
+                return
+    
+            if user_gold < cost:
+                await interaction.response.send_message(f"❌ You need at least {cost} Wellcoins to sponsor someone. Your balance: {user_gold}", ephemeral=True)
+                return
+    
+            # Deduct cost
+            await self.config_gold.user(user).master_balance.set(user_gold - cost)
+    
+            # Apply random stat boost
+            tribute_data = players[tribute]
+            stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
+            boost = random.randint(1, 10)
+            tribute_data["stats"][stat] += boost
+    
+            await self.config.guild(guild).players.set(players)
+    
+            await interaction.response.send_message(
+                f"🎁 **{user.display_name}** sponsored **{tribute_data['name']}** with **+{boost} {stat}** for **{cost} Wellcoins!**",
+                ephemeral=False
+            )
+    
+        except Exception as e:
+            await interaction.response.send_message(f"⚠️ Error in `/sponsor`: `{type(e).__name__}: {e}`", ephemeral=True)
+            raise e  # Re-raise so it still shows in the bot's console/logs
 
-        # Cost increases as days go on
-        cost = 10 + (day * 5)
-        user_gold = await self.config_gold.user(user).master_balance()
-
-        if tribute not in players or not players[tribute]["alive"]:
-            await interaction.response.send_message("❌ That tribute doesn't exist or is no longer alive.", ephemeral=True)
-            return
-
-        if user_gold < cost:
-            await interaction.response.send_message(f"❌ You need at least {cost} Wellcoins to sponsor someone. Your balance: {user_gold}", ephemeral=True)
-            return
-
-        # Deduct cost
-        await self.config_gold.user(user).master_balance.set(user_gold - cost)
-
-        # Apply random stat boost
-        tribute_data = players[tribute]
-        stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
-        boost = random.randint(1, 10)
-        tribute_data["stats"][stat] += boost
-
-        await self.config.guild(guild).players.set(players)
-
-        await interaction.response.send_message(
-            f"🎁 **{user.display_name}** sponsored **{tribute_data['name']}** with **+{boost} {stat}** for **{cost} Wellcoins!**"
-        )
 
     @sponsor.autocomplete("tribute")
     async def sponsor_autocomplete(self, interaction: Interaction, current: str):
