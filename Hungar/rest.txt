@@ -1,1 +1,102 @@
-This is a line of rest
+{name1} took a moment to watch the clouds drift by.
+{name1} leaned against a tree, catching their breath.
+{name1} sat in the silence, listening for distant sounds.
+{name1} scanned the horizon but made no move.
+{name1} tightened their gear and rested in place.
+{name1} leaned their head back and let the world fade away for a second.
+{name1} crouched in the shadows, unmoving.
+{name1} kept low to the ground, quietly observing.
+{name1} found a flat rock and sat down for a while.
+{name1} stared blankly at the ground, lost in thought.
+{name1} found a hollow in the roots of a tree and curled up inside.
+{name1} rubbed the back of their neck and sighed.
+{name1} wiped sweat from their brow and rested in silence.
+{name1} kept their eyes on the treeline and stayed still.
+{name1} sat by a boulder, silent and unmoving.
+{name1} stayed low and still, blending with the environment.
+{name1} took shelter beneath a bush and closed their eyes for a bit.
+{name1} nestled into a crevice and stayed perfectly still.
+{name1} sat on a broken stump and stared into the distance.
+{name1} found a bit of shade and rested there quietly.
+{name1} remained calm and listened to the sounds of the arena.
+{name1} took deep breaths and tried to steady their nerves.
+{name1} didn’t move — they didn’t have to. Not yet.
+{name1} remained alert but chose not to act.
+{name1} allowed the world to spin while they stayed still.
+{name1} retreated into thought, unmoving.
+{name1} crouched in stillness, waiting.
+{name1} wiped their weapon clean and stayed put.
+{name1} tied their shoelaces and paused to think.
+{name1} checked their supplies and sat down.
+{name1} whispered something to themselves and waited.
+{name1} found no comfort, only quiet.
+{name1} stayed perfectly still, ears tuned to every sound.
+{name1} didn’t find peace, but they found stillness.
+{name1} watched shadows move across the ground.
+{name1} paused beneath a ledge and waited out the wind.
+{name1} leaned against a wall and stayed there for a while.
+{name1} let their guard down… but only just a little.
+{name1} traced shapes in the dirt, quietly.
+{name1} sat under the canopy, eyes darting occasionally.
+{name1} let their breathing steady in the quiet.
+{name1} stretched slowly and stayed put.
+{name1} felt the tension ease from their shoulders for a moment.
+{name1} stayed still, waiting for a sign to move.
+{name1} let their thoughts wander while they stayed in place.
+{name1} crouched beside a fallen log and waited.
+{name1} fiddled with their gear in silence.
+{name1} scratched lines into the ground and waited.
+{name1} kicked back briefly, one eye always open.
+{name1} watched insects crawl and kept to themselves.
+{name1} didn’t sleep, but they didn’t run either.
+{name1} counted seconds. They lost track quickly.
+{name1} looked up at the sky and blinked away exhaustion.
+{name1} didn't find safety, but they found a moment.
+{name1} dared to be still.
+{name1} stared at the dirt, thinking of nothing.
+{name1} leaned into the moment, unwilling to move.
+{name1} rested their back against cold stone.
+{name1} adjusted their bandages and breathed deeply.
+{name1} ran their fingers over a scar and said nothing.
+{name1} dared not make a sound.
+{name1} chose patience over movement.
+{name1} watched leaves dance in the wind and stayed quiet.
+{name1} stayed out of sight, unmoving.
+{name1} watched the arena shift slowly around them.
+{name1} waited in a hollow without speaking.
+{name1} held still as the wind moved around them.
+{name1} let stillness take over.
+{name1} crouched in the brush and waited.
+{name1} rested without relaxing.
+{name1} felt the earth beneath them, solid and unmoving.
+{name1} braced themselves for nothing in particular.
+{name1} remained alert, unmoving.
+{name1} found no joy in pausing, but paused nonetheless.
+{name1} sat beneath a broken signpost and waited.
+{name1} exhaled quietly and closed their eyes, just for a second.
+{name1} muttered quietly to themselves in the stillness.
+{name1} didn't know what they were waiting for.
+{name1} used the stillness to plan.
+{name1} counted how long they could stay still.
+{name1} tapped their fingers nervously while resting.
+{name1} curled their knees to their chest and hid in plain sight.
+{name1} found a niche to tuck into and stopped moving.
+{name1} sat motionless, like a statue of themselves.
+{name1} drifted in and out of thought.
+{name1} shielded their face from the sun and sat in silence.
+{name1} crouched in shadow, making no noise.
+{name1} rested between two stones, like a secret.
+{name1} remained quiet, calculating their next move.
+{name1} watched the grass sway and said nothing.
+{name1} stayed in place, even as time ticked on.
+{name1} heard the arena hum and stayed still.
+{name1} crouched down and listened carefully to nothing.
+{name1} kept hidden, waiting for movement that never came.
+{name1} didn’t trust the silence — but joined it anyway.
+{name1} studied the dirt beneath their nails, unmoving.
+{name1} became a shadow, if only for a while.
+{name1} stayed where they were, not yet ready to move.
+{name1} let the moment stretch long and wide.
+{name1} stared into the void and let it blink first.
+{name1} clung to the calm as long as it lasted.
+{name1} waited. And waited. And waited.
