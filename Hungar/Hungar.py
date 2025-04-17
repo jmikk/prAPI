@@ -2282,7 +2282,7 @@ class Hungar(commands.Cog):
             user = interaction.user
             config = await self.config.guild(guild).all()
             players = config["players"]
-            day = config["current_day"]
+            day = config["day_count"]
     
             # Cost increases as days go on
             cost = 10 + (day * 5)
@@ -2321,18 +2321,22 @@ class Hungar(commands.Cog):
     async def sponsor_autocomplete(self, interaction: Interaction, current: str):
         guild = interaction.guild
         players = await self.config.guild(guild).players()
+        day = await self.config.guild(guild).current_day()
+        cost = 10 + (day * 5)
         options = []
-
+    
         for pid, pdata in players.items():
             if not pdata.get("alive"):
                 continue
-
             member = guild.get_member(int(pid)) if pid.isdigit() else None
             display_name = member.display_name if member else pdata["name"]
+    
+            label = f"{display_name} (Cost: {cost}💰)"
             if current.lower() in display_name.lower():
-                options.append(app_commands.Choice(name=display_name, value=pid))
-
+                options.append(app_commands.Choice(name=label[:100], value=pid))  # Discord max = 100 chars
+    
         return options[:25]
+
 
 
     
