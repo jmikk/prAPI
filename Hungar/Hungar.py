@@ -954,9 +954,6 @@ class Hungar(commands.Cog):
             await ctx.send("You are already signed up!")
             return
 
-        if len(players) > 25:
-            await ctx.send("Sorry this game is full try again next time!")
-            return
 
         # 🎖️ **Assign a Role to the User**
         role_name = "Tribute"  # Change this to match your role name
