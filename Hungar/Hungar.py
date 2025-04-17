@@ -654,6 +654,58 @@ class BettingButton(Button):
     async def callback(self, interaction: Interaction):
         await interaction.response.send_modal(BetModal(self.cog, interaction))
 
+class TributeRankingView(View):
+    def __init__(self, cog, tribute_scores, per_page=10):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.tribute_scores = tribute_scores
+        self.per_page = per_page
+        self.page = 0
+        self.total_pages = math.ceil(len(tribute_scores) / per_page)
+
+        # Buttons
+        self.prev_button = Button(label="⬅️ Back", style=discord.ButtonStyle.secondary, disabled=True)
+        self.next_button = Button(label="Next ➡️", style=discord.ButtonStyle.secondary, disabled=self.total_pages <= 1)
+
+        self.prev_button.callback = self.prev_page
+        self.next_button.callback = self.next_page
+
+        self.add_item(self.prev_button)
+        self.add_item(self.next_button)
+
+    def get_embed(self):
+        start = self.page * self.per_page
+        end = start + self.per_page
+        embed = discord.Embed(
+            title="Tribute Rankings",
+            description=f"Page {self.page + 1} of {self.total_pages}",
+            color=discord.Color.gold()
+        )
+
+        for rank, tribute in enumerate(self.tribute_scores[start:end], start=start + 1):
+            embed.add_field(
+                name=f"District {tribute['district']}",
+                value=f"#{rank} {tribute['name']}\nScore: {tribute['score']}",
+                inline=False
+            )
+
+        return embed
+
+    async def update_message(self, interaction: Interaction):
+        self.prev_button.disabled = self.page == 0
+        self.next_button.disabled = self.page >= self.total_pages - 1
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+    async def next_page(self, interaction: Interaction):
+        if self.page < self.total_pages - 1:
+            self.page += 1
+            await self.update_message(interaction)
+
+    async def prev_page(self, interaction: Interaction):
+        if self.page > 0:
+            self.page -= 1
+            await self.update_message(interaction)
+
 class ViewTributesButton(Button):
     def __init__(self, cog):
         super().__init__(label="View Tributes", style=discord.ButtonStyle.secondary)
@@ -672,7 +724,7 @@ class ViewTributesButton(Button):
                     + player["stats"]["Str"]
                     + player["stats"]["Con"]
                     + player["stats"]["Wis"]
-                    + (player["stats"]["HP"] // 5)  # Normalize HP by dividing by 5
+                    + (player["stats"]["HP"] // 5)  # Normalize HP
                 )
                 tribute_scores.append({
                     "name": player["name"],
@@ -680,23 +732,12 @@ class ViewTributesButton(Button):
                     "score": score
                 })
 
-        # Sort tributes by score in descending order
+        # Sort tributes by score
         tribute_scores.sort(key=lambda x: x["score"], reverse=True)
 
-        # Create an embed with the rankings
-        embed = discord.Embed(
-            title="Tribute Rankings",
-            description="Ranked tributes by their calculated scores.",
-            color=discord.Color.gold()
-        )
-        for rank, tribute in enumerate(tribute_scores, start=1):
-            embed.add_field(
-                name=f"District {tribute['district']}",
-                value=f"#{rank} {tribute['name']}\n Score: {tribute['score']}",
-                inline=False
-            )
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        # Send the first page
+        view = TributeRankingView(self.cog, tribute_scores)
+        await interaction.response.send_message(embed=view.get_embed(), view=view, ephemeral=True)
 
 
 
