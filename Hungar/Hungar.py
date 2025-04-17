@@ -929,15 +929,21 @@ class Hungar(commands.Cog):
         guild = interaction.guild
         players = await self.config.guild(guild).players()
         options = []
-
+    
         for pid, pdata in players.items():
             if not pdata.get("alive"):
                 continue
-            name = pdata.get("name", "")
-            if current.lower() in name.lower():
-                options.append(app_commands.Choice(name=name, value=pid))
-
+    
+            # Try to resolve nickname or username from member object
+            member = guild.get_member(int(pid)) if pid.isdigit() else None
+            display_name = member.display_name if member else pdata.get("name", f"Unknown [{pid}]")
+    
+            if current.lower() in display_name.lower():
+                # Return the user ID as the value, but show the nice name
+                options.append(app_commands.Choice(name=display_name, value=pid))
+    
         return options[:25]
+
 
     @hunger.command()
     async def signup(self, ctx):
