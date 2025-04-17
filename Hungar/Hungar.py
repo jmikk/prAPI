@@ -2282,7 +2282,7 @@ class Hungar(commands.Cog):
             user = interaction.user
             config = await self.config.guild(guild).all()
             players = config["players"]
-            day = config["day_count"]
+            day = config["day_counter"]
     
             # Cost increases as days go on
             cost = 10 + (day * 5)
@@ -2321,7 +2321,7 @@ class Hungar(commands.Cog):
     async def sponsor_autocomplete(self, interaction: Interaction, current: str):
         guild = interaction.guild
         players = await self.config.guild(guild).players()
-        day = await self.config.guild(guild).current_day()
+        day = await self.config.guild(guild).day_counter()
         cost = 10 + (day * 5)
         options = []
     
