@@ -12,6 +12,8 @@ import traceback
 from discord.utils import get
 from discord import app_commands
 import math
+from redbot.core.data_manager import bundled_data_path
+import json
 
 class EqualizerButton(Button):
     """Button for the Gamemaster to balance the game by bringing all tributes up to the same total stat value."""
