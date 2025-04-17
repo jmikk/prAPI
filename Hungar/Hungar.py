@@ -1769,8 +1769,8 @@ class Hungar(commands.Cog):
             elif action == "Rest":
                 resters.append(player_id)
 
-                if player_data["stats"]["HP"] < player_data["stats"]["Con"]:
-                    damage = random.randint(1, int(player_data["stats"]["Con"] / 2))
+                if player_data["stats"]["HP"] < player_data["stats"]["Con"]*2:
+                    damage = random.randint(1, int(player_data["stats"]["Con"]))
                     player_data["stats"]["HP"] += damage
                     event_outcomes.append(f"{player_data['name']} nursed their wounds and healed for {damage} points of damage.")
                 
