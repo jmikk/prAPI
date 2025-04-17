@@ -1274,13 +1274,12 @@ class Hungar(commands.Cog):
                 "is_npc": True,
                 "items": []
             }
-        
-        cog_path = bundled_data_path(self)  # gets path to your cog's folder
-        zone_path = cog_path / "zone.json"
 
-    
-        with open(zone_path) as f:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(base_path, "zone.json")
+        with open(file_path) as f:
             all_zones = json.load(f)
+
 
         selected_zones = random.sample(all_zones, k=min(6, len(all_zones)))  # Start with 6 zones
         await self.config.guild(ctx.guild).zones.set(selected_zones)
