@@ -1275,6 +1275,8 @@ class Hungar(commands.Cog):
         
         cog_path = bundled_data_path(self)  # gets path to your cog's folder
         zone_path = cog_path / "zone.json"
+
+    
         with open(zone_path) as f:
             all_zones = json.load(f)
 
