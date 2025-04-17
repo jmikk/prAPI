@@ -2274,18 +2274,6 @@ class Hungar(commands.Cog):
         await self.config.guild(guild).players.clear()
         await ctx.send("All signups have been cleared. The player list has been reset.")
 
-from discord import app_commands, Interaction
-from discord.ext import commands
-import random
-
-class HungerGames(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.config = commands.Config.get_conf(self, identifier=123456789)
-        self.config.register_guild(players={}, current_day=0)
-        self.config_gold = commands.Config.get_conf(None, identifier=987654321)
-        self.config_gold.register_user(master_balance=0)
-
     @app_commands.command(name="sponsor", description="Sponsor a tribute with a random stat boost.")
     @app_commands.describe(tribute="Select a tribute to sponsor")
     async def sponsor(self, interaction: Interaction, tribute: str):
