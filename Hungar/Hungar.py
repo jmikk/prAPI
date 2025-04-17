@@ -2401,7 +2401,7 @@ class Hungar(commands.Cog):
         zones = await self.config.guild(guild2.guild).zones2()
         if len(zones) > 1:
             zones.pop(random.randint(0, len(zones) - 1))
-            await self.config.guild(guild).zones2.set(zones)
+            await self.config.guild(guild2.guild).zones2.set(zones)
     
             # Optionally notify
             return zones
