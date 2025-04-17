@@ -946,7 +946,7 @@ class Hungar(commands.Cog):
             feast_active=False, 
             WLboard={}, 
             zones={},       # currently active zones
-            zone_pool{},   # full zone list
+            zone_pool={},   # full zone list
              
             
         )
