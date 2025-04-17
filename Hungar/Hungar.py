@@ -545,7 +545,7 @@ class HungerGamesAI:
 
 class SponsorButton(Button):
     """Button that tells players to use the slash command instead of sponsoring directly."""
-    def __init__(self):
+    def __init__(self,cog):
         super().__init__(label="Sponsor a Tribute", style=discord.ButtonStyle.success)
 
     async def callback(self, interaction: Interaction):
