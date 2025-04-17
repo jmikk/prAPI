@@ -1822,8 +1822,8 @@ class Hungar(commands.Cog):
                 target_id = random.choice(potential_targets)
                 target = players[target_id]
     
-                hunter_str = hunter["stats"]["Str"] + hunter["stats"]["Wis"] + max(random.randint(1, 20), random.randint(1, 20))
-                target_def = target["stats"]["Def"] + target["stats"]["Con"] + random.randint(1, 20)
+                hunter_str = hunter["stats"]["Str"] + hunter["stats"]["Wis"] + max(random.randint(1, 10), random.randint(1, 10))
+                target_def = target["stats"]["Def"] + target["stats"]["Con"] + random.randint(1, 10)
                 damage = hunter_str - target_def
     
                 if damage > 0:
