@@ -2294,7 +2294,7 @@ class Hungar(commands.Cog):
                 + stats["Wis"]
                 + (stats["HP"] / 5)
             )
-            cost = round(10 + (day * 5) + score)
+            cost = round(10 + (day * 5) + score)/2
 
             user_gold = await self.config_gold.user(user).master_balance()
     
@@ -2347,7 +2347,7 @@ class Hungar(commands.Cog):
             score = (
                 stats["Def"] + stats["Str"] + stats["Con"] + stats["Wis"] + (stats["HP"] / 5)
             )
-            cost = round(10 + (day * 5) + score)
+            cost = round(10 + (day * 5) + score)/2
     
             label = f"{display_name} (Cost: {cost}💰)"
     
