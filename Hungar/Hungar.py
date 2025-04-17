@@ -882,7 +882,7 @@ class Hungar(commands.Cog):
         guild = interaction.guild
         user = interaction.user
 
-        current_day = await self.config.guild(guild).current_day()
+        current_day = await self.config.guild(guild).day_counter()
         if current_day not in (0, 1):
             await interaction.response.send_message("❌ You can only place bets on Day 0 or Day 1.", ephemeral=True)
             return
