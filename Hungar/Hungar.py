@@ -1875,15 +1875,18 @@ class Hungar(commands.Cog):
     
         await self.config.guild(guild).players.set(players)
     
-        # Announce
         if event_outcomes:
-            eliminated_msgs = [e for e in event_outcomes if "eliminated" in e]
-            others = [e for e in event_outcomes if "eliminated" not in e]
-            if eliminated_msgs:
-                others.append("\n🔫 A cannon sounds in the distance...")
-            event_outcomes = others + eliminated_msgs
+            zone_sorted_events = {}
             for line in event_outcomes:
-                await ctx.send(line)
+                zone_name = "Unknown Zone"
+                if line.endswith(")"):
+                    zone_name = line.split("(")[-1].strip(")")
+                zone_sorted_events.setdefault(zone_name, []).append(line)
+
+            for zone_name in sorted(zone_sorted_events.keys()):
+                await ctx.send(f"__**Zone Report: {zone_name}**__")
+                for event in zone_sorted_events[zone_name]:
+                    await ctx.send(event)
         else:
             await ctx.send("The day passed quietly.")
     
