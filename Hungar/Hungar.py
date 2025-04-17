@@ -1404,7 +1404,7 @@ class Hungar(commands.Cog):
                 day_duration = timedelta(seconds=config["day_duration"])
                 if datetime.utcnow() - day_start >= day_duration:
                     await self.process_day(ctx)
-                    self.shrink_zones(ctx)
+                    await self.shrink_zones(ctx)
                     if await self.isOneLeft(guild):
                         await self.endGame(ctx)
                         break
