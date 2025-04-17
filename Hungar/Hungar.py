@@ -102,56 +102,102 @@ class CheckGoldButton(Button):
 
         
 
+class AllTributesView(View):
+    def __init__(self, cog, pages, per_page=5):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.pages = pages
+        self.page = 0
+        self.per_page = per_page
+        self.total_pages = len(pages)
+
+        self.prev_button = Button(label="⬅️ Back", style=discord.ButtonStyle.secondary, disabled=True)
+        self.next_button = Button(label="Next ➡️", style=discord.ButtonStyle.secondary, disabled=(self.total_pages <= 1))
+
+        self.prev_button.callback = self.prev_page
+        self.next_button.callback = self.next_page
+
+        self.add_item(self.prev_button)
+        self.add_item(self.next_button)
+
+    def get_embed(self):
+        embed = discord.Embed(
+            title="🏹 Hunger Games Tributes 🏹",
+            description=f"Page {self.page + 1} of {self.total_pages}\nHere are the current tributes and their stats:",
+            color=discord.Color.gold()
+        )
+
+        for field in self.pages[self.page]:
+            embed.add_field(name=field["name"], value=field["value"], inline=False)
+
+        return embed
+
+    async def update_message(self, interaction: Interaction):
+        self.prev_button.disabled = self.page == 0
+        self.next_button.disabled = self.page >= self.total_pages - 1
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+    async def next_page(self, interaction: Interaction):
+        if self.page < self.total_pages - 1:
+            self.page += 1
+            await self.update_message(interaction)
+
+    async def prev_page(self, interaction: Interaction):
+        if self.page > 0:
+            self.page -= 1
+            await self.update_message(interaction)
+
+
 class ViewAllTributesButton(Button):
-    """Button to display all tribute stats in one embed."""
+    """Button to display all tribute stats with pagination."""
     def __init__(self, cog, guild):
         super().__init__(label="View All Tributes", style=discord.ButtonStyle.secondary)
         self.cog = cog
         self.guild = guild
 
     async def callback(self, interaction: Interaction):
-        """Shows all tributes' stats in a formatted embed."""
-        config = await self.cog.config.guild(self.guild).all()
-        players = config["players"]
+        try:
+            config = await self.cog.config.guild(self.guild).all()
+            players = config["players"]
 
-        if not players:
-            await interaction.response.send_message("No tributes are currently in the game.", ephemeral=True)
-            return
+            if not players:
+                await interaction.response.send_message("❌ No tributes are currently in the game.", ephemeral=True)
+                return
 
-        # Sort players by district
-        sorted_players = sorted(players.items(), key=lambda p: p[1]["district"])
+            sorted_players = sorted(players.items(), key=lambda p: p[1]["district"])
+            tribute_fields = []
 
-        embed = discord.Embed(
-            title="🏹 **Hunger Games Tributes** 🏹",
-            description="Here are the current tributes and their stats:",
-            color=discord.Color.gold()
-        )
+            for player_id, player in sorted_players:
+                # Resolve display name
+                if player_id.isdigit():
+                    member = self.guild.get_member(int(player_id))
+                    display_name = member.nick or member.name if member else player["name"]
+                else:
+                    display_name = player["name"]
 
-        for player_id, player in sorted_players:
-            # Fetch Discord member to get nickname
-            if player_id.isdigit():  # Real user
-                member = self.guild.get_member(int(player_id))
-                display_name = member.nick or member.name if member else player["name"]
-            else:  # NPCs or non-member users
-                display_name = player["name"]
+                status = "🟢 **Alive**" if player["alive"] else "🔴 **Eliminated**"
 
-            status = "🟢 **Alive**" if player["alive"] else "🔴 **Eliminated**"
-            embed.add_field(
-                name=f"District {player['district']}: {display_name}",
-                value=(
-                    f"{status}\n"
-                    f"**🛡️ Def:** {player['stats']['Def']}\n"
-                    f"**⚔️ Str:** {player['stats']['Str']}\n"
-                    f"**💪 Con:** {player['stats']['Con']}\n"
-                    f"**🧠 Wis:** {player['stats']['Wis']}\n"
-                    f"**❤️ HP:** {player['stats']['HP']}"
-                ),
-                inline=False
-            )
+                tribute_fields.append({
+                    "name": f"District {player['district']}: {display_name}",
+                    "value": (
+                        f"{status}\n"
+                        f"**🛡️ Def:** {player['stats']['Def']}\n"
+                        f"**⚔️ Str:** {player['stats']['Str']}\n"
+                        f"**💪 Con:** {player['stats']['Con']}\n"
+                        f"**🧠 Wis:** {player['stats']['Wis']}\n"
+                        f"**❤️ HP:** {player['stats']['HP']}"
+                    )
+                })
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+            # Paginate into pages of 5 tributes each
+            per_page = 5
+            pages = [tribute_fields[i:i + per_page] for i in range(0, len(tribute_fields), per_page)]
 
+            view = AllTributesView(self.cog, pages, per_page)
+            await interaction.response.send_message(embed=view.get_embed(), view=view, ephemeral=True)
 
+        except Exception as e:
+            await interaction.response.send_message(f"⚠️ Error: `{type(e).__name__}: {e}`", ephemeral=True)
 
 
 class GameMasterView(View):
