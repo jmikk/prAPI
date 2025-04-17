@@ -1138,10 +1138,6 @@ class Hungar(commands.Cog):
                     player_data["name"] = member.mention  # Replace name with mention
                 else:
                     player_data["name"] = player_data["name"]  # Fallback to original name
-
-        if len(players) > 25: 
-            await ctx.send("Sorry only 25 people can play (this includes NPCs)")
-            return
         
         # Add AI bettors
         ai_bettors = {}
