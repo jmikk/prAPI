@@ -2285,7 +2285,17 @@ class Hungar(commands.Cog):
             day = config["day_counter"]
     
             # Cost increases as days go on
-            cost = 10 + (day * 5)
+            # Cost increases with tribute power instead of days
+            stats = players[tribute]["stats"]
+            score = (
+                stats["Def"]
+                + stats["Str"]
+                + stats["Con"]
+                + stats["Wis"]
+                + (stats["HP"] / 5)
+            )
+            cost = round(10 + (day * 5) + score)
+
             user_gold = await self.config_gold.user(user).master_balance()
     
             if tribute not in players or not players[tribute]["alive"]:
@@ -2317,25 +2327,35 @@ class Hungar(commands.Cog):
             raise e  # Re-raise so it still shows in the bot's console/logs
 
 
-    @sponsor.autocomplete("tribute")
-    async def sponsor_autocomplete(self, interaction: Interaction, current: str):
-        guild = interaction.guild
-        players = await self.config.guild(guild).players()
-        day = await self.config.guild(guild).day_counter()
-        cost = 10 + (day * 5)
-        options = []
-    
-        for pid, pdata in players.items():
-            if not pdata.get("alive"):
-                continue
-            member = guild.get_member(int(pid)) if pid.isdigit() else None
-            display_name = member.display_name if member else pdata["name"]
-    
-            label = f"{display_name} (Cost: {cost}💰)"
-            if current.lower() in display_name.lower():
-                options.append(app_commands.Choice(name=label[:100], value=pid))  # Discord max = 100 chars
-    
-        return options[:25]
+@sponsor.autocomplete("tribute")
+async def sponsor_autocomplete(self, interaction: Interaction, current: str):
+    guild = interaction.guild
+    players = await self.config.guild(guild).players()
+    day = await self.config.guild(guild).day_counter()
+
+    options = []
+
+    for pid, pdata in players.items():
+        if not pdata.get("alive"):
+            continue
+
+        member = guild.get_member(int(pid)) if pid.isdigit() else None
+        display_name = member.display_name if member else pdata["name"]
+
+        # Moved inside the loop — calculate individual tribute's score and cost
+        stats = pdata["stats"]
+        score = (
+            stats["Def"] + stats["Str"] + stats["Con"] + stats["Wis"] + (stats["HP"] / 5)
+        )
+        cost = round(10 + (day * 5) + score)
+
+        label = f"{display_name} (Cost: {cost}💰)"
+
+        if current.lower() in display_name.lower():
+            options.append(app_commands.Choice(name=label[:100], value=pid))  # Discord max = 100 chars
+
+    return options[:25]
+
 
 
 
