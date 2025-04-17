@@ -1708,12 +1708,8 @@ class Hungar(commands.Cog):
         for player_id, data in players.items():
             if not data["alive"]:
                 continue
-        
-        zone = data.get("zone")
-        if isinstance(zone, dict):
-            zone = zone.get("name", "Unknown Zone")
-        zone_groups.setdefault(zone, []).append(player_id)
-
+            zone = data["zone"]
+            zone_groups.setdefault(zone, []).append(player_id)
     
         # Day counter logic
         day_counter = config.get("day_counter", 0) + 1
@@ -1805,25 +1801,23 @@ class Hungar(commands.Cog):
     
         # Zone-based hunting resolution
         for zone, zone_players in zone_groups.items():
-                zone_hunters = [pid for pid in hunters if pid in zone_players]
-                zone_targets = [pid for pid in zone_players if players[pid]["alive"] and pid not in hunters]
-        
-                random.shuffle(zone_hunters)
-        
-                for hunter_id in zone_hunters:
-                    if hunter_id in hunted:
-                        continue
-        
-                    hunter = players[hunter_id]
-                    potential_targets = [pid for pid in zone_players if pid != hunter_id and pid not in hunted and players[pid]["alive"]]
-        
-                    if not potential_targets:
-                        event_outcomes.append(f"{hunter['name']} hunted in **{zone}**, but found no one to challenge.")
-                        continue
-        
-                    target_id = random.choice(potential_targets)
+            zone_hunters = [pid for pid in hunters if pid in zone_players]
+            zone_targets = [pid for pid in zone_players if players[pid]["alive"] and pid not in hunters]
+    
+            random.shuffle(zone_hunters)
+    
+            for hunter_id in zone_hunters:
+                if hunter_id in hunted:
+                    continue
     
                 hunter = players[hunter_id]
+                potential_targets = [pid for pid in zone_players if pid != hunter_id and pid not in hunted and players[pid]["alive"]]
+    
+                if not potential_targets:
+                    event_outcomes.append(f"{hunter['name']} hunted in **{zone}**, but found no one to challenge.")
+                    continue
+    
+                target_id = random.choice(potential_targets)
                 target = players[target_id]
     
                 hunter_str = hunter["stats"]["Str"] + hunter["stats"]["Wis"] + max(random.randint(1, 20), random.randint(1, 20))
@@ -1899,27 +1893,27 @@ class Hungar(commands.Cog):
                     "day": eliminated_player["eliminated_on"]
                 })
             await self.config.guild(guild).elimination_leaderboard.set(leaderboard)
-
-        
+            
         # Process daily bet earnings
         players = await self.config.guild(guild).players()
         all_users = await self.config.all_users()
-        
+            
         for user_id, user_data in all_users.items():
             bets = user_data.get("bets", {})
             user_gold = await self.config_gold.user_from_id(user_id).master_balance()
-
+    
             day_counter = config.get("day_counter", 0)
-
+    
             for tribute_id, bet_data in bets.items():
                 if tribute_id in players and players[tribute_id]["alive"]:
-                    
+                        
                     daily_return = max(int(bet_data["amount"] * min(0.01 * day_counter/4, 0.20)),1)  
                     bet_data["daily_earnings"] += daily_return
                     user_gold += daily_return
-        
+            
             await self.config_gold.user_from_id(user_id).master_balance.set(user_gold)
             await self.config.user_from_id(user_id).bets.set(bets)
+
 
     @hunger.command()
     @is_gamemaster()
