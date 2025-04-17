@@ -1708,8 +1708,12 @@ class Hungar(commands.Cog):
         for player_id, data in players.items():
             if not data["alive"]:
                 continue
-            zone = data["zone"]
-            zone_groups.setdefault(zone, []).append(player_id)
+        
+        zone = data.get("zone")
+        if isinstance(zone, dict):
+            zone = zone.get("name", "Unknown Zone")
+        zone_groups.setdefault(zone, []).append(player_id)
+
     
         # Day counter logic
         day_counter = config.get("day_counter", 0) + 1
