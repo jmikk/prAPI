@@ -13,7 +13,6 @@ from discord.utils import get
 from discord import app_commands
 import math
 
-
 class EqualizerButton(Button):
     """Button for the Gamemaster to balance the game by bringing all tributes up to the same total stat value."""
     
@@ -874,25 +873,26 @@ class ActionButton(Button):
         self.cog = cog
         self.action = action
 
-    async def callback(self, interaction: Interaction):
+    async def callback(self, interaction: discord.Interaction):
         user_id = str(interaction.user.id)
         guild = interaction.guild
         players = await self.cog.config.guild(guild).players()
 
-        # Check if the user is in the game and alive
         if user_id not in players or not players[user_id]["alive"]:
-            await interaction.response.send_message(
-                "You are not part of the game or are no longer alive.", ephemeral=True
-            )
+            await interaction.response.send_message("You are not in the game or are no longer alive.", ephemeral=True)
             return
 
-        # Update the user's action
-        players[user_id]["action"] = self.action
-        await self.cog.config.guild(guild).players.set(players)
-        
-        await interaction.response.send_message(
-            f"You have selected to **{self.action}** for today.", ephemeral=True
-        )
+        # Load current active zones
+        zones = await self.cog.config.guild(guild).zones()
+        if not zones:
+            await interaction.response.send_message("⚠️ Zones have not been initialized yet.", ephemeral=True)
+            return
+
+        # Show dropdown view
+        view = View()
+        view.add_item(ZoneSelect(self.cog, user_id, self.action, zones))
+        await interaction.response.send_message(f"Choose a zone to **{self.action}** in:", view=view, ephemeral=True)
+
 
 
 #todo list
@@ -907,6 +907,28 @@ def is_gamemaster():
             raise CheckFailure("You do not have the 'GameMaster' role.")
         return True
     return commands.check(predicate)
+
+class ZoneSelect(Select):
+    def __init__(self, cog, user_id, action, zones):
+        self.cog = cog
+        self.user_id = user_id
+        self.action = action
+        options = [discord.SelectOption(label=z["name"], description=z.get("description", ""), value=z["name"]) for z in zones]
+
+        super().__init__(placeholder="Choose a zone...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        selected_zone = self.values[0]
+        players = await self.cog.config.guild(interaction.guild).players()
+
+        players[self.user_id]["action"] = self.action
+        players[self.user_id]["zone"] = selected_zone
+        await self.cog.config.guild(interaction.guild).players.set(players)
+
+        await interaction.response.send_message(
+            f"You have chosen to **{self.action}** in **{selected_zone}**.", ephemeral=True
+        )
+
 
 class Hungar(commands.Cog):
     def __init__(self, bot):
