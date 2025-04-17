@@ -1189,7 +1189,7 @@ class Hungar(commands.Cog):
                     if member:
                         participant_list.append(f"{member.mention} from District {player['district']}")
     
-        MAX_DISCORD_MESSAGE_LENGTH = 4000
+        MAX_DISCORD_MESSAGE_LENGTH = 2000
         
         participant_announcement = "\n".join(participant_list)
         message_prefix = "The Hunger Games have begun with the following participants (sorted by District):\n"
@@ -1310,7 +1310,7 @@ class Hungar(commands.Cog):
                     if member:
                         alive_mentions.append(member.mention)
 
-        MAX_DISCORD_MESSAGE_LENGTH = 4000
+        MAX_DISCORD_MESSAGE_LENGTH = 2000
         
         # Base message
         base_message = (
