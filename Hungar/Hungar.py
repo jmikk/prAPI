@@ -1189,8 +1189,31 @@ class Hungar(commands.Cog):
                     if member:
                         participant_list.append(f"{member.mention} from District {player['district']}")
     
+        MAX_DISCORD_MESSAGE_LENGTH = 4000
+        
         participant_announcement = "\n".join(participant_list)
-        await ctx.send(f"The Hunger Games have begun with the following participants (sorted by District):\n{participant_announcement}")
+        message_prefix = "The Hunger Games have begun with the following participants (sorted by District):\n"
+        
+        # Split safely by lines if too long
+        messages = []
+        current_message = message_prefix
+        
+        for line in participant_list:
+            # +1 for newline
+            if len(current_message) + len(line) + 1 > MAX_DISCORD_MESSAGE_LENGTH:
+                messages.append(current_message)
+                current_message = line + "\n"
+            else:
+                current_message += line + "\n"
+        
+        # Add the last message chunk
+        if current_message.strip():
+            messages.append(current_message)
+        
+        # Send each part
+        for msg in messages:
+            await ctx.send(msg)
+
 
         # 📌 Send GameMaster Dashboard **if a private channel is provided**
         if dashboard_channel:
@@ -1287,13 +1310,36 @@ class Hungar(commands.Cog):
                     if member:
                         alive_mentions.append(member.mention)
 
-        # Send the announcement with all alive participant
-        # Send the announcement
-        await ctx.send(
+        MAX_DISCORD_MESSAGE_LENGTH = 4000
+        
+        # Base message
+        base_message = (
             f"Day {config['day_counter']} begins in the Hunger Games! {alive_count} participants remain.\n"
             f"{feast_message}\n"
-            f"Alive participants: {', '.join(alive_mentions)}"
+            f"Alive participants:"
         )
+        
+        # Start building message chunks
+        messages = [base_message]
+        current_chunk = ""
+        
+        for mention in alive_mentions:
+            if len(messages[-1]) + len(current_chunk) + len(mention) + 2 > MAX_DISCORD_MESSAGE_LENGTH:
+                # Finalize the current chunk and start a new message
+                messages[-1] += f" {current_chunk.strip(', ')}"
+                current_chunk = mention + ", "
+                messages.append("")
+            else:
+                current_chunk += mention + ", "
+        
+        # Add the last chunk to the last message
+        if current_chunk:
+            messages[-1] += f" {current_chunk.strip(', ')}"
+        
+        # Send each message
+        for msg in messages:
+            await ctx.send(msg.strip())
+
         # Calculate the next day start time
         day_start = datetime.utcnow()
         alive_count = len(alive_players)
