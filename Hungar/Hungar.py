@@ -11,6 +11,7 @@ import aiofiles
 import traceback
 from discord.utils import get
 from discord import app_commands
+import math
 
 
 class EqualizerButton(Button):
