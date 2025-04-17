@@ -884,7 +884,7 @@ class ActionButton(Button):
             return
 
         # Load current active zones
-        zones = await self.cog.config.guild(guild).zones()
+        zones = await self.cog.config.guild(guild).zones2()
         if not zones:
             await interaction.response.send_message("⚠️ Zones have not been initialized yet.", ephemeral=True)
             return
@@ -946,8 +946,8 @@ class Hungar(commands.Cog):
             random_events=True,  # Enable or disable random events
             feast_active=False, 
             WLboard={}, 
-            zones={},       # currently active zones
-            zone_pool={},   # full zone list
+            zones2=[],       # currently active zones
+            zone_pool2=[],   # full zone list
              
             
         )
@@ -1281,10 +1281,10 @@ class Hungar(commands.Cog):
 
 
         selected_zones = random.sample(all_zones, k=min(6, len(all_zones)))  # Start with 6 zones
-        await self.config.guild(ctx.guild).zones.set(selected_zones)
+        await self.config.guild(ctx.guild).zones2.set(selected_zones)
     
         # store total zone pool for shrinking
-        await self.config.guild(ctx.guild).zone_pool.set(all_zones)
+        await self.config.guild(ctx.guild).zone_pool2.set(all_zones)
         await ctx.send("🌍 The arena has been divided into zones. Let the Hunger Games begin!")
 
         for player_id, player_data in players.items():
