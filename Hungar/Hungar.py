@@ -544,62 +544,15 @@ class HungerGamesAI:
         
 
 class SponsorButton(Button):
-    """Button to sponsor a random tribute with an item."""
-    def __init__(self, cog):
-        super().__init__(label="Sponsor a Random Tribute", style=discord.ButtonStyle.success)
-        self.cog = cog
+    """Button that tells players to use the slash command instead of sponsoring directly."""
+    def __init__(self):
+        super().__init__(label="Sponsor a Tribute", style=discord.ButtonStyle.success)
 
     async def callback(self, interaction: Interaction):
-        user = interaction.user
-        guild = interaction.guild  # Get the guild from the interaction
-        if guild is None:
-            await interaction.response.send_message("This interaction must be used in a server.", ephemeral=True)
-            return
-
-        guild_config = await self.cog.config.guild(guild).all()
-        players = guild_config["players"]
-        alive_players = [p for p in players.values() if p["alive"]]
-
-        if not alive_players:
-            await interaction.response.send_message("No tributes are alive to sponsor!", ephemeral=True)
-            return
-
-        # Get the user's gold from user config
-        user_gold = await self.cog.config_gold.user(user).master_balance()
-
-        if user_gold < 10:
-            await interaction.response.send_message("You need at least 10 Wellcoins to sponsor a tribute!", ephemeral=True)
-            return
-
-        # Deduct 100 gold
-        await self.cog.config_gold.user(user).master_balance.set(user_gold - 10)
-
-        if random.randint(1, 100) <= 5:
-            run = 20
-        else:
-            run = 1
-        for _ in range(run):
-            # Select a random tribute
-            tribute = random.choice(alive_players)
-            stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
-            boost = random.randint(1, 10)
-            tribute["stats"][stat] += boost
-    
-            # Save updated player data
-            await self.cog.config.guild(guild).players.set(players)
-    
-            # Announce sponsorship in the same channel as the interaction
-            if run == 1:
-                await interaction.channel.send(
-                    f"🎁 **{user.display_name}** sponsored **{tribute['name']}** with a **+{boost} boost to {stat}**!"
-                )
-            else:
-                await interaction.channel.send(
-                    f"🎁 The Audience Loved that and is sending a shower of gifts: **{tribute['name']}** with a **+{boost} boost to {stat}**! "
-                )
-    
-            # Defer interaction response to avoid 'interaction failed'
-        await interaction.response.defer()
+        await interaction.response.send_message(
+            "Use the `/sponsor` slash command to choose a tribute and send a gift. The price increases each day!",
+            ephemeral=True
+        )
 
 
 
@@ -2320,6 +2273,72 @@ class Hungar(commands.Cog):
         guild = ctx.guild
         await self.config.guild(guild).players.clear()
         await ctx.send("All signups have been cleared. The player list has been reset.")
+
+from discord import app_commands, Interaction
+from discord.ext import commands
+import random
+
+class HungerGames(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.config = commands.Config.get_conf(self, identifier=123456789)
+        self.config.register_guild(players={}, current_day=0)
+        self.config_gold = commands.Config.get_conf(None, identifier=987654321)
+        self.config_gold.register_user(master_balance=0)
+
+    @app_commands.command(name="sponsor", description="Sponsor a tribute with a random stat boost.")
+    @app_commands.describe(tribute="Select a tribute to sponsor")
+    async def sponsor(self, interaction: Interaction, tribute: str):
+        guild = interaction.guild
+        user = interaction.user
+        config = await self.config.guild(guild).all()
+        players = config["players"]
+        day = config["day_count"]
+
+        # Cost increases as days go on
+        cost = 10 + (day * 5)
+        user_gold = await self.config_gold.user(user).master_balance()
+
+        if tribute not in players or not players[tribute]["alive"]:
+            await interaction.response.send_message("❌ That tribute doesn't exist or is no longer alive.", ephemeral=True)
+            return
+
+        if user_gold < cost:
+            await interaction.response.send_message(f"❌ You need at least {cost} Wellcoins to sponsor someone. Your balance: {user_gold}", ephemeral=True)
+            return
+
+        # Deduct cost
+        await self.config_gold.user(user).master_balance.set(user_gold - cost)
+
+        # Apply random stat boost
+        tribute_data = players[tribute]
+        stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
+        boost = random.randint(1, 10)
+        tribute_data["stats"][stat] += boost
+
+        await self.config.guild(guild).players.set(players)
+
+        await interaction.response.send_message(
+            f"🎁 **{user.display_name}** sponsored **{tribute_data['name']}** with **+{boost} {stat}** for **{cost} Wellcoins!**"
+        )
+
+    @sponsor.autocomplete("tribute")
+    async def sponsor_autocomplete(self, interaction: Interaction, current: str):
+        guild = interaction.guild
+        players = await self.config.guild(guild).players()
+        options = []
+
+        for pid, pdata in players.items():
+            if not pdata.get("alive"):
+                continue
+
+            member = guild.get_member(int(pid)) if pid.isdigit() else None
+            display_name = member.display_name if member else pdata["name"]
+            if current.lower() in display_name.lower():
+                options.append(app_commands.Choice(name=display_name, value=pid))
+
+        return options[:25]
+
 
     
 
