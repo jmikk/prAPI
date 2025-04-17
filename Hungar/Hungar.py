@@ -2396,6 +2396,7 @@ class Hungar(commands.Cog):
     
         return options[:25]
 
+    
     async def shrink_zones(self, guild):
         zones = await self.config.guild(ctx.guild).zones2()
         if len(zones) > 1:
