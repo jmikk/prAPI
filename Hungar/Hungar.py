@@ -1270,6 +1270,16 @@ class Hungar(commands.Cog):
                 "items": []
             }
 
+        with open("zone.json") as f:
+            all_zones = json.load(f)
+
+        selected_zones = random.sample(all_zones, k=min(6, len(all_zones)))  # Start with 6 zones
+        await self.config.guild(ctx.guild).zones.set(selected_zones)
+    
+        # store total zone pool for shrinking
+        await self.config.guild(ctx.guild).zone_pool.set(all_zones)
+        await ctx.send("🌍 The arena has been divided into zones. Let the Hunger Games begin!")
+
         for player_id, player_data in players.items():
             if player_data.get("is_npc", False):
                 # Bold NPC names
