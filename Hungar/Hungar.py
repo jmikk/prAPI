@@ -1805,28 +1805,23 @@ class Hungar(commands.Cog):
     
         # Zone-based hunting resolution
         for zone, zone_players in zone_groups.items():
-            zone_hunters = [pid for pid in hunters if pid in zone_players]
-            zone_looters = [pid for pid in looters if pid in zone_players]
-            zone_resters = [pid for pid in resters if pid in zone_players]
-    
-            random.shuffle(zone_hunters)
-    
-            for hunter_id in zone_hunters:
-                if hunter_id in hunted:
-                    continue
-    
-                target_id = None
-                for target_list in [zone_looters[:], zone_resters[:], zone_hunters[:]]:
-                    while target_list:
-                        potential_target = target_list.pop(0)
-                        if potential_target != hunter_id and potential_target not in hunted:
-                            target_id = potential_target
-                            break
-                    if target_id:
-                        break
-    
-                if not target_id:
-                    continue
+                zone_hunters = [pid for pid in hunters if pid in zone_players]
+                zone_targets = [pid for pid in zone_players if players[pid]["alive"] and pid not in hunters]
+        
+                random.shuffle(zone_hunters)
+        
+                for hunter_id in zone_hunters:
+                    if hunter_id in hunted:
+                        continue
+        
+                    hunter = players[hunter_id]
+                    potential_targets = [pid for pid in zone_players if pid != hunter_id and pid not in hunted and players[pid]["alive"]]
+        
+                    if not potential_targets:
+                        event_outcomes.append(f"{hunter['name']} hunted in **{zone}**, but found no one to challenge.")
+                        continue
+        
+                    target_id = random.choice(potential_targets)
     
                 hunter = players[hunter_id]
                 target = players[target_id]
