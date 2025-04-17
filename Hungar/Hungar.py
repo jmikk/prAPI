@@ -921,8 +921,7 @@ class Hungar(commands.Cog):
 
         await self.config.user(user).bets.set(user_bets)
         await interaction.response.send_message(
-            f"💰 You bet **{bet_amount} Wellcoins** on **{tribute_data['name']}**!", ephemeral=True
-        )
+            f"💰 {user.mention} bet **{bet_amount} Wellcoins** on **{tribute_data['name']}**!")
 
     @place_bet.autocomplete("tribute")
     async def tribute_autocomplete(self, interaction: Interaction, current: str):
