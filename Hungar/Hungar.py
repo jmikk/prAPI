@@ -1691,414 +1691,216 @@ class Hungar(commands.Cog):
         
 
     async def process_day(self, ctx):
-        """Process daily events and actions."""
         guild = ctx.guild
-        config = await self.config.guild(guild).all()  # Add this line to fetch config
+        config = await self.config.guild(guild).all()
         players = config["players"]
-        event_outcomes = []
-        hunted = set()
-        hunters = []
-        looters = []
-        resters = []
-        feast_participants = []  # Separate list for Feast participants
-        eliminations = []
-
-                # Group players by their current zone
+        zones = config.get("zones2", [])
+        zone_pool = config.get("zone_pool2", [])
+    
+        # Assign zones to players if missing or in removed zones
+        available_zones = zones or ["Wilderness"]
+        for player_id, data in players.items():
+            if not data.get("zone") or data["zone"] not in available_zones:
+                data["zone"] = random.choice(available_zones)
+    
+        # Group players by zone
         zone_groups = {}
-        for player_id, player_data in players.items():
-            if not player_data["alive"]:
+        for player_id, data in players.items():
+            if not data["alive"]:
                 continue
-            zone = player_data.get("zone", "Wilderness")  # Default fallback
+            zone = data["zone"]
             zone_groups.setdefault(zone, []).append(player_id)
-
-                
+    
+        # Day counter logic
         day_counter = config.get("day_counter", 0) + 1
         await self.config.guild(guild).day_counter.set(day_counter)
-
-        if day_counter > 15:
-            reduction = day_counter - 14 * .05
-            reduction = reduction / 100
-
-            if reduction > .5:
-                reduction = .5
-            
-            event_outcomes.append("A mysterious mist has descended upon the arena, sapping the abilites of all participants!")
-
-            for player_id, player_data in players.items():
-                if not player_data["alive"]:
-                    continue
     
-                # Choose a random stat to reduce
-                stats = ["Def", "Str", "Con", "Wis"]
-                stat_to_reduce = max(stats, key=lambda stat: player_data["stats"][stat])
-                player_data["stats"][stat_to_reduce] = player_data["stats"][stat_to_reduce] - (reduction * player_data["stats"][stat_to_reduce])
-
-                # Check if the player dies
-                if player_data["stats"][stat_to_reduce] <= 0:
-                    player_data["stats"][stat_to_reduce] = 1
-                    event_outcomes.append(f"{player_data['name']} nearly succumb to the mist and perished.")
-
-
-
-        # Categorize players by action
+        event_outcomes = []
+        eliminations = []
+        hunters, looters, resters, feast_participants = [], [], [], []
+        hunted = set()
+    
+        # Shrink zones after Day 15
+        if day_counter % 5 == 4 and len(available_zones) > 1:
+            zone_to_remove = random.choice(available_zones)
+            zones.remove(zone_to_remove)
+            event_outcomes.append(f"⚠️ The zone **{zone_to_remove}** has collapsed and is no longer safe!")
+    
+            for pid, data in players.items():
+                if data["zone"] == zone_to_remove:
+                    new_zone = random.choice(zones)
+                    data["zone"] = new_zone
+                    event_outcomes.append(f"{data['name']} was forced to flee to **{new_zone}**!")
+    
+        # Assign actions
         for player_id, player_data in players.items():
             if not player_data["alive"]:
                 continue
-            
-            if config["feast_active"] and player_data.get("action") is None:
-                player_data["action"] = random.choices(
-                        ["Feast", "Hunt", "Rest", "Loot"], weights=[60, 20, 10, 10], k=1
-                    )[0]
-            elif player_data.get("action") is None: 
-                player_data["action"] = random.choices(
-                        ["Hunt", "Rest", "Loot"], weights=[player_data["stats"]["Str"], player_data["stats"]["Con"]+len(player_data["items"])*3, player_data["stats"]["Wis"]], k=1
-                    )[0]
-
-            if player_data.get("is_npc"):
-                if config["feast_active"]:
-                    # 80% chance NPC attends the Feast, adjust weights as needed
+    
+            if player_data.get("action") is None:
+                if config.get("feast_active"):
                     player_data["action"] = random.choices(
-                        ["Feast", "Hunt", "Rest", "Loot"], weights=[60, 20, 10, 10], k=1
+                        ["Feast", "Hunt", "Rest", "Loot"],
+                        weights=[60, 20, 10, 10], k=1
                     )[0]
                 else:
-                    player_data["action"] = random.choices(["Hunt", "Rest", "Loot"], weights=[player_data["stats"]["Str"], player_data["stats"]["Con"]+len(player_data["items"])*3, player_data["stats"]["Wis"]], k=1)[0]
-            
+                    player_data["action"] = random.choices(
+                        ["Hunt", "Rest", "Loot"],
+                        weights=[
+                            player_data["stats"]["Str"],
+                            player_data["stats"]["Con"] + len(player_data["items"]) * 3,
+                            player_data["stats"]["Wis"]
+                        ],
+                        k=1
+                    )[0]
+    
             action = player_data["action"]
-
             if action == "Hunt":
                 hunters.append(player_id)
-                #event_outcomes.append(f"{player_data['name']} went hunting!")
             elif action == "Rest":
                 resters.append(player_id)
-
-                if player_data["stats"]["HP"] < player_data["stats"]["Con"]*2:
-                    damage = random.randint(1, int(player_data["stats"]["Con"]))
-                    player_data["stats"]["HP"] += damage
-                    event_outcomes.append(f"{player_data['name']} nursed their wounds and healed for {damage} points of damage.")
-                
-                if not player_data["items"] and random.randint(1, int(player_data["stats"]["Con"])) < 10:  # No items to use, take damage instead
-                    damage = random.randint(1, 3)
-                    player_data["stats"]["HP"] -= damage
-                    event_outcomes.append(f"{player_data['name']} has hunger pangs and takes {damage} points of damage.")
-                
-                    if player_data["stats"]["HP"] <= 0:
-                        player_data["alive"] = False
-                        event_outcomes.append(f"{player_data['name']} starved to death.")
-                    continue
+                if player_data["stats"]["HP"] < player_data["stats"]["Con"] * 2:
+                    heal = random.randint(1, int(player_data["stats"]["Con"]))
+                    player_data["stats"]["HP"] += heal
+                    effect = await self.load_file("rest_heal.txt", name1=player_data["name"], dmg=heal)
+                    event_outcomes.append(effect)
                 else:
-                    if not player_data["items"]:
-                        continue
-                    try:
-                        item = player_data["items"].pop()
-                    except:
-                        item = ("Con" , 21)
-                    stat, boost = item
-                    player_data["stats"][stat] += boost
-                    event_outcomes.append(f"{player_data['name']} rested and used a {stat} boost item (+{boost}).")
-                    
+                    effect = await self.load_file("rest.txt", name1=player_data["name"])
+                    event_outcomes.append(effect)
             elif action == "Loot":
                 looters.append(player_id)
-                if random.random() < 0.75:  # 75% chance to find an item
+                if random.random() < 0.75:
                     stat = random.choice(["Def", "Str", "Con", "Wis"])
-                    if stat == "HP":
-                        boost = random.randint(10,20)
-                    else:
-                        boost = random.randint(1, 10)
+                    boost = random.randint(1, 10)
                     player_data["items"].append((stat, boost))
-
-                    
                     effect = await self.load_file(
                         f"loot_good_{stat}.txt",
                         name1=player_data['name'],
-                        dmg=boost,
-                        )
-
+                        dmg=boost
+                    )
                     event_outcomes.append(effect)
                 else:
-                    threshold = 1 / (1 + player_data["stats"]["Wis"] / 10)  # Scale slows the decrease
+                    threshold = 1 / (1 + player_data["stats"]["Wis"] / 10)
                     if random.random() < threshold:
-                        damage = random.randint(1,3)
-                        player_data["stats"]["HP"]=player_data["stats"]["HP"] - damage
-
+                        damage = random.randint(1, 3)
+                        player_data["stats"]["HP"] -= damage
                         effect = await self.load_file(
-                            f"loot_real_bad.txt",
+                            "loot_real_bad.txt",
                             name1=player_data['name'],
-                            dmg=damage,
-                            )
+                            dmg=damage
+                        )
                         event_outcomes.append(effect)
-                        
                         if player_data["stats"]["HP"] <= 0:
                             player_data["alive"] = False
-                            event_outcomes.append(f"{player_data['name']} has been eliminated by themselves?!")
-                            player_data["kill_list"].append(player_data['name'])
-                            player_data["items"] = []
+                            event_outcomes.append(f"{player_data['name']} has been eliminated by their own foolishness!")
                     else:
-                        effect = await self.load_file("loot_bad.txt",name1=player_data['name'])
+                        effect = await self.load_file("loot_bad.txt", name1=player_data['name'])
                         event_outcomes.append(effect)
             elif action == "Feast":
                 feast_participants.append(player_id)
-
-            # Shuffle hunters for randomness
-            random.shuffle(hunters)
     
-            # Create priority target lists
-            targeted_hunters = hunters[:]
-            targeted_looters = looters[:]
-            targeted_resters = resters[:]
+        # Zone-based hunting resolution
+        for zone, zone_players in zone_groups.items():
+            zone_hunters = [pid for pid in hunters if pid in zone_players]
+            zone_looters = [pid for pid in looters if pid in zone_players]
+            zone_resters = [pid for pid in resters if pid in zone_players]
     
-                    # Resolve hunting events within zones
-            for zone, zone_players in zone_groups.items():
-                event_outcomes.append(f"{player_data['name']} is hunting in {zone}")
-                zone_hunters = [pid for pid in hunters if pid in zone_players]
-                zone_looters = [pid for pid in looters if pid in zone_players]
-                zone_resters = [pid for pid in resters if pid in zone_players]
-            
-                random.shuffle(zone_hunters)
-            
-                for hunter_id in zone_hunters:
-                    if hunter_id in hunted:
-                        continue
-            
-                    target_id = None
-                    for target_list in [zone_looters[:], zone_hunters[:], zone_resters[:]]:
-                        while target_list:
-                            potential_target = target_list.pop(0)
-                            if potential_target != hunter_id and potential_target not in hunted:
-                                target_id = potential_target
-                                break
-                        if target_id:
+            random.shuffle(zone_hunters)
+    
+            for hunter_id in zone_hunters:
+                if hunter_id in hunted:
+                    continue
+    
+                target_id = None
+                for target_list in [zone_looters[:], zone_resters[:], zone_hunters[:]]:
+                    while target_list:
+                        potential_target = target_list.pop(0)
+                        if potential_target != hunter_id and potential_target not in hunted:
+                            target_id = potential_target
                             break
-            
-                    if not target_id:
-                        continue
-
-            hunter = players[hunter_id]
-            target = players[target_id]
-
-            target_defense = target["stats"]["Def"] + random.randint(1+int((target["stats"]["Con"]/4)), 10+int(target["stats"]["Con"]))
-            hunter_str = hunter["stats"]["Str"] + random.randint(1+int(target["stats"]["Wis"]/4), 10+int(hunter["stats"]["Wis"]))
-            damage = abs(hunter_str - target_defense)
-
-            if damage < 2:
-                damage1 = damage + random.randint(1,3)
-                target["stats"]["HP"] -= damage1
-                damage2 = damage + random.randint(1,3)
-                hunter["stats"]["HP"] -= damage2
-
-                effect = await self.load_file(
-                    "tie_attack.txt",
-                    name1=hunter['name'],
-                    name2=target['name'],
-                    dmg=damage1,
-                    dmg2=damage2
-                    )
-                
-                event_outcomes.append(effect)
-                if target["stats"]["HP"] <= 0:
-                    target["alive"] = False
-                    event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
-                    hunter["kill_list"].append(target['name'])
-                    if target["items"]:
-                        hunter["items"].extend(target["items"])
-                        event_outcomes.append(
-                            f"{hunter['name']} looted {len(target['items'])} item(s) from {target['name']}."
-                        )
-                        target["items"] = [] 
-                        
-                if hunter["stats"]["HP"] <= 0:
-                    hunter["alive"] = False
-                    event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
-                    target["kill_list"].append(hunter['name'])
-                    if hunter["items"]:
-                        target["items"].extend(hunter["items"])
-                        event_outcomes.append(
-                            f"{target['name']} looted {len(hunter['items'])} item(s) from {hunter['name']}."
-                        )
-                        hunter["items"] = []
-            else:
-                if hunter_str > target_defense or random.randint(1,10) == 10:
+                    if target_id:
+                        break
+    
+                if not target_id:
+                    continue
+    
+                hunter = players[hunter_id]
+                target = players[target_id]
+    
+                hunter_str = hunter["stats"]["Str"] + hunter["stats"]["Wis"] + max(random.randint(1, 20), random.randint(1, 20))
+                target_def = target["stats"]["Def"] + target["stats"]["Con"] + random.randint(1, 20)
+                damage = hunter_str - target_def
+    
+                if damage > 0:
                     target["stats"]["HP"] -= damage
-                    
                     effect = await self.load_file(
                         "feast_attack.txt",
                         name1=hunter['name'],
                         name2=target['name'],
-                        dmg=damage,
-                        )
-                    
+                        dmg=damage
+                    )
                     event_outcomes.append(effect)
+    
                     if target["stats"]["HP"] <= 0:
                         target["alive"] = False
+                        hunter["kill_list"].append(target["name"])
+                        eliminations.append(target)
                         event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
-                        hunter["kill_list"].append(target['name'])
-                        if target["items"]:
-                            hunter["items"].extend(target["items"])
-                            event_outcomes.append(
-                                f"{hunter['name']} looted {len(target['items'])} item(s) from {target['name']}."
-                            )
-                            target["items"] = [] 
                 else:
-                    hunter["stats"]["HP"] -= damage
-
+                    backlash = abs(damage)
+                    hunter["stats"]["HP"] -= backlash
                     effect = await self.load_file(
-                        "feast_attack.txt",
-                        name1=target['name'],
-                        name2=hunter['name'],
-                        dmg=damage,
-                        )
-                    
+                        "tie_attack.txt",
+                        name1=hunter['name'],
+                        name2=target['name'],
+                        dmg=0,
+                        dmg2=backlash
+                    )
                     event_outcomes.append(effect)
+    
                     if hunter["stats"]["HP"] <= 0:
                         hunter["alive"] = False
+                        target["kill_list"].append(hunter["name"])
+                        eliminations.append(hunter)
                         event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
-                        target["kill_list"].append(hunter['name'])
-                        if hunter["items"]:
-                            target["items"].extend(hunter["items"])
-                            event_outcomes.append(
-                                f"{target['name']} looted {len(hunter['items'])} item(s) from {hunter['name']}."
-                            )
-                            hunter["items"] = []
-
-            # Mark both the hunter and target as involved in an event
-            hunted.add(target_id)
-            hunted.add(hunter_id)
-
-
-            # Resolve Feast after other actions
-        if config["feast_active"] and feast_participants:
-            if len(feast_participants) == 1:
-                # Single participant gains +5 to all stats
-                participant = players[feast_participants[0]]
-                for stat in ["Def", "Str", "Con", "Wis", "HP"]:
-                    participant["stats"][stat] += 5
-                event_outcomes.append(f"{participant['name']} attended the Feast alone and gained +5 to all stats!")
-            else:
-                # Multiple participants battle it out
-                dead_players = []
-                for _ in range(3):  # 3 battle rounds
-                    if len(feast_participants) <= 1:
-                        break
-                    for participant_id in feast_participants[:]:
-                        if participant_id in dead_players:
-                            continue
-                        valid_targets = [p for p in feast_participants if p != participant_id and p not in dead_players]
-                        if not valid_targets:
-                            break
-                        target_id = random.choice(valid_targets)
-                        participant = players[participant_id]
-                        target = players[target_id]
-                        participant_str = participant["stats"]["Str"] + random.randint(1, 10)
-                        target_str = target["stats"]["Def"] + random.randint(1, 10)
     
-                        if participant_str > target_str:
-                            damage = participant_str - target_str
-                            target["stats"]["HP"] -= damage
-                          
-                            effect = await self.load_file(
-                                "feast_attack.txt",
-                                name1=participant['name'],
-                                name2=target['name'],
-                                dmg=damage
-                            )
-                            
-                            event_outcomes.append(effect)
-                            if target["stats"]["HP"] <= 0:
-                                target["alive"] = False
-                                dead_players.append(target_id)
-                                feast_participants.remove(target_id)
-                                participant["items"].extend(target["items"])
-                                target["items"] = []
-                                event_outcomes.append(f"{target['name']} was eliminated by {participant['name']}!")
-                                participant["kill_list"].append(target['name'])
-                        else:
-                            damage = target_str - participant_str
-                            participant["stats"]["HP"] -= damage
-                            effect = await self.load_file(
-                                "feast_attack.txt",
-                                name1=target['name'],
-                                name2=participant['name'],
-                                dmg=damage
-                            )
-                            event_outcomes.append(effect)
-                            if participant["stats"]["HP"] <= 0:
-                                participant["alive"] = False
-                                dead_players.append(participant_id)
-                                feast_participants.remove(participant_id)
-                                target["items"].extend(participant["items"])
-                                participant["items"] = []
-                                event_outcomes.append(f"{participant['name']} was eliminated by {target['name']}!")
-                                target["kill_list"].append(participant['name'])
+                hunted.add(hunter_id)
+                hunted.add(target_id)
     
-                # Remaining participants split items and stats
-                if feast_participants:
-                    all_dropped_items = []
-                    for dead_id in dead_players:
-                        all_dropped_items.extend(players[dead_id]["items"])
-                        players[dead_id]["items"] = []
-    
-                    # Distribute items
-                    if all_dropped_items:
-                        random.shuffle(all_dropped_items)
-                        for item in all_dropped_items:
-                            chosen_participant_id = random.choice(feast_participants)
-                            players[chosen_participant_id]["items"].append(item)
-                        event_outcomes.append("Feast participants split the items dropped by the eliminated players.")
-                        
-    
-                    # Distribute +5 stat bonuses randomly
-                    stat_bonus = 5
-                    stats_to_distribute = ["Def", "Str", "Con", "Wis", "HP"]
-                    for _ in range(stat_bonus):
-                        for stat in stats_to_distribute:
-                            if feast_participants:
-                                chosen_participant_id = random.choice(feast_participants)
-                                players[chosen_participant_id]["stats"][stat] += 1
-                    event_outcomes.append("Surviving Feast participants split the remaining items among themselves! Taking time to apply the boosts.")
-
-
-        # Save the updated players' state
+        # Save zone & player data
         await self.config.guild(guild).players.set(players)
-
-        day_counter = config.get("day_counter", 0)
-        
-        # Elimination announcement and tracking
+        await self.config.guild(guild).zones2.set(zones)
+    
+        # Track eliminations
         for player_id, player_data in players.items():
             if player_data["alive"] is False and "eliminated_on" not in player_data:
-                player_data["eliminated_on"] = day_counter  # Track day of elimination
+                player_data["eliminated_on"] = day_counter
                 eliminations.append(player_data)
-
-        await self.config.guild(guild).players.set(players)
-
-        # Announce the day's events
-        if event_outcomes:
-            eliminated = [event for event in event_outcomes if "was eliminated by" in event]
-            others = [event for event in event_outcomes if "was eliminated by" not in event]
-
-            # Combine the lists with 'others' first and 'eliminated' last
-            if eliminated:
-                others.append("A cannon sounds signaling another set of dead tributes \n\n")
-                event_outcomes = others + eliminated
-       
-            #Prepare the events log file
-            file_name = f"Hunger_Games.txt"
-            async with aiofiles.open(file_name, mode='a') as file:
-                # Pings users and bolds NPCs
-                for each in event_outcomes:
-                    await file.write(each + '\n')
-                    await ctx.send(each)
-            #await ctx.send("\n".join(event_outcomes))
-        else:
-           await ctx.send("The day passed quietly, with no significant events.")
-
     
-        # Save elimination leaderboard
+        await self.config.guild(guild).players.set(players)
+    
+        # Announce
+        if event_outcomes:
+            eliminated_msgs = [e for e in event_outcomes if "eliminated" in e]
+            others = [e for e in event_outcomes if "eliminated" not in e]
+            if eliminated_msgs:
+                others.append("\n🔫 A cannon sounds in the distance...")
+            event_outcomes = others + eliminated_msgs
+            for line in event_outcomes:
+                await ctx.send(line)
+        else:
+            await ctx.send("The day passed quietly.")
+    
+        # Save leaderboard
         if eliminations:
             leaderboard = config.get("elimination_leaderboard", [])
             for eliminated_player in eliminations:
-                leaderboard.append(
-                    {"name": eliminated_player["name"], "day": eliminated_player["eliminated_on"]}
-                )
+                leaderboard.append({
+                    "name": eliminated_player["name"],
+                    "day": eliminated_player["eliminated_on"]
+                })
             await self.config.guild(guild).elimination_leaderboard.set(leaderboard)
+
         
         # Process daily bet earnings
         players = await self.config.guild(guild).players()
