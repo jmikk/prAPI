@@ -742,7 +742,7 @@ class BettingButton(Button):
         self.cog = cog
 
     async def callback(self, interaction: Interaction):
-        await interaction.response.send_modal(BetModal(self.cog, interaction))
+        await interaction.response.send("To place a bid do ``/placebid`` Remember you can only bid day 0 and 1")
 
 
 class TributeRankingView(View):
