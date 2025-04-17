@@ -1,1 +1,74 @@
-
+[
+  {
+    "name": "Shadowed Forest",
+    "description": "A dense forest full of hiding places but hard to navigate.",
+    "modifiers": {
+      "Hunt": 0.1,
+      "Rest": -0.1,
+      "Search": 0.2
+    }
+  },
+  {
+    "name": "Sunscorched Desert",
+    "description": "Blistering heat drains your energy quickly.",
+    "modifiers": {
+      "Hunt": 0.0,
+      "Rest": -0.3,
+      "Search": -0.1
+    }
+  },
+  {
+    "name": "Crystal Lake",
+    "description": "Cool waters and calming sounds — a good place to catch your breath.",
+    "modifiers": {
+      "Rest": 0.3,
+      "Search": 0.0,
+      "Hunt": -0.1
+    }
+  },
+  {
+    "name": "Abandoned Village",
+    "description": "Empty homes and scavenged supplies offer opportunity.",
+    "modifiers": {
+      "Search": 0.3,
+      "Rest": -0.1,
+      "Hunt": 0.1
+    }
+  },
+  {
+    "name": "Rocky Cliffside",
+    "description": "Dangerous terrain, but great for ambushes.",
+    "modifiers": {
+      "Hunt": 0.3,
+      "Search": -0.2,
+      "Rest": -0.2
+    }
+  },
+  {
+    "name": "Volcanic Field",
+    "description": "Smoldering rocks and sulfurous air... you probably shouldn't be here.",
+    "modifiers": {
+      "Hunt": 0.2,
+      "Rest": -0.4,
+      "Search": -0.3
+    }
+  },
+  {
+    "name": "Moonlit Glade",
+    "description": "A serene clearing touched by moonlight. Something about it feels... safe.",
+    "modifiers": {
+      "Rest": 0.4,
+      "Search": 0.1,
+      "Hunt": -0.2
+    }
+  },
+  {
+    "name": "Ruined Bunker",
+    "description": "Dusty concrete halls still hold some supplies, if you're lucky.",
+    "modifiers": {
+      "Search": 0.4,
+      "Rest": 0.1,
+      "Hunt": -0.1
+    }
+  }
+]
