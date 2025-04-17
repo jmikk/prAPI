@@ -560,6 +560,56 @@ class SponsorButton(Button):
 
 
 
+class BidRankingView(View):
+    def __init__(self, cog, pages, per_page=5):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.pages = pages
+        self.per_page = per_page
+        self.page = 0
+        self.total_pages = len(pages)
+
+        self.prev_button = Button(label="⬅️ Back", style=discord.ButtonStyle.secondary, disabled=True)
+        self.next_button = Button(label="Next ➡️", style=discord.ButtonStyle.secondary, disabled=(self.total_pages <= 1))
+
+        self.prev_button.callback = self.prev_page
+        self.next_button.callback = self.next_page
+
+        self.add_item(self.prev_button)
+        self.add_item(self.next_button)
+
+    def get_embed(self):
+        embed = discord.Embed(
+            title="🏅 Tribute Betting Rankings 🏅",
+            description=f"Page {self.page + 1} of {self.total_pages}",
+            color=discord.Color.gold()
+        )
+
+        for field in self.pages[self.page]:
+            embed.add_field(
+                name=field["name"],
+                value=field["value"],
+                inline=False
+            )
+
+        return embed
+
+    async def update_message(self, interaction: Interaction):
+        self.prev_button.disabled = self.page == 0
+        self.next_button.disabled = self.page >= self.total_pages - 1
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+    async def next_page(self, interaction: Interaction):
+        if self.page < self.total_pages - 1:
+            self.page += 1
+            await self.update_message(interaction)
+
+    async def prev_page(self, interaction: Interaction):
+        if self.page > 0:
+            self.page -= 1
+            await self.update_message(interaction)
+
+
 class ViewBidsButton(Button):
     def __init__(self, cog):
         super().__init__(label="View Bids", style=discord.ButtonStyle.secondary)
@@ -571,29 +621,26 @@ class ViewBidsButton(Button):
             players = await self.cog.config.guild(guild).players()
             all_users = await self.cog.config.all_users()
 
-            # Calculate total bets on each tribute
             bid_totals = {}
-            bet_details = {}  # Store detailed bet info for each tribute
+            bet_details = {}
 
             for player_id, player_data in players.items():
-                if not player_data["alive"]:
+                if not player_data.get("alive"):
                     continue
 
                 tribute_bets = player_data.get("bets", {})
                 total_bets = 0
                 details = []
 
-                # Include user bets
                 for user_id, user_data in all_users.items():
                     bets = user_data.get("bets", {})
                     if player_id in bets:
                         bet_amount = bets[player_id]["amount"]
                         total_bets += bet_amount
                         member = guild.get_member(int(user_id))
-                        if member:
-                            details.append(f"{member.nick}: {bet_amount} Wellcoins")
+                        display_name = member.nick or member.name if member else f"User {user_id}"
+                        details.append(f"{display_name}: {bet_amount} Wellcoins")
 
-                # Include AI bets
                 ai_bets = tribute_bets.get("AI", [])
                 for ai_bet in ai_bets:
                     total_bets += ai_bet["amount"]
@@ -603,45 +650,41 @@ class ViewBidsButton(Button):
                     bid_totals[player_id] = total_bets
                     bet_details[player_id] = details
 
-            # Sort tributes by total bets
-            sorted_tributes = sorted(
-                bid_totals.items(),
-                key=lambda item: item[1],
-                reverse=True
-            )
+            sorted_tributes = sorted(bid_totals.items(), key=lambda item: item[1], reverse=True)
 
-            # Create embed
-            embed = discord.Embed(
-                title="🏅 Tribute Betting Rankings 🏅",
-                description="Ranking of living tributes based on total bets placed.",
-                color=discord.Color.gold()
-            )
-
+            # Paginate into chunks
+            fields_per_page = 5
+            all_fields = []
             for rank, (tribute_id, total_bet) in enumerate(sorted_tributes, start=1):
                 tribute = players.get(tribute_id)
-                if not tribute["alive"]:
-                    continue  # Skip dead tributes
-                district = tribute["district"]
-
-                # Determine display name (nickname or stored name for NPCs)
-                if tribute_id.isdigit():  # Real user
-                    member = guild.get_member(int(tribute_id))
-                    tribute_name = member.display_name if member else tribute["name"]
-                else:  # NPC
-                    tribute_name = tribute["name"]
-
-                # Format detailed bets
-                details_text = "\n".join(bet_details[tribute_id])
-
-                embed.add_field(
-                    name=f"#{rank} {tribute_name} (District {district})",
-                    value=f"Total Bets: {total_bet} Wellcoins\n{details_text}",
-                    inline=False
+                if not tribute or not tribute.get("alive"):
+                    continue
+                district = tribute.get("district", "?")
+                tribute_name = (
+                    guild.get_member(int(tribute_id)).display_name
+                    if tribute_id.isdigit() and guild.get_member(int(tribute_id))
+                    else tribute.get("name", f"Unknown [{tribute_id}]")
                 )
+                details_text = "\n".join(bet_details[tribute_id]) or "No individual breakdown."
 
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+                all_fields.append({
+                    "name": f"#{rank} {tribute_name} (District {district})",
+                    "value": f"Total Bets: {total_bet} Wellcoins\n{details_text}"
+                })
+
+            if not all_fields:
+                await interaction.response.send_message("❌ No bets have been placed yet.", ephemeral=True)
+                return
+
+            # Chunk into pages
+            pages = [all_fields[i:i + fields_per_page] for i in range(0, len(all_fields), fields_per_page)]
+
+            view = BidRankingView(self.cog, pages)
+            await interaction.response.send_message(embed=view.get_embed(), view=view, ephemeral=True)
+
         except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
+            await interaction.response.send_message(f"⚠️ Error: `{type(e).__name__}: {e}`", ephemeral=True)
+
 
 
 
