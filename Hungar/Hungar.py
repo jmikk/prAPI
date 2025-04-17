@@ -934,15 +934,30 @@ class Hungar(commands.Cog):
             if not pdata.get("alive"):
                 continue
     
-            # Try to resolve nickname or username from member object
+            # Resolve display name
             member = guild.get_member(int(pid)) if pid.isdigit() else None
             display_name = member.display_name if member else pdata.get("name", f"Unknown [{pid}]")
     
-            if current.lower() in display_name.lower():
-                # Return the user ID as the value, but show the nice name
-                options.append(app_commands.Choice(name=display_name, value=pid))
+            # Get district (default to 99 for unknown to push them last)
+            try:
+                district = int(pdata.get("district", 99))
+            except (ValueError, TypeError):
+                district = 99
     
-        return options[:25]
+            label = f"[D{district}] {display_name}"
+    
+            if current.lower() in label.lower():
+                options.append({
+                    "district": district,
+                    "choice": app_commands.Choice(name=label, value=pid)
+                })
+    
+        # Sort by district number
+        sorted_options = sorted(options, key=lambda x: x["district"])
+    
+        # Return only the Choice objects (limit 25)
+        return [opt["choice"] for opt in sorted_options[:25]]
+
 
 
     @hunger.command()
