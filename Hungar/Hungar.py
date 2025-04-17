@@ -944,14 +944,17 @@ class Hungar(commands.Cog):
             day_counter=0, 
             random_events=True,  # Enable or disable random events
             feast_active=False, 
-            WLboard={},  
+            WLboard={}, 
+            zones={},       # currently active zones
+            zone_pool{},   # full zone list
              
             
         )
         self.config.register_user(
             gold=0,
             bets={},
-            kill_count=0,  # Track total kills
+            kill_count=0,
+            zone=""# Track total kills
         )
 
 
