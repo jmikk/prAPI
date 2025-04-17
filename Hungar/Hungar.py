@@ -1397,6 +1397,7 @@ class Hungar(commands.Cog):
                 day_duration = timedelta(seconds=config["day_duration"])
                 if datetime.utcnow() - day_start >= day_duration:
                     await self.process_day(ctx)
+                    self.shrink_zones(ctx)
                     if await self.isOneLeft(guild):
                         await self.endGame(ctx)
                         break
@@ -2387,6 +2388,15 @@ class Hungar(commands.Cog):
                 options.append(app_commands.Choice(name=label[:100], value=pid))  # Discord max = 100 chars
     
         return options[:25]
+
+    async def shrink_zones(self, guild):
+        zones = await self.config.guild(guild).zones()
+        if len(zones) > 1:
+            zones.pop(random.randint(0, len(zones) - 1))
+            await self.config.guild(guild).zones.set(zones)
+    
+            # Optionally notify
+            return zones
 
 
 
