@@ -1404,7 +1404,6 @@ class Hungar(commands.Cog):
                 day_duration = timedelta(seconds=config["day_duration"])
                 if datetime.utcnow() - day_start >= day_duration:
                     await self.process_day(ctx)
-                    await self.shrink_zones(ctx)
                     if await self.isOneLeft(guild):
                         await self.endGame(ctx)
                         break
@@ -1723,10 +1722,11 @@ class Hungar(commands.Cog):
         hunted = set()
     
         # Shrink zones after Day 15
-        if day_counter % 5 == 4 and len(available_zones) > 1:
+        if day_counter % 5 == 2 and len(available_zones) > 1:
             zone_to_remove = random.choice(available_zones)
             zones.remove(zone_to_remove)
             event_outcomes.append(f"⚠️ The zone **{zone_to_remove}** has collapsed and is no longer safe!")
+            await self.shrink_zones(ctx,zone_to_remove)
     
             for pid, data in players.items():
                 if data["zone"] == zone_to_remove:
@@ -2210,14 +2210,21 @@ class Hungar(commands.Cog):
         return options[:25]
 
     
-    async def shrink_zones(self, guild2):
+    async def shrink_zones(self, guild2, zone_to_pop=None):
         zones = await self.config.guild(guild2.guild).zones2()
-        if len(zones) > 1:
-            zones.pop(random.randint(0, len(zones) - 1))
-            await self.config.guild(guild2.guild).zones2.set(zones)
     
-            # Optionally notify
-            return zones
+        if len(zones) <= 1:
+            return zones  # Nothing to shrink if only one or fewer zones
+    
+        if zone_to_pop and zone_to_pop in zones:
+            zones.remove(zone_to_pop)
+        else:
+            zones.pop(random.randint(0, len(zones) - 1))
+    
+        await self.config.guild(guild2.guild).zones2.set(zones)
+        return zones
+
+            
 
 
 
