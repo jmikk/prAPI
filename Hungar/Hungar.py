@@ -1702,6 +1702,15 @@ class Hungar(commands.Cog):
         resters = []
         feast_participants = []  # Separate list for Feast participants
         eliminations = []
+
+                # Group players by their current zone
+        zone_groups = {}
+        for player_id, player_data in players.items():
+            if not player_data["alive"]:
+                continue
+            zone = player_data.get("zone", "Wilderness")  # Default fallback
+            zone_groups.setdefault(zone, []).append(player_id)
+
                 
         day_counter = config.get("day_counter", 0) + 1
         await self.config.guild(guild).day_counter.set(day_counter)
@@ -1829,32 +1838,39 @@ class Hungar(commands.Cog):
             elif action == "Feast":
                 feast_participants.append(player_id)
 
-        # Shuffle hunters for randomness
-        random.shuffle(hunters)
-
-        # Create priority target lists
-        targeted_hunters = hunters[:]
-        targeted_looters = looters[:]
-        targeted_resters = resters[:]
-
-        # Resolve hunting events
-        for hunter_id in hunters:
-            if hunter_id in hunted:
-                continue
-
-            # Find a target in priority order, excluding the hunter themselves
-            target_id = None
-            for target_list in [targeted_looters, targeted_hunters, targeted_resters]:
-                while target_list:
-                    potential_target = target_list.pop(0)
-                    if potential_target != hunter_id and potential_target not in hunted:
-                        target_id = potential_target
-                        break
-                if target_id:
-                    break
-
-            if not target_id:
-                continue
+            # Shuffle hunters for randomness
+            random.shuffle(hunters)
+    
+            # Create priority target lists
+            targeted_hunters = hunters[:]
+            targeted_looters = looters[:]
+            targeted_resters = resters[:]
+    
+                    # Resolve hunting events within zones
+            for zone, zone_players in zone_groups.items():
+                event_outcomes.append(f"{player_data['name']} is hunting in {zone}")
+                zone_hunters = [pid for pid in hunters if pid in zone_players]
+                zone_looters = [pid for pid in looters if pid in zone_players]
+                zone_resters = [pid for pid in resters if pid in zone_players]
+            
+                random.shuffle(zone_hunters)
+            
+                for hunter_id in zone_hunters:
+                    if hunter_id in hunted:
+                        continue
+            
+                    target_id = None
+                    for target_list in [zone_looters[:], zone_hunters[:], zone_resters[:]]:
+                        while target_list:
+                            potential_target = target_list.pop(0)
+                            if potential_target != hunter_id and potential_target not in hunted:
+                                target_id = potential_target
+                                break
+                        if target_id:
+                            break
+            
+                    if not target_id:
+                        continue
 
             hunter = players[hunter_id]
             target = players[target_id]
