@@ -1736,7 +1736,7 @@ class Hungar(commands.Cog):
         
                 zone_name = pdata["zone"]["name"] if isinstance(pdata["zone"], dict) else pdata["zone"]
                 event_outcomes.append(
-                    f"{pdata['name']}'s {highest_stat} is reduced by {decay_amount} due to the arena's harshness. ({zone_name})"
+                    f"{pdata['name']}'s {highest_stat} is reduced by {decay_amount} due to the arena's harshness."
                 )
 
     
@@ -1789,10 +1789,10 @@ class Hungar(commands.Cog):
                     heal = random.randint(1, int(player_data["stats"]["Con"]))
                     player_data["stats"]["HP"] += heal
                     effect = await self.load_file("rest_heal.txt", name1=player_data["name"], dmg=heal)
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                    event_outcomes.append(f"{effect}")
                 else:
                     effect = await self.load_file("rest.txt", name1=player_data["name"])
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                    event_outcomes.append(f"{effect}")
             elif action == "Loot":
                 looters.append(player_id)
                 if random.random() < 0.75:
@@ -1804,7 +1804,7 @@ class Hungar(commands.Cog):
                         name1=player_data['name'],
                         dmg=boost
                     )
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                    event_outcomes.append(f"{effect}")
                 else:
                     threshold = 1 / (1 + player_data["stats"]["Wis"] / 10)
                     if random.random() < threshold:
@@ -1815,13 +1815,13 @@ class Hungar(commands.Cog):
                             name1=player_data['name'],
                             dmg=damage
                         )
-                        event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                        event_outcomes.append(f"{effect}")
                         if player_data["stats"]["HP"] <= 0:
                             player_data["alive"] = False
                             event_outcomes.append(f"{player_data['name']} has been eliminated by their own foolishness!")
                     else:
                         effect = await self.load_file("loot_bad.txt", name1=player_data['name'])
-                        event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                        event_outcomes.append(f"{effect}")
 
             elif action == "Feast":
                 feast_participants.append(player_id)
@@ -1860,7 +1860,7 @@ class Hungar(commands.Cog):
                         name2=target['name'],
                         dmg=damage
                     )
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                    event_outcomes.append(f"{effect}")
     
                     if target["stats"]["HP"] <= 0:
                         target["alive"] = False
@@ -1877,7 +1877,7 @@ class Hungar(commands.Cog):
                         dmg=0,
                         dmg2=backlash
                     )
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                    event_outcomes.append(f"{effect}")
                     
                     if hunter["stats"]["HP"] <= 0:
                         hunter["alive"] = False
