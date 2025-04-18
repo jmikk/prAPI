@@ -1716,6 +1716,29 @@ class Hungar(commands.Cog):
         # Day counter logic
         day_counter = config.get("day_counter", 0) + 1
         await self.config.guild(guild).day_counter.set(day_counter)
+
+        if day_counter > 20:
+            # Stat decay: reduce highest stat by growing % each day after Day 20
+            decay_percent = min(0.05 * (day_counter - 20), 0.5)  # Max 50% decay
+            decay_percent_display = int(decay_percent * 100)
+        
+            for pid, pdata in players.items():
+                if not pdata["alive"]:
+                    continue
+        
+                stats = pdata["stats"]
+                highest_stat = max(["Str", "Con", "Wis", "Def"], key=lambda s: stats[s])
+                decay_amount = int(stats[highest_stat] * decay_percent)
+        
+                stats[highest_stat] -= decay_amount
+                if stats[highest_stat] < 1:
+                    stats[highest_stat] = 1  # Prevent stat from going to 0 or negative
+        
+                zone_name = pdata["zone"]["name"] if isinstance(pdata["zone"], dict) else pdata["zone"]
+                event_outcomes.append(
+                    f"{pdata['name']}'s {highest_stat} is reduced by {decay_amount} due to the arena's harshness. ({zone_name})"
+                )
+
     
         event_outcomes = []
         eliminations = []
