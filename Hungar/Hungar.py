@@ -2199,6 +2199,14 @@ class Hungar(commands.Cog):
         guild = ctx.guild
         await self.config.guild(guild).players.clear()
         await ctx.send("All signups have been cleared. The player list has been reset.")
+
+    @hunger.command()
+    async def chknum(self, ctx):
+        WLboard = await self.config.guild(ctx.guild).WLboard()
+        # If each game has one winner:
+        games_ran = sum(data.get("wins", 0) for data in WLboard.values())
+        await ctx.send(f"🧮 Estimated number of Hunger Games run before tracking: **{games_ran}**")
+
     
     @app_commands.command(name="sponsor", description="Sponsor a tribute with a random stat boost.")
     @app_commands.describe(tribute="Select a tribute to sponsor")
@@ -2297,7 +2305,8 @@ class Hungar(commands.Cog):
         await self.config.guild(guild2.guild).zones2.set(zones)
         return zones
 
-            
+
+
 
 
 
