@@ -1323,6 +1323,10 @@ class Hungar(commands.Cog):
     
         # store total zone pool for shrinking
         await self.config.guild(ctx.guild).zone_pool2.set(all_zones)
+        WLboard = await self.config.guild(ctx.guild).WLboard()
+        # If each game has one winner:
+        games_ran = sum(data.get("wins", 0) for data in WLboard.values())
+        await ctx.send(f"Welcome to the: **{games_ran}** weekly game of The Wellspring")
         await ctx.send("🌍 The arena has been divided into zones. Let the Hunger Games begin!")
 
         for player_id, player_data in players.items():
