@@ -1951,6 +1951,10 @@ class Hungar(commands.Cog):
             for zone_name in sorted(zone_sorted_events.keys()):
                 await ctx.send(f"# __**Zone Report: {zone_name}**__")
                 for event in zone_sorted_events[zone_name]:
+                    if zone_name == "Distortion Field":
+                            event = message.split()
+                            random.shuffle(event)
+                            event = ' '.join(event)        
                     await ctx.send(event)
         else:
             await ctx.send("The day passed quietly.")
