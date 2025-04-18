@@ -1905,11 +1905,13 @@ class Hungar(commands.Cog):
             for line in event_outcomes:
                 zone_name = "Unknown Zone"
                 if line.endswith(")"):
-                    zone_name = line.split("(")[-1].strip(")")
+                    parts = line.rsplit("(", 1)
+                    line = parts[0].strip()
+                    zone_name = parts[1].strip(")")
                 zone_sorted_events.setdefault(zone_name, []).append(line)
 
             for zone_name in sorted(zone_sorted_events.keys()):
-                await ctx.send(f"__**Zone Report: {zone_name}**__")
+                await ctx.send(f"# __**Zone Report: {zone_name}**__")
                 for event in zone_sorted_events[zone_name]:
                     await ctx.send(event)
         else:
