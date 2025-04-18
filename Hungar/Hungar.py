@@ -1860,7 +1860,7 @@ class Hungar(commands.Cog):
                         name2=target['name'],
                         dmg=damage
                     )
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name'])")
+                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
     
                     if target["stats"]["HP"] <= 0:
                         target["alive"] = False
@@ -1877,7 +1877,7 @@ class Hungar(commands.Cog):
                         dmg=0,
                         dmg2=backlash
                     )
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name'])")
+                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
                     
                     if hunter["stats"]["HP"] <= 0:
                         hunter["alive"] = False
