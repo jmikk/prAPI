@@ -14,6 +14,28 @@ from discord import app_commands
 import math
 import json
 
+class MapButton(Button):
+    def __init__(self, cog):
+        super().__init__(label="View Map", style=discord.ButtonStyle.primary)
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        guild = interaction.guild
+        zones = await self.cog.config.guild(guild).zones2()
+
+        embed = discord.Embed(
+            title="🗺️ Arena Map - Active Zones",
+            description="Here are the zones currently in play:",
+            color=discord.Color.green()
+        )
+
+        for zone in zones:
+            name = zone["name"]
+            desc = zone.get("description", "No description provided.")
+            embed.add_field(name=name, value=desc, inline=False)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 class EqualizerButton(Button):
     """Button for the Gamemaster to balance the game by bringing all tributes up to the same total stat value."""
     
@@ -861,6 +883,7 @@ class ActionSelectionView(View):
         if current_day in [0, 1]:
             self.add_item(BettingButton(cog))
         
+        self.add_item(MapButton(self))  # 👈 add this line
         self.add_item(ViewItemsButton(cog))  # Add the new View Items button
         self.add_item(ViewStatsButton(cog))
         self.add_item(ViewTributesButton(cog))
