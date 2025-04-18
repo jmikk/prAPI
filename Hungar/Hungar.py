@@ -13,6 +13,7 @@ from discord.utils import get
 from discord import app_commands
 import math
 import json
+
 class MapButton(Button):
     def __init__(self, cog):
         super().__init__(label="View Map", style=discord.ButtonStyle.primary)
@@ -897,7 +898,7 @@ class ActionSelectionView(View):
         if current_day in [0, 1]:
             self.add_item(BettingButton(cog))
         
-        self.add_item(MapButton(self))  # 👈 add this line
+        self.add_item(MapButton(cog))  # 👈 add this line
         self.add_item(ViewItemsButton(cog))  # Add the new View Items button
         self.add_item(ViewStatsButton(cog))
         self.add_item(ViewTributesButton(cog))
