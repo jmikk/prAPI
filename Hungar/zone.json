@@ -1,74 +1,719 @@
 [
-  {
-    "name": "Shadowed Forest",
-    "description": "A dense forest full of hiding places but hard to navigate.",
-    "modifiers": {
-      "Hunt": 0.1,
-      "Rest": -0.1,
-      "Search": 0.2
+    {
+      "name": "🌁 Mirage Expanse",
+      "description": "Illusions shift with every step. Is it real treasure or just a trick?",
+      "modifiers": {
+        "Hunt": -0.3,
+        "Rest": -0.2,
+        "Loot": 0.7
+      }
+    },
+    {
+      "name": "🧿 Oracle's Peak",
+      "description": "Visions flood your mind. You may find knowledge — or go mad.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": -0.4,
+        "Loot": 0.9
+      }
+    },
+    {
+      "name": "🧊 Glacial Abyss",
+      "description": "Sub-zero temperatures slow your every move. But riches lie frozen below.",
+      "modifiers": {
+        "Hunt": -0.4,
+        "Rest": -0.6,
+        "Loot": 0.8
+      }
+    },
+    {
+      "name": "🛕 Ruined Temple",
+      "description": "Long-abandoned relics rest beneath crumbling stone. Some are still guarded.",
+      "modifiers": {
+        "Hunt": 0.3,
+        "Rest": -0.2,
+        "Loot": 0.6
+      }
+    },
+    {
+      "name": "🪩 Phantom Ballroom",
+      "description": "Music plays from nowhere. You dance or you die — or maybe both.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": -0.5,
+        "Loot": 0.9
+      }
+    },
+    {
+      "name": "🛸 Crash Site Delta-9",
+      "description": "Twisted metal, alien fluids, and unknown tech cover the crater.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": -0.4,
+        "Loot": 1.0
+      }
+    },
+    {
+      "name": "🕊️ Silent Chapel",
+      "description": "Time feels frozen. It’s peaceful... too peaceful.",
+      "modifiers": {
+        "Hunt": -0.2,
+        "Rest": 0.5,
+        "Loot": 0.4
+      }
+    },
+    {
+      "name": "🎒 Forgotten Camp",
+      "description": "Whoever was here left in a hurry. Supplies still remain.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": 0.2,
+        "Loot": 0.6
+      }
+    },
+    {
+      "name": "🌌 Astral Verge",
+      "description": "Stars bend and reality thins. Loot seems to find you here... somehow.",
+      "modifiers": {
+        "Hunt": -0.1,
+        "Rest": -0.3,
+        "Loot": 1.0
+      }
+    },
+    {
+      "name": "🔮 Veiled Bazaar",
+      "description": "Traders of strange goods appear and vanish. If you're fast, you score big.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": -0.2,
+        "Loot": 0.8
+      }
+    },
+    {
+      "name": "🪐 Orbital Drop Zone",
+      "description": "Cargo pods slam into the ground, scattering gear in all directions.",
+      "modifiers": {
+        "Hunt": 0.3,
+        "Rest": -0.5,
+        "Loot": 1.0
+      }
+    },
+    {
+      "name": "⚰️ Grave of Giants",
+      "description": "Bones the size of trees lie half-buried. Their hoards may still remain.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": -0.3,
+        "Loot": 0.9
+      }
+    },
+    {
+      "name": "🎢 Broken Theme Park",
+      "description": "Rusted rides creak in the wind. Prizes and danger are both easy to find.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": -0.4,
+        "Loot": 0.8
+      }
+    },
+    {
+      "name": "🔥 Scorched Hollow",
+      "description": "Recently burned, but embers still glow around exposed valuables.",
+      "modifiers": {
+        "Hunt": -0.3,
+        "Rest": -0.6,
+        "Loot": 0.9
+      }
+    },
+    {
+      "name": "💀 Execution Grounds",
+      "description": "Blood stains the soil. The cursed dead may guard lost gear.",
+      "modifiers": {
+        "Hunt": 0.5,
+        "Rest": -0.5,
+        "Loot": 0.7
+      }
+    },
+    {
+      "name": "🌿 Overgrown Lab",
+      "description": "Plants have claimed everything — including rare experiments and devices.",
+      "modifiers": {
+        "Hunt": -0.1,
+        "Rest": -0.2,
+        "Loot": 0.8
+      }
+    },
+    {
+      "name": "⛺ Hermit's Refuge",
+      "description": "A lone camp surrounded by mystery. Someone left in a hurry.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": 0.4,
+        "Loot": 0.5
+      }
+    },
+    {
+      "name": "🧨 Sabotaged Mine",
+      "description": "Tunnels rattle with collapsing stone, but minerals and gear are buried deep.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": -0.7,
+        "Loot": 1.0
+      }
+    },
+    {
+      "name": "🎯 Hunter’s Arena",
+      "description": "Signs of past duels mark the land. Great for combat and trophies.",
+      "modifiers": {
+        "Hunt": 0.8,
+        "Rest": -0.3,
+        "Loot": 0.6
+      }
+    },
+    {
+      "name": "🌀 Dimensional Fold",
+      "description": "This place shouldn't exist. Time and space ripple. Rewards are unstable.",
+      "modifiers": {
+        "Hunt": -0.2,
+        "Rest": -0.4,
+        "Loot": 1.0
+      }
     }
-  },
-  {
-    "name": "Sunscorched Desert",
-    "description": "Blistering heat drains your energy quickly.",
-    "modifiers": {
-      "Hunt": 0.0,
-      "Rest": -0.3,
-      "Search": -0.1
+  ,
+    {
+      "name": "🕹️ Glitched Arcade",
+      "description": "Reality stutters here. Loot may duplicate — or vanish.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": -0.3,
+        "Loot": 0.9
+      }
+    },
+    {
+      "name": "🌧️ Thunder Marsh",
+      "description": "The rain never stops. Flash floods sometimes unearth hidden caches.",
+      "modifiers": {
+        "Hunt": -0.2,
+        "Rest": -0.4,
+        "Loot": 0.7
+      }
+    },
+    {
+      "name": "⚙️ Clockwork Courtyard",
+      "description": "A forgotten automaton garden ticks endlessly, concealing buried valuables.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": 0.0,
+        "Loot": 0.8
+      }
+    },
+    {
+      "name": "🏛️ Shattered Forum",
+      "description": "Crumbling statues whisper old debates. Hidden vaults lie beneath the rubble.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": -0.2,
+        "Loot": 0.9
+      }
+    },
+    {
+      "name": "🧱 Crumbling Asylum",
+      "description": "Madness lingers in the halls. But so do supplies left behind.",
+      "modifiers": {
+        "Hunt": 0.3,
+        "Rest": -0.6,
+        "Loot": 0.8
+      }
+    },
+    {
+      "name": "🛰️ Signal Relay",
+      "description": "Buzzing transmissions and strange noises echo — and attract scavengers.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": -0.5,
+        "Loot": 1.0
+      }
+    },
+    {
+      "name": "🐾 Predator's Trail",
+      "description": "Fresh claw marks suggest you're not alone. Tread carefully, loot swiftly.",
+      "modifiers": {
+        "Hunt": 0.6,
+        "Rest": -0.5,
+        "Loot": 0.7
+      }
+    },
+    {
+      "name": "🧵 Tattered Market",
+      "description": "Once a lively trade hub, now ruins littered with forgotten wares.",
+      "modifiers": {
+        "Hunt": -0.1,
+        "Rest": 0.1,
+        "Loot": 0.9
+      }
+    },
+    {
+      "name": "🪦 Burial Mounds",
+      "description": "Earthen graves dot the land. Disturb them and you may find riches... or curses.",
+      "modifiers": {
+        "Hunt": 0.4,
+        "Rest": -0.2,
+        "Loot": 0.8
+      }
+    },
+    {
+      "name": "🌠 Falling Star Crater",
+      "description": "The ground is warm and glowing. Whatever landed brought treasure with it.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": -0.3,
+        "Loot": 1.0
+      }
     }
-  },
-  {
-    "name": "Crystal Lake",
-    "description": "Cool waters and calming sounds — a good place to catch your breath.",
-    "modifiers": {
-      "Rest": 0.3,
-      "Search": 0.0,
-      "Hunt": -0.1
+  ,
+    {
+      "name": "🧨 Explosive Alley",
+      "description": "Traps everywhere. Everything explodes. Still worth the risk?",
+      "modifiers": {
+        "Hunt": 0.7,
+        "Rest": -1.0,
+        "Loot": 1.2
+      }
+    },
+    {
+      "name": "🌀 Unstable Rift",
+      "description": "Nothing stays the same here. Stats swing wildly each visit.",
+      "modifiers": {
+        "Hunt": -0.9,
+        "Rest": 0.9,
+        "Loot": 1.5
+      }
+    },
+    {
+      "name": "🎭 Trickster's Domain",
+      "description": "Everything lies. Expect the unexpected — and then something else.",
+      "modifiers": {
+        "Hunt": 0.4,
+        "Rest": -0.6,
+        "Loot": 1.3
+      }
+    },
+    {
+      "name": "📡 Distortion Field",
+      "description": "Your senses betray you. Time feels broken. Loot seems to shift location.",
+      "modifiers": {
+        "Hunt": -0.5,
+        "Rest": -0.7,
+        "Loot": 1.1
+      }
+    },
+    {
+      "name": "🔁 Paradox Loop",
+      "description": "You're sure you've been here before... and after. It messes with your mind.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": -0.4,
+        "Loot": 1.0
+      }
+    },
+    {
+      "name": "👁️ Hall of Echoes",
+      "description": "Voices bounce back louder than your thoughts. Confusing, but full of surprises.",
+      "modifiers": {
+        "Hunt": -0.2,
+        "Rest": -0.5,
+        "Loot": 1.4
+      }
+    },
+    {
+      "name": "💫 Twisting Spire",
+      "description": "A vertical maze of teleport pads and hidden alcoves.",
+      "modifiers": {
+        "Hunt": 0.3,
+        "Rest": -0.2,
+        "Loot": 1.1
+      }
+    },
+    {
+      "name": "🃏 Joker’s Wild",
+      "description": "This place plays tricks with fate. Great gains — or great losses.",
+      "modifiers": {
+        "Hunt": 0.6,
+        "Rest": -0.6,
+        "Loot": 1.5
+      }
+    },
+    {
+      "name": "🎇 Volatile Nexus",
+      "description": "Energy surges wildly here. It powers up loot — and chaos.",
+      "modifiers": {
+        "Hunt": -0.3,
+        "Rest": -0.8,
+        "Loot": 1.6
+      }
     }
-  },
-  {
-    "name": "Abandoned Village",
-    "description": "Empty homes and scavenged supplies offer opportunity.",
-    "modifiers": {
-      "Search": 0.3,
-      "Rest": -0.1,
-      "Hunt": 0.1
+  ,
+    {
+      "name": "🌻 Quiet Meadow",
+      "description": "A calm, grassy field where birds chirp and the air is fresh.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": 0.4,
+        "Loot": 0.3
+      }
+    },
+    {
+      "name": "🌲 Pine Thicket",
+      "description": "Thick with evergreen trees and hidden nooks.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": 0.1,
+        "Loot": 0.4
+      }
+    },
+    {
+      "name": "🏖️ Sandy Shore",
+      "description": "Gentle waves lap against the shore. Sometimes, the tide brings useful items.",
+      "modifiers": {
+        "Hunt": -0.1,
+        "Rest": 0.5,
+        "Loot": 0.2
+      }
+    },
+    {
+      "name": "🌾 Farmland Fringe",
+      "description": "Overgrown fields with the occasional forgotten stash.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": 0.2,
+        "Loot": 0.3
+      }
+    },
+    {
+      "name": "🏡 Rural Homestead",
+      "description": "A small house and barn, left in a hurry but full of supplies.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": 0.3,
+        "Loot": 0.4
+      }
+    },
+    {
+      "name": "🚰 Water Pump Station",
+      "description": "Abandoned, but still functional. Good place to refresh.",
+      "modifiers": {
+        "Hunt": -0.1,
+        "Rest": 0.4,
+        "Loot": 0.3
+      }
+    },
+    {
+      "name": "🌉 Covered Bridge",
+      "description": "A shaded wooden bridge with secret compartments in the beams.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": 0.1,
+        "Loot": 0.5
+      }
+    },
+    {
+      "name": "🚜 Tractor Lot",
+      "description": "Old machinery rusts in place — but toolboxes are still full.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": 0.0,
+        "Loot": 0.4
+      }
+    },
+    {
+      "name": "🌳 Orchard Path",
+      "description": "Fruit-bearing trees stretch for miles, with surprises tucked away in crates.",
+      "modifiers": {
+        "Hunt": -0.1,
+        "Rest": 0.3,
+        "Loot": 0.5
+      }
+    },
+    {
+      "name": "🪵 Lumberyard Edge",
+      "description": "Chopped logs, equipment, and forgotten gear tucked in the sawdust.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": 0.0,
+        "Loot": 0.4
+      }
     }
-  },
-  {
-    "name": "Rocky Cliffside",
-    "description": "Dangerous terrain, but great for ambushes.",
-    "modifiers": {
-      "Hunt": 0.3,
-      "Search": -0.2,
-      "Rest": -0.2
+  ,
+    {
+      "name": "🦉 Owl's Perch",
+      "description": "A quiet canopy lookout. Peaceful, with occasional glints of hidden loot.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": 0.4,
+        "Loot": 0.3
+      }
+    },
+    {
+      "name": "🍄 Mushroom Glade",
+      "description": "Bioluminescent fungi light the area. Some are edible, others... valuable.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": 0.3,
+        "Loot": 0.5
+      }
+    },
+    {
+      "name": "🏞️ Valley Crossing",
+      "description": "A natural junction where travelers once passed. Loot still lingers.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": 0.1,
+        "Loot": 0.4
+      }
+    },
+    {
+      "name": "🧺 Picnic Grounds",
+      "description": "Old tables and benches, some still holding forgotten supplies.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": 0.5,
+        "Loot": 0.2
+      }
+    },
+    {
+      "name": "🏕️ Scout Camp",
+      "description": "A circle of tents, long since abandoned. Gear might still be usable.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": 0.2,
+        "Loot": 0.4
+      }
+    },
+    {
+      "name": "🌬️ Breezy Hill",
+      "description": "A windswept rise with a wide view and a few supply caches tucked in.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": 0.3,
+        "Loot": 0.3
+      }
+    },
+    {
+      "name": "🚶 Trailhead Post",
+      "description": "A wooden sign and a supply box mark where many journeys once began.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": 0.2,
+        "Loot": 0.5
+      }
+    },
+    {
+      "name": "🛶 Driftwood Shore",
+      "description": "Piles of water-worn debris and the occasional crate bobbing on the waves.",
+      "modifiers": {
+        "Hunt": -0.1,
+        "Rest": 0.4,
+        "Loot": 0.4
+      }
+    },
+    {
+      "name": "🏔️ Snowcap Ridge",
+      "description": "Cold but calm. Sheltered crevices often hide survival gear.",
+      "modifiers": {
+        "Hunt": -0.2,
+        "Rest": 0.2,
+        "Loot": 0.6
+      }
+    },
+    {
+      "name": "🛤️ Abandoned Rail",
+      "description": "A quiet rail line rusting into history, with forgotten cargo along the way.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": 0.1,
+        "Loot": 0.5
+      }
     }
-  },
-  {
-    "name": "Volcanic Field",
-    "description": "Smoldering rocks and sulfurous air... you probably shouldn't be here.",
-    "modifiers": {
-      "Hunt": 0.2,
-      "Rest": -0.4,
-      "Search": -0.3
+  ,
+    {
+      "name": "🦌 Forest Edge",
+      "description": "The boundary of the wild woods, often visited by animals and wanderers alike.",
+      "modifiers": {
+        "Hunt": 0.3,
+        "Rest": 0.2,
+        "Loot": 0.4
+      }
+    },
+    {
+      "name": "🏚️ Barn Ruins",
+      "description": "Once a shelter for livestock, now home to hidden stashes.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": 0.3,
+        "Loot": 0.5
+      }
+    },
+    {
+      "name": "🌉 Cliff Overlook",
+      "description": "A scenic vista offering solitude and the occasional traveler’s cache.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": 0.4,
+        "Loot": 0.3
+      }
+    },
+    {
+      "name": "🧱 Construction Site",
+      "description": "Stacks of materials, scattered tools, and lots of places to scavenge.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": 0.0,
+        "Loot": 0.6
+      }
+    },
+    {
+      "name": "⛲ Fountain Plaza",
+      "description": "A cracked fountain and old benches — a peaceful if worn-out rest stop.",
+      "modifiers": {
+        "Hunt": -0.1,
+        "Rest": 0.5,
+        "Loot": 0.2
+      }
+    },
+    {
+      "name": "📦 Storage Depot",
+      "description": "A cluster of half-open containers, filled with all sorts of leftover goods.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": 0.1,
+        "Loot": 0.7
+      }
+    },
+    {
+      "name": "🧺 Overgrown Courtyard",
+      "description": "Stone paths and crumbled walls now blanketed in vines and moss.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": 0.3,
+        "Loot": 0.4
+      }
+    },
+    {
+      "name": "🚦 Forgotten Intersection",
+      "description": "Street signs rusting in place, but the old cars may still hold valuables.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": 0.0,
+        "Loot": 0.6
+      }
+    },
+    {
+      "name": "🎣 Fisherman’s Dock",
+      "description": "Still waters and broken boats. Lines and lures left behind.",
+      "modifiers": {
+        "Hunt": -0.2,
+        "Rest": 0.4,
+        "Loot": 0.5
+      }
+    },
+    {
+      "name": "📚 Library Ruins",
+      "description": "Torn books and dusty archives — and sometimes useful gear.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": 0.3,
+        "Loot": 0.6
+      }
     }
-  },
-  {
-    "name": "Moonlit Glade",
-    "description": "A serene clearing touched by moonlight. Something about it feels... safe.",
-    "modifiers": {
-      "Rest": 0.4,
-      "Search": 0.1,
-      "Hunt": -0.2
+  ,
+    {
+      "name": "🪖 Old War Trench",
+      "description": "A dugout from a long-past battle. There’s still salvage in the mud.",
+      "modifiers": {
+        "Hunt": 0.3,
+        "Rest": -0.2,
+        "Loot": 0.7
+      }
+    },
+    {
+      "name": "🛎️ Deserted Inn",
+      "description": "Dusty beds and creaky floors, but useful things hide in drawers.",
+      "modifiers": {
+        "Hunt": 0.0,
+        "Rest": 0.4,
+        "Loot": 0.5
+      }
+    },
+    {
+      "name": "🧽 Flooded Alley",
+      "description": "Shin-deep water and slippery bricks. Filthy, but rich with sunken goods.",
+      "modifiers": {
+        "Hunt": -0.3,
+        "Rest": -0.1,
+        "Loot": 0.8
+      }
+    },
+    {
+      "name": "🚧 Collapsed Tunnel",
+      "description": "Rubble blocks most of it — except one dangerous path lined with crates.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": -0.3,
+        "Loot": 0.9
+      }
+    },
+    {
+      "name": "🍂 Autumn Grove",
+      "description": "A calm, colorful forest carpeted in fallen leaves and forgotten gear.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": 0.3,
+        "Loot": 0.4
+      }
+    },
+    {
+      "name": "🔩 Scrapyard Flats",
+      "description": "Rusty junk stretches to the horizon. Great for parts and tools.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": 0.0,
+        "Loot": 0.7
+      }
+    },
+    {
+      "name": "🛎️ Rooftop Garden",
+      "description": "Overgrown veggies and broken furniture — surprisingly restful and full of odds and ends.",
+      "modifiers": {
+        "Hunt": -0.1,
+        "Rest": 0.5,
+        "Loot": 0.5
+      }
+    },
+    {
+      "name": "📻 Signal Tower",
+      "description": "An old broadcast station full of wires, lockers, and surprises.",
+      "modifiers": {
+        "Hunt": 0.3,
+        "Rest": -0.2,
+        "Loot": 0.8
+      }
+    },
+    {
+      "name": "🪚 Logging Trail",
+      "description": "Stacks of timber and dropped toolkits left behind by hurried workers.",
+      "modifiers": {
+        "Hunt": 0.2,
+        "Rest": 0.1,
+        "Loot": 0.6
+      }
+    },
+    {
+      "name": "📮 Courier's Post",
+      "description": "Satchels and packages still wait inside this abandoned outpost.",
+      "modifiers": {
+        "Hunt": 0.1,
+        "Rest": 0.3,
+        "Loot": 0.7
+      }
     }
-  },
-  {
-    "name": "Ruined Bunker",
-    "description": "Dusty concrete halls still hold some supplies, if you're lucky.",
-    "modifiers": {
-      "Search": 0.4,
-      "Rest": 0.1,
-      "Hunt": -0.1
-    }
-  }
-]
+  ]
