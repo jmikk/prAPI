@@ -1708,8 +1708,9 @@ class Hungar(commands.Cog):
             if not data["alive"]:
                 continue
             zone = data["zone"]
+            
             if isinstance(zone, dict):
-                zone = zone.get("name", "Unknown Zone")
+                zone = zone.get("name", "Cornucopia")
             zone_groups.setdefault(zone, []).append(player_id)
     
         # Day counter logic
@@ -1722,7 +1723,7 @@ class Hungar(commands.Cog):
         hunted = set()
     
         # Shrink zones after Day 15
-        if day_counter % 5 == 2 and len(available_zones) > 1:
+        if day_counter % 3 == 2 and len(available_zones) > 1:
             zone_to_remove = random.choice(available_zones)
             zones.remove(zone_to_remove)
             event_outcomes.append(f"⚠️ The zone **{zone_to_remove['name']}** has collapsed and is no longer safe!")
@@ -1801,6 +1802,7 @@ class Hungar(commands.Cog):
 
             elif action == "Feast":
                 feast_participants.append(player_id)
+                
     
         # Zone-based hunting resolution
         for zone, zone_players in zone_groups.items():
