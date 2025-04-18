@@ -13,28 +13,42 @@ from discord.utils import get
 from discord import app_commands
 import math
 import json
-
 class MapButton(Button):
     def __init__(self, cog):
         super().__init__(label="View Map", style=discord.ButtonStyle.primary)
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
-        guild = interaction.guild
-        zones = await self.cog.config.guild(guild).zones2()
+        try:
+            guild = interaction.guild
+            zones = await self.cog.config.guild(guild).zones2()
 
-        embed = discord.Embed(
-            title="🗺️ Arena Map - Active Zones",
-            description="Here are the zones currently in play:",
-            color=discord.Color.green()
-        )
+            if not zones:
+                await interaction.response.send_message(
+                    "There are no active zones to display right now.",
+                    ephemeral=True
+                )
+                return
 
-        for zone in zones:
-            name = zone["name"]
-            desc = zone.get("description", "No description provided.")
-            embed.add_field(name=name, value=desc, inline=False)
+            embed = discord.Embed(
+                title="🗺️ Arena Map - Active Zones",
+                description="Here are the zones currently in play:",
+                color=discord.Color.green()
+            )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+            for zone in zones:
+                name = zone.get("name", "Unknown Zone")
+                desc = zone.get("description", "No description provided.")
+                embed.add_field(name=name, value=desc, inline=False)
+
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+        except Exception as e:
+            await interaction.response.send_message(
+                f"⚠️ An error occurred while loading the map.\n```{e}```",
+                ephemeral=True
+            )
+
 
 class EqualizerButton(Button):
     """Button for the Gamemaster to balance the game by bringing all tributes up to the same total stat value."""
