@@ -1861,6 +1861,7 @@ class Hungar(commands.Cog):
                         event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
                         if player_data["stats"]["HP"] <= 0:
                             player_data["alive"] = False
+                            player_data["zone"] = "Cornucopia"
                             event_outcomes.append(f"{player_data['name']} has been eliminated by their own foolishness!")
                     else:
                         effect = await self.load_file("loot_bad.txt", name1=player_data['name'])
@@ -1909,6 +1910,7 @@ class Hungar(commands.Cog):
                         target["alive"] = False
                         hunter["kill_list"].append(target["name"])
                         eliminations.append(target)
+                        target["zone"] = "Cornucopia"
                         event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
                 else:
                     backlash = abs(damage)
@@ -1926,6 +1928,7 @@ class Hungar(commands.Cog):
                         hunter["alive"] = False
                         target["kill_list"].append(hunter["name"])
                         eliminations.append(hunter)
+                        hunter["zone"] = "Cornucopia"
                         event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
     
                 hunted.add(hunter_id)
