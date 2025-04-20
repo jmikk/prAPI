@@ -38,6 +38,8 @@ class MapButton(Button):
             )
 
             for zone in zones:
+                if not isinstance(zone, dict):
+                    continue  # or log it
                 name = zone.get("name", "Unknown Zone")
                 desc = zone.get("description", "No description provided.")
                 embed.add_field(name=name, value=desc, inline=False)
