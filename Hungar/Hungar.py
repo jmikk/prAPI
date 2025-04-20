@@ -1758,6 +1758,8 @@ class Hungar(commands.Cog):
         # Day counter logic
         day_counter = config.get("day_counter", 0) + 1
         await self.config.guild(guild).day_counter.set(day_counter)
+        
+        event_outcomes = []
 
         if day_counter > 20:
             # Stat decay: reduce highest stat by growing % each day after Day 20
@@ -1782,7 +1784,6 @@ class Hungar(commands.Cog):
                 )
 
     
-        event_outcomes = []
         eliminations = []
         hunters, looters, resters, feast_participants = [], [], [], []
         hunted = set()
