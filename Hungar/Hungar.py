@@ -2184,8 +2184,10 @@ class Hungar(commands.Cog):
             await ctx.send("No players have signed up for the Hunger Games yet.")
             return
 
-        player_list = list(players.items())
-        total_pages = math.ceil(len(player_list) / 10)
+        # Sort players by district number
+        sorted_players = sorted(players.items(), key=lambda x: x[1].get("district", 0))
+        total_players = len(sorted_players)
+        total_pages = math.ceil(total_players / 10)
 
         async def create_embed(page):
             embed = discord.Embed(
@@ -2193,7 +2195,7 @@ class Hungar(commands.Cog):
                 description=f"Page {page + 1}/{total_pages} - Showing up to 10 players",
                 color=discord.Color.blue()
             )
-            for player_id, player_data in player_list[page * 10:(page + 1) * 10]:
+            for player_id, player_data in sorted_players[page * 10:(page + 1) * 10]:
                 name = player_data.get("name", "Unknown")
                 district = player_data.get("district", "?")
                 status = "Alive" if player_data.get("alive", False) else "Eliminated"
@@ -2202,6 +2204,7 @@ class Hungar(commands.Cog):
                     value=f"Status: {status}",
                     inline=False
                 )
+            embed.set_footer(text=f"Total Players: {total_players}")
             return embed
 
         class Paginator(View):
@@ -2229,6 +2232,7 @@ class Hungar(commands.Cog):
 
         embed = await create_embed(0)
         await ctx.send(embed=embed, view=Paginator())
+
 
     
     @hunger.command()
