@@ -1831,14 +1831,25 @@ class Hungar(commands.Cog):
                 hunters.append(player_id)
             elif action == "Rest":
                 resters.append(player_id)
-                if player_data["stats"]["HP"] < player_data["stats"]["Con"] * 2:
-                    heal = random.randint(1, int(player_data["stats"]["Con"]))
-                    player_data["stats"]["HP"] += heal
-                    effect = await self.load_file("rest_heal.txt", name1=player_data["name"], dmg=heal)
+                used_item = None
+                if player_data["items"]:
+                    # Pop and apply the first item
+                    stat, boost = player_data["items"].pop(0)
+                    player_data["stats"][stat] += boost
+                    effect = f"{player_data['name']} used an item to get the following boost **+{boost} {stat}**!"
                     event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+            
                 else:
-                    effect = await self.load_file("rest.txt", name1=player_data["name"])
+                    # No item used, apply default healing or rest message
+                    if player_data["stats"]["HP"] < player_data["stats"]["Con"] * 2:
+                        heal = random.randint(1, int(player_data["stats"]["Con"]))
+                        player_data["stats"]["HP"] += heal
+                        effect = await self.load_file("rest_heal.txt", name1=player_data["name"], dmg=heal)
+                    else:
+                        effect = await self.load_file("rest.txt", name1=player_data["name"])
+            
                     event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+
             elif action == "Loot":
                 looters.append(player_id)
                 if random.random() < 0.75:
@@ -1872,6 +1883,97 @@ class Hungar(commands.Cog):
 
             elif action == "Feast":
                 feast_participants.append(player_id)
+                players[player_id]["zone"] = "Cornucopia"
+
+        feasters = [pid for pid, p in players.items() if p.get("action") == "Feast" and p.get("alive")]
+    
+        if feasters:
+    
+            feast_log = ["🍖 The Feast begins at the Cornucopia..."]
+        
+            if len(feasters) == 1:
+                solo = players[feasters[0]]
+                for each in range(3):
+                    stat = random.choice(["Str", "Con", "Def", "Wis"])
+                    boost = random.randint(10, 15)
+                    solo["stats"][stat] += boost
+                    effect = f"🥇 {solo['name']} arrived alone and gained **+{boost} {stat}** from the untouched Cornucopia."
+                event_outcomes.append(f"{effect} (Cornucopia)")
+            else:
+        
+                alive_set = set(feasters)
+            
+                for round_num in range(3):
+                    feast_log.append(f"\n💥 **Round {round_num} of the Feast Bloodbath!**")
+                    targets = list(alive_set)
+                    random.shuffle(targets)
+            
+                    for attacker_id in alive_set.copy():
+                        if not players[attacker_id]["alive"]:
+                            continue
+            
+                        valid_targets = [t for t in targets if t != attacker_id and players[t]["alive"]]
+                        if not valid_targets:
+                            continue
+                        target_id = random.choice(valid_targets)
+            
+                        attacker = players[attacker_id]
+                        target = players[target_id]
+            
+                        atk_score = (
+                            attacker["stats"]["Str"] * 1.2 +
+                            attacker["stats"]["Wis"] * 0.5 +
+                            random.randint(1, 20)
+                        )
+                        def_score = (
+                            target["stats"]["Def"] * 1.1 +
+                            target["stats"]["Con"] * 0.5 +
+                            random.randint(1, 20)
+                        )
+                        
+                        if atk_score > def_score:
+                            damage = max(1, int((atk_score - def_score) + random.randint(1, 20)))
+                            target["stats"]["HP"] -= damage
+                            effect = f"⚔️ {attacker['name']} slashed {target['name']} for **{damage} HP**!"
+                            if target["stats"]["HP"] <= 0:
+                                target["alive"] = False
+                                attacker["kill_list"].append(target["name"])
+                                effect += f" 💀 {target['name']} died!"
+                                alive_set.discard(target_id)
+                            event_outcomes.append(f"{effect} (Cornucopia)")
+                        else:
+                            effect = f"🛡️ {target['name']} deflected an attack from {attacker['name']}."
+                            event_outcomes.append(f"{effect} (Cornucopia)")
+            
+                    # Traps!
+                    for pid in list(alive_set):
+                        if not players[pid]["alive"]:
+                            continue
+            
+                        if random.random() < 0.25:
+                            trap_damage = random.randint(5, 10)
+                            players[pid]["stats"]["HP"] -= trap_damage
+            
+                            if players[pid]["stats"]["HP"] <= 0:
+                                players[pid]["alive"] = False
+                                effect = f"💀 {players[pid]['name']} triggered a deadly trap and died!"
+                                alive_set.discard(pid)
+                            else:
+                                effect = f"⚠️ {players[pid]['name']} was injured by a trap and lost **{trap_damage} HP**!"
+            
+                            event_outcomes.append(f"{effect} (Cornucopia)")
+        
+            # Reward survivors
+            if alive_set:
+                for pid in alive_set:
+                    player = players[pid]
+                    for each in range(3):
+                        stat = random.choice(["Str", "Con", "Def", "Wis", "HP"])
+                        boost = random.randint(6, 12)
+                        player["stats"][stat] += boost
+                        effect = f"🌟 {player['name']} survived the Feast and gained **+{boost} {stat}**!"
+                        event_outcomes.append(f"{effect} (Cornucopia)")
+
                 
     
         # Zone-based hunting resolution
