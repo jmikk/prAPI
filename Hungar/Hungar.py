@@ -2050,18 +2050,19 @@ class Hungar(commands.Cog):
                 eliminations.append(player_data)
     
         await self.config.guild(guild).players.set(players)
-    
+
+        #Day report
         if event_outcomes:
             zone_sorted_events = {}
             for line in event_outcomes:
-                zone_name = "Unknown Zone"
+                zone_name = "Announcments"
                 if line.endswith(")"):
                     parts = line.rsplit("(", 1)
                     line = parts[0].strip()
                     zone_name = parts[1].strip(")")
                 zone_sorted_events.setdefault(zone_name, []).append(line)
 
-            for zone_name in sorted(zone_sorted_events.keys()):
+            for zone_name in sorted(zone_sorted_events.keys(), key=lambda z: (z == "Announcments", z)):
                 await ctx.send(f"# __**Zone Report: {zone_name}**__")
                 for event in zone_sorted_events[zone_name]:
                     if zone_name == "Distortion Field":
