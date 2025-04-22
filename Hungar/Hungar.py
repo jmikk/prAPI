@@ -1475,6 +1475,15 @@ class Hungar(commands.Cog):
         config = await self.config.guild(guild).all()
         players = config["players"]
         current_day = config.get("day_counter", -1)
+
+        guild_players = await self.config.guild(ctx.guild).players()
+
+        for player_id, player_data in guild_players.items():
+            if player_data.get("alive", True):
+                player_data["zone"] = None  # or "Unknown" if you prefer a string
+        
+        await self.config.guild(ctx.guild).players.set(guild_players)
+
         
         file = "Hunger_Games.txt"
         async with aiofiles.open(file, mode="a") as f:
