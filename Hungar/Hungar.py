@@ -14,6 +14,7 @@ from discord import app_commands
 import math
 import json
 
+
 class MapButton(Button):
     def __init__(self, cog):
         super().__init__(label="View Map", style=discord.ButtonStyle.primary)
