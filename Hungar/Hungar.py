@@ -1475,6 +1475,10 @@ class Hungar(commands.Cog):
         config = await self.config.guild(guild).all()
         players = config["players"]
         current_day = config.get("day_counter", -1)
+        
+        file = "Hunger_Games.txt"
+        async with aiofiles.open(file, mode="a") as f:
+            await f.write(f"Day {current_day}")
 
         # Reset all player actions to None
         for player_id, player_data in players.items():
@@ -1785,7 +1789,6 @@ class Hungar(commands.Cog):
                 event_outcomes.append(
                     f"{pdata['name']}'s {highest_stat} is reduced by {decay_amount} due to the arena's harshness."
                 )
-
     
         eliminations = []
         hunters, looters, resters, feast_participants = [], [], [], []
@@ -1803,6 +1806,7 @@ class Hungar(commands.Cog):
                     new_zone = random.choice(zones)
                     data["zone"] = new_zone
                     event_outcomes.append(f"{data['name']} was forced to flee to **{new_zone['name']}**!")
+                    
     
         # Assign actions
         for player_id, player_data in players.items():
@@ -2062,18 +2066,24 @@ class Hungar(commands.Cog):
                     line = parts[0].strip()
                     zone_name = parts[1].strip(")")
                 zone_sorted_events.setdefault(zone_name, []).append(line)
-        
+
+            file = "Hunger_Games.txt"
             # Sort so Announcements is always last
-            for zone_name in sorted(zone_sorted_events.keys(), key=lambda z: (z == "Announcements", z)):
-                await ctx.send(f"# __**Zone Report: {zone_name}**__")
-        
-                for event in zone_sorted_events[zone_name]:
-                    if zone_name == "Distortion Field":
-                        event_words = event.split()
-                        random.shuffle(event_words)
-                        event = ' '.join(event_words)
-        
-                    await ctx.send(event)
+            async with aiofiles.open(file, mode="a") as f:                    
+                for zone_name in sorted(zone_sorted_events.keys(), key=lambda z: (z == "Announcements", z)):
+                    await ctx.send(f"# __**Zone Report: {zone_name}**__")
+                    await f.write(f"Zone Report: {zone_name}")
+
+            
+                    for event in zone_sorted_events[zone_name]:
+                        if zone_name == "Distortion Field":
+                            event_words = event.split()
+                            random.shuffle(event_words)
+                            event = ' '.join(event_words)
+            
+                        await ctx.send(event)
+                        await f.write(event)
+
         else:
             await ctx.send("The day passed quietly.")
 
