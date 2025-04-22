@@ -1487,7 +1487,7 @@ class Hungar(commands.Cog):
         
         file = "Hunger_Games.txt"
         async with aiofiles.open(file, mode="a") as f:
-            await f.write(f"Day {current_day}")
+            await f.write(f"Day {current_day}\n")
 
         # Reset all player actions to None
         for player_id, player_data in players.items():
@@ -2081,7 +2081,7 @@ class Hungar(commands.Cog):
             async with aiofiles.open(file, mode="a") as f:                    
                 for zone_name in sorted(zone_sorted_events.keys(), key=lambda z: (z == "Announcements", z)):
                     await ctx.send(f"# __**Zone Report: {zone_name}**__")
-                    await f.write(f"Zone Report: {zone_name}")
+                    await f.write(f"Zone Report: {zone_name}\n")
 
             
                     for event in zone_sorted_events[zone_name]:
