@@ -1740,6 +1740,8 @@ class Hungar(commands.Cog):
     
         async with aiofiles.open(file, mode='w') as f:
             await f.write(file_content)
+            await f.write("\n")
+
     
         await ctx.send(file=discord.File(file))
         if os.path.exists(file):
