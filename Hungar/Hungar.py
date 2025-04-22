@@ -2051,27 +2051,32 @@ class Hungar(commands.Cog):
     
         await self.config.guild(guild).players.set(players)
 
-        #Day report
+        # Day report
         if event_outcomes:
             zone_sorted_events = {}
+        
             for line in event_outcomes:
-                zone_name = {"name":"Announcments"}
+                zone_name = "Announcements"  # fallback zone if none is tagged
                 if line.endswith(")"):
                     parts = line.rsplit("(", 1)
                     line = parts[0].strip()
                     zone_name = parts[1].strip(")")
                 zone_sorted_events.setdefault(zone_name, []).append(line)
-
-            for zone_name in sorted(zone_sorted_events.keys(), key=lambda z: (z == "Announcments", z)):
+        
+            # Sort so Announcements is always last
+            for zone_name in sorted(zone_sorted_events.keys(), key=lambda z: (z == "Announcements", z)):
                 await ctx.send(f"# __**Zone Report: {zone_name}**__")
+        
                 for event in zone_sorted_events[zone_name]:
                     if zone_name == "Distortion Field":
-                            event = message.split()
-                            random.shuffle(event)
-                            event = ' '.join(event)        
+                        event_words = event.split()
+                        random.shuffle(event_words)
+                        event = ' '.join(event_words)
+        
                     await ctx.send(event)
         else:
             await ctx.send("The day passed quietly.")
+
     
         # Save leaderboard
         if eliminations:
