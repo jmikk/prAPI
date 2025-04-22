@@ -1773,7 +1773,7 @@ class Hungar(commands.Cog):
                     continue
         
                 stats = pdata["stats"]
-                highest_stat = max(["Str", "Con", "Wis", "Def"], key=lambda s: stats[s])
+                highest_stat = max(["Str", "Con", "Wis", "Def","HP"], key=lambda s: stats[s])
                 decay_amount = int(stats[highest_stat] * decay_percent)
         
                 stats[highest_stat] -= decay_amount
