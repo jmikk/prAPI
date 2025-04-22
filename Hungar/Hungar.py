@@ -1883,7 +1883,7 @@ class Hungar(commands.Cog):
 
             elif action == "Feast":
                 feast_participants.append(player_id)
-                players[player_id]["zone"] = "Cornucopia"
+                players[player_id]["zone"] = {"name": "Cornucopia"}
 
         feasters = [pid for pid, p in players.items() if p.get("action") == "Feast" and p.get("alive")]
     
