@@ -2173,34 +2173,72 @@ class Hungar(commands.Cog):
         
         await ctx.send(embed=embed)
     
+from discord.ext import commands
+import discord
+from discord.ui import View, Button
+import math
+
+class HungerGames(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.group()
+    async def hunger(self, ctx):
+        pass
+
     @hunger.command()
     async def view_signups(self, ctx):
         """View the current list of players signed up for the Hunger Games."""
         guild = ctx.guild
         players = await self.config.guild(guild).players()
-    
+
         if not players:
             await ctx.send("No players have signed up for the Hunger Games yet.")
             return
-    
-        # Create an embed to display the player information
-        embed = discord.Embed(
-            title="Current Hunger Games Signups",
-            description=f"Here is the list of players currently signed up: ({len(players)})",
-            color=discord.Color.blue(),
-        )
-    
-        for player_id, player_data in players.items():
-            player_name = player_data["name"]
-            district = player_data["district"]
-            status = "Alive" if player_data["alive"] else "Eliminated"
-            embed.add_field(
-                name=f"District {district}: {player_name}",
-                value=f"Status: **{status}**",
-                inline=False,
+
+        player_list = list(players.items())
+        total_pages = math.ceil(len(player_list) / 10)
+
+        async def create_embed(page):
+            embed = discord.Embed(
+                title="Current Hunger Games Signups",
+                description=f"Page {page + 1}/{total_pages} - Showing 10 per page",
+                color=discord.Color.blue()
             )
-    
-        await ctx.send(embed=embed)
+            start = page * 10
+            end = start + 10
+            for player_id, player_data in player_list[start:end]:
+                name = player_data["name"]
+                district = player_data["district"]
+                status = "Alive" if player_data["alive"] else "Eliminated"
+                embed.add_field(
+                    name=f"District {district}: {name}",
+                    value=f"Status: **{status}**",
+                    inline=False
+                )
+            return embed
+
+        class Paginator(View):
+            def __init__(self):
+                super().__init__()
+                self.page = 0
+
+            @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary)
+            async def previous(self, interaction: discord.Interaction, button: Button):
+                if self.page > 0:
+                    self.page -= 1
+                    embed = await create_embed(self.page)
+                    await interaction.response.edit_message(embed=embed, view=self)
+
+            @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
+            async def next(self, interaction: discord.Interaction, button: Button):
+                if self.page < total_pages - 1:
+                    self.page += 1
+                    embed = await create_embed(self.page)
+                    await interaction.response.edit_message(embed=embed, view=self)
+
+        embed = await create_embed(0)
+        await ctx.send(embed=embed, view=Paginator())
     
     @hunger.command()
     @is_gamemaster()
