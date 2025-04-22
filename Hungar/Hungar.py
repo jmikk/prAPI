@@ -2186,20 +2186,8 @@ class HungerGames(commands.Cog):
     async def hunger(self, ctx):
         pass
 
-from discord.ext import commands
-import discord
-from discord.ui import View, Button
-import math
 
-class HungerGames(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.group()
-    async def hunger(self, ctx):
-        pass
-
-    @hunger.command()
+    @hunger.command(name="view_signups")
     async def view_signups(self, ctx):
         """View the current list of players signed up for the Hunger Games."""
         guild = ctx.guild
@@ -2211,10 +2199,6 @@ class HungerGames(commands.Cog):
 
         player_list = list(players.items())
         total_pages = math.ceil(len(player_list) / 10)
-
-        def chunk_players(lst, n):
-            for i in range(0, len(lst), n):
-                yield lst[i:i + n]
 
         async def create_embed(page):
             embed = discord.Embed(
@@ -2244,6 +2228,8 @@ class HungerGames(commands.Cog):
                     self.page -= 1
                     embed = await create_embed(self.page)
                     await interaction.response.edit_message(embed=embed, view=self)
+                else:
+                    await interaction.response.defer()
 
             @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
             async def next(self, interaction: discord.Interaction, button: Button):
@@ -2251,6 +2237,8 @@ class HungerGames(commands.Cog):
                     self.page += 1
                     embed = await create_embed(self.page)
                     await interaction.response.edit_message(embed=embed, view=self)
+                else:
+                    await interaction.response.defer()
 
         embed = await create_embed(0)
         await ctx.send(embed=embed, view=Paginator())
