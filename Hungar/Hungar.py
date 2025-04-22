@@ -2186,6 +2186,19 @@ class HungerGames(commands.Cog):
     async def hunger(self, ctx):
         pass
 
+from discord.ext import commands
+import discord
+from discord.ui import View, Button
+import math
+
+class HungerGames(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.group()
+    async def hunger(self, ctx):
+        pass
+
     @hunger.command()
     async def view_signups(self, ctx):
         """View the current list of players signed up for the Hunger Games."""
@@ -2199,21 +2212,23 @@ class HungerGames(commands.Cog):
         player_list = list(players.items())
         total_pages = math.ceil(len(player_list) / 10)
 
+        def chunk_players(lst, n):
+            for i in range(0, len(lst), n):
+                yield lst[i:i + n]
+
         async def create_embed(page):
             embed = discord.Embed(
                 title="Current Hunger Games Signups",
-                description=f"Page {page + 1}/{total_pages} - Showing 10 per page",
+                description=f"Page {page + 1}/{total_pages} - Showing up to 10 players",
                 color=discord.Color.blue()
             )
-            start = page * 10
-            end = start + 10
-            for player_id, player_data in player_list[start:end]:
-                name = player_data["name"]
-                district = player_data["district"]
-                status = "Alive" if player_data["alive"] else "Eliminated"
+            for player_id, player_data in player_list[page * 10:(page + 1) * 10]:
+                name = player_data.get("name", "Unknown")
+                district = player_data.get("district", "?")
+                status = "Alive" if player_data.get("alive", False) else "Eliminated"
                 embed.add_field(
-                    name=f"District {district}: {name}",
-                    value=f"Status: **{status}**",
+                    name=f"{name} (District {district})",
+                    value=f"Status: {status}",
                     inline=False
                 )
             return embed
@@ -2239,6 +2254,7 @@ class HungerGames(commands.Cog):
 
         embed = await create_embed(0)
         await ctx.send(embed=embed, view=Paginator())
+
     
     @hunger.command()
     @is_gamemaster()
