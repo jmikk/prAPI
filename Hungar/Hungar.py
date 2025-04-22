@@ -2174,20 +2174,6 @@ class Hungar(commands.Cog):
         
         await ctx.send(embed=embed)
     
-from discord.ext import commands
-import discord
-from discord.ui import View, Button
-import math
-
-class HungerGames(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.group()
-    async def hunger(self, ctx):
-        pass
-
-
     @hunger.command(name="view_signups")
     async def view_signups(self, ctx):
         """View the current list of players signed up for the Hunger Games."""
