@@ -2055,7 +2055,7 @@ class Hungar(commands.Cog):
         if event_outcomes:
             zone_sorted_events = {}
             for line in event_outcomes:
-                zone_name = "Announcments"
+                zone_name = {"name":"Announcments"}
                 if line.endswith(")"):
                     parts = line.rsplit("(", 1)
                     line = parts[0].strip()
