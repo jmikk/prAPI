@@ -1749,7 +1749,7 @@ class Hungar(commands.Cog):
         zones = config.get("zones2", [])
         zone_pool = config.get("zone_pool2", [])
     
-        valid_zone_names = [z["name"] for z in available_zones]
+        valid_zone_names = [z["name"] for z in zones]
         
         for player_id, data in players.items():
             current_zone = data.get("zone")
