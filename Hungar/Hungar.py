@@ -1941,12 +1941,12 @@ class Hungar(commands.Cog):
                         atk_score = (
                             attacker["stats"]["Str"] * 1.2 +
                             attacker["stats"]["Wis"] * 0.5 +
-                            random.randint(1, 20)
+                            random.randint(1, 10)
                         )
                         def_score = (
                             target["stats"]["Def"] * 1.1 +
                             target["stats"]["Con"] * 0.5 +
-                            random.randint(1, 20)
+                            random.randint(1, 10)
                         )
                         
                         if atk_score > def_score:
