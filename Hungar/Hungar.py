@@ -1804,8 +1804,8 @@ class Hungar(commands.Cog):
         hunted = set()
     
         # Shrink zones after Day 15
-        if day_counter % 3 == 2 and len(available_zones) > 1:
-            zone_to_remove = random.choice(available_zones)
+        if day_counter % 3 == 2 and len(zones) > 1:
+            zone_to_remove = random.choice(zones)
             zones.remove(zone_to_remove)
             event_outcomes.append(f"⚠️ The zone **{zone_to_remove['name']}** has collapsed and is no longer safe!")
             await self.shrink_zones(ctx,zone_to_remove)
