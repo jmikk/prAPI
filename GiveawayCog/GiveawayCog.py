@@ -185,7 +185,9 @@ class GiveawayCog(commands.Cog):
                 "timestamp": int(datetime.utcnow().timestamp())
             })
             await self.config.user(winner).wins.set(user_claims)
-            await message.reply(f"Giveaway ended! Congratulations {winner.mention}, you won the card giveaway! Use `!claimcards <destination>` to tell Gob where to send your card.")
+            prefix = await bot.get_prefix(message)
+            prefix[0] if isinstance(prefix, list) else prefix
+            await message.reply(f"Giveaway ended! Congratulations {winner.mention}, you won the card giveaway! Use `{prefix}claimcards <destination>` to tell Gob where to send your card.")
         else:
             await message.reply("Giveaway ended! No entrants.")
 
