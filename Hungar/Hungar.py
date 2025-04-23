@@ -996,7 +996,7 @@ class Hungar(commands.Cog):
             gold=0,
             bets={},
             kill_count=0,
-            zone=""# Track total kills
+            zone=""
         )
 
 
@@ -1749,11 +1749,15 @@ class Hungar(commands.Cog):
         zones = config.get("zones2", [])
         zone_pool = config.get("zone_pool2", [])
     
-        # Assign zones to players if missing or in removed zones
-        available_zones = zones or ["Wilderness"]
+        valid_zone_names = [z["name"] for z in available_zones]
+        
         for player_id, data in players.items():
-            if not data.get("zone") or data["zone"] not in available_zones:
+            current_zone = data.get("zone")
+            current_zone_name = current_zone.get("name") if isinstance(current_zone, dict) else current_zone
+        
+            if not current_zone_name or current_zone_name not in valid_zone_names:
                 data["zone"] = random.choice(available_zones)
+
     
         # Group players by zone
         zone_groups = {}
