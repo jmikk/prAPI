@@ -1850,7 +1850,8 @@ class Hungar(commands.Cog):
                     stat, boost = player_data["items"].pop(0)
                     player_data["stats"][stat] += boost
                     effect = f"{player_data['name']} used an item to get the following boost **+{boost} {stat}**!"
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                    zone_name = player_data["zone"]["name"] if isinstance(player_data["zone"], dict) else player_data.get("zone", "Unknown Zone")
+                    event_outcomes.append(f"{effect} ({zone_name})")
             
                 else:
                     # No item used, apply default healing or rest message
@@ -1860,8 +1861,9 @@ class Hungar(commands.Cog):
                         effect = await self.load_file("rest_heal.txt", name1=player_data["name"], dmg=heal)
                     else:
                         effect = await self.load_file("rest.txt", name1=player_data["name"])
-            
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                    
+                    zone_name = player_data["zone"]["name"] if isinstance(player_data["zone"], dict) else player_data.get("zone", "Unknown Zone")
+                    event_outcomes.append(f"{effect} ({zone_name})")
 
             elif action == "Loot":
                 looters.append(player_id)
@@ -1874,7 +1876,8 @@ class Hungar(commands.Cog):
                         name1=player_data['name'],
                         dmg=boost
                     )
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                    zone_name = player_data["zone"]["name"] if isinstance(player_data["zone"], dict) else player_data.get("zone", "Unknown Zone")
+                    event_outcomes.append(f"{effect} ({zone_name})")
                 else:
                     threshold = 1 / (1 + player_data["stats"]["Wis"] / 10)
                     if random.random() < threshold:
@@ -1885,14 +1888,16 @@ class Hungar(commands.Cog):
                             name1=player_data['name'],
                             dmg=damage
                         )
-                        event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                        zone_name = player_data["zone"]["name"] if isinstance(player_data["zone"], dict) else player_data.get("zone", "Unknown Zone")
+                        event_outcomes.append(f"{effect} ({zone_name})")
                         if player_data["stats"]["HP"] <= 0:
                             player_data["alive"] = False
                             player_data["zone"] = {"name": "Cornucopia"}
-                            event_outcomes.append(f"{player_data['name']} has been eliminated by their own foolishness!")
+                            event_outcomes.append(f"{player_data['name']} has been eliminated by their own foolishness! (Cornucopia)")
                     else:
                         effect = await self.load_file("loot_bad.txt", name1=player_data['name'])
-                        event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                        zone_name = player_data["zone"]["name"] if isinstance(player_data["zone"], dict) else player_data.get("zone", "Unknown Zone")
+                        event_outcomes.append(f"{effect} ({zone_name})")
 
             elif action == "Feast":
                 feast_participants.append(player_id)
@@ -2004,7 +2009,8 @@ class Hungar(commands.Cog):
                 potential_targets = [pid for pid in zone_players if pid != hunter_id and pid not in hunted and players[pid]["alive"]]
     
                 if not potential_targets:
-                    event_outcomes.append(f"{hunter['name']} hunted in **{zone}**, but found no one to challenge.")
+                    zone_name = hunter["zone"]["name"] if isinstance(hunter["zone"], dict) else hunter.get("zone", "Unknown Zone")
+                    event_outcomes.append(f"{hunter['name']} hunted in **{zone}**, but found no one to challenge. {(zone_name)}")
                     continue
     
                 target_id = random.choice(potential_targets)
@@ -2022,14 +2028,16 @@ class Hungar(commands.Cog):
                         name2=target['name'],
                         dmg=damage
                     )
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                    zone_name = player_data["zone"]["name"] if isinstance(player_data["zone"], dict) else player_data.get("zone", "Unknown Zone")
+                    event_outcomes.append(f"{effect} ({zone_name})")
     
                     if target["stats"]["HP"] <= 0:
                         target["alive"] = False
                         hunter["kill_list"].append(target["name"])
                         eliminations.append(target)
                         target["zone"] = {"name": "Cornucopia"}
-                        event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}!")
+                        zone_name = player_data["zone"]["name"] if isinstance(player_data["zone"], dict) else player_data.get("zone", "Unknown Zone")
+                        event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}! ({zone_name})")
                 else:
                     backlash = abs(damage)
                     hunter["stats"]["HP"] -= backlash
@@ -2040,14 +2048,16 @@ class Hungar(commands.Cog):
                         dmg=0,
                         dmg2=backlash
                     )
-                    event_outcomes.append(f"{effect} ({player_data['zone']['name']})")
+                    zone_name = hunter["zone"]["name"] if isinstance(hunter["zone"], dict) else hunter.get("zone", "Unknown Zone")
+                    event_outcomes.append(f"{effect} ({zone_name})")
                     
                     if hunter["stats"]["HP"] <= 0:
                         hunter["alive"] = False
                         target["kill_list"].append(hunter["name"])
                         eliminations.append(hunter)
                         hunter["zone"] = {"name": "Cornucopia"}
-                        event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']}!")
+                        zone_name = hunter["zone"]["name"] if isinstance(hunter["zone"], dict) else hunter.get("zone", "Unknown Zone")
+                        event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']} ({zone_name})!")
     
                 hunted.add(hunter_id)
                 hunted.add(target_id)
