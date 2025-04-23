@@ -1811,6 +1811,8 @@ class Hungar(commands.Cog):
             await self.shrink_zones(ctx,zone_to_remove)
     
             for pid, data in players.items():
+                if not data.get("alive"):
+                    continue
                 if data["zone"] == zone_to_remove:
                     new_zone = random.choice(zones)
                     data["zone"] = new_zone
