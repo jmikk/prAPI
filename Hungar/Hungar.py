@@ -2010,7 +2010,7 @@ class Hungar(commands.Cog):
     
                 if not potential_targets:
                     zone_name = hunter["zone"]["name"] if isinstance(hunter["zone"], dict) else hunter.get("zone", "Unknown Zone")
-                    event_outcomes.append(f"{hunter['name']} hunted in **{zone}**, but found no one to challenge. {(zone_name)}")
+                    event_outcomes.append(f"{hunter['name']} hunted in **{zone}**, but found no one to challenge. ({zone_name})")
                     continue
     
                 target_id = random.choice(potential_targets)
