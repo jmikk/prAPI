@@ -1899,7 +1899,7 @@ class Hungar(commands.Cog):
                         if player_data["stats"]["HP"] <= 0:
                             player_data["alive"] = False
                             player_data["zone"] = {"name": "Cornucopia"}
-                            event_outcomes.append(f"{player_data['name']} has been eliminated by their own foolishness! (Cornucopia)")
+                            event_outcomes.append(f"{player_data['name']} has been eliminated by their own foolishness!")
                     else:
                         effect = await self.load_file("loot_bad.txt", name1=player_data['name'])
                         zone_name = player_data["zone"]["name"] if isinstance(player_data["zone"], dict) else player_data.get("zone", "Unknown Zone")
