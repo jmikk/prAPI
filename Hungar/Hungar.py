@@ -1757,6 +1757,7 @@ class Hungar(commands.Cog):
         
             if not current_zone_name or current_zone_name not in valid_zone_names:
                 data["zone"] = random.choice(zones)
+                
 
     
         # Group players by zone
