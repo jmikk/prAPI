@@ -932,7 +932,7 @@ class ActionButton(Button):
 
         # Show dropdown view
         view = View()
-        if not self.action == "Feast"
+        if not self.action == "Feast":
             view.add_item(ZoneSelect(self.cog, user_id, self.action, zones))
             await interaction.response.send_message(f"Choose a zone to **{self.action}** in:", view=view, ephemeral=True)
         else:
