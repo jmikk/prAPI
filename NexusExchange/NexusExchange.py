@@ -1777,7 +1777,7 @@ Helpful Resources:
 
     @commands.guild_only()
     @commands.command()
-    async def balance(self, ctx, member: discord.Member = None, currency_name: str = None):
+    async def balance(self, ctx, secret=True, member: discord.Member = None, currency_name: str = None):
         """
         Check your or another member's balance of WellCoins, XP, or a specific mini-currency.
         Usage: [p]balance [@member] [currency_name]
@@ -1797,7 +1797,10 @@ Helpful Resources:
             if bank > 0:
                 msg += f"🏦 In bank: `{bank}` {currency}\n"
             msg += f"⭐ XP: `{xp}`"
-            await ctx.send(msg)
+            if secret:
+                await ctx.send(msg,ephemeral=True)
+            else: 
+                await ctx.send(msg)
         else:
             currency_name = currency_name.lower().replace(" ", "_")
             exchange_rates = await guild_data.exchange_rates()
