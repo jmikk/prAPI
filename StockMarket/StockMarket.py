@@ -79,20 +79,10 @@ class StockMarket(commands.Cog):
             app_commands.Choice(name=stock, value=stock)
             for stock, data in stocks.items()
             if not data.get("delisted", False) and current.lower() in stock.lower()
-        ][:25]  # Limit to 25 results max
-    
-    async def stock_name_autocomplete(self, interaction: Interaction, current: str):
-        stock_data = await self.config.stocks()
-        names = stock_data.keys()
+        ][:25]  # Limit to 25 results
 
-        current_upper = ''.join(current.upper().split())
-        suggestions = [name for name in names if current_upper in name]
-
-        return [
-            app_commands.Choice(name=name, value=name)
-            for name in suggestions[:25]
-        ]
     
+        
 
 
     def __init__(self, bot):
@@ -291,11 +281,13 @@ class StockMarket(commands.Cog):
         await interaction.response.send_message(f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC**.")
 
 
-    @commands.command()
-    async def viewstock(self, ctx, name: str):
-        """View details about a specific stock."""
+    @commands.hybrid_command(name="viewstock", with_app_command=True)
+    @app_commands.autocomplete(name=stock_name_autocomplete)
+    async def viewstock(self, ctx: commands.Context, name: str):
+        """View details about a stock, including ownership percentages."""
         stocks = await self.config.stocks()
         stock = stocks.get(name.upper())
+    
         if not stock:
             return await ctx.send("Stock not found.")
     
@@ -310,7 +302,54 @@ class StockMarket(commands.Cog):
         if stock.get("delisted", False):
             embed.add_field(name="Status", value="❌ Delisted", inline=False)
     
-        await ctx.send(embed=embed)
+        # Collect ownership
+        ownership = {}
+        for member in ctx.guild.members:
+            if member.bot:
+                continue  # Ignore bots
+            user_stocks = await self.config.user(member).stocks()
+            owned = user_stocks.get(name.upper(), 0)
+            if owned > 0:
+                ownership[member.display_name] = owned
+    
+        if ownership:
+            # Sort owners by biggest holdings
+            sorted_owners = sorted(ownership.items(), key=lambda x: x[1], reverse=True)
+    
+            total_shares = sum(ownership.values())
+            labels = []
+            sizes = []
+    
+            other_shares = 0
+            max_sections = 8  # Adjust how many unique owners before lumping into 'Other'
+    
+            for idx, (owner, shares) in enumerate(sorted_owners):
+                if idx < max_sections:
+                    labels.append(owner)
+                    sizes.append(shares / total_shares * 100)
+                else:
+                    other_shares += shares
+    
+            if other_shares > 0:
+                labels.append("Other")
+                sizes.append(other_shares / total_shares * 100)
+    
+            fig, ax = plt.subplots(figsize=(6, 6))
+            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+            ax.axis('equal')
+            plt.title(f"Ownership of {name.upper()} (%)")
+    
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png')
+            buf.seek(0)
+            plt.close()
+    
+            await ctx.send(embed=embed, file=File(buf, filename=f"{name}_ownership.png"))
+    
+        else:
+            embed.set_footer(text="No one owns this stock currently.")
+            await ctx.send(embed=embed)
+
 
 
     @commands.command()
@@ -396,6 +435,7 @@ class StockMarket(commands.Cog):
     @stockchart.autocomplete("name")
     async def stockchart_name_autocomplete(self, interaction: Interaction, current: str):
         return await self.stock_name_autocomplete(interaction, current)
+    
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def tagstock(self, ctx, name: str, tag: str, weight: int = 1):
