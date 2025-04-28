@@ -924,21 +924,30 @@ class ActionButton(Button):
             await interaction.response.send_message("You are not in the game or are no longer alive.", ephemeral=True)
             return
 
+        # Set their action immediately
+        players[user_id]["action"] = self.action
+        await self.cog.config.guild(guild).players.set(players)
+
         # Load current active zones
         zones = await self.cog.config.guild(guild).zones2()
         if not zones:
             await interaction.response.send_message("⚠️ Zones have not been initialized yet.", ephemeral=True)
             return
 
-        # Show dropdown view
         view = View()
-        players[self.user_id]["action"] = self.action
 
-        if not self.action == "Feast":
+        if self.action != "Feast":
             view.add_item(ZoneSelect(self.cog, user_id, self.action, zones))
             await interaction.response.send_message(f"Choose a zone to **{self.action}** in:", view=view, ephemeral=True)
         else:
-            await interaction.response.send_message(f"You have picked to attend the feast.", ephemeral=True)
+            # For Feast, auto-assign to Cornucopia immediately
+            players[user_id]["zone"] = "Cornucopia"
+            await self.cog.config.guild(guild).players.set(players)
+
+            await interaction.response.send_message(
+                f"You have picked to attend the **Feast** at **Cornucopia**!", ephemeral=True
+            )
+
 
 
 
