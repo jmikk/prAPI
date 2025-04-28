@@ -80,6 +80,17 @@ class StockMarket(commands.Cog):
             if not data.get("delisted", False) and current.lower() in stock.lower()
         ][:25]  # Limit to 25 results max
     
+    async def stock_name_autocomplete(self, interaction: Interaction, current: str):
+        stock_data = await self.config.stocks()
+        names = stock_data.keys()
+
+        current_upper = ''.join(current.upper().split())
+        suggestions = [name for name in names if current_upper in name]
+
+        return [
+            app_commands.Choice(name=name, value=name)
+            for name in suggestions[:25]
+        ]
     
 
 
@@ -336,10 +347,17 @@ class StockMarket(commands.Cog):
 
 
 
+
     @commands.hybrid_command(name="stockchart", with_app_command=True)
-    @app_commands.describe(name="The stock name.", range="Time range: day, week, month, or year.")
-    @app_commands.autocomplete(name="autocomplete_stock_name")
-    async def stockchart(self, ctx: commands.Context, name: str, range: str = "month"):
+    async def stockchart(
+        self,
+        ctx: commands.Context,
+        name: app_commands.Transform[str, app_commands.Range(str, min_length=1)] = commands.Param(
+            description="The stock name.",
+            autocomplete=stock_name_autocomplete
+        ),
+        range: str = commands.Param(default="month", description="Time range: day, week, month, or year.")
+    ):
         """View a historical price chart of a stock."""
         name = ''.join(name.upper().split())  # Smash spaces out
         stock_data = await self.config.stocks()
@@ -376,17 +394,6 @@ class StockMarket(commands.Cog):
         plt.close()
 
         await ctx.send(file=File(buf, filename=f"{name}_chart.png"))
-
-    async def autocomplete_stock_name(self, interaction: Interaction, current: str):
-        stock_data = await self.config.stocks()
-        names = stock_data.keys()
-
-        # Return stocks matching what user is typing (unsmashed)
-        current_upper = ''.join(current.upper().split())
-
-        suggestions = [name for name in names if current_upper in name]
-        return [app_commands.Choice(name=name, value=name) for name in suggestions[:25]]
-
 
     @commands.command()
     @commands.has_permissions(administrator=True)
