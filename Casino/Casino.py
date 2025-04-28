@@ -93,7 +93,6 @@ class Casino(commands.Cog):
 
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
-    @commands.admin_or_permissions(administrator=True)
     async def dice(self, ctx, bet: int):
         """Roll dice against the house with animated graphics."""
         balance = await self.get_balance(ctx.author)
