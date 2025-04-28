@@ -357,7 +357,7 @@ class StockMarket(commands.Cog):
         range: str = "month"
     ):
         """View a historical price chart of a stock."""
-        name = ''.join(name.upper().split())  # Smash spaces out
+        name = name.upper()  # Smash spaces out
         stock_data = await self.config.stocks()
         stock = stock_data.get(name)
 
