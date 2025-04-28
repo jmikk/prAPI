@@ -31,7 +31,7 @@ class StockListView(View):
             emoji = "🛂 " if data.get("commodity", False) else ""
             embed.add_field(
                 name=f"{emoji}{name}",
-                value=f"Price: {data['price']:.2f} coins",
+                value=f"Price: {data['price']:.2f} Wellcoins",
                 inline=False
             )
 
@@ -199,7 +199,7 @@ class StockMarket(commands.Cog):
             }
             if min_volatility is not None and max_volatility is not None:
                 stocks[name]["volatility"] = [min_volatility, max_volatility]
-        await ctx.send(f"Stock {name} created with starting price {starting_price:.2f} coins.")
+        await ctx.send(f"Stock {name} created with starting price {starting_price:.2f} Wellcoins.")
 
 
     @commands.command()
@@ -220,7 +220,7 @@ class StockMarket(commands.Cog):
     
         for name, data in available_stocks[:10]:
             emoji = "🛂 " if data.get("commodity", False) else ""
-            embed.add_field(name=f"{emoji}{name}", value=f"Price: {data['price']:.2f} coins", inline=False)
+            embed.add_field(name=f"{emoji}{name}", value=f"Price: {data['price']:.2f} Wellcoins", inline=False)
     
         view.message = await ctx.send(embed=embed, view=view)
 
@@ -295,7 +295,7 @@ class StockMarket(commands.Cog):
         vol_str = f"{stock.get('volatility', 'None')}"
     
         embed = discord.Embed(title=f"📈 {name.upper()} Stock Details", color=discord.Color.blue())
-        embed.add_field(name="Price", value=f"{stock['price']:.2f} coins", inline=False)
+        embed.add_field(name="Price", value=f"{stock['price']:.2f} Wellcoins", inline=False)
         embed.add_field(name="Tags", value=tag_str, inline=False)
         embed.add_field(name="Volatility", value=vol_str, inline=False)
     
@@ -375,14 +375,14 @@ class StockMarket(commands.Cog):
             status = " (Delisted)" if stock_data.get("delisted", False) else ""
             embed.add_field(
                 name=f"{stock}{status}",
-                value=f"{amount} shares @ {current_price:.2f} coins (Δ {percent_change:+.2f}%)",
+                value=f"{amount} shares @ {current_price:.2f} Wellcoins (Δ {percent_change:+.2f}%)",
                 inline=False
             )
             total_value += current_price * amount
             total_cost += avg_price * amount
     
         net_change = total_value - total_cost
-        embed.set_footer(text=f"Net Portfolio Change: {net_change:+.2f} coins")
+        embed.set_footer(text=f"Net Portfolio Change: {net_change:+.2f} Wellcoins")
         await ctx.send(embed=embed)
 
 
@@ -479,7 +479,7 @@ class StockMarket(commands.Cog):
         if affected == 0:
             await ctx.send(f"No stocks found with tag `{tag}`.")
         else:
-            await ctx.send(f"📈 Adjusted {affected} stock(s) with tag `{tag}` by {amount:+.2f} coins.")
+            await ctx.send(f"📈 Adjusted {affected} stock(s) with tag `{tag}` by {amount:+.2f} Wellcoins.")
 
     @commands.command()
     @commands.has_permissions(administrator=True)
