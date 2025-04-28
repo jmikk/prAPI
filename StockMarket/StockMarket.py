@@ -335,10 +335,13 @@ class StockMarket(commands.Cog):
         await ctx.send(embed=embed)
 
 
-    @commands.command()
-    async def stockchart(self, ctx, name: str, range: str = "month"):
+
+    @commands.hybrid_command(name="stockchart", with_app_command=True)
+    @app_commands.describe(name="The stock name.", range="Time range: day, week, month, or year.")
+    @app_commands.autocomplete(name="autocomplete_stock_name")
+    async def stockchart(self, ctx: commands.Context, name: str, range: str = "month"):
         """View a historical price chart of a stock."""
-        name = name.upper()
+        name = ''.join(name.upper().split())  # Smash spaces out
         stock_data = await self.config.stocks()
         stock = stock_data.get(name)
 
@@ -370,7 +373,20 @@ class StockMarket(commands.Cog):
         buf = io.BytesIO()
         plt.savefig(buf, format='png')
         buf.seek(0)
+        plt.close()
+
         await ctx.send(file=File(buf, filename=f"{name}_chart.png"))
+
+    async def autocomplete_stock_name(self, interaction: Interaction, current: str):
+        stock_data = await self.config.stocks()
+        names = stock_data.keys()
+
+        # Return stocks matching what user is typing (unsmashed)
+        current_upper = ''.join(current.upper().split())
+
+        suggestions = [name for name in names if current_upper in name]
+        return [app_commands.Choice(name=name, value=name) for name in suggestions[:25]]
+
 
     @commands.command()
     @commands.has_permissions(administrator=True)
