@@ -21,6 +21,8 @@ class StockMarket(commands.Cog):
     """
 
     async def cog_load(self):
+        self.bot.tree.remove_command(self.buystock.name)
+        self.bot.tree.remove_command(self.sellstock.name)
         self.bot.tree.add_command(self.buystock)
         self.bot.tree.add_command(self.sellstock)
 
