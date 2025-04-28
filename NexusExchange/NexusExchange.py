@@ -1774,46 +1774,49 @@ Helpful Resources:
         await self.config.user(ctx.author).master_balance.set(master_balance + new_wellspring_coins)
         
         await ctx.send(f"Exchanged `{amount}` `{currency_name}` for `{new_wellspring_coins}` WellCoins!")
+        
+        @commands.guild_only()
+        @commands.command()
+        async def balance(self, ctx, secret: bool = True, member: discord.Member = None, currency_name: str = None):
+            """
+            Check your or another member's balance of WellCoins, XP, or a specific mini-currency.
+            Usage: [p]balance [@member] [currency_name]
+            """
+            member = member or ctx.author
+            user_data = self.config.user(member)
+            guild_data = self.config.guild(ctx.guild)
+        
+            if currency_name is None:
+                balance = await user_data.master_balance()
+                bank = await user_data.bank_total()
+                currency = await guild_data.master_currency_name()
+                xp = await user_data.xp()
+        
+                msg = (
+                    f"**Balance for {member.display_name}:**\n"
+                    f"💰 On hand: `{balance}` {currency}\n"
+                )
+                if bank > 0:
+                    msg += f"🏦 In bank: `{bank}` {currency}\n"
+                msg += f"⭐ XP: `{xp}`"
+        
+                await ctx.author.send(msg) if secret else await ctx.send(msg)
+        
+            else:
+                currency_name = currency_name.lower().replace(" ", "_")
+                exchange_rates = await guild_data.exchange_rates()
+        
+                if currency_name not in exchange_rates:
+                    await ctx.send("❌ This currency does not exist.")
+                    return
+        
+                config_id = exchange_rates[currency_name]["config_id"]
+                mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
+                user_balance = await mini_currency_config.user(member).get_raw(currency_name, default=0)
+        
+                result_msg = f"💱 {member.display_name} has `{user_balance}` `{currency_name}`."
+                await ctx.author.send(result_msg) if secret else await ctx.send(result_msg)
 
-    @commands.guild_only()
-    @commands.command()
-    async def balance(self, ctx, secret=True, member: discord.Member = None, currency_name: str = None):
-        """
-        Check your or another member's balance of WellCoins, XP, or a specific mini-currency.
-        Usage: [p]balance [@member] [currency_name]
-        """
-        member = member or ctx.author
-        user_data = self.config.user(member)
-        guild_data = self.config.guild(ctx.guild)
-
-        if currency_name is None:
-            balance = await user_data.master_balance()
-            bank = await user_data.bank_total()
-            currency = await guild_data.master_currency_name()
-            xp = await user_data.xp()
-
-            msg = f"**Balance for {member.display_name}:**\n"
-            msg += f"💰 On hand: `{balance}` {currency}\n"
-            if bank > 0:
-                msg += f"🏦 In bank: `{bank}` {currency}\n"
-            msg += f"⭐ XP: `{xp}`"
-            if secret:
-                await ctx.send(msg,ephemeral=True)
-            else: 
-                await ctx.send(msg)
-        else:
-            currency_name = currency_name.lower().replace(" ", "_")
-            exchange_rates = await guild_data.exchange_rates()
-
-            if currency_name not in exchange_rates:
-                await ctx.send("❌ This currency does not exist.")
-                return
-
-            config_id = exchange_rates[currency_name]["config_id"]
-            mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
-            user_balance = await mini_currency_config.user(member).get_raw(currency_name, default=0)
-
-            await ctx.send(f"💱 {member.display_name} has `{user_balance}` `{currency_name}`.")
 
 
 
