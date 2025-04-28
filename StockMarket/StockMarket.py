@@ -25,7 +25,8 @@ class StockMarket(commands.Cog):
         self.config.register_user(stocks={}, avg_buy_prices={})
         self.config.register_global(
             stocks={},
-            tags={}
+            tags={},
+        announcement_channel=None 
         )
 
         self.price_updater.start()
@@ -45,6 +46,7 @@ class StockMarket(commands.Cog):
     
             for stock_name, data in stocks.items():
                 tag_bonus = 0
+                old_price = data["price"]
                 for tag, weight in data.get("tags", {}).items():
                     flat_increase = tag_multipliers.get(tag, 0)
                     tag_bonus += flat_increase * weight
@@ -56,12 +58,42 @@ class StockMarket(commands.Cog):
                     change = random.randint(-2, 2)
     
                 new_price = round(data["price"] + change + tag_bonus, 2)
+
+                # Check for large positive price surge (>5%)
+                if old_price > 0:  # Avoid division by zero
+                    percent_change = ((new_price - old_price) / old_price) * 100
+                    if percent_change > 5:
+                        channel_id = await self.config.announcement_channel()
+                        if channel_id:
+                            channel = self.bot.get_channel(channel_id)
+                            if channel:
+                                await channel.send(f"🚀 **{stock_name}** surged by **{percent_change:.2f}%** this hour!")
+
     
                 if data.get("commodity", False):
                     new_price = max(1.0, new_price)
                 else:
                     if new_price <= 0:
-                        to_delist.append(stock_name)
+                        if random.random() < 0.5:
+                        # SURVIVES at 0.01 instead of delisting
+                            new_price = 0.01
+                            # Send survival announcement
+                            channel_id = await self.config.announcement_channel()
+                            if channel_id:
+                                channel = self.bot.get_channel(channel_id)
+                                if channel:
+                                    await channel.send(f"**{stock_name}** narrowly avoided bankruptcy and is now trading at **0.01 WC**!")
+
+
+                        else:
+                            to_delist.append(stock_name)
+                                                        # BANKRUPTCY ANNOUNCEMENT
+                            channel_id = await self.config.announcement_channel()
+                            if channel_id:
+                                channel = self.bot.get_channel(channel_id)
+                                if channel:
+                                    await channel.send(f"💀 **{stock_name}** has gone bankrupt and been delisted!")
+
                         continue
     
                 new_price = max(1.0, new_price)
@@ -127,10 +159,7 @@ class StockMarket(commands.Cog):
         stocks = await self.config.stocks()
         stock = stocks.get(name)
         if not stock or stock.get("delisted", False):
-            return await ctx.send("This stock is not available for purchase.")
-
-        if not stock:
-            return await ctx.send("Stock not found.")
+            return await ctx.send("This stock is not available for purchase.")      
 
         price = stock["price"] * amount
         bal = await self.economy_config.user(user).master_balance()
@@ -310,6 +339,18 @@ class StockMarket(commands.Cog):
             await ctx.send(f"No stocks found with tag `{tag}`.")
         else:
             await ctx.send(f"📈 Adjusted {affected} stock(s) with tag `{tag}` by {amount:+.2f} coins.")
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def setannouncechannel(self, ctx, channel: discord.TextChannel = None):
+        """Set or clear the announcement channel for stock market events."""
+        if channel:
+            await self.config.announcement_channel.set(channel.id)
+            await ctx.send(f"✅ Announcements will now be sent to {channel.mention}.")
+        else:
+            await self.config.announcement_channel.set(None)
+            await ctx.send("🛑 Announcements have been disabled.")
+
 
 
 
