@@ -6,6 +6,54 @@ import matplotlib.pyplot as plt
 import io
 from discord import File
 from discord import app_commands
+from discord.ui import View, Button
+
+class StockListView(View):
+    def __init__(self, cog, stocks, per_page=10):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.stocks = stocks
+        self.per_page = per_page
+        self.page = 0
+        self.message = None
+
+    async def update_embed(self):
+        embed = discord.Embed(
+            title="📊 Available Stocks",
+            description=f"Page {self.page + 1}/{(len(self.stocks) - 1) // self.per_page + 1}",
+            color=discord.Color.green()
+        )
+
+        start = self.page * self.per_page
+        end = start + self.per_page
+        for name, data in self.stocks[start:end]:
+            emoji = "🛂 " if data.get("commodity", False) else ""
+            embed.add_field(
+                name=f"{emoji}{name}",
+                value=f"Price: {data['price']:.2f} coins",
+                inline=False
+            )
+
+        await self.message.edit(embed=embed, view=self)
+
+    @discord.ui.button(label="⬅️ Prev", style=discord.ButtonStyle.primary)
+    async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.page > 0:
+            self.page -= 1
+            await self.update_embed()
+            await interaction.response.defer()
+
+    @discord.ui.button(label="➡️ Next", style=discord.ButtonStyle.primary)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if (self.page + 1) * self.per_page < len(self.stocks):
+            self.page += 1
+            await self.update_embed()
+            await interaction.response.defer()
+
+    async def on_timeout(self):
+        if self.message:
+            await self.message.edit(view=None)
+
 
 
 class StockMarket(commands.Cog):
@@ -151,21 +199,28 @@ class StockMarket(commands.Cog):
                 stocks[name]["volatility"] = [min_volatility, max_volatility]
         await ctx.send(f"Stock {name} created with starting price {starting_price:.2f} coins.")
 
+
     @commands.command()
     async def liststocks(self, ctx):
-        """List all available stocks and their prices."""
+        """List all available stocks with pagination."""
         stocks = await self.config.stocks()
-        if not stocks:
+        available_stocks = [(name, data) for name, data in stocks.items() if not data.get("delisted", False)]
+    
+        if not available_stocks:
             return await ctx.send("No stocks available.")
     
-        embed = discord.Embed(title="📊 Available Stocks", color=discord.Color.green())
-        for name, data in stocks.items():
-            if data.get("delisted"):
-                continue  # Skip delisted stocks
+        view = StockListView(self, available_stocks)
+        embed = discord.Embed(
+            title="📊 Available Stocks",
+            description="Page 1",
+            color=discord.Color.green()
+        )
+    
+        for name, data in available_stocks[:10]:
             emoji = "🛂 " if data.get("commodity", False) else ""
             embed.add_field(name=f"{emoji}{name}", value=f"Price: {data['price']:.2f} coins", inline=False)
     
-        await ctx.send(embed=embed)
+        view.message = await ctx.send(embed=embed, view=view)
 
     
     @app_commands.command(name="buystock", description="Buy shares of a stock.")
