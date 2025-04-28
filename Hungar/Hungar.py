@@ -1840,8 +1840,6 @@ class Hungar(commands.Cog):
                 continue
     
             if player_data.get("action") is None:
-                #debug statment
-                event_outcomes.append(f"{player_data['name']} picked nothing!")
                 if config.get("feast_active"):
                     player_data["action"] = random.choices(
                         ["Feast", "Hunt", "Rest", "Loot"],
