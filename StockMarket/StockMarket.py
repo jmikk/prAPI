@@ -7,6 +7,7 @@ import io
 from discord import File
 from discord import app_commands
 from discord.ui import View, Button
+from discord import Interaction
 
 class StockListView(View):
     def __init__(self, cog, stocks, per_page=10):
