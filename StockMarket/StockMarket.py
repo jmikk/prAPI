@@ -5,6 +5,9 @@ import random
 import matplotlib.pyplot as plt
 import io
 from discord import File
+from discord import app_commands
+from discord.ext import commands
+
 
 class StockMarket(commands.Cog):
     """
@@ -17,6 +20,16 @@ class StockMarket(commands.Cog):
     - myportfolio: View your stock holdings and net change
     - stockchart: View a historical price chart of a stock
     """
+
+    async def cog_load(self):
+        self.bot.tree.add_command(self.buystock)
+        self.bot.tree.add_command(self.sellstock)
+
+    async def cog_unload(self):
+        self.bot.tree.remove_command(self.buystock.name)
+        self.bot.tree.remove_command(self.sellstock.name)
+    
+
 
     def __init__(self, bot):
         self.bot = bot
@@ -150,57 +163,62 @@ class StockMarket(commands.Cog):
     
         await ctx.send(embed=embed)
 
-
-    @commands.command()
-    async def buystock(self, ctx, name: str, amount: int):
-        """Buy shares of a stock."""
+    
+    @app_commands.command(name="buystock", description="Buy shares of a stock.")
+    @app_commands.describe(name="The stock you want to buy", amount="Number of shares to buy")
+    @app_commands.autocomplete(name=stock_name_autocomplete)
+    async def buystock(self, interaction: discord.Interaction, name: str, amount: int):
+        user = interaction.user
         name = name.upper()
-        user = ctx.author
         stocks = await self.config.stocks()
         stock = stocks.get(name)
+    
         if not stock or stock.get("delisted", False):
-            return await ctx.send("This stock is not available for purchase.")      
-
+            return await interaction.response.send_message("This stock is not available for purchase.", ephemeral=True)
+    
         price = stock["price"] * amount
         bal = await self.economy_config.user(user).master_balance()
         if bal < price:
-            return await ctx.send("You don't have enough funds.")
-
+            return await interaction.response.send_message("You don't have enough funds.", ephemeral=True)
+    
         await self.economy_config.user(user).master_balance.set(bal - price)
         async with self.config.user(user).stocks() as owned:
             previous_amount = owned.get(name, 0)
             owned[name] = previous_amount + amount
-
+    
         async with self.config.user(user).avg_buy_prices() as prices:
             current_total = prices.get(name, 0) * previous_amount
             new_total = current_total + stock["price"] * amount
             prices[name] = round(new_total / (previous_amount + amount), 2) if (previous_amount + amount) > 0 else 0
+    
+        await interaction.response.send_message(f"✅ Purchased {amount} shares of **{name}** for **{price:.2f} WC**.")
 
-        await ctx.send(f"Purchased {amount} shares of {name}.")
 
-    @commands.command()
-    async def sellstock(self, ctx, name: str, amount: int):
-        """Sell shares of a stock."""
+    @app_commands.command(name="sellstock", description="Sell shares of a stock.")
+    @app_commands.describe(name="The stock you want to sell", amount="Number of shares to sell")
+    @app_commands.autocomplete(name=stock_name_autocomplete)
+    async def sellstock(self, interaction: discord.Interaction, name: str, amount: int):
+        user = interaction.user
         name = name.upper()
-        user = ctx.author
         stocks = await self.config.stocks()
         stock = stocks.get(name)
-
+    
         async with self.config.user(user).stocks() as owned:
             if owned.get(name, 0) < amount:
-                return await ctx.send("You don't own that many shares.")
+                return await interaction.response.send_message("You don't own that many shares.", ephemeral=True)
             owned[name] -= amount
             if owned[name] <= 0:
                 del owned[name]
                 async with self.config.user(user).avg_buy_prices() as prices:
                     if name in prices:
                         del prices[name]
-
+    
         earnings = stock["price"] * amount if stock else 0
         bal = await self.economy_config.user(user).master_balance()
         await self.economy_config.user(user).master_balance.set(bal + earnings)
+    
+        await interaction.response.send_message(f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC**.")
 
-        await ctx.send(f"Sold {amount} shares of {name} for {earnings:.2f} coins.")
 
     @commands.command()
     async def viewstock(self, ctx, name: str):
@@ -350,6 +368,15 @@ class StockMarket(commands.Cog):
         else:
             await self.config.announcement_channel.set(None)
             await ctx.send("🛑 Announcements have been disabled.")
+
+    async def stock_name_autocomplete(self, interaction: discord.Interaction, current: str):
+        stocks = await self.config.stocks()
+        return [
+            app_commands.Choice(name=stock, value=stock)
+            for stock, data in stocks.items()
+            if not data.get("delisted", False) and current.lower() in stock.lower()
+        ][:25]  # Limit to 25 results max
+    
 
 
 
