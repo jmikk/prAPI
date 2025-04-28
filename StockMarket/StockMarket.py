@@ -353,11 +353,8 @@ class StockMarket(commands.Cog):
     async def stockchart(
         self,
         ctx: commands.Context,
-        name: app_commands.Transform[str, app_commands.Range(str, min_length=1)] = commands.Param(
-            description="The stock name.",
-            autocomplete=stock_name_autocomplete
-        ),
-        range: str = commands.Param(default="month", description="Time range: day, week, month, or year.")
+        name: str,
+        range: str = "month"
     ):
         """View a historical price chart of a stock."""
         name = ''.join(name.upper().split())  # Smash spaces out
@@ -396,6 +393,9 @@ class StockMarket(commands.Cog):
 
         await ctx.send(file=File(buf, filename=f"{name}_chart.png"))
 
+    @stockchart.autocomplete("name")
+    async def stockchart_name_autocomplete(self, interaction: Interaction, current: str):
+        return await self.stock_name_autocomplete(interaction, current)
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def tagstock(self, ctx, name: str, tag: str, weight: int = 1):
