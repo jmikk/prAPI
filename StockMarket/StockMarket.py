@@ -117,7 +117,7 @@ class StockMarket(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def createstock(self, ctx, name: str, starting_price: float, min_volatility: int = None, max_volatility: int = None, commodity: bool = False):
+    async def createstock(self, ctx, name: str, starting_price: float, min_volatility: int = -2, max_volatility: int = 2, commodity: bool = False):
         """Create a new stock. Optionally set volatility and mark as a commodity."""
         name = name.upper()
         async with self.config.stocks() as stocks:
