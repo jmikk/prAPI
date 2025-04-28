@@ -19,12 +19,6 @@ class StockMarket(commands.Cog):
     - myportfolio: View your stock holdings and net change
     - stockchart: View a historical price chart of a stock
     """
-  
-    async def cog_load(self):
-        self.bot.tree.add_command(self.buystock)
-        self.bot.tree.add_command(self.sellstock)
-
-
 
     async def cog_unload(self):
         self.bot.tree.remove_command(self.buystock.name)
