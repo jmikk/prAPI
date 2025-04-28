@@ -28,6 +28,15 @@ class StockMarket(commands.Cog):
     async def cog_unload(self):
         self.bot.tree.remove_command(self.buystock.name)
         self.bot.tree.remove_command(self.sellstock.name)
+
+    async def stock_name_autocomplete(self, interaction: discord.Interaction, current: str):
+        stocks = await self.config.stocks()
+        return [
+            app_commands.Choice(name=stock, value=stock)
+            for stock, data in stocks.items()
+            if not data.get("delisted", False) and current.lower() in stock.lower()
+        ][:25]  # Limit to 25 results max
+    
     
 
 
@@ -369,14 +378,7 @@ class StockMarket(commands.Cog):
             await self.config.announcement_channel.set(None)
             await ctx.send("🛑 Announcements have been disabled.")
 
-    async def stock_name_autocomplete(self, interaction: discord.Interaction, current: str):
-        stocks = await self.config.stocks()
-        return [
-            app_commands.Choice(name=stock, value=stock)
-            for stock, data in stocks.items()
-            if not data.get("delisted", False) and current.lower() in stock.lower()
-        ][:25]  # Limit to 25 results max
-    
+
 
 
 
