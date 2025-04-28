@@ -1174,69 +1174,69 @@ class Hungar(commands.Cog):
         # Assign random district and stats
         district = random.randint(1, 12)  # Assume 12 districts
         stats = {
-            "Def": random.randint(1, 10),
-            "Str": random.randint(1, 10),
-            "Con": random.randint(1, 10),
-            "Wis": random.randint(1, 10),
-            "HP": random.randint(15, 25)
+            "Def": random.randint(10, 20),
+            "Str": random.randint(10, 20),
+            "Con": random.randint(10, 20),
+            "Wis": random.randint(10, 20),
+            "HP": random.randint(30, 50)
         }
         if district == 1:
-            stats["Def"] = stats["Def"] + 1
-            stats["Str"] = stats["Str"] + 1
-            stats["Con"] = stats["Con"] + 1
-            stats["Wis"] = stats["Wis"] + 1
-            stats["HP"] = stats["HP"] + 10
+            stats["Def"] = stats["Def"] + 5
+            stats["Str"] = stats["Str"] + 5
+            stats["Con"] = stats["Con"] + 5
+            stats["Wis"] = stats["Wis"] + 5
+            stats["HP"] = stats["HP"] + 20
         elif district == 2:
-            stats["Def"] = stats["Def"] + 1
-            stats["Str"] = stats["Str"] + 1
+            stats["Def"] = stats["Def"] + 5
+            stats["Str"] = stats["Str"] + 5
             stats["Con"] = stats["Con"]
-            stats["Wis"] = stats["Wis"] + 1
-            stats["HP"] = stats["HP"] + 10
+            stats["Wis"] = stats["Wis"] + 5
+            stats["HP"] = stats["HP"] + 20
         elif district == 3:
             stats["Def"] = stats["Def"]
-            stats["Str"] = stats["Str"] + 1
-            stats["Con"] = stats["Con"] + 1
-            stats["Wis"] = stats["Wis"] + 1
-            stats["HP"] = stats["HP"] + 10
+            stats["Str"] = stats["Str"] + 5
+            stats["Con"] = stats["Con"] + 5
+            stats["Wis"] = stats["Wis"] + 5
+            stats["HP"] = stats["HP"] + 20
         elif district == 4:
-            stats["Def"] = stats["Def"] + 1
+            stats["Def"] = stats["Def"] + 5
             stats["Str"] = stats["Str"] 
-            stats["Con"] = stats["Con"] + 1
+            stats["Con"] = stats["Con"] + 5
             stats["Wis"] = stats["Wis"] 
-            stats["HP"] = stats["HP"] + 10
+            stats["HP"] = stats["HP"] + 20
         elif district == 5:
-            stats["Def"] = stats["Def"] + 1
-            stats["Str"] = stats["Str"] + 1
-            stats["Con"] = stats["Con"] + 1
+            stats["Def"] = stats["Def"] + 5
+            stats["Str"] = stats["Str"] + 5
+            stats["Con"] = stats["Con"] + 5
             stats["Wis"] = stats["Wis"] 
-            stats["HP"] = stats["HP"] + 5
+            stats["HP"] = stats["HP"] + 20
         elif district == 6:
             stats["Def"] = stats["Def"] 
-            stats["Str"] = stats["Str"] + 1
+            stats["Str"] = stats["Str"] + 5
             stats["Con"] = stats["Con"] 
-            stats["Wis"] = stats["Wis"] + 1
-            stats["HP"] = stats["HP"] + 5
+            stats["Wis"] = stats["Wis"] + 5
+            stats["HP"] = stats["HP"] + 20
         elif district == 7:
             stats["Def"] = stats["Def"] 
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] 
-            stats["Wis"] = stats["Wis"] + 1
-            stats["HP"] = stats["HP"] + 10
+            stats["Wis"] = stats["Wis"] + 5
+            stats["HP"] = stats["HP"] + 20
         elif district == 8:
             stats["Def"] = stats["Def"] 
-            stats["Str"] = stats["Str"] + 1
+            stats["Str"] = stats["Str"] + 5
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] 
-            stats["HP"] = stats["HP"] + 5
+            stats["HP"] = stats["HP"] + 20
         elif district == 9:
             stats["Def"] = stats["Def"] 
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] 
-            stats["Wis"] = stats["Wis"] + 1
-            stats["HP"] = stats["HP"] + 5
+            stats["Wis"] = stats["Wis"] + 5
+            stats["HP"] = stats["HP"] + 20
         elif district == 10:
             stats["Def"] = stats["Def"] 
-            stats["Str"] = stats["Str"] + 1
+            stats["Str"] = stats["Str"] + 5
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] 
             stats["HP"] = stats["HP"] 
@@ -1245,7 +1245,7 @@ class Hungar(commands.Cog):
             stats["Str"] = stats["Str"] 
             stats["Con"] = stats["Con"] 
             stats["Wis"] = stats["Wis"] 
-            stats["HP"] = stats["HP"] + 5
+            stats["HP"] = stats["HP"] + 20
         elif district == 12:
             stats["Def"] = stats["Def"] 
             stats["Str"] = stats["Str"] 
@@ -2388,14 +2388,29 @@ class Hungar(commands.Cog):
         await ctx.send(embed=embed, view=Paginator())
 
 
-    
     @hunger.command()
     @is_gamemaster()
     async def clear_signups(self, ctx):
-        """Clear all signups and reset the player list (Admin only)."""
+        """Clear all signups, reset the player list, and remove the Tribute role (Admin only)."""
         guild = ctx.guild
+    
+        # Clear players from config
         await self.config.guild(guild).players.clear()
-        await ctx.send("All signups have been cleared. The player list has been reset.")
+    
+        # Find the Tribute role
+        tribute_role = discord.utils.get(guild.roles, name="Tribute")
+        if tribute_role is not None:
+            # Remove the Tribute role from all members who have it
+            for member in tribute_role.members:
+                try:
+                    await member.remove_roles(tribute_role, reason="Clearing Hunger Games signups")
+                except discord.Forbidden:
+                    await ctx.send(f"Failed to remove role from {member.mention}: Missing permissions.")
+                except discord.HTTPException as e:
+                    await ctx.send(f"An error occurred while removing role from {member.mention}: {e}")
+    
+        await ctx.send("All signups have been cleared, the player list has been reset, and the Tribute role has been removed from all players.")
+
 
     @hunger.command()
     async def chknum(self, ctx):
