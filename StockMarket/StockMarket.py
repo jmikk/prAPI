@@ -565,7 +565,7 @@ class StockMarket(commands.Cog):
         await ctx.send(file=discord.File(buf, filename="market_chart.png"))
 
     @commands.command()
-    async def markettrend(self, ctx, range: str = "month"):
+    async def markettrend(self, ctx, time_range: str = "month"):
         """Show the market-wide average stock price trend over time."""
         stocks = await self.config.stocks()
         available_stocks = [data for data in stocks.values() if not data.get("delisted", False)]
@@ -580,10 +580,10 @@ class StockMarket(commands.Cog):
             "year": 24 * 365
         }
     
-        if range not in range_map:
+        if time_range not in range_map:
             return await ctx.send("❌ Invalid range. Choose from: day, week, month, year.")
     
-        points = range_map[range]
+        points = range_map[time_range]
         
         # Build the average history
         averaged_history = []
@@ -602,7 +602,7 @@ class StockMarket(commands.Cog):
     
         plt.figure(figsize=(10, 4))
         plt.plot(averaged_history, color='green')
-        plt.title(f"📈 Market-Wide Average Price Trend ({range.capitalize()})")
+        plt.title(f"📈 Market-Wide Average Price Trend ({time_range.capitalize()})")
         plt.xlabel("Hours Ago")
         plt.ylabel("Average Price")
         plt.grid(True)
@@ -612,7 +612,8 @@ class StockMarket(commands.Cog):
         buf.seek(0)
         plt.close()
     
-        await ctx.send(file=discord.File(buf, filename=f"markettrend_{range}.png"))
+        await ctx.send(file=discord.File(buf, filename=f"markettrend_{time_range}.png"))
+
     
     
         
