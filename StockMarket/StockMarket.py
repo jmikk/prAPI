@@ -564,11 +564,62 @@ class StockMarket(commands.Cog):
     
         await ctx.send(file=discord.File(buf, filename="market_chart.png"))
 
+    @commands.command()
+    async def markettrend(self, ctx, range: str = "month"):
+        """Show the market-wide average stock price trend over time."""
+        stocks = await self.config.stocks()
+        available_stocks = [data for data in stocks.values() if not data.get("delisted", False)]
     
-
-
-
-
-
-
-
+        if not available_stocks:
+            return await ctx.send("📉 No active stocks to display.")
+    
+        range_map = {
+            "day": 24,
+            "week": 24 * 7,
+            "month": 24 * 30,
+            "year": 24 * 365
+        }
+    
+        if range not in range_map:
+            return await ctx.send("❌ Invalid range. Choose from: day, week, month, year.")
+    
+        points = range_map[range]
+        
+        # Build the average history
+        averaged_history = []
+        for i in range(points):
+            total = 0
+            count = 0
+            for stock in available_stocks:
+                history = stock.get("history", [])
+                if len(history) >= points - i:
+                    total += history[-(points - i)]
+                    count += 1
+            averaged_history.append(round(total / count, 2) if count else 0)
+    
+        if not any(averaged_history):
+            return await ctx.send("⚠️ Not enough price history to generate market trend.")
+    
+        plt.figure(figsize=(10, 4))
+        plt.plot(averaged_history, color='green')
+        plt.title(f"📈 Market-Wide Average Price Trend ({range.capitalize()})")
+        plt.xlabel("Hours Ago")
+        plt.ylabel("Average Price")
+        plt.grid(True)
+    
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        plt.close()
+    
+        await ctx.send(file=discord.File(buf, filename=f"markettrend_{range}.png"))
+    
+    
+        
+    
+    
+    
+    
+    
+    
+    
