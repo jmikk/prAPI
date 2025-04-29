@@ -40,7 +40,7 @@ class Casino(commands.Cog):
 
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
-    async def coinflip(self, ctx, bet: int, call: str = None):
+    async def coinflip(self, ctx, bet: float, call: str = None):
         """Flip a coin with animated message updates. You can call Heads or Tails, but it does not affect the odds."""
         balance = await self.get_balance(ctx.author)
         if not call:
@@ -93,7 +93,7 @@ class Casino(commands.Cog):
 
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
-    async def dice(self, ctx, bet: int):
+    async def dice(self, ctx, bet: float):
         """Roll dice against the house with animated graphics."""
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
@@ -128,7 +128,7 @@ class Casino(commands.Cog):
 
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
-    async def slots(self, ctx, bet: int):
+    async def slots(self, ctx, bet: float):
         """Play a 3x3 slot machine with emojis and live message updates."""
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
@@ -177,7 +177,7 @@ class Casino(commands.Cog):
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
     @commands.admin_or_permissions(administrator=True)
-    async def roulette(self, ctx, bet: int, call: str):
+    async def roulette(self, ctx, bet: float, call: str):
         """Play roulette. Bet on a number (0-36), red, black, even, or odd."""
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
