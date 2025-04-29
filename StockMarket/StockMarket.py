@@ -120,9 +120,9 @@ class StockMarket(commands.Cog):
     
                 volatility = data.get("volatility")
                 if volatility and isinstance(volatility, (list, tuple)) and len(volatility) == 2:
-                    change = random.randint(volatility[0], volatility[1])
+                    change = random.rand(volatility[0], volatility[1])
                 else:
-                    change = random.randint(-2, 2)
+                    change = random.rand(-2, 2)
     
                 new_price = round(data["price"] + change + tag_bonus, 2)
 
@@ -494,7 +494,7 @@ class StockMarket(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def setvolatility(self, ctx, name: str, min_volatility: int, max_volatility: int):
+    async def setvolatility(self, ctx, name: str, min_volatility: float, max_volatility: float):
         """Set the volatility range for a specific stock."""
         name = name.upper()
         async with self.config.stocks() as stocks:
@@ -505,7 +505,7 @@ class StockMarket(commands.Cog):
     
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def setallvolatility(self, ctx, min_volatility: int, max_volatility: int):
+    async def setallvolatility(self, ctx, min_volatility: float, max_volatility: float):
         """Set the same volatility range for all stocks."""
         async with self.config.stocks() as stocks:
             for stock in stocks.values():
