@@ -1794,10 +1794,10 @@ Helpful Resources:
         
             msg = (
                 f"**Balance for {member.display_name}:**\n"
-                f"💰 On hand: `{balance}` {currency}\n"
+                f"💰 On hand: `{balance:.2f}` {currency}\n"
             )
             if bank > 0:
-                msg += f"🏦 In bank: `{bank}` {currency}\n"
+                msg += f"🏦 In bank: `{bank:.2f}` {currency}\n"
             msg += f"⭐ XP: `{xp}`"
         
             await ctx.author.send(msg) if secret else await ctx.send(msg)
