@@ -492,6 +492,26 @@ class StockMarket(commands.Cog):
             await self.config.announcement_channel.set(None)
             await ctx.send("🛑 Announcements have been disabled.")
 
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def setvolatility(self, ctx, name: str, min_volatility: int, max_volatility: int):
+        """Set the volatility range for a specific stock."""
+        name = name.upper()
+        async with self.config.stocks() as stocks:
+            if name not in stocks:
+                return await ctx.send("Stock not found.")
+            stocks[name]["volatility"] = [min_volatility, max_volatility]
+        await ctx.send(f"📉 Volatility for `{name}` set to range [{min_volatility}, {max_volatility}].")
+    
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def setallvolatility(self, ctx, min_volatility: int, max_volatility: int):
+        """Set the same volatility range for all stocks."""
+        async with self.config.stocks() as stocks:
+            for stock in stocks.values():
+                stock["volatility"] = [min_volatility, max_volatility]
+        await ctx.send(f"🌐 Set volatility of **all stocks** to range [{min_volatility}, {max_volatility}].")
+    
 
 
 
