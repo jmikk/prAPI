@@ -511,6 +511,59 @@ class StockMarket(commands.Cog):
             for stock in stocks.values():
                 stock["volatility"] = [min_volatility, max_volatility]
         await ctx.send(f"🌐 Set volatility of **all stocks** to range [{min_volatility}, {max_volatility}].")
+
+
+    @commands.command()
+    async def marketchart(self, ctx):
+        """View a pie chart of the current stock market distribution."""
+        stocks = await self.config.stocks()
+        available_stocks = {name: data for name, data in stocks.items() if not data.get("delisted", False)}
+    
+        if not available_stocks:
+            return await ctx.send("📉 No active stocks to display.")
+    
+        labels = []
+        sizes = []
+    
+        for name, data in available_stocks.items():
+            value = data.get("price", 0)
+            if value > 0:
+                labels.append(name)
+                sizes.append(value)
+    
+        if not sizes:
+            return await ctx.send("📉 All stocks are currently valued at 0.")
+    
+        # Sort the top N and lump the rest into "Other" for readability
+        sorted_data = sorted(zip(labels, sizes), key=lambda x: x[1], reverse=True)
+        top_n = 10
+        top_labels = []
+        top_sizes = []
+        other_total = 0
+    
+        for idx, (label, size) in enumerate(sorted_data):
+            if idx < top_n:
+                top_labels.append(label)
+                top_sizes.append(size)
+            else:
+                other_total += size
+    
+        if other_total > 0:
+            top_labels.append("Other")
+            top_sizes.append(other_total)
+    
+        fig, ax = plt.subplots(figsize=(7, 7))
+        ax.pie(top_sizes, labels=top_labels, autopct='%1.1f%%', startangle=90)
+        ax.axis('equal')
+        plt.title("📊 Market Capitalization Distribution")
+    
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        plt.close()
+    
+        await ctx.send(file=discord.File(buf, filename="market_chart.png"))
+
     
 
 
