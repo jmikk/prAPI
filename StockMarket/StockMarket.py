@@ -120,9 +120,9 @@ class StockMarket(commands.Cog):
     
                 volatility = data.get("volatility")
                 if volatility and isinstance(volatility, (list, tuple)) and len(volatility) == 2:
-                    change = random.rand(volatility[0], volatility[1])
+                    change = random.uniform(volatility[0], volatility[1])
                 else:
-                    change = random.rand(-2, 2)
+                    change = random.uniform(-2, 2)
     
                 new_price = round(data["price"] + change + tag_bonus, 2)
 
