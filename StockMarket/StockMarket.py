@@ -603,7 +603,7 @@ class StockMarket(commands.Cog):
         plt.figure(figsize=(10, 4))
         plt.plot(averaged_history, color='green')
         plt.title(f"📈 Market-Wide Average Price Trend ({time_range.capitalize()})")
-        plt.xlabel("Hours Ago")
+        plt.xlabel("Hours Since Opening")
         plt.ylabel("Average Price")
         plt.grid(True)
     
