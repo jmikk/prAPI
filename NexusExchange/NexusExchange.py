@@ -1777,12 +1777,12 @@ Helpful Resources:
         
     @commands.guild_only()
     @commands.command()
-    async def balance(self, ctx, secret: bool = False, member: discord.Member = None, currency_name: str = None):
+    async def balance(self, ctx, secret: bool = False, currency_name: str = None):
         """
         Check your or another member's balance of WellCoins, XP, or a specific mini-currency.
         Usage: [p]balance [@member] [currency_name]
         """
-        member = member or ctx.author
+        member = ctx.author
         user_data = self.config.user(member)
         guild_data = self.config.guild(ctx.guild)
         
