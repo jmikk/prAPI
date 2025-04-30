@@ -288,14 +288,14 @@ class Casino(commands.Cog):
             embed.add_field(
                 name=f"{game.capitalize()} {status}",
                 value=(
-                    f"💰 **Total Bet**: {total_bet:.2}\n"
-                    f"🏆 **Total Payout**: {total_payout:.2}\n"
+                    f"💰 **Total Bet**: {total_bet:.2f}\n"
+                    f"🏆 **Total Payout**: {total_payout:.2f}\n"
                     f"📊 **Actual Payout %**: {actual_er:.2%}\n"
-                    f"📉 **House Net**: {net:.2}"
+                    f"📉 **House Net**: {net:.2f}"
                 ),
                 inline=False
             )
     
-        embed.set_footer(text=f"🧮 Total House Profit: {total_net:.2} WellCoins")
+        embed.set_footer(text=f"🧮 Total House Profit: {total_net:.2f} WellCoins")
         await ctx.send(embed=embed)
     
