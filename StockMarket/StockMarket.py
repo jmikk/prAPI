@@ -421,7 +421,7 @@ class StockMarket(commands.Cog):
         plt.figure(figsize=(10, 4))
         plt.plot(data)
         plt.title(f"{name} Price History ({range})")
-        plt.xlabel("Hours")
+        plt.xlabel("Hours Since Creation")
         plt.ylabel("Price")
         plt.grid(True)
 
