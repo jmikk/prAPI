@@ -129,7 +129,7 @@ class StockMarket(commands.Cog):
                 # Check for large positive price surge (>5%)
                 if old_price > 0:  # Avoid division by zero
                     percent_change = ((new_price - old_price) / old_price) * 100
-                    if percent_change > 5:
+                    if percent_change > 3:
                         channel_id = await self.config.announcement_channel()
                         if channel_id:
                             channel = self.bot.get_channel(channel_id)
