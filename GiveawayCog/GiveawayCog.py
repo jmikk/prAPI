@@ -405,7 +405,7 @@ class GiveawayCog(commands.Cog):
 
 
 class GiveawayButtonView(discord.ui.View):
-    def __init__(self, role_id, card_data, card_link, role, end_time, message_id=None, saved_entrants=None):
+    def __init__(self, role_id, card_data, card_link, role, end_time):
         super().__init__(timeout=None)
         self.entrants = set()
         self.role_id = role_id
@@ -414,39 +414,29 @@ class GiveawayButtonView(discord.ui.View):
         self.role = role
         self.end_time = end_time
         self.message = None
-        self.message_id = message_id
 
-        if saved_entrants:
-            self.entrants = set(saved_entrants)
-
-    @discord.ui.button(label="Enter Giveaway", style=discord.ButtonStyle.green, custom_id="giveaway:enter")
+    @discord.ui.button(label="Enter Giveaway", style=discord.ButtonStyle.green)
     async def enter(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.role_id and self.role_id not in [role.id for role in interaction.user.roles]:
             await interaction.response.send_message("You don't have the required role to enter.", ephemeral=True)
             return
-
-        self.entrants.add(interaction.user.id)
-
-        # Save the entrant to config for persistence
-        active = await self.view_config().active_giveaways()
-        for entry in active:
-            if entry["message_id"] == self.message_id:
-                if interaction.user.id not in entry["entrants"]:
-                    entry["entrants"].append(interaction.user.id)
-                    await self.view_config().active_giveaways.set(active)
-                break
-
+        self.entrants.add(interaction.user)
         await interaction.response.send_message("You've entered the giveaway!", ephemeral=True)
         if self.message:
             await self.message.edit(embed=self.create_embed(), view=self)
 
     def get_entrants(self):
-        return [self.message.guild.get_member(uid) for uid in self.entrants if self.message.guild.get_member(uid)]
+        return list(self.entrants)
 
     async def disable_all_items(self):
         for item in self.children:
             item.disabled = True
         self.stop()
+
+        # Build custom card thumbnail URL
+    def build_card_thumbnail_url(self, name: str, season: str, cardid: str) -> str:
+        formatted_name = name.lower().replace(" ", "_")
+        return f"https://www.nationstates.net/images/cards/s{season}/uploads/{formatted_name}__{cardid}"
 
     def create_embed(self):
         embed = discord.Embed(
@@ -462,7 +452,7 @@ class GiveawayButtonView(discord.ui.View):
         embed.add_field(name="Ends", value=f"<t:{int(self.end_time.timestamp())}:R>", inline=False)
         embed.add_field(name="Entrants", value=str(len(self.entrants)), inline=False)
         embed.set_footer(text="Click the button to enter!")
+        # Inside your embed-building logic:
+        thumbnail_url = self.build_card_thumbnail_url(self.card_data["name"], self.card_data["season"], self.card_data["cardid"])
+        embed.set_thumbnail(url=thumbnail_url)
         return embed
-
-    def view_config(self):
-        return Config.get_conf(None, identifier=9006)  # Same identifier as the cog
