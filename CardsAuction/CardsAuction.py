@@ -14,18 +14,16 @@ class CardsAuction(commands.Cog):
         self.config.register_global(**default_global)
         self.cooldown = commands.CooldownMapping.from_cooldown(1, 300, commands.BucketType.user)
 
-        self.valid_filters = ["legendary", "epic", "ultra-rare", "rare", "uncommon", "common"] + [f"s{i}" for i in range(1, 10)]
-
-    @commands.hybrid_command()
+    @commands.command()
     @commands.has_permissions(administrator=True)
     async def setua(self, ctx, *, user_agent: str):
         """Set the User-Agent (UA) to use for NationStates API requests."""
         await self.config.ua.set(user_agent)
         await ctx.reply("✅ User-Agent has been set.")
 
-    @commands.hybrid_command()
-    async def auctions(self, ctx: commands.Context, filters: str = commands.parameter(description="Filters like legendary epic s2 s3 etc.")):
-        """Fetch and display the current cards auctions."""
+    @commands.command()
+    async def auctions(self, ctx: commands.Context, *, filters: str = None):
+        """Fetch and display the current cards auctions. Supports filters like legendary epic s2 s3 etc."""
 
         bucket = self.cooldown.get_bucket(ctx.message)
         retry_after = bucket.update_rate_limit()
@@ -38,8 +36,6 @@ class CardsAuction(commands.Cog):
 
         url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+auctions"
         headers = {"User-Agent": ua}
-
-        await ctx.defer()
 
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
@@ -113,11 +109,6 @@ class CardsAuction(commands.Cog):
                     await interaction.response.edit_message(embed=self.pages[self.index], view=self)
 
         await ctx.reply(embed=pages[0], view=AuctionView(pages))
-
-    @auctions.autocomplete("filters")
-    async def auctions_autocomplete(self, interaction: discord.Interaction, current: str):
-        suggestions = [f for f in self.valid_filters if f.startswith(current.lower())]
-        return [discord.app_commands.Choice(name=f, value=f) for f in suggestions[:25]]
 
 async def setup(bot):
     await bot.add_cog(CardsAuction(bot))
