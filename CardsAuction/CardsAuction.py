@@ -12,7 +12,7 @@ class CardsAuction(commands.Cog):
         self.config = Config.get_conf(self, identifier=1234567890)
         default_global = {"ua": None}
         self.config.register_global(**default_global)
-        self.cooldown = commands.CooldownMapping.from_cooldown(1, 300, commands.BucketType.user)
+        self.cooldown = commands.CooldownMapping.from_cooldown(1, 120, commands.BucketType.user)
 
     @commands.command()
     @commands.has_permissions(administrator=True)
@@ -28,7 +28,7 @@ class CardsAuction(commands.Cog):
         bucket = self.cooldown.get_bucket(ctx.message)
         retry_after = bucket.update_rate_limit()
         if retry_after:
-            return await ctx.reply(f"⏳ You're on cooldown. Try again in {round(retry_after)} seconds.")
+            return await ctx.reply(f"⏳ You're on cooldown. Try again in {round(retry_after)} seconds.",ephemeral=True)
 
         ua = await self.config.ua()
         if not ua:
