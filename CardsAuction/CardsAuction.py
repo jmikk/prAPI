@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import aiohttp
 import xml.etree.ElementTree as ET
+from redbot.core import commands
 
 class CardsAuction(commands.Cog):
     def __init__(self, bot):
