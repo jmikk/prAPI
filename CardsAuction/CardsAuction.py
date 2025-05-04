@@ -107,7 +107,6 @@ class CardsAuction(commands.Cog):
                 ),
                 value=f"[🔗 Card ID: {cardid} | Category: {category}]({link})",
                 inline=False
-                )
             embed.set_footer(text=f"Page {i // chunk_size + 1} of {len(auctions) // chunk_size + 1} | Showing {len(auctions)} of {total_auctions} total auctions | Data provided by 9005")
             pages.append(embed)
 
