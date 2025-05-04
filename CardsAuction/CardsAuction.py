@@ -104,7 +104,7 @@ class CardsAuction(commands.Cog):
                     name=f"{icon} {name} (Season {season})",
                     value=f"[🔗 Card ID: {cardid} | Category: {category}]({link})",
                     inline=False
-                )",
+                ),
                     value=f"[🔗 Card ID: {cardid} | Category: {category}]({link})",
                     inline=False
                 )
