@@ -21,6 +21,7 @@ class CardsAuction(commands.Cog):
         await self.config.ua.set(user_agent)
         await ctx.reply("✅ User-Agent has been set.")
 
+    
     @commands.command()
     async def auctions(self, ctx: commands.Context, *, filters: str = None):
         """Fetch and display the current cards auctions. Supports filters like legendary epic s2 s3 etc."""
