@@ -12,7 +12,7 @@ class CardsAuction(commands.Cog):
         self.config = Config.get_conf(self, identifier=1234567890)
         default_global = {"ua": None}
         self.config.register_global(**default_global)
-        self.cooldown = commands.CooldownMapping.from_cooldown(1, 120, commands.BucketType.user)
+        self.cooldown = commands.CooldownMapping.from_cooldown(1, 300, commands.BucketType.user)
 
     @commands.command()
     @commands.has_permissions(administrator=True)
@@ -28,7 +28,7 @@ class CardsAuction(commands.Cog):
         bucket = self.cooldown.get_bucket(ctx.message)
         retry_after = bucket.update_rate_limit()
         if retry_after:
-            return await ctx.reply(f"⏳ You're on cooldown. Try again in {round(retry_after)} seconds.",ephemeral=True)
+            return await ctx.reply(f"⏳ You're on cooldown. Try again in {round(retry_after)} seconds.")
 
         ua = await self.config.ua()
         if not ua:
@@ -44,6 +44,7 @@ class CardsAuction(commands.Cog):
                 data = await response.text()
 
         root = ET.fromstring(data)
+        total_auctions = len(root.findall("AUCTIONS/AUCTION"))
         auctions = []
 
         filter_categories = {"legendary": "legendary", "epic": "epic", "ultra-rare": "ultra-rare",
@@ -75,19 +76,39 @@ class CardsAuction(commands.Cog):
         pages = []
         chunk_size = 10
 
+        # Prepare filter summary
+        filter_summary = "None (showing all)"
+        if filter_list:
+            filter_summary = ", ".join(filter_list)
+
         for i in range(0, len(auctions), chunk_size):
             chunk = auctions[i:i + chunk_size]
             embed = discord.Embed(
                 title="Current Card Auctions",
+                description=f"**Filters applied:** {filter_summary}",
                 color=discord.Color.blurple()
             )
             for cardid, name, category, season in chunk:
+                link = f"https://www.nationstates.net/page=deck/card={cardid}/season={season}"
+                category_lower = category.lower()
+                rarity_icons = {
+                    "legendary": "🌟",
+                    "epic": "🟠",
+                    "ultra-rare": "🟣",
+                    "rare": "🔵",
+                    "uncommon": "🟢",
+                    "common": "⚪"
+                }
+                icon = rarity_icons.get(category_lower, "❓")
                 embed.add_field(
-                    name=f"{name} (Season {season})",
-                    value=f"Card ID: {cardid} | Category: {category}",
+                    name=f"{icon} {name} (Season {season})",
+                    value=f"[🔗 Card ID: {cardid} | Category: {category}]({link})",
+                    inline=False
+                )",
+                    value=f"[🔗 Card ID: {cardid} | Category: {category}]({link})",
                     inline=False
                 )
-            embed.set_footer(text=f"Page {i // chunk_size + 1} of {len(auctions) // chunk_size + 1}")
+            embed.set_footer(text=f"Page {i // chunk_size + 1} of {len(auctions) // chunk_size + 1} | Showing {len(auctions)} of {total_auctions} total auctions | Data provided by 9005")
             pages.append(embed)
 
         class AuctionView(View):
