@@ -29,15 +29,7 @@ class CardsAuction(commands.Cog):
         bucket = self.cooldown.get_bucket(ctx.message)
         retry_after = bucket.update_rate_limit()
         if retry_after:
-            cooldown_time = round(retry_after)
-            timestamp = f"<t:{int(ctx.message.created_at.timestamp() + retry_after)}:R>"
-            msg = await ctx.reply(f"⏳ You're on cooldown. Try again {timestamp}.")
-            await asyncio.sleep(cooldown_time)
-            try:
-                await msg.delete()
-            except discord.NotFound:
-                pass
-            return} seconds.",ephemeral=True)
+            return await ctx.reply(f"⏳ You're on cooldown. Try again in {round(retry_after)} seconds.",ephemeral=True)
 
         ua = await self.config.ua()
         if not ua:
