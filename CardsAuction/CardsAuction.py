@@ -28,7 +28,7 @@ class CardsAuction(commands.Cog):
         bucket = self.cooldown.get_bucket(ctx.message)
         retry_after = bucket.update_rate_limit()
         if retry_after:
-            return await ctx.reply(f"⏳ You're on cooldown. Try again in {round(retry_after)} seconds.")
+            return await ctx.reply(f"⏳ You're on cooldown. Try again in {round(retry_after)} seconds.",empirical=True)
 
         ua = await self.config.ua()
         if not ua:
