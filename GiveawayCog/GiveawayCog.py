@@ -456,3 +456,4 @@ class GiveawayButtonView(discord.ui.View):
         thumbnail_url = self.build_card_thumbnail_url(self.card_data["name"], self.card_data["season"], self.card_data["cardid"])
         embed.set_thumbnail(url=thumbnail_url)
         return embed
+
