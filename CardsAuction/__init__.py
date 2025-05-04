@@ -1,5 +1,5 @@
-from .prAPI import prAPI
+from .CardsAuction import CardsAuction
 
 
 async def setup(bot):
-    await bot.add_cog(prAPI(bot))
+    await bot.add_cog(CardsAuction(bot))
