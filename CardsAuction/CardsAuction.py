@@ -4,6 +4,7 @@ from discord.ui import View, Button
 import aiohttp
 import xml.etree.ElementTree as ET
 import asyncio
+from redbot.core import commands, Config
 
 class CardsAuction(commands.Cog):
     def __init__(self, bot):
