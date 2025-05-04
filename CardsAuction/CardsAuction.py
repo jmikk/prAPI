@@ -9,10 +9,10 @@ from redbot.core import commands, Config
 class CardsAuction(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = commands.Config.get_conf(self, identifier=1234567890)
+        self.config = Config.get_conf(self, identifier=1234567890)
         default_global = {"ua": None}
         self.config.register_global(**default_global)
-        self.cooldown = commands.CooldownMapping.from_cooldown(1, 300, commands.BucketType.user)  # 5 minute cooldown
+        self.cooldown = commands.CooldownMapping.from_cooldown(1, 300, commands.BucketType.user)
 
         self.valid_filters = ["legendary", "epic", "ultra-rare", "rare", "uncommon", "common"] + [f"s{i}" for i in range(1, 10)]
 
@@ -24,8 +24,8 @@ class CardsAuction(commands.Cog):
         await ctx.reply("✅ User-Agent has been set.")
 
     @commands.hybrid_command()
-    async def auctions(self, ctx, *filters: str):
-        """Fetch and display the current cards auctions. Supports filters like legendary epic s2 s3 etc."""
+    async def auctions(self, ctx: commands.Context, filters: str = commands.parameter(description="Filters like legendary epic s2 s3 etc.")):
+        """Fetch and display the current cards auctions."""
 
         bucket = self.cooldown.get_bucket(ctx.message)
         retry_after = bucket.update_rate_limit()
@@ -56,7 +56,9 @@ class CardsAuction(commands.Cog):
         filter_seasons = set()
         filter_types = set()
 
-        for f in filters:
+        filter_list = filters.split() if filters else []
+
+        for f in filter_list:
             if f.lower() in filter_categories:
                 filter_types.add(filter_categories[f.lower()])
             elif f.lower().startswith("s") and f[1:].isdigit():
@@ -78,7 +80,7 @@ class CardsAuction(commands.Cog):
         chunk_size = 10
 
         for i in range(0, len(auctions), chunk_size):
-            chunk = auctions[i:i+chunk_size]
+            chunk = auctions[i:i + chunk_size]
             embed = discord.Embed(
                 title="Current Card Auctions",
                 color=discord.Color.blurple()
