@@ -111,7 +111,11 @@ class StockMarket(commands.Cog):
     
             to_delist = []
     
+            # Now process all active stocks.
             for stock_name, data in stocks.items():
+                if data.get("delisted", False):
+                    continue  # Already handled above
+    
                 tag_bonus = 0
                 old_price = data["price"]
                 for tag, weight in data.get("tags", {}).items():
@@ -125,9 +129,9 @@ class StockMarket(commands.Cog):
                     change = random.uniform(-2, 2)
     
                 new_price = round(data["price"] + change + tag_bonus, 2)
-
-                # Check for large positive price surge (>5%)
-                if old_price > 0:  # Avoid division by zero
+    
+                # Check for large positive price surge
+                if old_price > 0:
                     percent_change = ((new_price - old_price) / old_price) * 100
                     if percent_change > 3:
                         channel_id = await self.config.announcement_channel()
@@ -135,32 +139,25 @@ class StockMarket(commands.Cog):
                             channel = self.bot.get_channel(channel_id)
                             if channel:
                                 await channel.send(f"🚀 **{stock_name}** surged by **{percent_change:.2f}%** this hour!")
-
     
                 if data.get("commodity", False):
                     new_price = max(1.0, new_price)
                 else:
                     if new_price <= 0:
                         if random.random() < 0.5:
-                        # SURVIVES at 0.01 instead of delisting
                             new_price = 0.01
-                            # Send survival announcement
                             channel_id = await self.config.announcement_channel()
                             if channel_id:
                                 channel = self.bot.get_channel(channel_id)
                                 if channel:
                                     await channel.send(f"**{stock_name}** narrowly avoided bankruptcy and is now trading at **0.01 WC**!")
-
-
                         else:
                             to_delist.append(stock_name)
-                                                        # BANKRUPTCY ANNOUNCEMENT
                             channel_id = await self.config.announcement_channel()
                             if channel_id:
                                 channel = self.bot.get_channel(channel_id)
                                 if channel:
                                     await channel.send(f"💀 **{stock_name}** has gone bankrupt and been delisted!")
-
                         continue
     
                 new_price = max(1.0, new_price)
@@ -174,12 +171,19 @@ class StockMarket(commands.Cog):
                 data["price"] = new_price
                 data["buys"] = 0
                 data["sells"] = 0
+
+
+            # First, force all previously delisted stocks' price to 0.
+            for stock_name, data in stocks.items():
+                if data.get("delisted", False):
+                    data["price"] = 0.0
     
-            # Handle delisting
+            # Handle new delistings
             for stock_name in to_delist:
                 if stock_name in stocks:
                     stocks[stock_name]["delisted"] = True
                     stocks[stock_name]["price"] = 0.0
+
 
 
     @commands.command()
