@@ -132,6 +132,7 @@ class StockMarket(commands.Cog):
                 new_price = round(data["price"] + change + tag_bonus, 2)
 
                 market_change = .01 * (self.last_day_trades / 1000)
+               
                 if market_changes > 10000
                     market_change = .11
                 if market_changes < -10000
