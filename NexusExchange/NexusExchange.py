@@ -145,7 +145,7 @@ class NexusExchange(commands.Cog):
 
     @commands.command()
     @is_citizen()
-    async def bank_deposit(self, ctx, deposit: int):
+    async def bank_deposit(self, ctx, deposit: float):
         """Deposit WellCoins into your bank."""
         user = ctx.author
         user_data = self.config.user(user)
@@ -644,7 +644,7 @@ class NexusExchange(commands.Cog):
 
     @commands.command()
     @is_citizen()
-    async def bank_withdraw(self, ctx, amount: int):
+    async def bank_withdraw(self, ctx, amount: float):
         """Withdraw WellCoins from your bank into your on-hand balance."""
         user = ctx.author
         user_data = self.config.user(user)
