@@ -400,3 +400,55 @@
 {name1} disguised a cardboard box as a hiding spot, and {name2} got stuck for {dmg} damage.
 {name1} set up a trap with a karaoke machine, forcing {name2} into a humiliating performance for {dmg} damage.
 {name1} left a booby-trapped cake that exploded into sprinkles, catching {name2} for {dmg} damage.
+{name1} hurled a fireball at {name2}, scorching them for {dmg} damage.
+{name1} summoned a lightning bolt that struck {name2} for {dmg} damage.
+{name1} froze {name2} in place with a chilling blast, dealing {dmg} damage.
+{name1} called forth a swarm of spectral daggers, slicing {name2} for {dmg} damage.
+{name1} whispered a forbidden word, causing {name2} to bleed shadows for {dmg} damage.
+{name1} slammed the ground, sending a shockwave that tossed {name2} back for {dmg} damage.
+{name1} launched a crystal spear that pierced {name2} for {dmg} damage.
+{name1} lashed out with chains of fire, searing {name2} for {dmg} damage.
+{name1} released a thunderous clap, bursting {name2}’s eardrums for {dmg} damage.
+{name1} raised a skeletal claw that raked {name2} for {dmg} damage.
+{name1} conjured acid rain that melted over {name2} for {dmg} damage.
+{name1} summoned vines that whipped {name2}, dealing {dmg} damage.
+{name1} struck {name2} with a radiant beam, burning for {dmg} damage.
+{name1} unleashed ghostly wolves that bit {name2} for {dmg} damage.
+{name1} summoned a blade of pure void, slashing {name2} for {dmg} damage.
+{name1} cursed {name2} with rot, festering for {dmg} damage.
+{name1} called down a falling star, crashing into {name2} for {dmg} damage.
+{name1} unleashed a wave of toxic spores, choking {name2} for {dmg} damage.
+{name1} hurled a blackened axe of smoke at {name2}, dealing {dmg} damage.
+{name1} conjured a mirror that shattered into shards, cutting {name2} for {dmg} damage.
+{name1} spun a wind blade that sliced {name2} for {dmg} damage.
+{name1} stabbed the air and sent ripples into {name2}, for {dmg} damage.
+{name1} screamed a sonic wave that rattled {name2} for {dmg} damage.
+{name1} hurled enchanted rocks that pummeled {name2} for {dmg} damage.
+{name1} cracked a flaming whip across {name2}, hitting for {dmg} damage.
+{name1} blinked behind {name2} and delivered a shadow strike for {dmg} damage.
+{name1} conjured bees from their palm, stinging {name2} for {dmg} damage.
+{name1} pointed at {name2}, who erupted in blisters for {dmg} damage.
+{name1} threw an ice shard into {name2}’s chest for {dmg} damage.
+{name1} summoned sand serpents to bite {name2} for {dmg} damage.
+{name1} shot a beam of decay at {name2}, rotting flesh for {dmg} damage.
+{name1} unleashed a hellhound that mauled {name2} for {dmg} damage.
+{name1} tore open the sky, dropping spikes onto {name2} for {dmg} damage.
+{name1} twisted space around {name2}, crushing them for {dmg} damage.
+{name1} danced a bladed waltz through {name2}, leaving {dmg} damage.
+{name1} triggered a mine of spectral force beneath {name2} for {dmg} damage.
+{name1} launched a venomous arrow into {name2} for {dmg} damage.
+{name1} released necrotic energy that clung to {name2} for {dmg} damage.
+{name1} summoned glowing runes that exploded on {name2} for {dmg} damage.
+{name1} struck a gong that sent {name2} reeling with {dmg} damage.
+{name1} set a trap of spikes that impaled {name2} for {dmg} damage.
+{name1} created a blade of pure lightning and slashed {name2} for {dmg} damage.
+{name1} sang a cursed lullaby, weakening {name2} for {dmg} damage.
+{name1} drove an ethereal stake into {name2} for {dmg} damage.
+{name1} threw an orb of darkness that exploded on {name2} for {dmg} damage.
+{name1} carved a sigil into the air, which struck {name2} for {dmg} damage.
+{name1} struck {name2} with a spinning disk of ice for {dmg} damage.
+{name1} snapped their fingers, causing {name2} to combust for {dmg} damage.
+{name1} called down spectral chains that bound and crushed {name2} for {dmg} damage.
+{name1} raised a bone wall that slammed into {name2} for {dmg} damage.
+{name1} flicked a dagger made of shadow into {name2} for {dmg} damage.
+{name1} roared, sending waves of psychic energy into {name2} for {dmg} damage.
