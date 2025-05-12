@@ -17,6 +17,7 @@ class StockListView(View):
         self.per_page = per_page
         self.page = 0
         self.message = None
+        self.last_day_trades=0
 
     async def update_embed(self):
         embed = discord.Embed(
@@ -129,6 +130,15 @@ class StockMarket(commands.Cog):
                     change = random.uniform(-2, 2)
     
                 new_price = round(data["price"] + change + tag_bonus, 2)
+
+                market_change = .01 * (self.last_day_trades / 1000)
+                if market_changes > 10000
+                    market_change = .11
+                if market_changes < -10000
+                    market_change = -.1
+                    
+                new_price = new_price + market_change
+ 
     
                 # Check for large positive price surge
                 if old_price > 0:
@@ -183,6 +193,7 @@ class StockMarket(commands.Cog):
                 if stock_name in stocks:
                     stocks[stock_name]["delisted"] = True
                     stocks[stock_name]["price"] = 0.0
+            self.last_day_trades = 0 
 
 
 
@@ -255,7 +266,8 @@ class StockMarket(commands.Cog):
             current_total = prices.get(name, 0) * previous_amount
             new_total = current_total + stock["price"] * amount
             prices[name] = round(new_total / (previous_amount + amount), 2) if (previous_amount + amount) > 0 else 0
-    
+        
+        self.last_day_trades = self.last_day_trades + price
         await interaction.response.send_message(f"✅ Purchased {amount} shares of **{name}** for **{price:.2f} WC**.")
 
 
@@ -281,7 +293,8 @@ class StockMarket(commands.Cog):
         earnings = stock["price"] * amount if stock else 0
         bal = await self.economy_config.user(user).master_balance()
         await self.economy_config.user(user).master_balance.set(bal + earnings)
-    
+
+        self.last_day_trades = self.last_day_trades - earnings
         await interaction.response.send_message(f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC**.")
 
 
