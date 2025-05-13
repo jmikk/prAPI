@@ -95,6 +95,7 @@ class StockMarket(commands.Cog):
             tags={},
         announcement_channel=None 
         )
+        self.last_day_trades = 0.0  # ✅ Add this line
 
         self.price_updater.start()
 
