@@ -1754,9 +1754,7 @@ class Hungar(commands.Cog):
         await ctx.send(file=discord.File(file))
         if os.path.exists(file):
             os.remove(file)
-
-        
-
+            
     async def process_day(self, ctx):
         guild = ctx.guild
         config = await self.config.guild(guild).all()
@@ -2105,8 +2103,17 @@ class Hungar(commands.Cog):
 
             file = "Hunger_Games.txt"
             # Sort so Announcements is always last
-            async with aiofiles.open(file, mode="a") as f:                    
-                for zone_name in sorted(zone_sorted_events.keys(), key=lambda z: (z == "Announcements", z)):
+            async with aiofiles.open(file, mode="a") as f:
+                def zone_sort_key(z):
+                    if z == "Announcements":
+                        return (0, z)
+                    elif z == "Cornucopia":
+                        return (2, z)
+                    return (1, z)
+                    
+#                for zone_name in sorted(zone_sorted_events.keys(), key=lambda z: (z == "Announcements", z)):
+
+                for zone_name in sorted(zone_sorted_events.keys(), key=zone_sort_key):
                     await ctx.send(f"# __**Zone Report: {zone_name}**__")
                     await f.write(f"Zone Report: {zone_name}\n")
 
