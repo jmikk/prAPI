@@ -17,7 +17,6 @@ class StockListView(View):
         self.per_page = per_page
         self.page = 0
         self.message = None
-        self.last_day_trades=0
 
     async def update_embed(self):
         embed = discord.Embed(
