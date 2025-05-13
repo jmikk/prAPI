@@ -17,6 +17,11 @@ class GiveawayCog(commands.Cog):
         self.giveaway_tasks = {}
         #self.scheduler.start()
 
+    async def cog_unload(self):
+        await self.session.close()
+        self.scheduler.cancel()
+
+
 
     async def cog_load(self):
         self.scheduler.start()
@@ -74,7 +79,7 @@ class GiveawayCog(commands.Cog):
 
     async def run_giveaway(self, giveaway, guild):
         try:
-            nnationname = await self.config.guild(guild).nationname()
+            nationname = await self.config.guild(guild).nationname()
             cards = await self.fetch_deck(nationname)
             legendary_cards = [c for c in cards if c["category"] == "legendary"]
     
@@ -185,7 +190,7 @@ class GiveawayCog(commands.Cog):
                 "timestamp": int(datetime.utcnow().timestamp())
             })
             await self.config.user(winner).wins.set(user_claims)
-            prefix = await bot.get_prefix(message)
+            prefix = await self.bot.get_prefix(message)
             prefix[0] if isinstance(prefix, list) else prefix
             await message.reply(f"Giveaway ended! Congratulations {winner.mention}, you won the card giveaway! Use `{prefix}claimcards <destination>` to tell Gob where to send your card.")
         else:
