@@ -1948,7 +1948,7 @@ Helpful Resources:
             user_data = self.config.user(member)
             wallet = data.get("master_balance", 0)
             bank = await user_data.bank_total()  # Assuming bank_total is an async method
-            total = wallet + bank
+            total = round(wallet + bank, 2)
     
             balances.append((member, total))
     
@@ -1960,9 +1960,10 @@ Helpful Resources:
             embed.description = "No users have any WellCoins yet."
         else:
             for rank, (user, balance) in enumerate(top_users, start=1):
-                embed.add_field(name=f"#{rank} {user.display_name}", value=f"💰 `{balance}` WellCoins", inline=False)
+                embed.add_field(name=f"#{rank} {user.display_name}", value=f"💰 `{balance:.2f}` WellCoins", inline=False)
     
         await ctx.send(embed=embed)
+
 
 
     @commands.Cog.listener()
