@@ -133,9 +133,9 @@ class StockMarket(commands.Cog):
 
                 market_change = .01 * (self.last_day_trades / 1000)
                
-                if market_changes > 10000:
+                if self.last_day_trades > 10000:
                     market_change = .11
-                if market_changes < -10000:
+                if self.last_day_trades < -10000:
                     market_change = -.1
                     
                 new_price = new_price + market_change
