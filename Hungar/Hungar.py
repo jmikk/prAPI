@@ -1021,7 +1021,7 @@ class Hungar(commands.Cog):
     async def Equalizer(self, ctx):
         """Triggers the Equalizer event to balance all tributes' total stats."""
         try:
-            config = await self.cog.config.guild(ctx.guild).all()
+            config = await self.config.guild(ctx.guild).all()
             players = config["players"]
     
             # Get only alive players
@@ -1048,7 +1048,7 @@ class Hungar(commands.Cog):
                     boost_distribution[p_id] += boost_amount
                     missing_stats -= boost_amount
     
-            await self.cog.config.guild(ctx.guild).players.set(players)
+            await self.config.guild(ctx.guild).players.set(players)
     
             boost_messages = [
                 f"**{players[p_id]['name']}** gained **+{amount}** total stats!"
