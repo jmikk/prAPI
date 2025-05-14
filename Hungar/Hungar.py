@@ -1905,13 +1905,8 @@ class Hungar(commands.Cog):
             feast_log = ["🍖 The Feast begins at the Cornucopia..."]
         
             if len(feasters) == 1:
-                solo = players[feasters[0]]
-                for each in range(3):
-                    stat = random.choice(["Str", "Con", "Def", "Wis"])
-                    boost = random.randint(10, 15)
-                    solo["stats"][stat] += boost
-                    effect = f"🥇 {solo['name']} arrived alone and gained **+{boost} {stat}** from the untouched Cornucopia."
-                event_outcomes.append(f"{effect} (Cornucopia)")
+                alive_set = set(feasters)
+
             else:
         
                 alive_set = set(feasters)
