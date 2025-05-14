@@ -138,7 +138,7 @@ class StockMarket(commands.Cog):
         ]
         scale_param = "+".join(map(str, scales))
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=census&mode=history&scale={scale_param}"
-        headers = {"User-Agent": "West40AI Bot (Contact: jmikkelson@west40.org)"}
+        headers = {"User-Agent": "9005 StockBot (Contact: NSwa9002@gmail.com)"}
     
         percent_changes = {}
     
