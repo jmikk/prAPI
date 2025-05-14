@@ -1017,6 +1017,57 @@ class Hungar(commands.Cog):
 
         self.ai_manager = HungerGamesAI(self)
 
+
+    async def Equalizer(self, ctx):
+        """Triggers the Equalizer event to balance all tributes' total stats."""
+        try:
+            config = await self.cog.config.guild(ctx.guild).all()
+            players = config["players"]
+    
+            # Get only alive players
+            alive_players = {p_id: p for p_id, p in players.items() if p["alive"]}
+    
+            if not alive_players:
+                await ctx.send("No alive tributes to equalize!")
+                return
+    
+            # Calculate total stats
+            total_stats = {p_id: sum(p["stats"].values()) for p_id, p in alive_players.items()}
+            max_stats = max(total_stats.values())
+            stat_choices = ["Def", "Str", "Con", "Wis", "HP"]
+            boost_distribution = {p_id: 0 for p_id in alive_players.keys()}
+    
+            for p_id, tribute in alive_players.items():
+                current_total = total_stats[p_id]
+                missing_stats = max_stats - current_total
+    
+                while missing_stats > 0:
+                    boost_stat = random.choice(stat_choices)
+                    boost_amount = min(missing_stats, random.randint(1, 5))
+                    tribute["stats"][boost_stat] += boost_amount
+                    boost_distribution[p_id] += boost_amount
+                    missing_stats -= boost_amount
+    
+            await self.cog.config.guild(ctx.guild).players.set(players)
+    
+            boost_messages = [
+                f"**{players[p_id]['name']}** gained **+{amount}** total stats!"
+                for p_id, amount in boost_distribution.items()
+            ]
+            boost_summary = "\n".join(boost_messages)
+    
+            await ctx.send(
+                "⚖️ **The Equalizer Strikes!** ⚖️\n"
+                "A mysterious force seeks balance... All tributes now stand as equals yet still different!\n\n"
+                f"{boost_summary}\n\nMay the best tribute survive! 🏹🔥"
+            )
+    
+            await ctx.send("Equalizer activated successfully!")
+    
+        except Exception as e:
+            await ctx.send(f"An error occurred: {e}")
+
+
     async def report_error(self, channel, error):
         """Send error details to a designated channel."""
         error_message = f"An error occurred:\n```{error}```"
@@ -1499,7 +1550,11 @@ class Hungar(commands.Cog):
         for player_id, player_data in players.items():
             if player_data["alive"]:  # Only reset actions for alive players
                 player_data["action"] = None
-                player_data["zone"] = None  
+                player_data["zone"] = None
+
+        #if random.random() < 0.01:
+        if random.random() < 1:
+            self.Equalizer(ctx)
 
 
         await self.config.guild(guild).players.set(players)
