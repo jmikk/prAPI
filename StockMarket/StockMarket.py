@@ -8,6 +8,10 @@ from discord import File
 from discord import app_commands
 from discord.ui import View, Button
 from discord import Interaction
+import aiohttp
+import xml.etree.ElementTree as ET
+import datetime
+
 
 class StockListView(View):
     def __init__(self, cog, stocks, per_page=10):
@@ -93,7 +97,8 @@ class StockMarket(commands.Cog):
         self.config.register_global(
             stocks={},
             tags={},
-        announcement_channel=None 
+            announcement_channel=None,
+            last_commodity_update=None
         )
         self.last_day_trades = 0.0  # ✅ Add this line
 
@@ -105,6 +110,101 @@ class StockMarket(commands.Cog):
     @tasks.loop(hours=1)
     async def price_updater(self):
         await self.recalculate_all_stock_prices()
+        await self.apply_daily_commodity_price_update()
+
+    async def apply_daily_commodity_price_update(self):
+        # Prevent multiple runs per day
+        last_run_key = "last_commodity_update"
+        last_run_timestamp = await self.config.last_commodity_update()
+        now = datetime.datetime.utcnow()
+        
+        if last_run_timestamp:
+            last_run = datetime.datetime.fromisoformat(last_run_timestamp)
+            if (now - last_run).total_seconds() < 86400:
+                return  # Already ran in the past 24 hours
+    
+        # Decide random hour if not already set today
+        if not hasattr(self, "_today_target_hour"):
+            self._today_target_hour = random.randint(0, 23)
+    
+        if now.hour != self._today_target_hour:
+            return  # Wait until the chosen hour this UTC day
+    
+        # --- Commodity Price Update Logic ---
+        scales = [
+            10, 13, 17, 19, 20, 24, 25, 26, 28, 29, 33,
+            48, 51, 52, 55, 56, 57, 59, 60, 61, 62, 63,
+            70, 79, 85, 86, 87, 88, 7
+        ]
+        scale_param = "+".join(map(str, scales))
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=census&mode=history&scale={scale_param}"
+        headers = {"User-Agent": "West40AI Bot (Contact: jmikkelson@west40.org)"}
+    
+        percent_changes = {}
+    
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers) as resp:
+                text = await resp.text()
+                root = ET.fromstring(text)
+    
+                for scale in root.findall("CENSUS/SCALE"):
+                    scale_id = scale.attrib["id"]
+                    points = scale.findall("POINT")
+                    if len(points) >= 8:
+                        old_score = float(points[-8].find("SCORE").text)
+                        new_score = float(points[-1].find("SCORE").text)
+                        if old_score != 0:
+                            percent_change = ((new_score - old_score) / old_score) * 100
+                            percent_changes[scale_id] = percent_change
+    
+        commodity_influence = {
+            "crude_oil": {"20": 0.4, "26": 0.3, "10": 0.2, "59": 0.1, "7": -0.5},
+            "gold": {"51": 0.5, "70": 0.2, "86": 0.3, "79": 0.3, "52": -0.4, "33": -0.2, "28": -0.1},
+            "silver": {"70": 0.4, "13": 0.3, "24": 0.2, "86": 0.2, "33": -0.2},
+            "platinum": {"70": 0.3, "10": 0.3, "13": 0.2, "88": 0.1, "33": -0.2},
+            "copper": {"13": 0.3, "26": 0.3, "20": 0.3, "57": 0.2, "7": -0.4},
+            "corn": {"17": 0.5, "88": 0.3, "60": 0.2, "63": 0.1, "61": -0.2, "29": -0.3},
+            "wheat": {"17": 0.4, "88": 0.3, "28": 0.2, "61": -0.3, "29": -0.2},
+            "coffee_beans": {"13": 0.2, "56": 0.2, "55": 0.3, "88": 0.2, "87": 0.1, "7": -0.2},
+            "sugar": {"60": 0.4, "61": 0.3, "88": 0.2, "25": 0.2, "29": -0.3, "28": -0.2},
+            "wandwood": {"19": 0.4, "63": 0.3, "55": 0.3, "86": 0.3, "62": -0.3, "52": -0.1}
+        }
+    
+        async with self.config.stocks() as stocks:
+            for stock_name, data in stocks.items():
+                if not data.get("commodity", False):
+                    continue
+    
+                name_key = stock_name.lower().replace(" ", "_")
+                influences = commodity_influence.get(name_key)
+                if not influences:
+                    continue
+    
+                percent_delta = sum(
+                    percent_changes.get(k, 0) * v for k, v in influences.items()
+                )
+                old_price = data["price"]
+                new_price = round(old_price * (1 + percent_delta / 100), 2)
+                new_price = max(1.0, new_price)
+    
+                # Track surge
+                if old_price > 0:
+                    percent_change = ((new_price - old_price) / old_price) * 100
+                    if percent_change > 3:
+                        channel_id = await self.config.announcement_channel()
+                        if channel_id:
+                            channel = self.bot.get_channel(channel_id)
+                            if channel:
+                                await channel.send(f"🌾 **{stock_name}** commodity surged by **{percent_change:.2f}%** today!")
+    
+                if "history" not in data:
+                    data["history"] = []
+                data["history"].append(new_price)
+                if len(data["history"]) > 24 * 365 * 2:
+                    data["history"] = data["history"][-24 * 365 * 2:]
+                data["price"] = new_price
+    
+        await self.config.last_commodity_update.set(now.isoformat())
     
     async def recalculate_all_stock_prices(self):
         async with self.config.stocks() as stocks:
