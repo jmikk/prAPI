@@ -13,6 +13,7 @@ from discord.utils import get
 from discord import app_commands
 import math
 import json
+import asyncio
 
 
 class MapButton(Button):
@@ -2405,7 +2406,7 @@ class Hungar(commands.Cog):
         games_ran = sum(data.get("wins", 0) for data in WLboard.values())
         await ctx.send(f"🧮 Estimated number of Hunger Games run before tracking: **{games_ran}**")
 
-    
+
     @app_commands.command(name="sponsor", description="Sponsor a tribute with a random stat boost.")
     @app_commands.describe(tribute="Select a tribute to sponsor")
     async def sponsor(self, interaction: Interaction, tribute: str):
@@ -2416,8 +2417,10 @@ class Hungar(commands.Cog):
             players = config["players"]
             day = config["day_counter"]
     
-            # Cost increases as days go on
-            # Cost increases with tribute power instead of days
+            if tribute not in players or not players[tribute]["alive"]:
+                await interaction.response.send_message("❌ That tribute doesn't exist or is no longer alive.", ephemeral=True)
+                return
+    
             stats = players[tribute]["stats"]
             score = (
                 stats["Def"]
@@ -2426,13 +2429,8 @@ class Hungar(commands.Cog):
                 + stats["Wis"]
                 + (stats["HP"] / 5)
             )
-            cost = round(10 + (day * 5) + score/2)
-
+            cost = round(10 + (day * 5) + score / 2)
             user_gold = await self.config_gold.user(user).master_balance()
-    
-            if tribute not in players or not players[tribute]["alive"]:
-                await interaction.response.send_message("❌ That tribute doesn't exist or is no longer alive.", ephemeral=True)
-                return
     
             if user_gold < cost:
                 await interaction.response.send_message(f"❌ You need at least {cost} Wellcoins to sponsor someone. Your balance: {user_gold}", ephemeral=True)
@@ -2441,10 +2439,10 @@ class Hungar(commands.Cog):
             # Deduct cost
             await self.config_gold.user(user).master_balance.set(user_gold - cost)
     
-            # Apply random stat boost
+            # Apply random stat boost to selected tribute
             tribute_data = players[tribute]
             stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
-            boost = random.randint(1, 10)
+            boost = random.randint(5, 15)
             tribute_data["stats"][stat] += boost
     
             await self.config.guild(guild).players.set(players)
@@ -2454,9 +2452,28 @@ class Hungar(commands.Cog):
                 ephemeral=False
             )
     
+            # 50% chance for bonus sponsor to someone else
+            alive_others = [k for k, v in players.items() if v["alive"] and k != tribute]
+            if alive_others and random.random() < 0.5:
+                await asyncio.sleep(random.randint(5, 15))  # Delay in seconds
+    
+                random_tribute_key = random.choice(alive_others)
+                random_tribute = players[random_tribute_key]
+                random_stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
+                random_boost = random.randint(5, 20)
+                random_tribute["stats"][random_stat] += random_boost
+    
+                await self.config.guild(guild).players.set(players)
+    
+                await interaction.followup.send(
+                    f"✨ Someone sponsored **{random_tribute['name']}** with **+{random_boost} {random_stat}**!",
+                    ephemeral=False
+                )
+    
         except Exception as e:
             await interaction.response.send_message(f"⚠️ Error in `/sponsor`: `{type(e).__name__}: {e}`", ephemeral=True)
-            raise e  # Re-raise so it still shows in the bot's console/logs
+            raise e
+
 
 
     @sponsor.autocomplete("tribute")
