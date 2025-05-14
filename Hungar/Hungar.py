@@ -53,78 +53,6 @@ class MapButton(Button):
                 ephemeral=True
             )
 
-
-class EqualizerButton(Button):
-    """Button for the Gamemaster to balance the game by bringing all tributes up to the same total stat value."""
-    
-    def __init__(self, cog, guild, channel):
-        super().__init__(label="Equalizer", style=discord.ButtonStyle.primary)
-        self.cog = cog
-        self.guild = guild
-        self.channel = channel
-
-    async def callback(self, interaction: Interaction):
-        """Triggers the Equalizer event to balance all tributes' total stats."""
-        try:
-            config = await self.cog.config.guild(self.guild).all()
-            players = config["players"]
-
-            if not players:
-                await interaction.response.send_message("No tributes to equalize!", ephemeral=True)
-                return
-
-            # Get only alive players
-            alive_players = {p_id: p for p_id, p in players.items() if p["alive"]}
-            if not alive_players:
-                await interaction.response.send_message("No alive tributes to equalize!", ephemeral=True)
-                return
-
-            # Calculate total stats for each player
-            total_stats = {p_id: sum(p["stats"].values()) for p_id, p in alive_players.items()}
-            max_stats = max(total_stats.values())  # The highest total stat value
-            stat_choices = ["Def", "Str", "Con", "Wis", "HP"]
-
-            # Track boost distribution per player
-            boost_distribution = {p_id: 0 for p_id in alive_players.keys()}
-
-            # **Iterate through players, adding stats until they match the max total stats**
-            for p_id, tribute in alive_players.items():
-                current_total = total_stats[p_id]
-                missing_stats = max_stats - current_total  # Amount needed to match the strongest player
-                
-                while missing_stats > 0:
-                    boost_stat = random.choice(stat_choices)  # Randomly select a stat
-                    boost_amount = min(missing_stats, random.randint(1, 5))  # Ensure we don't over-boost
-
-                    # Apply the boost
-                    tribute["stats"][boost_stat] += boost_amount
-                    boost_distribution[p_id] += boost_amount
-                    missing_stats -= boost_amount  # Decrease the remaining needed amount
-
-            # Save the updated stats
-            await self.cog.config.guild(self.guild).players.set(players)
-
-            # Announce the event
-            boost_messages = [
-                f"**{players[p_id]['name']}** gained **+{amount}** total stats!"
-                for p_id, amount in boost_distribution.items()
-            ]
-            boost_summary = "\n".join(boost_messages)
-
-            await self.channel.send(
-                "⚖️ **The Equalizer Strikes!** ⚖️\n"
-                "A mysterious force seeks balance... All tributes now stand as equals yet still differnt!\n\n"
-                f"{boost_summary}\n\nMay the best tribute survive! 🏹🔥"
-            )
-
-            await interaction.response.send_message("Equalizer activated successfully!", ephemeral=True)
-
-        except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
-
-
-
-
 class CheckGoldButton(Button):
     """Button to display the user's current Wellcoins"""
 
@@ -263,8 +191,6 @@ class GameMasterView(View):
         self.add_item(GMHelpButton())
 
         self.add_item(ForceNextDayButton(cog, guild, public_channel))
-
-        self.add_item(EqualizerButton(cog, guild, public_channel))
 
 class ForceNextDayButton(Button):
     """Forces the game to progress to the next day."""
@@ -1061,9 +987,7 @@ class Hungar(commands.Cog):
                 "A mysterious force seeks balance... All tributes now stand as equals yet still different!\n\n"
                 f"{boost_summary}\n\nMay the best tribute survive! 🏹🔥"
             )
-    
-            await ctx.send("Equalizer activated successfully!")
-    
+        
         except Exception as e:
             await ctx.send(f"An error occurred: {e}")
 
@@ -1553,7 +1477,7 @@ class Hungar(commands.Cog):
                 player_data["zone"] = None
 
         #if random.random() < 0.01:
-        if random.random() < 1:
+        if random.random() < .01:
             await self.Equalizer(ctx)
 
 
