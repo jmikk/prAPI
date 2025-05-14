@@ -1864,7 +1864,7 @@ class Hungar(commands.Cog):
                 looters.append(player_id)
                 if random.random() < 0.75:
                     stat = random.choice(["Def", "Str", "Con", "Wis"])
-                    boost = random.randint(1, 10)
+                    boost = random.randint(5, 15)
                     player_data["items"].append((stat, boost))
                     effect = await self.load_file(
                         f"loot_good_{stat}.txt",
