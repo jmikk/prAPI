@@ -1554,7 +1554,7 @@ class Hungar(commands.Cog):
 
         #if random.random() < 0.01:
         if random.random() < 1:
-            self.Equalizer(ctx)
+            await self.Equalizer(ctx)
 
 
         await self.config.guild(guild).players.set(players)
