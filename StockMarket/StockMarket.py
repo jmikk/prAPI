@@ -377,7 +377,7 @@ class StockMarket(commands.Cog):
     
         view.message = await ctx.send(embed=embed, view=view)
 
-    def calculate_total_cost_for_buy(start_price: float, shares: int, buys: int, price_increase: float = 1.0):
+    def calculate_total_cost_for_buy(self,start_price: float, shares: int, buys: int, price_increase: float = 1.0):
         total_cost = 0.0
         current_price = start_price
         simulated_buys = buys
@@ -391,7 +391,7 @@ class StockMarket(commands.Cog):
         return total_cost, current_price, simulated_buys
     
     
-    def calculate_earnings_and_final_price(start_price: float, shares: int, sells: int, price_decrease: float = 1.0):
+    def calculate_earnings_and_final_price(self,start_price: float, shares: int, sells: int, price_decrease: float = 1.0):
         total_earnings = 0.0
         current_price = start_price
         simulated_sells = sells
