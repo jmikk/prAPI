@@ -393,7 +393,7 @@ class StockMarket(commands.Cog):
 
     
     
-    def calculate_total_earnings_for_sell(start_price: float, shares: int, sells: int, price_decrease: float = 1.0):
+    def calculate_earnings_and_final_price(start_price: float, shares: int, sells: int, price_decrease: float = 1.0):
         total_earnings = 0.0
         current_price = start_price
         simulated_sells = sells
