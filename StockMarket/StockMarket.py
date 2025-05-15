@@ -377,33 +377,36 @@ class StockMarket(commands.Cog):
     
         view.message = await ctx.send(embed=embed, view=view)
 
-    def calculate_total_cost_for_buy(self,start_price: float, shares: int, buys: int, price_increase: float = 1.0):
+    def calculate_total_cost_for_buy(start_price: float, shares: int, buys: int, price_increase: float = 1.0):
         total_cost = 0.0
         current_price = start_price
         simulated_buys = buys
-        shares = int(shares)
+    
         for _ in range(shares):
-            if simulated_buys > 0 and simulated_buys % 100 == 0:
+            # Increase price *before* every 100th buy
+            if simulated_buys % 100 == 0 and simulated_buys != 0:
                 current_price += price_increase
             total_cost += current_price
             simulated_buys += 1
     
-        return total_cost, current_price, simulated_buys
+        return total_cost, current_price, simulated_buys    
+
     
     
-    def calculate_earnings_and_final_price(self,start_price: float, shares: int, sells: int, price_decrease: float = 1.0):
+    def calculate_total_earnings_for_sell(start_price: float, shares: int, sells: int, price_decrease: float = 1.0):
         total_earnings = 0.0
         current_price = start_price
         simulated_sells = sells
-        
-        shares = int(shares)
+    
         for _ in range(shares):
-            if simulated_sells > 0 and simulated_sells % 100 == 0:
-                current_price = max(0.01, current_price - price_decrease)
             total_earnings += current_price
             simulated_sells += 1
+            # Decrease price *after* every 100th sell
+            if simulated_sells % 100 == 0:
+                current_price = max(0.01, current_price - price_decrease)
     
         return total_earnings, current_price, simulated_sells
+
 
 
  
