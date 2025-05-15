@@ -379,9 +379,13 @@ class StockMarket(commands.Cog):
 
     
     @app_commands.command(name="buystock", description="Buy shares of a stock.")
-    @app_commands.describe(name="The stock you want to buy", amount="Number of shares to buy")
+    @app_commands.describe(
+        name="The stock you want to buy",
+        shares="Number of shares to buy (optional)",
+        wc_spend="Amount of WC to spend instead of share count (optional)"
+    )
     @app_commands.autocomplete(name=stock_name_autocomplete)
-    async def buystock(self, interaction: discord.Interaction, name: str, amount: int):
+    async def buystock(self, interaction: discord.Interaction, name: str, shares: int = None, wc_spend: float = None):
         user = interaction.user
         name = name.upper()
         stocks = await self.config.stocks()
@@ -390,39 +394,59 @@ class StockMarket(commands.Cog):
         if not stock or stock.get("delisted", False):
             return await interaction.response.send_message("❌ This stock is not available for purchase.", ephemeral=True)
     
-        current_price = stock["price"]
-        total_price = current_price * amount
+        price = stock["price"]
         balance = await self.economy_config.user(user).master_balance()
+        total_cost = 0.0
+        shares_bought = 0
+        current_price = price
+        price_increase = 1.0
     
-        if balance < total_price:
-            return await interaction.response.send_message(
-                f"💸 You need {total_price:.2f} WC but only have {balance:.2f} WC.", ephemeral=True)
+        stock["buys"] = stock.get("buys", 0)
     
-        # Deduct balance
-        await self.economy_config.user(user).master_balance.set(balance - total_price)
+        # Buy by WC limit
+        if wc_spend is not None:
+            for i in range(1, 10000):  # cap loop
+                if total_cost + current_price > wc_spend:
+                    break
+                total_cost += current_price
+                shares_bought += 1
+                stock["buys"] += 1
+                if stock["buys"] >= 100:
+                    current_price += price_increase
+                    stock["buys"] -= 100
+        elif shares is not None:
+            shares_bought = shares
+            for i in range(shares):
+                total_cost += current_price
+                stock["buys"] += 1
+                if stock["buys"] >= 100:
+                    current_price += price_increase
+                    stock["buys"] -= 100
+        else:
+            return await interaction.response.send_message("❗ Please provide either `shares` or `wc_spend`.", ephemeral=True)
     
-        # Update user's stock holdings
+        if total_cost > balance:
+            return await interaction.response.send_message(f"💸 You need {total_cost:.2f} WC but only have {balance:.2f} WC.", ephemeral=True)
+    
+        await self.economy_config.user(user).master_balance.set(balance - total_cost)
+    
         async with self.config.user(user).stocks() as owned:
-            previous = owned.get(name, 0)
-            owned[name] = previous + amount
+            prev = owned.get(name, 0)
+            owned[name] = prev + shares_bought
     
-        # Update average buy price
         async with self.config.user(user).avg_buy_prices() as prices:
-            total_old = prices.get(name, 0) * previous
-            total_new = total_old + total_price
-            prices[name] = round(total_new / (previous + amount), 2)
+            total_old = prices.get(name, 0) * prev
+            total_new = total_old + total_cost
+            prices[name] = round(total_new / (prev + shares_bought), 2)
     
-        # Cumulative buy tracking
-        stock["buys"] = stock.get("buys", 0) + amount
-        while stock["buys"] >= 100:
-            stock["price"] += .01
-            stock["buys"] -= 100
-    
+        stock["price"] = current_price
         await self.config.stocks.set_raw(name, value=stock)
     
-        self.last_day_trades += total_price
+        self.last_day_trades += total_cost
         await interaction.response.send_message(
-            f"✅ Bought {amount} shares of **{name}** for **{total_price:.2f} WC**.")
+            f"✅ Bought {shares_bought} shares of **{name}** for **{total_cost:.2f} WC**."
+        )
+
 
     
     @app_commands.command(name="sellstock", description="Sell shares of a stock.")
@@ -486,74 +510,57 @@ class StockMarket(commands.Cog):
             f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC**.")
 
 
-    @commands.hybrid_command(name="viewstock", with_app_command=True)
+    @app_commands.command(name="sellstock", description="Sell shares of a stock.")
+    @app_commands.describe(name="The stock you want to sell", amount="Number of shares to sell")
     @app_commands.autocomplete(name=stock_name_autocomplete)
-    async def viewstock(self, ctx: commands.Context, name: str):
-        """View details about a stock, including ownership percentages."""
+    async def sellstock(self, interaction: discord.Interaction, name: str, amount: int):
+        user = interaction.user
+        name = name.upper()
         stocks = await self.config.stocks()
-        stock = stocks.get(name.upper())
+        stock = stocks.get(name)
     
         if not stock:
-            return await ctx.send("Stock not found.")
+            return await interaction.response.send_message("❌ This stock does not exist.", ephemeral=True)
     
-        tag_str = ", ".join(f"{t} ({w})" for t, w in stock.get("tags", {}).items()) or "None"
-        vol_str = f"{stock.get('volatility', 'None')}"
+        async with self.config.user(user).stocks() as owned:
+            if owned.get(name, 0) < amount:
+                return await interaction.response.send_message("❌ You don't own that many shares.", ephemeral=True)
+            owned[name] -= amount
+            if owned[name] <= 0:
+                del owned[name]
+                async with self.config.user(user).avg_buy_prices() as prices:
+                    prices.pop(name, None)
     
-        embed = discord.Embed(title=f"📈 {name.upper()} Stock Details", color=discord.Color.blue())
-        embed.add_field(name="Price", value=f"{stock['price']:.2f} Wellcoins", inline=False)
-        embed.add_field(name="Tags", value=tag_str, inline=False)
-        embed.add_field(name="Volatility", value=vol_str, inline=False)
+        current_price = stock["price"]
+        sell_price = max(0.01, current_price - .05)  # ⛔ apply 1 WC price spread here
+        total_earnings = sell_price * amount
     
-        if stock.get("delisted", False):
-            embed.add_field(name="Status", value="❌ Delisted", inline=False)
+        # Credit balance
+        balance = await self.economy_config.user(user).master_balance()
+        await self.economy_config.user(user).master_balance.set(balance + total_earnings)
     
-        # Collect ownership
-        ownership = {}
-        for member in ctx.guild.members:
-            if member.bot:
-                continue  # Ignore bots
-            user_stocks = await self.config.user(member).stocks()
-            owned = user_stocks.get(name.upper(), 0)
-            if owned > 0:
-                ownership[member.display_name] = owned
+        # Price drop tracking
+        stock["sells"] = stock.get("sells", 0) + amount
+        while stock["sells"] >= 100:
+            stock["price"] = max(0.01, stock["price"] - 1.0)
+            stock["sells"] -= 100
     
-        if ownership:
-            # Sort owners by biggest holdings
-            sorted_owners = sorted(ownership.items(), key=lambda x: x[1], reverse=True)
+        if stock["price"] <= 0 and not stock.get("commodity", False):
+            if random.random() < 0.5:
+                stock["price"] = 0.01
+                await self._announce_recovery(name)
+            else:
+                stock["price"] = 0.0
+                stock["delisted"] = True
+                await self._announce_bankruptcy(name)
     
-            total_shares = sum(ownership.values())
-            labels = []
-            sizes = []
+        await self.config.stocks.set_raw(name, value=stock)
     
-            other_shares = 0
-            max_sections = 8  # Adjust how many unique owners before lumping into 'Other'
-    
-            for idx, (owner, shares) in enumerate(sorted_owners):
-                if idx < max_sections:
-                    labels.append(owner)
-                    sizes.append(shares / total_shares * 100)
-                else:
-                    other_shares += shares
-    
-            if other_shares > 0:
-                labels.append("Other")
-                sizes.append(other_shares / total_shares * 100)
-    
-            fig, ax = plt.subplots(figsize=(6, 6))
-            ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
-            ax.axis('equal')
-            plt.title(f"Ownership of {name.upper()} (%)")
-    
-            buf = io.BytesIO()
-            plt.savefig(buf, format='png')
-            buf.seek(0)
-            plt.close()
-    
-            await ctx.send(embed=embed, file=File(buf, filename=f"{name}_ownership.png"))
-    
-        else:
-            embed.set_footer(text="No one owns this stock currently.")
-            await ctx.send(embed=embed)
+        self.last_day_trades -= total_earnings
+        await interaction.response.send_message(
+            f"💰 Sold {amount} shares of **{name}** for **{total_earnings:.2f} WC**."
+        )
+
 
 
 
