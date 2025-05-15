@@ -452,7 +452,15 @@ class StockMarket(commands.Cog):
     
         elif shares is not None:
             shares_bought = shares
-            total_cost, new_price, updated_buys = self.calculate_total_cost_for_buy(price, shares_bought, stock["buys"])
+            simulated_total_cost, new_price, updated_buys = self.calculate_total_cost_for_buy(price, shares_bought, stock["buys"])
+        
+            if simulated_total_cost > balance:
+                return await interaction.response.send_message(
+                    f"💸 You need {simulated_total_cost:.2f} WC but only have {balance:.2f} WC.",
+                    ephemeral=True
+                )
+        
+            total_cost = simulated_total_cost
             stock["buys"] = updated_buys
     
         else:
