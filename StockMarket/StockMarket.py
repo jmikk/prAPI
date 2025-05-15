@@ -445,7 +445,7 @@ class StockMarket(commands.Cog):
                     stock["buys"] -= 100
         elif shares is not None:
             shares_bought = shares
-            total_cost, current_price, remaining_buys = calculate_cost_and_final_price(price, shares_bought, stock["buys"])
+            total_cost, current_price, remaining_buys = self.calculate_cost_and_final_price(price, shares_bought, stock["buys"])
             stock["buys"] = remaining_buys
 
         else:
@@ -507,7 +507,7 @@ class StockMarket(commands.Cog):
                 f"📉 **{name}** is delisted. You sold {amount} shares for **0 WC**.", ephemeral=True)
     
         # Calculate earnings BEFORE changing price
-        earnings, current_price, remaining_sells = calculate_earnings_and_final_price(current_price, amount, stock.get("sells", 0))
+        earnings, current_price, remaining_sells = self.calculate_earnings_and_final_price(current_price, amount, stock.get("sells", 0))
         stock["sells"] = remaining_sells
     
         # Credit user
