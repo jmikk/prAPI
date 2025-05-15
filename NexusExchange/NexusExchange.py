@@ -2103,8 +2103,10 @@ Helpful Resources:
         await ctx.send(f"Minimum message length set to {length} characters.")
 
     @commands.command()
-    async def linknation(self, ctx, *nation_name: str= "Nation_Name"):
+    async def linknation(self, ctx, *nation_name: str):
         """Link your NationStates nation to your Discord account."""
+        if not nation_name:
+            nation_name = "Nation_name"
         verify_url = f"https://www.nationstates.net/page=verify_login"
         await ctx.send(f"To verify your NationStates nation, visit {verify_url} and copy the code in the box.")
         await ctx.send(f"Then, DM me the following command to complete verification: `!verifynation <nation_name> <code>` \n For example `!verifynation {'_'.join(nation_name).replace('<','').replace('>','')} FWIXlb2dPZCHm1rq-4isM94FkCJ4RGPUXcjrMjFHsIc`")
