@@ -79,11 +79,20 @@ class StockMarket(commands.Cog):
 
     async def stock_name_autocomplete(self, interaction: discord.Interaction, current: str):
         stocks = await self.config.stocks()
-        return [
-            app_commands.Choice(name=stock, value=stock)
-            for stock, data in stocks.items()
-            if not data.get("delisted", False) and current.lower() in stock.lower()
-        ][:25]  # Limit to 25 results
+        choices = []
+    
+        for name, data in stocks.items():
+            if current.lower() not in name.lower():
+                continue
+            label = f"{name} - {data['price']:.2f} WC"
+            if data.get("commodity"):
+                label += " [Commodity]"
+            if data.get("delisted"):
+                label += " [Delisted]"
+            choices.append(app_commands.Choice(name=label, value=name.upper()))
+    
+        return choices[:25]
+
 
     
         
@@ -367,34 +376,80 @@ class StockMarket(commands.Cog):
 
     
     @app_commands.command(name="buystock", description="Buy shares of a stock.")
-    @app_commands.describe(name="The stock you want to buy", amount="Number of shares to buy")
+    @app_commands.describe(
+        name="The stock you want to buy",
+        shares="Number of shares to buy",
+        wc_spend="Amount of Wellcoins you want to spend instead"
+    )
     @app_commands.autocomplete(name=stock_name_autocomplete)
-    async def buystock(self, interaction: discord.Interaction, name: str, amount: int):
+    async def buystock(self, interaction: discord.Interaction, name: str, shares: int = None, wc_spend: float = None):
         user = interaction.user
         name = name.upper()
         stocks = await self.config.stocks()
         stock = stocks.get(name)
     
         if not stock or stock.get("delisted", False):
-            return await interaction.response.send_message("This stock is not available for purchase.", ephemeral=True)
+            return await interaction.response.send_message("❌ This stock is not available for purchase.", ephemeral=True)
     
-        price = stock["price"] * amount
         bal = await self.economy_config.user(user).master_balance()
-        if bal < price:
-            return await interaction.response.send_message("You don't have enough funds.", ephemeral=True)
+        price = stock["price"]
+        price_increase = 1.0
+        shares_bought = 0
+        total_cost = 0
+        current_price = price
     
-        await self.economy_config.user(user).master_balance.set(bal - price)
+        if shares is None and wc_spend is None:
+            return await interaction.response.send_message("❗ Please provide either shares or WC to spend.", ephemeral=True)
+    
+        if wc_spend:
+            for i in range(1, 10000):
+                if total_cost + current_price > wc_spend:
+                    break
+                total_cost += current_price
+                shares_bought += 1
+                if shares_bought % 100 == 0:
+                    current_price += price_increase
+        else:
+            shares_bought = shares
+            for i in range(shares):
+                total_cost += current_price
+                if (i + 1) % 100 == 0:
+                    current_price += price_increase
+    
+        if total_cost > bal:
+            return await interaction.response.send_message(f"💸 You need {total_cost:.2f} WC but only have {bal:.2f} WC.", ephemeral=True)
+    
+        # Price floor and delist protection
+        if stock.get("commodity", False):
+            current_price = max(current_price, 1.0)
+        elif current_price <= 0:
+            if random.random() < 0.5:
+                current_price = 0.01
+                await self._announce_recovery(name)
+            else:
+                stock["delisted"] = True
+                stock["price"] = 0.0
+                await self.config.stocks.set_raw(name, value=stock)
+                await self._announce_bankruptcy(name)
+                return await interaction.response.send_message("📉 Stock delisted during transaction.", ephemeral=True)
+    
+        await self.economy_config.user(user).master_balance.set(bal - total_cost)
+    
         async with self.config.user(user).stocks() as owned:
-            previous_amount = owned.get(name, 0)
-            owned[name] = previous_amount + amount
+            prev = owned.get(name, 0)
+            owned[name] = prev + shares_bought
     
         async with self.config.user(user).avg_buy_prices() as prices:
-            current_total = prices.get(name, 0) * previous_amount
-            new_total = current_total + stock["price"] * amount
-            prices[name] = round(new_total / (previous_amount + amount), 2) if (previous_amount + amount) > 0 else 0
-        
-        self.last_day_trades = self.last_day_trades + price
-        await interaction.response.send_message(f"✅ Purchased {amount} shares of **{name}** for **{price:.2f} WC**.")
+            total_old = prices.get(name, 0) * prev
+            total_new = total_old + total_cost
+            prices[name] = round(total_new / (prev + shares_bought), 2)
+    
+        stock["price"] = current_price
+        await self.config.stocks.set_raw(name, value=stock)
+    
+        self.last_day_trades += total_cost
+        await interaction.response.send_message(f"✅ Bought {shares_bought} shares of **{name}** for **{total_cost:.2f} WC**.")
+
 
 
     @app_commands.command(name="sellstock", description="Sell shares of a stock.")
@@ -408,19 +463,62 @@ class StockMarket(commands.Cog):
     
         async with self.config.user(user).stocks() as owned:
             if owned.get(name, 0) < amount:
-                return await interaction.response.send_message("You don't own that many shares.", ephemeral=True)
+                return await interaction.response.send_message("❌ You don't own that many shares.", ephemeral=True)
             owned[name] -= amount
             if owned[name] <= 0:
                 del owned[name]
                 async with self.config.user(user).avg_buy_prices() as prices:
-                    if name in prices:
-                        del prices[name]
+                    prices.pop(name, None)
     
-        earnings = stock["price"] * amount if stock else 0
+        current_price = stock["price"]
+        price_decrease = 1.0
+        earnings = 0.0
+        sold = 0
+    
+        if stock.get("delisted", False):
+            await self.economy_config.user(user).master_balance.set(
+                (await self.economy_config.user(user).master_balance()) + earnings
+            )
+            return await interaction.response.send_message(
+                f"📉 **{name}** is delisted. You sold {amount} shares for **0 WC**.", ephemeral=True)
+    
+        for i in range(amount):
+            if current_price <= 0:
+                break
+            earnings += current_price
+            sold += 1
+            if (i + 1) % 100 == 0:
+                current_price -= price_decrease
+    
+        unsold = amount - sold
+        if current_price <= 0 and not stock.get("commodity", False):
+            if random.random() < 0.5:
+                current_price = 0.01
+                await self._announce_recovery(name)
+            else:
+                stock["delisted"] = True
+                stock["price"] = 0.0
+                await self.config.stocks.set_raw(name, value=stock)
+                await self._announce_bankruptcy(name)
+                earnings += 0  # Unsold shares sold for 0 WC
+                await self.economy_config.user(user).master_balance.set(
+                    (await self.economy_config.user(user).master_balance()) + earnings
+                )
+                return await interaction.response.send_message(
+                    f"⚠️ Sold {sold} shares of **{name}** for **{earnings:.2f} WC** before it crashed and was delisted.", ephemeral=True)
+    
+        if stock.get("commodity", False):
+            current_price = max(current_price, 1.0)
+        else:
+            current_price = max(current_price, 0.01)
+    
+        stock["price"] = current_price
+        await self.config.stocks.set_raw(name, value=stock)
+    
         bal = await self.economy_config.user(user).master_balance()
         await self.economy_config.user(user).master_balance.set(bal + earnings)
-
-        self.last_day_trades = self.last_day_trades - earnings
+    
+        self.last_day_trades -= earnings
         await interaction.response.send_message(f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC**.")
 
 
