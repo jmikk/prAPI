@@ -510,15 +510,17 @@ class StockMarket(commands.Cog):
             )
     
         current_price = stock["price"]
+        sells_so_far = stock.get("sells", 0)
         earnings, new_price, updated_sells = self.calculate_earnings_and_final_price(
-            current_price, amount, stock.get("sells", 0)
-        )
-        stock["sells"] = updated_sells
+        current_price, amount, sells_so_far
+    )
+
     
         balance = await self.economy_config.user(user).master_balance()
         await self.economy_config.user(user).master_balance.set(balance + earnings)
     
         stock["price"] = new_price
+        stock["sells"] = updated_sells
     
         # Bankruptcy check
         if stock["price"] <= 0 and not stock.get("commodity", False):
