@@ -514,7 +514,7 @@ class StockMarket(commands.Cog):
             )
     
         # Apply price drop + earnings
-        current_price = stock["price"]
+        current_price = stock["price"] - .01
         sells_so_far = stock.get("sells", 0)
         earnings, new_price, updated_sells = self.calculate_earnings_and_final_price(
             current_price, amount, sells_so_far
