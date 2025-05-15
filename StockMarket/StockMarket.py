@@ -504,6 +504,7 @@ class StockMarket(commands.Cog):
                 async with self.config.user(user).avg_buy_prices() as prices:
                     prices.pop(name, None)
     
+        # Handle delisted stocks
         if stock.get("delisted", False):
             await self.economy_config.user(user).master_balance.set(
                 (await self.economy_config.user(user).master_balance())
@@ -512,20 +513,18 @@ class StockMarket(commands.Cog):
                 f"📉 **{name}** is delisted. You sold {amount} shares for **0 WC**.", ephemeral=True
             )
     
+        # Apply price drop + earnings
         current_price = stock["price"]
         sells_so_far = stock.get("sells", 0)
         earnings, new_price, updated_sells = self.calculate_earnings_and_final_price(
-        current_price, amount, sells_so_far
-    )
-
+            current_price, amount, sells_so_far
+        )
     
-        balance = await self.economy_config.user(user).master_balance()
-        await self.economy_config.user(user).master_balance.set(balance + earnings)
-    
+        # Update stock state
         stock["price"] = new_price
         stock["sells"] = updated_sells
     
-        # Bankruptcy check
+        # Bankruptcy logic
         if stock["price"] <= 0 and not stock.get("commodity", False):
             if random.random() < 0.5:
                 stock["price"] = 0.01
@@ -535,7 +534,12 @@ class StockMarket(commands.Cog):
                 stock["delisted"] = True
                 await self._announce_bankruptcy(name)
     
+        # Save stock changes
         await self.config.stocks.set_raw(name, value=stock)
+    
+        # Apply earnings
+        balance = await self.economy_config.user(user).master_balance()
+        await self.economy_config.user(user).master_balance.set(balance + earnings)
     
         self.last_day_trades -= earnings
         await interaction.response.send_message(
