@@ -113,24 +113,21 @@ class StockMarket(commands.Cog):
         await self.apply_daily_commodity_price_update()
 
     async def apply_daily_commodity_price_update(self):
-        # Prevent multiple runs per day
-        last_run_key = "last_commodity_update"
         last_run_timestamp = await self.config.last_commodity_update()
         now = datetime.datetime.utcnow()
-        
+    
         if last_run_timestamp:
             last_run = datetime.datetime.fromisoformat(last_run_timestamp)
             if (now - last_run).total_seconds() < 86400:
-                return  # Already ran in the past 24 hours
+                return
     
-        # Decide random hour if not already set today
         if not hasattr(self, "_today_target_hour"):
             self._today_target_hour = random.randint(0, 23)
     
         if now.hour != self._today_target_hour:
-            return  # Wait until the chosen hour this UTC day
+            return
     
-        # --- Commodity Price Update Logic ---
+        # --- Fetch Census Scale History ---
         scales = [
             10, 13, 17, 19, 20, 24, 25, 26, 28, 29, 33,
             48, 51, 52, 55, 56, 57, 59, 60, 61, 62, 63,
@@ -180,121 +177,149 @@ class StockMarket(commands.Cog):
                 if not influences:
                     continue
     
+                # Calculate percent delta
                 percent_delta = sum(
-                    percent_changes.get(k, 0) * v for k, v in influences.items()
+                    percent_changes.get(scale_id, 0) * weight for scale_id, weight in influences.items()
                 )
+    
+                # Clamp percent change between -5% and +5%
+                percent_delta = max(-5.0, min(percent_delta, 5.0))
+    
                 old_price = data["price"]
                 new_price = round(old_price * (1 + percent_delta / 100), 2)
                 new_price = max(1.0, new_price)
     
-                # Track surge
-                if old_price > 0:
-                    percent_change = ((new_price - old_price) / old_price) * 100
-                    if percent_change > 3:
-                        channel_id = await self.config.announcement_channel()
-                        if channel_id:
-                            channel = self.bot.get_channel(channel_id)
-                            if channel:
-                                await channel.send(f"🌾 **{stock_name}** commodity surged by **{percent_change:.2f}%** today!")
+                percent_change = ((new_price - old_price) / old_price) * 100 if old_price > 0 else 0
+                if percent_change > 3:
+                    channel_id = await self.config.announcement_channel()
+                    if channel_id:
+                        channel = self.bot.get_channel(channel_id)
+                        if channel:
+                            await channel.send(f"🌾 **{stock_name}** commodity surged by **{percent_change:.2f}%** today!")
     
                 if "history" not in data:
                     data["history"] = []
                 data["history"].append(new_price)
                 if len(data["history"]) > 24 * 365 * 2:
                     data["history"] = data["history"][-24 * 365 * 2:]
+    
                 data["price"] = new_price
     
         await self.config.last_commodity_update.set(now.isoformat())
+
     
     async def recalculate_all_stock_prices(self):
         async with self.config.stocks() as stocks:
             tag_multipliers = await self.config.tags()
-    
             to_delist = []
+            gainers = []
     
-            # Now process all active stocks.
             for stock_name, data in stocks.items():
                 if data.get("delisted", False):
-                    continue  # Already handled above
+                    continue
     
-                tag_bonus = 0
                 old_price = data["price"]
+                tag_bonus = 0
+    
                 for tag, weight in data.get("tags", {}).items():
                     flat_increase = tag_multipliers.get(tag, 0)
                     tag_bonus += flat_increase * weight
     
-                volatility = data.get("volatility")
-                if volatility and isinstance(volatility, (list, tuple)) and len(volatility) == 2:
-                    change = random.uniform(volatility[0], volatility[1])
+                # Base percent change
+                if isinstance(data.get("volatility"), (list, tuple)) and len(data["volatility"]) == 2:
+                    base_percent = random.uniform(data["volatility"][0], data["volatility"][1])
                 else:
-                    change = random.uniform(-2, 2)
+                    base_percent = random.uniform(-2, 2)
     
-                new_price = round(data["price"] + change + tag_bonus, 2)
-
-                market_change = .01 * (self.last_day_trades / 1000)
-               
-                if self.last_day_trades > 10000:
-                    market_change = .11
-                if self.last_day_trades < -10000:
-                    market_change = -.1
-                    
-                new_price = new_price + market_change
- 
+                # Market activity influence
+                market_change = 0.01 * (self.last_day_trades / 1000)
+                market_change = max(-0.1, min(market_change, 0.11))  # Clamp between -10% and +11%
     
-                # Check for large positive price surge
-                if old_price > 0:
-                    percent_change = ((new_price - old_price) / old_price) * 100
-                    if percent_change > 3:
-                        channel_id = await self.config.announcement_channel()
-                        if channel_id:
-                            channel = self.bot.get_channel(channel_id)
-                            if channel:
-                                await channel.send(f"🚀 **{stock_name}** surged by **{percent_change:.2f}%** this hour!")
+                # Final percent change calculation
+                total_percent_change = base_percent + tag_bonus + (market_change * 100)
+                new_price = round(old_price * (1 + total_percent_change / 100), 2)
     
+                # Bankruptcy/delist logic
                 if data.get("commodity", False):
                     new_price = max(1.0, new_price)
                 else:
                     if new_price <= 0:
                         if random.random() < 0.5:
                             new_price = 0.01
-                            channel_id = await self.config.announcement_channel()
-                            if channel_id:
-                                channel = self.bot.get_channel(channel_id)
-                                if channel:
-                                    await channel.send(f"**{stock_name}** narrowly avoided bankruptcy and is now trading at **0.01 WC**!")
+                            await self._announce_recovery(stock_name)
                         else:
                             to_delist.append(stock_name)
-                            channel_id = await self.config.announcement_channel()
-                            if channel_id:
-                                channel = self.bot.get_channel(channel_id)
-                                if channel:
-                                    await channel.send(f"💀 **{stock_name}** has gone bankrupt and been delisted!")
+                            await self._announce_bankruptcy(stock_name)
                         continue
     
-                new_price = max(1.0, new_price)
+                new_price = max(0.01, new_price)
     
+                # History tracking
                 if "history" not in data:
                     data["history"] = []
                 data["history"].append(new_price)
                 if len(data["history"]) > 24 * 365 * 2:
                     data["history"] = data["history"][-24 * 365 * 2:]
     
+                # Save new price
                 data["price"] = new_price
                 data["buys"] = 0
                 data["sells"] = 0
-
-
-            # First, force all previously delisted stocks' price to 0.
+    
+                # Track for top gainers
+                if old_price > 0:
+                    percent_change = ((new_price - old_price) / old_price) * 100
+                    if percent_change > 3:
+                        await self._announce_surge(stock_name, percent_change)
+                    gainers.append((stock_name, percent_change))
+    
+            # Finalize delistings
             for stock_name, data in stocks.items():
                 if data.get("delisted", False):
                     data["price"] = 0.0
     
-            # Handle new delistings
             for stock_name in to_delist:
                 if stock_name in stocks:
                     stocks[stock_name]["delisted"] = True
                     stocks[stock_name]["price"] = 0.0
-            self.last_day_trades = 0 
+    
+            self.last_day_trades = 0
+    
+            # Announce top 3 gainers
+            if gainers:
+                top_3 = sorted(gainers, key=lambda x: x[1], reverse=True)[:3]
+                message = "**📈 Top 3 Gainers This Hour:**\n" + "\n".join(
+                    f"**{name}**: +{change:.2f}%" for name, change in top_3
+                )
+                channel_id = await self.config.announcement_channel()
+                if channel_id:
+                    channel = self.bot.get_channel(channel_id)
+                    if channel:
+                        await channel.send(message)
+    
+    
+    # Helper announcement methods
+    async def _announce_surge(self, stock_name, percent_change):
+        channel_id = await self.config.announcement_channel()
+        if channel_id:
+            channel = self.bot.get_channel(channel_id)
+            if channel:
+                await channel.send(f"🚀 **{stock_name}** surged by **{percent_change:.2f}%** this hour!")
+    
+    async def _announce_recovery(self, stock_name):
+        channel_id = await self.config.announcement_channel()
+        if channel_id:
+            channel = self.bot.get_channel(channel_id)
+            if channel:
+                await channel.send(f"**{stock_name}** narrowly avoided bankruptcy and is now trading at **0.01 WC**!")
+    
+    async def _announce_bankruptcy(self, stock_name):
+        channel_id = await self.config.announcement_channel()
+        if channel_id:
+            channel = self.bot.get_channel(channel_id)
+            if channel:
+                await channel.send(f"💀 **{stock_name}** has gone bankrupt and been delisted!")
+
 
 
 
