@@ -1814,7 +1814,7 @@ Helpful Resources:
             mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
             user_balance = await mini_currency_config.user(member).get_raw(currency_name, default=0)
         
-            result_msg = f"💱 {member.display_name} has `{user_balance}` `{currency_name}`."
+            result_msg = f"💱 {member.display_name} has `{user_balance:.2f}` `{currency_name}`."
             await ctx.author.send(result_msg) if secret else await ctx.send(result_msg)
 
 
