@@ -509,7 +509,7 @@ class StockMarket(commands.Cog):
         await interaction.response.send_message(
             f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC**.")
 
-
+    
     @app_commands.command(name="sellstock", description="Sell shares of a stock.")
     @app_commands.describe(name="The stock you want to sell", amount="Number of shares to sell")
     @app_commands.autocomplete(name=stock_name_autocomplete)
@@ -531,35 +531,60 @@ class StockMarket(commands.Cog):
                 async with self.config.user(user).avg_buy_prices() as prices:
                     prices.pop(name, None)
     
+        # Handle delisted stocks
+        if stock.get("delisted", False):
+            await self.economy_config.user(user).master_balance.set(
+                (await self.economy_config.user(user).master_balance())
+            )
+            return await interaction.response.send_message(
+                f"📉 **{name}** is delisted. You sold {amount} shares for **0 WC**.", ephemeral=True)
+    
         current_price = stock["price"]
-        sell_price = max(0.01, current_price - .05)  # ⛔ apply 1 WC price spread here
-        total_earnings = sell_price * amount
+        cumulative_sells = stock.get("sells", 0)
+        price_decrease = 0.01  # linear decrease per 100 shares
+        earnings = 0.0
+        remaining = amount
     
-        # Credit balance
-        balance = await self.economy_config.user(user).master_balance()
-        await self.economy_config.user(user).master_balance.set(balance + total_earnings)
+        # Calculate earnings based on lot-based pricing
+        while remaining > 0:
+            lot_size = min(100 - (cumulative_sells % 100), remaining)
+            earnings += lot_size * current_price
+            cumulative_sells += lot_size
+            remaining -= lot_size
     
-        # Price drop tracking
-        stock["sells"] = stock.get("sells", 0) + amount
-        while stock["sells"] >= 100:
-            stock["price"] = max(0.01, stock["price"] - 1.0)
-            stock["sells"] -= 100
+            # Apply price decrease after this lot
+            if cumulative_sells % 100 == 0:
+                current_price = max(0.01, current_price - price_decrease)
     
-        if stock["price"] <= 0 and not stock.get("commodity", False):
-            if random.random() < 0.5:
-                stock["price"] = 0.01
-                await self._announce_recovery(name)
-            else:
-                stock["price"] = 0.0
-                stock["delisted"] = True
-                await self._announce_bankruptcy(name)
+        # Update stock's cumulative sells and price
+        stock["sells"] = cumulative_sells
     
+        # Protect commodity stocks from price collapse
+        if stock.get("commodity", False):
+            stock["price"] = max(1.0, current_price)
+        else:
+            stock["price"] = current_price
+            if stock["price"] <= 0:
+                if random.random() < 0.5:
+                    stock["price"] = 0.01
+                    await self._announce_recovery(name)
+                else:
+                    stock["price"] = 0.0
+                    stock["delisted"] = True
+                    await self._announce_bankruptcy(name)
+    
+        # Save updated stock info
         await self.config.stocks.set_raw(name, value=stock)
     
-        self.last_day_trades -= total_earnings
+        # Credit the user
+        balance = await self.economy_config.user(user).master_balance()
+        await self.economy_config.user(user).master_balance.set(balance + earnings)
+    
+        self.last_day_trades -= earnings
         await interaction.response.send_message(
-            f"💰 Sold {amount} shares of **{name}** for **{total_earnings:.2f} WC**."
+            f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC**."
         )
+
 
 
 
