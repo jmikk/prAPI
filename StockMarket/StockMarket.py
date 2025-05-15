@@ -76,22 +76,23 @@ class StockMarket(commands.Cog):
     async def cog_unload(self):
         self.bot.tree.remove_command(self.buystock.name)
         self.bot.tree.remove_command(self.sellstock.name)
-
+    
     async def stock_name_autocomplete(self, interaction: discord.Interaction, current: str):
         stocks = await self.config.stocks()
         choices = []
     
         for name, data in stocks.items():
+            if data.get("delisted"):
+                continue  # ✅ Skip delisted stocks
             if current.lower() not in name.lower():
                 continue
             label = f"{name} - {data['price']:.2f} WC"
             if data.get("commodity"):
                 label += " [Commodity]"
-            if data.get("delisted"):
-                label += " [Delisted]"
             choices.append(app_commands.Choice(name=label, value=name.upper()))
     
         return choices[:25]
+
 
 
     
