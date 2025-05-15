@@ -2103,7 +2103,7 @@ Helpful Resources:
         await ctx.send(f"Minimum message length set to {length} characters.")
 
     @commands.command()
-    async def linknation(self, ctx, *nation_name: str):
+    async def linknation(self, ctx, *nation_name: str= "Nation_Name"):
         """Link your NationStates nation to your Discord account."""
         verify_url = f"https://www.nationstates.net/page=verify_login"
         await ctx.send(f"To verify your NationStates nation, visit {verify_url} and copy the code in the box.")
@@ -2112,7 +2112,7 @@ Helpful Resources:
     @commands.command()
     async def verifynation(self, ctx, nation_name: str, code: str):
         """Verify the NationStates nation using the provided verification code."""
-        formatted_nation = nation_name.lower().replace(" ", "_")
+        formatted_nation = nation_name.lower().replace(" ", "_").replace("<","").replace(">","")
     
         # Verify with NationStates API
         async with aiohttp.ClientSession() as session:
