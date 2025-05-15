@@ -376,21 +376,19 @@ class StockMarket(commands.Cog):
             embed.add_field(name=f"{emoji}{name}", value=f"Price: {data['price']:.2f} Wellcoins", inline=False)
     
         view.message = await ctx.send(embed=embed, view=view)
-
+    
     def calculate_total_cost_for_buy(start_price: float, shares: int, buys: int, price_increase: float = 1.0):
         total_cost = 0.0
         current_price = start_price
         simulated_buys = buys
     
         for _ in range(shares):
-            # Increase price *before* every 100th buy
             if simulated_buys % 100 == 0 and simulated_buys != 0:
                 current_price += price_increase
             total_cost += current_price
             simulated_buys += 1
     
-        return total_cost, current_price, simulated_buys    
-
+        return total_cost, current_price, simulated_buys
     
     
     def calculate_earnings_and_final_price(start_price: float, shares: int, sells: int, price_decrease: float = 1.0):
@@ -401,7 +399,6 @@ class StockMarket(commands.Cog):
         for _ in range(shares):
             total_earnings += current_price
             simulated_sells += 1
-            # Decrease price *after* every 100th sell
             if simulated_sells % 100 == 0:
                 current_price = max(0.01, current_price - price_decrease)
     
@@ -409,7 +406,8 @@ class StockMarket(commands.Cog):
 
 
 
- 
+
+     
     @app_commands.command(name="buystock", description="Buy shares of a stock.")
     @app_commands.describe(
         name="The stock you want to buy",
@@ -428,35 +426,38 @@ class StockMarket(commands.Cog):
     
         price = stock["price"]
         balance = await self.economy_config.user(user).master_balance()
-        total_cost = 0.0
-        shares_bought = 0
-        current_price = price
         price_increase = 1.0
+        shares_bought = 0
+        total_cost = 0.0
     
-        stock["buys"] = stock.get("buys", 0)
-    
-        # Buy by WC limit
+        # Buy by amount of WC
         if wc_spend is not None:
-            for i in range(1, 10000):  # cap loop
-                if total_cost + current_price > wc_spend:
+            test_price = price
+            test_buys = stock["buys"]
+            while True:
+                if test_buys % 100 == 0 and test_buys != 0:
+                    test_price += price_increase
+                if total_cost + test_price > wc_spend:
                     break
-                total_cost += current_price
+                total_cost += test_price
+                test_buys += 1
                 shares_bought += 1
-                stock["buys"] += 1
-                if stock["buys"] >= 100:
-                    current_price += price_increase
-                    stock["buys"] -= 100
+    
+            total_cost, new_price, updated_buys = self.calculate_total_cost_for_buy(price, shares_bought, stock["buys"])
+            stock["buys"] = updated_buys
+    
         elif shares is not None:
             shares_bought = shares
-            total_cost, current_price, remaining_buys = self.calculate_cost_and_final_price(price, int(shares_bought), stock["buys"])
-            stock["buys"] = remaining_buys
-
+            total_cost, new_price, updated_buys = self.calculate_total_cost_for_buy(price, shares_bought, stock["buys"])
+            stock["buys"] = updated_buys
+    
         else:
             return await interaction.response.send_message("❗ Please provide either `shares` or `wc_spend`.", ephemeral=True)
     
         if total_cost > balance:
             return await interaction.response.send_message(f"💸 You need {total_cost:.2f} WC but only have {balance:.2f} WC.", ephemeral=True)
     
+        # Update user balance and portfolio
         await self.economy_config.user(user).master_balance.set(balance - total_cost)
     
         async with self.config.user(user).stocks() as owned:
@@ -468,7 +469,7 @@ class StockMarket(commands.Cog):
             total_new = total_old + total_cost
             prices[name] = round(total_new / (prev + shares_bought), 2)
     
-        stock["price"] = current_price
+        stock["price"] = new_price
         await self.config.stocks.set_raw(name, value=stock)
     
         self.last_day_trades += total_cost
@@ -499,31 +500,26 @@ class StockMarket(commands.Cog):
                 async with self.config.user(user).avg_buy_prices() as prices:
                     prices.pop(name, None)
     
-        current_price = stock["price"]
-    
         if stock.get("delisted", False):
-            earnings = 0.0
             await self.economy_config.user(user).master_balance.set(
-                (await self.economy_config.user(user).master_balance()) + earnings
+                (await self.economy_config.user(user).master_balance())
             )
             return await interaction.response.send_message(
-                f"📉 **{name}** is delisted. You sold {amount} shares for **0 WC**.", ephemeral=True)
+                f"📉 **{name}** is delisted. You sold {amount} shares for **0 WC**.", ephemeral=True
+            )
     
-        # Calculate earnings BEFORE changing price
-        earnings, current_price, remaining_sells = self.calculate_earnings_and_final_price(current_price, amount, stock.get("sells", 0))
-        stock["sells"] = remaining_sells
+        current_price = stock["price"]
+        earnings, new_price, updated_sells = self.calculate_earnings_and_final_price(
+            current_price, amount, stock.get("sells", 0)
+        )
+        stock["sells"] = updated_sells
     
-        # Credit user
         balance = await self.economy_config.user(user).master_balance()
         await self.economy_config.user(user).master_balance.set(balance + earnings)
     
-        # Cumulative sell tracking
-        stock["sells"] = stock.get("sells", 0) + amount
-        while stock["sells"] >= 100:
-            stock["price"] = max(0.01, stock["price"] - .01)
-            stock["sells"] -= 100
+        stock["price"] = new_price
     
-        # Handle delisting logic if price drops to 0 or below
+        # Bankruptcy check
         if stock["price"] <= 0 and not stock.get("commodity", False):
             if random.random() < 0.5:
                 stock["price"] = 0.01
@@ -537,7 +533,9 @@ class StockMarket(commands.Cog):
     
         self.last_day_trades -= earnings
         await interaction.response.send_message(
-            f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC**.")
+            f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC**."
+        )
+
 
 
 
