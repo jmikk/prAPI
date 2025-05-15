@@ -393,7 +393,8 @@ class StockMarket(commands.Cog):
 
 
     def calculate_cost_and_final_price(start_price: float, count: int, buys: int, price_increase: float = 1.0) -> tuple:
-        total_cost = 0.0
+        count = int(count)  # ✅ Ensures compatibility with `range(count)`
+        otal_cost = 0.0
         current_price = start_price
         simulated_buys = buys
     
