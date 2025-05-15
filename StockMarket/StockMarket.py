@@ -391,19 +391,22 @@ class StockMarket(commands.Cog):
         return total_cost, current_price, simulated_buys
     
     
-    def calculate_earnings_and_final_price(self,start_price: float, shares: int, sells: int, price_decrease: float = .1):
+    def calculate_earnings_and_final_price(self, start_price: float, shares: int, sells: int, price_decrease: float = 0.1):
         total_earnings = 0.0
         current_price = start_price
         simulated_sells = sells
-        
         shares = int(shares)
+    
         for _ in range(shares):
-            total_earnings += current_price
-            simulated_sells += 1
-            if simulated_sells % 100 == 0:
+            # ↓ Apply price drop before the threshold, matching buy behavior
+            if simulated_sells % 100 == 0 and simulated_sells != 0:
                 current_price = max(0.01, current_price - price_decrease)
     
+            total_earnings += current_price
+            simulated_sells += 1
+    
         return total_earnings, current_price, simulated_sells
+
 
 
 
