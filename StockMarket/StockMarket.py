@@ -377,37 +377,36 @@ class StockMarket(commands.Cog):
     
         view.message = await ctx.send(embed=embed, view=view)
 
-    def calculate_earnings_and_final_price(start_price: float, count: int, sells: int, price_decrease: float = 0.01) -> tuple:
+    def calculate_total_cost_for_buy(start_price: float, shares: int, buys: int, price_increase: float = 1.0):
+        total_cost = 0.0
+        current_price = start_price
+        simulated_buys = buys
+        shares = int(shares)
+        for _ in range(shares):
+            if simulated_buys > 0 and simulated_buys % 100 == 0:
+                current_price += price_increase
+            total_cost += current_price
+            simulated_buys += 1
+    
+        return total_cost, current_price, simulated_buys
+    
+    
+    def calculate_total_earnings_for_sell(start_price: float, shares: int, sells: int, price_decrease: float = 1.0):
         total_earnings = 0.0
         current_price = start_price
         simulated_sells = sells
-    
-        for _ in range(count):
+        
+        shares = int(shares)
+        for _ in range(shares):
+            if simulated_sells > 0 and simulated_sells % 100 == 0:
+                current_price = max(0.01, current_price - price_decrease)
             total_earnings += current_price
             simulated_sells += 1
-            if simulated_sells >= 100:
-                current_price = max(0.01, current_price - price_decrease)
-                simulated_sells = 0
     
         return total_earnings, current_price, simulated_sells
 
 
-    def calculate_cost_and_final_price(start_price: float, count: int, buys: int, price_increase: float = 1.0) -> tuple:
-        count = int(count)  # ✅ Ensures compatibility with `range(count)`
-        otal_cost = 0.0
-        current_price = start_price
-        simulated_buys = buys
-    
-        for _ in range(count):
-            total_cost += current_price
-            simulated_buys += 1
-            if simulated_buys >= 100:
-                current_price += price_increase
-                simulated_buys = 0
-    
-        return total_cost, current_price, simulated_buys
-
-    
+ 
     @app_commands.command(name="buystock", description="Buy shares of a stock.")
     @app_commands.describe(
         name="The stock you want to buy",
