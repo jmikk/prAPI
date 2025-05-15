@@ -444,8 +444,8 @@ class StockMarket(commands.Cog):
                     current_price += price_increase
                     stock["buys"] -= 100
         elif shares is not None:
-            shares_bought = int(shares)
-            total_cost, current_price, remaining_buys = self.calculate_cost_and_final_price(price, shares_bought, stock["buys"])
+            shares_bought = shares
+            total_cost, current_price, remaining_buys = self.calculate_cost_and_final_price(price, int(shares_bought), stock["buys"])
             stock["buys"] = remaining_buys
 
         else:
