@@ -381,7 +381,7 @@ class StockMarket(commands.Cog):
         total_cost = 0.0
         current_price = start_price
         simulated_buys = buys
-    
+        shares = int(shares)
         for _ in range(shares):
             if simulated_buys % 100 == 0 and simulated_buys != 0:
                 current_price += price_increase
@@ -395,7 +395,8 @@ class StockMarket(commands.Cog):
         total_earnings = 0.0
         current_price = start_price
         simulated_sells = sells
-    
+        
+        shares = int(shares)
         for _ in range(shares):
             total_earnings += current_price
             simulated_sells += 1
