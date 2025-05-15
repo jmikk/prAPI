@@ -377,6 +377,35 @@ class StockMarket(commands.Cog):
     
         view.message = await ctx.send(embed=embed, view=view)
 
+    def calculate_earnings_and_final_price(start_price: float, count: int, sells: int, price_decrease: float = 0.01) -> tuple:
+        total_earnings = 0.0
+        current_price = start_price
+        simulated_sells = sells
+    
+        for _ in range(count):
+            total_earnings += current_price
+            simulated_sells += 1
+            if simulated_sells >= 100:
+                current_price = max(0.01, current_price - price_decrease)
+                simulated_sells = 0
+    
+        return total_earnings, current_price, simulated_sells
+
+
+    def calculate_cost_and_final_price(start_price: float, count: int, buys: int, price_increase: float = 1.0) -> tuple:
+        total_cost = 0.0
+        current_price = start_price
+        simulated_buys = buys
+    
+        for _ in range(count):
+            total_cost += current_price
+            simulated_buys += 1
+            if simulated_buys >= 100:
+                current_price += price_increase
+                simulated_buys = 0
+    
+        return total_cost, current_price, simulated_buys
+
     
     @app_commands.command(name="buystock", description="Buy shares of a stock.")
     @app_commands.describe(
@@ -416,12 +445,9 @@ class StockMarket(commands.Cog):
                     stock["buys"] -= 100
         elif shares is not None:
             shares_bought = shares
-            for i in range(shares):
-                total_cost += current_price
-                stock["buys"] += 1
-                if stock["buys"] >= 100:
-                    current_price += price_increase
-                    stock["buys"] -= 100
+            total_cost, current_price, remaining_buys = calculate_cost_and_final_price(price, shares_bought, stock["buys"])
+            stock["buys"] = remaining_buys
+
         else:
             return await interaction.response.send_message("❗ Please provide either `shares` or `wc_spend`.", ephemeral=True)
     
@@ -481,7 +507,8 @@ class StockMarket(commands.Cog):
                 f"📉 **{name}** is delisted. You sold {amount} shares for **0 WC**.", ephemeral=True)
     
         # Calculate earnings BEFORE changing price
-        earnings = current_price * amount
+        earnings, current_price, remaining_sells = calculate_earnings_and_final_price(current_price, amount, stock.get("sells", 0))
+        stock["sells"] = remaining_sells
     
         # Credit user
         balance = await self.economy_config.user(user).master_balance()
