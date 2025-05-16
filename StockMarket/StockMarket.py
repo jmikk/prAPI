@@ -647,7 +647,7 @@ class StockMarket(commands.Cog):
             # Construct value
             value = (
                 f"{amount} shares @ {current_price:.2f} Wellcoins (Δ {percent_change:+.2f}%)\n"
-                f"🟢 {buy_remaining} shares until next price **increase**"\n
+                f"🟢 {buy_remaining} shares until next price **increase**\n"
                 f"🔴 {sell_remaining} shares until next price **decrease**"
             )
             
