@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 import datetime
 
 
+
 class StockListView(View):
     def __init__(self, cog, stocks, per_page=10):
         super().__init__(timeout=120)
