@@ -124,11 +124,11 @@ class StockMarket(commands.Cog):
             for name, data in stocks.items():
                 if data.get("delisted", False):
                     continue
-        self._hourly_start_prices[name] = data["price"]
-
+                self._hourly_start_prices[name] = data["price"]  # 🟢 FIXED: Now inside the loop
+    
         await self.recalculate_all_stock_prices()
         await self.apply_daily_commodity_price_update()
-
+    
         # Build gainers list based on start-of-hour prices
         gainers = []
         stocks = await self.config.stocks()
@@ -140,18 +140,19 @@ class StockMarket(commands.Cog):
             if start_price and start_price > 0:
                 change = ((end_price - start_price) / start_price) * 100
                 gainers.append((name, change))
-        
+    
         # Sort and announce
         if gainers:
             top_3 = sorted(gainers, key=lambda x: x[1], reverse=True)[:3]
             message = "**📈 Top 3 Gainers This Hour:**\n" + "\n".join(
-                f"**{name}**: +{change:.2f}%" for name, change in top_3
+                f"**{name}**: + {change:.2f}%" for name, change in top_3
             )
             channel_id = await self.config.announcement_channel()
             if channel_id:
                 channel = self.bot.get_channel(channel_id)
                 if channel:
                     await channel.send(message)
+
 
 
     async def apply_daily_commodity_price_update(self):
@@ -390,9 +391,7 @@ class StockMarket(commands.Cog):
         embed = discord.Embed(title=f"📄 Stock Info: {name}", color=discord.Color.blue())
         embed.add_field(name="💰 Price", value=f"{price:.2f} Wellcoins", inline=True)
         embed.add_field(name="📈 Shares to Next Increase", value=f"{buy_remaining}", inline=True)
-    
-        if not stock.get("commodity", False):
-            embed.add_field(name="📉 Shares to Next Decrease", value=f"{sell_remaining}", inline=True)
+        embed.add_field(name="📉 Shares to Next Decrease", value=f"{sell_remaining}", inline=True)
     
         history = stock.get("history", [])
         if history:
@@ -648,7 +647,7 @@ class StockMarket(commands.Cog):
             # Construct value
             value = (
                 f"{amount} shares @ {current_price:.2f} Wellcoins (Δ {percent_change:+.2f}%)\n"
-                f"🟢 {buy_remaining} shares until next price **increase**"
+                f"🟢 {buy_remaining} shares until next price **increase**"\n
                 f"🔴 {sell_remaining} shares until next price **decrease**"
             )
             
