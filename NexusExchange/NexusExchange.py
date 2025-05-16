@@ -665,7 +665,7 @@ class NexusExchange(commands.Cog):
         await user_data.master_balance.set(new_wallet_balance)
     
         currency = await guild_data.master_currency_name()
-        await ctx.send(f"🏧 You withdrew `{amount}` {currency} from your bank account.\n💰 New on-hand balance: `{new_wallet_balance}` {currency}.")
+        await ctx.send(f"🏧 You withdrew `{amount}` {currency} from your bank account.\n💰 New on-hand balance: `{new_wallet_balance:2f}` {currency}.")
 
 
     @commands.command()
