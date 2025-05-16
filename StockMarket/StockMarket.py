@@ -119,10 +119,40 @@ class StockMarket(commands.Cog):
 
     @tasks.loop(hours=1)
     async def price_updater(self):
+        self._hourly_start_prices = {}
+        async with self.config.stocks() as stocks:
+            for name, data in stocks.items():
+                if data.get("delisted", False):
+                    continue
+        self._hourly_start_prices[name] = data["price"]
+
         await self.recalculate_all_stock_prices()
-        data["buys"] = 0
-        data["sells"] = 0
         await self.apply_daily_commodity_price_update()
+
+        # Build gainers list based on start-of-hour prices
+        gainers = []
+        stocks = await self.config.stocks()
+        for name, data in stocks.items():
+            if data.get("delisted", False):
+                continue
+            start_price = self._hourly_start_prices.get(name)
+            end_price = data["price"]
+            if start_price and start_price > 0:
+                change = ((end_price - start_price) / start_price) * 100
+                gainers.append((name, change))
+        
+        # Sort and announce
+        if gainers:
+            top_3 = sorted(gainers, key=lambda x: x[1], reverse=True)[:3]
+            message = "**📈 Top 3 Gainers This Hour:**\n" + "\n".join(
+                f"**{name}**: +{change:.2f}%" for name, change in top_3
+            )
+            channel_id = await self.config.announcement_channel()
+            if channel_id:
+                channel = self.bot.get_channel(channel_id)
+                if channel:
+                    await channel.send(message)
+
 
     async def apply_daily_commodity_price_update(self):
         last_run_timestamp = await self.config.last_commodity_update()
@@ -275,8 +305,8 @@ class StockMarket(commands.Cog):
     
                 # Save new price
                 data["price"] = new_price
-                data["buys"] = 0
-                data["sells"] = 0
+                data["buys"] = random.randint(1, 99)
+                data["sells"] = random.randint(1, 99)
     
                 # Track for top gainers
                 if old_price > 0:
@@ -296,20 +326,7 @@ class StockMarket(commands.Cog):
                     stocks[stock_name]["price"] = 0.0
     
             self.last_day_trades = 0
-    
-            # Announce top 3 gainers
-            if gainers:
-                top_3 = sorted(gainers, key=lambda x: x[1], reverse=True)[:3]
-                message = "**📈 Top 3 Gainers This Hour:**\n" + "\n".join(
-                    f"**{name}**: +{change:.2f}%" for name, change in top_3
-                )
-                channel_id = await self.config.announcement_channel()
-                if channel_id:
-                    channel = self.bot.get_channel(channel_id)
-                    if channel:
-                        await channel.send(message)
-    
-    
+            
     # Helper announcement methods
     async def _announce_surge(self, stock_name, percent_change):
         channel_id = await self.config.announcement_channel()
@@ -354,6 +371,37 @@ class StockMarket(commands.Cog):
                 stocks[name]["volatility"] = [min_volatility, max_volatility]
         await ctx.send(f"Stock {name} created with starting price {starting_price:.2f} Wellcoins.")
 
+    @app_commands.command(name="viewstock", description="View details about a specific stock.")
+    @app_commands.autocomplete(name=stock_name_autocomplete)
+    async def viewstock(self, interaction: discord.Interaction, name: str):
+        name = name.upper()
+        stocks = await self.config.stocks()
+        stock = stocks.get(name)
+    
+        if not stock or stock.get("delisted", False):
+            return await interaction.response.send_message("❌ That stock does not exist or is delisted.", ephemeral=True)
+    
+        price = stock["price"]
+        buys = stock.get("buys", 0)
+        sells = stock.get("sells", 0)
+        buy_remaining = 100 - (buys % 100)
+        sell_remaining = 100 - (sells % 100)
+    
+        embed = discord.Embed(title=f"📄 Stock Info: {name}", color=discord.Color.blue())
+        embed.add_field(name="💰 Price", value=f"{price:.2f} Wellcoins", inline=True)
+        embed.add_field(name="📈 Shares to Next Increase", value=f"{buy_remaining}", inline=True)
+    
+        if not stock.get("commodity", False):
+            embed.add_field(name="📉 Shares to Next Decrease", value=f"{sell_remaining}", inline=True)
+    
+        history = stock.get("history", [])
+        if history:
+            change = ((history[-1] - history[-2]) / history[-2]) * 100 if len(history) > 1 and history[-2] > 0 else 0
+            embed.add_field(name="Last Hour Change", value=f"{change:+.2f}%", inline=False)
+    
+        await interaction.response.send_message(embed=embed)
+
+
 
     @commands.command()
     async def liststocks(self, ctx):
@@ -373,8 +421,16 @@ class StockMarket(commands.Cog):
     
         for name, data in available_stocks[:10]:
             emoji = "🛂 " if data.get("commodity", False) else ""
-            embed.add_field(name=f"{emoji}{name}", value=f"Price: {data['price']:.2f} Wellcoins", inline=False)
-    
+                # Calculate shares until price shift
+            embed.add_field(
+                name=f"{emoji}{name}",
+                value=(
+                    f"Price: {data['price']:.2f} Wellcoins\n"
+                    f"🟢 {buy_remaining} shares until next price **increase**\n"
+                    f"🔴 {sell_remaining} shares until next price **decrease**"
+                ),
+                inline=False
+            )    
         view.message = await ctx.send(embed=embed, view=view)
     
     def calculate_total_cost_for_buy(self,start_price: float, shares: int, buys: int, price_increase: float = .1):
@@ -567,7 +623,7 @@ class StockMarket(commands.Cog):
     
         if not user_stocks:
             return await ctx.send("You don't own any stocks.")
-    
+     
         total_value = 0
         total_cost = 0
         embed = discord.Embed(title=f"📁 {user.display_name}'s Portfolio")
@@ -578,11 +634,25 @@ class StockMarket(commands.Cog):
             avg_price = avg_prices.get(stock, current_price)
             percent_change = ((current_price - avg_price) / avg_price) * 100 if avg_price else 0
             status = " (Delisted)" if stock_data.get("delisted", False) else ""
+            # Shares to next price shift
+            buys = stock_data.get("buys", 0)
+            sells = stock_data.get("sells", 0)
+            buy_remaining = 100 - (buys % 100)
+            sell_remaining = 100 - (sells % 100)
+            
+            # Construct value
+            value = (
+                f"{amount} shares @ {current_price:.2f} Wellcoins (Δ {percent_change:+.2f}%)\n"
+                f"🟢 {buy_remaining} shares until next price **increase**"
+                f"🔴 {Sell_remaining} shares until next price **decrease**"
+            )
+            
             embed.add_field(
                 name=f"{stock}{status}",
-                value=f"{amount} shares @ {current_price:.2f} Wellcoins (Δ {percent_change:+.2f}%)",
+                value=value,
                 inline=False
             )
+
             total_value += current_price * amount
             total_cost += avg_price * amount
     
