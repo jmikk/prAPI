@@ -422,6 +422,11 @@ class StockMarket(commands.Cog):
         for name, data in available_stocks[:10]:
             emoji = "🛂 " if data.get("commodity", False) else ""
                 # Calculate shares until price shift
+                # Calculate shares until price shift
+            buys = data.get("buys", 0)
+            sells = data.get("sells", 0)
+            buy_remaining = 100 - (buys % 100)
+            sell_remaining = 100 - (sells % 100)
             embed.add_field(
                 name=f"{emoji}{name}",
                 value=(
@@ -644,7 +649,7 @@ class StockMarket(commands.Cog):
             value = (
                 f"{amount} shares @ {current_price:.2f} Wellcoins (Δ {percent_change:+.2f}%)\n"
                 f"🟢 {buy_remaining} shares until next price **increase**"
-                f"🔴 {Sell_remaining} shares until next price **decrease**"
+                f"🔴 {sell_remaining} shares until next price **decrease**"
             )
             
             embed.add_field(
