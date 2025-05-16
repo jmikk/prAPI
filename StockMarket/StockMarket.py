@@ -391,14 +391,73 @@ class StockMarket(commands.Cog):
         embed = discord.Embed(title=f"📄 Stock Info: {name}", color=discord.Color.blue())
         embed.add_field(name="💰 Price", value=f"{price:.2f} Wellcoins", inline=True)
         embed.add_field(name="📈 Shares to Next Increase", value=f"{buy_remaining}", inline=True)
-        embed.add_field(name="📉 Shares to Next Decrease", value=f"{sell_remaining}", inline=True)
+    
+        if not stock.get("commodity", False):
+            embed.add_field(name="📉 Shares to Next Decrease", value=f"{sell_remaining}", inline=True)
     
         history = stock.get("history", [])
-        if history:
-            change = ((history[-1] - history[-2]) / history[-2]) * 100 if len(history) > 1 and history[-2] > 0 else 0
+        if history and len(history) > 1 and history[-2] > 0:
+            change = ((history[-1] - history[-2]) / history[-2]) * 100
             embed.add_field(name="Last Hour Change", value=f"{change:+.2f}%", inline=False)
     
+        # Gather stock ownership data
+        owners_data = await self.config.all_users()
+        owners = {}
+        total_held = 0
+        for user_id, user_data in owners_data.items():
+            user_stocks = user_data.get("stocks", {})
+            if user_stocks.get(name, 0) > 0:
+                amount = user_stocks[name]
+                owners[user_id] = amount
+                total_held += amount
+    
+        if total_held == 0:
+            embed.add_field(name="📦 Total Shares Held", value="0 (No current holders)", inline=False)
+            return await interaction.response.send_message(embed=embed)
+    
+        embed.add_field(name="📦 Total Shares Held", value=f"{total_held}", inline=False)
         await interaction.response.send_message(embed=embed)
+    
+        # Format data for pie chart
+        labels = []
+        sizes = []
+        for user_id, amount in owners.items():
+            user = interaction.guild.get_member(int(user_id))
+            label = user.display_name if user else f"User {user_id}"
+            labels.append(label)
+            sizes.append(amount)
+    
+        # Sort and combine into Top N
+        top_n = 10
+        sorted_data = sorted(zip(labels, sizes), key=lambda x: x[1], reverse=True)
+        top_labels = []
+        top_sizes = []
+        other_total = 0
+    
+        for i, (label, size) in enumerate(sorted_data):
+            if i < top_n:
+                top_labels.append(f"{label} ({size})")
+                top_sizes.append(size)
+            else:
+                other_total += size
+    
+        if other_total > 0:
+            top_labels.append(f"Other ({other_total})")
+            top_sizes.append(other_total)
+    
+        # Generate the pie chart
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.pie(top_sizes, labels=top_labels, autopct='%1.1f%%', startangle=90)
+        ax.axis('equal')
+        plt.title(f"{name} Ownership Distribution\n(Total: {total_held} shares)")
+    
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        plt.close()
+    
+        await interaction.followup.send(file=discord.File(buf, filename=f"{name}_owners.png"))
+
 
 
 
