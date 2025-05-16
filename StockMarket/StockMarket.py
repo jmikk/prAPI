@@ -398,7 +398,7 @@ class StockMarket(commands.Cog):
         history = stock.get("history", [])
         if history and len(history) > 1 and history[-2] > 0:
             change = ((history[-1] - history[-2]) / history[-2]) * 100
-            embed.add_field(name="Last Hour Change", value=f"{change:+.2f}%", inline=False)
+            embed.add_field(name="Last Hour Change", value=f"{change:+.2f}%", inline=True)
     
         # Gather stock ownership data
         owners_data = await self.config.all_users()
