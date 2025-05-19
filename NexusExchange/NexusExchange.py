@@ -2232,7 +2232,7 @@ Helpful Resources:
     @commands.guild_only()
     @commands.admin()
     @commands.command()
-    async def govpay(self, ctx, user: discord.Member, amount: int):
+    async def govpay(self, ctx, user: discord.Member, amount: float):
         """The government distributes WellCoins to a user."""
         if amount <= 0:
             await ctx.send("❌ Amount must be greater than zero.")
