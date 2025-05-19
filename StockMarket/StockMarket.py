@@ -33,11 +33,19 @@ class StockListView(View):
         end = start + self.per_page
         for name, data in self.stocks[start:end]:
             emoji = "🛂 " if data.get("commodity", False) else ""
+            buys = data.get("buys", 0)
+            sells = data.get("sells", 0)
+            buy_remaining = 100 - (buys % 100)
+            sell_remaining = 100 - (sells % 100)
             embed.add_field(
                 name=f"{emoji}{name}",
-                value=f"Price: {data['price']:.2f} Wellcoins",
+                value=(
+                    f"Price: {data['price']:.2f} Wellcoins\n"
+                    f"🟢 {buy_remaining} shares until next price **increase**\n"
+                    f"🔴 {sell_remaining} shares until next price **decrease**"
+                ),
                 inline=False
-            )
+            )   
 
         await self.message.edit(embed=embed, view=self)
 
