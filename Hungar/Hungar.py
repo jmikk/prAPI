@@ -65,7 +65,7 @@ class CheckGoldButton(Button):
         try:
             user_id = interaction.user
             gold = await self.cog.config_gold.user(user_id).master_balance()
-            await interaction.response.send_message(f"You have {gold} Wellcoins.", ephemeral=True)
+            await interaction.response.send_message(f"You have {gold:.2f} Wellcoins.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
