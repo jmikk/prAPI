@@ -2028,6 +2028,9 @@ class Hungar(commands.Cog):
                         target["zone"] = {"name": "Cornucopia"}
                         zone_name = player_data["zone"]["name"] if isinstance(player_data["zone"], dict) else player_data.get("zone", "Unknown Zone")
                         event_outcomes.append(f"{target['name']} has been eliminated by {hunter['name']}! ({zone_name})")
+                        stat = random.choice(["Str", "Con", "Def", "Wis", "HP"])
+                        boost = random.randint(5, 10)
+                        hunter["stats"][stat] += boost
                 else:
                     backlash = abs(damage)
                     hunter["stats"]["HP"] -= backlash
@@ -2048,6 +2051,9 @@ class Hungar(commands.Cog):
                         hunter["zone"] = {"name": "Cornucopia"}
                         zone_name = hunter["zone"]["name"] if isinstance(hunter["zone"], dict) else hunter.get("zone", "Unknown Zone")
                         event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']} ({zone_name})!")
+                        stat = random.choice(["Str", "Con", "Def", "Wis", "HP"])
+                        boost = random.randint(5, 10)
+                        target["stats"][stat] += boost
     
                 hunted.add(hunter_id)
                 hunted.add(target_id)
