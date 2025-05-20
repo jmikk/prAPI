@@ -812,20 +812,24 @@ class StockMarket(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def adjustbytag(self, ctx, tag: str, amount: float):
-        """Adjust price of all stocks with a given tag by a flat amount."""
+    async def adjustbytag(self, ctx, tag: str, percent: float):
+        """Adjust price of all stocks with a given tag by a percentage."""
         tag = tag.lower()
         affected = 0
         async with self.config.stocks() as stocks:
             for stock, data in stocks.items():
                 if tag in data.get("tags", {}):
-                    data["price"] = round(max(1.0, data["price"] + amount), 2)
+                    old_price = data["price"]
+                    new_price = old_price * (1 + percent / 100)
+                    data["price"] = round(max(1.0, new_price), 2)
                     affected += 1
     
         if affected == 0:
             await ctx.send(f"No stocks found with tag `{tag}`.")
         else:
-            await ctx.send(f"📈 Adjusted {affected} stock(s) with tag `{tag}` by {amount:+.2f} Wellcoins.")
+            await ctx.send(f"📈 Adjusted {affected} stock(s) with tag `{tag}` by {percent:+.2f}%.")
+
+
 
     @commands.command()
     @commands.has_permissions(administrator=True)
