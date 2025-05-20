@@ -399,9 +399,7 @@ class StockMarket(commands.Cog):
         embed = discord.Embed(title=f"📄 Stock Info: {name}", color=discord.Color.blue())
         embed.add_field(name="💰 Price", value=f"{price:.2f} Wellcoins", inline=True)
         embed.add_field(name="📈 Shares to Next Increase", value=f"{buy_remaining}", inline=True)
-    
-        if not stock.get("commodity", False):
-            embed.add_field(name="📉 Shares to Next Decrease", value=f"{sell_remaining}", inline=True)
+        embed.add_field(name="📉 Shares to Next Decrease", value=f"{sell_remaining}", inline=True)
     
         history = stock.get("history", [])
         if history and len(history) > 1 and history[-2] > 0:
