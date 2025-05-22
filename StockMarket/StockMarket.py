@@ -820,6 +820,11 @@ class StockMarket(commands.Cog):
         """Adjust price of all stocks with a given tag by a percentage."""
         tag = tag.lower()
         affected = 0
+    
+        # Update tag multiplier globally
+        async with self.config.tags() as tag_multipliers:
+            tag_multipliers[tag] = percent  # This will now be visible in `viewtagvalues`
+    
         async with self.config.stocks() as stocks:
             for stock, data in stocks.items():
                 if tag in data.get("tags", {}):
@@ -831,7 +836,7 @@ class StockMarket(commands.Cog):
         if affected == 0:
             await ctx.send(f"No stocks found with tag `{tag}`.")
         else:
-            await ctx.send(f"📈 Adjusted {affected} stock(s) with tag `{tag}` by {percent:+.2f}%.")
+            await ctx.send(f"📈 Adjusted {affected} stock(s) with tag `{tag}` by {percent:+.2f}% and updated tag multiplier.")
 
 
 
