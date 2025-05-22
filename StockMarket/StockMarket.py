@@ -984,7 +984,7 @@ class StockMarket(commands.Cog):
         sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)
         Message = "🏷️ Stock Tags Summary"
         for tag, count in sorted_tags:
-            Message = Message + f"`{tag}`", value=f"Used by {count} stock(s)\n"
+            Message = Message + f"`{tag}` Used by {count} stock(s)\n"
     
         await ctx.send(Message)
 
