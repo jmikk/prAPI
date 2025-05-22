@@ -1019,6 +1019,7 @@ class StockMarket(commands.Cog):
         await ctx.send(file=discord.File(fp=io.BytesIO(buf.getvalue().encode()), filename="stock_tags.csv"))
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def viewtagvalues(self, ctx):
         """View all active tag multipliers with pagination and a reset option."""
         tag_multipliers = await self.config.tags()
