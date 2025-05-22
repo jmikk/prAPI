@@ -982,11 +982,11 @@ class StockMarket(commands.Cog):
     
         # Sort by frequency
         sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)
-        embed = discord.Embed(title="🏷️ Stock Tags Summary", color=discord.Color.purple())
+        Message = "🏷️ Stock Tags Summary"
         for tag, count in sorted_tags:
-            embed.add_field(name=f"`{tag}`", value=f"Used by {count} stock(s)", inline=True)
+            Message = Message + name=f"`{tag}`", value=f"Used by {count} stock(s)\n"
     
-        await ctx.send(embed=embed)
+        await ctx.send(Message)
 
 
     
