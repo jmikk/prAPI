@@ -400,7 +400,12 @@ class StockMarket(commands.Cog):
         embed.add_field(name="💰 Price", value=f"{price:.2f} Wellcoins", inline=True)
         embed.add_field(name="📈 Shares to Next Increase", value=f"{buy_remaining}", inline=True)
         embed.add_field(name="📉 Shares to Next Decrease", value=f"{sell_remaining}", inline=True)
-    
+        # Display tags if any
+        tags = stock.get("tags", {})
+        if tags:
+            tag_str = "\n".join(f"`{tag}` (weight {weight})" for tag, weight in tags.items())
+            embed.add_field(name="🏷️ Tags", value=tag_str, inline=False)
+
         history = stock.get("history", [])
         if history and len(history) > 1 and history[-2] > 0:
             change = ((history[-1] - history[-2]) / history[-2]) * 100
@@ -961,6 +966,28 @@ class StockMarket(commands.Cog):
         plt.close()
     
         await ctx.send(file=discord.File(buf, filename=f"markettrend_{time_range}.png"))
+
+    @commands.command()
+    async def listtags(self, ctx):
+        """List all unique tags used across stocks and how many stocks use each."""
+        stocks = await self.config.stocks()
+        tag_counts = {}
+    
+        for data in stocks.values():
+            for tag in data.get("tags", {}).keys():
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+    
+        if not tag_counts:
+            return await ctx.send("📭 No tags have been assigned to any stocks.")
+    
+        # Sort by frequency
+        sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)
+        embed = discord.Embed(title="🏷️ Stock Tags Summary", color=discord.Color.purple())
+        for tag, count in sorted_tags:
+            embed.add_field(name=f"`{tag}`", value=f"Used by {count} stock(s)", inline=True)
+    
+        await ctx.send(embed=embed)
+
 
     
     
