@@ -11,6 +11,7 @@ from discord import Interaction
 import aiohttp
 import xml.etree.ElementTree as ET
 import datetime
+import csv
 
 
 class StockListView(View):
@@ -988,8 +989,87 @@ class StockMarket(commands.Cog):
     
         await ctx.send(Message)
 
-
+    @commands.command()
+    async def exporttags(self, ctx):
+        """Export all stocks and their tags as a CSV file."""
+        stocks = await self.config.stocks()
     
+        # Prepare CSV rows
+        rows = [["Stock", "Tag", "Weight"]]
+        for stock_name, data in stocks.items():
+            tags = data.get("tags", {})
+            if tags:
+                for tag, weight in tags.items():
+                    rows.append([stock_name, tag, weight])
+            else:
+                rows.append([stock_name, "", ""])  # Include even if no tags
+    
+        # Write to in-memory buffer
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerows(rows)
+        buf.seek(0)
+    
+        # Send the file
+        await ctx.send(file=discord.File(fp=io.BytesIO(buf.getvalue().encode()), filename="stock_tags.csv"))
+
+    @commands.command()
+    async def viewtagvalues(self, ctx):
+        """View all active tag multipliers with pagination."""
+        tag_multipliers = await self.config.tags()
+        active_tags = [(k, v) for k, v in tag_multipliers.items() if abs(v) > 0]
+    
+        if not active_tags:
+            return await ctx.send("✅ All tags are currently neutral (0% effect).")
+    
+        active_tags.sort(key=lambda x: x[0])  # Sort alphabetically
+    
+        view = TagValueView(active_tags)
+        view.message = await ctx.send("⏳ Loading tag multipliers...")
+        await view.update_embed()
+
+class TagValueView(View):
+    def __init__(self, entries, per_page=25, timeout=120):
+        super().__init__(timeout=timeout)
+        self.entries = entries
+        self.per_page = per_page
+        self.page = 0
+        self.message = None
+
+    async def update_embed(self, interaction=None):
+        start = self.page * self.per_page
+        end = start + self.per_page
+        current_page = self.entries[start:end]
+        embed = discord.Embed(
+            title="🔍 Active Tag Multipliers",
+            description="\n".join([f"`{tag}` → {value:+.2f}%" for tag, value in current_page]),
+            color=discord.Color.orange()
+        )
+        embed.set_footer(text=f"Page {self.page + 1}/{(len(self.entries) - 1) // self.per_page + 1}")
+        
+        if self.message:
+            await self.message.edit(embed=embed, view=self)
+        elif interaction:
+            self.message = await interaction.response.send_message(embed=embed, view=self)
+
+    @discord.ui.button(label="⬅️ Prev", style=discord.ButtonStyle.primary)
+    async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.page > 0:
+            self.page -= 1
+            await self.update_embed(interaction)
+
+    @discord.ui.button(label="➡️ Next", style=discord.ButtonStyle.primary)
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if (self.page + 1) * self.per_page < len(self.entries):
+            self.page += 1
+            await self.update_embed(interaction)
+
+    async def on_timeout(self):
+        if self.message:
+            await self.message.edit(view=None)
+
+
+
     
         
     
