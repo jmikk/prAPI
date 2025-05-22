@@ -1020,22 +1020,23 @@ class StockMarket(commands.Cog):
 
     @commands.command()
     async def viewtagvalues(self, ctx):
-        """View all active tag multipliers with pagination."""
+        """View all active tag multipliers with pagination and a reset option."""
         tag_multipliers = await self.config.tags()
         active_tags = [(k, v) for k, v in tag_multipliers.items() if abs(v) > 0]
     
         if not active_tags:
             return await ctx.send("✅ All tags are currently neutral (0% effect).")
     
-        active_tags.sort(key=lambda x: x[0])  # Sort alphabetically
-    
-        view = TagValueView(active_tags)
+        active_tags.sort(key=lambda x: x[0])
+        view = TagValueView(self, active_tags)
         view.message = await ctx.send("⏳ Loading tag multipliers...")
         await view.update_embed()
 
+
 class TagValueView(View):
-    def __init__(self, entries, per_page=25, timeout=120):
+    def __init__(self, cog, entries, per_page=25, timeout=120):
         super().__init__(timeout=timeout)
+        self.cog = cog
         self.entries = entries
         self.per_page = per_page
         self.page = 0
@@ -1069,9 +1070,23 @@ class TagValueView(View):
             self.page += 1
             await self.update_embed(interaction)
 
+    @discord.ui.button(label="🔁 Reset All Tags", style=discord.ButtonStyle.danger)
+    async def reset_all_tags(self, interaction: discord.Interaction, button: discord.ui.Button):
+        tag_multipliers = await self.cog.config.tags()
+        zeroed = {tag: 0.0 for tag in tag_multipliers}
+        await self.cog.config.tags.set(zeroed)
+        await interaction.response.send_message("🔧 All tag multipliers have been reset to `0.0%`.", ephemeral=True)
+        self.entries = []  # Clear entries to reflect reset
+        await self.message.edit(embed=discord.Embed(
+            title="✅ All Tags Reset",
+            description="There are no active tag multipliers.",
+            color=discord.Color.green()
+        ), view=None)
+
     async def on_timeout(self):
         if self.message:
             await self.message.edit(view=None)
+
 
 
 
