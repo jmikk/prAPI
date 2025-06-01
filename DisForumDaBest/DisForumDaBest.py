@@ -168,3 +168,4 @@ class DisForumDaBest(commands.Cog):
 
         await target_msg.edit(embed=new_embed)
         await respond_func("Post updated and original archived.")
+
