@@ -126,6 +126,9 @@ class DisForumDaBest(commands.Cog):
             if not target_msg:
                 return await respond_func("No tracked post found.")
 
+        if not new_content or new_content.strip() == "":
+            return await respond_func("Cannot update post with empty content.")
+
         original_embed = target_msg.embeds[0]
         msg_id = str(target_msg.id)
 
@@ -146,7 +149,8 @@ class DisForumDaBest(commands.Cog):
                 )
             else:
                 new_thread = await mod_locker.create_thread(
-                    name=f"Edit History: {ctx.author.display_name} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}"
+                    name=f"Edit History: {ctx.author.display_name} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}",
+                    content="Original post log"
                 )
                 await new_thread.send(
                     content=f"**Original version (V1) on {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}**",
