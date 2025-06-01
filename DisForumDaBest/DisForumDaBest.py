@@ -8,7 +8,8 @@ class DisForumDaBest(commands.Cog):
         self.config = Config.get_conf(self, identifier=1234567890)
         self.config.register_guild(
             watched_forum=None,
-            mod_locker=None
+            mod_locker=None,
+            edit_threads={}  # message_id -> thread_id
         )
 
     @commands.command()
@@ -73,12 +74,28 @@ class DisForumDaBest(commands.Cog):
             return await ctx.send("No tracked post found.")
 
         original_embed = target_msg.embeds[0]
+        msg_id = target_msg.id
 
-        # Send old to mod locker
         mod_locker_id = await self.config.guild(ctx.guild).mod_locker()
         mod_locker = ctx.guild.get_channel(mod_locker_id)
-        if mod_locker:
-            await mod_locker.send(embed=original_embed)
+        thread_id_map = await self.config.guild(ctx.guild).edit_threads()
+
+        if isinstance(mod_locker, discord.ForumChannel):
+            if str(msg_id) in thread_id_map:
+                # Reuse thread
+                locker_thread_id = thread_id_map[str(msg_id)]
+                locker_thread = mod_locker.get_thread(locker_thread_id)
+                if locker_thread is None:
+                    locker_thread = await mod_locker.fetch_thread(locker_thread_id)
+                await locker_thread.send(embed=original_embed)
+            else:
+                # Create new thread and save it
+                new_thread = await mod_locker.create_thread(
+                    name=f"Edit History: {ctx.author.display_name} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}",
+                    content="Original version of the post before edit:",
+                    embed=original_embed
+                )
+                await self.config.guild(ctx.guild).edit_threads.set_raw(str(msg_id), value=new_thread.id)
 
         # Edit embed
         new_embed = original_embed.copy()
