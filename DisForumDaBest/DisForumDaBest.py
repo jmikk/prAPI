@@ -144,18 +144,20 @@ class DisForumDaBest(commands.Cog):
         if isinstance(mod_locker, discord.ForumChannel):
             if msg_id in thread_id_map:
                 locker_thread_id = thread_id_map[msg_id]
-                locker_thread = mod_locker.get_thread(locker_thread_id) or await mod_locker.fetch_thread(locker_thread_id)
+                locker_thread = mod_locker.get_thread(locker_thread_id)
+                if locker_thread is None:
+                    locker_thread = await self.bot.fetch_channel(locker_thread_id)
                 await locker_thread.send(
                     content=f"**Version {version_number} on {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}**",
                     embed=original_embed
                 )
             else:
-                starter_message = await mod_locker.send_message(
+                starter_message = await mod_locker.create_thread(
                     name=f"Edit History: {ctx.author.display_name} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}",
                     content=f"**Original version (V1) on {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}**",
                     embed=original_embed
                 )
-                await self.config.guild(ctx.guild).edit_threads.set_raw(msg_id, value=starter_message.channel.id)
+                await self.config.guild(ctx.guild).edit_threads.set_raw(msg_id, value=starter_message.id)
 
         await self.config.guild(ctx.guild).edit_counts.set_raw(msg_id, value=version_number + 1)
 
