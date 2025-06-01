@@ -89,7 +89,8 @@ class DisForumDaBest(commands.Cog):
         button.callback = button_callback
         view.add_item(button)
 
-        await message.channel.send(embed=embed, files=files, view=view)
+        sent = await message.channel.send(embed=embed, files=files, view=view)
+        await self.config.guild(message.guild).edit_threads.set_raw(str(message.id), value=sent.id)
         await message.delete()
 
     async def find_user_embed_post(self, thread: discord.Thread, user: discord.Member):
@@ -116,8 +117,9 @@ class DisForumDaBest(commands.Cog):
 
         if message_id:
             try:
-                target_msg = await thread.fetch_message(message_id)
-            except discord.NotFound:
+                display_msg_id = await self.config.guild(ctx.guild).edit_threads.get_raw(str(message_id))
+                target_msg = await thread.fetch_message(display_msg_id)
+            except Exception:
                 target_msg = await self.find_user_embed_post(thread, ctx.author)
                 if not target_msg:
                     return await respond_func("That message could not be found.")
@@ -130,7 +132,7 @@ class DisForumDaBest(commands.Cog):
             return await respond_func("Cannot update post with empty content.")
 
         original_embed = target_msg.embeds[0]
-        msg_id = str(target_msg.id)
+        msg_id = str(message_id or target_msg.id)
 
         mod_locker_id = await self.config.guild(ctx.guild).mod_locker()
         mod_locker = ctx.guild.get_channel(mod_locker_id)
@@ -148,14 +150,12 @@ class DisForumDaBest(commands.Cog):
                     embed=original_embed
                 )
             else:
-                new_thread = await mod_locker.create_thread(
-                    name=f"Edit History: {ctx.author.display_name} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}"
-                )
-                starter_message = await new_thread.send(
+                starter_message = await mod_locker.send_message(
+                    name=f"Edit History: {ctx.author.display_name} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}",
                     content=f"**Original version (V1) on {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}**",
                     embed=original_embed
                 )
-                await self.config.guild(ctx.guild).edit_threads.set_raw(msg_id, value=new_thread.id)
+                await self.config.guild(ctx.guild).edit_threads.set_raw(msg_id, value=starter_message.channel.id)
 
         await self.config.guild(ctx.guild).edit_counts.set_raw(msg_id, value=version_number + 1)
 
