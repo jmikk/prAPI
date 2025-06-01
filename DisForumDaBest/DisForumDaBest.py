@@ -23,12 +23,14 @@ class EditModal(Modal, title="Edit Your Post"):
                     self.guild = guild
 
             fake_ctx = FakeCtx(self.author, self.thread, self.thread.guild)
+            await interaction.response.defer(ephemeral=True)
             await self.cog.edit_post(
                 fake_ctx,
                 message_id=self.message_id,
                 new_content=self.new_content.value,
-                respond_func=lambda msg: interaction.followup.send(msg, ephemeral=True)
+                respond_func=lambda msg: interaction.followup.send(msg)
             )
+
         except Exception:
             try:
                 await self.author.send(f"EditModal error:\n```{traceback.format_exc()}```")
