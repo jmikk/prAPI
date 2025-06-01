@@ -27,10 +27,7 @@ class EditModal(Modal, title="Edit Your Post"):
             await self.cog.edit_post(fake_ctx, message_id=self.message_id, new_content=self.new_content.value)
         except Exception:
             try:
-                await self.author.send(f"EditModal error:
-```
-{traceback.format_exc()}
-```")
+                await self.author.send(f"EditModal error:```{traceback.format_exc()}```")
             except Exception:
                 pass
 
