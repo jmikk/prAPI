@@ -26,7 +26,22 @@ class EditModal(Modal, title="Edit Your Post"):
             fake_ctx = FakeCtx(self.author, self.thread, self.thread.guild)
             await self.cog.edit_post(fake_ctx, message_id=self.message_id, new_content=self.new_content.value)
         except Exception as e:
-            await interaction.followup.send(f"An error occurred: {e}\n```{traceback.format_exc()}```", ephemeral=True)
+            await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
+            try:
+                mod_locker_id = await self.cog.config.guild(interaction.guild).mod_locker()
+                mod_locker = interaction.guild.get_channel(mod_locker_id)
+                if isinstance(mod_locker, discord.ForumChannel):
+                    err_thread = await mod_locker.create_thread(
+                        name=f"Error Report: {datetime.datetime.utcnow().isoformat(timespec='seconds')}"
+                    )
+                    await err_thread.send(
+                        f"Exception occurred while handling edit modal for user {interaction.user.mention}:
+```
+{traceback.format_exc()}
+```"
+                    )
+            except Exception:
+                pass
 
 class DisForumDaBest(commands.Cog):
     def __init__(self, bot):
@@ -35,8 +50,8 @@ class DisForumDaBest(commands.Cog):
         self.config.register_guild(
             watched_forum=None,
             mod_locker=None,
-            edit_threads={},  # message_id -> thread_id
-            edit_counts={}    # message_id -> int (version count)
+            edit_threads={},
+            edit_counts={}
         )
 
     @commands.command()
@@ -155,4 +170,20 @@ class DisForumDaBest(commands.Cog):
 
             await interaction.response.send_modal(EditModal(self, interaction.user, interaction.channel, int(message_id)))
         except Exception as e:
-            await interaction.followup.send(f"Something went wrong: {e}\n```{traceback.format_exc()}```", ephemeral=True)
+            await interaction.followup.send(f"Something went wrong: {e}", ephemeral=True)
+            try:
+                mod_locker_id = await self.config.guild(interaction.guild).mod_locker()
+                mod_locker = interaction.guild.get_channel(mod_locker_id)
+                if isinstance(mod_locker, discord.ForumChannel):
+                    err_thread = await mod_locker.create_thread(
+                        name=f"Error Report: {datetime.datetime.utcnow().isoformat(timespec='seconds')}"
+                    )
+                    await err_thread.send(
+    f"Exception occurred while processing interaction for user {interaction.user.mention}:
+"
+    f"```
+{traceback.format_exc()}
+```"
+)
+            except Exception:
+                pass
