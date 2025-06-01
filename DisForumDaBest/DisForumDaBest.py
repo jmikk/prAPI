@@ -2,6 +2,7 @@ import discord
 from discord.ui import View, Button, Modal, TextInput
 from redbot.core import commands, Config
 import datetime
+import traceback
 
 class EditModal(Modal, title="Edit Your Post"):
     def __init__(self, message_id):
@@ -11,10 +12,13 @@ class EditModal(Modal, title="Edit Your Post"):
         self.add_item(self.new_content)
 
     async def on_submit(self, interaction: discord.Interaction):
-        ctx = await commands.Context.from_interaction(interaction)
-        cog = ctx.bot.get_cog("DisForumDaBest")
-        if cog:
-            await cog.edit_post(ctx, message_id=self.message_id, new_content=self.new_content.value)
+        try:
+            ctx = await commands.Context.from_interaction(interaction)
+            cog = ctx.bot.get_cog("DisForumDaBest")
+            if cog:
+                await cog.edit_post(ctx, message_id=self.message_id, new_content=self.new_content.value)
+        except Exception as e:
+            await interaction.followup.send(f"An error occurred: {e}\n```{traceback.format_exc()}```", ephemeral=True)
 
 class DisForumDaBest(commands.Cog):
     def __init__(self, bot):
@@ -51,7 +55,6 @@ class DisForumDaBest(commands.Cog):
         if message.channel.parent_id != watched_id:
             return
 
-        # Repost as embed
         embed = discord.Embed(
             title=f"{message.author.display_name} posted:",
             description=message.content,
@@ -144,4 +147,7 @@ class DisForumDaBest(commands.Cog):
         if str(interaction.user.id) != user_id:
             return await interaction.response.send_message("You can only edit your own posts.", ephemeral=True)
 
-        await interaction.response.send_modal(EditModal(message_id=int(message_id)))
+        try:
+            await interaction.response.send_modal(EditModal(message_id=int(message_id)))
+        except Exception as e:
+            await interaction.followup.send(f"Something went wrong: {e}\n```{traceback.format_exc()}```", ephemeral=True)
