@@ -27,7 +27,7 @@ class EditModal(Modal, title="Edit Your Post"):
             await self.cog.edit_post(fake_ctx, message_id=self.message_id, new_content=self.new_content.value)
         except Exception:
             try:
-                await self.author.send(f"EditModal error:```{traceback.format_exc()}```")
+                await self.author.send(f"EditModal error:\n```{traceback.format_exc()}```")
             except Exception:
                 pass
 
@@ -101,7 +101,10 @@ class DisForumDaBest(commands.Cog):
         if not message_id:
             target_msg = await self.find_user_embed_post(thread, ctx.author)
         else:
-            target_msg = await thread.fetch_message(message_id)
+            try:
+                target_msg = await thread.fetch_message(message_id)
+            except discord.NotFound:
+                return await ctx.send("That message could not be found.")
 
         if not target_msg:
             return await ctx.send("No tracked post found.")
@@ -159,6 +162,6 @@ class DisForumDaBest(commands.Cog):
             await interaction.response.send_modal(EditModal(self, interaction.user, interaction.channel, int(message_id)))
         except Exception:
             try:
-                await interaction.user.send(f"Interaction error:```{traceback.format_exc()}```")
+                await interaction.user.send(f"Interaction error:\n```{traceback.format_exc()}```")
             except Exception:
                 pass
