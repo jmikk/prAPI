@@ -155,5 +155,5 @@ class DisForumDaBest(commands.Cog):
 
             await interaction.response.send_modal(EditModal(self, interaction.user, interaction.channel, int(message_id)))
         except Exception as e:
-            try:
-                await interaction.user.send(f"Error from button interaction:
+            await interaction.user.send(f"Error from button interaction:\n```\n{traceback.format_exc()}\n```")
+            return
