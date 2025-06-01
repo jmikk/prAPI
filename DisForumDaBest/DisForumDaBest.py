@@ -152,8 +152,6 @@ class DisForumDaBest(commands.Cog):
                     name=f"Edit History: {ctx.author.display_name} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}",
                     content="Original post log"
                 )
-                starter_message = await new_thread.fetch_message(new_thread.id)
-                await starter_message.edit(content="Original post log")
                 await new_thread.send(
                     content=f"**Original version (V1) on {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}**",
                     embed=original_embed
