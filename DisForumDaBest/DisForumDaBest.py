@@ -148,15 +148,12 @@ class DisForumDaBest(commands.Cog):
                     embed=original_embed
                 )
             else:
-                new_thread = await mod_locker.create_thread(
+                new_thread_message = await mod_locker.create_thread(
                     name=f"Edit History: {ctx.author.display_name} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}",
-                    content="Original post log"
-                )
-                await new_thread.send(
                     content=f"**Original version (V1) on {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}**",
                     embed=original_embed
                 )
-                await self.config.guild(ctx.guild).edit_threads.set_raw(msg_id, value=new_thread.id)
+                await self.config.guild(ctx.guild).edit_threads.set_raw(msg_id, value=new_thread_message.id)
 
         await self.config.guild(ctx.guild).edit_counts.set_raw(msg_id, value=version_number + 1)
 
