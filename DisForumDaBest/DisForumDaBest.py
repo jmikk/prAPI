@@ -23,14 +23,12 @@ class EditModal(Modal, title="Edit Your Post"):
                     self.guild = guild
 
             fake_ctx = FakeCtx(self.author, self.thread, self.thread.guild)
-            await interaction.response.defer(ephemeral=True)
             await self.cog.edit_post(
                 fake_ctx,
                 message_id=self.message_id,
                 new_content=self.new_content.value,
-                respond_func=lambda msg: interaction.followup.send(msg)
+                respond_func=lambda msg: interaction.followup.send(msg, ephemeral=True)
             )
-
         except Exception:
             try:
                 await self.author.send(f"EditModal error:\n```{traceback.format_exc()}```")
@@ -107,16 +105,16 @@ class DisForumDaBest(commands.Cog):
             return await respond_func("This command must be used in a thread.")
 
         thread = ctx.channel
-        if not message_id:
-            target_msg = await self.find_user_embed_post(thread, ctx.author)
-        else:
+
+        if message_id:
             try:
                 target_msg = await thread.fetch_message(message_id)
             except discord.NotFound:
                 return await respond_func("That message could not be found.")
-
-        if not target_msg:
-            return await respond_func("No tracked post found.")
+        else:
+            target_msg = await self.find_user_embed_post(thread, ctx.author)
+            if not target_msg:
+                return await respond_func("No tracked post found.")
 
         original_embed = target_msg.embeds[0]
         msg_id = str(target_msg.id)
