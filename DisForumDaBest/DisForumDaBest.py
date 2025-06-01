@@ -5,18 +5,26 @@ import datetime
 import traceback
 
 class EditModal(Modal, title="Edit Your Post"):
-    def __init__(self, message_id):
+    def __init__(self, cog, author, thread, message_id):
         super().__init__()
+        self.cog = cog
+        self.author = author
+        self.thread = thread
         self.message_id = message_id
         self.new_content = TextInput(label="New content", style=discord.TextStyle.paragraph)
         self.add_item(self.new_content)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            ctx = await commands.Context.from_interaction(interaction)
-            cog = ctx.bot.get_cog("DisForumDaBest")
-            if cog:
-                await cog.edit_post(ctx, message_id=self.message_id, new_content=self.new_content.value)
+            class FakeCtx:
+                def __init__(self, author, channel, guild):
+                    self.author = author
+                    self.channel = channel
+                    self.guild = guild
+                    self.send = lambda m: interaction.followup.send(m, ephemeral=True)
+
+            fake_ctx = FakeCtx(self.author, self.thread, self.thread.guild)
+            await self.cog.edit_post(fake_ctx, message_id=self.message_id, new_content=self.new_content.value)
         except Exception as e:
             await interaction.followup.send(f"An error occurred: {e}\n```{traceback.format_exc()}```", ephemeral=True)
 
@@ -34,14 +42,12 @@ class DisForumDaBest(commands.Cog):
     @commands.command()
     @commands.guild_only()
     async def set_forum_watch(self, ctx, forum: discord.ForumChannel):
-        """Set the forum to watch."""
         await self.config.guild(ctx.guild).watched_forum.set(forum.id)
         await ctx.send(f"Set watched forum to: {forum.name}")
 
     @commands.command()
     @commands.guild_only()
     async def set_mod_locker(self, ctx, forum: discord.ForumChannel):
-        """Set the mod locker forum."""
         await self.config.guild(ctx.guild).mod_locker.set(forum.id)
         await ctx.send(f"Set mod locker to: {forum.name}")
 
@@ -85,7 +91,6 @@ class DisForumDaBest(commands.Cog):
 
     @commands.command()
     async def edit_post(self, ctx, message_id: int = None, *, new_content: str = None):
-        """Edit your last post in the thread."""
         if not isinstance(ctx.channel, discord.Thread):
             return await ctx.send("This command must be used in a thread.")
 
@@ -143,11 +148,11 @@ class DisForumDaBest(commands.Cog):
         if not interaction.data.get("custom_id", "").startswith("edit:"):
             return
 
-        _, user_id, message_id = interaction.data["custom_id"].split(":")
-        if str(interaction.user.id) != user_id:
-            return await interaction.response.send_message("You can only edit your own posts.", ephemeral=True)
-
         try:
-            await interaction.response.send_modal(EditModal(message_id=int(message_id)))
+            _, user_id, message_id = interaction.data["custom_id"].split(":")
+            if str(interaction.user.id) != user_id:
+                return await interaction.response.send_message("You can only edit your own posts.", ephemeral=True)
+
+            await interaction.response.send_modal(EditModal(self, interaction.user, interaction.channel, int(message_id)))
         except Exception as e:
             await interaction.followup.send(f"Something went wrong: {e}\n```{traceback.format_exc()}```", ephemeral=True)
