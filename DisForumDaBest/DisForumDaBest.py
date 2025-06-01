@@ -9,7 +9,8 @@ class DisForumDaBest(commands.Cog):
         self.config.register_guild(
             watched_forum=None,
             mod_locker=None,
-            edit_threads={}  # message_id -> thread_id
+            edit_threads={},  # message_id -> thread_id
+            edit_counts={}    # message_id -> int (version count)
         )
 
     @commands.command()
@@ -42,7 +43,7 @@ class DisForumDaBest(commands.Cog):
             description=message.content,
             timestamp=datetime.datetime.utcnow()
         )
-        embed.set_footer(text="Posted on")
+        embed.set_footer(text="Posted on • Use `/edit_post` in this thread to update your message")
         embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
 
         files = [await a.to_file() for a in message.attachments]
@@ -74,34 +75,43 @@ class DisForumDaBest(commands.Cog):
             return await ctx.send("No tracked post found.")
 
         original_embed = target_msg.embeds[0]
-        msg_id = target_msg.id
+        msg_id = str(target_msg.id)
 
         mod_locker_id = await self.config.guild(ctx.guild).mod_locker()
         mod_locker = ctx.guild.get_channel(mod_locker_id)
         thread_id_map = await self.config.guild(ctx.guild).edit_threads()
+        edit_count_map = await self.config.guild(ctx.guild).edit_counts()
+
+        version_number = edit_count_map.get(msg_id, 1)
 
         if isinstance(mod_locker, discord.ForumChannel):
-            if str(msg_id) in thread_id_map:
+            if msg_id in thread_id_map:
                 # Reuse thread
-                locker_thread_id = thread_id_map[str(msg_id)]
-                locker_thread = mod_locker.get_thread(locker_thread_id)
-                if locker_thread is None:
-                    locker_thread = await mod_locker.fetch_thread(locker_thread_id)
-                await locker_thread.send(embed=original_embed)
+                locker_thread_id = thread_id_map[msg_id]
+                locker_thread = mod_locker.get_thread(locker_thread_id) or await mod_locker.fetch_thread(locker_thread_id)
+                await locker_thread.send(
+                    content=f"**Version {version_number} on {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}**",
+                    embed=original_embed
+                )
             else:
                 # Create new thread and save it
                 new_thread = await mod_locker.create_thread(
-                    name=f"Edit History: {ctx.author.display_name} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}",
-                    content="Original version of the post before edit:",
+                    name=f"Edit History: {ctx.author.display_name} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}"
+                )
+                await new_thread.send(
+                    content=f"**Original version (V1) on {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}**",
                     embed=original_embed
                 )
-                await self.config.guild(ctx.guild).edit_threads.set_raw(str(msg_id), value=new_thread.id)
+                await self.config.guild(ctx.guild).edit_threads.set_raw(msg_id, value=new_thread.id)
+
+        # Update version count
+        await self.config.guild(ctx.guild).edit_counts.set_raw(msg_id, value=version_number + 1)
 
         # Edit embed
         new_embed = original_embed.copy()
         new_embed.description = new_content
         new_embed.timestamp = datetime.datetime.utcnow()
-        new_embed.set_footer(text="Edited on")
+        new_embed.set_footer(text="Edited on • Use `/edit_post` in this thread to update again")
 
         await target_msg.edit(embed=new_embed)
         await ctx.send("Post updated and original archived.")
