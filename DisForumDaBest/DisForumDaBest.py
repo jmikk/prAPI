@@ -162,9 +162,6 @@ class DisForumDaBest(commands.Cog):
             await interaction.response.send_modal(EditModal(self, interaction.user, interaction.channel, int(message_id)))
         except Exception:
             try:
-                await interaction.user.send(f"Interaction error:
-```
-{traceback.format_exc()}
-```")
+                await interaction.user.send(f"Interaction error:```{traceback.format_exc()}```")
             except Exception:
                 pass
