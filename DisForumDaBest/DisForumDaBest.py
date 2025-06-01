@@ -25,8 +25,14 @@ class EditModal(Modal, title="Edit Your Post"):
 
             fake_ctx = FakeCtx(self.author, self.thread, self.thread.guild)
             await self.cog.edit_post(fake_ctx, message_id=self.message_id, new_content=self.new_content.value)
-        except Exception as e:
-            await interaction.followup.send(f"An error occurred: {e}\n```{traceback.format_exc()}```", ephemeral=True)
+        except Exception:
+            try:
+                await self.author.send(f"EditModal error:
+```
+{traceback.format_exc()}
+```")
+            except Exception:
+                pass
 
 class DisForumDaBest(commands.Cog):
     def __init__(self, bot):
@@ -35,8 +41,8 @@ class DisForumDaBest(commands.Cog):
         self.config.register_guild(
             watched_forum=None,
             mod_locker=None,
-            edit_threads={},  # message_id -> thread_id
-            edit_counts={}    # message_id -> int (version count)
+            edit_threads={},
+            edit_counts={}
         )
 
     @commands.command()
@@ -154,6 +160,11 @@ class DisForumDaBest(commands.Cog):
                 return await interaction.response.send_message("You can only edit your own posts.", ephemeral=True)
 
             await interaction.response.send_modal(EditModal(self, interaction.user, interaction.channel, int(message_id)))
-        except Exception as e:
-            await interaction.user.send(f"Error from button interaction:\n```\n{traceback.format_exc()}\n```")
-            return
+        except Exception:
+            try:
+                await interaction.user.send(f"Interaction error:
+```
+{traceback.format_exc()}
+```")
+            except Exception:
+                pass
