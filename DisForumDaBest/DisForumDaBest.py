@@ -79,7 +79,7 @@ class DisForumDaBest(commands.Cog):
         files = [await a.to_file() for a in message.attachments]
 
         view = View()
-        button = Button(label="Edit Post", style=discord.ButtonStyle.primary)
+        button = Button(label="Edit Post", style=discord.ButtonStyle.primary, custom_id=f"edit_button:{message.id}")
 
         async def button_callback(interaction: discord.Interaction):
             if interaction.user.id != message.author.id:
@@ -152,6 +152,8 @@ class DisForumDaBest(commands.Cog):
                     name=f"Edit History: {ctx.author.display_name} @ {datetime.datetime.utcnow().isoformat(timespec='seconds')}",
                     content="Original post log"
                 )
+                starter_message = await new_thread.fetch_message(new_thread.id)
+                await starter_message.edit(content="Original post log")
                 await new_thread.send(
                     content=f"**Original version (V1) on {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}**",
                     embed=original_embed
