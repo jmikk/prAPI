@@ -73,13 +73,21 @@ class DisForumDaBest(commands.Cog):
             description=message.content,
             timestamp=datetime.datetime.utcnow()
         )
-        embed.set_footer(text="Posted on • Use `/edit_post` in this thread to update your message")
+        embed.set_footer(text="Posted on • Use the button below to update your message")
         embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
 
         files = [await a.to_file() for a in message.attachments]
 
         view = View()
-        view.add_item(Button(label="Edit Post", style=discord.ButtonStyle.primary, custom_id=f"edit:{message.author.id}:{message.id}"))
+        button = Button(label="Edit Post", style=discord.ButtonStyle.primary)
+
+        async def button_callback(interaction: discord.Interaction):
+            if interaction.user.id != message.author.id:
+                return await interaction.response.send_message("You can only edit your own posts.", ephemeral=True)
+            await interaction.response.send_modal(EditModal(self, interaction.user, interaction.channel, message.id))
+
+        button.callback = button_callback
+        view.add_item(button)
 
         await message.channel.send(embed=embed, files=files, view=view)
         await message.delete()
@@ -110,7 +118,9 @@ class DisForumDaBest(commands.Cog):
             try:
                 target_msg = await thread.fetch_message(message_id)
             except discord.NotFound:
-                return await respond_func("That message could not be found.")
+                target_msg = await self.find_user_embed_post(thread, ctx.author)
+                if not target_msg:
+                    return await respond_func("That message could not be found.")
         else:
             target_msg = await self.find_user_embed_post(thread, ctx.author)
             if not target_msg:
@@ -153,22 +163,3 @@ class DisForumDaBest(commands.Cog):
 
         await target_msg.edit(embed=new_embed)
         await respond_func("Post updated and original archived.")
-
-    @commands.Cog.listener()
-    async def on_interaction(self, interaction: discord.Interaction):
-        if not interaction.type == discord.InteractionType.component:
-            return
-        if not interaction.data.get("custom_id", "").startswith("edit:"):
-            return
-
-        try:
-            _, user_id, message_id = interaction.data["custom_id"].split(":")
-            if str(interaction.user.id) != user_id:
-                return await interaction.response.send_message("You can only edit your own posts.", ephemeral=True)
-
-            await interaction.response.send_modal(EditModal(self, interaction.user, interaction.channel, int(message_id)))
-        except Exception:
-            try:
-                await interaction.user.send(f"Interaction error:\n```{traceback.format_exc()}```")
-            except Exception:
-                pass
