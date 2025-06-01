@@ -21,10 +21,14 @@ class EditModal(Modal, title="Edit Your Post"):
                     self.author = author
                     self.channel = channel
                     self.guild = guild
-                    self.send = lambda m: interaction.followup.send(m, ephemeral=True)
 
             fake_ctx = FakeCtx(self.author, self.thread, self.thread.guild)
-            await self.cog.edit_post(fake_ctx, message_id=self.message_id, new_content=self.new_content.value)
+            await self.cog.edit_post(
+                fake_ctx,
+                message_id=self.message_id,
+                new_content=self.new_content.value,
+                respond_func=lambda msg: interaction.followup.send(msg, ephemeral=True)
+            )
         except Exception:
             try:
                 await self.author.send(f"EditModal error:\n```{traceback.format_exc()}```")
@@ -93,9 +97,12 @@ class DisForumDaBest(commands.Cog):
         return None
 
     @commands.command()
-    async def edit_post(self, ctx, message_id: int = None, *, new_content: str = None):
+    async def edit_post(self, ctx, message_id: int = None, *, new_content: str = None, respond_func=None):
+        if respond_func is None:
+            respond_func = ctx.send
+
         if not isinstance(ctx.channel, discord.Thread):
-            return await ctx.send("This command must be used in a thread.")
+            return await respond_func("This command must be used in a thread.")
 
         thread = ctx.channel
         if not message_id:
@@ -104,10 +111,10 @@ class DisForumDaBest(commands.Cog):
             try:
                 target_msg = await thread.fetch_message(message_id)
             except discord.NotFound:
-                return await ctx.send("That message could not be found.")
+                return await respond_func("That message could not be found.")
 
         if not target_msg:
-            return await ctx.send("No tracked post found.")
+            return await respond_func("No tracked post found.")
 
         original_embed = target_msg.embeds[0]
         msg_id = str(target_msg.id)
@@ -145,7 +152,7 @@ class DisForumDaBest(commands.Cog):
         new_embed.set_footer(text="Edited on • Use `/edit_post` in this thread to update again")
 
         await target_msg.edit(embed=new_embed)
-        await ctx.send("Post updated and original archived.")
+        await respond_func("Post updated and original archived.")
 
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
