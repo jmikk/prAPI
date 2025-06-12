@@ -1133,6 +1133,7 @@ class TagValueView(View):
     @commands.command()
     @commands.is_owner()
     async def patch_tax_credit(self, ctx):
+        await ctx.send("Starting")
         all_users = await self.config.all_users()
         updated = 0
         for user_id, data in all_users.items():
