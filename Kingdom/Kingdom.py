@@ -508,6 +508,25 @@ class Kingdom(commands.Cog):
 
     @commands.command()
     @commands.admin_or_permissions(administrator=True)
+    async def list_project_ids(self, ctx):
+        """Admin only: List all current server-wide project names and their IDs."""
+        projects = await self.get_projects(ctx.guild)
+    
+        if not projects:
+            await ctx.send("There are no current server projects.")
+            return
+    
+        lines = [f"**{p['name']}** — ID: `{p['id']}`" for p in projects]
+        message = "\n".join(lines)
+    
+        # Split into chunks if too long
+        chunks = [message[i:i+1900] for i in range(0, len(message), 1900)]
+        for chunk in chunks:
+            await ctx.send(chunk)
+
+
+    @commands.command()
+    @commands.admin_or_permissions(administrator=True)
     async def remove_project(self, ctx, project_id: str):
         """Admin only: Removes a project by ID from ongoing or completed projects."""
         projects = await self.get_projects(ctx.guild)
