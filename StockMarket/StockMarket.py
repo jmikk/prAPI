@@ -742,17 +742,45 @@ class StockMarket(commands.Cog):
 
 
     @commands.command()
-    async def regional_debt(self,ctx,payment=0):
+    async def regional_debt(self, ctx, payment: float = 0):
+        """View or pay toward the region's collective debt."""
         user = ctx.author
         balance = await self.economy_config.user(user).master_balance()
         tax = await self.config.tax()
         spent_tax = await self.config.spent_tax()
-        if payment > 0 and balance >= payment:
-            await ctx.send(f"Thank you for your donation to offset the reginoal debt, {payment} WCs have been deducted from your account.")
-            await self.economy_config.user(user).master_balance.set(balance - payment)
-        elif payment > 0 and balance < payment:
-            await ctx.send(f"Sorry you only have {balance} WC.")
-        await ctx.send(f"The current regional debt is: {(tax - spent_tax):.2f} you can use this same command to help pay off part of the debt by including a number of Wellcoins.")
+        debt = tax - spent_tax
+    
+        embed = discord.Embed(
+            title="🏛️ Regional Debt Report",
+            color=discord.Color.red()
+        )
+    
+        # Handle payment if applicable
+        if payment > 0:
+            if balance >= payment:
+                await self.economy_config.user(user).master_balance.set(balance - payment)
+                embed.add_field(
+                    name="✅ Payment Received",
+                    value=f"Thank you for your donation of **{payment:.2f} WC** to offset the regional debt!",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="❌ Insufficient Funds",
+                    value=f"You tried to donate **{payment:.2f} WC**, but you only have **{balance:.2f} WC**.",
+                    inline=False
+                )
+    
+        # Show debt status
+        embed.add_field(
+            name="📉 Current Regional Debt",
+            value=f"The region still owes **{debt:.2f} WC**.\nUse this command again with a number to help repay it!",
+            inline=False
+        )
+    
+        embed.set_footer(text="Every donation helps reduce the region's financial burden.")
+    
+        await ctx.send(embed=embed)
 
     @commands.command()
     @commands.has_permissions(administrator=True)
