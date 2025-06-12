@@ -112,8 +112,9 @@ class StockMarket(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier="SM9003", force_registration=True)
         self.economy_config = Config.get_conf(None, identifier=345678654456, force_registration=False)
-        self.config.register_user(stocks={}, avg_buy_prices={})
+        self.config.register_user(stocks={}, avg_buy_prices={},tax_credit=0)
         self.config.register_global(
+            tax=0
             stocks={},
             tags={},
             announcement_channel=None,
@@ -638,6 +639,7 @@ class StockMarket(commands.Cog):
             if owned.get(name, 0) < amount:
                 return await interaction.response.send_message("❌ You don't own that many shares.", ephemeral=True)
             owned[name] -= amount
+            
             if owned[name] <= 0:
                 del owned[name]
                 async with self.config.user(user).avg_buy_prices() as prices:
@@ -678,13 +680,25 @@ class StockMarket(commands.Cog):
     
         # Apply earnings
         balance = await self.economy_config.user(user).master_balance()
-        await self.economy_config.user(user).master_balance.set(balance + earnings)
+        tax_credit = await self.economy_config.user(user).tax_credit()
+        tax = earnings * .05
+        tax = tax - tax_credit
+        tax_credit = min(tax_credit - tax,0)
+        
+        await self.economy_config.user(user).tax_credit.set(tax_credit)
+        await self.economy_config.user(user).master_balance.set(balance + earnings - tax)
     
         self.last_day_trades -= earnings
         await interaction.response.send_message(
-            f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC**."
+            f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC, and paid {tax} in taxes**."
         )
 
+    
+    @commands.command()
+    async def tax_info(self, ctx):
+        await ctx.send("The current Tax rates are as follows: All stock sells 5%")
+        tax_credit = await self.economy_config.user(user).tax_credit()
+        await ctx.send(f"You currently have {tax_credit}. If you would like to earn more donate to a community project or scholarship.")
 
 
 
