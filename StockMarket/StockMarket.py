@@ -762,7 +762,7 @@ class StockMarket(commands.Cog):
                 await self.config.spent_tax.set(spent_tax + payment)
                 await self.economy_config.user(user).tax_credit.set((await self.economy_config.user(user).tax_credit()) + payment)
 
-                spent_tax = spent_tax + payment
+                tax = tax + payment
                 embed.add_field(
                     name="✅ Payment Received",
                     value=f"Thank you for your donation of **{payment:.2f} WC** to offset the regional debt!",
