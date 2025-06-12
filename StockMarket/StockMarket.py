@@ -111,8 +111,9 @@ class StockMarket(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier="SM9003", force_registration=True)
+        self.economy_config.register_user(tax_credit=0)
         self.economy_config = Config.get_conf(None, identifier=345678654456, force_registration=False)
-        self.config.register_user(stocks={}, avg_buy_prices={}, tax_credit=0)
+        self.config.register_user(stocks={}, avg_buy_prices={})
         self.config.register_global(
             tax=0,
             spent_tax=0,
@@ -124,9 +125,25 @@ class StockMarket(commands.Cog):
         self.last_day_trades = 0.0  # ✅ Add this line
 
         self.price_updater.start()
+#move tax_credits to the economy config 
 
     def cog_unload(self):
         self.price_updater.cancel()
+
+    @commands.is_owner()
+    @commands.command(name="migrate_tax_credit")
+    async def migrate_tax_credit(self, ctx):
+        """Owner-only command to migrate all users to include tax_credit in economy_config."""
+        all_users = await self.economy_config.all_users()
+        updated = 0
+    
+        for user_id, data in all_users.items():
+            if "tax_credit" not in data:
+                await self.economy_config.user(discord.Object(id=user_id)).tax_credit.set(0)
+                updated += 1
+    
+        await ctx.send(f"✅ Migration complete. Added 'tax_credit' to {updated} users.")
+
 
     @tasks.loop(hours=1)
     async def price_updater(self):
