@@ -694,7 +694,7 @@ class StockMarket(commands.Cog):
     
         self.last_day_trades -= earnings
         await interaction.response.send_message(
-            f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC, and paid {tax} in taxes**."
+            f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC, and paid {tax:.2f} in taxes**."
         )
     @commands.command(name="migrate_tax_credit")
     @commands.has_permissions(administrator=True)
