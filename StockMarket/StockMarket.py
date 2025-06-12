@@ -749,15 +749,15 @@ class StockMarket(commands.Cog):
 
     @commands.command()
     async def regional_debt(self, ctx, payment: float = 0):
-        """View or pay toward the region's collective debt."""
+        """View or pay toward the region's collective debt or surplus."""
         user = ctx.author
         balance = await self.economy_config.user(user).master_balance()
         tax = await self.config.tax()
-        spent_tax = await self.config.spent_tax() 
+        spent_tax = await self.config.spent_tax()
     
         embed = discord.Embed(
-            title="🏛️ Regional Debt Report",
-            color=discord.Color.red()
+            title="🏛️ Regional Financial Report",
+            color=discord.Color.green() if tax - spent_tax >= 0 else discord.Color.red()
         )
     
         # Handle payment if applicable
@@ -765,39 +765,47 @@ class StockMarket(commands.Cog):
             if balance >= payment:
                 await self.economy_config.user(user).master_balance.set(balance - payment)
                 await self.config.tax.set(tax + payment)
-                await self.economy_config.user(user).tax_credit.set((await self.economy_config.user(user).tax_credit()) + payment)
-
-                tax = tax + payment
+                await self.economy_config.user(user).tax_credit.set(
+                    (await self.economy_config.user(user).tax_credit()) + payment
+                )
+                tax += payment  # update local var
+    
                 embed.add_field(
                     name="✅ Payment Received",
-                    value=f"Thank you for your donation of **{payment:.2f} WC** to offset the regional debt!",
+                    value=f"Thank you for your donation of **{payment:.2f} WC** to the Wellspring fund!",
                     inline=False
                 )
                 embed.add_field(
-                name="🎟️ Your Tax Credit",
-                value=f"You now have **{await self.economy_config.user(user).tax_credit():.2f} WC** in tax credit.",
-                inline=False
-            )
-
+                    name="🎟️ Your Tax Credit",
+                    value=f"You now have **{await self.economy_config.user(user).tax_credit():.2f} WC** in tax credit.",
+                    inline=False
+                )
             else:
                 embed.add_field(
                     name="❌ Insufficient Funds",
                     value=f"You tried to donate **{payment:.2f} WC**, but you only have **{balance:.2f} WC**.",
                     inline=False
                 )
-        debt = tax - spent_tax
-
     
-        # Show debt status
-        embed.add_field(
-            name="📉 Current Regional Debt",
-            value=f"The region still owes **{debt:.2f} WC**.\nUse this command again with a number to help repay it!",
-            inline=False
-        )
+        # Determine financial state
+        net_balance = tax - spent_tax
+        if net_balance >= 0:
+            embed.add_field(
+                name="💰 Regional Surplus",
+                value=f"The Wellspring currently has a **surplus of {net_balance:.2f} WC**.",
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="📉 Regional Debt",
+                value=f"The region is in debt by **{abs(net_balance):.2f} WC**.\n"
+                      f"Use this command again with a number to help repay it!",
+                inline=False
+            )
     
-        embed.set_footer(text="Every donation helps reduce the region's financial burden.")
-    
+        embed.set_footer(text="Every donation helps shape the Wellspring's future.")
         await ctx.send(embed=embed)
+
 
     @commands.command()
     @commands.has_permissions(administrator=True)
