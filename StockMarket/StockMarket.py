@@ -111,7 +111,6 @@ class StockMarket(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier="SM9003", force_registration=True)
-        self.economy_config.register_user(tax_credit=0)
         self.economy_config = Config.get_conf(None, identifier=345678654456, force_registration=False)
         self.config.register_user(stocks={}, avg_buy_prices={})
         self.config.register_global(
@@ -122,6 +121,8 @@ class StockMarket(commands.Cog):
             announcement_channel=None,
             last_commodity_update=None
         )
+        self.economy_config.register_user(tax_credit=0)
+
         self.last_day_trades = 0.0  # ✅ Add this line
 
         self.price_updater.start()
