@@ -1074,6 +1074,19 @@ class StockMarket(commands.Cog):
         view.message = await ctx.send("⏳ Loading tag multipliers...")
         await view.update_embed()
 
+    @commands.command()
+    @commands.is_owner()
+    async def patch_tax_credit(self, ctx):
+        await ctx.send("Starting")
+        all_users = await self.config.all_users()
+        updated = 0
+        for user_id, data in all_users.items():
+            if "tax_credit" not in data:
+                await self.config.user(discord.Object(id=int(user_id))).tax_credit.set(0)
+                updated += 1
+        await ctx.send(f"✅ Patched tax_credit for {updated} users.")
+    
+
 
 class TagValueView(View):
     def __init__(self, cog, entries, per_page=25, timeout=120):
@@ -1129,19 +1142,6 @@ class TagValueView(View):
         if self.message:
             await self.message.edit(view=None)
 
-
-    @commands.command()
-    @commands.is_owner()
-    async def patch_tax_credit(self, ctx):
-        await ctx.send("Starting")
-        all_users = await self.config.all_users()
-        updated = 0
-        for user_id, data in all_users.items():
-            if "tax_credit" not in data:
-                await self.config.user(discord.Object(id=int(user_id))).tax_credit.set(0)
-                updated += 1
-        await ctx.send(f"✅ Patched tax_credit for {updated} users.")
-    
     
     
     
