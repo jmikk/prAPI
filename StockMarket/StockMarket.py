@@ -686,9 +686,13 @@ class StockMarket(commands.Cog):
         balance = await self.economy_config.user(user).master_balance()
         tax_credit = await self.economy_config.user(user).tax_credit()
         tax = earnings * .05
-        tax_credit = min(tax_credit - tax,0)
-        tax = tax - tax_credit
-        
+        if tax >= tax_credit:
+            tax = tax - tax_credit
+            tax_credit = 0
+        elif tax < tax_credit
+            tax_credit = tax_credit - tax    
+            tax = 0
+            
         await self.economy_config.user(user).tax_credit.set(tax_credit)
         await self.economy_config.user(user).master_balance.set(balance + earnings - tax)
     
