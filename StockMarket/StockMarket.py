@@ -699,7 +699,7 @@ class StockMarket(commands.Cog):
     async def tax_info(self, ctx):
         user = ctx.author
         await ctx.send("The current Tax rates are as follows: All stock sells 5%")
-        tax_credit = await self.economy_config.user(user).tax_credit()
+        tax_credit = (await self.economy_config.user(user).tax_credit()) or 0
         await ctx.send(f"You currently have {tax_credit}. If you would like to earn more donate to a community project or scholarship.")
         total_tax = await self.economy_config.tax()
         await ctx.send(f"The total tax collected so far is {total_tax}")
@@ -1073,19 +1073,6 @@ class StockMarket(commands.Cog):
         view = TagValueView(self, active_tags)
         view.message = await ctx.send("⏳ Loading tag multipliers...")
         await view.update_embed()
-
-    @commands.command()
-    @commands.is_owner()
-    async def patch_tax_credit(self, ctx):
-        await ctx.send("Starting")
-        all_users = await self.config.all_users()
-        updated = 0
-        for user_id, data in all_users.items():
-            if "tax_credit" not in data:
-                await self.config.user(discord.Object(id=int(user_id))).tax_credit.set(0)
-                updated += 1
-        await ctx.send(f"✅ Patched tax_credit for {updated} users.")
-    
 
 
 class TagValueView(View):
