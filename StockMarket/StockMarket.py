@@ -704,7 +704,7 @@ class StockMarket(commands.Cog):
         await ctx.send(f"The total tax collected so far is {total_tax}"
 
     @commands.command()
-    async def regional_debt(self,ctx,payment=0)
+    async def regional_debt(self,ctx,payment=0):
         balance = await self.economy_config.user(user).master_balance()
         tax = await self.economy_config.tax()
         spent_tax = await self.economy_congig.spent_tax()
