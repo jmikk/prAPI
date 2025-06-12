@@ -326,39 +326,49 @@ class FundModal(Modal):
         self.add_item(self.input)
 
     async def on_submit(self, interaction: discord.Interaction):
-        amount = self.input.value.lower()
-        self.menu.message = interaction.message
-        if amount == "all":
-            amount = self.user_balance
-        else:
-            try:
-                amount = int(amount)
-                if amount <= 0 or amount > self.user_balance:
-                    raise ValueError
-            except ValueError:
-                await interaction.response.send_message("Invalid amount!", ephemeral=True)
-                return
-        
-        project = self.menu.projects[self.menu.current_index]
-        project['funded'] += amount
-        project.setdefault("donors", {})
-        project["donors"][interaction.user.display_name] = project["donors"].get(interaction.user.display_name, 0) + amount
-        await self.menu.cog.update_balance(interaction.user, -amount)
-        await self.menu.cog.update_tax_credits(interaction.user, amount)
+        try:
+            amount = self.input.value.lower()
+            self.menu.message = self.message  # or interaction.message if that works in your context
+    
+            if amount == "all":
+                amount = self.user_balance
+            else:
+                try:
+                    amount = int(amount)
+                    if amount <= 0 or amount > self.user_balance:
+                        raise ValueError
+                except ValueError:
+                    await interaction.response.send_message("Invalid amount!", ephemeral=True)
+                    return
+    
+            project = self.menu.projects[self.menu.current_index]
+            project['funded'] += amount
+            project.setdefault("donors", {})
+            project["donors"][interaction.user.display_name] = project["donors"].get(interaction.user.display_name, 0) + amount
+    
+            await self.menu.cog.update_balance(interaction.user, -amount)
+            await self.menu.cog.update_tax_credits(interaction.user, amount)
+    
+            if project['funded'] >= project['goal']:
+                await self.menu.update_message()
+                await interaction.response.send_message(f"Project {project['name']} has been fully funded! 🎉")
+                self.menu.projects.pop(self.menu.current_index)
+                completed_projects = await self.menu.cog.get_completed_projects(interaction.guild)
+                completed_projects.append(project)
+                await self.menu.cog.update_completed_projects(interaction.guild, completed_projects)
+                await self.menu.cog.update_projects(interaction.guild, self.menu.projects)
+            else:
+                await self.menu.update_message()
+                await interaction.response.defer()
+                await self.menu.cog.update_projects(interaction.guild, self.menu.projects)
+    
+        except Exception as e:
+            print(f"[FundModal Error] {e}")
+            await interaction.response.send_message(
+                "⚠️ Something went wrong while processing your donation. Please try again or contact an admin.",
+                ephemeral=True
+            )
 
-        if project['funded'] >= project['goal']:
-            await self.menu.update_message()
-            await interaction.response.send_message(f"Project {project['name']} has been fully funded! 🎉")
-            self.menu.projects.pop(self.menu.current_index)
-            completed_projects = await self.menu.cog.get_completed_projects(interaction.guild)
-            completed_projects.append(project)
-            await self.menu.cog.update_completed_projects(interaction.guild, completed_projects)
-            await self.menu.cog.update_projects(interaction.guild, self.menu.projects)  # Update project list in config
-
-        else:
-            await self.menu.update_message()
-            await interaction.response.defer()
-            await self.menu.cog.update_projects(interaction.guild, self.menu.projects)  # Update project list in config
 
 
 class Kingdom(commands.Cog):
