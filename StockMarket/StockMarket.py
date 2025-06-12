@@ -716,12 +716,30 @@ class StockMarket(commands.Cog):
     
     @commands.command()
     async def tax_info(self, ctx):
+        """Display current tax rates and the user's tax credit."""
         user = ctx.author
-        await ctx.send("The current Tax rates are as follows: All stock sells 5%")
         tax_credit = (await self.economy_config.user(user).tax_credit()) or 0
-        await ctx.send(f"You currently have {tax_credit}. If you would like to earn more donate to a community project or scholarship.")
         total_tax = await self.config.tax()
-        await ctx.send(f"The total tax collected so far is {total_tax}")
+    
+        embed = discord.Embed(
+            title="🧾 Stock Market Tax Info",
+            color=discord.Color.gold()
+        )
+        embed.add_field(name="📊 Tax Rate", value="All stock sells are taxed at **5%**", inline=False)
+        embed.add_field(
+            name="💸 Your Tax Credit",
+            value=f"You currently have **{tax_credit:.2f} WC** in tax credit.\nEarn more by donating to community projects or scholarships!",
+            inline=False
+        )
+        embed.add_field(
+            name="🏦 Total Tax Collected",
+            value=f"**{total_tax:.2f} WC** has been collected from all traders.",
+            inline=False
+        )
+        embed.set_footer(text="Tax credits automatically reduce your owed tax until depleted.")
+    
+        await ctx.send(embed=embed)
+
 
     @commands.command()
     async def regional_debt(self,ctx,payment=0):
