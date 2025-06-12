@@ -348,7 +348,7 @@ class FundModal(Modal):
             project["donors"][interaction.user.display_name] = project["donors"].get(interaction.user.display_name, 0) + amount
     
             await self.menu.cog.update_balance(interaction.user, -amount)
-            await self.menu.cog.update_tax_credits(interaction.user, amount)
+            await self.menu.cog.update_tax_credit(interaction.user, amount)
     
             if project['funded'] >= project['goal']:
                 await self.menu.update_message()
@@ -399,13 +399,13 @@ class Kingdom(commands.Cog):
     
         return incomplete_projects
 
-    async def get_tax_credits(self, user: discord.Member) -> int:
-        return await self.config.user(user).tax_credits()
+    async def get_tax_credit(self, user: discord.Member) -> int:
+        return await self.config.user(user).tax_credit()
 
-    async def update_tax_credits(self, user: discord.Member, amount: int) -> int:
-        current = await self.get_tax_credits(user)
+    async def update_tax_credit(self, user: discord.Member, amount: int) -> int:
+        current = await self.get_tax_credit(user)
         new_total = current + amount
-        await self.config.user(user).tax_credits.set(new_total)
+        await self.config.user(user).tax_credit.set(new_total)
         return new_total
 
     async def get_personal_projects(self, guild):
