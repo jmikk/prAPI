@@ -343,6 +343,7 @@ class FundModal(Modal):
         project.setdefault("donors", {})
         project["donors"][interaction.user.display_name] = project["donors"].get(interaction.user.display_name, 0) + amount
         await self.menu.cog.update_balance(interaction.user, -amount)
+        await self.menu.cog.update_tax_credits(interaction.user, amount)
 
         if project['funded'] >= project['goal']:
             await self.menu.update_message()
@@ -363,7 +364,7 @@ class Kingdom(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
-        self.config.register_guild(projects=[], completed_projects=[],personal_projects=[])
+        self.config.register_guild(projects=[], completed_projects=[],personal_projects=[],tax_credits=0)
         self.config.register_user(completed_personal_projectz=[])
     
     async def get_incomplete_personal_projects(self, user, guild):
@@ -385,7 +386,14 @@ class Kingdom(commands.Cog):
     
         return incomplete_projects
 
+    async def get_tax_credits(self, user: discord.Member) -> int:
+        return await self.config.user(user).tax_credits()
 
+    async def update_tax_credits(self, user: discord.Member, amount: int) -> int:
+        current = await self.get_tax_credits(user)
+        new_total = current + amount
+        await self.config.user(user).tax_credits.set(new_total)
+        return new_total
 
     async def get_personal_projects(self, guild):
         return await self.config.guild(guild).personal_projects()
@@ -458,7 +466,7 @@ class Kingdom(commands.Cog):
         embed = discord.Embed(
             title=f"{project['name']}",
             description=f"{project['description']}\n\nTotal Needed: {project['goal']} WellCoins\n"
-                        f"Funded: {project['funded']} WellCoins ({percentage_funded:.2f}% Funded)",
+                        f"Funded: {project['funded']} WellCoins ({percentage_funded:,.2f}% Funded)",
             color=discord.Color.gold()
         )
         
