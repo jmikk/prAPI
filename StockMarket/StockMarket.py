@@ -797,7 +797,8 @@ class StockMarket(commands.Cog):
         regiona_debt = await self.config.spent_tax()
         await self.config.spent_tax.set(regiona_debt + debt)
         RB = await self.config.spent_tax()
-        await ctx.send(f"The current Wellspring debt is {RB}")
+        await ctx.send(f"The current Wellspring debt is {RB:,.2f}")
+
 
         
 
