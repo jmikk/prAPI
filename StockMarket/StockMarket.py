@@ -689,7 +689,7 @@ class StockMarket(commands.Cog):
         if tax >= tax_credit:
             tax = tax - tax_credit
             tax_credit = 0
-        elif tax < tax_credit
+        elif tax < tax_credit:
             tax_credit = tax_credit - tax    
             tax = 0
             
