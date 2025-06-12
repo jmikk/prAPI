@@ -713,7 +713,7 @@ class StockMarket(commands.Cog):
             await self.economy_config.user(user).master_balance.set(balance - payment)
         elif payment > 0 and balance < payment:
             await ctx.send(f"Sorry you only have {balance} WC.")
-        await ctx.send(f"The current regional debt is: {(tax - spent_tax):.2f} you can use this same command to help pay off part of the debt by including a number of Wellcoins."
+        await ctx.send(f"The current regional debt is: {(tax - spent_tax):.2f} you can use this same command to help pay off part of the debt by including a number of Wellcoins.")
 
     @commands.command()
     @commands.has_permissions(administrator=True)
