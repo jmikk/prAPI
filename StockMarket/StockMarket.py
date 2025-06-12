@@ -129,22 +129,7 @@ class StockMarket(commands.Cog):
 
     def cog_unload(self):
         self.price_updater.cancel()
-
-    @commands.is_owner()
-    @commands.command(name="migrate_tax_credit")
-    async def migrate_tax_credit(self, ctx):
-        """Owner-only command to migrate all users to include tax_credit in economy_config."""
-        all_users = await self.economy_config.all_users()
-        updated = 0
-    
-        for user_id, data in all_users.items():
-            if "tax_credit" not in data:
-                await self.economy_config.user(discord.Object(id=user_id)).tax_credit.set(0)
-                updated += 1
-    
-        await ctx.send(f"✅ Migration complete. Added 'tax_credit' to {updated} users.")
-
-
+        
     @tasks.loop(hours=1)
     async def price_updater(self):
         self._hourly_start_prices = {}
