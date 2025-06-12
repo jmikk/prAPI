@@ -378,7 +378,7 @@ class Kingdom(commands.Cog):
 #                                                      345678654456
         self.config = Config.get_conf(None, identifier=345678654456)
         self.config.register_guild(projects=[], completed_projects=[],personal_projects=[])
-        self.config.register_user(completed_personal_projectz=[],tax_credits=0)
+        self.config.register_user(completed_personal_projectz=[])
     
     async def get_incomplete_personal_projects(self, user, guild):
         all_projects = await self.get_personal_projects(guild)
