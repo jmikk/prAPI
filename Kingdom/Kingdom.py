@@ -375,7 +375,8 @@ class FundModal(Modal):
 class Kingdom(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
-        self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
+#                                                      345678654456
+        self.config = Config.get_conf(None, identifier=345678654456)
         self.config.register_guild(projects=[], completed_projects=[],personal_projects=[])
         self.config.register_user(completed_personal_projectz=[],tax_credits=0)
     
