@@ -697,7 +697,7 @@ class StockMarket(commands.Cog):
     
     @commands.command()
     async def tax_info(self, ctx):
-        user = ctx.user
+        user = ctx.author
         await ctx.send("The current Tax rates are as follows: All stock sells 5%")
         tax_credit = await self.economy_config.user(user).tax_credit()
         await ctx.send(f"You currently have {tax_credit}. If you would like to earn more donate to a community project or scholarship.")
@@ -706,7 +706,7 @@ class StockMarket(commands.Cog):
 
     @commands.command()
     async def regional_debt(self,ctx,payment=0):
-        user = ctx.user
+        user = ctx.author
         balance = await self.economy_config.user(user).master_balance()
         tax = await self.economy_config.tax()
         spent_tax = await self.economy_congig.spent_tax()
