@@ -112,7 +112,7 @@ class StockMarket(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier="SM9003", force_registration=True)
         self.economy_config = Config.get_conf(None, identifier=345678654456, force_registration=False)
-        self.config.register_user(stocks={}, avg_buy_prices={},tax_credit=0)
+        self.config.register_user(stocks={}, avg_buy_prices={}, tax_credit=0)
         self.config.register_global(
             tax=0,
             spent_tax=0,
@@ -1130,9 +1130,21 @@ class TagValueView(View):
             await self.message.edit(view=None)
 
 
-
-
+    @commands.command()
+    @commands.is_owner()
+    async def patch_tax_credit(self, ctx):
+        all_users = await self.config.all_users()
+        updated = 0
+        for user_id, data in all_users.items():
+            if "tax_credit" not in data:
+                await self.config.user(discord.Object(id=int(user_id))).tax_credit.set(0)
+                updated += 1
+        await ctx.send(f"✅ Patched tax_credit for {updated} users.")
     
+    
+    
+    
+        
         
     
     
