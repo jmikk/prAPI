@@ -695,6 +695,8 @@ class StockMarket(commands.Cog):
             
         await self.economy_config.user(user).tax_credit.set(tax_credit)
         await self.economy_config.user(user).master_balance.set(balance + earnings - tax)
+        await self.config.tax.set((await self.config.tax()) + tax)
+
     
         self.last_day_trades -= earnings
         await interaction.response.send_message(
