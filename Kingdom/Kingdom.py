@@ -324,6 +324,7 @@ class FundModal(Modal):
         self.user_balance = user_balance
         self.input = TextInput(label="Amount to Donate", placeholder=f"Max: {user_balance}")
         self.add_item(self.input)
+        self.message = message  # ✅ Save the message object
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
