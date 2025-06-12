@@ -720,7 +720,7 @@ class StockMarket(commands.Cog):
         await ctx.send("The current Tax rates are as follows: All stock sells 5%")
         tax_credit = (await self.economy_config.user(user).tax_credit()) or 0
         await ctx.send(f"You currently have {tax_credit}. If you would like to earn more donate to a community project or scholarship.")
-        total_tax = await self.economy_config.tax()
+        total_tax = await self.config.tax()
         await ctx.send(f"The total tax collected so far is {total_tax}")
 
     @commands.command()
