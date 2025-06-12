@@ -327,6 +327,7 @@ class FundModal(Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         amount = self.input.value.lower()
+        self.menu.message = interaction.message
         if amount == "all":
             amount = self.user_balance
         else:
