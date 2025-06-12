@@ -365,7 +365,7 @@ class FundModal(Modal):
         except Exception as e:
             print(f"[FundModal Error] {e}")
             await interaction.response.send_message(
-                "⚠️ Something went wrong while processing your donation. Please try again or contact an admin.",
+                f"⚠️ Something went wrong while processing your donation. Please try again or contact an admin. {e}",
                 ephemeral=True
             )
 
