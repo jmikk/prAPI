@@ -727,8 +727,8 @@ class StockMarket(commands.Cog):
     async def regional_debt(self,ctx,payment=0):
         user = ctx.author
         balance = await self.economy_config.user(user).master_balance()
-        tax = await self.economy_config.tax()
-        spent_tax = await self.economy_congig.spent_tax()
+        tax = await self.config.tax()
+        spent_tax = await self.config.spent_tax()
         if payment > 0 and balance >= payment:
             await ctx.send(f"Thank you for your donation to offset the reginoal debt, {payment} WCs have been deducted from your account.")
             await self.economy_config.user(user).master_balance.set(balance - payment)
@@ -739,9 +739,9 @@ class StockMarket(commands.Cog):
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def add_regional_debt(self,ctx,debt):
-        regiona_debt = await self.economy_config.spent_tax()
+        regiona_debt = await self.config.spent_tax()
         await self.config.spent_tax.set(regiona_debt+debt)
-        RB = await self.economy_config.spent_tax()
+        RB = await self.config.spent_tax()
         await ctx.send(f"The current Wellspring debt is {RB}")
 
         
