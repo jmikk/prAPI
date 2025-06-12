@@ -746,6 +746,9 @@ class StockMarket(commands.Cog):
         """View or pay toward the region's collective debt."""
         user = ctx.author
         balance = await self.economy_config.user(user).master_balance()
+        tax = await self.config.tax()
+        spent_tax = await self.config.spent_tax() 
+        debt = tax - spent_tax
     
         embed = discord.Embed(
             title="🏛️ Regional Debt Report",
@@ -759,7 +762,7 @@ class StockMarket(commands.Cog):
                 await self.config.spent_tax.set(spent_tax + payment)
                 await self.economy_config.user(user).tax_credit.set((await self.economy_config.user(user).tax_credit()) + payment)
 
-                
+                spent_tax = spent_tax + payment
                 embed.add_field(
                     name="✅ Payment Received",
                     value=f"Thank you for your donation of **{payment:.2f} WC** to offset the regional debt!",
@@ -777,10 +780,6 @@ class StockMarket(commands.Cog):
                     value=f"You tried to donate **{payment:.2f} WC**, but you only have **{balance:.2f} WC**.",
                     inline=False
                 )
-
-        tax = await self.config.tax()
-        spent_tax = await self.config.spent_tax() + payment
-        debt = tax - spent_tax
     
         # Show debt status
         embed.add_field(
