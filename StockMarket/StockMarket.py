@@ -114,7 +114,7 @@ class StockMarket(commands.Cog):
         self.economy_config = Config.get_conf(None, identifier=345678654456, force_registration=False)
         self.config.register_user(stocks={}, avg_buy_prices={},tax_credit=0)
         self.config.register_global(
-            tax=0
+            tax=0,
             stocks={},
             tags={},
             announcement_channel=None,
