@@ -115,6 +115,7 @@ class StockMarket(commands.Cog):
         self.config.register_user(stocks={}, avg_buy_prices={},tax_credit=0)
         self.config.register_global(
             tax=0,
+            spent_tax=0,
             stocks={},
             tags={},
             announcement_channel=None,
@@ -699,6 +700,30 @@ class StockMarket(commands.Cog):
         await ctx.send("The current Tax rates are as follows: All stock sells 5%")
         tax_credit = await self.economy_config.user(user).tax_credit()
         await ctx.send(f"You currently have {tax_credit}. If you would like to earn more donate to a community project or scholarship.")
+        total_tax = await self.economy_config.tax()
+        await ctx.send(f"The total tax collected so far is {total_tax}"
+
+    @commands.command()
+    async def regional_debt(self,ctx,payment=0)
+        balance = await self.economy_config.user(user).master_balance()
+        tax = await self.economy_config.tax()
+        spent_tax = await self.economy_congig.spent_tax()
+        if payment > 0 and balance >= payment:
+            await ctx.send(f"Thank you for your donation to offset the reginoal debt, {payment} WCs have been deducted from your account.")
+            await self.economy_config.user(user).master_balance.set(balance - payment)
+        elif payment > 0 and balance < payment:
+            await ctx.send(f"Sorry you only have {balance} WC.")
+        await ctx.send(f"The current regional debt is: {(tax - spent_tax):.2f} you can use this same command to help pay off part of the debt by including a number of Wellcoins."
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def add_regional_debt(self,ctx,debt):
+        regiona_debt = await self.economy_config.spent_tax()
+        await self.config.spent_tax.set(regiona_debt+debt)
+        RB = await self.economy_config.spent_tax()
+        await ctx.send(f"The current Wellspring debt is {RB}")
+
+        
 
 
 
