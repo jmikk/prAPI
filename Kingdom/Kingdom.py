@@ -312,13 +312,13 @@ class FundingMenu(View):
     async def fund_project(self, interaction: discord.Interaction):
         try:
             user_balance = await self.cog.get_balance(interaction.user)
-            modal = FundModal(self, user_balance)
+            modal = FundModal(self, user_balance,self.message)
             await interaction.response.send_modal(modal)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
 class FundModal(Modal):
-    def __init__(self, menu, user_balance):
+    def __init__(self, menu, user_balance,message):
         super().__init__(title="Fund Project")
         self.menu = menu
         self.user_balance = user_balance
