@@ -756,11 +756,21 @@ class StockMarket(commands.Cog):
         if payment > 0:
             if balance >= payment:
                 await self.economy_config.user(user).master_balance.set(balance - payment)
+                await self.config.spent_tax.set(spent_tax + payment)
+                await self.economy_config.user(user).tax_credit.set((await self.economy_config.user(user).tax_credit()) + payment)
+
+                
                 embed.add_field(
                     name="✅ Payment Received",
                     value=f"Thank you for your donation of **{payment:.2f} WC** to offset the regional debt!",
                     inline=False
                 )
+                embed.add_field(
+                name="🎟️ Your Tax Credit",
+                value=f"You now have **{await self.economy_config.user(user).tax_credit():.2f} WC** in tax credit.",
+                inline=False
+            )
+
             else:
                 embed.add_field(
                     name="❌ Insufficient Funds",
@@ -769,7 +779,7 @@ class StockMarket(commands.Cog):
                 )
 
         tax = await self.config.tax()
-        spent_tax = await self.config.spent_tax()
+        spent_tax = await self.config.spent_tax() + payment
         debt = tax - spent_tax
     
         # Show debt status
