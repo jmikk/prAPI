@@ -793,7 +793,7 @@ class StockMarket(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(administrator=True)
-    async def add_regional_debt(self,ctx,float: debt):
+    async def add_regional_debt(self, ctx, debt: float):
         regiona_debt = await self.config.spent_tax()
         await self.config.spent_tax.set(regiona_debt + debt)
         RB = await self.config.spent_tax()
