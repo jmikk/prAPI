@@ -782,7 +782,7 @@ class StockMarket(commands.Cog):
         else:
             embed.add_field(
                 name="📉 Regional Debt",
-                value=f"The region is in debt by **{abs(net_balance):.2f} WC**.\n"
+                value=f"The region is in debt by **{abs(net_balance):,.2f} WC**.\n"
                       f"Use this command again with a number to help repay it!",
                 inline=False
             )
