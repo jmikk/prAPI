@@ -695,6 +695,22 @@ class StockMarket(commands.Cog):
         await interaction.response.send_message(
             f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC, and paid {tax} in taxes**."
         )
+    @commands.command(name="migrate_tax_credit")
+    @commands.has_permissions(administrator=True)
+    async def migrate_tax_credit(self, ctx):
+        """Admin-only: Migrate tax_credit to the economy config for all users."""
+        all_users = await self.config.all_users()
+        migrated = 0
+    
+        for user_id in all_users:
+            eco = self.economy_config.user(discord.Object(id=user_id))
+            existing = await eco.tax_credit()
+            if existing is None:
+                await eco.tax_credit.set(0)
+                migrated += 1
+    
+        await ctx.send(f"✅ Migration complete. Set `tax_credit = 0` for {migrated} user(s) in economy_config.")
+
 
     
     @commands.command()
