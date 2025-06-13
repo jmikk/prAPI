@@ -2175,8 +2175,6 @@ Helpful Resources:
             if nonresident_role not in member.roles:
                 await member.add_roles(nonresident_role)
                 await ctx.send("✅ You have been given the visitor role.")
-            if resident_role in member.roles:
-                await member.remove_roles(resident_role)
     
         await ctx.send(f"✅ Successfully linked your NationStates nation: **{nation_name}**")
 
