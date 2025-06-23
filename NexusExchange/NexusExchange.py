@@ -1984,7 +1984,7 @@ Helpful Resources:
         await self.config.guild(ctx.guild).min_message_length.set(length)
         await ctx.send(f"Minimum message length set to {length} characters.")
 
-    @commands.command(name="setnation")
+    @commands.command(name="adminsetnation")
     @commands.guild_only()
     @checks.admin_or_permissions(administrator=True)
     async def adminsetnation(
