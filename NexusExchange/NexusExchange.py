@@ -1987,7 +1987,7 @@ Helpful Resources:
     @commands.command(name="setnation")
     @commands.guild_only()
     @checks.admin_or_permissions(administrator=True)
-    async def setnation(
+    async def adminsetnation(
         self,
         ctx: commands.Context,
         member: discord.Member,
