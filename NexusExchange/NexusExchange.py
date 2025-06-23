@@ -1984,6 +1984,95 @@ Helpful Resources:
         await self.config.guild(ctx.guild).min_message_length.set(length)
         await ctx.send(f"Minimum message length set to {length} characters.")
 
+    @commands.command(name="setnation")
+    @commands.guild_only()
+    @checks.admin_or_permissions(administrator=True)
+    async def setnation(
+        self,
+        ctx: commands.Context,
+        member: discord.Member,
+        nation_name: str,
+        code: str,
+    ):
+        """
+        **Admin-only**  
+        Verify a NationStates nation with the given *verification code* and link it to *member*.
+        Usage: `[p]setnation @User "My Nation" 0123456789abcdef`
+        """
+
+        # 1) Format the nation name exactly like the user-facing command.
+        formatted_nation = (
+            nation_name.lower()
+            .replace(" ", "_")
+            .replace("<", "")
+            .replace(">", "")
+        )
+
+        # 2) Verify with the NationStates API.
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                (
+                    "https://www.nationstates.net/cgi-bin/api.cgi"
+                    f"?a=verify&nation={formatted_nation}&checksum={code}"
+                ),
+                headers={"User-Agent": self.USER_AGENT},
+            ) as response:
+                if (await response.text()).strip() != "1":
+                    await ctx.send(
+                        "❌ Verification failed. Make sure the code is correct."
+                    )
+                    return
+
+        # 3) Save nation to the **target member’s** user-config.
+        async with self.config.user(member).linked_nations() as nations:
+            if formatted_nation not in nations:
+                nations.append(formatted_nation)
+
+        # 4) Pull current resident list from your region’s API.
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                self.API_URL, headers={"User-Agent": self.USER_AGENT}
+            ) as response:
+                if response.status != 200:
+                    await ctx.send("Failed to retrieve residents. Try again later.")
+                    return
+
+                xml_data = await response.text()
+                start_tag, end_tag = "<NATIONS>", "</NATIONS>"
+                start_index = xml_data.find(start_tag) + len(start_tag)
+                end_index = xml_data.find(end_tag)
+                residents_raw = xml_data[start_index:end_index].split(":")
+                residents = [n.strip().lower() for n in residents_raw if n]
+
+        # 5) Role IDs – reuse the same ones you hard-coded earlier.
+        guild = ctx.guild  # must be run in the verification server
+        resident_role = guild.get_role(1098645868162338919)
+        nonresident_role = guild.get_role(1098673447640518746)
+
+        if not resident_role or not nonresident_role:
+            await ctx.send("❌ One or more roles not found. Check role IDs.")
+            return
+
+        # 6) Assign roles to *member* based on residency.
+        if formatted_nation in residents:
+            if resident_role not in member.roles:
+                await member.add_roles(resident_role)
+                await ctx.send(
+                    f"✅ {member.mention} has been given the **resident** role."
+                )
+            if nonresident_role in member.roles:
+                await member.remove_roles(nonresident_role)
+        else:
+            if nonresident_role not in member.roles:
+                await member.add_roles(nonresident_role)
+                await ctx.send(
+                    f"✅ {member.mention} has been given the **visitor** role."
+                )
+
+        await ctx.send(
+            f"✅ Successfully linked **{nation_name}** to {member.mention}."
+        )
+
     @commands.command()
     async def linknation(self, ctx, *nation_name: str):
         """Link your NationStates nation to your Discord account."""
