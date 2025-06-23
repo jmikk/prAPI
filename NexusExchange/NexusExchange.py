@@ -1992,7 +1992,7 @@ Helpful Resources:
         ctx: commands.Context,
         member: discord.Member,
         nation_name: str,
-        code: str,
+
     ):
         """
         **Admin-only**  
@@ -2007,21 +2007,6 @@ Helpful Resources:
             .replace("<", "")
             .replace(">", "")
         )
-
-        # 2) Verify with the NationStates API.
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                (
-                    "https://www.nationstates.net/cgi-bin/api.cgi"
-                    f"?a=verify&nation={formatted_nation}&checksum={code}"
-                ),
-                headers={"User-Agent": self.USER_AGENT},
-            ) as response:
-                if (await response.text()).strip() != "1":
-                    await ctx.send(
-                        "❌ Verification failed. Make sure the code is correct."
-                    )
-                    return
 
         # 3) Save nation to the **target member’s** user-config.
         async with self.config.user(member).linked_nations() as nations:
