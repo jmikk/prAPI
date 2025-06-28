@@ -186,10 +186,11 @@ class StockMarket(commands.Cog):
     
         # --- Fetch Census Scale History ---
         scales = [
-            10, 13, 17, 19, 20, 24, 25, 26, 28, 29, 33,
-            48, 51, 52, 55, 56, 57, 59, 60, 61, 62, 63,
-            70, 79, 85, 86, 87, 88, 7
+            1, 4, 5, 6, 7, 10, 17, 20, 26, 32, 33,
+            36, 40, 45, 46, 47, 51, 55, 56, 60, 61,
+            63, 65, 69, 70, 74, 75, 76, 77, 79
         ]
+
         scale_param = "+".join(map(str, scales))
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?region=the_wellspring&q=census&mode=history&scale={scale_param}"
         headers = {"User-Agent": "9005 StockBot (Contact: NSwa9002@gmail.com)"}
