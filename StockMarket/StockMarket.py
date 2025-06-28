@@ -12,6 +12,7 @@ import aiohttp
 import xml.etree.ElementTree as ET
 import datetime
 import csv
+import json
 
 
 class StockListView(View):
