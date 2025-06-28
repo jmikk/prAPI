@@ -1126,6 +1126,37 @@ class StockMarket(commands.Cog):
 
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def setnationinfluence(
+        self, ctx, name: str, nation: str, *, influence: str
+    ):
+        """
+        Attach or update the nation and influence map for an existing stock.
+
+        Usage:
+        [p]setnationinfluence StockName NationName {"1":0.5,"4":0.3,"7":-0.2}
+        """
+        name = name.upper()
+        async with self.config.stocks() as stocks:
+            if name not in stocks:
+                return await ctx.send("Stock does not exist.")
+
+            try:
+                influence_data = json.loads(influence)
+            except json.JSONDecodeError:
+                return await ctx.send("Invalid influence map. Use JSON format like: `{\"1\":0.5,\"4\":-0.3}`")
+
+            stocks[name]["nation"] = nation.lower().replace(" ", "_")
+            stocks[name]["nation_influence"] = influence_data
+
+        await ctx.send(
+            f"Updated stock **{name}** with nation `{nation}` "
+            f"and influence map: `{influence}`"
+        )
+
+
+
+    @commands.command()
     async def marketchart(self, ctx):
         """View a pie chart of the current stock market distribution."""
         stocks = await self.config.stocks()
