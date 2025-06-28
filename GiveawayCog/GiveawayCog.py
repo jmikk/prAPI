@@ -208,20 +208,27 @@ class GiveawayCog(commands.Cog):
 
     @commands.command()
     async def showwins(self, ctx):
-        """Show wins for all users"""
+        """Show wins for all users, skipping anyone with no wins"""
         all_data = await self.config.all_users()
         embed = discord.Embed(title="All Users' Wins")
     
-        if not all_data:
-            embed.description = "No win data found."
-        else:
-            for user_id, data in all_data.items():
-                user = ctx.guild.get_member(user_id)
-                name = user.display_name if user else f"User ID: {user_id}"
-                wins = data.get("wins", 0)
-                embed.add_field(name=name, value=str(wins), inline=False)
+        count = 0  # Count how many valid users we found
+    
+        for user_id, data in all_data.items():
+            wins = data.get("wins", 0)
+            if not wins:  # Skip if wins is None, 0, or empty
+                continue
+    
+            user = ctx.guild.get_member(user_id)
+            name = user.display_name if user else f"User ID: {user_id}"
+            embed.add_field(name=name, value=str(wins), inline=False)
+            count += 1
+    
+        if count == 0:
+            embed.description = "No users with wins found."
     
         await ctx.send(embed=embed)
+
 
 
     @commands.command()
