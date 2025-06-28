@@ -207,13 +207,22 @@ class GiveawayCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def showwins(self, ctx, member: discord.Member = None):
-        """Show a user's wins (defaults to yourself)"""
-        member = member or ctx.author
-        wins = await self.config.user(member).wins()
-        embed = discord.Embed(title=f"{member.display_name}'s Wins")
-        embed.add_field(name="Wins", value=str(wins) or "None")
+    async def showwins(self, ctx):
+        """Show wins for all users"""
+        all_data = await self.config.all_users()
+        embed = discord.Embed(title="All Users' Wins")
+    
+        if not all_data:
+            embed.description = "No win data found."
+        else:
+            for user_id, data in all_data.items():
+                user = ctx.guild.get_member(user_id)
+                name = user.display_name if user else f"User ID: {user_id}"
+                wins = data.get("wins", 0)
+                embed.add_field(name=name, value=str(wins), inline=False)
+    
         await ctx.send(embed=embed)
+
 
     @commands.command()
     async def claimcards(self, ctx, *, destination: str):
