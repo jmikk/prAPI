@@ -804,7 +804,7 @@ class StockMarket(commands.Cog):
 
 
 
-    @commands.command()
+    @commands.hybrid_command(name="myportfolio", with_app_command=True)
     async def myportfolio(self, ctx):
         """View your stock holdings and net change."""
         user = ctx.author
@@ -848,7 +848,7 @@ class StockMarket(commands.Cog):
             total_cost += avg_price * amount
     
         net_change = total_value - total_cost
-        embed.set_footer(text=f"Net Portfolio Change: {net_change:+.2f} Wellcoins")
+        embed.set_footer(text=f"Net Portfolio Change: {net_change:+.2f} Wellcoins\n Portfolio Value: {total_value:+.2f} Wellcoins")
         await ctx.send(embed=embed)
 
 
