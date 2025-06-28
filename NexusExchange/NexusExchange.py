@@ -920,7 +920,7 @@ class NexusExchange(commands.Cog):
         if current_loan > 0:
             return await ctx.send("❌ You already have an unpaid loan!")
     
-        await data.loan_amount.set(int(amount+amount*1.05+1))
+        await data.loan_amount.set(int(amount*1.05+1))
         await data.loan_days.set(0)
         current_balance = await data.master_balance()
         await data.master_balance.set(current_balance + amount)
