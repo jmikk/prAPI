@@ -339,7 +339,7 @@ class StockMarket(commands.Cog):
     
         await self.config.last_commodity_update.set(now.isoformat())
         await self.apply_daily_stock_price_update()
-
+    
     async def apply_daily_stock_price_update(self):
         async with self.config.stocks() as stocks:
             for stock_name, data in stocks.items():
@@ -354,37 +354,48 @@ class StockMarket(commands.Cog):
                 if not influence:
                     continue  # Skip if no influence mapping
     
-                # --- Fetch Nation Census Data ---
+                # --- Prepare request ---
                 scales = list(influence.keys())
                 scale_param = "+".join(scales)
-                url = f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation}&q=census;scale={scale_param};mode=history"
+                url = (
+                    f"https://www.nationstates.net/cgi-bin/api.cgi?"
+                    f"nation={nation}&q=census;scale={scale_param};mode=history"
+                )
                 headers = {"User-Agent": "9005 StockBot (Contact: NSwa9002@gmail.com)"}
     
                 percent_changes = {}
+                percent_delta = 0.0  # Default percent delta
     
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, headers=headers) as resp:
-                        text = await resp.text()
-                        root = ET.fromstring(text)
+                        if resp.status == 404:
+                            # Nation does not exist -> penalize by -5%
+                            percent_delta = -5.0
+                        elif resp.status == 200:
+                            text = await resp.text()
+                            root = ET.fromstring(text)
     
-                        for scale in root.findall("CENSUS/SCALE"):
-                            scale_id = scale.attrib["id"]
-                            points = scale.findall("POINT")
-                            if len(points) >= 8:
-                                old_score = float(points[-8].find("SCORE").text)
-                                new_score = float(points[-1].find("SCORE").text)
-                                if old_score != 0:
-                                    percent_change = ((new_score - old_score) / old_score) * 100
-                                    percent_changes[scale_id] = percent_change
+                            for scale in root.findall("CENSUS/SCALE"):
+                                scale_id = scale.attrib["id"]
+                                points = scale.findall("POINT")
+                                if len(points) >= 8:
+                                    old_score = float(points[-8].find("SCORE").text)
+                                    new_score = float(points[-1].find("SCORE").text)
+                                    if old_score != 0:
+                                        percent_change = ((new_score - old_score) / old_score) * 100
+                                        percent_changes[scale_id] = percent_change
     
-                # --- Calculate Influence ---
-                percent_delta = sum(
-                    percent_changes.get(scale_id, 0) * weight for scale_id, weight in influence.items()
-                )
+                            percent_delta = sum(
+                                percent_changes.get(scale_id, 0) * weight
+                                for scale_id, weight in influence.items()
+                            )
+                            # Clamp to -5% to +5%
+                            percent_delta = max(-5.0, min(percent_delta, 5.0))
+                        else:
+                            # For other HTTP errors, you could log or skip; here we skip update
+                            continue
     
-                # Clamp to -5% to +5%
-                percent_delta = max(-5.0, min(percent_delta, 5.0))
-    
+                # --- Apply percent delta ---
                 old_price = data["price"]
                 new_price = round(old_price * (1 + percent_delta / 100), 2)
                 new_price = max(1.0, new_price)
@@ -396,10 +407,6 @@ class StockMarket(commands.Cog):
                     data["history"] = data["history"][-24 * 365 * 2:]
     
                 data["price"] = new_price
-    
-        now = datetime.datetime.utcnow()
-        await self.config.last_stock_update.set(now.isoformat())
-
 
     
     async def recalculate_all_stock_prices(self):
