@@ -214,93 +214,93 @@ class StockMarket(commands.Cog):
     
         commodity_influence = {
                                   "crude_oil": {
-                                    "20": 0.5,  // Mining
-                                    "26": 0.3,  // Manufacturing Sector
-                                    "1": 0.2,   // Economic Efficiency
-                                    "76": 0.1,  // Economic Output
-                                    "7": -0.2,  // Eco-Friendliness
-                                    "63": -0.3, // Environmental Beauty
-                                    "51": -0.5  // Corruption
+                                    "20": 0.5,  
+                                    "26": 0.3,  
+                                    "1": 0.2,   
+                                    "76": 0.1,  
+                                    "7": -0.2,  
+                                    "63": -0.3, 
+                                    "51": -0.5  
                                   },
                                   "gold": {
-                                    "74": 0.5,  // Average Income of Rich
-                                    "45": 0.3,  // Ideological Radicality
-                                    "65": 0.2,  // Influence
-                                    "4": 0.1,   // Wealth Gaps
-                                    "51": -0.2, // Corruption
-                                    "79": -0.3, // Black Market
-                                    "77": -0.5  // Crime
+                                    "74": 0.5, 
+                                    "45": 0.3,  
+                                    "65": 0.2,  
+                                    "4": 0.1,   
+                                    "51": -0.2, 
+                                    "79": -0.3, 
+                                    "77": -0.5  
                                   },
                                   "silver": {
-                                    "74": 0.5,  // Average Income of Rich
-                                    "13": 0.3,  // Information Technology
-                                    "33": 0.2,  // Income Equality
-                                    "65": 0.1,  // Influence
-                                    "51": -0.2, // Corruption
-                                    "79": -0.3, // Black Market
-                                    "77": -0.5  // Crime
+                                    "74": 0.5,  
+                                    "13": 0.3,
+                                    "33": 0.2,  
+                                    "65": 0.1,  
+                                    "51": -0.2, 
+                                    "79": -0.3, 
+                                    "77": -0.5  
                                   },
                                   "platinum": {
-                                    "74": 0.5,  // Average Income of Rich
-                                    "45": 0.3,  // Ideological Radicality
-                                    "70": 0.2,  // Scientific Advancement
-                                    "65": 0.1,  // Influence
-                                    "51": -0.2, // Corruption
-                                    "79": -0.3, // Black Market
-                                    "77": -0.5  // Crime
+                                    "74": 0.5,  
+                                    "45": 0.3,  
+                                    "70": 0.2,  
+                                    "65": 0.1,  
+                                    "51": -0.2, 
+                                    "79": -0.3, 
+                                    "77": -0.5  
                                   },
                                   "copper": {
-                                    "20": 0.5,  // Mining
-                                    "26": 0.3,  // Manufacturing Sector
-                                    "10": 0.2,  // Automobile Manufacturing
-                                    "1": 0.1,   // Economic Efficiency
-                                    "7": -0.3,  // Eco-Friendliness
-                                    "63": -0.5  // Environmental Beauty
+                                    "20": 0.5,  
+                                    "26": 0.3,  
+                                    "10": 0.2,  
+                                    "1": 0.1,   
+                                    "7": -0.3,  
+                                    "63": -0.5  
                                   },
                                   "corn": {
-                                    "17": 0.5,  // Agriculture Sector
-                                    "56": 0.3,  // Employment
-                                    "75": 0.2,  // Public Education
-                                    "5": 0.1,   // Death Rate (better food lowers it)
-                                    "61": -0.2, // Obesity
-                                    "79": -0.3, // Black Market
-                                    "77": -0.5  // Crime (illicit crops)
+                                    "17": 0.5,  
+                                    "56": 0.3,  
+                                    "75": 0.2,  
+                                    "5": 0.1,   
+                                    "61": -0.2, 
+                                    "79": -0.3, 
+                                    "77": -0.5  
                                   },
                                   "wheat": {
-                                    "17": 0.5,  // Agriculture Sector
-                                    "56": 0.3,  // Employment
-                                    "75": 0.2,  // Public Education
-                                    "5": 0.1,   // Death Rate
-                                    "61": -0.2, // Obesity
-                                    "79": -0.3, // Black Market
-                                    "77": -0.5  // Crime
+                                    "17": 0.5,  
+                                    "56": 0.3,  
+                                    "75": 0.2,  
+                                    "5": 0.1,   
+                                    "61": -0.2, 
+                                    "79": -0.3, 
+                                    "77": -0.5  
                                   },
                                   "coffee_beans": {
-                                    "40": 0.5,  // Cheerfulness
-                                    "55": 0.3,  // Culture
-                                    "60": 0.2,  // Recreational Drug Use
-                                    "6": 0.1,   // Compassion (social link)
-                                    "79": -0.2, // Black Market
-                                    "61": -0.3, // Obesity
-                                    "77": -0.5  // Crime (smuggling)
+                                    "40": 0.5,  
+                                    "55": 0.3,  
+                                    "60": 0.2,  
+                                    "6": 0.1,   
+                                    "79": -0.2, 
+                                    "61": -0.3, 
+                                    "77": -0.5  
                                   },
                                   "sugar": {
-                                    "40": 0.5,  // Cheerfulness
-                                    "55": 0.3,  // Culture
-                                    "60": 0.2,  // Recreational Drug Use
-                                    "6": 0.1,   // Compassion
-                                    "61": -0.2, // Obesity
-                                    "79": -0.3, // Black Market
-                                    "77": -0.5  // Crime
+                                    "40": 0.5,  
+                                    "55": 0.3,  
+                                    "60": 0.2,  
+                                    "6": 0.1,   
+                                    "61": -0.2, 
+                                    "79": -0.3, 
+                                    "77": -0.5  
                                   },
                                   "wandwood": {
-                                    "63": 0.5,  // Environmental Beauty
-                                    "70": 0.3,  // Scientific Advancement
-                                    "36": 0.2,  // Intelligence
-                                    "32": 0.1,  // Religiousness (ritual uses)
-                                    "69": -0.2, // Primitiveness
-                                    "47": -0.3, // Pacifism (less pacifism, more conflict)
-                                    "46": -0.5  // Defense Forces (used for weapons)
+                                    "63": 0.5,  
+                                    "70": 0.3,  
+                                    "36": 0.2,  
+                                    "32": 0.1,  
+                                    "69": -0.2, 
+                                    "47": -0.3, 
+                                    "46": -0.5  
                                   }
                                 }
 
