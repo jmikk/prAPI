@@ -197,6 +197,25 @@ class GiveawayCog(commands.Cog):
             await message.reply("Giveaway ended! No entrants.")
 
     @commands.command()
+    async def showgiveaways(self, ctx):
+        """Show global claimed cards and active giveaways"""
+        claimed = await self.config.claimed_cards()
+        giveaways = await self.config.active_giveaways()
+        embed = discord.Embed(title="Global Giveaway Info")
+        embed.add_field(name="Claimed Cards", value=str(claimed) or "None", inline=False)
+        embed.add_field(name="Active Giveaways", value=str(giveaways) or "None", inline=False)
+        await ctx.send(embed=embed)
+
+    @commands.command()
+    async def showwins(self, ctx, member: discord.Member = None):
+        """Show a user's wins (defaults to yourself)"""
+        member = member or ctx.author
+        wins = await self.config.user(member).wins()
+        embed = discord.Embed(title=f"{member.display_name}'s Wins")
+        embed.add_field(name="Wins", value=str(wins) or "None")
+        await ctx.send(embed=embed)
+
+    @commands.command()
     async def claimcards(self, ctx, *, destination: str):
         try:
             user_claims = await self.config.user(ctx.author).wins()
