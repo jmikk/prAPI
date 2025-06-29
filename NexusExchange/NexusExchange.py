@@ -21,7 +21,7 @@ from redbot.core.utils.chat_formatting import humanize_number
 
 def is_citizen():
     async def predicate(ctx):
-        citizen_role_id = 1098646004250726420  # Replace with your actual Citizen role ID
+        citizen_role_id = 1098646004250726420  
         return discord.utils.get(ctx.author.roles, id=citizen_role_id) is not None
     return commands.check(predicate)
 
@@ -45,6 +45,7 @@ class NexusExchange(commands.Cog):
             Message_count=0,
             Message_count_spam=0,
             telegrams = {},# Minimum message length to earn rewards
+            School_fund = 0,
 
         )
         self.ads_folder = "ads"  # Folder where ad text files are stored
@@ -2375,6 +2376,79 @@ Helpful Resources:
             embed.add_field(name=f"#{i}", value=f"{user} — `{xp}` XP", inline=False)
     
         await ctx.send(embed=embed)
+
+    @commands.command()
+    async def payforschool(self, ctx, amount: int):
+        """Pay WellCoins to the school fund."""
+        if amount <= 0:
+            await ctx.send("You must donate a positive amount.")
+            return
+    
+        user = ctx.author
+        user_data = self.config.user(user)
+        guild_data = self.config.guild(ctx.guild)
+    
+        balance = await user_data.master_balance()
+        if balance < amount:
+            await ctx.send("You don't have enough WellCoins. Check you balance with $balance")
+            return
+    
+        await user_data.master_balance.set(balance - amount)
+        school_fund = await guild_data.School_fund()
+        await guild_data.School_fund.set(school_fund + amount)
+    
+        await ctx.send(f"{user.mention} paid {amount} WellCoins to the school fund!")
+
+    @commands.command()
+    @commands.has_role(1387459883334373416)
+    async def schoolpay(self, ctx, member: discord.Member, amount: int):
+        """Pay a user from the school fund."""
+        if amount <= 0:
+            await ctx.send("Amount must be positive.")
+            return
+    
+        guild_data = self.config.guild(ctx.guild)
+        user_data = self.config.user(member)
+    
+        school_fund = await guild_data.School_fund()
+        if school_fund < amount:
+            await ctx.send("Not enough WellCoins in the school fund.")
+            return
+    
+        await guild_data.School_fund.set(school_fund - amount)
+        balance = await user_data.master_balance()
+        await user_data.master_balance.set(balance + amount)
+    
+        await ctx.send(f"{member.mention} has received {amount} WellCoins from the school fund.")
+
+    @commands.command()
+    @commands.has_role(1387459883334373416)
+    async def schoolwithdraw(self, ctx, amount: int):
+        """Withdraw WellCoins from the school fund for expenses."""
+        if amount <= 0:
+            await ctx.send("Amount must be positive.")
+            return
+    
+        guild_data = self.config.guild(ctx.guild)
+        school_fund = await guild_data.School_fund()
+        if school_fund < amount:
+            await ctx.send("Not enough WellCoins in the school fund.")
+            return
+    
+        await guild_data.School_fund.set(school_fund - amount)
+    
+        await ctx.send(f"{amount} WellCoins have been withdrawn from the school fund for school expenses.")
+
+    @commands.command()
+    async def schoolfund(self, ctx):
+        """Check the current amount in the school fund."""
+        guild_data = self.config.guild(ctx.guild)
+        school_fund = await guild_data.School_fund()
+        await ctx.send(f"The school fund currently has {school_fund} WellCoins.")
+    
+
+
+
 
 
 
