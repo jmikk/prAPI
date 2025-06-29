@@ -46,6 +46,7 @@ class NexusExchange(commands.Cog):
             Message_count_spam=0,
             telegrams = {},# Minimum message length to earn rewards
             School_fund = 0,
+            scholarship_fund = 0,
 
         )
         self.ads_folder = "ads"  # Folder where ad text files are stored
@@ -2445,7 +2446,75 @@ Helpful Resources:
         guild_data = self.config.guild(ctx.guild)
         school_fund = await guild_data.School_fund()
         await ctx.send(f"The school fund currently has {school_fund} WellCoins.")
+
+    @commands.command()
+    async def scholarshipfund(self, ctx):
+        """Check the current amount in the scholarship fund."""
+        guild_data = self.config.guild(ctx.guild)
+        scholarship_fund = await guild_data.scholarship_fund()
+        await ctx.send(f"The scholarship fund currently has {scholarship_fund} WellCoins.")
+
+    @commands.command()
+    async def donate_scholarship(self, ctx, amount: int):
+        """Pay WellCoins to the scholarship fund."""
+        if amount <= 0:
+            await ctx.send("You must donate a positive amount.")
+            return
     
+        user = ctx.author
+        user_data = self.config.user(user)
+        guild_data = self.config.guild(ctx.guild)
+    
+        balance = await user_data.master_balance()
+        if balance < amount:
+            await ctx.send("You don't have enough WellCoins. Check you balance with $balance")
+            return
+    
+        await user_data.master_balance.set(balance - amount)
+        school_fund = await guild_data.scholarship_fund()
+        await guild_data.scholarship_fund.set(school_fund + amount)
+    
+        await ctx.send(f"{user.mention} paid {amount} WellCoins to the scholarship fund!")
+
+    @commands.command()
+    @commands.has_role(1387459883334373416)
+    async def scholarship_pay(self, ctx, member: discord.Member, amount: int):
+        """Pay a user from the scholarship fund."""
+        if amount <= 0:
+            await ctx.send("Amount must be positive.")
+            return
+    
+        guild_data = self.config.guild(ctx.guild)
+        user_data = self.config.user(member)
+    
+        school_fund = await guild_data.scholarship_fund()
+        if school_fund < amount:
+            await ctx.send("Not enough WellCoins in the scholarship fund.")
+            return
+    
+        await guild_data.scholarship_fund.set(school_fund - amount)
+        balance = await user_data.master_balance()
+        await user_data.master_balance.set(balance + amount)
+    
+        await ctx.send(f"{member.mention} has received {amount} WellCoins from the scholarship fund.")
+
+    @commands.command()
+    @commands.has_role(1387459883334373416)
+    async def scholarshipwithdraw(self, ctx, amount: int):
+        """Withdraw WellCoins from the scholarship fund for expenses."""
+        if amount <= 0:
+            await ctx.send("Amount must be positive.")
+            return
+    
+        guild_data = self.config.guild(ctx.guild)
+        school_fund = await guild_data.School_fund()
+        if school_fund < amount:
+            await ctx.send("Not enough WellCoins in the scholarship fund.")
+            return
+    
+        await guild_data.scholarship_fund.set(school_fund - amount)
+    
+        await ctx.send(f"{amount} WellCoins have been withdrawn from the scholarship fund for school expenses.")
 
 
 
