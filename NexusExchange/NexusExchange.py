@@ -156,7 +156,7 @@ class NexusExchange(commands.Cog):
         if deposit <= 0:
             return await ctx.send("❌ You must deposit a positive amount.")
         if deposit > balance:
-            return await ctx.send(f"❌ You only have {humanize_number(balance:.2f)} {await self.config.guild(ctx.guild).master_currency_name()} available.")
+            return await ctx.send(f"❌ You only have {balance:.2f)} {await self.config.guild(ctx.guild).master_currency_name()} available.")
 
         await user_data.master_balance.set(balance - deposit)
         current_bank = await user_data.bank_total()
