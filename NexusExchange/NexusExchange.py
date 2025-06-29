@@ -2379,7 +2379,7 @@ Helpful Resources:
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def payforschool(self, ctx, amount: int):
+    async def pay_for_school(self, ctx, amount: int):
         """Pay WellCoins to the school fund."""
         if amount <= 0:
             await ctx.send("You must donate a positive amount.")
@@ -2402,7 +2402,7 @@ Helpful Resources:
 
     @commands.command()
     @commands.has_role(1387459883334373416)
-    async def schoolpay(self, ctx, member: discord.Member, amount: int):
+    async def school_pay(self, ctx, member: discord.Member, amount: int):
         """Pay a user from the school fund."""
         if amount <= 0:
             await ctx.send("Amount must be positive.")
@@ -2441,14 +2441,14 @@ Helpful Resources:
         await ctx.send(f"{amount} WellCoins have been withdrawn from the school fund for school expenses.")
 
     @commands.command()
-    async def schoolfund(self, ctx):
+    async def school_fund(self, ctx):
         """Check the current amount in the school fund."""
         guild_data = self.config.guild(ctx.guild)
         school_fund = await guild_data.School_fund()
         await ctx.send(f"The school fund currently has {school_fund} WellCoins.")
 
     @commands.command()
-    async def scholarshipfund(self, ctx):
+    async def scholarship_fund(self, ctx):
         """Check the current amount in the scholarship fund."""
         guild_data = self.config.guild(ctx.guild)
         scholarship_fund = await guild_data.scholarship_fund()
