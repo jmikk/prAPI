@@ -1,0 +1,1 @@
+Since the dawn of time (May 2015), discord users have been limited in roleplay by their static profiles. Until now! Use the /create_character command to name your character and assign it a profile picture. Then use the /speak command, and your message will send with the username and profile picture of that character!
