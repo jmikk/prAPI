@@ -54,7 +54,6 @@ class FightView(discord.ui.View):
     @discord.ui.button(label="🎁 Claim", style=discord.ButtonStyle.success)
     async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
-            await interaction.response.defer()
             # Disable buttons
             for child in self.children:
                 if isinstance(child, discord.ui.Button):
