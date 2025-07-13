@@ -77,7 +77,6 @@ class FightView(discord.ui.View):
                 stats = loot_box_item['stats']
                 await self._add_loot_to_inventory(self.ctx, self.author, loot_box_item, stats)
             else:
-                await interaction.response.defer()
                 await self.send_loss_embed(interaction)
             
         except Exception as e:
