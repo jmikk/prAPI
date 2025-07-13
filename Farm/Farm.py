@@ -51,9 +51,8 @@ class FightView(discord.ui.View):
             if self.current_page < len(self.round_messages) - 1:
                 self.current_page += 1
                 await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
-    
                 if self.current_page == len(self.round_messages) - 1:
-                    await self.claim.callback(interaction)
+                    self.current_page = 0
             else:
                 await interaction.response.defer()
         except Exception as e:
