@@ -69,9 +69,7 @@ class FightView(discord.ui.View):
                 loot_box_item = random.choice(loot_items)
                 item_name = loot_box_item['name']
                 stats = loot_box_item['stats']
-                await interaction.response.send_message(f"**Congratulations!** You've received a **{item_name}** from the loot box!", ephemeral=True)
                 await self._add_loot_to_inventory(self.ctx, self.author, loot_box_item, stats)
-                await interaction.followup.send(f"{self.author.mention} defeated **{self.enemy_name}** and earned a loot box!", ephemeral=False)
             else:
                 await interaction.response.defer()
                 await self.send_loss_embed(interaction)
