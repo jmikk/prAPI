@@ -39,6 +39,14 @@ class FightView(discord.ui.View):
         if self.current_page < len(self.round_messages) - 1:
             self.current_page += 1
             await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
+    
+            # Auto-claim loot if this was the last page
+            if self.current_page == len(self.round_messages) - 1:
+                await asyncio.sleep(0.5)  # Optional: give users a moment to see the final message
+                await self.claim.callback(interaction)
+        else:
+            await interaction.response.defer()  # Optional fallback
+
 
     @discord.ui.button(label="🎁 Claim", style=discord.ButtonStyle.success)
     async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
