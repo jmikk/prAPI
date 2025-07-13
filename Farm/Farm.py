@@ -52,7 +52,7 @@ class FightView(discord.ui.View):
             await self.ctx.send(f"⚠️ Error in ▶ button: `{e}`")
 
 
-    @discord.ui.button(label="🎁 Claim", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="🎁 Claim", style=discord.ButtonStyle.success,row=1)
     async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             # Disable buttons
