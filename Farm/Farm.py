@@ -128,6 +128,13 @@ class LootDecisionView(discord.ui.View):
         self.new_item_stats_with_bonus = new_item_stats_with_bonus
         self.message = None
 
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.user:
+            await interaction.response.send_message("❌ These buttons aren't for you!", ephemeral=True)
+            return False
+        return True
+
+
     @discord.ui.button(label="✅ Equip New Item", style=discord.ButtonStyle.success)
     async def equip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
