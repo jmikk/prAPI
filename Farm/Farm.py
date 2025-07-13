@@ -95,8 +95,8 @@ class FightView(discord.ui.View):
                          .replace("Health","❤️Health❤️")
                          .replace("Critical chance","💥Critical Chance💥"))
     
-            embed.add_field(name=f"Current: {current_item['name']}", value=fmt(current_item.get("stats", {})), inline=True)
             embed.add_field(name=f"New: {item['name']}", value=fmt(new_item_stats_with_bonus), inline=True)
+            embed.add_field(name=f"Current: {current_item['name']}", value=fmt(current_item.get("stats", {})), inline=True)
             embed.set_footer(text="Choose to equip the new item or keep your current one.")
     
             view = LootDecisionView(self, ctx, user, item, current_item, new_item_stats_with_bonus)
