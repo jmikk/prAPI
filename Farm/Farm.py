@@ -25,6 +25,12 @@ class FightView(discord.ui.View):
         self.rep_change = rep_change
         self.combat_result = None
 
+    async def send_loss_embed(self, interaction: discord.Interaction):
+        embed = discord.Embed(title="Fight Result", description=f"{self.author.mention}, you lost the fight!", color=discord.Color.red())
+        embed.add_field(name="Opponent", value=self.enemy_name, inline=False)
+        embed.add_field(name="Better luck next time!", value="Consider upgrading your gear or strategizing differently.", inline=False)
+        await interaction.followup.send(embed=embed, ephemeral=False)
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user == self.author
 
@@ -40,12 +46,12 @@ class FightView(discord.ui.View):
             self.current_page += 1
             await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
     
-            # Auto-claim loot if on last page
             if self.current_page == len(self.round_messages) - 1:
                 await asyncio.sleep(0.5)
                 await self.claim.callback(interaction)
         else:
             await interaction.response.defer()
+
     
 
 
@@ -60,9 +66,14 @@ class FightView(discord.ui.View):
             stats = loot_box_item['stats']
             await interaction.response.send_message(f"**Congratulations!** You've received a **{item_name}** from the loot box!", ephemeral=True)
             await self._add_loot_to_inventory(interaction, self.author, loot_box_item, stats)
+    
+            # Send public win message
+            await interaction.followup.send(f"{self.author.mention} defeated **{self.enemy_name}** and earned a loot box!", ephemeral=False)
+    
         else:
             await interaction.response.defer()
             await self.send_loss_embed(interaction)
+
 
 
 
@@ -202,11 +213,7 @@ class Farm(commands.Cog):
             await ctx.send(f"Use `{prefix[0]}farm plant potato` to get started.")
 
 
-    async def send_loss_embed(self, interaction: discord.Interaction):
-        embed = discord.Embed(title="Fight Result", description=f"{self.author.mention}, you lost the fight!", color=discord.Color.red())
-        embed.add_field(name="Opponent", value=self.enemy_name, inline=False)
-        embed.add_field(name="Better luck next time!", value="Consider upgrading your gear or strategizing differently.", inline=False)
-        await interaction.followup.send(embed=embed, ephemeral=False)
+
 
     @farm.command()
     async def fight(self, ctx):
