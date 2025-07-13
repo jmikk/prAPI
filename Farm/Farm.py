@@ -68,7 +68,7 @@ class FightView(discord.ui.View):
                     child.disabled = True
             
             await interaction.message.edit(view=self)
-            self.stop()
+            #self.stop()
             if self.rep_change > 0:
                 with open(self.loot_items_path, 'r') as file:
                     loot_items = json.load(file)['items']
