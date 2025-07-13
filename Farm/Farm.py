@@ -79,6 +79,96 @@ class FightView(discord.ui.View):
         except Exception as e:
             await self.ctx.send(f"⚠️ Error in 🎁 claim: `{e}`")
 
+    async def _add_loot_to_inventory(self,ctx, user, item, stats):
+        user_data = await self.config.user(user).all()
+        current_item = user_data[item['slot']]
+
+        player_rep = user_data['rep']  # Get the player's current rep
+        new_item_stats_with_bonus = {stat: math.floor(value + player_rep/2) for stat, value in stats.items()}
+        new_item_stats = "\n" + '\n'.join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in new_item_stats_with_bonus.items()]) + "\n\n"
+        
+    
+        if current_item:
+            # Create an embed object
+            embed = discord.Embed(title="Congratulations you won!", color=discord.Color.blue())
+            
+            # Add the current item's name and stats to the embed
+            current_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in current_item.get('stats', {}).items()])
+            
+            current_item_stats = current_item_stats.replace("Strength","⚔️Strength⚔️").replace("Defense","🛡️Defense🛡️").replace("Speed","🏃Speed🏃‍♀️").replace("Luck","🍀Luck🍀").replace("Health","❤️Health❤️").replace("Critical chance","💥Critical Chance💥")
+           
+            embed.add_field(name=f"Current Item: {current_item['name']}", value=current_item_stats, inline=False)
+            item['stats'] = new_item_stats_with_bonus
+
+            # Add the new item's name and stats to the embed
+            new_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in item.get('stats', {}).items()])
+
+            new_item_stats = new_item_stats.replace("Strength","⚔️Strength⚔️").replace("Defense","🛡️Defense🛡️").replace("Speed","🏃Speed🏃‍♀️").replace("Luck","🍀Luck🍀").replace("Health","❤️Health❤️").replace("Critical chance","💥Critical Chance💥")
+
+            
+            embed.add_field(name=f"New Item: {item['name']}", value=new_item_stats, inline=False)
+            
+            # Set footer instructions
+            embed.set_footer(text="React with ✅ to swap or ❌ to keep.")
+            
+            # Send the embed in the channel
+            message = await ctx.send(embed=embed)
+            
+            # Add reaction options for user decision
+            await message.add_reaction("✅")
+            await message.add_reaction("❌")
+
+            
+    
+            def check(reaction, user_reacted):
+                return user_reacted == user and str(reaction.emoji) in ["✅", "❌"]
+    
+            try:
+                reaction, user_reacted = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+    
+                if str(reaction.emoji) == "✅":
+                    # User chose to swap the item
+                    item['stats'] = new_item_stats_with_bonus
+                    
+                    user_data[item['slot']] = item
+                    await ctx.send(f"You've equipped **{item['name']}** in your {item['slot']} slot.")
+
+                    #unequip
+                    for stat, bonus in current_item.get("stats", {}).items():
+                        if stat in user_data:
+                            user_data[stat] = user_data[stat] - bonus
+
+
+                    #add the new stats to the player.
+                    #reepuip
+                    for stat, bonus in item['stats'].items():
+                        if stat in user_data:
+                            user_data[stat] = user_data[stat] + bonus
+                        
+
+                    
+                    await self.config.user(user).set(user_data)
+
+                
+                else:
+                    # User chose to keep the old item
+                    await ctx.send("You've kept your current item.")
+    
+            except asyncio.TimeoutError:
+                await ctx.send("No response. Keeping your current item.")
+    
+        else:
+            # The slot is empty, simply add the new item
+            item['stats'] = new_item_stats_with_bonus
+            user_data[item['slot']] = item
+            
+            for stat, bonus in item['stats'].items():
+                if stat in user_data:
+                    user_data[stat] = user_data[stat] + bonus
+            
+            await self.config.user(user).set(user_data)
+            await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
+
 
 
 
@@ -297,96 +387,6 @@ class Farm(commands.Cog):
         view = FightView(round_messages, ctx.author, enemy_name, loot_items_path, self.config, start_life, rep_change, ctx)
         view.message = await ctx.send(embed=round_messages[0], view=view)
 
-    
-    async def _add_loot_to_inventory(self,ctx, user, item, stats):
-        user_data = await self.config.user(user).all()
-        current_item = user_data[item['slot']]
-
-        player_rep = user_data['rep']  # Get the player's current rep
-        new_item_stats_with_bonus = {stat: math.floor(value + player_rep/2) for stat, value in stats.items()}
-        new_item_stats = "\n" + '\n'.join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in new_item_stats_with_bonus.items()]) + "\n\n"
-        
-    
-        if current_item:
-            # Create an embed object
-            embed = discord.Embed(title="Congratulations you won!", color=discord.Color.blue())
-            
-            # Add the current item's name and stats to the embed
-            current_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in current_item.get('stats', {}).items()])
-            
-            current_item_stats = current_item_stats.replace("Strength","⚔️Strength⚔️").replace("Defense","🛡️Defense🛡️").replace("Speed","🏃Speed🏃‍♀️").replace("Luck","🍀Luck🍀").replace("Health","❤️Health❤️").replace("Critical chance","💥Critical Chance💥")
-           
-            embed.add_field(name=f"Current Item: {current_item['name']}", value=current_item_stats, inline=False)
-            item['stats'] = new_item_stats_with_bonus
-
-            # Add the new item's name and stats to the embed
-            new_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in item.get('stats', {}).items()])
-
-            new_item_stats = new_item_stats.replace("Strength","⚔️Strength⚔️").replace("Defense","🛡️Defense🛡️").replace("Speed","🏃Speed🏃‍♀️").replace("Luck","🍀Luck🍀").replace("Health","❤️Health❤️").replace("Critical chance","💥Critical Chance💥")
-
-            
-            embed.add_field(name=f"New Item: {item['name']}", value=new_item_stats, inline=False)
-            
-            # Set footer instructions
-            embed.set_footer(text="React with ✅ to swap or ❌ to keep.")
-            
-            # Send the embed in the channel
-            message = await ctx.send(embed=embed)
-            
-            # Add reaction options for user decision
-            await message.add_reaction("✅")
-            await message.add_reaction("❌")
-
-            
-    
-            def check(reaction, user_reacted):
-                return user_reacted == user and str(reaction.emoji) in ["✅", "❌"]
-    
-            try:
-                reaction, user_reacted = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
-    
-                if str(reaction.emoji) == "✅":
-                    # User chose to swap the item
-                    item['stats'] = new_item_stats_with_bonus
-                    
-                    user_data[item['slot']] = item
-                    await ctx.send(f"You've equipped **{item['name']}** in your {item['slot']} slot.")
-
-                    #unequip
-                    for stat, bonus in current_item.get("stats", {}).items():
-                        if stat in user_data:
-                            user_data[stat] = user_data[stat] - bonus
-
-
-                    #add the new stats to the player.
-                    #reepuip
-                    for stat, bonus in item['stats'].items():
-                        if stat in user_data:
-                            user_data[stat] = user_data[stat] + bonus
-                        
-
-                    
-                    await self.config.user(user).set(user_data)
-
-                
-                else:
-                    # User chose to keep the old item
-                    await ctx.send("You've kept your current item.")
-    
-            except asyncio.TimeoutError:
-                await ctx.send("No response. Keeping your current item.")
-    
-        else:
-            # The slot is empty, simply add the new item
-            item['stats'] = new_item_stats_with_bonus
-            user_data[item['slot']] = item
-            
-            for stat, bonus in item['stats'].items():
-                if stat in user_data:
-                    user_data[stat] = user_data[stat] + bonus
-            
-            await self.config.user(user).set(user_data)
-            await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
 
     @farm.command()
     async def plant(self, ctx, crop_name: str, quantity: int = 1):
