@@ -71,6 +71,8 @@ class FightView(discord.ui.View):
                 await interaction.response.defer()
             else:
                 await self.send_loss_embed(interaction)
+                await interaction.response.defer()
+
             
         except Exception as e:
             await self.ctx.send(f"⚠️ Error in 🎁 claim: `{e}`")
