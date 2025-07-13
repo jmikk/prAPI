@@ -53,7 +53,6 @@ class FightView(discord.ui.View):
                 await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
     
                 if self.current_page == len(self.round_messages) - 1:
-                    await asyncio.sleep(0.5)
                     await self.claim.callback(interaction)
             else:
                 await interaction.response.defer()
@@ -376,12 +375,6 @@ class Farm(commands.Cog):
         user_data['rep'] = max(1, user_data['rep'] + rep_change)
         user_data['Health'] = start_life  # Reset for future fights
         await self.config.user(ctx.author).set(user_data)
-
-        if result == "lost":
-            embed = discord.Embed(title="Fight Result", description=f"{ctx.author.mention}, you lost the fight!", color=discord.Color.red())
-            embed.add_field(name="Opponent", value=enemy_name, inline=False)
-            embed.add_field(name="Better luck next time!", value="Consider upgrading your gear or strategizing differently.", inline=False)
-            await ctx.send(embed=embed)
 
         loot_items_path = os.path.join(os.path.dirname(__file__), 'loot.json')
         view = FightView(round_messages, ctx.author, enemy_name, loot_items_path, self.config, start_life, rep_change, ctx)
