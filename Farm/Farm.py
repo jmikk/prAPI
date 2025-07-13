@@ -62,6 +62,12 @@ class FightView(discord.ui.View):
     @discord.ui.button(label="🎁 Claim", style=discord.ButtonStyle.success)
     async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
+            # Disable buttons
+            for child in self.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = True
+            
+            await interaction.message.edit(view=self)
             self.stop()
             if self.rep_change > 0:
                 with open(self.loot_items_path, 'r') as file:
@@ -73,6 +79,7 @@ class FightView(discord.ui.View):
             else:
                 await interaction.response.defer()
                 await self.send_loss_embed(interaction)
+            
         except Exception as e:
             await self.ctx.send(f"⚠️ Error in 🎁 claim: `{e}`")
 
