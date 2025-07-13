@@ -156,7 +156,10 @@ class LootDecisionView(discord.ui.View):
             await self.cog.config.user(self.user).set(user_data)
             await interaction.response.send_message(f"You've equipped **{self.item['name']}** in your **{self.item['slot']}** slot.", ephemeral=False)
             # Disable buttons
-            self.disable_all_items()
+            for child in self.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = True
+            
             await interaction.message.edit(view=self)
             self.stop()
         except Exception as e:
@@ -165,7 +168,11 @@ class LootDecisionView(discord.ui.View):
     @discord.ui.button(label="❌ Keep Current", style=discord.ButtonStyle.danger)
     async def keep_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("You've kept your current item.", ephemeral=False)
-        self.disable_all_items()
+ # Disable buttons
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+            
         await interaction.message.edit(view=self)
         self.stop()
 
