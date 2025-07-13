@@ -43,6 +43,13 @@ class FightView(discord.ui.View):
         except Exception as e:
             await self.ctx.send(f"⚠️ Error in ◀ button: `{e}`")
 
+    @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            self.current_page = (self.current_page + 1) % len(self.round_messages)
+            await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
+        except Exception as e:
+            await self.ctx.send(f"⚠️ Error in ▶ button: `{e}`")
 
     @discord.ui.button(label="🎁 Claim", style=discord.ButtonStyle.success)
     async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -68,15 +75,7 @@ class FightView(discord.ui.View):
             
         except Exception as e:
             await self.ctx.send(f"⚠️ Error in 🎁 claim: `{e}`")
-
-        
-    @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
-    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
-        try:
-            self.current_page = (self.current_page + 1) % len(self.round_messages)
-            await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
-        except Exception as e:
-            await self.ctx.send(f"⚠️ Error in ▶ button: `{e}`")
+            
 
     async def _add_loot_to_inventory(self, ctx, user, item, stats):
         user_data = await self.config.user(user).all()
