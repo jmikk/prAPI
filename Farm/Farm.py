@@ -78,97 +78,87 @@ class FightView(discord.ui.View):
         except Exception as e:
             await self.ctx.send(f"⚠️ Error in 🎁 claim: `{e}`")
 
-    async def _add_loot_to_inventory(self,ctx, user, item, stats):
+    async def _add_loot_to_inventory(self, ctx, user, item, stats):
         user_data = await self.config.user(user).all()
         current_item = user_data[item['slot']]
-
-        player_rep = user_data['rep']  # Get the player's current rep
-        new_item_stats_with_bonus = {stat: math.floor(value + player_rep/2) for stat, value in stats.items()}
-        new_item_stats = "\n" + '\n'.join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in new_item_stats_with_bonus.items()]) + "\n\n"
-        
+        player_rep = user_data['rep']
+        new_item_stats_with_bonus = {stat: math.floor(value + player_rep / 2) for stat, value in stats.items()}
     
         if current_item:
-            # Create an embed object
-            embed = discord.Embed(title="Congratulations you won!", color=discord.Color.blue())
-            
-            # Add the current item's name and stats to the embed
-            current_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in current_item.get('stats', {}).items()])
-            
-            current_item_stats = current_item_stats.replace("Strength","⚔️Strength⚔️").replace("Defense","🛡️Defense🛡️").replace("Speed","🏃Speed🏃‍♀️").replace("Luck","🍀Luck🍀").replace("Health","❤️Health❤️").replace("Critical chance","💥Critical Chance💥")
-           
-            embed.add_field(name=f"Current Item: {current_item['name']}", value=current_item_stats, inline=False)
-            item['stats'] = new_item_stats_with_bonus
-
-            # Add the new item's name and stats to the embed
-            new_item_stats = "\n".join([f"{stat.replace('_', ' ').capitalize()}: {value}" for stat, value in item.get('stats', {}).items()])
-
-            new_item_stats = new_item_stats.replace("Strength","⚔️Strength⚔️").replace("Defense","🛡️Defense🛡️").replace("Speed","🏃Speed🏃‍♀️").replace("Luck","🍀Luck🍀").replace("Health","❤️Health❤️").replace("Critical chance","💥Critical Chance💥")
-
-            
-            embed.add_field(name=f"New Item: {item['name']}", value=new_item_stats, inline=False)
-            
-            # Set footer instructions
-            embed.set_footer(text="React with ✅ to swap or ❌ to keep.")
-            
-            # Send the embed in the channel
-            message = await ctx.send(embed=embed)
-            
-            # Add reaction options for user decision
-            await message.add_reaction("✅")
-            await message.add_reaction("❌")
-
-            
+            embed = discord.Embed(title="🎁 You found a new item!", color=discord.Color.gold())
     
-            def check(reaction, user_reacted):
-                return user_reacted == user and str(reaction.emoji) in ["✅", "❌"]
+            def fmt(stats_dict):
+                s = "\n".join([f"{k.replace('_', ' ').capitalize()}: {v}" for k, v in stats_dict.items()])
+                return (s.replace("Strength","⚔️Strength⚔️")
+                         .replace("Defense","🛡️Defense🛡️")
+                         .replace("Speed","🏃Speed🏃‍♀️")
+                         .replace("Luck","🍀Luck🍀")
+                         .replace("Health","❤️Health❤️")
+                         .replace("Critical chance","💥Critical Chance💥"))
     
-            try:
-                reaction, user_reacted = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
+            embed.add_field(name=f"Current: {current_item['name']}", value=fmt(current_item.get("stats", {})), inline=True)
+            embed.add_field(name=f"New: {item['name']}", value=fmt(new_item_stats_with_bonus), inline=True)
+            embed.set_footer(text="Choose to equip the new item or keep your current one.")
     
-                if str(reaction.emoji) == "✅":
-                    # User chose to swap the item
-                    item['stats'] = new_item_stats_with_bonus
-                    
-                    user_data[item['slot']] = item
-                    await ctx.send(f"You've equipped **{item['name']}** in your {item['slot']} slot.")
-
-                    #unequip
-                    for stat, bonus in current_item.get("stats", {}).items():
-                        if stat in user_data:
-                            user_data[stat] = user_data[stat] - bonus
-
-
-                    #add the new stats to the player.
-                    #reepuip
-                    for stat, bonus in item['stats'].items():
-                        if stat in user_data:
-                            user_data[stat] = user_data[stat] + bonus
-                        
-
-                    
-                    await self.config.user(user).set(user_data)
-
-                
-                else:
-                    # User chose to keep the old item
-                    await ctx.send("You've kept your current item.")
-    
-            except asyncio.TimeoutError:
-                await ctx.send("No response. Keeping your current item.")
+            view = LootDecisionView(self, ctx, user, item, current_item, new_item_stats_with_bonus)
+            view.message = await ctx.send(embed=embed, view=view)
     
         else:
-            # The slot is empty, simply add the new item
+            # Equip directly
             item['stats'] = new_item_stats_with_bonus
             user_data[item['slot']] = item
-            
+    
             for stat, bonus in item['stats'].items():
                 if stat in user_data:
-                    user_data[stat] = user_data[stat] + bonus
-            
+                    user_data[stat] += bonus
+    
             await self.config.user(user).set(user_data)
-            await ctx.send(f"You've equipped {item['name']} in your {item['slot']}.")
+            await ctx.send(f"You've equipped **{item['name']}** in your empty **{item['slot']}** slot.")
+    
 
 
+
+
+class LootDecisionView(discord.ui.View):
+    def __init__(self, cog, ctx, user, item, current_item, new_item_stats_with_bonus):
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.ctx = ctx
+        self.user = user
+        self.item = item
+        self.current_item = current_item
+        self.new_item_stats_with_bonus = new_item_stats_with_bonus
+        self.message = None
+
+    @discord.ui.button(label="✅ Equip New Item", style=discord.ButtonStyle.success)
+    async def equip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            user_data = await self.cog.config.user(self.user).all()
+
+            self.item["stats"] = self.new_item_stats_with_bonus
+            user_data[self.item['slot']] = self.item
+
+            # Remove old item stats
+            for stat, bonus in self.current_item.get("stats", {}).items():
+                if stat in user_data:
+                    user_data[stat] -= bonus
+
+            # Add new item stats
+            for stat, bonus in self.item['stats'].items():
+                if stat in user_data:
+                    user_data[stat] += bonus
+
+            await self.cog.config.user(self.user).set(user_data)
+            await interaction.response.send_message(f"You've equipped **{self.item['name']}** in your **{self.item['slot']}** slot.", ephemeral=False)
+            self.stop()
+
+        except Exception as e:
+            await self.ctx.send(f"❌ Error equipping item: `{e}`")
+
+    @discord.ui.button(label="❌ Keep Current", style=discord.ButtonStyle.danger)
+    async def keep_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("You've kept your current item.", ephemeral=False)
+        self.stop()
 
 
 
