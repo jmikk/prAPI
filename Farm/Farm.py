@@ -9,6 +9,52 @@ from discord import Embed
 import os
 import json
 from redbot.core import commands, Config
+from discord.ext import commands as ext_commands
+
+class FightView(discord.ui.View):
+    def __init__(self, round_messages, author, enemy_name, loot_items_path, config, start_life, rep_change):
+        super().__init__(timeout=60)
+        self.round_messages = round_messages
+        self.current_page = 0
+        self.message = None
+        self.author = author
+        self.enemy_name = enemy_name
+        self.loot_items_path = loot_items_path
+        self.config = config
+        self.start_life = start_life
+        self.rep_change = rep_change
+        self.combat_result = None
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user == self.author
+
+    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+    async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.current_page > 0:
+            self.current_page -= 1
+            await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
+
+    @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.current_page < len(self.round_messages) - 1:
+            self.current_page += 1
+            await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
+
+    @discord.ui.button(label="🎁 Claim", style=discord.ButtonStyle.success)
+    async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Only allowed at the final message
+        self.stop()
+        if self.rep_change > 0:
+            # Won the fight
+            with open(self.loot_items_path, 'r') as file:
+                loot_items = json.load(file)['items']
+            loot_box_item = random.choice(loot_items)
+            item_name = loot_box_item['name']
+            stats = loot_box_item['stats']
+            await interaction.response.send_message(f"**Congratulations!** You've received a **{item_name}** from the loot box!", ephemeral=True)
+            await self._add_loot_to_inventory(interaction, self.author, loot_box_item, stats)
+        else:
+            await interaction.response.send_message("Better luck next time! No loot this time.", ephemeral=True)
 #from redbot.core import tasks
 
 
@@ -148,201 +194,82 @@ class Farm(commands.Cog):
             await ctx.send(f"Use `{prefix[0]}farm plant potato` to get started.")
 
 
+
     @farm.command()
     async def fight(self, ctx):
-            
         user_data = await self.config.user(ctx.author).all()
-        
-        # Load zombie names from the file
-        zombie_names_path = os.path.join(os.path.dirname(__file__), 'zombie_names.txt')  # Adjust the path as necessary
+
+        zombie_names_path = os.path.join(os.path.dirname(__file__), 'zombie_names.txt')
         with open(zombie_names_path, 'r') as file:
             zombie_names = [line.strip() for line in file.readlines()]
-    
-        # Select a random zombie name
         enemy_name = random.choice(zombie_names)
-        user_rep = user_data['rep']  # Fetch the user's rep
-        # Generate enemy stats based on the user's stats
+
+        user_rep = user_data['rep']
         low_mod = 1
         high_mod = 2
         enemy_stats = {
-            "strength": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
-            "defense": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
-            "speed": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
-            "luck": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
-            "Health": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
-            "Critical_chance": random.randint(math.floor(1+user_rep/low_mod), math.ceil((user_rep+1)*high_mod)),
+            "strength": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
+            "defense": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
+            "speed": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
+            "luck": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
+            "Health": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
+            "Critical_chance": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
         }
-        
-        round_count = 0
-        round_messages = []  # To store embeds for each round
 
-        bad_start_life=enemy_stats['Health']
-        start_life=user_data['Health']
-    
+        round_messages = []
+        round_count = 0
+        start_life = user_data['Health']
+        bad_start_life = enemy_stats['Health']
+
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
             round_count += 1
-            # Calculate stats and damage as before...
+            player_attack = user_data['strength'] + random.randint(1, user_data['luck'])
+            enemy_attack = enemy_stats['strength'] + random.randint(1, enemy_stats['luck'])
+            player_defense = user_data['defense'] * (1 + user_data['speed'] / 100)
+            enemy_defense = enemy_stats['defense'] * (1 + enemy_stats['speed'] / 100)
 
+            player_damage = max(round_count, player_attack - enemy_defense)
+            enemy_damage = max((round_count ** 2) / 2, enemy_attack - player_defense)
 
-            player_effective_attack = user_data['strength'] + random.randint(1, user_data['luck'])
-            player_effective_defense = user_data['defense'] * (1 + user_data['speed'] / 100)
-            enemy_effective_attack = enemy_stats['strength'] + random.randint(1, enemy_stats['luck'])
-            enemy_effective_defense = enemy_stats['defense'] * (1 + enemy_stats['speed'] / 100)
-    
-            player_damage = max(round_count, player_effective_attack - enemy_effective_defense)
-            enemy_damage = max((round_count * round_count)/2, enemy_effective_attack - player_effective_defense)
+            for _ in range(user_data['Critical_chance'] // 100):
+                player_damage *= 2
+            if random.random() < (user_data['Critical_chance'] % 100) / 100:
+                player_damage *= 2
 
-            
-            guaranteed_crits = user_data['Critical_chance'] // 100
-            chance_for_extra_crit = user_data['Critical_chance'] % 100
-        
-            # Guaranteed crits for the player
-            for _ in range(guaranteed_crits):
-                player_damage *= 2  # Double damage for each guaranteed critical hit
-        
-            # Chance for an additional crit
-            if random.random() < chance_for_extra_crit / 100:
-                player_damage *= 2  # Double damage for additional critical hit
-        
-            # Enemy's turn
-            guaranteed_crits_enemy = enemy_stats['Critical_chance'] // 100
-            chance_for_extra_crit_enemy = enemy_stats['Critical_chance'] % 100
-        
-            # Guaranteed crits for the enemy
-            for _ in range(guaranteed_crits_enemy):
-                enemy_damage *= 2  # Double damage for each guaranteed critical hit
-        
-            # Chance for an additional crit for the enemy
-            if random.random() < chance_for_extra_crit_enemy / 100:
-                enemy_damage *= 2  # Double damage for additional critical hit
+            for _ in range(enemy_stats['Critical_chance'] // 100):
+                enemy_damage *= 2
+            if random.random() < (enemy_stats['Critical_chance'] % 100) / 100:
+                enemy_damage *= 2
 
-
-            enemy_damage = math.floor(enemy_damage)
             player_damage = math.ceil(player_damage)
+            enemy_damage = math.floor(enemy_damage)
 
-            user_data['Health'] -= math.floor(enemy_damage)
-            enemy_stats['Health'] -= math.ceil(player_damage)
+            user_data['Health'] -= enemy_damage
+            enemy_stats['Health'] -= player_damage
 
+            player_bar = "❤️" * math.ceil(10 * user_data['Health'] / start_life) + "🖤" * (10 - math.ceil(10 * user_data['Health'] / start_life))
+            enemy_bar = "💚" * math.ceil(10 * enemy_stats['Health'] / bad_start_life) + "🖤" * (10 - math.ceil(10 * enemy_stats['Health'] / bad_start_life))
 
-            bar_length = 10  # Number of emojis in the health bar
-            health_ratio = enemy_stats['Health']  / bad_start_life
-            filled_blocks = int(math.ceil(bar_length * health_ratio))
-            empty_blocks = bar_length - filled_blocks
-            
-            bad_life_bar = "Health: " + "💚" * filled_blocks + "🖤" * empty_blocks
-            if len(bad_life_bar) > 18:
-                bad_life_bar = bad_life_bar[:18]
-            
-            bar_length = 10  # Number of emojis in the health bar
-            health_ratio = user_data['Health'] / start_life
-            filled_blocks = int(math.ceil(bar_length * health_ratio))
-            empty_blocks = bar_length - filled_blocks
-
-            player_life_bar = "Health: " + "❤️" * filled_blocks + "🖤" * empty_blocks
-            if len(player_life_bar) > 28:
-                player_life_bar = player_life_bar[:28]
-
-            
-            # Create the Embed for the round
             embed = discord.Embed(title=f"Round {round_count} - {enemy_name}", color=discord.Color.blue())
-            embed.add_field(name=f"{enemy_name}", value=f"Damage Taken: **{player_damage}**\n{bad_life_bar}", inline=False)
-            embed.add_field(name="You", value=f"Damage Taken: **{enemy_damage}**\n{player_life_bar}", inline=False)
-    
-            # Append the embed to the round messages
+            embed.add_field(name=f"{enemy_name}", value=f"Damage Taken: **{player_damage}**\nHealth: {enemy_bar}", inline=False)
+            embed.add_field(name="You", value=f"Damage Taken: **{enemy_damage}**\nHealth: {player_bar}", inline=False)
             round_messages.append(embed)
-    
-            # Check for end of combat and break loop if needed...
-    
-        # Pagination (send first message and add reactions for navigation)
-        current_page = 0
-        message = await ctx.send(embed=round_messages[current_page])
-    
-        await message.add_reaction('◀')
-        await message.add_reaction('▶')
-        await message.add_reaction('🎁') 
-    
-        def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in ['◀', '▶', '🎁'] and reaction.message.id == message.id    
-        while True:
-            try:
-                reaction, user = await ctx.bot.wait_for('reaction_add', timeout=30.0, check=check)
-    
-                if str(reaction.emoji) == '▶':
-                    if current_page < len(round_messages) - 1:
-                        current_page += 1
-                        await message.edit(embed=round_messages[current_page])
-                    else:
-                        break  # Break the loop if it's the last page and the right arrow is pressed
-                    await message.remove_reaction(reaction, user)
-    
-                elif str(reaction.emoji) == '◀' and current_page > 0:
-                    current_page -= 1
-                    await message.edit(embed=round_messages[current_page])
-                    await message.remove_reaction(reaction, user)
-                elif str(reaction.emoji) == '🎁':
-                    break
 
-    
-            except asyncio.TimeoutError:
-                    break  # End pagination if user doesn't react for a while
-
-        if user_data['Health'] > 0:
-            result = "won"
-            
-        
-            # Calculate the rep reward
-            # The formula below assumes the rep reward decreases linearly with the number of rounds,
-            # but never goes below 1
-            rep_reward = 1
-        
-            # Update the player's rep
-            user_data['rep'] += rep_reward
-            await self.config.user(ctx.author).set(user_data)  
-        else:
-            result = "lost"
-
-            # Create an embed object with a title and a color (red for loss)
-            embed = discord.Embed(title="Fight Result", description=f"{ctx.author.mention}, you lost the fight!", color=discord.Color.red())
-    
-            # Add fields to provide more details about the fight
-            embed.add_field(name="Opponent", value=enemy_name, inline=False)
-            
-            # Optionally, you can add an encouraging message or tips for the player
-            embed.add_field(name="Better luck next time!", value="Consider upgrading your gear or strategizing differently.", inline=False)
-        
-        
-            # Send the embed in the channel
-            await ctx.send(embed=embed)
-
-        
-        #await ctx.send(f"You fought **{enemy_name}** and you {result} the fight!")
-
-        user_data['Health'] = start_life 
+        result = "won" if user_data['Health'] > 0 else "lost"
+        rep_change = 1 if result == "won" else -1
+        user_data['rep'] = max(1, user_data['rep'] + rep_change)
+        user_data['Health'] = start_life  # Reset for future fights
         await self.config.user(ctx.author).set(user_data)
 
-        
-        if result == "won":
-            # Load loot items (consider making this a separate function if used elsewhere)
-            loot_items_path = os.path.join(os.path.dirname(__file__), 'loot.json')  # Adjust the path as necessary
-            with open(loot_items_path, 'r') as file:
-                loot_items = json.load(file)['items']
-    
-            # Generate a loot box
-            loot_box_item = random.choice(loot_items)
-            item_name = loot_box_item['name']
-            stats = loot_box_item['stats']
+        if result == "lost":
+            embed = discord.Embed(title="Fight Result", description=f"{ctx.author.mention}, you lost the fight!", color=discord.Color.red())
+            embed.add_field(name="Opponent", value=enemy_name, inline=False)
+            embed.add_field(name="Better luck next time!", value="Consider upgrading your gear or strategizing differently.", inline=False)
+            await ctx.send(embed=embed)
 
-            #await ctx.send(f"**Congratulations!** You've received a **{item_name}** from the loot box!")
-
-            # Add the loot item to the player's inventory
-            await self._add_loot_to_inventory(ctx,ctx.author, loot_box_item, stats)
-    
-            # Inform the player about their loot
-        else:
-            user_data['rep'] =  user_data['rep'] - 1 
-            if user_data['rep'] < 1:
-                 user_data['rep'] = 1
-            await self.config.user(ctx.author).set(user_data)
+        loot_items_path = os.path.join(os.path.dirname(__file__), 'loot.json')
+        view = FightView(round_messages, ctx.author, enemy_name, loot_items_path, self.config, start_life, rep_change)
+        view.message = await ctx.send(embed=round_messages[0], view=view)
 
     
     async def _add_loot_to_inventory(self,ctx, user, item, stats):
