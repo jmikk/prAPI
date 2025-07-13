@@ -12,7 +12,7 @@ from redbot.core import commands, Config
 from discord.ext import commands as ext_commands
 
 class FightView(discord.ui.View):
-    def __init__(self, round_messages, author, enemy_name, loot_items_path, config, start_life, rep_change):
+    def __init__(self, round_messages, author, enemy_name, loot_items_path, config, start_life, rep_change, ctx):       
         super().__init__(timeout=60)
         self.round_messages = round_messages
         self.current_page = 0
