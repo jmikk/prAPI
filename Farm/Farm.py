@@ -24,6 +24,7 @@ class FightView(discord.ui.View):
         self.start_life = start_life
         self.rep_change = rep_change
         self.combat_result = None
+        self.ctx = ctx  # to send fallback errors
 
     async def send_loss_embed(self, interaction: discord.Interaction):
         embed = discord.Embed(title="Fight Result", description=f"{self.author.mention}, you lost the fight!", color=discord.Color.red())
@@ -36,43 +37,48 @@ class FightView(discord.ui.View):
 
     @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
     async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_page > 0:
-            self.current_page -= 1
-            await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
+        try:
+            if self.current_page > 0:
+                self.current_page -= 1
+                await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
+        except Exception as e:
+            await self.ctx.send(f"⚠️ Error in ◀ button: `{e}`")
+
 
     @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
     async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_page < len(self.round_messages) - 1:
-            self.current_page += 1
-            await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
+        try:
+            if self.current_page < len(self.round_messages) - 1:
+                self.current_page += 1
+                await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
     
-            if self.current_page == len(self.round_messages) - 1:
-                await asyncio.sleep(0.5)
-                await self.claim.callback(interaction)
-        else:
-            await interaction.response.defer()
-
-    
-
+                if self.current_page == len(self.round_messages) - 1:
+                    await asyncio.sleep(0.5)
+                    await self.claim.callback(interaction)
+            else:
+                await interaction.response.defer()
+        except Exception as e:
+            await self.ctx.send(f"⚠️ Error in ▶ button: `{e}`")
 
     @discord.ui.button(label="🎁 Claim", style=discord.ButtonStyle.success)
     async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.stop()
-        if self.rep_change > 0:
-            with open(self.loot_items_path, 'r') as file:
-                loot_items = json.load(file)['items']
-            loot_box_item = random.choice(loot_items)
-            item_name = loot_box_item['name']
-            stats = loot_box_item['stats']
-            await interaction.response.send_message(f"**Congratulations!** You've received a **{item_name}** from the loot box!", ephemeral=True)
-            await self._add_loot_to_inventory(interaction, self.author, loot_box_item, stats)
-    
-            # Send public win message
-            await interaction.followup.send(f"{self.author.mention} defeated **{self.enemy_name}** and earned a loot box!", ephemeral=False)
-    
-        else:
-            await interaction.response.defer()
-            await self.send_loss_embed(interaction)
+        try:
+            self.stop()
+            if self.rep_change > 0:
+                with open(self.loot_items_path, 'r') as file:
+                    loot_items = json.load(file)['items']
+                loot_box_item = random.choice(loot_items)
+                item_name = loot_box_item['name']
+                stats = loot_box_item['stats']
+                await interaction.response.send_message(f"**Congratulations!** You've received a **{item_name}** from the loot box!", ephemeral=True)
+                await self._add_loot_to_inventory(interaction, self.author, loot_box_item, stats)
+                await interaction.followup.send(f"{self.author.mention} defeated **{self.enemy_name}** and earned a loot box!", ephemeral=False)
+            else:
+                await interaction.response.defer()
+                await self.send_loss_embed(interaction)
+        except Exception as e:
+            await self.ctx.send(f"⚠️ Error in 🎁 claim: `{e}`")
+
 
 
 
@@ -288,7 +294,7 @@ class Farm(commands.Cog):
             await ctx.send(embed=embed)
 
         loot_items_path = os.path.join(os.path.dirname(__file__), 'loot.json')
-        view = FightView(round_messages, ctx.author, enemy_name, loot_items_path, self.config, start_life, rep_change)
+        view = FightView(round_messages, ctx.author, enemy_name, loot_items_path, self.config, start_life, rep_change, ctx)
         view.message = await ctx.send(embed=round_messages[0], view=view)
 
     
