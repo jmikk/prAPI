@@ -41,6 +41,9 @@ class FightView(discord.ui.View):
             if self.current_page > 0:
                 self.current_page -= 1
                 await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
+            else: 
+                self.current_page = len(self.round_messages)
+                await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
         except Exception as e:
             await self.ctx.send(f"⚠️ Error in ◀ button: `{e}`")
 
@@ -49,10 +52,10 @@ class FightView(discord.ui.View):
     async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             if self.current_page < len(self.round_messages) - 1:
-                self.current_page += 1
+                self.current_page += -1
                 await interaction.response.edit_message(embed=self.round_messages[self.current_page], view=self)
                 if self.current_page == len(self.round_messages) - 1:
-                    self.current_page = 0
+                    self.current_page = -1
             else:
                 await interaction.response.defer()
         except Exception as e:
