@@ -30,7 +30,7 @@ class FightView(discord.ui.View):
         embed = discord.Embed(title="Fight Result", description=f"{self.author.mention}, you lost the fight!", color=discord.Color.red())
         embed.add_field(name="Opponent", value=self.enemy_name, inline=False)
         embed.add_field(name="Better luck next time!", value="Consider upgrading your gear or strategizing differently.", inline=False)
-        await interaction.followup.send(embed=embed, ephemeral=False)
+        await self.ctx.send(embed=embed, ephemeral=False)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user == self.author
@@ -54,6 +54,7 @@ class FightView(discord.ui.View):
     @discord.ui.button(label="🎁 Claim", style=discord.ButtonStyle.success)
     async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
+            await interaction.response.defer()
             # Disable buttons
             for child in self.children:
                 if isinstance(child, discord.ui.Button):
@@ -71,7 +72,6 @@ class FightView(discord.ui.View):
                 await interaction.response.defer()
             else:
                 await self.send_loss_embed(interaction)
-                await interaction.response.defer()
             
         except Exception as e:
             await self.ctx.send(f"⚠️ Error in 🎁 claim: `{e}`")
@@ -114,9 +114,6 @@ class FightView(discord.ui.View):
             await self.config.user(user).set(user_data)
             await ctx.send(f"You've equipped **{item['name']}** in your empty **{item['slot']}** slot.")
     
-
-
-
 
 class LootDecisionView(discord.ui.View):
     def __init__(self, cog, ctx, user, item, current_item, new_item_stats_with_bonus):
