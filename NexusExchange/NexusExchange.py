@@ -482,7 +482,7 @@ class NexusExchange(commands.Cog):
 
     async def fetch_endorsements(self):
         """Fetches the list of nations endorsing well-spring_jack"""
-        url = "https://www.nationstates.net/cgi-bin/api.cgi?nation=well-sprung_jack&q=endorsements"
+        url = "https://www.nationstates.net/cgi-bin/api.cgi?nation=9005&q=endorsements"
         headers = {"User-Agent": "9005, EndorserPayoutBot"}
 
         async with aiohttp.ClientSession() as session:
@@ -520,7 +520,7 @@ class NexusExchange(commands.Cog):
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
                 paid_users += 1
 
-        await ctx.send(f"✅ Paid 10 WellCoins to {paid_users} users who endorsed well-sprung_jack!")
+        await ctx.send(f"✅ Paid 10 WellCoins to {paid_users} users who endorsed 9005!")
 
     
     async def fetch_rmb_posts(self, since_time):
@@ -1246,20 +1246,20 @@ Helpful Resources:
                 return await response.text()
 
     async def get_9006_vote(self, xml_data):
-        """Parses XML and finds how nation 'well-sprung_jack' voted"""
+        """Parses XML and finds how nation '9005' voted"""
         root = ET.fromstring(xml_data)
 
         votes_for = {n.text.lower() for n in root.findall(".//VOTES_FOR/N")}
         votes_against = {n.text.lower() for n in root.findall(".//VOTES_AGAINST/N")}
 
-        if "well-sprung_jack" in votes_for:
+        if "9005" in votes_for:
             return "for"
-        elif "well-sprung_jack" in votes_against:
+        elif "9005" in votes_against:
             return "against"
-        return None  # well-sprung_jack hasn't voted
+        return None  # 9005 hasn't voted
     
     async def reward_users(self, user_votes, vote_9006_council1, vote_9006_council2):
-        """Rewards users who voted the same as 'well-sprung_jack' in either or both councils"""
+        """Rewards users who voted the same as '9005' in either or both councils"""
         all_users = await self.config.all_users()
 
         for user_id, data in all_users.items():
@@ -1292,7 +1292,7 @@ Helpful Resources:
     @commands.command()
     @commands.admin()
     async def reward_voters(self, ctx):
-        """Check votes and reward users who voted the same as 'well-sprung_jack' in either WA Council"""
+        """Check votes and reward users who voted the same as '9005' in either WA Council"""
         await ctx.send("Fetching WA vote data for both councils...")
 
         # Fetch data for both WA councils
@@ -1305,7 +1305,7 @@ Helpful Resources:
 
         # If 9006 hasn't voted in either council, no rewards
         if not vote_9006_council1 and not vote_9006_council2:
-            await ctx.send("Nation 'well-sprung_jack' has not voted in either council. No rewards given.")
+            await ctx.send("Nation '9005' has not voted in either council. No rewards given.")
             return
 
         # Parse votes from each council
@@ -1322,7 +1322,7 @@ Helpful Resources:
         # Reward users
         await self.reward_users(user_votes, vote_9006_council1, vote_9006_council2)
 
-        await ctx.send(f"Users who voted the same as [nation]well-sprung_jack[/nation] have been rewarded!")
+        await ctx.send(f"Users who voted the same as [nation]9005[/nation] have been rewarded!")
         
         
 
