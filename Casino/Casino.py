@@ -386,8 +386,8 @@ class Casino(commands.Cog):
             stats[game]["payout"] += entry["payout"]
     
         # Add 5 WellCoins to regional debt
-        regional_debt = await self.config.guild(ctx.guild).spent_tax()
-        await self.config.guild(ctx.guild).spent_tax.set(regional_debt + 5)
+        regional_debt = await self.config.spent_tax()
+        await self.config.spent_tax.set(regional_debt + 5)
     
         # Build Embed Report
         embed = discord.Embed(title=f"📊 Your Gambling Report ({timeframe.capitalize()})", color=discord.Color.green())
