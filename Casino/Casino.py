@@ -32,8 +32,8 @@ class Casino(commands.Cog):
         "history": []
     }
     
-        await self.config.register_user(**default_user)
-        await self.config.register_guild(regional_debt=0)
+        self.config.register_user(**default_user)
+        self.config.register_guild(regional_debt=0)
 
 
 
