@@ -176,7 +176,6 @@ class Casino(commands.Cog):
 
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
-    @commands.admin_or_permissions(administrator=True)
     async def roulette(self, ctx, bet: float, call: str):
         """Play roulette. Bet on a number (0-36), red, black, even, or odd."""
         balance = await self.get_balance(ctx.author)
@@ -229,7 +228,6 @@ class Casino(commands.Cog):
 
 
     @commands.command()
-    @commands.admin_or_permissions(administrator=True)
     async def roulette_history(self, ctx):
         """Display statistics of the last 20 roulette rolls."""
         if not self.roulette_history:
