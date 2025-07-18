@@ -207,7 +207,7 @@ class Casino(commands.Cog):
             "timestamp": datetime.utcnow().isoformat(),
             "game": "slots",
             "bet": bet,
-            "payout": max(0, winnings)
+            "payout": max(0, payout)
         })
         await self.config.user(user).history.set(user_history)
 
@@ -270,7 +270,7 @@ class Casino(commands.Cog):
             "timestamp": datetime.utcnow().isoformat(),
             "game": "roulette",
             "bet": bet,
-            "payout": max(0, winnings)
+            "payout": max(0, payout)
         })
         await self.config.user(user).history.set(user_history)
 
