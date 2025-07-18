@@ -98,7 +98,7 @@ class Casino(commands.Cog):
         await message.edit(content=f"{final_flip}\n{result_text} New balance: {new_balance:.2f} WellCoins.")
         self.total_bets["coinflip"] += bet
         self.total_payouts["coinflip"] += max(0, winnings)
-
+        user = ctx.author
         user_history = await self.config.user(user).history()
         user_history.append({
             "timestamp": datetime.utcnow().isoformat(),
@@ -143,7 +143,7 @@ class Casino(commands.Cog):
         await message.edit(content=f"Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: {new_balance:.2f} WellCoins.")
         self.total_bets["dice"] += bet
         self.total_payouts["dice"] += max(0, winnings)
-
+        user = ctx.author
         user_history = await self.config.user(user).history()
         user_history.append({
             "timestamp": datetime.utcnow().isoformat(),
@@ -200,7 +200,8 @@ class Casino(commands.Cog):
        
         self.total_bets["slots"] += bet
         self.total_payouts["slots"] += max(0, payout)
-
+        
+        user = ctx.author
         user_history = await self.config.user(user).history()
         user_history.append({
             "timestamp": datetime.utcnow().isoformat(),
@@ -263,6 +264,7 @@ class Casino(commands.Cog):
         self.total_bets["roulette"] += bet
         self.total_payouts["roulette"] += max(0, payout)
 
+        user = ctx.author
         user_history = await self.config.user(user).history()
         user_history.append({
             "timestamp": datetime.utcnow().isoformat(),
