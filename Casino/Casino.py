@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 class Casino(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(None, identifier=345678654456, force_registration=True)
+        self.config = Config.get_conf(None, identifier=345678654456, force_registration=False)
         self.roulette_history = []  # Store last 100 rolls
 
         self.total_bets = {
