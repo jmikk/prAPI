@@ -28,6 +28,14 @@ class Casino(commands.Cog):
         "roulette": 0,
     }
 
+        default_user = {
+        "history": []
+    }
+    
+        await self.config.register_user(**default_user)
+        await self.config.register_guild(regional_debt=0)
+
+
 
     async def get_balance(self, user: discord.Member):
         return await self.config.user(user).master_balance()
@@ -91,6 +99,17 @@ class Casino(commands.Cog):
         self.total_bets["coinflip"] += bet
         self.total_payouts["coinflip"] += max(0, winnings)
 
+        user_history = await self.config.user(user).history()
+        user_history.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "game": "coinflip",
+            "bet": bet,
+            "payout": max(0, winnings)
+        })
+        await self.config.user(user).history.set(user_history)
+
+
+
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
     async def dice(self, ctx, bet: float):
@@ -124,6 +143,15 @@ class Casino(commands.Cog):
         await message.edit(content=f"Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: {new_balance:.2f} WellCoins.")
         self.total_bets["dice"] += bet
         self.total_payouts["dice"] += max(0, winnings)
+
+        user_history = await self.config.user(user).history()
+        user_history.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "game": "dice",
+            "bet": bet,
+            "payout": max(0, winnings)
+        })
+        await self.config.user(user).history.set(user_history)
 
 
     @commands.command()
@@ -172,6 +200,15 @@ class Casino(commands.Cog):
        
         self.total_bets["slots"] += bet
         self.total_payouts["slots"] += max(0, payout)
+
+        user_history = await self.config.user(user).history()
+        user_history.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "game": "slots",
+            "bet": bet,
+            "payout": max(0, winnings)
+        })
+        await self.config.user(user).history.set(user_history)
 
 
     @commands.command()
@@ -225,6 +262,15 @@ class Casino(commands.Cog):
         
         self.total_bets["roulette"] += bet
         self.total_payouts["roulette"] += max(0, payout)
+
+        user_history = await self.config.user(user).history()
+        user_history.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "game": "roulette",
+            "bet": bet,
+            "payout": max(0, winnings)
+        })
+        await self.config.user(user).history.set(user_history)
 
 
     @commands.command()
@@ -296,4 +342,77 @@ class Casino(commands.Cog):
     
         embed.set_footer(text=f"🧮 Total House Profit: {total_net:.2f} WellCoins")
         await ctx.send(embed=embed)
+
+    @commands.command()
+    async def gamblingreport(self, ctx, timeframe: str = "all"):
+        """DM you your gambling report: daily, weekly, monthly, or all."""
+        user = ctx.author
+        now = datetime.utcnow()
+        timeframe = timeframe.lower()
+    
+        # Clean up history and filter by timeframe
+        history = await self.config.user(user).history()
+    
+        # Remove anything older than 30 days
+        cutoff_date = now - timedelta(days=30)
+        history = [entry for entry in history if datetime.fromisoformat(entry["timestamp"]) >= cutoff_date]
+        await self.config.user(user).history.set(history)
+    
+        # Determine timeframe filter
+        if timeframe == "daily":
+            time_limit = now - timedelta(days=1)
+        elif timeframe == "weekly":
+            time_limit = now - timedelta(weeks=1)
+        elif timeframe == "monthly":
+            time_limit = now - timedelta(days=30)
+        else:
+            time_limit = None  # "all"
+    
+        # Aggregate bets and payouts by game type
+        stats = {"coinflip": {"bet": 0, "payout": 0},
+                 "dice": {"bet": 0, "payout": 0},
+                 "slots": {"bet": 0, "payout": 0},
+                 "roulette": {"bet": 0, "payout": 0}}
+    
+        for entry in history:
+            ts = datetime.fromisoformat(entry["timestamp"])
+            if time_limit and ts < time_limit:
+                continue  # Skip older than timeframe
+    
+            game = entry["game"]
+            stats[game]["bet"] += entry["bet"]
+            stats[game]["payout"] += entry["payout"]
+    
+        # Add 5 WellCoins to regional debt
+        regional_debt = await self.config.guild(ctx.guild).regional_debt()
+        await self.config.guild(ctx.guild).regional_debt.set(regional_debt + 5)
+    
+        # Build Embed Report
+        embed = discord.Embed(title=f"📊 Your Gambling Report ({timeframe.capitalize()})", color=discord.Color.green())
+        net_total = 0
+    
+        for game, data in stats.items():
+            total_bet = data["bet"]
+            total_payout = data["payout"]
+            net = total_payout - total_bet
+            net_total += net
+            embed.add_field(
+                name=f"{game.capitalize()}",
+                value=(
+                    f"💰 **Total Bet**: {total_bet:.2f}\n"
+                    f"🏆 **Total Payout**: {total_payout:.2f}\n"
+                    f"📉 **Net Gain/Loss**: {net:.2f}"
+                ),
+                inline=False
+            )
+    
+        embed.set_footer(text=f"Total Net: {net_total:.2f} WellCoins | 5 WC Debt Added to Region")
+    
+        # DM the user privately
+        try:
+            await user.send(embed=embed)
+            await ctx.send(f"{user.mention} Your report has been DM'd to you.")
+        except discord.Forbidden:
+            await ctx.send("Unable to DM you your report. Please enable DMs.")
+
     
