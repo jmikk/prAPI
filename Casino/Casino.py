@@ -33,8 +33,8 @@ class Casino(commands.Cog):
     }
     
         self.config.register_user(**default_user)
-        self.config.register_guild(regional_debt=0)
-
+        
+        self.config.register_global(spent_tax=0)
 
 
     async def get_balance(self, user: discord.Member):
