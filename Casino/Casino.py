@@ -228,7 +228,7 @@ class Casino(commands.Cog):
         color2 = "🟥 Red" if number in red_numbers else "⬛ Black" if number in black_numbers else "🟩 Green"
         even_or_odd = "even" if number % 2 == 0 and number != 0 else "odd" if number != 0 else "neither"
         if number == -1:
-            even_or_odd = neither
+            even_or_odd = "neither"
         
         # Store result in history
         self.roulette_history.append(number)
