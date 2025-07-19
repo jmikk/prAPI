@@ -213,8 +213,8 @@ class Casino(commands.Cog):
 
 
     #@commands.command()
-    @commands.admin()
     #@cooldown(1, 3, BucketType.guild)
+    @commands.admin()
     async def roulette(self, ctx, bet: float, call: str):
         """Play roulette. Bet on a number (0-36), red, black, even, or odd."""
         balance = await self.get_balance(ctx.author)
