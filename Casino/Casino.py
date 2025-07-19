@@ -248,11 +248,11 @@ class Casino(commands.Cog):
         payout = 0
         if call.isdigit() and 0 <= int(call) <= 36:
             if int(call) == number:
-                payout = bet * 35
+                payout = bet * 17.5
         elif call.lower() in ["red", "black"] and call.lower() == color:
-            payout = bet * 2
+            payout = bet
         elif call.lower() in ["even", "odd"] and call.lower() == even_or_odd:
-            payout = bet * 2
+            payout = bet
         
         result_text = f"Roulette landed on {color2} {number}."
         if payout > 0:
