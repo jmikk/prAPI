@@ -232,7 +232,7 @@ class Casino(commands.Cog):
         
         # Store result in history
         self.roulette_history.append(number)
-        if len(self.roulette_history) > 20:
+        if len(self.roulette_history) > 200:
             self.roulette_history.pop(0)
         
         # Simulate rolling effect
