@@ -910,6 +910,14 @@ class NexusExchange(commands.Cog):
         user = ctx.author
         data = self.config.user(user)
 
+        if amount > 100000:
+            return await ctx.send("❌ You can't borrow more than 100,000 wellcoins per the law")
+        
+
+        if amount > await data.xp / 10 :
+            return await ctx.send("❌ You can't borrow more than a 10th of your exp")
+        
+
         if amount <= 0:
             return await ctx.send("❌ You must borrow a positive amount.")
 
