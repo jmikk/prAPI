@@ -918,7 +918,7 @@ class NexusExchange(commands.Cog):
             return await ctx.send(f"❌ You can't borrow more than a 10th of your exp (Max Loan: {await data.xp() / 10} or 100,000 wellcoins whatever is lower.")
         
 
-        if amount <= 0:
+        if amount < 0:
             return await ctx.send("❌ You must borrow a positive amount.")
 
         current_balance = await data.master_balance()
