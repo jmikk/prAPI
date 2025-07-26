@@ -220,6 +220,30 @@ class Casino(commands.Cog):
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
         
+        valid_calls = {
+            "black": "x2",
+            "red": "x2",
+            "green": "x35",
+            "odd": "x2",
+            "even": "x2",
+            "high": "x3",
+            "mid": "x3",
+            "low": "x3"
+        }
+        
+        if call.lower() not in valid_calls:
+            embed = discord.Embed(
+                title="🎲 Invalid Bet Type",
+                description="That bet type isn't recognized. Here's a list of valid roulette calls and their payouts:",
+                color=discord.Color.red()
+            )
+            
+            for bet, payout in valid_calls.items():
+                embed.add_field(name=bet.capitalize(), value=f"Payout: {payout}", inline=True)
+        
+            embed.set_footer(text="Please choose a valid call to play roulette.")
+            return await ctx.send(embed=embed)
+        
         # Roulette wheel setup
         number = random.randint(0, 36)
         red_numbers = {1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36}
@@ -252,6 +276,14 @@ class Casino(commands.Cog):
             payout = bet
         elif call.lower() in ["even", "odd"] and call.lower() == even_or_odd:
             payout = bet
+        elif call.lower() in ["green"] and call.lower() == color:
+            payout = bet * 17.5
+        elif call in ["low"] and 1 <= number <= 12:
+            payout = bet * 1.5
+        elif call in ["mid"] and 13 <= number <= 24:
+            payout = bet * 1.5
+        elif call in ["high"] and 25 <= number <= 36:
+            payout = bet * 1.5
         
         result_text = f"Roulette landed on {color2} {number}."
         if payout > 0:
