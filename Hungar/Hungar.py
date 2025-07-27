@@ -1682,7 +1682,7 @@ class Hungar(commands.Cog):
             winner_balance = await self.config_gold.user_from_id(int(winner_id)).master_balance()
             winner_balance += winner_bonus
             await self.config_gold.user_from_id(int(winner_id)).master_balance.set(winner_balance)
-            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** from the bets placed on them!")
+            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** half of the pot!")
     
         # Update kill counts
         for player_id, player_data in players.items():
