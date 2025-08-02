@@ -434,8 +434,8 @@ class StockMarket(commands.Cog):
                     base_percent = random.uniform(-2, 2)
     
                 # Market activity influence
-                market_change = 0.01 * (self.last_day_trades / 1000)
-                market_change = max(-0.02, min(market_change, 0.02))  # Clamp between -10% and +11%
+                market_change = 0.01 * (self.last_day_trades / 10000)
+                market_change = max(-0.02, min(market_change, 0.02)) 
     
                 # Final percent change calculation
                 total_percent_change = base_percent + tag_bonus + (market_change * 100)
