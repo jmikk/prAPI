@@ -2186,6 +2186,10 @@ Helpful Resources:
             await ctx.send(f"❌ You do not have enough WellCoins to complete this transaction. You only have {sender_balance} WellCoins")
             return
 
+        if recipient == ctx.author:
+            await ctx.send("❌ You can't pay yourself!")
+            return
+
         recipient_balance = await self.config.user(recipient).master_balance()
         await self.config.user(ctx.author).master_balance.set(sender_balance - amount)
         await self.config.user(recipient).master_balance.set(recipient_balance + amount)
