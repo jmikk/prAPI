@@ -1852,7 +1852,7 @@ Helpful Resources:
             embed.description = "No users have any WellCoins yet."
         else:
             for rank, (user, balance) in enumerate(top_users, start=1):
-                embed.add_field(name=f"#{rank} {user.display_name}", value=f"💰 `{balance:.2f}` WellCoins", inline=False)
+                embed.add_field(name=f"#{rank} {user.display_name}", value=f"💰 `{balance:,.2f}` WellCoins", inline=False)
     
         await ctx.send(embed=embed)
 
