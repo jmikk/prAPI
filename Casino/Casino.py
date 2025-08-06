@@ -435,14 +435,14 @@ class Casino(commands.Cog):
             embed.add_field(
                 name=f"{game.capitalize()}",
                 value=(
-                    f"💰 **Total Bet**: {total_bet:.2f}\n"
-                    f"🏆 **Total Payout**: {total_payout:.2f}\n"
-                    f"📉 **Net Gain/Loss**: {net:.2f}"
+                    f"💰 **Total Bet**: {total_bet:,.2f}\n"
+                    f"🏆 **Total Payout**: {total_payout:,.2f}\n"
+                    f"📉 **Net Gain/Loss**: {net:,.2f}"
                 ),
                 inline=False
             )
     
-        embed.set_footer(text=f"Total Net: {net_total:.2f} WellCoins | 5 WC Debt Added to Region")
+        embed.set_footer(text=f"Total Net: {net_total:,.2f} WellCoins | 5 WC Debt Added to Region")
     
         # DM the user privately
         try:
