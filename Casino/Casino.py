@@ -163,7 +163,7 @@ class Casino(commands.Cog):
             return await ctx.send("Invalid bet amount.")
         
         emojis = ["🍒", "🍋", "🍊", "🍉", "⭐", "💎", "🌸"]
-        weighted_emojis = ["🍒"] * 8 + ["🍋"] * 15 + ["🍊"] * 18 + ["🍉"] * 20 + ["⭐"] * 22 + ["💎"] * 22 + ["🌸"] * 3
+        weighted_emojis = ["🍒"] * 8 + ["🍋"] * 15 + ["🍊"] * 18 + ["🍉"] * 20 + ["⭐"] * 22 + ["💎"] * 22 + ["🌸"] * 3 + ["🍍"] * 10
         
         message = await ctx.send("🎰 Rolling the slots... 🎰")
         
