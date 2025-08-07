@@ -10,6 +10,8 @@ import os
 import json
 from redbot.core import commands, Config
 from discord.ext import commands as ext_commands
+from discord import Message
+import time
 
 class FightView(discord.ui.View):
     def __init__(self, round_messages, author, enemy_name, loot_items_path, config, start_life, rep_change, ctx):       
@@ -233,10 +235,6 @@ class Farm(commands.Cog):
 
         }
 
-        default_global = {
-            "donations": {},
-            "donation_goal": {}
-        }
         self.config.register_global(**default_global)
 
         self.market_conditions = {
@@ -313,7 +311,13 @@ class Farm(commands.Cog):
             await ctx.send(f"Use `{prefix[0]}farm plant potato` to get started.")
 
 
-
+    @commands.command(name="balance")
+    async def balance(self, ctx):
+        """Check your gold balance."""
+        user = ctx.author
+        gold = await self.config.user(user).gold()
+        await ctx.send(f"💰 {user.mention}, you currently have **{gold} gold**.")
+    
 
     @farm.command()
     async def fight(self, ctx):
@@ -694,74 +698,6 @@ class Farm(commands.Cog):
         except asyncio.TimeoutError:
             await ctx.send("Field clear canceled.")
 
-    @farm.command()
-    async def donate(self, ctx, item_name: str, quantity: int):
-        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
-
-        if quantity <= 0:
-            await ctx.send("Please specify a valid quantity to donate.")
-            return
-    
-        inventory = await self.config.user(ctx.author).inventory()
-        if inventory.get(item_name, 0) < quantity:
-            await ctx.send(f"You do not have enough {item_name} to donate.")
-            return
-    
-        # Deduct the item from the user's inventory
-        inventory[item_name] -= quantity
-        if inventory[item_name] <= 0:
-            del inventory[item_name]  # Remove the item from the inventory if quantity is 0
-        await self.config.user(ctx.author).inventory.set(inventory)
-    
-        # Add the donated items to the donation count
-        current_donations = await self.config.donations()
-        current_donations[item_name] = current_donations.get(item_name, 0) + quantity
-        await self.config.donations.set(current_donations)
-    
-        await ctx.send(f"Thank you for donating {quantity} {item_name}!")
-    
-        # Check if the donation goal is reached
-        donation_goal = await self.config.donation_goal()
-        if current_donations[item_name] >= donation_goal[item_name]:
-            await ctx.send(f"The donation goal for {item_name} has been reached!")
-            # Implement what happens when the goal is reached
-
-    @farm.command()
-    async def donation_progress(self, ctx):
-        await self.config.user(ctx.author).last_activity.set(datetime.datetime.now().timestamp())
-
-        current_donations = await self.config.donations()
-        donation_goal = await self.config.donation_goal()
-        progress_messages = []
-    
-        for item, goal in donation_goal.items():
-            donated = current_donations.get(item, 0)
-            progress_messages.append(f"{item.capitalize()}: {donated}/{goal} donated")
-    
-        if progress_messages:
-            await ctx.send("\n".join(progress_messages))
-        else:
-            await ctx.send("There are currently no donation goals.")
-
-
-
-
-    @commands.command()
-    @commands.is_owner()
-    async def set_donation_goal(self, ctx, item: str, quantity: int):
-        """
-        Set a donation goal with custom messages.
-    
-        Args:
-        item (str): The item name for the donation goal.
-        quantity (int): The donation goal quantity.    
-        """
-        # Split the messages string into the thank-you message and the goal reached message
-    
-        # Set up the donation goal in the config
-        await self.config.donation_goal.set({item: quantity})    
-        await ctx.send(f"Donation goal for {item} set to {quantity}.")
-
     @commands.command()
     @commands.is_owner()
     async def givegold(self, ctx, member: discord.Member, amount: int):
@@ -1044,3 +980,44 @@ class Farm(commands.Cog):
 
             except asyncio.TimeoutError:
                 break  # End the loop if there's no reaction within the timeout period
+
+
+    @commands.command()
+    async def pay(self, ctx: commands.Context, member: discord.Member, amount: int):
+        """Pay another player some gold."""
+        author = ctx.author
+
+        if member.id == author.id:
+            return await ctx.send("You cannot pay yourself.")
+        if amount <= 0:
+            return await ctx.send("Amount must be a positive number.")
+
+        author_gold = await self.config.user(author).gold()
+
+        if author_gold < amount:
+            return await ctx.send("You don't have enough gold to complete this transaction.")
+
+        # Deduct and add gold
+        await self.config.user(author).gold.set(author_gold - amount)
+        recipient_gold = await self.config.user(member).gold()
+        await self.config.user(member).gold.set(recipient_gold + amount)
+
+        await ctx.send(
+            f"{author.mention} paid {humanize_number(amount)} gold to {member.mention}!"
+        )
+    
+    @commands.Cog.listener()
+    async def on_message(self, message: Message):
+        if message.author.bot or message.guild is None:
+            return
+    
+        user = message.author
+        now = int(time.time())
+        data = await self.config.user(user).all()
+    
+        if now - data.get("last_activity", 0) < 60:  # 1-minute cooldown
+            return
+    
+        await self.config.user(user).gold.set(data["gold"] + 1)
+        await self.config.user(user).last_activity.set(now)
+
