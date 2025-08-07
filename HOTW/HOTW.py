@@ -45,7 +45,7 @@ class HOTW(commands.Cog):
         await ctx.send(streak_lb)
 
     @commands.command()
-    async def hotw(self, ctx):
+    async def HOTW(self, ctx):
         guild = ctx.guild
         author = ctx.author
 
