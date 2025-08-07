@@ -306,7 +306,26 @@ class Farm(commands.Cog):
         """Farming commands."""
         if ctx.invoked_subcommand is None:
             prefix = await self.bot.get_prefix(ctx.message)
-            await ctx.send(f"Use `{prefix[0]}farm plant potato` to get started.")
+            await ctx.send(
+                f"🌾 **Welcome to the Farming Game!** 🌾\n\n"
+                f"Here's what you can do:\n"
+                f"- `{prefix[0]}farm plant <crop>` – Plant a crop to grow over time.\n"
+                f"- `{prefix[0]}farm harvest` – Harvest your ready crops for rewards.\n"
+                f"- `{prefix[0]}farm inventory` – View what you've harvested.\n"
+                f"- `{prefix[0]}farm sell <crop> <amount>` – Sell your crops for gold.\n"
+                f"- `{prefix[0]}farm status` – Check what's growing and when it will be ready.\n"
+                f"- `{prefix[0]}farm field_upgrade` – Expand your field to plant more crops.\n"
+                f"- `{prefix[0]}farm check_market` – See current crop prices.\n"
+                f"- `{prefix[0]}farm fight` – Fight zombies to earn loot and rep!\n"
+                f"- `{prefix[0]}farm view_stats` – View your character's stats.\n"
+                f"- `{prefix[0]}farm view_gear` – See your equipped items.\n"
+                f"- `{prefix[0]}farm upgrade_gear <slot>` – Upgrade one piece of gear.\n"
+                f"- `{prefix[0]}farm casino <game>` – Gamble your gold in coinflip, dice, slots, or roulette.\n"
+                f"- `{prefix[0]}farm leaderboard` – See who has the most rep, strength, or other stats.\n\n"
+                f"💰 Earn gold by chatting or harvesting crops.\n"
+                f"🧠 Use it wisely to gear up, gamble, or expand your farm!"
+            )
+
 
 
     @commands.command(name="balance")
@@ -1023,7 +1042,18 @@ class Farm(commands.Cog):
     async def casino(self, ctx):
         """Play gambling games from your farm."""
         if ctx.invoked_subcommand is None:
-            await ctx.send("Use a subcommand like `farm casino coinflip` to play.")
+            prefix = await self.bot.get_prefix(ctx.message)
+            await ctx.send(
+                f"🎰 **Welcome to the Farm Casino!** 🎲\n\n"
+                f"Try your luck and grow your gold stash! Here are your options:\n"
+                f"- `{prefix[0]}farm casino coinflip <bet> <heads/tails>` – 50/50 shot to double your gold.\n"
+                f"- `{prefix[0]}farm casino dice <bet>` – Roll a die against the house. Highest roll wins.\n"
+                f"- `{prefix[0]}farm casino slots <bet>` – Spin a 3x3 slot machine. Match symbols to win big.\n"
+                f"- `{prefix[0]}farm casino roulette <bet> <call>` – Bet on colors, ranges, or numbers (0–36).\n\n"
+                f"💡 Gold is shared with your farm balance. Don’t bet what you can’t grow back!\n"
+                f"🧪 Try using your farm earnings to gamble smartly or recklessly – up to you!"
+            )
+
 
     @casino.command()
     @commands.cooldown(1, 3, commands.BucketType.guild)
