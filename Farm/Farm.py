@@ -301,12 +301,13 @@ class Farm(commands.Cog):
                 pass
 
 
-    @commands.group(hidden=True,help=f"🌾 **Welcome to the Farming Game!** 🌾\n\n")
+    @commands.group(hidden=True)
     async def farm(self, ctx):
         """Farming commands."""
         if ctx.invoked_subcommand is None:
             prefix = await self.bot.get_prefix(ctx.message)
             await ctx.send(
+                f"🌾 **Welcome to the Farming Game!** 🌾\n\n"
                 f"Here's what you can do:\n"
                 f"- `{prefix[0]}farm plant <crop>` – Plant a crop to grow over time.\n"
                 f"- `{prefix[0]}farm harvest` – Harvest your ready crops for rewards.\n"
