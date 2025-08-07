@@ -325,6 +325,7 @@ class Farm(commands.Cog):
                 f"💰 Earn gold by chatting or harvesting crops.\n"
                 f"🧠 Use it wisely to gear up, gamble, or expand your farm!"
             )
+            return
 
 
 
