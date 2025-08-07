@@ -301,7 +301,7 @@ class Farm(commands.Cog):
                 pass
 
 
-    @commands.group()
+    @commands.group(hidden=True)
     async def farm(self, ctx):
         """Farming commands."""
         if ctx.invoked_subcommand is None:
@@ -1039,7 +1039,7 @@ class Farm(commands.Cog):
         await self.config.user(user).gold.set(data["gold"] + 1)
         await self.config.user(user).last_activity.set(now)
     
-    @farm.group()
+    @farm.group(hidden=True)
     async def casino(self, ctx):
         """Play gambling games from your farm."""
         if ctx.invoked_subcommand is None:
