@@ -235,8 +235,6 @@ class Farm(commands.Cog):
 
         }
 
-        self.config.register_global(**default_global)
-
         self.market_conditions = {
             "calm": (1, 3),
             "normal": (3, 7),
