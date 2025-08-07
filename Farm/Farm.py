@@ -1108,7 +1108,7 @@ class Farm(commands.Cog):
     
         await message.edit(content=f"🎲 Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: **{new_gold:,.2f}** gold.")
 
-    @farm.command()
+    @casino.command()
     @commands.cooldown(1, 3, commands.BucketType.guild)
     async def slots(self, ctx, bet: float):
         """Play a 3x3 slot machine. Uses your farm gold."""
