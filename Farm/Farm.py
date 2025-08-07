@@ -301,7 +301,7 @@ class Farm(commands.Cog):
                 pass
 
 
-    @commands.group(hidden=True)
+    @commands.group(hidden=True,help="")
     async def farm(self, ctx):
         """Farming commands."""
         if ctx.invoked_subcommand is None:
