@@ -1,199 +1,207 @@
-from redbot.core import commands
+from redbot.core import commands, Config
 import asyncio
-import time
 import random
 from datetime import datetime
 import discord
 
-def is_owner_overridable():
-    # Similar to @commands.is_owner()
-    # Unlike that, however, this check can be overridden with core Permissions
-    def predicate(ctx):
-        return False
-
-    return commands.permissions_check(predicate)
-
 
 class HOTW(commands.Cog):
-    HOTWname="test"
-    timestamp = datetime.now()  # Initialize timestamp as a datetime object
-    # Define a dictionary to store user data
-    user_data = {}
-
-    """My custom cog"""
+    """Holder of the Water - Server Competition Cog"""
 
     def __init__(self, bot):
         self.bot = bot
-
-    def cog_unload(self):
-        asyncio.create_task(self.client.aclose())
-
-    # great once your done messing with the bot.
-    #   async def cog_command_error(self, ctx, error):
-    #       await ctx.send(" ".join(error.args))
+        self.config = Config.get_conf(self, identifier=1234567890)
+        default_guild = {
+            "HOTWname": None,
+            "timestamp": None,
+            "user_data": {}  # Format: {user_id: {"name": name, "total_time": x, "current_streak": y, "longest_streak": z}}
+        }
+        self.config.register_guild(**default_guild)
 
     @commands.command()
     async def leaderboard(self, ctx):
-        # Sort the user_data by total time and longest streak
-        sorted_users_by_time = sorted(HOTW.user_data.values(), key=lambda x: x["total_time"], reverse=True)
-        sorted_users_by_streak = sorted(HOTW.user_data.values(), key=lambda x: x["longest_streak"], reverse=True)
-    
-        # Create leaderboard messages
-        time_leaderboard = "Top 3 Holders by Total Time:\n"
-        streak_leaderboard = "Top 3 Holders by Longest Streak:\n"
-    
-        for i, user_data_time in enumerate(sorted_users_by_time[:3]):
-            time_leaderboard += f"{i+1}. {user_data_time['name']} - {user_data_time['total_time']} seconds\n"
-    
-        for i, user_data_streak in enumerate(sorted_users_by_streak[:3]):
-            streak_leaderboard += f"{i+1}. {user_data_streak['name']} - {user_data_streak['longest_streak']} seconds\n"
-    
-        # Send leaderboard messages
-        await ctx.send(time_leaderboard)
-        await ctx.send(streak_leaderboard)
-    
+        data = await self.config.guild(ctx.guild).all()
+        user_data = data["user_data"]
 
+        if not user_data:
+            await ctx.send("No HOTW data available yet.")
+            return
+
+        # Sort users
+        sorted_users_by_time = sorted(user_data.values(), key=lambda x: x["total_time"], reverse=True)
+        sorted_users_by_streak = sorted(user_data.values(), key=lambda x: x["longest_streak"], reverse=True)
+
+        # Create leaderboard strings
+        time_lb = "**Top 3 by Total Time:**\n"
+        streak_lb = "**Top 3 by Longest Streak:**\n"
+
+        for i, u in enumerate(sorted_users_by_time[:3]):
+            time_lb += f"{i+1}. {u['name']} - {int(u['total_time'])} seconds\n"
+
+        for i, u in enumerate(sorted_users_by_streak[:3]):
+            streak_lb += f"{i+1}. {u['name']} - {int(u['longest_streak'])} seconds\n"
+
+        await ctx.send(time_lb)
+        await ctx.send(streak_lb)
 
     @commands.command()
-    async def HOTW(self, ctx):
-        ways_to_take_water = [
-    "Bob grabs Fancy Water from Joe.",
-    "Bob snatches Fancy Water from Joe.",
-    "Bob acquires Fancy Water from Joe.",
-    "Bob appropriates Fancy Water from Joe.",
-    "Bob seizes Fancy Water from Joe.",
-    "Bob confiscates Fancy Water from Joe.",
-    "Bob swipes Fancy Water from Joe.",
-    "Bob procures Fancy Water from Joe.",
-    "Bob lifts Fancy Water from Joe.",
-    "Bob helps himself to Fancy Water from Joe.",
-    "Bob secures Fancy Water from Joe.",
-    "Bob obtains Fancy Water from Joe.",
-    "Bob takes possession of Fancy Water from Joe.",
-    "Bob claims Fancy Water from Joe.",
-    "Bob wrests Fancy Water from Joe.",
-    "Bob commandeers Fancy Water from Joe.",
-    "Bob removes Fancy Water from Joe.",
-    "Bob snags Fancy Water from Joe.",
-    "Bob appropriates the Fancy Water from Joe.",
-    "Bob makes off with Fancy Water from Joe.",
-    "Bob filches Fancy Water from Joe.",
-    "Bob gains control of Fancy Water from Joe.",
-    "Bob nabs Fancy Water from Joe.",
-    "Bob extracts Fancy Water from Joe.",
-    "Bob lifts up Fancy Water from Joe.",
-    "Bob walks away with Fancy Water from Joe.",
-    "Bob helps himself to Joe's Fancy Water.",
-    "Bob takes away Fancy Water from Joe.",
-    "Bob gets a hold of Fancy Water from Joe.",
-    "Bob pockets Fancy Water from Joe.",
-    "Bob swindles Fancy Water from Joe.",
-    "Bob pinches Fancy Water from Joe.",
-    "Bob removes Fancy Water from Joe's possession.",
-    "Bob snags a sip of Fancy Water from Joe.",
-    "Bob plunders Fancy Water from Joe.",
-    "Bob snatches up Fancy Water from Joe.",
-    "Bob claims Fancy Water as his own from Joe.",
-    "Bob carries off Fancy Water from Joe.",
-    "Bob assumes control of Fancy Water from Joe.",
-    "Bob takes Fancy Water without permission from Joe.",
-    "Bob expropriates Fancy Water from Joe.",
-    "Bob relieves Joe of his Fancy Water.",
-    "Bob commandeers Joe's Fancy Water.",
-    "Bob walks off with Joe's Fancy Water.",
-    "Bob confiscates Joe's Fancy Water.",
-    "Bob helps himself to Joe's stash of Fancy Water.",
-    "Bob runs off with Fancy Water from Joe.",
-    "Bob liberates Fancy Water from Joe.",
-    "Bob sequesters Fancy Water from Joe.",
-    "Bob gets Fancy Water from Joe's supply.",
-    "Bob makes a heist of Fancy Water from Joe.",
-    "Bob takes Fancy Water from Joe's stockpile.",
-    "Bob pockets Fancy Water from Joe's collection.",
-    "Bob claims Fancy Water as his own from Joe's cache.",
-    "Bob carries away Fancy Water from Joe's reserve.",
-    "Bob assumes possession of Fancy Water from Joe's hoard.",
-    "Bob snags Fancy Water from Joe's secret stash.",
-    "Bob sneaks away with Fancy Water from Joe's hidden supply.",
-    "Bob runs away with Fancy Water from Joe's concealed reserve.",
-    "Bob helps himself to Fancy Water from Joe's undisclosed collection.",
-    "Bob relieves Joe of Fancy Water discreetly.",
-    "Bob expropriates Fancy Water from Joe's concealed treasure.",
-    "Bob makes off with Fancy Water from Joe's undisclosed stockpile.",
-    "Bob purloins Fancy Water from Joe's hidden reservoir.",
-    "Bob takes a sip of Fancy Water from Joe's secret cache.",
-    "Bob snitches Fancy Water from Joe's covert supply.",
-    "Bob walks away unnoticed with Fancy Water from Joe.",
-    "Bob pilfers Fancy Water from Joe's camouflaged stash.",
-    "Bob appropriates the hidden Fancy Water from Joe.",
-    "Bob pockets Fancy Water from Joe's under-the-radar collection.",
-    "Bob seizes Fancy Water from Joe's surreptitious stockpile.",
-    "Bob snags Fancy Water from Joe's confidential reserve.",
-    "Bob takes Fancy Water discreetly from Joe.",
-    "Bob walks off quietly with Fancy Water from Joe.",
-    "Bob liberates Fancy Water from Joe's confidential cache.",
-    "Bob quietly helps himself to Fancy Water from Joe.",
-    "Bob takes Fancy Water from Joe without raising suspicion.",
-    "Bob discreetly relieves Joe of Fancy Water.",
-    "Bob takes Fancy Water covertly from Joe.",
-    "Bob pilfers Fancy Water surreptitiously from Joe.",
-    "Bob sneaks Fancy Water from Joe.",
-    "Bob secretly obtains Fancy Water from Joe.",
-    "Bob slips away with Fancy Water from Joe.",
-    "Bob appropriates Joe's hidden Fancy Water.",
-    "Bob makes a clandestine move for Fancy Water from Joe.",
-    "Bob grabs Fancy Water from Joe's stash on the sly.",
-    "Bob makes an undercover acquisition of Fancy Water from Joe.",
-    "Bob slyly snatches Fancy Water from Joe.",
-    "Bob maneuvers discreetly to take Fancy Water from Joe.",
-    "Bob conducts a covert operation to obtain Fancy Water from Joe.",
-    "Bob procures Fancy Water from Joe in a stealthy manner."
-]
-        random_statement = random.choice(ways_to_take_water)
+    async def hotw(self, ctx):
+        guild = ctx.guild
+        author = ctx.author
 
-        # Calculate the time difference
-        current_time = datetime.now()
-        time_difference = current_time - HOTW.timestamp
-        time_difference_seconds = time_difference.total_seconds()
-        
-        # Replace "Bob" with the current author and "Joe" with the previous owner
-        random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTW).replace("Fancy Water","The Magic Wellwater"))
-        
-        # Update the previous owner to the current author
-        if HOTW.HOTWname == "test":
-            HOTW.HOTWname = ctx.author.mention
-        
-        # Generate a new random statement
-        random_statement = random.choice(ways_to_take_water)
-        random_statement = random_statement.replace("Bob", str(ctx.author.mention)).replace("Joe", str(HOTW.HOTWname))
-        
-        # Calculate the time difference in seconds and update the timestamp
-        current_epoch_timestamp = datetime.now().timestamp()
-        time_difference_seconds = current_epoch_timestamp - HOTW.timestamp.timestamp()
-        HOTW.timestamp = current_time  # Update the timestamp
-        
-        # Send the updated statement and the time difference
-        await ctx.send(random_statement)
-        await ctx.send(f"{HOTW.HOTWname} had the water for {time_difference_seconds} seconds")
+        data = await self.config.guild(guild).all()
+        old_holder = data["HOTWname"]
+        old_timestamp = data["timestamp"]
+        user_data = data["user_data"]
 
-        # Update user_data with the current user's data
-        user_id = str(HOTW.HOTWname)
-        
-        if user_id not in HOTW.user_data:
-            HOTW.user_data[user_id] = {"name": str(HOTW.HOTWname), "total_time": 0, "current_streak": 0, "longest_streak": 0}
-        
-        HOTW.user_data[user_id]["total_time"] += time_difference_seconds
-        HOTW.user_data[user_id]["current_streak"] += time_difference_seconds
-        
-        # Check if the current streak is longer than the longest streak
-        if HOTW.user_data[user_id]["current_streak"] > HOTW.user_data[user_id]["longest_streak"]:
-            HOTW.user_data[user_id]["longest_streak"] = HOTW.user_data[user_id]["current_streak"]
+        # Pick random message
+        ways_to_take_water_extra = [
+            "Bob dives into Joe's bag and emerges with Fancy Water.",
+            "Bob distracts Joe with a joke and grabs the Fancy Water.",
+            "Bob teleports in, nabs Fancy Water, and vanishes.",
+            "Bob trades a fake bottle and keeps the real Fancy Water.",
+            "Bob charms Joe out of the Fancy Water with compliments.",
+            "Bob picks Joe’s pocket for Fancy Water like a pro.",
+            "Bob flips over Joe’s table and runs with Fancy Water.",
+            "Bob bets Joe in a game and wins the Fancy Water.",
+            "Bob casts a spell to levitate Fancy Water into his hands.",
+            "Bob uses a fishing rod to hook Fancy Water from Joe.",
+            "Bob sneezes, and Joe looks away — boom, Fancy Water's gone.",
+            "Bob drops glitter, grabs Fancy Water in the distraction.",
+            "Bob fakes a hug, pockets Fancy Water mid-embrace.",
+            "Bob opens a portal, reaches in, and takes Fancy Water from Joe’s world.",
+            "Bob writes “IOU” and leaves it where Fancy Water was.",
+            "Bob paints a replica, switches it with Joe’s Fancy Water.",
+            "Bob bribes Joe’s pet to knock over the Fancy Water.",
+            "Bob juggles fire to distract Joe and swipes the bottle.",
+            "Bob plays dead, waits for Joe to leave, and claims the water.",
+            "Bob pays off Joe’s butler to “lose” the Fancy Water.",
+            "Bob poses as a health inspector and “confiscates” the Fancy Water.",
+            "Bob leaves a trail of snacks leading Joe away from the water.",
+            "Bob hacks Joe’s smart fridge and has Fancy Water delivered.",
+            "Bob pretends to be Joe’s future self and claims the water.",
+            "Bob convinces Joe that the water is haunted.",
+            "Bob sends Joe a fake letter demanding he give up the water.",
+            "Bob trains a raccoon to steal Fancy Water on command.",
+            "Bob hides in a bush and strikes when Joe blinks.",
+            "Bob creates an illusion of Fancy Water — and keeps the real one.",
+            "Bob fakes an earthquake to snatch the bottle mid-shake.",
+            "Bob leaves a decoy in place of the real Fancy Water.",
+            "Bob challenges Joe to a duel and steals it mid-bow.",
+            "Bob places a banana peel — Joe slips, and Bob swoops in.",
+            "Bob whispers secrets in Joe’s ear, then lifts the bottle.",
+            "Bob puts on a mustache and “borrows” the Fancy Water.",
+            "Bob time-travels to take the water before Joe even got it.",
+            "Bob tricks Joe into thinking it was never his.",
+            "Bob sings a siren song that lulls Joe into giving it up.",
+            "Bob casts *Confusion* — and Joe hands over the water willingly.",
+            "Bob sends Joe a cursed relic — while he’s distracted, Bob grabs it.",
+            "Bob swaps the water into a thermos and walks off.",
+            "Bob calls dibs louder than Joe ever could.",
+            "Bob fakes a prophecy — and says he’s the Chosen Sipper.",
+            "Bob wears a cloak of invisibility — poof, water gone.",
+            "Bob rewrites the rules to say he’s the rightful holder.",
+            "Bob distracts Joe with memes until the water disappears.",
+            "Bob turns the lights off — when they return, he’s holding the water.",
+            "Bob pirouettes into Joe’s space, twirls out with water.",
+            "Bob performs a magic trick — the water vanishes into his hand.",
+            "Bob knocks on Joe’s door claiming to be “Water Services.”",
+            "Bob drops a “limited edition” bottle — Joe trades his.",
+            "Bob gives Joe a riddle — while thinking, Joe loses the water.",
+            "Bob just smiles and Joe... hands it over willingly.",
+            "Bob wins Fancy Water in a staring contest.",
+            "Bob says “trust fall” and runs with the water.",
+            "Bob blows bubbles, Joe is hypnotized, and water is gone.",
+            "Bob challenges Joe to rock-paper-scissors — winner takes water.",
+            "Bob files a claim: “Water acquired illegally.” It’s his now.",
+            "Bob spins a wheel — it lands on “steal water.”",
+            "Bob says “Look! A distraction!” — and the water’s gone.",
+            "Bob offers a sock, freeing Joe like a house-elf — and snags the water.",
+            "Bob snaps his fingers, and the water appears in his hands.",
+            "Bob calls it “community property” and walks away.",
+            "Bob rewrites the deed to Joe’s house — and the water.",
+            "Bob hosts a fake trivia show — water is the prize.",
+            "Bob teaches Joe a TikTok dance — and dances away with the bottle.",
+            "Bob uses a grappling hook to pull the water in.",
+            "Bob tosses glitter and yells “WATER HEIST!” before disappearing.",
+            "Bob plays the Uno Reverse card — now he has the water.",
+            "Bob replaces it with a balloon full of sparkle juice.",
+            "Bob runs a scam called “The Great Water Exchange.”",
+            "Bob shouts “FREE WATER CHECK!” and pretends it’s a routine procedure.",
+            "Bob challenges Joe to a pun-off — winner hydrates.",
+            "Bob dresses as the water delivery man and “replaces” it.",
+            "Bob claims diplomatic immunity and seizes the bottle.",
+            "Bob raises a toast — with Joe’s own Fancy Water.",
+            "Bob summons a seagull — it flies away with the bottle.",
+            "Bob teaches a parrot to say “That’s Bob’s!” — Joe believes it.",
+            "Bob builds a LEGO clone and steals the water during the switch.",
+            "Bob impersonates Joe’s sibling and claims it as a gift.",
+            "Bob folds a paper crane — and it walks off with the water.",
+            "Bob puts on a monocle and says, “I believe this is mine.”",
+            "Bob fakes a wedding — water is the bouquet he catches.",
+            "Bob wears a crown and says “This is royal property now.”",
+            "Bob makes a cardboard tank — and rolls over Joe’s defenses.",
+            "Bob recites the *Water Bill of Rights* — and takes what’s his.",
+            "Bob plays smooth jazz — the water slides into his pocket.",
+            "Bob wears sunglasses — and looks cool enough to own it.",
+            "Bob makes a friendship bracelet — water comes as a gift.",
+            "Bob says “Tag, you’re it!” and takes the water while Joe’s frozen.",
+            "Bob airlifts the bottle out with a drone.",
+            "Bob adds it to his inventory — and Joe can’t find it anymore.",
+            "Bob fakes a map to 'better water' and trades for this one.",
+            "Bob files a police report claiming the water was his first.",
+            "Bob wins it in a raffle only he entered.",
+            "Bob sets up a fake HOTW event and claims the prize.",
+            "Bob eats an imaginary spicy pepper and drinks Joe’s water.",
+            "Bob rides in on a llama and grabs it with flair.",
+            "Bob makes a cardboard decoy and runs with the real one.",
+            "Bob builds a Minecraft redstone trap — and claims the water.",
+            "Bob says 'hydration tax' and demands payment.",
+            "Bob sells Joe a bottle of 'improved' water, swaps the real one.",
+            "Bob slaps a 'REPO' sticker on it and takes the water.",
+            "Bob legally changes his name to 'Joe' and says it's his.",
+        ]
 
-        
-        HOTW.timestamp = current_time  # Update the timestamp
-        HOTW.HOTWname = ctx.author.mention
-        # In case someone else takes the water, reset the current streak for the current user
-        for user_key in HOTW.user_data:
-            if user_key != user_id:
-                HOTW.user_data[user_key]["current_streak"] = 0
+        action = random.choice(ways_to_take_water)
 
+        if old_holder is None:
+            old_holder = author.mention
+            old_timestamp = datetime.now().timestamp()
+            await self.config.guild(guild).timestamp.set(old_timestamp)
+            await self.config.guild(guild).HOTWname.set(old_holder)
+            await ctx.send(f"{author.mention} is the first to claim The Magic Wellwater!")
+            return
+
+        # Calculate how long old_holder held it
+        now = datetime.now().timestamp()
+        duration = now - old_timestamp
+
+        # Format output message
+        action = action.replace("Bob", author.mention).replace("Joe", old_holder).replace("Fancy Water", "The Magic Wellwater")
+        await ctx.send(action)
+        await ctx.send(f"{old_holder} had the water for {int(duration)} seconds.")
+
+        # Update user_data
+        if old_holder not in user_data:
+            user_data[old_holder] = {
+                "name": old_holder,
+                "total_time": 0,
+                "current_streak": 0,
+                "longest_streak": 0
+            }
+
+        # Update previous holder's stats
+        user_data[old_holder]["total_time"] += duration
+        user_data[old_holder]["current_streak"] += duration
+        if user_data[old_holder]["current_streak"] > user_data[old_holder]["longest_streak"]:
+            user_data[old_holder]["longest_streak"] = user_data[old_holder]["current_streak"]
+
+        # Reset streaks for everyone else
+        for uid in user_data:
+            if uid != old_holder:
+                user_data[uid]["current_streak"] = 0
+
+        # Save new HOTW state
+        await self.config.guild(guild).HOTWname.set(author.mention)
+        await self.config.guild(guild).timestamp.set(now)
+        await self.config.guild(guild).user_data.set(user_data)
