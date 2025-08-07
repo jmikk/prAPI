@@ -55,7 +55,7 @@ class HOTW(commands.Cog):
         user_data = data["user_data"]
 
         # Pick random message
-        ways_to_take_water_extra = [
+        ways_to_take_water = [
             "Bob dives into Joe's bag and emerges with Fancy Water.",
             "Bob distracts Joe with a joke and grabs the Fancy Water.",
             "Bob teleports in, nabs Fancy Water, and vanishes.",
