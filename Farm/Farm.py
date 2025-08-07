@@ -1018,4 +1018,219 @@ class Farm(commands.Cog):
     
         await self.config.user(user).gold.set(data["gold"] + 1)
         await self.config.user(user).last_activity.set(now)
+    
+    @farm.group()
+    async def casino(self, ctx):
+        """Play gambling games from your farm."""
+        if ctx.invoked_subcommand is None:
+            await ctx.send("Use a subcommand like `farm casino coinflip` to play.")
 
+    @casino.command()
+    @commands.cooldown(1, 3, commands.BucketType.guild)
+    async def coinflip(self, ctx, bet: float, call: str = None):
+        """Flip a coin using your farm gold."""
+        user = ctx.author
+        gold = await self.config.user(user).gold()
+    
+        if not call:
+            call = random.choice(["heads", "tails"])
+    
+        if call.lower() in ["head"]:
+            call = "heads"
+        elif call.lower() in ["tail"]:
+            call = "tails"
+    
+        if call not in ["heads", "tails"]:
+            return await ctx.send("❌ Invalid call. Please use `heads` or `tails`.")
+    
+        if bet <= 0 or bet > gold:
+            return await ctx.send("❌ Invalid bet amount or insufficient gold.")
+    
+        message = await ctx.send("Flipping the coin... 🪙")
+        await asyncio.sleep(1)
+    
+        # Coin outcome logic
+        outcome = random.choices(["win", "lose"], weights=[48, 52])[0]
+        if outcome == "win":
+            final_flip = "🪙 Heads" if call == "heads" else "🪙 Tails"
+        else:
+            final_flip = "🪙 Tails" if call == "heads" else "🪙 Heads"
+    
+        result_text = f"You called **{call.capitalize()}**. "
+        if outcome == "win":
+            winnings = bet
+            result_text += "You win! 🎉"
+        else:
+            winnings = -bet
+            result_text += "You lost! 😢"
+    
+        new_gold = max(0, gold + winnings)
+        await self.config.user(user).gold.set(new_gold)
+    
+        await message.edit(content=f"{final_flip}\n{result_text} New balance: **{new_gold:,.2f}** gold.")
+
+    @casino.command()
+    @commands.cooldown(1, 3, commands.BucketType.guild)
+    async def dice(self, ctx, bet: float):
+        """Roll a die against the house. Higher roll wins! Uses your farm gold."""
+        user = ctx.author
+        gold = await self.config.user(user).gold()
+    
+        if bet <= 0 or bet > gold:
+            return await ctx.send("❌ Invalid bet amount or insufficient gold.")
+    
+        dice_emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"]
+        message = await ctx.send("🎲 Rolling dice... 🎲")
+        
+        # Simulate 3 pre-roll animations
+        for _ in range(3):
+            temp_player = random.choice(dice_emojis)
+            temp_house = random.choice(dice_emojis)
+            await message.edit(content=f"Player: {temp_player} | House: {temp_house}\nRolling...")
+            await asyncio.sleep(0.5)
+    
+        # Final rolls
+        player_roll = random.randint(1, 6)
+        house_roll = random.choices([1, 2, 3, 4, 5, 6], weights=[5, 10, 15, 20, 25, 30])[0]  # House advantage
+        player_emoji = dice_emojis[player_roll - 1]
+        house_emoji = dice_emojis[house_roll - 1]
+    
+        # Outcome
+        if player_roll > house_roll:
+            winnings = bet * 2
+            result_text = "You win! 🎉"
+        else:
+            winnings = -bet
+            result_text = "You lost! 😢"
+    
+        new_gold = max(0, gold + winnings)
+        await self.config.user(user).gold.set(new_gold)
+    
+        await message.edit(content=f"🎲 Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: **{new_gold:,.2f}** gold.")
+
+    @farm.command()
+    @commands.cooldown(1, 3, commands.BucketType.guild)
+    async def slots(self, ctx, bet: float):
+        """Play a 3x3 slot machine. Uses your farm gold."""
+        user = ctx.author
+        gold = await self.config.user(user).gold()
+    
+        if bet <= 0 or bet > gold:
+            return await ctx.send("❌ Invalid bet amount or insufficient gold.")
+    
+        emojis = ["🍒", "🍋", "🍊", "🍉", "⭐", "💎", "🌸"]
+        weighted_emojis = (
+            ["🍒"] * 8 + ["🍋"] * 15 + ["🍊"] * 18 + ["🍉"] * 20 +
+            ["⭐"] * 22 + ["💎"] * 22 + ["🌸"] * 3 + ["🍍"] * 10
+        )
+    
+        message = await ctx.send("🎰 Rolling the slots... 🎰")
+    
+        # Generate a real 3x3 grid
+        grid = [[random.choice(weighted_emojis) for _ in range(3)] for _ in range(3)]
+    
+        # Simulated spin animation
+        for _ in range(3):
+            temp_grid = [[random.choice(emojis) for _ in range(3)] for _ in range(3)]
+            temp_display = "\n".join(" | ".join(row) for row in temp_grid)
+            await message.edit(content=f"{temp_display}\n🎰 Spinning...")
+            await asyncio.sleep(0.3)
+    
+        display = "\n".join(" | ".join(row) for row in grid)
+        flat_grid = [emoji for row in grid for emoji in row]
+    
+        payout = 0
+        result_text = "You lost! 😢"
+    
+        # Reward logic
+        if flat_grid.count("🍒") >= 2:
+            payout = bet * 1.5
+            result_text = "Two or more cherries! 🍒 You win 1.5x your bet!"
+        if any(row.count(row[0]) == 3 for row in grid) or any(col.count(col[0]) == 3 for col in zip(*grid)):
+            payout = max(payout, bet * 4)
+            result_text = "Three of a kind in a row or column! 🎉 You win 4x your bet!"
+        if flat_grid.count("🌸") == 3:
+            payout = bet * 20
+            result_text = "JACKPOT! 🌸🌸🌸 You hit the cherry blossoms jackpot!"
+    
+        if payout == 0:
+            payout = -bet
+    
+        new_gold = max(0, gold + payout)
+        await self.config.user(user).gold.set(new_gold)
+    
+        await message.edit(content=f"{display}\n{result_text} New balance: **{new_gold:,.2f}** gold.")
+
+    @casino.command()
+    @commands.cooldown(1, 3, commands.BucketType.guild)
+    async def roulette(self, ctx, bet: float, call: str):
+        """Play roulette. Bet on a number (0–36), red, black, even, odd, high, mid, or low. Uses your farm gold."""
+        user = ctx.author
+        gold = await self.config.user(user).gold()
+    
+        if bet <= 0 or bet > gold:
+            return await ctx.send("❌ Invalid bet amount or insufficient gold.")
+    
+        call = call.lower()
+        valid_calls = ["red", "black", "green", "even", "odd", "high", "mid", "low"] + [str(i) for i in range(0, 37)]
+        if call not in valid_calls:
+            return await ctx.send("❌ Invalid bet. Use a number (0–36) or one of: red, black, green, even, odd, high, mid, low.")
+    
+        # Spin logic
+        number = random.randint(0, 36)
+        red = {1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36}
+        black = {2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35}
+        color = "green" if number == 0 else "red" if number in red else "black"
+        parity = "even" if number % 2 == 0 and number != 0 else "odd" if number != 0 else "neither"
+    
+        color_emoji = {
+            "red": "🟥",
+            "black": "⬛",
+            "green": "🟩"
+        }
+    
+        # Simulate spin animation
+        message = await ctx.send("🎡 Spinning the roulette wheel...")
+        for _ in range(3):
+            temp_num = random.randint(0, 36)
+            temp_color = "red" if temp_num in red else "black" if temp_num in black else "green"
+            await message.edit(content=f"🎡 {color_emoji[temp_color]} {temp_num}\nSpinning...")
+            await asyncio.sleep(0.5)
+    
+        result_text = f"🎡 {color_emoji[color]} {number}\n"
+        payout = 0
+    
+        if call.isdigit():
+            if int(call) == number:
+                payout = bet * 17.5
+                result_text += f"🎯 Direct hit! You win 17.5x your bet!"
+        elif call == color:
+            payout = bet
+            result_text += f"✅ Correct color ({color.capitalize()})! You win 1x your bet."
+        elif call in ["even", "odd"] and call == parity:
+            payout = bet
+            result_text += f"✅ Correct parity ({call})! You win 1x your bet."
+        elif call == "low" and 1 <= number <= 12:
+            payout = bet * 1.5
+            result_text += "⬇️ Low (1–12)! You win 1.5x your bet."
+        elif call == "mid" and 13 <= number <= 24:
+            payout = bet * 1.5
+            result_text += "↔️ Mid (13–24)! You win 1.5x your bet."
+        elif call == "high" and 25 <= number <= 36:
+            payout = bet * 1.5
+            result_text += "⬆️ High (25–36)! You win 1.5x your bet."
+        else:
+            payout = -bet
+            result_text += "❌ No match. You lost!"
+    
+        new_gold = max(0, gold + payout)
+        await self.config.user(user).gold.set(new_gold)
+    
+        await message.edit(content=f"{result_text}\n💰 New balance: **{new_gold:.2f}** gold.")
+
+
+
+    
+    
+    
+    
