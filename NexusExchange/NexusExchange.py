@@ -598,6 +598,20 @@ class NexusExchange(commands.Cog):
     
         return scan, len(user_post_counts)
 
+    @commands.command(name="truncatebalances")
+    @commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    async def truncate_balances(self, ctx):
+        """Truncate all user master balances to two decimal places."""
+        updated = 0
+        async for user in self.config.all_users():
+            balance = await self.config.user(user).master_balance()
+            if balance is not None:
+                truncated = math.floor(balance * 100) / 100
+                await self.config.user(user).master_balance.set(truncated)
+                updated += 1
+        await ctx.send(f"✅ Truncated balances for {updated} users to 2 decimal places.")
+
     @commands.command()
     async def loan_status(self, ctx):
         """Check your current loan balance and status."""
@@ -730,6 +744,10 @@ class NexusExchange(commands.Cog):
                         await self.citChk(channel)
                     except Exception as e:
                         await channel.send(e)
+                    try: 
+                        await self.truncate_balances(channel)
+                    except Exception as e:
+                        await self.channel.send(e)
                     # Loan processing
                     all_users = await self.config.all_users()
                     for user_id in all_users:
