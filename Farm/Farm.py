@@ -12,6 +12,7 @@ from redbot.core import commands, Config
 from discord.ext import commands as ext_commands
 from discord import Message
 import time
+from datetime import timedelta
 
 class FightView(discord.ui.View):
     def __init__(self, round_messages, author, enemy_name, loot_items_path, config, start_life, rep_change, ctx):       
@@ -1038,6 +1039,73 @@ class Farm(commands.Cog):
     
         await self.config.user(user).gold.set(data["gold"] + 1)
         await self.config.user(user).last_activity.set(now)
+
+    @farm.command(name="payday")
+    @commands.cooldown(1, 3600, commands.BucketType.user)  # 1 hour cooldown
+    async def payday(self, ctx):
+        """Claim your hourly payday, influenced by rep and luck."""
+        user_data = await self.config.user(ctx.author).all()
+    
+        # Extract relevant stats
+        rep = user_data.get("rep", 1)
+        luck = user_data.get("luck", 1)
+    
+        # Base calculation with randomness
+        base = 50 + (rep * 5)
+        luck_bonus = random.randint(0, luck * 10)
+    
+        # Final amount with ceiling and floor
+        payday_amount = base + luck_bonus
+        payday_amount = max(100, min(payday_amount, 1000))  # Floor: 100, Ceiling: 1000
+    
+        # Update gold
+        new_gold = user_data["gold"] + payday_amount
+        await self.config.user(ctx.author).gold.set(new_gold)
+    
+        await ctx.send(
+            f"💰 You received **{payday_amount:,}** gold based on your **Rep ({rep})** and **Luck ({luck})**!\n"
+            f"Your new balance is **{new_gold:,}** gold."
+        )
+    
+    @payday.error
+    async def payday_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            remaining = str(timedelta(seconds=int(error.retry_after)))
+            await ctx.send(f"⏳ You can claim your payday again in **{remaining}**.")
+        else:
+            raise error
+
+    
+    @farm.command(name="richest")
+    async def richest(self, ctx):
+        """See the top 3 richest players by gold."""
+        all_users = await self.config.all_users()
+        
+        # Sort users by gold
+        sorted_users = sorted(
+            all_users.items(),
+            key=lambda x: x[1].get("gold", 0),
+            reverse=True
+        )
+
+        top_3 = sorted_users[:3]
+        if not top_3:
+            await ctx.send("No data found.")
+            return
+
+        lines = []
+        for idx, (user_id, data) in enumerate(top_3, start=1):
+            user = self.bot.get_user(user_id)
+            name = user.name if user else f"User {user_id}"
+            lines.append(f"**#{idx}** - {name}: **{data['gold']:,}** gold")
+
+        embed = discord.Embed(
+            title="🏆 Top 3 Richest Farmers",
+            description="\n".join(lines),
+            color=discord.Color.gold()
+        )
+        await ctx.send(embed=embed)
+
     
     @farm.group(hidden=True)
     async def casino(self, ctx):
