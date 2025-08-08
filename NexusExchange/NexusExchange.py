@@ -604,13 +604,16 @@ class NexusExchange(commands.Cog):
     async def truncate_balances(self, ctx):
         """Truncate all user master balances to two decimal places."""
         updated = 0
-        await for user in self.config.all_users():
+        all_users = await self.config.all_users()
+        for user_id in all_users:
+            user = discord.Object(id=user_id)
             balance = await self.config.user(user).master_balance()
             if balance is not None:
                 truncated = math.floor(balance * 100) / 100
                 await self.config.user(user).master_balance.set(truncated)
                 updated += 1
         await ctx.send(f"✅ Truncated balances for {updated} users to 2 decimal places.")
+
 
     @commands.command()
     async def loan_status(self, ctx):
