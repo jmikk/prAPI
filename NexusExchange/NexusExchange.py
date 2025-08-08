@@ -604,7 +604,7 @@ class NexusExchange(commands.Cog):
     async def truncate_balances(self, ctx):
         """Truncate all user master balances to two decimal places."""
         updated = 0
-        async for user in self.config.all_users():
+        await for user in self.config.all_users():
             balance = await self.config.user(user).master_balance()
             if balance is not None:
                 truncated = math.floor(balance * 100) / 100
