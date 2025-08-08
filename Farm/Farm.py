@@ -1051,8 +1051,8 @@ class Farm(commands.Cog):
         luck = user_data.get("luck", 1)
     
         # Base calculation with randomness
-        base = 50 + (rep * 5)
-        luck_bonus = random.randint(0, luck * 10)
+        base = 50 + (rep * 2)
+        luck_bonus = random.randint(0, luck * 2)
     
         # Final amount with ceiling and floor
         payday_amount = base + luck_bonus
