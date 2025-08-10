@@ -301,6 +301,17 @@ class Farm(commands.Cog):
             else:
                 pass
 
+    def hearts_bar(current_hp, max_hp, full="❤️", empty="🖤", slots=10):
+        # Guard against bad max values
+        max_hp = max(1, int(max_hp))
+        # Clamp current to [0, max_hp]
+        current_hp = max(0, min(current_hp, max_hp))
+        # Compute filled hearts (0..slots) and build the string
+        ratio = current_hp / max_hp
+        filled = min(slots, max(0, math.floor(slots * ratio + 1e-9)))
+        return full * filled + empty * (slots - filled)
+
+
 
     @commands.group(hidden=True)
     async def farm(self, ctx):
@@ -349,14 +360,14 @@ class Farm(commands.Cog):
 
         user_rep = user_data['rep']
         low_mod = 1
-        high_mod = 2
+        high_mod = 5
         enemy_stats = {
             "strength": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
             "defense": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
             "speed": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
             "luck": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
             "Health": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
-            "Critical_chance": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
+            "Critical_chance": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep  + 1) * high_mod)),
         }
 
         round_messages = []
@@ -389,9 +400,9 @@ class Farm(commands.Cog):
 
             user_data['Health'] -= enemy_damage
             enemy_stats['Health'] -= player_damage
-
-            player_bar = "❤️" * math.ceil(10 * user_data['Health'] / start_life) + "🖤" * (10 - math.ceil(10 * user_data['Health'] / start_life))
-            enemy_bar = "💚" * math.ceil(10 * enemy_stats['Health'] / bad_start_life) + "🖤" * (10 - math.ceil(10 * enemy_stats['Health'] / bad_start_life))
+            
+            player_bar = hearts_bar(user_data['Health'], start_life, full="❤️", empty="🖤", slots=10)
+            enemy_bar  = hearts_bar(enemy_stats['Health'], bad_start_life, full="💚", empty="🖤", slots=10)
 
             embed = discord.Embed(title=f"Round {round_count} - {enemy_name}", color=discord.Color.blue())
             embed.add_field(name=f"{enemy_name}", value=f"Damage Taken: **{player_damage}**\nHealth: {enemy_bar}", inline=False)
