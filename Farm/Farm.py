@@ -1077,14 +1077,6 @@ class Farm(commands.Cog):
             f"💰 You received **{payday_amount:,}** gold based on your **Rep ({rep})** and **Luck ({luck})**!\n"
             f"Your new balance is **{new_gold:,}** gold."
         )
-    
-    @payday.error
-    async def payday_error(self, ctx, error):
-        if isinstance(error, commands.CommandOnCooldown):
-            remaining = str(timedelta(seconds=int(error.retry_after)))
-            await ctx.send(f"⏳ You can claim your payday again in **{remaining}**.")
-        else:
-            raise error
 
     
     @farm.command(name="richest")
