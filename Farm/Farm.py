@@ -1063,7 +1063,7 @@ class Farm(commands.Cog):
     
         # Base calculation with randomness
         base = 1 + rep
-        luck_bonus = random.randint(0, luck/2)
+        luck_bonus = random.randint(0, int(luck/2))
     
         # Final amount with ceiling and floor
         payday_amount = base + luck_bonus
