@@ -301,7 +301,7 @@ class Farm(commands.Cog):
             else:
                 pass
 
-    def hearts_bar(current_hp, max_hp, full="❤️", empty="🖤", slots=10):
+    def hearts_bar(self, current_hp, max_hp, full="❤️", empty="🖤", slots=10):
         # Guard against bad max values
         max_hp = max(1, int(max_hp))
         # Clamp current to [0, max_hp]
@@ -401,8 +401,8 @@ class Farm(commands.Cog):
             user_data['Health'] -= enemy_damage
             enemy_stats['Health'] -= player_damage
             
-            player_bar = hearts_bar(user_data['Health'], start_life, full="❤️", empty="🖤", slots=10)
-            enemy_bar  = hearts_bar(enemy_stats['Health'], bad_start_life, full="💚", empty="🖤", slots=10)
+            player_bar = self.hearts_bar(user_data['Health'], start_life, full="❤️", empty="🖤", slots=10)
+            enemy_bar  = self.hearts_bar(enemy_stats['Health'], bad_start_life, full="💚", empty="🖤", slots=10)
 
             embed = discord.Embed(title=f"Round {round_count} - {enemy_name}", color=discord.Color.blue())
             embed.add_field(name=f"{enemy_name}", value=f"Damage Taken: **{player_damage}**\nHealth: {enemy_bar}", inline=False)
