@@ -359,8 +359,9 @@ class Farm(commands.Cog):
         enemy_name = random.choice(zombie_names)
 
         user_rep = user_data['rep']
-        low_mod = 1
-        high_mod = 5
+        total_stats = sum(user_data['strength'],user_data['defense'],user_data['speed'],user_data['luck'],user_data['life'],user_data['rep']) / 6
+        low_mod = max(1, total_stats - 10)
+        high_mod = max(5, total_stats + user_rep)
         enemy_stats = {
             "strength": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
             "defense": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
@@ -381,6 +382,7 @@ class Farm(commands.Cog):
             enemy_attack = enemy_stats['strength'] + random.randint(1, enemy_stats['luck'])
             player_defense = user_data['defense'] * (1 + user_data['speed'] / 100)
             enemy_defense = enemy_stats['defense'] * (1 + enemy_stats['speed'] / 100)
+            
             await ctx.send(f"DEBUG: PA{player_attack}, PD: {player_defense}, EA: {enemy_attack}, ED: {enemy_defense}")
 
             player_damage = max(round_count, player_attack - enemy_defense)
