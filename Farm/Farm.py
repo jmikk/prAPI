@@ -383,10 +383,10 @@ class Farm(commands.Cog):
 
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
             round_count += 1
-            player_attack = user_data['strength'] + random.randint(1, user_data['luck'])
+            player_attack = user_data['strength'] +  random.randint(1, user_data['luck'])
             enemy_attack = enemy_stats['strength'] + random.randint(1, enemy_stats['luck'])
-            player_defense = user_data['defense'] * user_data['speed']
-            enemy_defense = enemy_stats['defense'] * enemy_stats['speed']
+            player_defense = user_data['defense'] +  random.randint(1, user_data['speed'])
+            enemy_defense = enemy_stats['defense'] + random.randint(1, enemy_stats['speed'])
             
             await ctx.send(f"DEBUG: PA{player_attack}, PD: {player_defense}, EA: {enemy_attack}, ED: {enemy_defense}")
 
