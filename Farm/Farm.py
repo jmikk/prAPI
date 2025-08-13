@@ -381,9 +381,10 @@ class Farm(commands.Cog):
             enemy_attack = enemy_stats['strength'] + random.randint(1, enemy_stats['luck'])
             player_defense = user_data['defense'] * (1 + user_data['speed'] / 100)
             enemy_defense = enemy_stats['defense'] * (1 + enemy_stats['speed'] / 100)
+            await ctx.send(f"DEBUG: PA{player_attack}, PD: {player_defense}, EA: {enemy_attack}, ED: {enemy_defense}")
 
             player_damage = max(round_count, player_attack - enemy_defense)
-            enemy_damage = max((round_count * 2) / 2, enemy_attack - player_defense)
+            enemy_damage = max((round_count * 1.5), enemy_attack - player_defense)
 
             for _ in range(user_data['Critical_chance'] // 100):
                 player_damage *= 2
