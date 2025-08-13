@@ -359,7 +359,7 @@ class Farm(commands.Cog):
         enemy_name = random.choice(zombie_names)
 
         user_rep = user_data['rep']
-        total_stats = sum(user_data['strength'],user_data['defense'],user_data['speed'],user_data['luck'],user_data['life'],user_data['rep']) / 6
+        total_stats = sum(user_data['strength'],user_data['defense'],user_data['speed'],user_data['luck'],user_data['health'],user_data['rep']) / 6
         low_mod = max(1, total_stats - 10)
         high_mod = max(5, total_stats + user_rep)
         enemy_stats = {
