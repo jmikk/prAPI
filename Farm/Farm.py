@@ -368,12 +368,12 @@ class Farm(commands.Cog):
         await ctx.send(f"DEBUG: avg: {total_stats}, High: {high_mod}, low: {low_mod}")
 
         enemy_stats = {
-            "strength": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
-            "defense": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
-            "speed": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
-            "luck": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
-            "Health": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) * high_mod)),
-            "Critical_chance": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep  + 1) * high_mod)),
+            "strength": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) + high_mod)),
+            "defense": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) + high_mod)),
+            "speed": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) + high_mod)),
+            "luck": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) + high_mod)),
+            "Health": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) + high_mod)),
+            "Critical_chance": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep  + 1) + high_mod)),
         }
 
         round_messages = []
