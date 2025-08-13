@@ -383,7 +383,7 @@ class Farm(commands.Cog):
             enemy_defense = enemy_stats['defense'] * (1 + enemy_stats['speed'] / 100)
 
             player_damage = max(round_count, player_attack - enemy_defense)
-            enemy_damage = max((round_count ** 2) / 2, enemy_attack - player_defense)
+            enemy_damage = max((round_count * 2) / 2, enemy_attack - player_defense)
 
             for _ in range(user_data['Critical_chance'] // 100):
                 player_damage *= 2
