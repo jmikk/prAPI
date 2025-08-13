@@ -388,6 +388,7 @@ class Farm(commands.Cog):
             player_defense = user_data['defense'] +  random.randint(1, user_data['speed'])
             enemy_defense = enemy_stats['defense'] + random.randint(1, enemy_stats['speed'])
             
+            
             await ctx.send(f"DEBUG: PA{player_attack}, PD: {player_defense}, EA: {enemy_attack}, ED: {enemy_defense}")
 
             player_damage = max(round_count, player_attack - enemy_defense)
