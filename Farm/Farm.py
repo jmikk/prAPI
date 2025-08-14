@@ -362,10 +362,9 @@ class Farm(commands.Cog):
         total_stats = sum([user_data['strength'],user_data['defense'],user_data['speed'],user_data['luck'],user_data['Health'],user_data['rep']]) / 6
         
         
-        low_mod = max(1, total_stats - 100)
-        high_mod = max(5, total_stats + user_rep)
+        low_mod = max(1, total_stats - 50)
+        high_mod = max(5, total_stats + user_rep*1.5)
         
-        await ctx.send(f"DEBUG: avg: {total_stats}, High: {high_mod}, low: {low_mod}")
 
         enemy_stats = {
             "strength": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) + high_mod)),
@@ -389,8 +388,6 @@ class Farm(commands.Cog):
             enemy_defense = enemy_stats['defense'] + random.randint(1, enemy_stats['speed'])
             
             
-            await ctx.send(f"DEBUG: PA{player_attack}, PD: {player_defense}, EA: {enemy_attack}, ED: {enemy_defense}")
-
             player_damage = max(round_count, player_attack - enemy_defense)
             enemy_damage = max((round_count * 1.5), enemy_attack - player_defense)
 
