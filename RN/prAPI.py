@@ -269,7 +269,7 @@ class prAPI(commands.Cog):
                     full_url = "URL parse failed."
 
     
-                log_channel_id = 1099398125061406770
+                log_channel_id = 1405569526329774200
                 ping_role_id = 1115271309404942439
                 log_channel = self.bot.get_channel(log_channel_id)
     
