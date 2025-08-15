@@ -11,6 +11,7 @@ from discord import AllowedMentions
 from redbot.core.utils.chat_formatting import box
 import re
 
+
 class prAPI(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
