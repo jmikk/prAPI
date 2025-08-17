@@ -352,78 +352,122 @@ class Farm(commands.Cog):
     @farm.command()
     async def fight(self, ctx):
         user_data = await self.config.user(ctx.author).all()
-
+    
+        # --- Random enemy name ---
         zombie_names_path = os.path.join(os.path.dirname(__file__), 'zombie_names.txt')
         with open(zombie_names_path, 'r') as file:
             zombie_names = [line.strip() for line in file.readlines()]
         enemy_name = random.choice(zombie_names)
-
-        user_rep = user_data['rep']
-        total_stats = sum([user_data['strength'],user_data['defense'],user_data['speed'],user_data['luck'],user_data['Health'],user_data['rep']]) / 6
-        
-        
-        low_mod = max(1, total_stats - 50)
-        high_mod = max(5, total_stats + user_rep*1.5)
-        
-
+    
+        # --- Crit probability with diminishing returns (cap < 100%) ---
+        def crit_probability(stat_value: int, scale: float = 50.0, max_prob: float = 0.95) -> float:
+            p = 1.0 - math.exp(-float(stat_value) / float(scale))
+            return min(p, max_prob)
+    
+        # --- Enemy stat generation helpers ---
+        def scale_stat(base: int, is_boss: bool) -> int:
+            base = max(1, int(base))
+            if is_boss:
+                # Boss: 20% stronger on that stat
+                return max(1, math.ceil(base * 1.20))
+            # Normal: within ±10%
+            low  = max(1, math.floor(base * 0.90))
+            high = max(low, math.ceil(base * 1.10))
+            return random.randint(low, high)
+    
+        # Chance to be a boss (tweakable)
+        boss_chance = 0.15
+        is_boss = random.random() < boss_chance
+    
+        # --- Build enemy as a reflection of the player's stats ---
         enemy_stats = {
-            "strength": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) + high_mod)),
-            "defense": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) + high_mod)),
-            "speed": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) + high_mod)),
-            "luck": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) + high_mod)),
-            "Health": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep + 1) + high_mod)),
-            "Critical_chance": random.randint(math.floor(1 + user_rep / low_mod), math.ceil((user_rep  + 1) + high_mod)),
+            "strength":        scale_stat(user_data.get("strength", 1),        is_boss),
+            "defense":         scale_stat(user_data.get("defense", 1),         is_boss),
+            "speed":           scale_stat(user_data.get("speed", 1),           is_boss),
+            "luck":            scale_stat(user_data.get("luck", 1),            is_boss),
+            "Health":          scale_stat(user_data.get("Health", 10),         is_boss),
+            "Critical_chance": scale_stat(user_data.get("Critical_chance", 1), is_boss),
         }
-
+    
+        # Precompute crit probabilities
+        player_crit_p = crit_probability(user_data.get('Critical_chance', 0))
+        enemy_crit_p  = crit_probability(enemy_stats.get('Critical_chance', 0))
+    
+        # --- Round loop ---
         round_messages = []
         round_count = 0
         start_life = user_data['Health']
         bad_start_life = enemy_stats['Health']
-
+    
+        # Heart styles (boss looks different)
+        enemy_full_heart = "💜" if is_boss else "💚"
+        enemy_empty_heart = "🖤"
+        player_full_heart = "❤️"
+    
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
             round_count += 1
-            player_attack = user_data['strength'] +  random.randint(1, user_data['luck'])
-            enemy_attack = enemy_stats['strength'] + random.randint(1, enemy_stats['luck'])
-            player_defense = user_data['defense'] +  random.randint(1, user_data['speed'])
-            enemy_defense = enemy_stats['defense'] + random.randint(1, enemy_stats['speed'])
-            
-            
+    
+            player_attack  = user_data['strength'] + random.randint(1, user_data['luck'])
+            enemy_attack   = enemy_stats['strength'] + random.randint(1, enemy_stats['luck'])
+            player_defense = user_data['defense'] + random.randint(1, user_data['speed'])
+            enemy_defense  = enemy_stats['defense'] + random.randint(1, enemy_stats['speed'])
+    
+            # Base damages with small round scaling to prevent stalemates
             player_damage = max(round_count, player_attack - enemy_defense)
-            enemy_damage = max((round_count * 1.5), enemy_attack - player_defense)
-
-            for _ in range(user_data['Critical_chance'] // 100):
+            enemy_damage  = max(int(round_count * 1.5), enemy_attack - player_defense)
+    
+            # Single-roll crits, 2x damage
+            if random.random() < player_crit_p:
                 player_damage *= 2
-            if random.random() < (user_data['Critical_chance'] % 100) / 100:
-                player_damage *= 2
-
-            for _ in range(enemy_stats['Critical_chance'] // 100):
+            if random.random() < enemy_crit_p:
                 enemy_damage *= 2
-            if random.random() < (enemy_stats['Critical_chance'] % 100) / 100:
-                enemy_damage *= 2
-
+    
             player_damage = math.ceil(player_damage)
-            enemy_damage = math.floor(enemy_damage)
-
-            user_data['Health'] -= enemy_damage
+            enemy_damage  = math.floor(enemy_damage)
+    
+            user_data['Health']   -= enemy_damage
             enemy_stats['Health'] -= player_damage
-            
-            player_bar = self.hearts_bar(user_data['Health'], start_life, full="❤️", empty="🖤", slots=10)
-            enemy_bar  = self.hearts_bar(enemy_stats['Health'], bad_start_life, full="💚", empty="🖤", slots=10)
-
-            embed = discord.Embed(title=f"Round {round_count} - {enemy_name}", color=discord.Color.blue())
-            embed.add_field(name=f"{enemy_name}", value=f"Damage Taken: **{player_damage}**\nHealth: {enemy_bar}", inline=False)
-            embed.add_field(name="You", value=f"Damage Taken: **{enemy_damage}**\nHealth: {player_bar}", inline=False)
+    
+            player_bar = self.hearts_bar(user_data['Health'], start_life, full=player_full_heart, empty="🖤", slots=10)
+            enemy_bar  = self.hearts_bar(enemy_stats['Health'], bad_start_life, full=enemy_full_heart, empty=enemy_empty_heart, slots=10)
+    
+            # --- Distinct embed styles for boss vs normal ---
+            if is_boss:
+                title = f"👑 BOSS: {enemy_name}"
+                color = discord.Color.purple()
+            else:
+                title = f"Round {round_count} - {enemy_name}"
+                color = discord.Color.green()
+    
+            embed = discord.Embed(title=title if is_boss else f"Round {round_count} - {enemy_name}", color=color)
+            if is_boss:
+                embed.set_author(name="An ominous presence looms...")
+                embed.set_footer(text="Bosses hit harder and shine brighter ✨")
+    
+            embed.add_field(
+                name=f"{enemy_name}" if not is_boss else f"👑 {enemy_name}",
+                value=f"Damage Taken: **{player_damage}**\nHealth: {enemy_bar}",
+                inline=False
+            )
+            embed.add_field(
+                name="You",
+                value=f"Damage Taken: **{enemy_damage}**\nHealth: {player_bar}",
+                inline=False
+            )
+    
             round_messages.append(embed)
-
+    
+        # --- Outcome & persistence ---
         result = "won" if user_data['Health'] > 0 else "lost"
         rep_change = 1 if result == "won" else -1
         user_data['rep'] = max(1, user_data['rep'] + rep_change)
-        user_data['Health'] = start_life  # Reset for future fights
+        user_data['Health'] = start_life  # reset for future fights (keep current behavior)
         await self.config.user(ctx.author).set(user_data)
-
+    
         loot_items_path = os.path.join(os.path.dirname(__file__), 'loot.json')
         view = FightView(round_messages, ctx.author, enemy_name, loot_items_path, self.config, start_life, rep_change, ctx)
         view.message = await ctx.send(embed=round_messages[0], view=view)
+
 
 
     @farm.command()
