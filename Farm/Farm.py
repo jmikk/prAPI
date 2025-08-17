@@ -368,8 +368,8 @@ class Farm(commands.Cog):
             base = max(1, int(base))
             if is_boss:
                 return max(1, math.ceil(base * 1.20))  # +20% for bosses
-            low  = max(1, math.floor(base * 0.90))    # ±10% for normal enemies
-            high = max(low, math.ceil(base * 1.10))
+            low  = max(1, math.floor(base * 0.50))    # ±10% for normal enemies
+            high = max(low, math.ceil(base * 1.05))
             return random.randint(low, high)
     
         # Boss chance
