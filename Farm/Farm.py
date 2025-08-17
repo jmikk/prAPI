@@ -347,8 +347,7 @@ class Farm(commands.Cog):
         user = ctx.author
         gold = await self.config.user(user).gold()
         await ctx.send(f"💰 {user.mention}, you currently have **{gold} gold**.")
-    
-
+        
     @farm.command()
     async def fight(self, ctx):
         user_data = await self.config.user(ctx.author).all()
@@ -369,30 +368,33 @@ class Farm(commands.Cog):
             base = max(1, int(base))
             if is_boss:
                 return max(1, math.ceil(base * 1.20))  # +20% for bosses
-            low  = max(1, math.floor(base * 0.30))    # ±10% for normal enemies
-            high = max(low, math.ceil(base * 1.05))
+            low  = max(1, math.floor(base * 0.90))    # ±10% for normal enemies
+            high = max(low, math.ceil(base * 1.10))
             return random.randint(low, high)
     
-        # Chance to be a boss (tweakable)
+        # Boss chance
         boss_chance = 0.15
         is_boss = random.random() < boss_chance
     
         # --- Build enemy as a reflection of the player's stats ---
         enemy_stats = {
-            "strength":        scale_stat(user_data.get("rep", 1),        is_boss),
-            "defense":         scale_stat(user_data.get("rep", 1),         is_boss),
-            "speed":           scale_stat(user_data.get("rep", 1),           is_boss),
-            "luck":            scale_stat(user_data.get("rep", 1),            is_boss),
-            "Health":          scale_stat(user_data.get("rep", 10)*10,         is_boss),
-            "Critical_chance": scale_stat(user_data.get("rep", 1), is_boss),
+            "strength":        scale_stat(user_data.get("strength", 1),        is_boss),
+            "defense":         scale_stat(user_data.get("defense", 1),         is_boss),
+            "speed":           scale_stat(user_data.get("speed", 1),           is_boss),
+            "luck":            scale_stat(user_data.get("luck", 1),            is_boss),
+            "Health":          scale_stat(user_data.get("Health", 10),         is_boss),
+            "Critical_chance": scale_stat(user_data.get("Critical_chance", 1), is_boss),
         }
     
-        # --- Levels ---
-        # Player level = round(rep/10), min 1
-        player_level = max(1, int(round(user_data.get('rep', 1) / 10.0)))
-        # Enemy level = round( (avg of key stats) / 10 ), min 1
-        enemy_level_keys = ["strength", "defense", "speed", "luck", "Health"]
-        enemy_avg = sum(enemy_stats[k] for k in enemy_level_keys) / float(len(enemy_level_keys))
+        # --- Levels (both use same formula now) ---
+        stat_keys = ["strength", "defense", "speed", "luck", "Health", "Critical_chance"]
+    
+        # Player level
+        player_avg = sum(user_data.get(k, 0) for k in stat_keys) / len(stat_keys)
+        player_level = max(1, int(round(player_avg / 10.0)))
+    
+        # Enemy level
+        enemy_avg = sum(enemy_stats[k] for k in stat_keys) / len(stat_keys)
         enemy_level = max(1, int(round(enemy_avg / 10.0)))
     
         # Precompute crit probabilities
@@ -405,7 +407,7 @@ class Farm(commands.Cog):
         start_life = user_data['Health']
         bad_start_life = enemy_stats['Health']
     
-        # Heart styles (boss looks different)
+        # Heart styles
         enemy_full_heart = "💜" if is_boss else "💚"
         enemy_empty_heart = "🖤"
         player_full_heart = "❤️"
@@ -418,11 +420,9 @@ class Farm(commands.Cog):
             player_defense = user_data['defense'] + random.randint(1, user_data['speed'])
             enemy_defense  = enemy_stats['defense'] + random.randint(1, enemy_stats['speed'])
     
-            # Base damages with small round scaling to prevent stalemates
             player_damage = max(round_count, player_attack - enemy_defense)
             enemy_damage  = max(int(round_count * 1.5), enemy_attack - player_defense)
     
-            # Single-roll crits, 2x damage
             if random.random() < player_crit_p:
                 player_damage *= 2
             if random.random() < enemy_crit_p:
@@ -437,7 +437,7 @@ class Farm(commands.Cog):
             player_bar = self.hearts_bar(user_data['Health'], start_life, full=player_full_heart, empty="🖤", slots=10)
             enemy_bar  = self.hearts_bar(enemy_stats['Health'], bad_start_life, full=enemy_full_heart, empty=enemy_empty_heart, slots=10)
     
-            # --- Distinct embed styles + levels ---
+            # --- Headers with levels ---
             if is_boss:
                 title = f"👑 BOSS Lv {enemy_level}: {enemy_name}"
                 color = discord.Color.purple()
@@ -446,6 +446,8 @@ class Farm(commands.Cog):
                 title = f"Round {round_count} - {enemy_name} (Lv {enemy_level})"
                 color = discord.Color.green()
                 enemy_header = f"{enemy_name} (Lv {enemy_level})"
+    
+            player_header = f"{ctx.author.display_name} (Lv {player_level})"
     
             embed = discord.Embed(title=title, color=color)
             if is_boss:
@@ -458,7 +460,7 @@ class Farm(commands.Cog):
                 inline=False
             )
             embed.add_field(
-                name=f"You (Lv {player_level})",
+                name=player_header,
                 value=f"Damage Taken: **{enemy_damage}**\nHealth: {player_bar}",
                 inline=False
             )
@@ -469,12 +471,13 @@ class Farm(commands.Cog):
         result = "won" if user_data['Health'] > 0 else "lost"
         rep_change = 1 if result == "won" else -1
         user_data['rep'] = max(1, user_data['rep'] + rep_change)
-        user_data['Health'] = start_life  # reset for future fights (keep current behavior)
+        user_data['Health'] = start_life
         await self.config.user(ctx.author).set(user_data)
     
         loot_items_path = os.path.join(os.path.dirname(__file__), 'loot.json')
         view = FightView(round_messages, ctx.author, enemy_name, loot_items_path, self.config, start_life, rep_change, ctx)
         view.message = await ctx.send(embed=round_messages[0], view=view)
+
 
 
 
