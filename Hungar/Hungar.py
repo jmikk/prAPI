@@ -13,7 +13,6 @@ from discord.utils import get
 from discord import app_commands
 import math
 import json
-import asyncio
 
 
 class MapButton(Button):
@@ -281,7 +280,7 @@ class GameMasterEventButton(Button):
 class SponsorRandomTributeButton(Button):
     """Button to sponsor a random tribute with an item."""
     def __init__(self, cog, guild,public_channel):
-        super().__init__(label="Sponsor a Random Tribute (10 Wellcoins)", style=discord.ButtonStyle.success)
+        super().__init__(label="Sponsor a Random Tribute", style=discord.ButtonStyle.success)
         self.cog = cog
         self.guild = guild
         self.public_channel = public_channel  # Store public channel
@@ -411,15 +410,6 @@ class ViewItemsButton(Button):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-
-class HungerGamesAI:
-    def __init__(self, cog):
-        self.cog = cog
-        self.last_sponsorship = {}
-
-import random
-from datetime import datetime, timedelta
-import asyncio
 
 class HungerGamesAI:
     def __init__(self, cog):
@@ -662,7 +652,7 @@ class BettingButton(Button):
         self.cog = cog
 
     async def callback(self, interaction: Interaction):
-        await interaction.response.send_message("To place a bid do ``/placebid`` Remember you can only bid day 0 and 1")
+        await interaction.response.send_message("To place a bid do ``/placebet`` Remember you can only bid day 0 and 1")
 
 
 class TributeRankingView(View):
@@ -1032,6 +1022,56 @@ class Hungar(commands.Cog):
         """Commands for managing the Hunger Games."""
         pass
 
+    def _tribute_score(self, p):
+        s = p.get("stats", {})
+        return s.get("Def", 0) + s.get("Str", 0) + s.get("Con", 0) + s.get("Wis", 0) + (s.get("HP", 0) / 5)
+
+    async def _rank_and_betshare(self, guild: discord.Guild):
+        """
+        Returns:
+            info: dict[tribute_id] = {"rank": int, "score": float, "bet_share": float}
+        """
+        players = await self.config.guild(guild).players()
+        all_users = await self.config.all_users()
+    
+        # --- ranking by score (alive only) ---
+        alive = [(pid, pdata) for pid, pdata in players.items() if pdata.get("alive")]
+        ranked = sorted(alive, key=lambda x: self._tribute_score(x[1]), reverse=True)
+        rank_map = {pid: i + 1 for i, (pid, _) in enumerate(ranked)}
+        score_map = {pid: self._tribute_score(p) for pid, p in players.items()}
+    
+        # --- pool totals (users + AI) ---
+        total_pool = 0
+        on_tribute = {pid: 0 for pid in players.keys()}
+    
+        # user bets
+        for user_data in all_users.values():
+            bets = user_data.get("bets", {})
+            for t_id, b in bets.items():
+                amt = int(b.get("amount", 0))
+                total_pool += amt
+                if t_id in on_tribute:
+                    on_tribute[t_id] += amt
+    
+        # AI bets saved on the tribute objects: players[pid]["bets"]["AI"] = [{name, amount}]
+        for pid, pdata in players.items():
+            ai_bets = pdata.get("bets", {}).get("AI", [])
+            for ai in ai_bets:
+                amt = int(ai.get("amount", 0))
+                total_pool += amt
+                on_tribute[pid] = on_tribute.get(pid, 0) + amt
+    
+        pool = max(1, total_pool)  # avoid div by zero
+        info = {}
+        for pid in players.keys():
+            info[pid] = {
+                "rank": rank_map.get(pid, 9999),                # non-alive default to "last"
+                "score": score_map.get(pid, 0.0),
+                "bet_share": on_tribute.get(pid, 0) / pool,     # 0..1
+            }
+        return info
+
+
     @app_commands.command(name="placebet", description="Place a bet on a tribute.")
     @app_commands.describe(
         tribute="Choose a living tribute",
@@ -1143,7 +1183,7 @@ class Hungar(commands.Cog):
         
         # Award 100 gold to the player in user config
         user_gold = await self.config_gold.user(ctx.author).master_balance()
-        user_gold += 10
+        user_gold += 100
         await self.config_gold.user(ctx.author).master_balance.set(user_gold)
     
 
@@ -1360,7 +1400,12 @@ class Hungar(commands.Cog):
                 "amount": bet_amount
             })
             tribute["bets"] = tribute_bets  # Save back to players
-        
+            
+        await self.config.guild(guild).players.set(players)
+        await self.config.guild(guild).game_active.set(True)
+        await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
+        await self.config.guild(guild).day_counter.set(0)
+       
         # Apply AI bets
         for ai_name, bet_data in ai_bettors.items():
             tribute_id = bet_data["tribute_id"]
@@ -1369,10 +1414,7 @@ class Hungar(commands.Cog):
             if tribute_id not in players or not players[tribute_id]["alive"]:
                 continue  # Skip invalid tributes
                     
-            await self.config.guild(guild).players.set(players)
-            await self.config.guild(guild).game_active.set(True)
-            await self.config.guild(guild).day_start.set(datetime.utcnow().isoformat())
-            await self.config.guild(guild).day_counter.set(0)
+
     
             # Announce all participants with mentions for real players, sorted by district
             sorted_players = sorted(players.values(), key=lambda p: p["district"])
@@ -2411,6 +2453,14 @@ class Hungar(commands.Cog):
     @app_commands.command(name="sponsor", description="Sponsor a tribute with a random stat boost.")
     @app_commands.describe(tribute="Select a tribute to sponsor")
     async def sponsor(self, interaction: Interaction, tribute: str):
+
+        # --- Sponsor pricing knobs ---
+        TOP_RANK_SURCHARGE = {1: 3.0, 2: 2.25, 3: 1.5}  # multipliers for ranks 1–3
+        DEFAULT_RANK_MULTIPLIER = 1.0                   # rank > 3
+        BET_SHARE_FACTOR = 5.0                          # cost multiplier adds up to +300% at 100% pool
+        MIN_SPONSOR_COST = 25                           # hard floor
+        MAX_SPONSOR_COST = 500000                        # hard ceiling (safety)
+
         try:
             guild = interaction.guild
             user = interaction.user
@@ -2422,15 +2472,17 @@ class Hungar(commands.Cog):
                 await interaction.response.send_message("❌ That tribute doesn't exist or is no longer alive.", ephemeral=True)
                 return
     
-            stats = players[tribute]["stats"]
-            score = (
-                stats["Def"]
-                + stats["Str"]
-                + stats["Con"]
-                + stats["Wis"]
-                + (stats["HP"] / 5)
-            )
-            cost = round(10 + (day * 5) + score / 2)
+            rankinfo = await self._rank_and_betshare(guild)
+            ri = rankinfo.get(tribute, {"rank": 9999, "score": 0.0, "bet_share": 0.0})
+            
+            base = 10 + (day * 5) + (ri["score"] / 2.0)
+            
+            rank_mult = TOP_RANK_SURCHARGE.get(ri["rank"], DEFAULT_RANK_MULTIPLIER)
+            bet_mult = 1.0 + (BET_SHARE_FACTOR * ri["bet_share"])  # 1 .. 1+BET_SHARE_FACTOR
+            
+            cost = int(round(base * rank_mult * bet_mult))
+            cost = max(MIN_SPONSOR_COST, min(MAX_SPONSOR_COST, cost))
+
             user_gold = await self.config_gold.user(user).master_balance()
     
             if user_gold < cost:
@@ -2476,35 +2528,39 @@ class Hungar(commands.Cog):
             raise e
 
 
-
+    
     @sponsor.autocomplete("tribute")
     async def sponsor_autocomplete(self, interaction: Interaction, current: str):
         guild = interaction.guild
         players = await self.config.guild(guild).players()
         day = await self.config.guild(guild).day_counter()
     
-        options = []
+        rankinfo = await self._rank_and_betshare(guild)
+        opts = []
     
         for pid, pdata in players.items():
             if not pdata.get("alive"):
                 continue
     
             member = guild.get_member(int(pid)) if pid.isdigit() else None
-            display_name = member.display_name if member else pdata["name"]
+            display = member.display_name if member else pdata.get("name", f"Unknown [{pid}]")
+            if current.lower() not in display.lower():
+                continue
     
-            # Moved inside the loop — calculate individual tribute's score and cost
-            stats = pdata["stats"]
-            score = (
-                stats["Def"] + stats["Str"] + stats["Con"] + stats["Wis"] + (stats["HP"] / 5)
-            )
-            cost = round(10 + (day * 5) + score/2)
+            ri = rankinfo.get(pid, {"rank": 9999, "score": 0.0, "bet_share": 0.0})
+            base = 10 + (day * 5) + (ri["score"] / 2.0)
+            rank_mult = TOP_RANK_SURCHARGE.get(ri["rank"], DEFAULT_RANK_MULTIPLIER)
+            bet_mult = 1.0 + (BET_SHARE_FACTOR * ri["bet_share"])
+            cost = int(round(base * rank_mult * bet_mult))
+            cost = max(MIN_SPONSOR_COST, min(MAX_SPONSOR_COST, cost))
     
-            label = f"{display_name} (Cost: {cost}💰)"
+            label = f"{display}  •  Rank #{ri['rank']}  •  Cost: {cost}💰"
+            opts.append(app_commands.Choice(name=label[:100], value=pid))
     
-            if current.lower() in display_name.lower():
-                options.append(app_commands.Choice(name=label[:100], value=pid))  # Discord max = 100 chars
-    
-        return options[:25]
+        # prioritize top ranks first if many
+        opts.sort(key=lambda c: rankinfo.get(c.value, {}).get("rank", 9999))
+        return opts[:25]
+
 
     
     async def shrink_zones(self, guild2, zone_to_pop=None):
