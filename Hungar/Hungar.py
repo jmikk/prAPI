@@ -2550,8 +2550,61 @@ class Hungar(commands.Cog):
         players = await self.config.guild(guild).players()
         day = await self.config.guild(guild).day_counter()
     
-        rankinfo = await self._rank_and_betshare(guild)
-        opts = []
+        # --- safe defaults for knobs if not defined at module scope ---
+        try:
+            TOP = TOP_RANK_SURCHARGE
+        except NameError:
+            TOP = {1: 3.0, 2: 2.25, 3: 1.5}
+        try:
+            DEFAULT_MULT = DEFAULT_RANK_MULTIPLIER
+        except NameError:
+            DEFAULT_MULT = 1.0
+        try:
+            BET_FACTOR = BET_SHARE_FACTOR
+        except NameError:
+            BET_FACTOR = 3.0
+        try:
+            MINC = MIN_SPONSOR_COST
+        except NameError:
+            MINC = 25
+        try:
+            MAXC = MAX_SPONSOR_COST
+        except NameError:
+            MAXC = 50000
+    
+        # --- attempt full rank+bet-share pricing; on error, use a simple fallback ---
+        rankinfo = {}
+        def score_of(p):
+            s = p.get("stats", {})
+            return s.get("Def", 0) + s.get("Str", 0) + s.get("Con", 0) + s.get("Wis", 0) + (s.get("HP", 0) / 5)
+    
+        try:
+            rankinfo = await self._rank_and_betshare(guild)  # may raise
+            def calc_cost_and_rank(pid: str):
+                ri = rankinfo.get(pid, {"rank": 9999, "score": 0.0, "bet_share": 0.0})
+                base = 10 + (day * 5) + (ri["score"] / 2.0)
+                rank_mult = TOP.get(ri["rank"], DEFAULT_MULT)
+                bet_mult = 1.0 + (BET_FACTOR * ri["bet_share"])
+                cost = int(round(base * rank_mult * bet_mult))
+                cost = max(MINC, min(MAXC, cost))
+                return cost, ri["rank"]
+        except Exception:
+            # Fallback: rank by score only, no bet pressure
+            alive = [(pid, p) for pid, p in players.items() if p.get("alive")]
+            ranked = sorted(alive, key=lambda kv: score_of(kv[1]), reverse=True)
+            fallback_rank = {pid: i + 1 for i, (pid, _) in enumerate(ranked)}
+    
+            def calc_cost_and_rank(pid: str):
+                sc = score_of(players[pid])
+                base = 10 + (day * 5) + (sc / 2.0)
+                rk = fallback_rank.get(pid, 9999)
+                rank_mult = TOP.get(rk, DEFAULT_MULT)
+                cost = int(round(base * rank_mult))
+                cost = max(MINC, min(MAXC, cost))
+                return cost, rk
+    
+        query = (current or "").strip().lower()
+        opts: list[app_commands.Choice[str]] = []
     
         for pid, pdata in players.items():
             if not pdata.get("alive"):
@@ -2559,21 +2612,23 @@ class Hungar(commands.Cog):
     
             member = guild.get_member(int(pid)) if pid.isdigit() else None
             display = member.display_name if member else pdata.get("name", f"Unknown [{pid}]")
-            if current.lower() not in display.lower():
+    
+            # if user typed something, filter by it; otherwise include all
+            if query and query not in (display or "").lower():
                 continue
     
-            ri = rankinfo.get(pid, {"rank": 9999, "score": 0.0, "bet_share": 0.0})
-            base = 10 + (day * 5) + (ri["score"] / 2.0)
-            rank_mult = TOP_RANK_SURCHARGE.get(ri["rank"], DEFAULT_RANK_MULTIPLIER)
-            bet_mult = 1.0 + (BET_SHARE_FACTOR * ri["bet_share"])
-            cost = int(round(base * rank_mult * bet_mult))
-            cost = max(MIN_SPONSOR_COST, min(MAX_SPONSOR_COST, cost))
-    
-            label = f"{display}  •  Rank #{ri['rank']}  •  Cost: {cost}💰"
+            cost, rk = calc_cost_and_rank(pid)
+            label = f"{display}  •  Rank #{rk}  •  Cost: {cost}💰"
             opts.append(app_commands.Choice(name=label[:100], value=pid))
     
-        # prioritize top ranks first if many
-        opts.sort(key=lambda c: rankinfo.get(c.value, {}).get("rank", 9999))
+        # sort by rank (using whichever rank map we have), then by name
+        def rank_for(pid: str) -> int:
+            if rankinfo:
+                return rankinfo.get(pid, {}).get("rank", 9999)
+            # if we fell back, recompute quickly:
+            return 9999
+    
+        opts.sort(key=lambda c: (rank_for(c.value), c.name))
         return opts[:25]
 
 
