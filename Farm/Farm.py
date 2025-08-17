@@ -391,7 +391,7 @@ class Farm(commands.Cog):
         # Player level = round(rep/10), min 1
         player_level = max(1, int(round(user_data.get('rep', 1) / 10.0)))
         # Enemy level = round( (avg of key stats) / 10 ), min 1
-        enemy_level_keys = ["strength", "defense", "speed", "luck", "Health", "Critical_chance"]
+        enemy_level_keys = ["strength", "defense", "speed", "luck", "Health"]
         enemy_avg = sum(enemy_stats[k] for k in enemy_level_keys) / float(len(enemy_level_keys))
         enemy_level = max(1, int(round(enemy_avg / 10.0)))
     
