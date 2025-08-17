@@ -369,7 +369,7 @@ class Farm(commands.Cog):
             base = max(1, int(base))
             if is_boss:
                 return max(1, math.ceil(base * 1.20))  # +20% for bosses
-            low  = max(1, math.floor(base * 0.50))    # ±10% for normal enemies
+            low  = max(1, math.floor(base * 0.30))    # ±10% for normal enemies
             high = max(low, math.ceil(base * 1.05))
             return random.randint(low, high)
     
@@ -379,12 +379,12 @@ class Farm(commands.Cog):
     
         # --- Build enemy as a reflection of the player's stats ---
         enemy_stats = {
-            "strength":        scale_stat(user_data.get("strength", 1),        is_boss),
-            "defense":         scale_stat(user_data.get("defense", 1),         is_boss),
-            "speed":           scale_stat(user_data.get("speed", 1),           is_boss),
-            "luck":            scale_stat(user_data.get("luck", 1),            is_boss),
-            "Health":          scale_stat(user_data.get("Health", 10),         is_boss),
-            "Critical_chance": scale_stat(user_data.get("Critical_chance", 1), is_boss),
+            "strength":        scale_stat(user_data.get("rep", 1),        is_boss),
+            "defense":         scale_stat(user_data.get("rep", 1),         is_boss),
+            "speed":           scale_stat(user_data.get("rep", 1),           is_boss),
+            "luck":            scale_stat(user_data.get("rep", 1),            is_boss),
+            "Health":          scale_stat(user_data.get("rep", 10)*10,         is_boss),
+            "Critical_chance": scale_stat(user_data.get("rep", 1), is_boss),
         }
     
         # --- Levels ---
