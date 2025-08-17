@@ -411,28 +411,51 @@ class Farm(commands.Cog):
         enemy_full_heart = "💜" if is_boss else "💚"
         enemy_empty_heart = "🖤"
         player_full_heart = "❤️"
+
+        # --- Tunables ---
+        ROUND_PACING_STEP = 3   # every N rounds...
+        ROUND_PACING_ADD  = 1   # ...add this much flat damage to both sides
+        LEVEL_ADV_PER_LVL = 0.05  # ~5% per level gap
+        MULT_MIN, MULT_MAX = 0.85, 1.15  # clamp total level advantage to ±15%
+        
+        def level_adv_multiplier(attacker_level: int, defender_level: int) -> float:
+            mult = 1.0 + LEVEL_ADV_PER_LVL * (attacker_level - defender_level)
+            return max(MULT_MIN, min(MULT_MAX, mult))
+        
+        def compute_damage(attacker_stats: dict, defender_stats: dict, round_count: int,
+                           atk_level: int, def_level: int, crit_p: float) -> int:
+            atk_roll = attacker_stats['strength'] + random.randint(1, attacker_stats['luck'])
+            def_roll = defender_stats['defense'] + random.randint(1, defender_stats['speed'])
+        
+            # Base damage can never be lower than 1 (prevents stalemates)
+            base = max(1, atk_roll - def_roll)
+        
+            # Gentle pacing to avoid never-ending fights (symmetric)
+            pacing = (round_count // ROUND_PACING_STEP) * ROUND_PACING_ADD
+        
+            dmg = base + pacing
+        
+            # Small edge to the higher-level side
+            dmg *= level_adv_multiplier(atk_level, def_level)
+        
+            # Single-roll crit: double damage
+            if random.random() < crit_p:
+                dmg *= 2
+        
+            return max(1, int(math.ceil(dmg)))
+
     
         while user_data['Health'] > 0 and enemy_stats['Health'] > 0:
             round_count += 1
     
-            player_attack  = user_data['strength'] + random.randint(1, user_data['luck'])
-            enemy_attack   = enemy_stats['strength'] + random.randint(1, enemy_stats['luck'])
-            player_defense = user_data['defense'] + random.randint(1, user_data['speed'])
-            enemy_defense  = enemy_stats['defense'] + random.randint(1, enemy_stats['speed'])
-    
-            player_damage = max(round_count, player_attack - enemy_defense)
-            enemy_damage  = max(int(round_count * 1.5), enemy_attack - player_defense)
-    
-            if random.random() < player_crit_p:
-                player_damage *= 2
-            if random.random() < enemy_crit_p:
-                enemy_damage *= 2
-    
-            player_damage = math.ceil(player_damage)
-            enemy_damage  = math.floor(enemy_damage)
-    
+            player_damage = compute_damage(user_data, enemy_stats, round_count,
+                                           player_level, enemy_level, player_crit_p)
+            enemy_damage  = compute_damage(enemy_stats, user_data, round_count,
+                                           enemy_level, player_level, enemy_crit_p)
+        
             user_data['Health']   -= enemy_damage
             enemy_stats['Health'] -= player_damage
+
     
             player_bar = self.hearts_bar(user_data['Health'], start_life, full=player_full_heart, empty="🖤", slots=10)
             enemy_bar  = self.hearts_bar(enemy_stats['Health'], bad_start_life, full=enemy_full_heart, empty=enemy_empty_heart, slots=10)
