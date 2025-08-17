@@ -368,10 +368,8 @@ class Farm(commands.Cog):
         def scale_stat(base: int, is_boss: bool) -> int:
             base = max(1, int(base))
             if is_boss:
-                # Boss: 20% stronger on that stat
-                return max(1, math.ceil(base * 1.20))
-            # Normal: within ±10%
-            low  = max(1, math.floor(base * 0.90))
+                return max(1, math.ceil(base * 1.20))  # +20% for bosses
+            low  = max(1, math.floor(base * 0.90))    # ±10% for normal enemies
             high = max(low, math.ceil(base * 1.10))
             return random.randint(low, high)
     
@@ -388,6 +386,14 @@ class Farm(commands.Cog):
             "Health":          scale_stat(user_data.get("Health", 10),         is_boss),
             "Critical_chance": scale_stat(user_data.get("Critical_chance", 1), is_boss),
         }
+    
+        # --- Levels ---
+        # Player level = round(rep/10), min 1
+        player_level = max(1, int(round(user_data.get('rep', 1) / 10.0)))
+        # Enemy level = round( (avg of key stats) / 10 ), min 1
+        enemy_level_keys = ["strength", "defense", "speed", "luck", "Health", "Critical_chance"]
+        enemy_avg = sum(enemy_stats[k] for k in enemy_level_keys) / float(len(enemy_level_keys))
+        enemy_level = max(1, int(round(enemy_avg / 10.0)))
     
         # Precompute crit probabilities
         player_crit_p = crit_probability(user_data.get('Critical_chance', 0))
@@ -431,26 +437,28 @@ class Farm(commands.Cog):
             player_bar = self.hearts_bar(user_data['Health'], start_life, full=player_full_heart, empty="🖤", slots=10)
             enemy_bar  = self.hearts_bar(enemy_stats['Health'], bad_start_life, full=enemy_full_heart, empty=enemy_empty_heart, slots=10)
     
-            # --- Distinct embed styles for boss vs normal ---
+            # --- Distinct embed styles + levels ---
             if is_boss:
-                title = f"👑 BOSS: {enemy_name}"
+                title = f"👑 BOSS Lv {enemy_level}: {enemy_name}"
                 color = discord.Color.purple()
+                enemy_header = f"👑 {enemy_name} (Lv {enemy_level})"
             else:
-                title = f"Round {round_count} - {enemy_name}"
+                title = f"Round {round_count} - {enemy_name} (Lv {enemy_level})"
                 color = discord.Color.green()
+                enemy_header = f"{enemy_name} (Lv {enemy_level})"
     
-            embed = discord.Embed(title=title if is_boss else f"Round {round_count} - {enemy_name}", color=color)
+            embed = discord.Embed(title=title, color=color)
             if is_boss:
                 embed.set_author(name="An ominous presence looms...")
-                embed.set_footer(text="Bosses hit harder and shine brighter ✨")
+                embed.set_footer(text="Bosses are ~20% stronger ✨")
     
             embed.add_field(
-                name=f"{enemy_name}" if not is_boss else f"👑 {enemy_name}",
+                name=enemy_header,
                 value=f"Damage Taken: **{player_damage}**\nHealth: {enemy_bar}",
                 inline=False
             )
             embed.add_field(
-                name="You",
+                name=f"You (Lv {player_level})",
                 value=f"Damage Taken: **{enemy_damage}**\nHealth: {player_bar}",
                 inline=False
             )
@@ -467,6 +475,7 @@ class Farm(commands.Cog):
         loot_items_path = os.path.join(os.path.dirname(__file__), 'loot.json')
         view = FightView(round_messages, ctx.author, enemy_name, loot_items_path, self.config, start_life, rep_change, ctx)
         view.message = await ctx.send(embed=round_messages[0], view=view)
+
 
 
 
