@@ -1612,25 +1612,29 @@ class Hungar(commands.Cog):
         return len(alive_players) <= 1
 
     async def endGame(self, ctx):
-        """End the game and announce the winner."""
+        """End the game and announce the winner (safe when stopped early or no winner)."""
         winner_id = None
         winner = None
         winner_bonus = 0
+    
         guild = ctx.guild
         config = await self.config.guild(guild).all()
-        players = config["players"]
+        players = config.get("players", {})
         leaderboard = config.get("elimination_leaderboard", [])
         all_users = await self.config.all_users()
-        alive_players = [player for player in players.values() if player["alive"]]
+        alive_players = [p for p in players.values() if p.get("alive")]
         WLboard = config.get("WLboard", {})
     
-        role = get(guild.roles, name="Tribute")
+        # Remove Tribute role from everyone
+        role = discord.utils.get(guild.roles, name="Tribute")
         if role:
-            for member in guild.members:
-                if role in member.roles:
-                    await member.remove_roles(role)
+            for member in list(role.members):
+                try:
+                    await member.remove_roles(role, reason="Hunger Games ended")
+                except Exception:
+                    pass  # don't let role perms block endGame
     
-        # Lock GameMaster Dashboard
+        # Lock the GameMaster Dashboard if present
         dashboard_channel_id = config.get("dashboard_channel_id")
         dashboard_message_id = config.get("dashboard_message_id")
         if dashboard_channel_id and dashboard_message_id:
@@ -1642,29 +1646,36 @@ class Hungar(commands.Cog):
                         disabled_view = GameMasterView(self, guild, None)
                         for item in disabled_view.children:
                             item.disabled = True
-                        await message.edit(content="🔒 **Game Over!** The GameMaster dashboard is now locked.", view=disabled_view)
+                        await message.edit(
+                            content="🔒 **Game Over!** The GameMaster dashboard is now locked.",
+                            view=disabled_view
+                        )
                 except discord.NotFound:
-                    print("Dashboard message not found, skipping lockout.")
+                    pass
     
-        # Declare winner
+        # Determine winner (if any)
         if alive_players:
             winner = alive_players[0]
-            winner_id = next((pid for pid, pdata in players.items() if pdata is winner), None)         
+            # find their id
+            for pid, pdata in players.items():
+                if pdata is winner:
+                    winner_id = pid
+                    break
+    
+            # Track win for non-NPC winners
             if not winner.get("is_npc", False) and winner_id:
-                winner_data = WLboard.get(winner_id, {
-                    "name": winner["name"],
-                    "wins": 0,
-                })
-                winner_data["wins"] += 1
-                WLboard[winner_id] = winner_data
+                rec = WLboard.get(winner_id, {"name": winner.get("name", f"[{winner_id}]"), "wins": 0})
+                rec["wins"] += 1
+                WLboard[winner_id] = rec
                 await self.config.guild(guild).WLboard.set(WLboard)
+    
             await ctx.send(f"The game is over! The winner is {winner['name']} from District {winner['district']}!")
         else:
             await ctx.send("The game is over! No one survived.")
     
-        # Send elimination leaderboard
+        # Post elimination leaderboard (if any)
         if leaderboard:
-            leaderboard.sort(key=lambda x: x["day"], reverse=True)
+            leaderboard.sort(key=lambda x: x.get("day", 0), reverse=True)
             elim_embed = discord.Embed(
                 title="🏅 Elimination Leaderboard 🏅",
                 description="Here are the players eliminated so far:",
@@ -1672,67 +1683,94 @@ class Hungar(commands.Cog):
             )
             for entry in leaderboard[:25]:
                 elim_embed.add_field(
-                    name=f"Day {entry['day']}",
-                    value=f"{entry['name']}",
+                    name=f"Day {entry.get('day', '?')}",
+                    value=f"{entry.get('name', 'Unknown')}",
                     inline=False
                 )
             await ctx.send(embed=elim_embed)
     
             # Kill leaderboard
-            sorted_players = sorted(players.values(), key=lambda p: len(p["kill_list"]), reverse=True)[:25]
-            kill_embed = discord.Embed(
-                title="🏆 Kill Leaderboard 🏆",
-                description="Here are the top killers:",
-                color=discord.Color.gold(),
-            )
-            sorted_players = sorted_players[:25]
-            for i, player in enumerate(sorted_players, start=1):
-                kills = len(player["kill_list"])
-                kill_text = "kill" if kills == 1 else "kills"
-                kill_embed.add_field(
-                    name="",
-                    value=f"**{i}.** {player['name']}: {kills} {kill_text}\nKilled: {', '.join(player['kill_list'])}",
-                    inline=False
+            top_killers = sorted(players.values(), key=lambda p: len(p.get("kill_list", [])), reverse=True)[:25]
+            if top_killers:
+                kill_embed = discord.Embed(
+                    title="🏆 Kill Leaderboard 🏆",
+                    description="Here are the top killers:",
+                    color=discord.Color.gold(),
                 )
-            await ctx.send(embed=kill_embed)
+                for i, p in enumerate(top_killers, start=1):
+                    kills = len(p.get("kill_list", []))
+                    killed = ", ".join(p.get("kill_list", [])) or "—"
+                    kill_embed.add_field(
+                        name="",
+                        value=f"**{i}.** {p.get('name','Unknown')}: {kills} {'kill' if kills==1 else 'kills'}\nKilled: {killed}",
+                        inline=False
+                    )
+                await ctx.send(embed=kill_embed)
     
-            # Calculate total pot
+            # Compute pot from all user bets + AI bets
             total_pot = 0
             for user_data in all_users.values():
                 bets = user_data.get("bets", {})
-                total_pot += sum(bet["amount"] for bet in bets.values())
-    
-            for tribute_data in players.values():
-                npc_bets = tribute_data.get("bets", {}).get("AI", [])
-                for ai_bet in npc_bets:
-                    total_pot += ai_bet["amount"]
+                total_pot += sum(int(b.get("amount", 0)) for b in bets.values())
+            for pdata in players.values():
+                for ai_bet in pdata.get("bets", {}).get("AI", []):
+                    total_pot += int(ai_bet.get("amount", 0))
     
             winner_bonus = int(total_pot * 0.5)
     
-        # Distribute winnings to users
+        # Distribute winnings to users (double only if they bet the actual winner)
         for user_id, user_data in all_users.items():
             bets = user_data.get("bets", {})
             user_balance = await self.config_gold.user_from_id(user_id).master_balance()
-            for tribute_id, bet_data in bets.items():
-                if tribute_id == winner_id:
-                    user_balance += bet_data["amount"] * 2
+            for t_id, b in bets.items():
+                if winner_id is not None and t_id == winner_id:
+                    user_balance += int(b.get("amount", 0)) * 2
             await self.config_gold.user_from_id(user_id).master_balance.set(user_balance)
-            await self.config.user_from_id(user_id).bets.set({})
+            await self.config.user_from_id(user_id).bets.set({})  # clear bets
     
-        # Give bonus to winner
-        if winner_bonus > 0 and not winner.get("is_npc", False) and winner_id and str(winner_id).isdigit():
-            winner_balance = await self.config_gold.user_from_id(int(winner_id)).master_balance()
-            winner_balance += winner_bonus
-            await self.config_gold.user_from_id(int(winner_id)).master_balance.set(winner_balance)
-            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** half of the pot!")
+        # Give bonus to winner (only if there is a human, non-NPC winner)
+        if (
+            winner_bonus > 0
+            and winner is not None
+            and not winner.get("is_npc", False)
+            and isinstance(winner_id, str) and winner_id.isdigit()
+        ):
+            wb = await self.config_gold.user_from_id(int(winner_id)).master_balance()
+            wb += winner_bonus
+            await self.config_gold.user_from_id(int(winner_id)).master_balance.set(wb)
+            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** (half of the pot)!")
     
-        # Update kill counts
-        for player_id, player_data in players.items():
-            if not player_data.get("is_npc") and player_data["kill_list"]:
-                user_id = int(player_id)
-                total_kills = len(player_data["kill_list"])
-                current_kill_count = await self.config.user_from_id(user_id).kill_count()
-                await self.config.user_from_id(user_id).kill_count.set(current_kill_count + total_kills)
+        # Update kill counts for non-NPCs
+        for pid, pdata in players.items():
+            if not pdata.get("is_npc") and pdata.get("kill_list"):
+                uid = pid
+                if isinstance(uid, str) and uid.isdigit():
+                    current = await self.config.user_from_id(uid).kill_count()
+                    await self.config.user_from_id(uid).kill_count.set(current + len(pdata["kill_list"]))
+    
+        # Write result file (safe if no winner or no bonus)
+        file = "Hunger_Games.txt"
+        async with aiofiles.open(file, mode="a") as f:
+            if winner is not None and winner_bonus > 0 and not winner.get("is_npc", False):
+                await f.write(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** from the bets placed on them!\n")
+    
+        # Replace mentions with nicknames in the file (best-effort)
+        try:
+            async with aiofiles.open(file, mode='r') as f:
+                file_content = await f.read()
+            member_dict = {str(m.id): (m.nick or m.name) for m in guild.members}
+            for uid, nickname in member_dict.items():
+                mention = f"<@{uid}>"
+                if mention in file_content:
+                    file_content = file_content.replace(mention, nickname)
+            async with aiofiles.open(file, mode='w') as f:
+                await f.write(file_content + "\n")
+            await ctx.send(file=discord.File(file))
+        except Exception:
+            pass
+        finally:
+            if os.path.exists(file):
+                os.remove(file)
     
         # Reset game state
         await self.config.guild(guild).clear()
@@ -1745,37 +1783,14 @@ class Hungar(commands.Cog):
             "day_counter": 0,
             "WLboard": WLboard,
         })
-    
-        for user_id in all_users:
+        # Clear all user bets again for safety
+        for user_id in list(all_users.keys()):
             await self.config.user_from_id(user_id).bets.set({})
     
         await self.config.guild(guild).players.set({})
         await self.config.guild(guild).game_active.set(False)
         await self.config.guild(guild).elimination_leaderboard.set([])
-    
-        # Log result
-        file = "Hunger_Games.txt"
-        async with aiofiles.open(file, mode="a") as f:
-            if winner:
-                await f.write(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** from the bets placed on them!\n")
-    
-        async with aiofiles.open(file, mode='r') as f:
-            file_content = await f.read()
-    
-        member_dict = {str(member.id): (member.nick or member.name) for member in guild.members}
-        for user_id, nickname in member_dict.items():
-            mention = f"<@{user_id}>"
-            if mention in file_content:
-                file_content = file_content.replace(mention, nickname)
-    
-        async with aiofiles.open(file, mode='w') as f:
-            await f.write(file_content)
-            await f.write("\n")
 
-    
-        await ctx.send(file=discord.File(file))
-        if os.path.exists(file):
-            os.remove(file)
             
     async def process_day(self, ctx):
         guild = ctx.guild
