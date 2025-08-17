@@ -1613,8 +1613,8 @@ class Hungar(commands.Cog):
 
     async def endGame(self, ctx):
         """End the game and announce the winner."""
-        winner_id = ""
-        winner = ""
+        winner_id = None
+        winner = None
         winner_bonus = 0
         guild = ctx.guild
         config = await self.config.guild(guild).all()
@@ -1649,8 +1649,8 @@ class Hungar(commands.Cog):
         # Declare winner
         if alive_players:
             winner = alive_players[0]
-            winner_id = next((pid for pid, pdata in players.items() if pdata == winner), None)
-            if not winner.get("is_npc", False):
+            winner_id = next((pid for pid, pdata in players.items() if pdata is winner), None)         
+            if not winner.get("is_npc", False) and winner_id:
                 winner_data = WLboard.get(winner_id, {
                     "name": winner["name"],
                     "wins": 0,
@@ -1720,7 +1720,7 @@ class Hungar(commands.Cog):
             await self.config.user_from_id(user_id).bets.set({})
     
         # Give bonus to winner
-        if winner_bonus > 0 and not winner.get("is_npc", False):
+        if winner_bonus > 0 and not winner.get("is_npc", False) and winner_id and str(winner_id).isdigit():
             winner_balance = await self.config_gold.user_from_id(int(winner_id)).master_balance()
             winner_balance += winner_bonus
             await self.config_gold.user_from_id(int(winner_id)).master_balance.set(winner_balance)
