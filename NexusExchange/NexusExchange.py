@@ -779,19 +779,54 @@ class NexusExchange(commands.Cog):
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def apply_bank_interest(self, channel):
-        """Apply 1% interest to every user's bank balance."""
+        """
+        Apply daily interest:
+        • First 25k compounds into bank_total
+        • Next 25k pays out simple interest into master_balance
+        • >50k earns no interest
+        """
+
+        BASE_DAILY_RATE = .01
         all_users = await self.config.all_users()
         updated_users = 0
-    
+        total_interest_paid = 0
+
         for user_id, data in all_users.items():
-            bank = data.get("bank_total", 0)
-            if bank > 0:
-                interest = max(1, int(bank * 0.01))  # Ensure at least 1 coin is earned
-                new_total = bank + interest
-                await self.config.user_from_id(user_id).bank_total.set(new_total)
-                updated_users += 1
-    
-        await channel.send(f"🏦 Applied 1% interest to `{updated_users}` bank accounts.")
+            bank = int(data.get("bank_total", 0))
+            master = int(data.get("master_balance", 0))
+            if bank <= 0:
+                continue
+
+            # --- Tiers ---
+            tier1_principal = min(bank, 25_000)  # compound tier
+            tier2_principal = min(max(bank - 25_000, 0), 25_000)  # simple tier
+            # >50k ignored
+
+            # Compute integer interest for the day
+            t1_interest = int(tier1_principal * self.BASE_DAILY_RATE)
+            t2_interest = int(tier2_principal * self.BASE_DAILY_RATE)
+
+            # Minimum 1 coin/day floor if there is a positive balance (assign to Tier 1)
+            if (t1_interest + t2_interest) == 0:
+                t1_interest = 1
+
+            # Apply: Tier1 compounds into bank_total
+            new_bank = bank + t1_interest
+            # Apply: Tier2 pays out into master_balance
+            new_master = master + t2_interest
+
+            await self.config.user_from_id(user_id).bank_total.set(new_bank)
+            await self.config.user_from_id(user_id).master_balance.set(new_master)
+
+            updated_users += 1
+            total_interest_paid += (t1_interest + t2_interest)
+
+        await channel.send(
+            f"🏦 Applied daily interest to `{updated_users}` accounts.\n"
+            f"• Posted rate: **{BASE_DAILY_RATE*100}%** per day\n"
+            f"• Tiers: ≤25k compounds to bank, 25–50k pays to wallet, >50k no interest\n"
+            f"• Total interest paid today: **{total_interest_paid:,}** WC."
+        )
 
     
     @commands.command()
