@@ -803,8 +803,8 @@ class NexusExchange(commands.Cog):
             # >50k ignored
 
             # Compute integer interest for the day
-            t1_interest = int(tier1_principal * self.BASE_DAILY_RATE)
-            t2_interest = int(tier2_principal * self.BASE_DAILY_RATE)
+            t1_interest = int(tier1_principal * BASE_DAILY_RATE)
+            t2_interest = int(tier2_principal * BASE_DAILY_RATE)
 
             # Minimum 1 coin/day floor if there is a positive balance (assign to Tier 1)
             if (t1_interest + t2_interest) == 0:
