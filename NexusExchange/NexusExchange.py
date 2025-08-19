@@ -781,9 +781,9 @@ class NexusExchange(commands.Cog):
     async def apply_bank_interest(self, channel):
         """
         Apply daily interest:
-        • First 25k compounds into bank_total
-        • Next 25k pays out simple interest into master_balance
-        • >50k earns no interest
+        • First 50k compounds into bank_total
+        • Next 50k pays out simple interest into master_balance
+        • >100k earns no interest
         """
 
         BASE_DAILY_RATE = .01
@@ -798,8 +798,8 @@ class NexusExchange(commands.Cog):
                 continue
 
             # --- Tiers ---
-            tier1_principal = min(bank, 25_000)  # compound tier
-            tier2_principal = min(max(bank - 25_000, 0), 25_000)  # simple tier
+            tier1_principal = min(bank, 50_000)  # compound tier
+            tier2_principal = min(max(bank - 50_000, 0), 50_000)  # simple tier
             # >50k ignored
 
             # Compute integer interest for the day
@@ -824,7 +824,7 @@ class NexusExchange(commands.Cog):
         await channel.send(
             f"🏦 Applied daily interest to `{updated_users}` accounts.\n"
             f"• Posted rate: **{BASE_DAILY_RATE*100}%** per day\n"
-            f"• Tiers: ≤25k compounds to bank, 25–50k pays to wallet, >50k no interest\n"
+            f"• Tiers: ≤50k compounds to bank, 50–100k pays to wallet, >50k no interest\n"
             f"• Total interest paid today: **{total_interest_paid:,}** WC."
         )
 
