@@ -15,6 +15,100 @@ BUILDINGS: Dict[str, Dict] = {
 }
 
 TICK_SECONDS = 3600  # hourly ticks
+NS_USER_AGENT = "9003"  
+NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
+
+DEFAULT_SCALES = [46, 1, 10, 39]  # 46 + a few sensible companions; tweak as you like
+
+def normalize_nation(n: str) -> str:
+    # NationStates API expects underscores instead of spaces, lowercase
+    return n.strip().lower().replace(" ", "_")
+
+def _xml_get_tag(txt: str, tag: str) -> Optional[str]:
+    start = txt.find(f"<{tag}>")
+    if start == -1:
+        return None
+    end = txt.find(f"</{tag}>", start)
+    if end == -1:
+        return None
+    return txt[start + len(tag) + 2 : end].strip()
+
+def _xml_get_scales_scores(xml: str) -> dict:
+    """
+    Extract all <SCALE id="X"><SCORE>Y</SCORE>… and return {id: float(score)}.
+    Handles scientific notation.
+    """
+    out = {}
+    pos = 0
+    while True:
+        sid = xml.find("<SCALE", pos)
+        if sid == -1:
+            break
+        e = xml.find(">", sid)
+        if e == -1:
+            break
+        head = xml[sid:e+1]  # e.g., <SCALE id="76">
+        # find id="…"
+        idpos = head.find('id="')
+        if idpos != -1:
+            idend = head.find('"', idpos + 4)
+            if idend != -1:
+                try:
+                    scale_id = int(head[idpos + 4:idend])
+                except Exception:
+                    scale_id = None
+            else:
+                scale_id = None
+        else:
+            scale_id = None
+
+        # find SCORE inside this SCALE block
+        sc_start = xml.find("<SCORE>", e)
+        sc_end = xml.find("</SCORE>", sc_start)
+        if sc_start != -1 and sc_end != -1:
+            raw = xml[sc_start + 7:sc_end].strip()
+            try:
+                score = float(raw)
+            except Exception:
+                score = None
+            if scale_id is not None and score is not None:
+                out[scale_id] = score
+
+        pos = sc_end if sc_end != -1 else e + 1
+    return out
+
+async def _ns_fetch_profile(self, nation_name: str, scales: Optional[list] = None) -> tuple[str, dict]:
+    """
+    Returns (currency_text, {scale_id: score, ...})
+    Using your format: q="currency+census;mode=score;scale=46(+more)"
+    """
+    nation = _ns_norm_nation(nation_name)
+    scales = scales or DEFAULT_SCALES
+    # Build the exact q you asked for
+    scale_str = "+".join(str(s) for s in scales)
+    q = f"currency+census;mode=score;scale={scale_str}"
+
+    headers = {"User-Agent": NS_USER_AGENT}
+    params = {"nation": nation, "q": q}
+
+    async with aiohttp.ClientSession(headers=headers) as session:
+        async with session.get(NS_BASE, params=params) as resp:
+            # your pacing pattern
+            remaining = resp.headers.get("Ratelimit-Remaining")
+            reset_time = resp.headers.get("Ratelimit-Reset")
+            if remaining is not None and reset_time is not None:
+                try:
+                    remaining_i = max(1, int(remaining) - 10)
+                    reset_i = int(reset_time)
+                    wait = reset_i / remaining_i if remaining_i > 0 else reset_i
+                    await asyncio.sleep(wait)
+                except Exception:
+                    pass
+            text = await resp.text()
+
+    currency = _xml_get_tag(text, "CURRENCY") or "Credits"
+    scores = _xml_get_scales_scores(text)  # e.g., {46: 123.45, 76: 3.2e+15, ...}
+    return currency, scores
 
 def trunc2(x: float) -> float:
     """Truncate (not round) to 2 decimals to match Nexus behavior."""
@@ -118,8 +212,7 @@ class CityBuilder(commands.Cog):
             return
         # match common patterns quickly, case-insensitive
         content = message.content.strip().lower()
-        if content.endswith("city") and (content.startswith("$") or content.startswith("!")
-                                         or content.startswith("?") or content.startswith(".")):
+        if content.endswith("city") and (content.startswith("$")
             try:
                 await message.delete()
             except discord.Forbidden:
@@ -136,6 +229,166 @@ class CityBuilder(commands.Cog):
             return False
         p = user.guild_permissions
         return p.administrator or p.manage_guild
+
+        async def _needs_ns_setup(self, user: discord.abc.User) -> bool:
+        data = await self.config.user(user).all()
+        return not (data.get("ns_nation") and data.get("ns_currency") and data.get("wc_to_local_rate"))
+
+    # ---------- NationStates API ----------
+    async def _ns_fetch_profile(self, nation_name: str) -> Tuple[str, str, float]:
+        """
+        Returns (currency_text, economy_text, econ_score) for the nation.
+        Uses shards: currency, economy, census(id=48, mode=score).
+        """
+        nation = normalize_nation(nation_name)
+        params = {
+            "nation": nation,
+            "q": "currency+census;mode=score;scale=46",
+        }
+        headers = {"User-Agent": NS_USER_AGENT}
+
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(NS_BASE, params=params) as resp:
+                # --- Rate limiting backoff per your strategy ---
+                remaining = resp.headers.get("Ratelimit-Remaining")
+                reset_time = resp.headers.get("Ratelimit-Reset")
+                if remaining is not None and reset_time is not None:
+                    try:
+                        remaining_i = max(1, int(remaining) - 10)
+                        reset_i = int(reset_time)
+                        wait = reset_i / remaining_i if remaining_i > 0 else reset_i
+                        await asyncio.sleep(wait)
+                    except Exception:
+                        pass
+
+                text = await resp.text()
+
+        # Very small XML parse (no external deps). Light extraction:
+        def _tag(txt, tag):
+            start = txt.find(f"<{tag}>")
+            if start == -1:
+                return None
+            end = txt.find(f"</{tag}>", start)
+            if end == -1:
+                return None
+            return txt[start + len(tag) + 2 : end].strip()
+
+        currency = _tag(text, "CURRENCY") or "Credits"
+        # Census score for id 48 appears under <CENSUS>...<SCALE id="48"><SCORE>...</SCORE>...
+        # Quick extraction:
+        score = None
+        cpos = text.find('id="48"')
+        if cpos != -1:
+            s_start = text.find("<SCORE>", cpos)
+            s_end = text.find("</SCORE>", s_start)
+            if s_start != -1 and s_end != -1:
+                try:
+                    score = float(text[s_start + 7 : s_end].strip())
+                except Exception:
+                    score = None
+
+        if score is None:
+            score = 50.0  # neutral fallback
+
+        return currency, economy_text, score
+
+    async def _ensure_ns_profile(self, user: discord.abc.User, nation_input: str) -> Optional[str]:
+        try:
+            currency, scores = await self._ns_fetch_profile(nation_input, scales=DEFAULT_SCALES)
+        except Exception as e:
+            return f"❌ Failed to reach NationStates API. Try again later.\n`{e}`"
+    
+        rate, details = self._compute_currency_rate(scores)
+    
+        await self.config.user(user).ns_nation.set(_ns_norm_nation(nation_input))
+        await self.config.user(user).ns_currency.set(currency)
+        await self.config.user(user).set_raw("ns_scores", value={str(k): float(v) for k, v in scores.items()})
+        await self.config.user(user).wc_to_local_rate.set(rate)
+        await self.config.user(user).set_raw("rate_debug", value=details)  # optional: store breakdown for debugging
+        return None
+
+
+    def _softlog(x: float) -> float:
+    # smooth log that works from x≈0 upward; shift by 1 to avoid log(0)
+        return math.log10(max(0.0, float(x)) + 1.0)
+
+    def _norm(v: float, lo: float, hi: float) -> float:
+        # clamp & scale to [0,1]
+        if hi <= lo:
+            return 0.5
+        v = max(lo, min(hi, v))
+        return (v - lo) / (hi - lo)
+    
+    def _invert(p: float) -> float:
+        return 1.0 - p
+    
+    def _clamp(x: float, lo: float, hi: float) -> float:
+        return max(lo, min(hi, x))
+    
+    def _weighted_avg(d: dict[int, float], weights: dict[int, float], transforms: dict[int, callable]) -> float:
+        num = 0.0
+        den = 0.0
+        for k, w in weights.items():
+            if k in d:
+                v = d[k]
+                t = transforms.get(k)
+                if t:
+                    v = t(v)
+                num += w * v
+                den += abs(w)
+        return num / den if den else 0.5
+    
+    def _make_transforms() -> dict[int, callable]:
+        # Per-scale transforms → normalized 0..1
+        # Use softlog for very large ranges and pick anchor ranges empirically.
+        return {
+            46: lambda x: _norm(_softlog(x), 0.0, 6.0),   # if 46 can be huge (e.g., e+15), log it; 0..6 is ~1..10^6
+            1:  lambda x: _norm(x, 0.0, 100.0),           # Economy score usually ~0..100
+            10: lambda x: _norm(x, 0.0, 100.0),           # Industry score ~0..100
+            39: lambda x: _invert(_norm(x, 0.0, 20.0)),   # If 39 = Unemployment (%), invert; tweak hi if your world differs
+        }
+    
+    def _make_weights() -> dict[int, float]:
+        # Heavier weight on the primary currency/ER stat, then economy, then others
+        return {46: 0.5, 1: 0.3, 10: 0.15, 39: 0.05}
+    
+    def _map_index_to_rate(idx: float) -> float:
+        """
+        idx in [0,1] → rate range [0.25, 2.00] with 0.5 ≈ 1.0x.
+        Smooth S-curve to avoid wild swings near ends.
+        """
+        # center at 0.5
+        centered = (idx - 0.5) * 2.0  # [-1, 1]
+        # gentle curve
+        factor = 1.0 + 0.75 * centered  # 0.25..1.75
+        return _clamp(trunc2(factor), 0.25, 2.00)
+
+
+    def _compute_currency_rate(self, scores: dict[int, float]) -> tuple[float, dict]:
+        transforms = _make_transforms()
+        weights = _make_weights()
+    
+        # Apply per-scale transforms to 0..1, then weighted average
+        contribs = {}
+        for sid, fn in transforms.items():
+            raw = scores.get(sid)
+            if raw is None:
+                continue
+            contribs[sid] = fn(raw)  # 0..1 per scale
+    
+        idx = _weighted_avg(scores, weights, transforms)  # 0..1
+        rate = _map_index_to_rate(idx)  # 1 WC = rate × Local
+    
+        debug = {
+            "scores": {str(k): scores[k] for k in scores},
+            "contribs": {str(k): contribs.get(k) for k in transforms},
+            "index": idx,
+            "rate": rate,
+            "weights": {str(k): weights[k] for k in weights},
+        }
+        return rate, debug
+
+
 
     # -------------- tick engine --------------
     async def resource_tick(self):
@@ -226,6 +479,17 @@ class CityBuilder(commands.Cog):
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
         e.add_field(name="🏦 Bank", value=f"{bank:.2f} Wellcoins", inline=True)
         e.add_field(name="⏳ Upkeep per Tick", value=f"{upkeep:.2f} Wellcoins", inline=True)
+
+        # When building the city embed:
+        d = await self.config.user(user).all()
+        rate = float(d.get("wc_to_local_rate") or 1.0)
+        currency = d.get("ns_currency") or "Local Credits"
+        e.add_field(
+            name="🌍 Exchange",
+            value=f"1 WC = **{rate:.2f} {currency}** (personalized to your nation)",
+            inline=False
+        )
+
         return e
 
     def build_help_embed(self) -> discord.Embed:
@@ -464,7 +728,3 @@ class BackBtn(ui.Button):
 # ====== Helpers ======
 def cog_cost(cog: CityBuilder, name: str) -> float:
     return trunc2(BUILDINGS[name]["cost"])
-
-
-async def setup(bot: commands.Bot):
-    await bot.add_cog(CityBuilder(bot))
