@@ -239,18 +239,24 @@ class CityBuilder(commands.Cog):
             lines.append(f"**{k}** — Cost `{v['cost']:.2f}` | Upkeep `{v['upkeep']:.2f}` | Produces {produces}")
         e.add_field(name="Catalog", value="\n".join(lines), inline=False)
         return e
-
-    def bank_help_embed(self) -> discord.Embed:
+    
+    async def bank_help_embed(self, user: discord.abc.User) -> discord.Embed:
+        bank = trunc2(float(await self.config.user(user).bank()))
         e = discord.Embed(
             title="🏦 Bank",
-            description="Your **Bank** pays wages/upkeep each tick. If the bank can’t cover upkeep, **production halts**."
+            description="Your **Bank** pays wages/upkeep each tick. "
+                        "If the bank can’t cover upkeep, **production halts**."
         )
+        e.add_field(name="Current Balance", value=f"{bank:.2f} Wellcoins", inline=False)
         e.add_field(
             name="Tips",
-            value="• Deposit from wallet → bank\n• Withdraw bank → wallet\n• Balance shows how much is available",
+            value="• Deposit from wallet → bank\n"
+                  "• Withdraw bank → wallet\n"
+                  "• Balance is shown above",
             inline=False,
         )
         return e
+
 
     async def wait_for_amount(self, channel_id: int, author: discord.abc.User) -> Optional[float]:
         """Prompted numeric input helper (30s timeout)."""
@@ -309,16 +315,18 @@ class BuildBtn(ui.Button):
         )
 
 
-class BankBtn(ui.Button):
+class BankBtn(discord.ui.Button):
     def __init__(self):
         super().__init__(label="Bank", style=discord.ButtonStyle.secondary, custom_id="city:bank")
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
+        embed = await view.cog.bank_help_embed(interaction.user)
         await interaction.response.edit_message(
-            embed=view.cog.bank_help_embed(),
+            embed=embed,
             view=BankView(view.cog, view.author, show_admin=any(isinstance(i, NextDayBtn) for i in view.children)),
         )
+
 
 
 class NextDayBtn(ui.Button):
@@ -392,11 +400,10 @@ class BuildView(ui.View):
 
 # ====== UI: Bank flow ======
 class BankView(ui.View):
-    def __init__(self, cog: CityBuilder, author: discord.abc.User, show_admin: bool):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
         super().__init__(timeout=180)
         self.cog = cog
         self.author = author
-        self.add_item(BankBalanceBtn())
         self.add_item(BankDepositBtn())
         self.add_item(BankWithdrawBtn())
         self.add_item(BackBtn(show_admin))
@@ -406,6 +413,7 @@ class BankView(ui.View):
             await interaction.response.send_message("This panel isn’t yours. Type `$city` to open your own.", ephemeral=True)
             return False
         return True
+
 
 
 class BankBalanceBtn(ui.Button):
