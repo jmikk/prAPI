@@ -781,21 +781,17 @@ class ViewBtn(ui.Button):
         embed = await view.cog.make_city_embed(interaction.user)
         await interaction.response.edit_message(embed=embed, view=view)
 
-class BuildBtn(ui.Button):
+class BankBtn(ui.Button):
     def __init__(self):
-        super().__init__(label="Build", style=discord.ButtonStyle.success, custom_id="city:build")
+        super().__init__(label="Bank", style=discord.ButtonStyle.secondary, custom_id="city:bank")
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
-        embed, maker = view.cog.build_help_embed(view.author)
+        embed = await view.cog.bank_help_embed(interaction.user)
         await interaction.response.edit_message(
             embed=embed,
-            view=BuildView(view.cog, view.author, show_admin=view.show_admin),
+            view=BankView(view.cog, view.author, show_admin=view.show_admin),
         )
-        # Fill the catalog after sending (edits in place)
-        catalog = await maker()
-        embed.set_field_at(0, name="Catalog", value=catalog, inline=False)
-        await interaction.message.edit(embed=embed, view=interaction.message.components)  # type: ignore
 
 
 class BuildBtn(ui.Button):
