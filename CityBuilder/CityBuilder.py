@@ -188,13 +188,27 @@ def _map_index_to_rate(idx: float) -> float:
     return _clamp(trunc2(factor), 0.25, 2.00)
 
 def compute_currency_rate(scores: dict) -> Tuple[float, dict]:
+    scores_cast = {}
+    for k, v in (scores or {}).items():
+        try:
+            scores_cast[int(k)] = float(v)
+        except (TypeError, ValueError):
+            continue
+
     transforms = _make_transforms()
     weights = _make_weights()
-    idx = _weighted_avg(scores, weights, transforms)  # 0..1
-    rate = _map_index_to_rate(idx)                    # 1 WC = rate Local (if you want local later)
-    contribs = {str(k): (transforms[k](scores[k]) if k in scores else None) for k in transforms}
-    debug = {"scores": {str(k): float(scores[k]) for k in scores}, "contribs": contribs, "index": idx, "rate": rate, "weights": {str(k): float(weights[k]) for k in weights}}
+    idx = _weighted_avg(scores_cast, weights, transforms)
+    rate = _map_index_to_rate(idx)
+    contribs = {str(k): (transforms[k](scores_cast[k]) if k in scores_cast else None) for k in transforms}
+    debug = {
+        "scores": {str(k): scores_cast[k] for k in scores_cast},
+        "contribs": contribs,
+        "index": idx,
+        "rate": rate,
+        "weights": {str(k): float(weights[k]) for k in weights},
+    }
     return rate, debug
+
 
 # ====== Modals: Bank deposit/withdraw (wallet WC <-> bank WC here) ======
 class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
