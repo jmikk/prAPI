@@ -84,35 +84,59 @@ def _xml_get_scales_scores(xml: str) -> dict:
 
 async def ns_fetch_currency_and_scales(nation_name: str, scales: Optional[list] = None) -> Tuple[str, dict, str]:
     """
-    Returns (currency_text, {scale_id: score, ...}, xml_text)
-    Using format: q="currency+census;mode=score;scale=46(+more)"
+    Robust fetch:
+      1) q=currency+census with mode/scale as separate params
+      2) q=currency+census;mode=score;scale=...
+      3) Fallback: q=currency  AND  q=census;mode=score;scale=... (two requests)
+    Returns: (currency_text, {scale_id: score, ...}, xml_text)
     """
     nation = normalize_nation(nation_name)
     scales = scales or DEFAULT_SCALES
     scale_str = "+".join(str(s) for s in scales)
-    q = f"currency+census;mode=score;scale={scale_str}"
-
     headers = {"User-Agent": NS_USER_AGENT}
-    params = {"nation": nation, "q": q}
 
-    async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.get(NS_BASE, params=params) as resp:
-            # Gentle pacing (your pattern)
-            remaining = resp.headers.get("Ratelimit-Remaining")
-            reset_time = resp.headers.get("Ratelimit-Reset")
-            if remaining is not None and reset_time is not None:
-                try:
-                    remaining_i = max(1, int(remaining) - 10)
-                    reset_i = int(reset_time)
-                    wait = reset_i / remaining_i if remaining_i > 0 else reset_i
-                    await asyncio.sleep(wait)
-                except Exception:
-                    pass
-            text = await resp.text()
+    async def fetch(params: dict) -> str:
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(NS_BASE, params=params) as resp:
+                # gentle pacing
+                remaining = resp.headers.get("Ratelimit-Remaining")
+                reset_time = resp.headers.get("Ratelimit-Reset")
+                if remaining is not None and reset_time is not None:
+                    try:
+                        remaining_i = max(1, int(remaining) - 10)
+                        reset_i = int(reset_time)
+                        wait = reset_i / remaining_i if remaining_i > 0 else reset_i
+                        await asyncio.sleep(wait)
+                    except Exception:
+                        pass
+                return await resp.text()
 
-    currency = _xml_get_tag(text, "CURRENCY") or "Credits"
-    scores = _xml_get_scales_scores(text)
-    return currency, scores, text
+    # --- Try #1: separate params for mode/scale ---
+    params1 = {"nation": nation, "q": "currency+census", "mode": "score", "scale": scale_str}
+    text1 = await fetch(params1)
+    currency1 = _xml_get_tag(text1, "CURRENCY") or "Credits"
+    scores1 = _xml_get_scales_scores(text1)
+    if scores1:  # got census
+        return currency1, scores1, text1
+
+    # --- Try #2: combined in q= string (your original format) ---
+    params2 = {"nation": nation, "q": f"currency+census;mode=score;scale={scale_str}"}
+    text2 = await fetch(params2)
+    currency2 = _xml_get_tag(text2, "CURRENCY") or currency1
+    scores2 = _xml_get_scales_scores(text2)
+    if scores2:
+        return currency2, scores2, text2
+
+    # --- Try #3: split requests (currency, then census only) ---
+    text_cur = await fetch({"nation": nation, "q": "currency"})
+    text_cen = await fetch({"nation": nation, "q": "census", "mode": "score", "scale": scale_str})
+    currency3 = _xml_get_tag(text_cur, "CURRENCY") or "Credits"
+    scores3 = _xml_get_scales_scores(text_cen)
+
+    # Build a combined debug blob so you can see both raw payloads
+    combined_xml = f"<!-- CURRENCY -->\n{text_cur}\n\n<!-- CENSUS -->\n{text_cen}"
+    return currency3, scores3, combined_xml
+
 
 
 # ====== Currency strength composite → exchange rate ======
@@ -260,7 +284,8 @@ class SetupNationModal(discord.ui.Modal, title="🌍 Link Your NationStates Nati
     async def on_submit(self, interaction: discord.Interaction):
         nation_input = str(self.nation.value).strip()
         try:
-            currency, scores, xml_text = await ns_fetch_currency_and_scales(nation_input, DEFAULT_SCALES)     
+            currency, scores, xml_text = await ns_fetch_currency_and_scales(nation_input, DEFAULT_SCALES)
+            #await self.cog.config.user(interaction.user).set_raw("ns_last_xml", value=xml_text)
         except Exception as e:
             return await interaction.response.send_message(f"❌ Failed to reach NationStates API.\n`{e}`", ephemeral=True)
 
