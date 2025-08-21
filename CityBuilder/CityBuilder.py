@@ -2,7 +2,7 @@
 import asyncio
 import math
 from typing import Dict, Optional, Tuple, Callable
-
+import io
 import aiohttp
 import discord
 from discord import ui
@@ -82,9 +82,9 @@ def _xml_get_scales_scores(xml: str) -> dict:
         pos = sc_end if sc_end != -1 else e + 1
     return out
 
-async def ns_fetch_currency_and_scales(nation_name: str, scales: Optional[list] = None) -> Tuple[str, dict]:
+async def ns_fetch_currency_and_scales(nation_name: str, scales: Optional[list] = None) -> Tuple[str, dict, str]:
     """
-    Returns (currency_text, {scale_id: score, ...})
+    Returns (currency_text, {scale_id: score, ...}, xml_text)
     Using format: q="currency+census;mode=score;scale=46(+more)"
     """
     nation = normalize_nation(nation_name)
@@ -112,7 +112,8 @@ async def ns_fetch_currency_and_scales(nation_name: str, scales: Optional[list] 
 
     currency = _xml_get_tag(text, "CURRENCY") or "Credits"
     scores = _xml_get_scales_scores(text)
-    return currency, scores
+    return currency, scores, text
+
 
 # ====== Currency strength composite → exchange rate ======
 def _softlog(x: float) -> float:
@@ -297,6 +298,48 @@ class CityBuilder(commands.Cog):
             rate_debug={},     # optional for debugging
         )
         self.task = bot.loop.create_task(self.resource_tick())
+
+    @commands.guild_only()
+    @commands.command(name="cityfxresync")
+    async def city_fx_resync(self, ctx: commands.Context, nation: Optional[str] = None):
+        """
+        Re-fetch your NationStates currency & census scales, recompute the FX rate,
+        cache the raw XML, and DM you the XML file. You can optionally override the nation name.
+        """
+        user = ctx.author
+        d = await self.config.user(user).all()
+        target_nation = nation or d.get("ns_nation")
+        if not target_nation:
+            return await ctx.send("❌ No nation linked yet. Run `$city` and complete setup first.")
+    
+        try:
+            currency, scores, xml_text = await ns_fetch_currency_and_scales(target_nation, DEFAULT_SCALES)
+            rate, details = compute_currency_rate(scores)
+        except Exception as e:
+            return await ctx.send(f"❌ Failed to fetch from NationStates.\n`{e}`")
+    
+        # Save everything
+        await self.config.user(user).ns_currency.set(currency)
+        await self.config.user(user).set_raw("ns_scores", value={str(k): float(v) for k, v in scores.items()})
+        await self.config.user(user).wc_to_local_rate.set(rate)
+        await self.config.user(user).set_raw("rate_debug", value=details)
+        await self.config.user(user).set_raw("ns_last_xml", value=xml_text)
+    
+        # Send XML as a file (DM preferred)
+        filename = f"ns_{normalize_nation(target_nation)}_census.xml"
+        filebuf = io.BytesIO(xml_text.encode("utf-8"))
+        file = discord.File(filebuf, filename=filename)
+    
+        try:
+            await user.send(
+                content=f"📄 Here’s the latest XML for **{target_nation}**.\nRate recomputed: `1 WC = {float(rate):.2f} {currency}`",
+                file=file
+            )
+            await ctx.send("✅ Resynced and DM’d you the XML.")
+        except discord.Forbidden:
+            await ctx.send("⚠️ I couldn’t DM you (privacy settings). Sending XML here instead.")
+            await ctx.send(file=file)
+
 
     # ---- helpers ----
     async def _reset_user(self, user: discord.abc.User, *, hard: bool):
