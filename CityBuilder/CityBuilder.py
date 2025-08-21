@@ -787,6 +787,23 @@ class BuildBtn(ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
+        embed, maker = view.cog.build_help_embed(view.author)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=BuildView(view.cog, view.author, show_admin=view.show_admin),
+        )
+        # Fill the catalog after sending (edits in place)
+        catalog = await maker()
+        embed.set_field_at(0, name="Catalog", value=catalog, inline=False)
+        await interaction.message.edit(embed=embed, view=interaction.message.components)  # type: ignore
+
+
+class BuildBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Build", style=discord.ButtonStyle.success, custom_id="city:build")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
         embed = await view.cog.build_help_embed(view.author)
         await interaction.response.edit_message(
             embed=embed,
