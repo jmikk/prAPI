@@ -298,6 +298,68 @@ class CityBuilder(commands.Cog):
         )
         self.task = bot.loop.create_task(self.resource_tick())
 
+    async def rate_details_embed(self, user: discord.abc.User, header: Optional[str] = None) -> discord.Embed:
+        d = await self.config.user(user).all()
+        currency = d.get("ns_currency") or "Local Credits"
+        rate = d.get("wc_to_local_rate")
+        scores_raw = d.get("ns_scores") or {}
+        # keys may be strings; normalize to ints
+        scores = {}
+        for k, v in scores_raw.items():
+            try:
+                scores[int(k)] = float(v)
+            except Exception:
+                pass
+    
+        transforms = _make_transforms()
+        weights = _make_weights()
+    
+        lines = []
+        num = 0.0
+        den = 0.0
+        for sid in sorted(weights.keys(), key=lambda x: -weights[x]):  # show heavier weights first
+            w = weights[sid]
+            raw = scores.get(sid)
+            if raw is None:
+                lines.append(f"• Scale {sid}: **missing** → norm `—` × w `{w:.2f}` = contrib `0.00`")
+                continue
+            norm = transforms[sid](raw)
+            contrib = w * norm
+            num += contrib
+            den += abs(w)
+            # format raw compactly (handles scientific)
+            raw_str = f"{raw:.4g}"
+            lines.append(f"• Scale {sid}: raw `{raw_str}` → norm `{norm:.2f}` × w `{w:.2f}` = contrib `{contrib:.2f}`")
+    
+        idx = (num / den) if den else 0.5
+        mapped = _map_index_to_rate(idx)
+    
+        desc = (
+            "We normalize several NS stats, weight them, average to an **index** (0..1), "
+            "then map to your exchange rate with 0.5 → **1.00×** (clamped 0.25..2.00)."
+        )
+        if header:
+            desc = f"{header}\n\n{desc}"
+    
+        e = discord.Embed(title="💱 FX Rate Details", description=desc)
+        if rate is not None:
+            e.add_field(name="Current Rate", value=f"1 WC = **{float(rate):.2f} {currency}**", inline=False)
+        else:
+            e.add_field(name="Current Rate", value="(not set)", inline=False)
+    
+        e.add_field(name="Per-Scale Contributions", value="\n".join(lines) or "—", inline=False)
+        e.add_field(name="Composite Index → Rate", value=f"Index `{idx:.3f}` → Mapped Rate `{mapped:.2f}`", inline=False)
+        e.add_field(
+            name="Weights & Transforms",
+            value=(
+                "Weights: 46=`0.50`, 1=`0.30`, 10=`0.15`, 39=`0.05`\n"
+                "Transforms: 46=`log10(x+1)→[0..6]`, 1/10=`[0..100]`, 39=`Unemployment inverted [0..20]%`"
+            ),
+            inline=False
+        )
+        return e
+
+
     # Traditional Red command to open the panel
     @commands.command(name="city")
     async def city_cmd(self, ctx: commands.Context):
@@ -438,6 +500,61 @@ class CityBuilder(commands.Cog):
         return e
 
 # ====== UI: Main Menu ======
+
+class RateBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="FX Rate", style=discord.ButtonStyle.secondary, custom_id="city:rate")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        embed = await view.cog.rate_details_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=RateView(view.cog, view.author, show_admin=view.show_admin),
+        )
+
+
+class RateView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.add_item(RecalcRateBtn())
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
+class RecalcRateBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Recalculate from NS", style=discord.ButtonStyle.primary, custom_id="city:rate:recalc")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: RateView = self.view  # type: ignore
+        cog = view.cog
+        d = await cog.config.user(interaction.user).all()
+        nation = d.get("ns_nation")
+        if not nation:
+            return await interaction.response.send_message("You need to link a Nation first. Use `$city` and run setup.", ephemeral=True)
+
+        try:
+            currency, scores = await ns_fetch_currency_and_scales(nation)
+            rate, details = compute_currency_rate(scores)
+            # save
+            await cog.config.user(interaction.user).ns_currency.set(currency)
+            await cog.config.user(interaction.user).set_raw("ns_scores", value={str(k): float(v) for k, v in scores.items()})
+            await cog.config.user(interaction.user).wc_to_local_rate.set(rate)
+            await cog.config.user(interaction.user).set_raw("rate_debug", value=details)
+        except Exception as e:
+            return await interaction.response.send_message(f"❌ Failed to fetch from NationStates.\n`{e}`", ephemeral=True)
+
+        embed = await cog.rate_details_embed(interaction.user, header="🔄 Recalculated from NationStates.")
+        await interaction.response.edit_message(embed=embed, view=view)
+
 class CityMenuView(ui.View):
     def __init__(self, cog: CityBuilder, author: discord.abc.User, show_admin: bool):
         super().__init__(timeout=180)
@@ -450,6 +567,7 @@ class CityMenuView(ui.View):
         self.add_item(BankBtn())
         if show_admin:
             self.add_item(NextDayBtn())
+            self.add_item(RateBtn())  # add after BankBtn
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id:
