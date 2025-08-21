@@ -1,8 +1,9 @@
 # citybuilder_buttons.py
 import asyncio
 import math
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple, Callable
 
+import aiohttp
 import discord
 from discord import ui
 from redbot.core import commands, Config
@@ -15,13 +16,17 @@ BUILDINGS: Dict[str, Dict] = {
 }
 
 TICK_SECONDS = 3600  # hourly ticks
-NS_USER_AGENT = "9003"  
-NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 
-DEFAULT_SCALES = [46, 1, 10, 39]  # 46 + a few sensible companions; tweak as you like
+# ====== NationStates (helpers kept for later use) ======
+NS_USER_AGENT = "9003"
+NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
+DEFAULT_SCALES = [46, 1, 10, 39]  # example composite set
+
+def trunc2(x: float) -> float:
+    """Truncate (not round) to 2 decimals to match wallet behavior."""
+    return math.trunc(float(x) * 100) / 100.0
 
 def normalize_nation(n: str) -> str:
-    # NationStates API expects underscores instead of spaces, lowercase
     return n.strip().lower().replace(" ", "_")
 
 def _xml_get_tag(txt: str, tag: str) -> Optional[str]:
@@ -47,26 +52,23 @@ def _xml_get_scales_scores(xml: str) -> dict:
         e = xml.find(">", sid)
         if e == -1:
             break
-        head = xml[sid:e+1]  # e.g., <SCALE id="76">
-        # find id="…"
+        head = xml[sid : e + 1]  # e.g., <SCALE id="76">
+        # id="..."
+        scale_id = None
         idpos = head.find('id="')
         if idpos != -1:
             idend = head.find('"', idpos + 4)
             if idend != -1:
                 try:
-                    scale_id = int(head[idpos + 4:idend])
+                    scale_id = int(head[idpos + 4 : idend])
                 except Exception:
                     scale_id = None
-            else:
-                scale_id = None
-        else:
-            scale_id = None
 
-        # find SCORE inside this SCALE block
+        # SCORE
         sc_start = xml.find("<SCORE>", e)
         sc_end = xml.find("</SCORE>", sc_start)
         if sc_start != -1 and sc_end != -1:
-            raw = xml[sc_start + 7:sc_end].strip()
+            raw = xml[sc_start + 7 : sc_end].strip()
             try:
                 score = float(raw)
             except Exception:
@@ -77,14 +79,13 @@ def _xml_get_scales_scores(xml: str) -> dict:
         pos = sc_end if sc_end != -1 else e + 1
     return out
 
-async def _ns_fetch_profile(self, nation_name: str, scales: Optional[list] = None) -> tuple[str, dict]:
+async def ns_fetch_currency_and_scales(nation_name: str, scales: Optional[list] = None) -> Tuple[str, dict]:
     """
     Returns (currency_text, {scale_id: score, ...})
-    Using your format: q="currency+census;mode=score;scale=46(+more)"
+    Using format: q="currency+census;mode=score;scale=46(+more)"
     """
-    nation = _ns_norm_nation(nation_name)
+    nation = normalize_nation(nation_name)
     scales = scales or DEFAULT_SCALES
-    # Build the exact q you asked for
     scale_str = "+".join(str(s) for s in scales)
     q = f"currency+census;mode=score;scale={scale_str}"
 
@@ -93,7 +94,7 @@ async def _ns_fetch_profile(self, nation_name: str, scales: Optional[list] = Non
 
     async with aiohttp.ClientSession(headers=headers) as session:
         async with session.get(NS_BASE, params=params) as resp:
-            # your pacing pattern
+            # Gentle pacing (your pattern)
             remaining = resp.headers.get("Ratelimit-Remaining")
             reset_time = resp.headers.get("Ratelimit-Reset")
             if remaining is not None and reset_time is not None:
@@ -107,15 +108,12 @@ async def _ns_fetch_profile(self, nation_name: str, scales: Optional[list] = Non
             text = await resp.text()
 
     currency = _xml_get_tag(text, "CURRENCY") or "Credits"
-    scores = _xml_get_scales_scores(text)  # e.g., {46: 123.45, 76: 3.2e+15, ...}
+    scores = _xml_get_scales_scores(text)
     return currency, scores
 
-def trunc2(x: float) -> float:
-    """Truncate (not round) to 2 decimals to match Nexus behavior."""
-    return math.trunc(float(x) * 100) / 100.0
-
+# ====== Modals: Bank deposit/withdraw (wallet WC <-> bank WC in this version) ======
 class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
-    amount = discord.ui.TextInput(label="Amount to deposit", placeholder="e.g. 100.50", required=True)
+    amount = discord.ui.TextInput(label="Amount to deposit (in WC)", placeholder="e.g. 100.50", required=True)
 
     def __init__(self, cog: "CityBuilder"):
         super().__init__()
@@ -142,11 +140,10 @@ class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
         bank = trunc2(float(await self.cog.config.user(interaction.user).bank()) + amt)
         await self.cog.config.user(interaction.user).bank.set(bank)
 
-        await interaction.response.send_message(f"✅ Deposited {amt:.2f}. New bank: {bank:.2f}", ephemeral=True)
-
+        await interaction.response.send_message(f"✅ Deposited {amt:.2f} WC. New bank: {bank:.2f} WC", ephemeral=True)
 
 class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
-    amount = discord.ui.TextInput(label="Amount to withdraw", placeholder="e.g. 50", required=True)
+    amount = discord.ui.TextInput(label="Wellcoins to withdraw (WC)", placeholder="e.g. 50", required=True)
 
     def __init__(self, cog: "CityBuilder"):
         super().__init__()
@@ -175,16 +172,13 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
             return await interaction.response.send_message("⚠️ NexusExchange not loaded.", ephemeral=True)
 
         await nexus.add_wellcoins(interaction.user, amt)
-        await interaction.response.send_message(f"✅ Withdrew {amt:.2f}. New bank: {bank:.2f}", ephemeral=True)
+        await interaction.response.send_message(f"✅ Withdrew {amt:.2f} WC. New bank: {bank:.2f} WC", ephemeral=True)
 
-
-
+# ====== Cog ======
 class CityBuilder(commands.Cog):
     """
-    City planning mini-game using embeds + buttons only.
-
-    Entry trigger: users type `$city` (or '<prefix>city'). We listen in on_message,
-    delete their message, and post the interactive panel.
+    City planning mini-game using embeds + buttons.
+    Entry: traditional Red command: $city
     """
 
     def __init__(self, bot: commands.Bot):
@@ -193,202 +187,25 @@ class CityBuilder(commands.Cog):
         self.config.register_user(
             resources={},     # {"food": 0, "metal": 0, ...}
             buildings={},     # {"farm": {"count": int}, ...}
-            bank=0.0          # Wellcoins reserved for upkeep/wages
+            bank=0.0          # Wellcoins reserved for upkeep/wages (WC)
         )
         self.task = bot.loop.create_task(self.resource_tick())
+
+    # Traditional Red command to open the panel
+    @commands.command(name="city")
+    async def city_cmd(self, ctx: commands.Context):
+        """Open your city panel."""
+        embed = await self.make_city_embed(ctx.author)
+        view = CityMenuView(self, ctx.author, show_admin=self._is_adminish(ctx.author))
+        await ctx.send(embed=embed, view=view)
 
     # -------------- lifecycle --------------
     async def cog_unload(self):
         self.task.cancel()
 
-    # -------------- message entry (no text commands needed) --------------
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
-        """
-        Light-weight listener: if a normal user says '<prefix>city' (e.g. '$city'),
-        open their city panel. Works for any prefix, and won't trigger on bots.
-        """
-        if message.author.bot:
-            return
-        # match common patterns quickly, case-insensitive
-        content = message.content.strip().lower()
-        if content.endswith("city") and (content.startswith("$"):
-            try:
-                await message.delete()
-            except discord.Forbidden:
-                pass
-            except discord.HTTPException:
-                pass
-
-            embed = await self.make_city_embed(message.author)
-            view = CityMenuView(self, message.author, show_admin=self._is_adminish(message.author, message.guild))
-            await message.channel.send(embed=embed, view=view)
-
-    def _is_adminish(self, user: discord.abc.User, guild: Optional[discord.Guild]) -> bool:
-        if not isinstance(user, discord.Member) or guild is None:
-            return False
-        p = user.guild_permissions
-        return p.administrator or p.manage_guild
-
-        async def _needs_ns_setup(self, user: discord.abc.User) -> bool:
-        data = await self.config.user(user).all()
-        return not (data.get("ns_nation") and data.get("ns_currency") and data.get("wc_to_local_rate"))
-
-    # ---------- NationStates API ----------
-    async def _ns_fetch_profile(self, nation_name: str) -> Tuple[str, str, float]:
-        """
-        Returns (currency_text, economy_text, econ_score) for the nation.
-        Uses shards: currency, economy, census(id=48, mode=score).
-        """
-        nation = normalize_nation(nation_name)
-        params = {
-            "nation": nation,
-            "q": "currency+census;mode=score;scale=46",
-        }
-        headers = {"User-Agent": NS_USER_AGENT}
-
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(NS_BASE, params=params) as resp:
-                # --- Rate limiting backoff per your strategy ---
-                remaining = resp.headers.get("Ratelimit-Remaining")
-                reset_time = resp.headers.get("Ratelimit-Reset")
-                if remaining is not None and reset_time is not None:
-                    try:
-                        remaining_i = max(1, int(remaining) - 10)
-                        reset_i = int(reset_time)
-                        wait = reset_i / remaining_i if remaining_i > 0 else reset_i
-                        await asyncio.sleep(wait)
-                    except Exception:
-                        pass
-
-                text = await resp.text()
-
-        # Very small XML parse (no external deps). Light extraction:
-        def _tag(txt, tag):
-            start = txt.find(f"<{tag}>")
-            if start == -1:
-                return None
-            end = txt.find(f"</{tag}>", start)
-            if end == -1:
-                return None
-            return txt[start + len(tag) + 2 : end].strip()
-
-        currency = _tag(text, "CURRENCY") or "Credits"
-        # Census score for id 48 appears under <CENSUS>...<SCALE id="48"><SCORE>...</SCORE>...
-        # Quick extraction:
-        score = None
-        cpos = text.find('id="48"')
-        if cpos != -1:
-            s_start = text.find("<SCORE>", cpos)
-            s_end = text.find("</SCORE>", s_start)
-            if s_start != -1 and s_end != -1:
-                try:
-                    score = float(text[s_start + 7 : s_end].strip())
-                except Exception:
-                    score = None
-
-        if score is None:
-            score = 50.0  # neutral fallback
-
-        return currency, economy_text, score
-
-    async def _ensure_ns_profile(self, user: discord.abc.User, nation_input: str) -> Optional[str]:
-        try:
-            currency, scores = await self._ns_fetch_profile(nation_input, scales=DEFAULT_SCALES)
-        except Exception as e:
-            return f"❌ Failed to reach NationStates API. Try again later.\n`{e}`"
-    
-        rate, details = self._compute_currency_rate(scores)
-    
-        await self.config.user(user).ns_nation.set(_ns_norm_nation(nation_input))
-        await self.config.user(user).ns_currency.set(currency)
-        await self.config.user(user).set_raw("ns_scores", value={str(k): float(v) for k, v in scores.items()})
-        await self.config.user(user).wc_to_local_rate.set(rate)
-        await self.config.user(user).set_raw("rate_debug", value=details)  # optional: store breakdown for debugging
-        return None
-
-
-    def _softlog(x: float) -> float:
-    # smooth log that works from x≈0 upward; shift by 1 to avoid log(0)
-        return math.log10(max(0.0, float(x)) + 1.0)
-
-    def _norm(v: float, lo: float, hi: float) -> float:
-        # clamp & scale to [0,1]
-        if hi <= lo:
-            return 0.5
-        v = max(lo, min(hi, v))
-        return (v - lo) / (hi - lo)
-    
-    def _invert(p: float) -> float:
-        return 1.0 - p
-    
-    def _clamp(x: float, lo: float, hi: float) -> float:
-        return max(lo, min(hi, x))
-    
-    def _weighted_avg(d: dict[int, float], weights: dict[int, float], transforms: dict[int, callable]) -> float:
-        num = 0.0
-        den = 0.0
-        for k, w in weights.items():
-            if k in d:
-                v = d[k]
-                t = transforms.get(k)
-                if t:
-                    v = t(v)
-                num += w * v
-                den += abs(w)
-        return num / den if den else 0.5
-    
-    def _make_transforms() -> dict[int, callable]:
-        # Per-scale transforms → normalized 0..1
-        # Use softlog for very large ranges and pick anchor ranges empirically.
-        return {
-            46: lambda x: _norm(_softlog(x), 0.0, 6.0),   # if 46 can be huge (e.g., e+15), log it; 0..6 is ~1..10^6
-            1:  lambda x: _norm(x, 0.0, 100.0),           # Economy score usually ~0..100
-            10: lambda x: _norm(x, 0.0, 100.0),           # Industry score ~0..100
-            39: lambda x: _invert(_norm(x, 0.0, 20.0)),   # If 39 = Unemployment (%), invert; tweak hi if your world differs
-        }
-    
-    def _make_weights() -> dict[int, float]:
-        # Heavier weight on the primary currency/ER stat, then economy, then others
-        return {46: 0.5, 1: 0.3, 10: 0.15, 39: 0.05}
-    
-    def _map_index_to_rate(idx: float) -> float:
-        """
-        idx in [0,1] → rate range [0.25, 2.00] with 0.5 ≈ 1.0x.
-        Smooth S-curve to avoid wild swings near ends.
-        """
-        # center at 0.5
-        centered = (idx - 0.5) * 2.0  # [-1, 1]
-        # gentle curve
-        factor = 1.0 + 0.75 * centered  # 0.25..1.75
-        return _clamp(trunc2(factor), 0.25, 2.00)
-
-
-    def _compute_currency_rate(self, scores: dict[int, float]) -> tuple[float, dict]:
-        transforms = _make_transforms()
-        weights = _make_weights()
-    
-        # Apply per-scale transforms to 0..1, then weighted average
-        contribs = {}
-        for sid, fn in transforms.items():
-            raw = scores.get(sid)
-            if raw is None:
-                continue
-            contribs[sid] = fn(raw)  # 0..1 per scale
-    
-        idx = _weighted_avg(scores, weights, transforms)  # 0..1
-        rate = _map_index_to_rate(idx)  # 1 WC = rate × Local
-    
-        debug = {
-            "scores": {str(k): scores[k] for k in scores},
-            "contribs": {str(k): contribs.get(k) for k in transforms},
-            "index": idx,
-            "rate": rate,
-            "weights": {str(k): weights[k] for k in weights},
-        }
-        return rate, debug
-
-
+    def _is_adminish(self, member: discord.Member) -> bool:
+        p = member.guild_permissions if isinstance(member, discord.Member) else None
+        return bool(p and (p.administrator or p.manage_guild))
 
     # -------------- tick engine --------------
     async def resource_tick(self):
@@ -407,26 +224,22 @@ class CityBuilder(commands.Cog):
 
     async def process_tick(self, user: discord.abc.User):
         """
-        Upkeep comes ONLY from the user's Bank. If fully paid, produce resources.
+        Upkeep comes ONLY from the user's Bank (WC). If fully paid, produce resources.
         If bank can't cover full upkeep, skip production for this tick.
         """
-        nexus = self.bot.get_cog("NexusExchange")
-        if not nexus:
-            return
-
         data = await self.config.user(user).all()
         buildings = data.get("buildings", {})
         if not buildings:
             return
 
-        # compute upkeep
+        # compute upkeep (WC)
         total_upkeep = 0.0
         for b, info in buildings.items():
             if b in BUILDINGS:
                 total_upkeep += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
         total_upkeep = trunc2(total_upkeep)
 
-        # pay from bank only
+        # pay from bank (WC)
         bank = trunc2(float(data.get("bank", 0.0)))
         if bank + 1e-9 < total_upkeep:
             return  # insufficient → halt production
@@ -466,30 +279,13 @@ class CityBuilder(commands.Cog):
             desc = f"{header}\n\n{desc}"
 
         e = discord.Embed(title=f"🌆 {getattr(user, 'display_name', 'Your')} City", description=desc)
-        if bld:
-            btxt = "\n".join(f"• **{b}** × {info.get('count', 0)}" for b, info in bld.items())
-        else:
-            btxt = "None"
-        if res:
-            rtxt = "\n".join(f"• **{k}**: {v}" for k, v in res.items())
-        else:
-            rtxt = "None"
+        btxt = "\n".join(f"• **{b}** × {info.get('count', 0)}" for b, info in bld.items()) or "None"
+        rtxt = "\n".join(f"• **{k}**: {v}" for k, v in res.items()) or "None"
 
         e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
-        e.add_field(name="🏦 Bank", value=f"{bank:.2f} Wellcoins", inline=True)
-        e.add_field(name="⏳ Upkeep per Tick", value=f"{upkeep:.2f} Wellcoins", inline=True)
-
-        # When building the city embed:
-        d = await self.config.user(user).all()
-        rate = float(d.get("wc_to_local_rate") or 1.0)
-        currency = d.get("ns_currency") or "Local Credits"
-        e.add_field(
-            name="🌍 Exchange",
-            value=f"1 WC = **{rate:.2f} {currency}** (personalized to your nation)",
-            inline=False
-        )
-
+        e.add_field(name="🏦 Bank", value=f"{bank:.2f} WC", inline=True)
+        e.add_field(name="⏳ Upkeep per Tick", value=f"{upkeep:.2f} WC", inline=True)
         return e
 
     def build_help_embed(self) -> discord.Embed:
@@ -500,41 +296,23 @@ class CityBuilder(commands.Cog):
         lines = []
         for k, v in BUILDINGS.items():
             produces = ", ".join(f"{r}+{a}/tick" for r, a in v["produces"].items())
-            lines.append(f"**{k}** — Cost `{v['cost']:.2f}` | Upkeep `{v['upkeep']:.2f}` | Produces {produces}")
+            lines.append(f"**{k}** — Cost `{v['cost']:.2f} WC` | Upkeep `{v['upkeep']:.2f} WC/t` | Produces {produces}")
         e.add_field(name="Catalog", value="\n".join(lines), inline=False)
         return e
-    
+
     async def bank_help_embed(self, user: discord.abc.User) -> discord.Embed:
         bank = trunc2(float(await self.config.user(user).bank()))
         e = discord.Embed(
             title="🏦 Bank",
-            description="Your **Bank** pays wages/upkeep each tick. "
-                        "If the bank can’t cover upkeep, **production halts**."
+            description="Your **Bank** pays wages/upkeep each tick. If the bank can’t cover upkeep, **production halts**."
         )
-        e.add_field(name="Current Balance", value=f"{bank:.2f} Wellcoins", inline=False)
+        e.add_field(name="Current Balance", value=f"{bank:.2f} WC", inline=False)
         e.add_field(
             name="Tips",
-            value="• Deposit from wallet → bank\n"
-                  "• Withdraw bank → wallet\n"
-                  "• Balance is shown above",
+            value="• Deposit (wallet → bank)\n• Withdraw (bank → wallet)\n• Balance is shown above",
             inline=False,
         )
         return e
-
-
-    async def wait_for_amount(self, channel_id: int, author: discord.abc.User) -> Optional[float]:
-        """Prompted numeric input helper (30s timeout)."""
-        def check(m: discord.Message):
-            return m.author.id == author.id and m.channel and m.channel.id == channel_id
-        try:
-            msg = await self.bot.wait_for("message", timeout=30.0, check=check)
-            amt = float(msg.content.strip().replace(",", ""))
-            return trunc2(amt)
-        except asyncio.TimeoutError:
-            return None
-        except ValueError:
-            return None
-
 
 # ====== UI: Main Menu ======
 class CityMenuView(ui.View):
@@ -542,8 +320,8 @@ class CityMenuView(ui.View):
         super().__init__(timeout=180)
         self.cog = cog
         self.author = author
+        self.show_admin = show_admin
 
-        # Buttons
         self.add_item(ViewBtn())
         self.add_item(BuildBtn())
         self.add_item(BankBtn())
@@ -552,10 +330,9 @@ class CityMenuView(ui.View):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("This panel isn’t yours. Type `$city` to open your own.", ephemeral=True)
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
-
 
 class ViewBtn(ui.Button):
     def __init__(self):
@@ -566,7 +343,6 @@ class ViewBtn(ui.Button):
         embed = await view.cog.make_city_embed(interaction.user)
         await interaction.response.edit_message(embed=embed, view=view)
 
-
 class BuildBtn(ui.Button):
     def __init__(self):
         super().__init__(label="Build", style=discord.ButtonStyle.success, custom_id="city:build")
@@ -575,11 +351,10 @@ class BuildBtn(ui.Button):
         view: CityMenuView = self.view  # type: ignore
         await interaction.response.edit_message(
             embed=view.cog.build_help_embed(),
-            view=BuildView(view.cog, view.author, show_admin=any(isinstance(i, NextDayBtn) for i in view.children)),
+            view=BuildView(view.cog, view.author, show_admin=view.show_admin),
         )
 
-
-class BankBtn(discord.ui.Button):
+class BankBtn(ui.Button):
     def __init__(self):
         super().__init__(label="Bank", style=discord.ButtonStyle.secondary, custom_id="city:bank")
 
@@ -588,10 +363,8 @@ class BankBtn(discord.ui.Button):
         embed = await view.cog.bank_help_embed(interaction.user)
         await interaction.response.edit_message(
             embed=embed,
-            view=BankView(view.cog, view.author, show_admin=any(isinstance(i, NextDayBtn) for i in view.children)),
+            view=BankView(view.cog, view.author, show_admin=view.show_admin),
         )
-
-
 
 class NextDayBtn(ui.Button):
     def __init__(self):
@@ -602,14 +375,13 @@ class NextDayBtn(ui.Button):
         await view.cog.process_all_ticks()
         await interaction.response.send_message("⏩ Advanced the world by one tick for everyone.", ephemeral=True)
 
-
 # ====== UI: Build flow ======
 class BuildSelect(ui.Select):
     def __init__(self, cog: CityBuilder):
         options = [
             discord.SelectOption(
                 label=name,
-                description=f"Cost {cog_cost(cog, name):.2f}, Upkeep {BUILDINGS[name]['upkeep']:.2f}"
+                description=f"Cost {BUILDINGS[name]['cost']:.2f} WC | Upkeep {BUILDINGS[name]['upkeep']:.2f} WC/t"
             )
             for name in BUILDINGS.keys()
         ]
@@ -630,7 +402,7 @@ class BuildSelect(ui.Select):
             await nexus.take_wellcoins(interaction.user, cost, force=False)
         except ValueError:
             return await interaction.response.send_message(
-                f"❌ Not enough Wellcoins in your wallet for **{building}**. Cost: {cost:.2f}",
+                f"❌ Not enough Wellcoins in your wallet for **{building}**. Cost: {cost:.2f} WC",
                 ephemeral=True
             )
 
@@ -640,12 +412,11 @@ class BuildSelect(ui.Select):
         bld[building] = {"count": cur + 1}
         await self.cog.config.user(interaction.user).buildings.set(bld)
 
-        embed = await self.cog.make_city_embed(interaction.user, header=f"🏗️ Built **{building}** for {cost:.2f} Wellcoins!")
+        embed = await self.cog.make_city_embed(interaction.user, header=f"🏗️ Built **{building}** for {cost:.2f} WC!")
         await interaction.response.edit_message(
             embed=embed,
-            view=CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user, interaction.guild))
+            view=CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
         )
-
 
 class BuildView(ui.View):
     def __init__(self, cog: CityBuilder, author: discord.abc.User, show_admin: bool):
@@ -657,14 +428,13 @@ class BuildView(ui.View):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("This panel isn’t yours. Type `$city` to open your own.", ephemeral=True)
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
 
-
-# ====== UI: Bank flow ======
+# ====== UI: Bank flow (modals) ======
 class BankView(ui.View):
-    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+    def __init__(self, cog: CityBuilder, author: discord.abc.User, show_admin: bool):
         super().__init__(timeout=180)
         self.cog = cog
         self.author = author
@@ -674,23 +444,11 @@ class BankView(ui.View):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("This panel isn’t yours. Type `$city` to open your own.", ephemeral=True)
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
 
-
-
-class BankBalanceBtn(ui.Button):
-    def __init__(self):
-        super().__init__(label="Balance", style=discord.ButtonStyle.primary, custom_id="city:bank:bal")
-
-    async def callback(self, interaction: discord.Interaction):
-        view: BankView = self.view  # type: ignore
-        bank = trunc2(float(await view.cog.config.user(interaction.user).bank()))
-        await interaction.response.send_message(f"🏦 Bank balance: {bank:.2f} Wellcoins", ephemeral=True)
-
-
-class BankDepositBtn(discord.ui.Button):
+class BankDepositBtn(ui.Button):
     def __init__(self):
         super().__init__(label="Deposit", style=discord.ButtonStyle.success, custom_id="city:bank:dep")
 
@@ -698,16 +456,13 @@ class BankDepositBtn(discord.ui.Button):
         view: BankView = self.view  # type: ignore
         await interaction.response.send_modal(DepositModal(view.cog))
 
-
-class BankWithdrawBtn(discord.ui.Button):
+class BankWithdrawBtn(ui.Button):
     def __init__(self):
         super().__init__(label="Withdraw", style=discord.ButtonStyle.danger, custom_id="city:bank:wit")
 
     async def callback(self, interaction: discord.Interaction):
         view: BankView = self.view  # type: ignore
         await interaction.response.send_modal(WithdrawModal(view.cog))
-
-
 
 # ====== Shared Back button ======
 class BackBtn(ui.Button):
@@ -724,7 +479,6 @@ class BackBtn(ui.Button):
             view=CityMenuView(cog, interaction.user, show_admin=self.show_admin)
         )
 
-
 # ====== Helpers ======
-def cog_cost(cog: CityBuilder, name: str) -> float:
-    return trunc2(BUILDINGS[name]["cost"])
+async def setup(bot: commands.Bot):
+    await bot.add_cog(CityBuilder(bot))
