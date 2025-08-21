@@ -41,6 +41,14 @@ def _xml_get_tag(txt: str, tag: str) -> Optional[str]:
         return None
     return txt[start + len(tag) + 2 : end].strip()
 
+def _xml_has_nation_block(xml: str) -> bool:
+    """Very light validation that the response actually contains a <NATION>…</NATION> block and no <ERROR>."""
+    if not isinstance(xml, str) or not xml:
+        return False
+    up = xml.upper()
+    return ("<NATION" in up and "</NATION>" in up) and ("<ERROR>" not in up)
+
+
 def _xml_get_scales_scores(xml: str) -> dict:
     """
     Extract all <SCALE id="X"><SCORE>Y</SCORE>… and return {id: float(score)}.
@@ -297,12 +305,25 @@ class SetupNationModal(discord.ui.Modal, title="🌍 Link Your NationStates Nati
 
     async def on_submit(self, interaction: discord.Interaction):
         nation_input = str(self.nation.value).strip()
+
+        # Fetch currency + census (returns raw XML as 3rd value)
         try:
             currency, scores, xml_text = await ns_fetch_currency_and_scales(nation_input, DEFAULT_SCALES)
-            #await self.cog.config.user(interaction.user).set_raw("ns_last_xml", value=xml_text)
         except Exception as e:
-            return await interaction.response.send_message(f"❌ Failed to reach NationStates API.\n`{e}`", ephemeral=True)
+            return await interaction.response.send_message(
+                f"❌ Failed to reach NationStates API.\n`{e}`", ephemeral=True
+            )
 
+        # ===== NEW: existence check =====
+        if not _xml_has_nation_block(xml_text):
+            return await interaction.response.send_message(
+                "❌ I couldn’t find that nation. Double-check the spelling (use your nation’s **main** name, "
+                "no BBCode/links) and try again.",
+                ephemeral=True,
+            )
+        # =================================
+
+        # Compute & save
         rate, details = compute_currency_rate(scores)
 
         await self.cog.config.user(interaction.user).ns_nation.set(normalize_nation(nation_input))
@@ -310,12 +331,13 @@ class SetupNationModal(discord.ui.Modal, title="🌍 Link Your NationStates Nati
         await self.cog.config.user(interaction.user).set_raw("ns_scores", value={str(k): float(v) for k, v in scores.items()})
         await self.cog.config.user(interaction.user).wc_to_local_rate.set(rate)
         await self.cog.config.user(interaction.user).set_raw("rate_debug", value=details)
-        await self.cog.config.user(interaction.user).set_raw("ns_last_xml", value=xml_text)
+        await self.cog.config.user(interaction.user).set_raw("ns_last_xml", value=xml_text)  # keep for debugging
 
-        # Show the main panel now that setup is complete
+        # Show main panel
         embed = await self.cog.make_city_embed(interaction.user, header=f"✅ Linked to **{nation_input}**.")
         view = CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
         await interaction.response.send_message(embed=embed, view=view)
+
 
 # ====== Cog ======
 class CityBuilder(commands.Cog):
