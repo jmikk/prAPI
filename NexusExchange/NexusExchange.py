@@ -18,6 +18,7 @@ import requests
 import json
 from redbot.core.utils.chat_formatting import humanize_number
 import math
+from collections import defaultdict
 
 
 def is_citizen():
