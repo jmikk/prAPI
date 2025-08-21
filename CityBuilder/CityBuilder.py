@@ -90,6 +90,25 @@ def _xml_get_scales_scores(xml: str) -> dict:
         pos = sc_end if sc_end != -1 else e + 1
     return out
 
+
+async def bank_help_embed(self, user: discord.abc.User) -> discord.Embed:
+    bank_local = trunc2(float(await self.config.user(user).bank()))
+    _, cur = await self._get_rate_currency(user)
+    e = discord.Embed(
+        title="🏦 Bank",
+        description="Your **Bank** pays wages/upkeep each tick in your **local currency**. "
+                    "If the bank can’t cover upkeep, **production halts**."
+    )
+    e.add_field(name="Current Balance", value=f"**{bank_local:.2f} {cur}**", inline=False)
+    e.add_field(
+        name="Tips",
+        value="• Deposit: wallet **WC → local** bank\n"
+              "• Withdraw: bank **local → WC** wallet\n"
+              "• Prices show **local** (= fixed WC × your rate)",
+        inline=False,
+    )
+    return e
+
 async def ns_fetch_currency_and_scales(nation_name: str, scales: Optional[list] = None) -> Tuple[str, dict, str]:
     """
     Robust fetch:
@@ -225,26 +244,36 @@ class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
     def __init__(self, cog: "CityBuilder"):
         super().__init__()
         self.cog = cog
-
+    
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            amt = trunc2(float(self.amount.value))
+            amt_wc = trunc2(float(self.amount.value))
         except ValueError:
             return await interaction.response.send_message("❌ That’s not a number.", ephemeral=True)
-        if amt <= 0:
+        if amt_wc <= 0:
             return await interaction.response.send_message("❌ Amount must be positive.", ephemeral=True)
-
+    
         nexus = self.cog.bot.get_cog("NexusExchange")
         if not nexus:
             return await interaction.response.send_message("⚠️ NexusExchange not loaded.", ephemeral=True)
+    
+        # Take WC from wallet
         try:
-            await nexus.take_wellcoins(interaction.user, amt, force=False)
+            await nexus.take_wellcoins(interaction.user, amt_wc, force=False)
         except ValueError:
             return await interaction.response.send_message("❌ Not enough Wellcoins in your wallet.", ephemeral=True)
+    
+        # Credit bank in local currency
+        local_credit = await self.cog._wc_to_local(interaction.user, amt_wc)
+        bank_local = trunc2(float(await self.cog.config.user(interaction.user).bank()) + local_credit)
+        await self.cog.config.user(interaction.user).bank.set(bank_local)
+    
+        _, cur = await self.cog._get_rate_currency(interaction.user)
+        await interaction.response.send_message(
+            f"✅ Deposited {amt_wc:.2f} WC → **{local_credit:.2f} {cur}**. New bank: **{bank_local:.2f} {cur}**",
+            ephemeral=True
+        )
 
-        bank = trunc2(float(await self.cog.config.user(interaction.user).bank()) + amt)
-        await self.cog.config.user(interaction.user).bank.set(bank)
-        await interaction.response.send_message(f"✅ Deposited {amt:.2f} WC. New bank: {bank:.2f} WC", ephemeral=True)
 
 class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
     amount = discord.ui.TextInput(label="Wellcoins to withdraw (WC)", placeholder="e.g. 50", required=True)
@@ -255,24 +284,38 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            amt = trunc2(float(self.amount.value))
+            amt_wc = trunc2(float(self.amount.value))
         except ValueError:
             return await interaction.response.send_message("❌ That’s not a number.", ephemeral=True)
-        if amt <= 0:
+        if amt_wc <= 0:
             return await interaction.response.send_message("❌ Amount must be positive.", ephemeral=True)
-
-        bank = trunc2(float(await self.cog.config.user(interaction.user).bank()))
-        if bank + 1e-9 < amt:
-            return await interaction.response.send_message("❌ Not enough in bank to withdraw that much.", ephemeral=True)
-
-        bank = trunc2(bank - amt)
-        await self.cog.config.user(interaction.user).bank.set(bank)
-
+    
+        # Local required for this many WC
+        local_needed = await self.cog._wc_to_local(interaction.user, amt_wc)
+        bank_local = trunc2(float(await self.cog.config.user(interaction.user).bank()))
+        if bank_local + 1e-9 < local_needed:
+            _, cur = await self.cog._get_rate_currency(interaction.user)
+            return await interaction.response.send_message(
+                f"❌ Not enough in bank. Need **{local_needed:.2f} {cur}**.",
+                ephemeral=True
+            )
+    
+        # Deduct local from bank
+        bank_local = trunc2(bank_local - local_needed)
+        await self.cog.config.user(interaction.user).bank.set(bank_local)
+    
+        # Credit wallet WC
         nexus = self.cog.bot.get_cog("NexusExchange")
         if not nexus:
             return await interaction.response.send_message("⚠️ NexusExchange not loaded.", ephemeral=True)
-        await nexus.add_wellcoins(interaction.user, amt)
-        await interaction.response.send_message(f"✅ Withdrew {amt:.2f} WC. New bank: {bank:.2f} WC", ephemeral=True)
+    
+        await nexus.add_wellcoins(interaction.user, amt_wc)
+        _, cur = await self.cog._get_rate_currency(interaction.user)
+        await interaction.response.send_message(
+            f"✅ Withdrew **{local_needed:.2f} {cur}** → {amt_wc:.2f} WC. New bank: **{bank_local:.2f} {cur}**",
+            ephemeral=True
+        )
+
 
 # ====== Setup: Prompt+Modal ======
 class SetupPromptView(ui.View):
@@ -360,6 +403,18 @@ class CityBuilder(commands.Cog):
             rate_debug={},     # optional for debugging
         )
         self.task = bot.loop.create_task(self.resource_tick())
+
+    # --- FX helpers ---
+    async def _get_rate_currency(self, user: discord.abc.User) -> tuple[float, str]:
+        d = await self.config.user(user).all()
+        rate = float(d.get("wc_to_local_rate") or 1.0)
+        currency = d.get("ns_currency") or "Local"
+        return rate, currency
+    
+    async def _wc_to_local(self, user: discord.abc.User, wc_amount: float) -> float:
+        rate, _ = await self._get_rate_currency(user)
+        return trunc2(trunc2(wc_amount) * rate)
+
 
     @commands.guild_only()
     @commands.command(name="cityfxresync")
@@ -551,30 +606,27 @@ class CityBuilder(commands.Cog):
                 await self.process_tick(user)
 
     async def process_tick(self, user: discord.abc.User):
-        """
-        Upkeep comes ONLY from the user's Bank (WC). If fully paid, produce resources.
-        If bank can't cover full upkeep, skip production for this tick.
-        """
         data = await self.config.user(user).all()
         buildings = data.get("buildings", {})
         if not buildings:
             return
-
-        # compute upkeep (WC)
-        total_upkeep = 0.0
+    
+        # total upkeep in WC (fixed underlying)
+        total_wc = 0.0
         for b, info in buildings.items():
             if b in BUILDINGS:
-                total_upkeep += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
-        total_upkeep = trunc2(total_upkeep)
-
-        # pay from bank (WC)
-        bank = trunc2(float(data.get("bank", 0.0)))
-        if bank + 1e-9 < total_upkeep:
+                total_wc += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
+        total_wc = trunc2(total_wc)
+    
+        # convert to local and charge from bank
+        local_upkeep = await self._wc_to_local(user, total_wc)
+        bank_local = trunc2(float(data.get("bank", 0.0)))
+        if bank_local + 1e-9 < local_upkeep:
             return  # insufficient → halt production
-
-        bank = trunc2(bank - total_upkeep)
-
-        # produce
+    
+        bank_local = trunc2(bank_local - local_upkeep)
+    
+        # produce resources
         new_resources = dict(data.get("resources", {}))
         for b, info in buildings.items():
             if b not in BUILDINGS:
@@ -584,66 +636,66 @@ class CityBuilder(commands.Cog):
                 continue
             for res, amt in BUILDINGS[b]["produces"].items():
                 new_resources[res] = int(new_resources.get(res, 0)) + int(amt * cnt)
-
-        # persist
+    
         await self.config.user(user).resources.set(new_resources)
-        await self.config.user(user).bank.set(bank)
+        await self.config.user(user).bank.set(bank_local)
 
     # -------------- embeds & helpers --------------
     async def make_city_embed(self, user: discord.abc.User, header: Optional[str] = None) -> discord.Embed:
         d = await self.config.user(user).all()
         res = d.get("resources", {})
         bld = d.get("buildings", {})
-        bank = trunc2(float(d.get("bank", 0.0)))
-
-        upkeep = 0.0
+        bank_local = trunc2(float(d.get("bank", 0.0)))
+        rate, cur = await self._get_rate_currency(user)
+    
+        # upkeep (wc + local)
+        wc_upkeep = 0.0
         for b, info in bld.items():
             if b in BUILDINGS:
-                upkeep += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
-        upkeep = trunc2(upkeep)
-
+                wc_upkeep += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
+        wc_upkeep = trunc2(wc_upkeep)
+        local_upkeep = await self._wc_to_local(user, wc_upkeep)
+    
         desc = "Use the buttons below to manage your city."
         if header:
             desc = f"{header}\n\n{desc}"
-
+    
         e = discord.Embed(title=f"🌆 {getattr(user, 'display_name', 'Your')} City", description=desc)
         btxt = "\n".join(f"• **{b}** × {info.get('count', 0)}" for b, info in bld.items()) or "None"
         rtxt = "\n".join(f"• **{k}**: {v}" for k, v in res.items()) or "None"
-
+    
         e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
-        e.add_field(name="🏦 Bank", value=f"{bank:.2f} WC", inline=True)
-        e.add_field(name="⏳ Upkeep per Tick", value=f"{upkeep:.2f} WC", inline=True)
-
-        # Show exchange info if configured
-        rate = d.get("wc_to_local_rate")
-        currency = d.get("ns_currency") or "Local Credits"
-        if rate is not None:
-            e.add_field(name="🌍 Exchange", value=f"1 WC = **{float(rate):.2f} {currency}**", inline=False)
-
+        e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
+        e.add_field(name="⏳ Upkeep per Tick",
+                    value=f"**{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t)", inline=True)
+        e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
         return e
 
-    def build_help_embed(self) -> discord.Embed:
+    
+    def build_help_embed(self, user: discord.abc.User) -> discord.Embed:
         e = discord.Embed(
             title="🏗️ Build",
-            description="Pick a building below to buy **1 unit** (costs your **wallet** Wellcoins)."
+            description="Pick a building to buy **1 unit** (costs your **local currency**; prices shown below)."
         )
         lines = []
-        for k, v in BUILDINGS.items():
-            produces = ", ".join(f"{r}+{a}/tick" for r, a in v["produces"].items())
-            lines.append(f"**{k}** — Cost `{v['cost']:.2f} WC` | Upkeep `{v['upkeep']:.2f} WC/t` | Produces {produces}")
-        e.add_field(name="Catalog", value="\n".join(lines), inline=False)
-        return e
+        async def line_for(name: str) -> str:
+            wc_cost = BUILDINGS[name]["cost"]
+            wc_upkeep = BUILDINGS[name]["upkeep"]
+            local_cost = await self._wc_to_local(user, wc_cost)
+            local_upkeep = await self._wc_to_local(user, wc_upkeep)
+            _, cur = await self._get_rate_currency(user)
+            produces = ", ".join(f"{r}+{a}/tick" for r, a in BUILDINGS[name]["produces"].items())
+            return (f"**{name}** — Cost **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC) | "
+                    f"Upkeep **{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t) | Produces {produces}")
+    
+        async def build_text():
+            return "\n".join([await line_for(k) for k in BUILDINGS.keys()])
+    
+        # Because we need awaits, build the field text here:
+        e.add_field(name="Catalog", value="(loading…)", inline=False)
+        return e, build_text  # return a coroutine to fill later
 
-    async def bank_help_embed(self, user: discord.abc.User) -> discord.Embed:
-        bank = trunc2(float(await self.config.user(user).bank()))
-        e = discord.Embed(
-            title="🏦 Bank",
-            description="Your **Bank** pays wages/upkeep each tick. If the bank can’t cover upkeep, **production halts**."
-        )
-        e.add_field(name="Current Balance", value=f"{bank:.2f} WC", inline=False)
-        e.add_field(name="Tips", value="• Deposit (wallet → bank)\n• Withdraw (bank → wallet)", inline=False)
-        return e
 
 # ====== UI: Main Menu ======
 
@@ -736,10 +788,16 @@ class BuildBtn(ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
+        embed, maker = view.cog.build_help_embed(view.author)
         await interaction.response.edit_message(
-            embed=view.cog.build_help_embed(),
+            embed=embed,
             view=BuildView(view.cog, view.author, show_admin=view.show_admin),
         )
+        # Fill the catalog after sending (edits in place)
+        catalog = await maker()
+        embed.set_field_at(0, name="Catalog", value=catalog, inline=False)
+        await interaction.message.edit(embed=embed, view=interaction.message.components)  # type: ignore
+
 
 class BankBtn(ui.Button):
     def __init__(self):
@@ -780,30 +838,38 @@ class BuildSelect(ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         building = self.values[0].lower()
-        nexus = self.cog.bot.get_cog("NexusExchange")
-        if not nexus:
-            return await interaction.response.send_message("⚠️ NexusExchange not loaded.", ephemeral=True)
-
-        cost = trunc2(BUILDINGS[building]["cost"])
-        try:
-            await nexus.take_wellcoins(interaction.user, cost, force=False)
-        except ValueError:
+        if building not in BUILDINGS:
+            return await interaction.response.send_message("⚠️ Unknown building.", ephemeral=True)
+    
+        wc_cost = trunc2(BUILDINGS[building]["cost"])
+        local_cost = await self.cog._wc_to_local(interaction.user, wc_cost)
+    
+        bank_local = trunc2(float(await self.cog.config.user(interaction.user).bank()))
+        if bank_local + 1e-9 < local_cost:
+            _, cur = await self.cog._get_rate_currency(interaction.user)
             return await interaction.response.send_message(
-                f"❌ Not enough Wellcoins in your wallet for **{building}**. Cost: {cost:.2f} WC",
+                f"❌ Not enough in bank for **{building}**. Need **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC).",
                 ephemeral=True
             )
-
-        # add building
+    
+        # Deduct local from bank
+        bank_local = trunc2(bank_local - local_cost)
+        await self.cog.config.user(interaction.user).bank.set(bank_local)
+    
+        # Add building
         bld = await self.cog.config.user(interaction.user).buildings()
-        cur = int(bld.get(building, {}).get("count", 0))
-        bld[building] = {"count": cur + 1}
+        curcnt = int(bld.get(building, {}).get("count", 0))
+        bld[building] = {"count": curcnt + 1}
         await self.cog.config.user(interaction.user).buildings.set(bld)
-
-        embed = await self.cog.make_city_embed(interaction.user, header=f"🏗️ Built **{building}** for {cost:.2f} WC!")
+    
+        _, cur = await self.cog._get_rate_currency(interaction.user)
+        header = f"🏗️ Built **{building}** for **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC)."
+        embed = await self.cog.make_city_embed(interaction.user, header=header)
         await interaction.response.edit_message(
             embed=embed,
             view=CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
         )
+
 
 class BuildView(ui.View):
     def __init__(self, cog: CityBuilder, author: discord.abc.User, show_admin: bool):
