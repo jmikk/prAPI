@@ -10,18 +10,21 @@ from redbot.core import commands, Config
 
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
-    "farm":    {"cost": 100.0, "upkeep": 2.0, "produces": {"food": 5}},   # per building per tick
+    "farm":    {"cost": 100.0, "upkeep": 2.0, "produces": {"food": 5}},   # per building per tick (WC)
     "mine":    {"cost": 200.0, "upkeep": 3.0, "produces": {"metal": 2}},
     "factory": {"cost": 500.0, "upkeep": 5.0, "produces": {"goods": 1}},
 }
 
 TICK_SECONDS = 3600  # hourly ticks
 
-# ====== NationStates (helpers kept for later use) ======
+# ====== NationStates config ======
 NS_USER_AGENT = "9003"
 NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
-DEFAULT_SCALES = [46, 1, 10, 39]  # example composite set
 
+# Default composite: 46 + a few companions (tweak freely)
+DEFAULT_SCALES = [46, 1, 10, 39]
+
+# ====== Utility ======
 def trunc2(x: float) -> float:
     """Truncate (not round) to 2 decimals to match wallet behavior."""
     return math.trunc(float(x) * 100) / 100.0
@@ -111,7 +114,64 @@ async def ns_fetch_currency_and_scales(nation_name: str, scales: Optional[list] 
     scores = _xml_get_scales_scores(text)
     return currency, scores
 
-# ====== Modals: Bank deposit/withdraw (wallet WC <-> bank WC in this version) ======
+# ====== Currency strength composite → exchange rate ======
+def _softlog(x: float) -> float:
+    return math.log10(max(0.0, float(x)) + 1.0)
+
+def _norm(v: float, lo: float, hi: float) -> float:
+    if hi <= lo:
+        return 0.5
+    v = max(lo, min(hi, v))
+    return (v - lo) / (hi - lo)
+
+def _invert(p: float) -> float:
+    return 1.0 - p
+
+def _clamp(x: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, x))
+
+def _make_transforms() -> dict:
+    return {
+        46: lambda x: _norm(_softlog(x), 0.0, 6.0),   # huge ranges → log then 0..6
+        1:  lambda x: _norm(x, 0.0, 100.0),           # Economy
+        10: lambda x: _norm(x, 0.0, 100.0),           # Industry
+        39: lambda x: _invert(_norm(x, 0.0, 20.0)),   # Unemployment (invert)
+    }
+
+def _make_weights() -> dict:
+    return {46: 0.5, 1: 0.3, 10: 0.15, 39: 0.05}
+
+def _weighted_avg(scores: dict, weights: dict, transforms: dict) -> float:
+    num = 0.0
+    den = 0.0
+    for k, w in weights.items():
+        if k in scores:
+            v = scores[k]
+            t = transforms.get(k)
+            if t:
+                v = t(v)
+            num += w * v
+            den += abs(w)
+    return num / den if den else 0.5
+
+def _map_index_to_rate(idx: float) -> float:
+    """
+    idx in [0,1] → rate range [0.25, 2.00] with 0.5 ≈ 1.0x.
+    """
+    centered = (idx - 0.5) * 2.0  # [-1, 1]
+    factor = 1.0 + 0.75 * centered  # 0.25..1.75
+    return _clamp(trunc2(factor), 0.25, 2.00)
+
+def compute_currency_rate(scores: dict) -> Tuple[float, dict]:
+    transforms = _make_transforms()
+    weights = _make_weights()
+    idx = _weighted_avg(scores, weights, transforms)  # 0..1
+    rate = _map_index_to_rate(idx)                    # 1 WC = rate Local (if you want local later)
+    contribs = {str(k): (transforms[k](scores[k]) if k in scores else None) for k in transforms}
+    debug = {"scores": {str(k): float(scores[k]) for k in scores}, "contribs": contribs, "index": idx, "rate": rate, "weights": {str(k): float(weights[k]) for k in weights}}
+    return rate, debug
+
+# ====== Modals: Bank deposit/withdraw (wallet WC <-> bank WC here) ======
 class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
     amount = discord.ui.TextInput(label="Amount to deposit (in WC)", placeholder="e.g. 100.50", required=True)
 
@@ -124,14 +184,12 @@ class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
             amt = trunc2(float(self.amount.value))
         except ValueError:
             return await interaction.response.send_message("❌ That’s not a number.", ephemeral=True)
-
         if amt <= 0:
             return await interaction.response.send_message("❌ Amount must be positive.", ephemeral=True)
 
         nexus = self.cog.bot.get_cog("NexusExchange")
         if not nexus:
             return await interaction.response.send_message("⚠️ NexusExchange not loaded.", ephemeral=True)
-
         try:
             await nexus.take_wellcoins(interaction.user, amt, force=False)
         except ValueError:
@@ -139,7 +197,6 @@ class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
 
         bank = trunc2(float(await self.cog.config.user(interaction.user).bank()) + amt)
         await self.cog.config.user(interaction.user).bank.set(bank)
-
         await interaction.response.send_message(f"✅ Deposited {amt:.2f} WC. New bank: {bank:.2f} WC", ephemeral=True)
 
 class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
@@ -154,7 +211,6 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
             amt = trunc2(float(self.amount.value))
         except ValueError:
             return await interaction.response.send_message("❌ That’s not a number.", ephemeral=True)
-
         if amt <= 0:
             return await interaction.response.send_message("❌ Amount must be positive.", ephemeral=True)
 
@@ -162,17 +218,63 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
         if bank + 1e-9 < amt:
             return await interaction.response.send_message("❌ Not enough in bank to withdraw that much.", ephemeral=True)
 
-        # deduct from bank
         bank = trunc2(bank - amt)
         await self.cog.config.user(interaction.user).bank.set(bank)
 
-        # credit wallet
         nexus = self.cog.bot.get_cog("NexusExchange")
         if not nexus:
             return await interaction.response.send_message("⚠️ NexusExchange not loaded.", ephemeral=True)
-
         await nexus.add_wellcoins(interaction.user, amt)
         await interaction.response.send_message(f"✅ Withdrew {amt:.2f} WC. New bank: {bank:.2f} WC", ephemeral=True)
+
+# ====== Setup: Prompt+Modal ======
+class SetupPromptView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.author = author
+        self.add_item(OpenSetupBtn())
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This setup isn’t for you. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+class OpenSetupBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Start City Setup", style=discord.ButtonStyle.primary, custom_id="city:setup")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: SetupPromptView = self.view  # type: ignore
+        await interaction.response.send_modal(SetupNationModal(view.cog))
+
+class SetupNationModal(discord.ui.Modal, title="🌍 Link Your NationStates Nation"):
+    nation = discord.ui.TextInput(label="Main nation name", placeholder="e.g., testlandia", required=True)
+
+    def __init__(self, cog: "CityBuilder"):
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        nation_input = str(self.nation.value).strip()
+        try:
+            currency, scores = await ns_fetch_currency_and_scales(nation_input, DEFAULT_SCALES)
+        except Exception as e:
+            return await interaction.response.send_message(f"❌ Failed to reach NationStates API.\n`{e}`", ephemeral=True)
+
+        rate, details = compute_currency_rate(scores)
+
+        await self.cog.config.user(interaction.user).ns_nation.set(normalize_nation(nation_input))
+        await self.cog.config.user(interaction.user).ns_currency.set(currency)
+        await self.cog.config.user(interaction.user).set_raw("ns_scores", value={str(k): float(v) for k, v in scores.items()})
+        await self.cog.config.user(interaction.user).wc_to_local_rate.set(rate)
+        await self.cog.config.user(interaction.user).set_raw("rate_debug", value=details)
+
+        # Show the main panel now that setup is complete
+        embed = await self.cog.make_city_embed(interaction.user, header=f"✅ Linked to **{nation_input}**.")
+        view = CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
+        await interaction.response.send_message(embed=embed, view=view)
 
 # ====== Cog ======
 class CityBuilder(commands.Cog):
@@ -185,19 +287,37 @@ class CityBuilder(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=987654321, force_registration=True)
         self.config.register_user(
-            resources={},     # {"food": 0, "metal": 0, ...}
-            buildings={},     # {"farm": {"count": int}, ...}
-            bank=0.0          # Wellcoins reserved for upkeep/wages (WC)
+            resources={},      # {"food": 0, "metal": 0, ...}
+            buildings={},      # {"farm": {"count": int}, ...}
+            bank=0.0,          # Wellcoins reserved for upkeep/wages (WC)
+            ns_nation=None,    # normalized nation
+            ns_currency=None,  # e.g. "Kro-bro-ünze"
+            ns_scores={},      # {scale_id: score}
+            wc_to_local_rate=None,  # float (optional if you later use local currency banking)
+            rate_debug={},     # optional for debugging
         )
         self.task = bot.loop.create_task(self.resource_tick())
 
     # Traditional Red command to open the panel
     @commands.command(name="city")
     async def city_cmd(self, ctx: commands.Context):
-        """Open your city panel."""
+        """Open your city panel (first time shows NS setup)."""
+        if await self._needs_ns_setup(ctx.author):
+            # First-time: show a setup button that opens the modal
+            prompt = discord.Embed(
+                title="🌍 Set up your City",
+                description="Before you start, link your **NationStates** main nation.\n"
+                            "Click the button below to open the setup form."
+            )
+            return await ctx.send(embed=prompt, view=SetupPromptView(self, ctx.author))
+
         embed = await self.make_city_embed(ctx.author)
         view = CityMenuView(self, ctx.author, show_admin=self._is_adminish(ctx.author))
         await ctx.send(embed=embed, view=view)
+
+    async def _needs_ns_setup(self, user: discord.abc.User) -> bool:
+        d = await self.config.user(user).all()
+        return not (d.get("ns_nation") and d.get("ns_currency") and (d.get("wc_to_local_rate") is not None))
 
     # -------------- lifecycle --------------
     async def cog_unload(self):
@@ -263,10 +383,10 @@ class CityBuilder(commands.Cog):
 
     # -------------- embeds & helpers --------------
     async def make_city_embed(self, user: discord.abc.User, header: Optional[str] = None) -> discord.Embed:
-        data = await self.config.user(user).all()
-        res = data.get("resources", {})
-        bld = data.get("buildings", {})
-        bank = trunc2(float(data.get("bank", 0.0)))
+        d = await self.config.user(user).all()
+        res = d.get("resources", {})
+        bld = d.get("buildings", {})
+        bank = trunc2(float(d.get("bank", 0.0)))
 
         upkeep = 0.0
         for b, info in bld.items():
@@ -286,6 +406,13 @@ class CityBuilder(commands.Cog):
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
         e.add_field(name="🏦 Bank", value=f"{bank:.2f} WC", inline=True)
         e.add_field(name="⏳ Upkeep per Tick", value=f"{upkeep:.2f} WC", inline=True)
+
+        # Show exchange info if configured
+        rate = d.get("wc_to_local_rate")
+        currency = d.get("ns_currency") or "Local Credits"
+        if rate is not None:
+            e.add_field(name="🌍 Exchange", value=f"1 WC = **{float(rate):.2f} {currency}**", inline=False)
+
         return e
 
     def build_help_embed(self) -> discord.Embed:
@@ -307,11 +434,7 @@ class CityBuilder(commands.Cog):
             description="Your **Bank** pays wages/upkeep each tick. If the bank can’t cover upkeep, **production halts**."
         )
         e.add_field(name="Current Balance", value=f"{bank:.2f} WC", inline=False)
-        e.add_field(
-            name="Tips",
-            value="• Deposit (wallet → bank)\n• Withdraw (bank → wallet)\n• Balance is shown above",
-            inline=False,
-        )
+        e.add_field(name="Tips", value="• Deposit (wallet → bank)\n• Withdraw (bank → wallet)", inline=False)
         return e
 
 # ====== UI: Main Menu ======
@@ -331,8 +454,7 @@ class CityMenuView(ui.View):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id:
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
-            return False
-        return True
+        return interaction.user.id == self.author.id
 
 class ViewBtn(ui.Button):
     def __init__(self):
