@@ -20,6 +20,70 @@ def trunc2(x: float) -> float:
     """Truncate (not round) to 2 decimals to match Nexus behavior."""
     return math.trunc(float(x) * 100) / 100.0
 
+class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
+    amount = discord.ui.TextInput(label="Amount to deposit", placeholder="e.g. 100.50", required=True)
+
+    def __init__(self, cog: "CityBuilder"):
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            amt = trunc2(float(self.amount.value))
+        except ValueError:
+            return await interaction.response.send_message("❌ That’s not a number.", ephemeral=True)
+
+        if amt <= 0:
+            return await interaction.response.send_message("❌ Amount must be positive.", ephemeral=True)
+
+        nexus = self.cog.bot.get_cog("NexusExchange")
+        if not nexus:
+            return await interaction.response.send_message("⚠️ NexusExchange not loaded.", ephemeral=True)
+
+        try:
+            await nexus.take_wellcoins(interaction.user, amt, force=False)
+        except ValueError:
+            return await interaction.response.send_message("❌ Not enough Wellcoins in your wallet.", ephemeral=True)
+
+        bank = trunc2(float(await self.cog.config.user(interaction.user).bank()) + amt)
+        await self.cog.config.user(interaction.user).bank.set(bank)
+
+        await interaction.response.send_message(f"✅ Deposited {amt:.2f}. New bank: {bank:.2f}", ephemeral=True)
+
+
+class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
+    amount = discord.ui.TextInput(label="Amount to withdraw", placeholder="e.g. 50", required=True)
+
+    def __init__(self, cog: "CityBuilder"):
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            amt = trunc2(float(self.amount.value))
+        except ValueError:
+            return await interaction.response.send_message("❌ That’s not a number.", ephemeral=True)
+
+        if amt <= 0:
+            return await interaction.response.send_message("❌ Amount must be positive.", ephemeral=True)
+
+        bank = trunc2(float(await self.cog.config.user(interaction.user).bank()))
+        if bank + 1e-9 < amt:
+            return await interaction.response.send_message("❌ Not enough in bank to withdraw that much.", ephemeral=True)
+
+        # deduct from bank
+        bank = trunc2(bank - amt)
+        await self.cog.config.user(interaction.user).bank.set(bank)
+
+        # credit wallet
+        nexus = self.cog.bot.get_cog("NexusExchange")
+        if not nexus:
+            return await interaction.response.send_message("⚠️ NexusExchange not loaded.", ephemeral=True)
+
+        await nexus.add_wellcoins(interaction.user, amt)
+        await interaction.response.send_message(f"✅ Withdrew {amt:.2f}. New bank: {bank:.2f}", ephemeral=True)
+
+
 
 class CityBuilder(commands.Cog):
     """
@@ -354,54 +418,23 @@ class BankBalanceBtn(ui.Button):
         await interaction.response.send_message(f"🏦 Bank balance: {bank:.2f} Wellcoins", ephemeral=True)
 
 
-class BankDepositBtn(ui.Button):
+class BankDepositBtn(discord.ui.Button):
     def __init__(self):
         super().__init__(label="Deposit", style=discord.ButtonStyle.success, custom_id="city:bank:dep")
 
     async def callback(self, interaction: discord.Interaction):
         view: BankView = self.view  # type: ignore
-        await interaction.response.send_message("Type the **amount to deposit** (30s).", ephemeral=True)
-        amt = await view.cog.wait_for_amount(interaction.channel_id, interaction.user)
-        if amt is None or amt <= 0:
-            return await interaction.followup.send("❌ Invalid or timed out.", ephemeral=True)
-
-        nexus = view.cog.bot.get_cog("NexusExchange")
-        if not nexus:
-            return await interaction.followup.send("⚠️ NexusExchange not loaded.", ephemeral=True)
-        try:
-            await nexus.take_wellcoins(interaction.user, amt, force=False)
-        except ValueError:
-            return await interaction.followup.send("❌ Not enough Wellcoins in your wallet.", ephemeral=True)
-
-        bank = trunc2(float(await view.cog.config.user(interaction.user).bank()) + amt)
-        await view.cog.config.user(interaction.user).bank.set(bank)
-        await interaction.followup.send(f"✅ Deposited {amt:.2f}. New bank: {bank:.2f}", ephemeral=True)
+        await interaction.response.send_modal(DepositModal(view.cog))
 
 
-class BankWithdrawBtn(ui.Button):
+class BankWithdrawBtn(discord.ui.Button):
     def __init__(self):
         super().__init__(label="Withdraw", style=discord.ButtonStyle.danger, custom_id="city:bank:wit")
 
     async def callback(self, interaction: discord.Interaction):
         view: BankView = self.view  # type: ignore
-        await interaction.response.send_message("Type the **amount to withdraw** (30s).", ephemeral=True)
-        amt = await view.cog.wait_for_amount(interaction.channel_id, interaction.user)
-        if amt is None or amt <= 0:
-            return await interaction.followup.send("❌ Invalid or timed out.", ephemeral=True)
+        await interaction.response.send_modal(WithdrawModal(view.cog))
 
-        bank = trunc2(float(await view.cog.config.user(interaction.user).bank()))
-        if bank + 1e-9 < amt:
-            return await interaction.followup.send("❌ Not enough in bank to withdraw that much.", ephemeral=True)
-
-        bank = trunc2(bank - amt)
-        await view.cog.config.user(interaction.user).bank.set(bank)
-
-        nexus = view.cog.bot.get_cog("NexusExchange")
-        if not nexus:
-            return await interaction.followup.send("⚠️ NexusExchange not loaded.", ephemeral=True)
-        await nexus.add_wellcoins(interaction.user, amt)
-
-        await interaction.followup.send(f"✅ Withdrew {amt:.2f}. New bank: {bank:.2f}", ephemeral=True)
 
 
 # ====== Shared Back button ======
