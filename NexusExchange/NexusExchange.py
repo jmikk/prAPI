@@ -89,6 +89,75 @@ class NexusExchange(commands.Cog):
         welcome_channel=None   # Optional: allow setting a specific channel
     )
 
+            # NEW: lightweight per-user locks to prevent race conditions
+        self._balance_locks = defaultdict(asyncio.Lock)
+
+    # ---------- PUBLIC API (usable from other cogs) ----------
+
+    async def get_balance(self, user: discord.abc.User) -> int:
+        """Return the user's current Wellcoin balance."""
+        return await self.config.user(user).master_balance()
+
+    async def modify_wellcoins(self,user: discord.abc.User,delta: float,*,force: bool = False) -> float:
+        """
+        Modify a user's Wellcoin balance by `delta`.
+        Supports floats, truncated to 2 decimal places.
+
+        - Positive delta adds coins.
+        - Negative delta subtracts coins.
+        - If force=False: balance must have enough coins, otherwise raises ValueError.
+        - If force=True: balance may go negative.
+
+        Returns the NEW balance (float).
+        """
+        try:
+            delta = float(delta)
+        except (TypeError, ValueError):
+            raise ValueError("delta must be a number")
+
+        #Truncate (not round) to 2 decimals
+        delta = int(delta * 100) / 100.0
+
+        lock = self._balance_locks[user.id]
+        async with lock:
+            data = await self.config.user(user).all()
+            bal = float(data.get("master_balance", 0))
+
+            if delta < 0 and not force:
+                if bal < -delta:  # not enough balance
+                    raise ValueError(
+                        f"Insufficient funds: tried to remove {-delta}, only {bal} available."
+                    )
+                new_bal = bal + delta
+            else:
+                new_bal = bal + delta
+
+            #Truncate stored balance to 2 decimals
+            new_bal = int(new_bal * 100) / 100.0
+            data["master_balance"] = new_bal
+            await self.config.user(user).set(data)
+            return new_bal
+            
+    async def add_wellcoins(self, user: discord.abc.User, amount: float) -> int:
+        """
+        Convenience: add `amount` Wellcoins to user.
+        Returns new balance.
+        """
+        if amount < 0:
+            raise ValueError("amount must be non-negative")
+        return await self.modify_wellcoins(user, amount, force=False)
+
+    async def take_wellcoins(self,user: discord.abc.User,amount: float, force: bool = False,) -> int:
+        """
+        Convenience: remove `amount` Wellcoins from user.
+        - If force=False: won't go below zero (clamps).
+        - If force=True: can go negative.
+        Returns new balance.
+        """
+        if amount < 0:
+            raise ValueError("amount must be non-negative")
+        return await self.modify_wellcoins(user, -amount, force=force)
+
         
 
     @commands.Cog.listener()
