@@ -212,7 +212,7 @@ class CityBuilder(commands.Cog):
             return
         # match common patterns quickly, case-insensitive
         content = message.content.strip().lower()
-        if content.endswith("city") and (content.startswith("$")
+        if content.endswith("city") and (content.startswith("$"):
             try:
                 await message.delete()
             except discord.Forbidden:
