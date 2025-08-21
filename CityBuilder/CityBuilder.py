@@ -91,24 +91,6 @@ def _xml_get_scales_scores(xml: str) -> dict:
     return out
 
 
-async def bank_help_embed(self, user: discord.abc.User) -> discord.Embed:
-    bank_local = trunc2(float(await self.config.user(user).bank()))
-    _, cur = await self._get_rate_currency(user)
-    e = discord.Embed(
-        title="🏦 Bank",
-        description="Your **Bank** pays wages/upkeep each tick in your **local currency**. "
-                    "If the bank can’t cover upkeep, **production halts**."
-    )
-    e.add_field(name="Current Balance", value=f"**{bank_local:.2f} {cur}**", inline=False)
-    e.add_field(
-        name="Tips",
-        value="• Deposit: wallet **WC → local** bank\n"
-              "• Withdraw: bank **local → WC** wallet\n"
-              "• Prices show **local** (= fixed WC × your rate)",
-        inline=False,
-    )
-    return e
-
 async def ns_fetch_currency_and_scales(nation_name: str, scales: Optional[list] = None) -> Tuple[str, dict, str]:
     """
     Robust fetch:
@@ -404,6 +386,25 @@ class CityBuilder(commands.Cog):
         )
         self.task = bot.loop.create_task(self.resource_tick())
 
+    async def bank_help_embed(self, user: discord.abc.User) -> discord.Embed:
+        bank_local = trunc2(float(await self.config.user(user).bank()))
+        _, cur = await self._get_rate_currency(user)
+        e = discord.Embed(
+            title="🏦 Bank",
+            description="Your **Bank** pays wages/upkeep each tick in your **local currency**. "
+                        "If the bank can’t cover upkeep, **production halts**."
+        )
+        e.add_field(name="Current Balance", value=f"**{bank_local:.2f} {cur}**", inline=False)
+        e.add_field(
+            name="Tips",
+            value="• Deposit: wallet **WC → local** bank\n"
+                  "• Withdraw: bank **local → WC** wallet\n"
+                  "• Prices show **local** (= fixed WC × your rate)",
+            inline=False,
+        )
+        return e
+
+
     # --- FX helpers ---
     async def _get_rate_currency(self, user: discord.abc.User) -> tuple[float, str]:
         d = await self.config.user(user).all()
@@ -673,28 +674,26 @@ class CityBuilder(commands.Cog):
         return e
 
     
-    def build_help_embed(self, user: discord.abc.User) -> discord.Embed:
+    async def build_help_embed(self, user: discord.abc.User) -> discord.Embed:
         e = discord.Embed(
             title="🏗️ Build",
             description="Pick a building to buy **1 unit** (costs your **local currency**; prices shown below)."
         )
         lines = []
-        async def line_for(name: str) -> str:
+        for name in BUILDINGS.keys():
             wc_cost = BUILDINGS[name]["cost"]
             wc_upkeep = BUILDINGS[name]["upkeep"]
             local_cost = await self._wc_to_local(user, wc_cost)
             local_upkeep = await self._wc_to_local(user, wc_upkeep)
             _, cur = await self._get_rate_currency(user)
             produces = ", ".join(f"{r}+{a}/tick" for r, a in BUILDINGS[name]["produces"].items())
-            return (f"**{name}** — Cost **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC) | "
-                    f"Upkeep **{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t) | Produces {produces}")
-    
-        async def build_text():
-            return "\n".join([await line_for(k) for k in BUILDINGS.keys()])
-    
-        # Because we need awaits, build the field text here:
-        e.add_field(name="Catalog", value="(loading…)", inline=False)
-        return e, build_text  # return a coroutine to fill later
+            lines.append(
+                f"**{name}** — Cost **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC) | "
+                f"Upkeep **{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t) | Produces {produces}"
+            )
+        e.add_field(name="Catalog", value="\n".join(lines) or "—", inline=False)
+        return e
+
 
 
 # ====== UI: Main Menu ======
@@ -788,28 +787,12 @@ class BuildBtn(ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
-        embed, maker = view.cog.build_help_embed(view.author)
+        embed = await view.cog.build_help_embed(view.author)
         await interaction.response.edit_message(
             embed=embed,
             view=BuildView(view.cog, view.author, show_admin=view.show_admin),
         )
-        # Fill the catalog after sending (edits in place)
-        catalog = await maker()
-        embed.set_field_at(0, name="Catalog", value=catalog, inline=False)
-        await interaction.message.edit(embed=embed, view=interaction.message.components)  # type: ignore
 
-
-class BankBtn(ui.Button):
-    def __init__(self):
-        super().__init__(label="Bank", style=discord.ButtonStyle.secondary, custom_id="city:bank")
-
-    async def callback(self, interaction: discord.Interaction):
-        view: CityMenuView = self.view  # type: ignore
-        embed = await view.cog.bank_help_embed(interaction.user)
-        await interaction.response.edit_message(
-            embed=embed,
-            view=BankView(view.cog, view.author, show_admin=view.show_admin),
-        )
 
 class NextDayBtn(ui.Button):
     def __init__(self):
