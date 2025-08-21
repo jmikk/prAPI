@@ -298,6 +298,52 @@ class CityBuilder(commands.Cog):
         )
         self.task = bot.loop.create_task(self.resource_tick())
 
+    # ---- helpers ----
+    async def _reset_user(self, user: discord.abc.User, *, hard: bool):
+        # Game progress
+        await self.config.user(user).resources.set({})
+        await self.config.user(user).buildings.set({})
+        await self.config.user(user).bank.set(0.0)
+    
+        if hard:
+            # NS linkage & FX
+            await self.config.user(user).ns_nation.set(None)
+            await self.config.user(user).ns_currency.set(None)
+            await self.config.user(user).set_raw("ns_scores", value={})
+            await self.config.user(user).wc_to_local_rate.set(None)
+            await self.config.user(user).set_raw("rate_debug", value={})
+    
+    @commands.guild_only()
+    @commands.command(name="cityreset")
+    async def city_reset(self, ctx: commands.Context, member: Optional[discord.Member] = None):
+        """
+        Soft reset a city (keeps NationStates link & exchange rate).
+        Use with no member to reset yourself; Manage Server needed to reset others.
+        """
+        target = member or ctx.author
+        if target.id != ctx.author.id and not self._is_adminish(ctx.author):
+            return await ctx.send("❌ You need **Manage Server** to reset other players.")
+        await self._reset_user(target, hard=False)
+        who = "your" if target.id == ctx.author.id else f"{target.display_name}'s"
+        await ctx.send(f"🔄 Soft reset complete — {who} city progress was cleared (NS link kept).")
+    
+    @commands.guild_only()
+    @commands.admin_or_permissions(manage_guild=True)
+    @commands.command(name="cityresethard")
+    async def city_reset_hard(self, ctx: commands.Context, member: Optional[discord.Member] = None):
+        """
+        HARD reset a city (also clears NationStates link & exchange rate).
+        Manage Server or Admin required.
+        """
+        target = member or ctx.author
+        await self._reset_user(target, hard=True)
+        who = "your" if target.id == ctx.author.id else f"{target.display_name}'s"
+        await ctx.send(
+            f"🧨 Hard reset complete — {who} city was wiped **and NS link removed**.\n"
+            f"They’ll be prompted to re-link NationStates on next `$city`."
+        )
+
+
     async def rate_details_embed(self, user: discord.abc.User, header: Optional[str] = None) -> discord.Embed:
         d = await self.config.user(user).all()
         currency = d.get("ns_currency") or "Local Credits"
