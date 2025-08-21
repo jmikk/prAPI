@@ -260,7 +260,7 @@ class SetupNationModal(discord.ui.Modal, title="🌍 Link Your NationStates Nati
     async def on_submit(self, interaction: discord.Interaction):
         nation_input = str(self.nation.value).strip()
         try:
-            currency, scores = await ns_fetch_currency_and_scales(nation_input, DEFAULT_SCALES)
+            currency, scores, xml_text = await ns_fetch_currency_and_scales(nation_input, DEFAULT_SCALES)     
         except Exception as e:
             return await interaction.response.send_message(f"❌ Failed to reach NationStates API.\n`{e}`", ephemeral=True)
 
@@ -271,6 +271,7 @@ class SetupNationModal(discord.ui.Modal, title="🌍 Link Your NationStates Nati
         await self.cog.config.user(interaction.user).set_raw("ns_scores", value={str(k): float(v) for k, v in scores.items()})
         await self.cog.config.user(interaction.user).wc_to_local_rate.set(rate)
         await self.cog.config.user(interaction.user).set_raw("rate_debug", value=details)
+        await self.cog.config.user(interaction.user).set_raw("ns_last_xml", value=xml_text)
 
         # Show the main panel now that setup is complete
         embed = await self.cog.make_city_embed(interaction.user, header=f"✅ Linked to **{nation_input}**.")
@@ -304,7 +305,7 @@ class CityBuilder(commands.Cog):
     async def city_fx_resync(self, ctx: commands.Context, nation: Optional[str] = None):
         """
         Re-fetch your NationStates currency & census scales, recompute the FX rate,
-        cache the raw XML, and DM you the XML file. You can optionally override the nation name.
+        cache the raw XML, and POST the XML here as a file. You can optionally override the nation name.
         """
         user = ctx.author
         d = await self.config.user(user).all()
@@ -325,20 +326,15 @@ class CityBuilder(commands.Cog):
         await self.config.user(user).set_raw("rate_debug", value=details)
         await self.config.user(user).set_raw("ns_last_xml", value=xml_text)
     
-        # Send XML as a file (DM preferred)
+        # Send XML file in-channel
         filename = f"ns_{normalize_nation(target_nation)}_census.xml"
         filebuf = io.BytesIO(xml_text.encode("utf-8"))
         file = discord.File(filebuf, filename=filename)
-    
-        try:
-            await user.send(
-                content=f"📄 Here’s the latest XML for **{target_nation}**.\nRate recomputed: `1 WC = {float(rate):.2f} {currency}`",
-                file=file
-            )
-            await ctx.send("✅ Resynced and DM’d you the XML.")
-        except discord.Forbidden:
-            await ctx.send("⚠️ I couldn’t DM you (privacy settings). Sending XML here instead.")
-            await ctx.send(file=file)
+        await ctx.send(
+            content=f"📄 XML for **{target_nation}** · recalculated: `1 WC = {float(rate):.2f} {currency}`",
+            file=file
+        )
+
 
 
     # ---- helpers ----
@@ -631,13 +627,14 @@ class RecalcRateBtn(ui.Button):
             return await interaction.response.send_message("You need to link a Nation first. Use `$city` and run setup.", ephemeral=True)
 
         try:
-            currency, scores = await ns_fetch_currency_and_scales(nation)
+            currency, scores, xml_text = await ns_fetch_currency_and_scales(nation)
             rate, details = compute_currency_rate(scores)
             # save
             await cog.config.user(interaction.user).ns_currency.set(currency)
             await cog.config.user(interaction.user).set_raw("ns_scores", value={str(k): float(v) for k, v in scores.items()})
             await cog.config.user(interaction.user).wc_to_local_rate.set(rate)
             await cog.config.user(interaction.user).set_raw("rate_debug", value=details)
+            await cog.config.user(interaction.user).set_raw("ns_last_xml", value=xml_text)
         except Exception as e:
             return await interaction.response.send_message(f"❌ Failed to fetch from NationStates.\n`{e}`", ephemeral=True)
 
