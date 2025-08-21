@@ -164,7 +164,7 @@ def _make_transforms() -> dict:
     }
 
 def _make_weights() -> dict:
-    return {46: 0.5, 1: 0.3, 10: 0.15, 39: 0.05}
+    return {46: 0.5, 1: 0.3, 10: 0.15, 39: 0.5}
 
 def _weighted_avg(scores: dict, weights: dict, transforms: dict) -> float:
     num = 0.0
@@ -185,7 +185,7 @@ def _map_index_to_rate(idx: float) -> float:
     """
     centered = (idx - 0.5) * 2.0  # [-1, 1]
     factor = 1.0 + 0.75 * centered  # 0.25..1.75
-    return _clamp(trunc2(factor), 0.25, 2.00)
+    return _clamp(trunc2(factor), 0.25, 10.00)
 
 def compute_currency_rate(scores: dict) -> Tuple[float, dict]:
     scores_cast = {}
