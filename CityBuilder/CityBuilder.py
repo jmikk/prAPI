@@ -221,12 +221,22 @@ def compute_currency_rate(scores: dict) -> Tuple[float, dict]:
 
 # ====== Modals: Bank deposit/withdraw (wallet WC <-> bank WC here) ======
 class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
-    amount = discord.ui.TextInput(label="Amount to deposit (in WC)", placeholder="e.g. 100.50", required=True)
-
-    def __init__(self, cog: "CityBuilder"):
+    def __init__(self, cog: "CityBuilder", max_wc: Optional[float] = None):
         super().__init__()
         self.cog = cog
-    
+        self.max_wc = trunc2(max_wc or 0.0)
+
+        # Build the input dynamically so we can customize label/placeholder
+        label = f"Amount to deposit (max {self.max_wc:.2f} WC)" if max_wc is not None else "Amount to deposit (in WC)"
+        placeholder = f"{self.max_wc:.2f}" if max_wc is not None else "e.g. 100.50"
+
+        self.amount = discord.ui.TextInput(
+            label=label,
+            placeholder=placeholder,
+            required=True
+        )
+        self.add_item(self.amount)
+
     async def on_submit(self, interaction: discord.Interaction):
         try:
             amt_wc = trunc2(float(self.amount.value))
@@ -234,27 +244,28 @@ class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
             return await interaction.response.send_message("❌ That’s not a number.", ephemeral=True)
         if amt_wc <= 0:
             return await interaction.response.send_message("❌ Amount must be positive.", ephemeral=True)
-    
+
         nexus = self.cog.bot.get_cog("NexusExchange")
         if not nexus:
             return await interaction.response.send_message("⚠️ NexusExchange not loaded.", ephemeral=True)
-    
-        # Take WC from wallet
+
+        # Take WC from wallet (this will error if over max; we still show max for UX)
         try:
             await nexus.take_wellcoins(interaction.user, amt_wc, force=False)
         except ValueError:
             return await interaction.response.send_message("❌ Not enough Wellcoins in your wallet.", ephemeral=True)
-    
+
         # Credit bank in local currency
         local_credit = await self.cog._wc_to_local(interaction.user, amt_wc)
         bank_local = trunc2(float(await self.cog.config.user(interaction.user).bank()) + local_credit)
         await self.cog.config.user(interaction.user).bank.set(bank_local)
-    
+
         _, cur = await self.cog._get_rate_currency(interaction.user)
         await interaction.response.send_message(
             f"✅ Deposited {amt_wc:.2f} WC → **{local_credit:.2f} {cur}**. New bank: **{bank_local:.2f} {cur}**",
             ephemeral=True
         )
+
 
 
 class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
@@ -386,6 +397,34 @@ class CityBuilder(commands.Cog):
         )
         self.task = bot.loop.create_task(self.resource_tick())
 
+    async def _get_wallet_wc(self, user: discord.abc.User) -> float:
+        """Best-effort to read user's wallet WellCoins from NexusExchange."""
+        nexus = self.bot.get_cog("NexusExchange")
+        if not nexus:
+            return 0.0
+    
+        # Try common method names first
+        for name in ("get_wellcoins", "get_balance", "balance_of", "get_wallet"):
+            fn = getattr(nexus, name, None)
+            if fn:
+                try:
+                    val = await fn(user)  # async method
+                except TypeError:
+                    try:
+                        val = fn(user)      # sync method
+                    except Exception:
+                        continue
+                try:
+                    return trunc2(float(val))
+                except Exception:
+                    return 0.0
+    
+        # Last-ditch: read from a likely config path if it exists
+        try:
+            return trunc2(float(await nexus.config.user(user).wallet()))
+        except Exception:
+            return 0.0
+
     async def bank_help_embed(self, user: discord.abc.User) -> discord.Embed:
         bank_local = trunc2(float(await self.config.user(user).bank()))
         _, cur = await self._get_rate_currency(user)
@@ -398,7 +437,7 @@ class CityBuilder(commands.Cog):
         e.add_field(
             name="Tips",
             value="• Deposit: wallet **WC → local** bank\n"
-                  "• Withdraw: bank **local → WC** wallet\n"
+                  "• Withdraw: bank **local → WC** wallet\n",
             inline=False,
         )
         return e
@@ -902,7 +941,9 @@ class BankDepositBtn(ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         view: BankView = self.view  # type: ignore
-        await interaction.response.send_modal(DepositModal(view.cog))
+        max_wc = await view.cog._get_wallet_wc(interaction.user)
+        await interaction.response.send_modal(DepositModal(view.cog, max_wc=max_wc))
+
 
 class BankWithdrawBtn(ui.Button):
     def __init__(self):
