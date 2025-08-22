@@ -1023,27 +1023,25 @@ class CityBuilder(commands.Cog):
             title="🏗️ Build",
             description="Pick a building to buy **1 unit** (costs your **local currency**; prices shown below)."
         )
+    
         lines = []
-        for name in BUILDINGS.keys():
-            wc_cost = BUILDINGS[name]["cost"]
-            wc_upkeep = BUILDINGS[name]["upkeep"]
+        for name, data in BUILDINGS.items():
+            wc_cost = float(data["cost"])
+            wc_upkeep = float(data["upkeep"])
             local_cost = await self._wc_to_local(user, wc_cost)
             local_upkeep = await self._wc_to_local(user, wc_upkeep)
+            produces_str = ", ".join(f"{r}+{a}/tick" for r, a in data["produces"].items()) or "—"
             _, cur = await self._get_rate_currency(user)
-            # inside build_help_embed loop
             note = " (+1 worker capacity)" if name == "house" else ""
+    
             lines.append(
                 f"**{name}** — Cost **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC) | "
-                f"Upkeep **{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t) | Produces {produces or '—'}{note}"
+                f"Upkeep **{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t) | Produces {produces_str}{note}"
             )
-
-            produces = ", ".join(f"{r}+{a}/tick" for r, a in BUILDINGS[name]["produces"].items())
-            lines.append(
-                f"**{name}** — Cost **{local_cost:.2f} {cur}** | "
-                f"Upkeep **{local_upkeep:.2f} {cur}/t**) | Produces {produces}"
-            )
+    
         e.add_field(name="Catalog", value="\n".join(lines) or "—", inline=False)
         return e
+
 
 
 
