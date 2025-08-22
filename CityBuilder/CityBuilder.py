@@ -11,7 +11,7 @@ import random
 
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
-    "house":   {"cost": 50.0,  "upkeep": 0.5, "produces": {},"capacity": 1},  # +1 worker capacity
+    "house":   {"cost": 50.0,  "upkeep": 0, "produces": {},"capacity": 1},  # +1 worker capacity
     "farm":    {"cost": 100.0, "upkeep": 2.0, "produces": {"food": 5}},
     "mine":    {"cost": 200.0, "upkeep": 3.0, "produces": {"metal": 2}},
     "factory": {"cost": 500.0, "upkeep": 5.0, "produces": {"goods": 1}},
