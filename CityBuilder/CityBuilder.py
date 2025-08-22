@@ -726,8 +726,8 @@ class CityBuilder(commands.Cog):
             _, cur = await self._get_rate_currency(user)
             produces = ", ".join(f"{r}+{a}/tick" for r, a in BUILDINGS[name]["produces"].items())
             lines.append(
-                f"**{name}** — Cost **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC) | "
-                f"Upkeep **{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t) | Produces {produces}"
+                f"**{name}** — Cost **{local_cost:.2f} {cur}** | "
+                f"Upkeep **{local_upkeep:.2f} {cur}/t** WC/t) | Produces {produces}"
             )
         e.add_field(name="Catalog", value="\n".join(lines) or "—", inline=False)
         return e
@@ -831,17 +831,20 @@ class BankBtn(ui.Button):
             view=BankView(view.cog, view.author, show_admin=view.show_admin),
         )
 
-
 class BuildBtn(ui.Button):
     def __init__(self):
         super().__init__(label="Build", style=discord.ButtonStyle.success, custom_id="city:build")
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
+        # NEW: get user FX
+        rate, cur = await view.cog._get_rate_currency(interaction.user)
+
         embed = await view.cog.build_help_embed(view.author)
         await interaction.response.edit_message(
             embed=embed,
-            view=BuildView(view.cog, view.author, show_admin=view.show_admin),
+            # NEW: pass rate & currency into BuildView
+            view=BuildView(view.cog, view.author, rate, cur, show_admin=view.show_admin),
         )
 
 
@@ -856,48 +859,60 @@ class NextDayBtn(ui.Button):
 
 # ====== UI: Build flow ======
 class BuildSelect(ui.Select):
-    def __init__(self, cog: CityBuilder):
-        options = [
-            discord.SelectOption(
-                label=name,
-                description=f"Cost {BUILDINGS[name]['cost']:.2f} WC | Upkeep {BUILDINGS[name]['upkeep']:.2f} WC/t"
+    def __init__(self, cog: CityBuilder, rate: float, currency: str):
+        self.cog = cog
+        self.rate = float(rate)
+        self.currency = currency
+
+        options = []
+        for name in BUILDINGS.keys():
+            wc_cost = trunc2(BUILDINGS[name]["cost"])
+            wc_upkeep = trunc2(BUILDINGS[name]["upkeep"])
+            local_cost = trunc2(wc_cost * self.rate)
+            local_upkeep = trunc2(wc_upkeep * self.rate)
+            options.append(
+                discord.SelectOption(
+                    label=name,
+                    description=(
+                        f"Cost {local_cost:.2f} {self.currency} (={wc_cost:.2f} WC) | "
+                        f"Upkeep {local_upkeep:.2f} {self.currency}/t (={wc_upkeep:.2f} WC/t)"
+                    )
+                )
             )
-            for name in BUILDINGS.keys()
-        ]
+
         super().__init__(
-            placeholder="Choose a building to construct (costs wallet Wellcoins)",
+            placeholder="Choose a building (local prices shown)",
             min_values=1, max_values=1, options=options, custom_id="city:build:select"
         )
-        self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
         building = self.values[0].lower()
         if building not in BUILDINGS:
             return await interaction.response.send_message("⚠️ Unknown building.", ephemeral=True)
-    
+
+        # Use the same rate we displayed for consistency:
         wc_cost = trunc2(BUILDINGS[building]["cost"])
-        local_cost = await self.cog._wc_to_local(interaction.user, wc_cost)
-    
+        local_cost = trunc2(wc_cost * self.rate)
+
         bank_local = trunc2(float(await self.cog.config.user(interaction.user).bank()))
         if bank_local + 1e-9 < local_cost:
-            _, cur = await self.cog._get_rate_currency(interaction.user)
             return await interaction.response.send_message(
-                f"❌ Not enough in bank for **{building}**. Need **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC).",
+                f"❌ Not enough in bank for **{building}**. "
+                f"Need **{local_cost:.2f} {self.currency}** (={wc_cost:.2f} WC).",
                 ephemeral=True
             )
-    
+
         # Deduct local from bank
         bank_local = trunc2(bank_local - local_cost)
         await self.cog.config.user(interaction.user).bank.set(bank_local)
-    
+
         # Add building
         bld = await self.cog.config.user(interaction.user).buildings()
         curcnt = int(bld.get(building, {}).get("count", 0))
         bld[building] = {"count": curcnt + 1}
         await self.cog.config.user(interaction.user).buildings.set(bld)
-    
-        _, cur = await self.cog._get_rate_currency(interaction.user)
-        header = f"🏗️ Built **{building}** for **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC)."
+
+        header = f"🏗️ Built **{building}** for **{local_cost:.2f} {self.currency}** (={wc_cost:.2f} WC)."
         embed = await self.cog.make_city_embed(interaction.user, header=header)
         await interaction.response.edit_message(
             embed=embed,
@@ -905,12 +920,15 @@ class BuildSelect(ui.Select):
         )
 
 
+
 class BuildView(ui.View):
-    def __init__(self, cog: CityBuilder, author: discord.abc.User, show_admin: bool):
+    def __init__(self, cog: CityBuilder, author: discord.abc.User, rate: float, currency: str, show_admin: bool):
         super().__init__(timeout=180)
         self.cog = cog
         self.author = author
-        self.add_item(BuildSelect(cog))
+        self.rate = rate
+        self.currency = currency
+        self.add_item(BuildSelect(cog, rate, currency))
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -918,6 +936,7 @@ class BuildView(ui.View):
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
+
 
 # ====== UI: Bank flow (modals) ======
 class BankView(ui.View):
