@@ -399,7 +399,6 @@ class CityBuilder(commands.Cog):
             name="Tips",
             value="• Deposit: wallet **WC → local** bank\n"
                   "• Withdraw: bank **local → WC** wallet\n"
-                  "• Prices show **local** (= fixed WC × your rate)",
             inline=False,
         )
         return e
