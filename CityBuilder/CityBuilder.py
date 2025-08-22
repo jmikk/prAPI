@@ -727,7 +727,7 @@ class CityBuilder(commands.Cog):
             produces = ", ".join(f"{r}+{a}/tick" for r, a in BUILDINGS[name]["produces"].items())
             lines.append(
                 f"**{name}** — Cost **{local_cost:.2f} {cur}** | "
-                f"Upkeep **{local_upkeep:.2f} {cur}/t** WC/t) | Produces {produces}"
+                f"Upkeep **{local_upkeep:.2f} {cur}/t**) | Produces {produces}"
             )
         e.add_field(name="Catalog", value="\n".join(lines) or "—", inline=False)
         return e
@@ -874,8 +874,8 @@ class BuildSelect(ui.Select):
                 discord.SelectOption(
                     label=name,
                     description=(
-                        f"Cost {local_cost:.2f} {self.currency} (={wc_cost:.2f} WC) | "
-                        f"Upkeep {local_upkeep:.2f} {self.currency}/t (={wc_upkeep:.2f} WC/t)"
+                        f"Cost {local_cost:.2f} {self.currency}| "
+                        f"Upkeep {local_upkeep:.2f} {self.currency}/t"
                     )
                 )
             )
