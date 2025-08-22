@@ -7,13 +7,19 @@ import aiohttp
 import discord
 from discord import ui
 from redbot.core import commands, Config
+import random
 
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
-    "Farm":    {"cost": 100.0, "upkeep": 2.0, "produces": {"food": 5}},   # per building per tick (WC)
-    "Mine":    {"cost": 200.0, "upkeep": 3.0, "produces": {"metal": 2}},
-    "Factory": {"cost": 500.0, "upkeep": 5.0, "produces": {"goods": 1}},
+    "house":   {"cost": 50.0,  "upkeep": 0.5, "produces": {},"capacity": 1},  # +1 worker capacity
+    "farm":    {"cost": 100.0, "upkeep": 2.0, "produces": {"food": 5}},
+    "mine":    {"cost": 200.0, "upkeep": 3.0, "produces": {"metal": 2}},
+    "factory": {"cost": 500.0, "upkeep": 5.0, "produces": {"goods": 1}},
 }
+
+# Per-worker wage (in WC) per tick; user pays in local currency at their rate
+WORKER_WAGE_WC = 1.0
+
 
 TICK_SECONDS = 3600  # hourly ticks
 
@@ -374,6 +380,192 @@ class SetupNationModal(discord.ui.Modal, title="🌍 Link Your NationStates Nati
         view = CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
         await interaction.response.send_message(embed=embed, view=view)
 
+class WorkersView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.add_item(HireWorkerBtn())
+        self.add_item(AssignWorkerBtn())
+        self.add_item(UnassignWorkerBtn())
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+class HireWorkerBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Hire Worker", style=discord.ButtonStyle.success, custom_id="city:workers:hire")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: WorkersView = self.view  # type: ignore
+        cog = view.cog
+
+        # simple “candidate”
+        seed = random.randint(1000, 9999)
+        img = f"https://picsum.photos/seed/worker{seed}/640/360"
+        wage_local = await cog._wc_to_local(interaction.user, WORKER_WAGE_WC)
+        _, cur = await cog._get_rate_currency(interaction.user)
+
+        e = discord.Embed(
+            title="👤 Candidate: General Worker",
+            description=(
+                "Hard-working, adaptable, and ready to operate your facilities.\n"
+                "• Reliability: ⭐⭐⭐\n"
+                "• Safety: ⭐⭐⭐⭐\n"
+                "• Salary: "
+                f"**{wage_local:.2f} {cur}** per tick (={WORKER_WAGE_WC:.2f} WC)"
+            )
+        )
+        e.set_image(url=img)
+
+        await interaction.response.edit_message(
+            embed=e,
+            view=ConfirmHireView(cog, view.author, show_admin=any(isinstance(i, NextDayBtn) for i in view.children))
+        )
+
+class ConfirmHireView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.author = author
+        self.add_item(ConfirmHireNowBtn())
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+class ConfirmHireNowBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Confirm Hire", style=discord.ButtonStyle.primary, custom_id="city:workers:confirmhire")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: ConfirmHireView = self.view  # type: ignore
+        cog = view.cog
+        d = await cog.config.user(interaction.user).all()
+        cap = await cog._worker_capacity(interaction.user)
+        hired = int(d.get("workers_hired") or 0)
+
+        if hired >= cap:
+            return await interaction.response.send_message("❌ No housing capacity. Build more **houses**.", ephemeral=True)
+
+        # hire: +1 hired and +1 unassigned
+        await cog.config.user(interaction.user).workers_hired.set(hired + 1)
+        un = int(d.get("workers_unassigned") or 0) + 1
+        await cog.config.user(interaction.user).workers_unassigned.set(un)
+
+        embed = await cog.workers_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=WorkersView(cog, view.author, show_admin=any(isinstance(i, NextDayBtn) for i in view.children))
+        )
+
+
+class AssignWorkerBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Assign Worker", style=discord.ButtonStyle.secondary, custom_id="city:workers:assign")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: WorkersView = self.view  # type: ignore
+        await interaction.response.edit_message(
+            embed=await view.cog.workers_embed(interaction.user),
+            view=AssignView(view.cog, view.author, show_admin=any(isinstance(i, NextDayBtn) for i in view.children)),
+        )
+
+class AssignView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.author = author
+        self.add_item(AssignSelect(cog))
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+class AssignSelect(ui.Select):
+    def __init__(self, cog: "CityBuilder"):
+        self.cog = cog
+        options = [discord.SelectOption(label=b) for b in BUILDINGS.keys() if b != "house"]
+        super().__init__(placeholder="Assign 1 worker to a building", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        b = self.values[0]
+        d = await self.cog.config.user(interaction.user).all()
+        await self.cog._reconcile_staffing(interaction.user)
+        st = await self.cog._get_staffing(interaction.user)
+
+        # capacity on building
+        cnt = int((d.get("buildings") or {}).get(b, {}).get("count", 0))
+        if cnt <= 0:
+            return await interaction.response.send_message(f"❌ You have no **{b}**.", ephemeral=True)
+
+        assigned = int(st.get(b, 0))
+        unassigned = int(d.get("workers_unassigned") or 0)
+        if unassigned <= 0:
+            return await interaction.response.send_message("❌ No unassigned workers available.", ephemeral=True)
+        if assigned >= cnt:
+            return await interaction.response.send_message(f"❌ All **{b}** are already staffed.", ephemeral=True)
+
+        st[b] = assigned + 1
+        await self.cog._set_staffing(interaction.user, st)
+        await self.cog.config.user(interaction.user).workers_unassigned.set(unassigned - 1)
+
+        embed = await self.cog.workers_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=WorkersView(self.cog, interaction.user, show_admin=True if self.view and any(isinstance(i, NextDayBtn) for i in self.view.children) else False)  # type: ignore
+        )
+
+class UnassignWorkerBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Unassign Worker", style=discord.ButtonStyle.secondary, custom_id="city:workers:unassign")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: WorkersView = self.view  # type: ignore
+        await interaction.response.edit_message(
+            embed=await view.cog.workers_embed(interaction.user),
+            view=UnassignView(view.cog, view.author, show_admin=any(isinstance(i, NextDayBtn) for i in view.children)),
+        )
+
+class UnassignView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.author = author
+        self.add_item(UnassignSelect(cog))
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+class UnassignSelect(ui.Select):
+    def __init__(self, cog: "CityBuilder"):
+        self.cog = cog
+        options = [discord.SelectOption(label=b) for b in BUILDINGS.keys() if b != "house"]
+        super().__init__(placeholder="Unassign 1 worker from a building", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        b = self.values[0]
+        await self.cog._reconcile_staffing(interaction.user)
+        st = await self.cog._get_staffing(interaction.user)
+        if st.get(b, 0) <= 0:
+            return await interaction.response.send_message(f"❌ No workers assigned to **{b}**.", ephemeral=True)
+
+        st[b] -= 1
+        await self.cog._set_staffing(interaction.user, st)
+        un = int((await self.cog.config.user(interaction.user).workers_unassigned()) or 0) + 1
+        await self.cog.config.user(interaction.user).workers_unassigned.set(un)
+
+        embed = await self.cog.workers_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=WorkersView(self.cog, interaction.user, show_admin=True if self.view and any(isinstance(i, NextDayBtn) for i in self.view.children) else False)  # type: ignore
+        )
+
+
 
 # ====== Cog ======
 class CityBuilder(commands.Cog):
@@ -393,9 +585,95 @@ class CityBuilder(commands.Cog):
             ns_currency=None,  # e.g. "Kro-bro-ünze"
             ns_scores={},      # {scale_id: score}
             wc_to_local_rate=None,  # float (optional if you later use local currency banking)
-            rate_debug={},     # optional for debugging
+            rate_debug={},
+            workers_hired=0,            # total hired workers
+            workers_unassigned=0,       # idle workers
+            staffing={},                # {"farm": 0, "mine": 0, ...}# optional for debugging
         )
         self.task = bot.loop.create_task(self.resource_tick())
+
+    async def workers_embed(self, user: discord.abc.User) -> discord.Embed:
+        d = await self.config.user(user).all()
+        hired = int(d.get("workers_hired") or 0)
+        st = await self._get_staffing(user)
+        assigned = sum(st.values())
+        unassigned = max(0, hired - assigned)
+        cap = await self._worker_capacity(user)
+        rate, cur = await self._get_rate_currency(user)
+        wage_local = await self._wc_to_local(user, WORKER_WAGE_WC)
+    
+        lines = [f"• **{b}** staffed: {st.get(b,0)}" for b in (d.get("buildings") or {}).keys()]
+        staffed_txt = "\n".join(lines) or "None"
+    
+        e = discord.Embed(title="👷 Workers", description="Hire and assign workers to buildings to enable production.")
+        e.add_field(name="Status",
+                    value=(f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
+                           f"Capacity **{cap}**"),
+                    inline=False)
+        e.add_field(name="Wage",
+                    value=f"**{wage_local:.2f} {cur}** per worker per tick (={WORKER_WAGE_WC:.2f} WC)",
+                    inline=False)
+        e.add_field(name="Staffing by Building", value=staffed_txt, inline=False)
+        return e
+
+
+    def _get_building_count_sync(self, data: dict, name: str) -> int:
+        return int((data.get("buildings") or {}).get(name, {}).get("count", 0))
+    
+    async def _worker_capacity(self, user: discord.abc.User) -> int:
+        d = await self.config.user(user).all()
+        houses = self._get_building_count_sync(d, "house")
+        cap_per = int(BUILDINGS["house"].get("capacity", 1))
+        return houses * cap_per
+    
+    async def _get_staffing(self, user: discord.abc.User) -> Dict[str, int]:
+        d = await self.config.user(user).all()
+        st: Dict[str, int] = {k: int(v) for k, v in (d.get("staffing") or {}).items()}
+        # ensure keys for all buildings
+        bld = d.get("buildings") or {}
+        for b in bld.keys():
+            st.setdefault(b, 0)
+        return st
+    
+    async def _set_staffing(self, user: discord.abc.User, st: Dict[str, int]) -> None:
+        # sanitize negative values
+        clean = {k: max(0, int(v)) for k, v in st.items()}
+        await self.config.user(user).staffing.set(clean)
+    
+    async def _reconcile_staffing(self, user: discord.abc.User) -> None:
+        """Clamp assignments to existing buildings, capacity, and worker counts."""
+        d = await self.config.user(user).all()
+        st = await self._get_staffing(user)
+        bld = d.get("buildings") or {}
+    
+        # Remove staffing for buildings the user no longer owns
+        st = {k: v for k, v in st.items() if k in bld}
+    
+        # Clamp per-building to its count
+        for b, info in (bld or {}).items():
+            cnt = int(info.get("count", 0))
+            st[b] = min(int(st.get(b, 0)), cnt)
+    
+        # Sum assigned, clamp to workers_hired and capacity
+        assigned = sum(st.values())
+        hired = int(d.get("workers_hired") or 0)
+        cap = await self._worker_capacity(user)
+        max_assignable = min(hired, cap)
+        if assigned > max_assignable:
+            # Unassign extras in arbitrary order
+            overflow = assigned - max_assignable
+            for b in list(st.keys()):
+                if overflow <= 0: break
+                take = min(st[b], overflow)
+                st[b] -= take
+                overflow -= take
+    
+        # Fix workers_unassigned accordingly
+        assigned = sum(st.values())
+        unassigned = max(0, hired - assigned)
+        await self._set_staffing(user, st)
+        await self.config.user(user).workers_unassigned.set(unassigned)
+
 
     async def _get_wallet_wc(self, user: discord.abc.User) -> float:
         """Best-effort to read user's wallet WellCoins from NexusExchange."""
@@ -645,39 +923,51 @@ class CityBuilder(commands.Cog):
                 await self.process_tick(user)
 
     async def process_tick(self, user: discord.abc.User):
-        data = await self.config.user(user).all()
-        buildings = data.get("buildings", {})
-        if not buildings:
+        d = await self.config.user(user).all()
+        bld = d.get("buildings", {})
+        if not bld:
             return
     
-        # total upkeep in WC (fixed underlying)
-        total_wc = 0.0
-        for b, info in buildings.items():
+        await self._reconcile_staffing(user)
+        st = await self._get_staffing(user)
+    
+        # Buildings upkeep (WC)
+        total_upkeep_wc = 0.0
+        for b, info in bld.items():
             if b in BUILDINGS:
-                total_wc += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
-        total_wc = trunc2(total_wc)
+                total_upkeep_wc += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
+        total_upkeep_wc = trunc2(total_upkeep_wc)
     
-        # convert to local and charge from bank
-        local_upkeep = await self._wc_to_local(user, total_wc)
-        bank_local = trunc2(float(data.get("bank", 0.0)))
-        if bank_local + 1e-9 < local_upkeep:
-            return  # insufficient → halt production
+        # Wages (WC)
+        hired = int(d.get("workers_hired") or 0)
+        wages_wc = trunc2(hired * WORKER_WAGE_WC)
     
-        bank_local = trunc2(bank_local - local_upkeep)
+        # Total WC → Local
+        need_local = await self._wc_to_local(user, trunc2(total_upkeep_wc + wages_wc))
+        bank_local = trunc2(float(d.get("bank", 0.0)))
     
-        # produce resources
-        new_resources = dict(data.get("resources", {}))
-        for b, info in buildings.items():
+        # If we can't pay **everything**, halt production and don't charge
+        if bank_local + 1e-9 < need_local:
+            return
+    
+        # Deduct funds
+        bank_local = trunc2(bank_local - need_local)
+    
+        # Production only from staffed units
+        new_resources = dict(d.get("resources", {}))
+        for b, info in bld.items():
             if b not in BUILDINGS:
                 continue
             cnt = int(info.get("count", 0))
-            if cnt <= 0:
+            staffed = min(cnt, int(st.get(b, 0)))
+            if staffed <= 0:
                 continue
             for res, amt in BUILDINGS[b]["produces"].items():
-                new_resources[res] = int(new_resources.get(res, 0)) + int(amt * cnt)
+                new_resources[res] = int(new_resources.get(res, 0)) + int(amt * staffed)
     
         await self.config.user(user).resources.set(new_resources)
         await self.config.user(user).bank.set(bank_local)
+
 
     # -------------- embeds & helpers --------------
     async def make_city_embed(self, user: discord.abc.User, header: Optional[str] = None) -> discord.Embed:
@@ -687,7 +977,7 @@ class CityBuilder(commands.Cog):
         bank_local = trunc2(float(d.get("bank", 0.0)))
         rate, cur = await self._get_rate_currency(user)
     
-        # upkeep (wc + local)
+        # upkeep (WC→local)
         wc_upkeep = 0.0
         for b, info in bld.items():
             if b in BUILDINGS:
@@ -695,21 +985,36 @@ class CityBuilder(commands.Cog):
         wc_upkeep = trunc2(wc_upkeep)
         local_upkeep = await self._wc_to_local(user, wc_upkeep)
     
+        # workers
+        await self._reconcile_staffing(user)
+        hired = int(d.get("workers_hired") or 0)
+        st = await self._get_staffing(user)
+        assigned = sum(st.values())
+        unassigned = max(0, hired - assigned)
+        cap = await self._worker_capacity(user)
+        wages_local = await self._wc_to_local(user, trunc2(hired * WORKER_WAGE_WC))
+    
         desc = "Use the buttons below to manage your city."
         if header:
             desc = f"{header}\n\n{desc}"
     
         e = discord.Embed(title=f"🌆 {getattr(user, 'display_name', 'Your')} City", description=desc)
+    
         btxt = "\n".join(f"• **{b}** × {info.get('count', 0)}" for b, info in bld.items()) or "None"
         rtxt = "\n".join(f"• **{k}**: {v}" for k, v in res.items()) or "None"
     
         e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
+        e.add_field(name="👷 Workers",
+                    value=(f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
+                           f"Capacity **{cap}**\nWages per tick: **{wages_local:.2f} {cur}** "
+                           f"(= {trunc2(hired * WORKER_WAGE_WC):.2f} WC)"),
+                    inline=False)
         e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
-        e.add_field(name="⏳ Upkeep per Tick",
-                    value=f"**{local_upkeep:.2f} {cur}/t**", inline=True)
+        e.add_field(name="⏳ Upkeep per Tick", value=f"**{local_upkeep:.2f} {cur}/t**", inline=True)
         e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
         return e
+
 
     
     async def build_help_embed(self, user: discord.abc.User) -> discord.Embed:
@@ -724,6 +1029,13 @@ class CityBuilder(commands.Cog):
             local_cost = await self._wc_to_local(user, wc_cost)
             local_upkeep = await self._wc_to_local(user, wc_upkeep)
             _, cur = await self._get_rate_currency(user)
+            # inside build_help_embed loop
+            note = " (+1 worker capacity)" if name == "house" else ""
+            lines.append(
+                f"**{name}** — Cost **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC) | "
+                f"Upkeep **{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t) | Produces {produces or '—'}{note}"
+            )
+
             produces = ", ".join(f"{r}+{a}/tick" for r, a in BUILDINGS[name]["produces"].items())
             lines.append(
                 f"**{name}** — Cost **{local_cost:.2f} {cur}** | "
@@ -801,6 +1113,7 @@ class CityMenuView(ui.View):
         self.add_item(ViewBtn())
         self.add_item(BuildBtn())
         self.add_item(BankBtn())
+        self.add_item(WorkersBtn())
         if show_admin:
             self.add_item(NextDayBtn())
             self.add_item(RateBtn())  # add after BankBtn
@@ -809,6 +1122,19 @@ class CityMenuView(ui.View):
         if interaction.user.id != self.author.id:
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
         return interaction.user.id == self.author.id
+
+class WorkersBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Workers", style=discord.ButtonStyle.secondary, custom_id="city:workers")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        embed = await view.cog.workers_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=WorkersView(view.cog, view.author, show_admin=view.show_admin),
+        )
+
 
 class ViewBtn(ui.Button):
     def __init__(self):
