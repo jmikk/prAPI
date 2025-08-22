@@ -1039,20 +1039,14 @@ class CityBuilder(commands.Cog):
         # workers
         await self._reconcile_staffing(user)
         workers = await self._get_workers(user)
-        await self._reconcile_staffing(user)
         st = await self._get_staffing(user)
         hired = len(workers)
         assigned = sum(st.values())
         unassigned = max(0, hired - assigned)
         cap = await self._worker_capacity(user)
-        total_wage_local = await self._wc_to_local(user, trunc2(sum(float(w.get("salary_wc", WORKER_WAGE_WC)) for w in workers)))
-        e.add_field(
-            name="👷 Workers",
-            value=(f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · Capacity **{cap}**\n"
-                   f"Wages per tick: **{total_wage_local:.2f} {cur}**"),
-            inline=False
+        total_wage_local = await self._wc_to_local(
+            user, trunc2(sum(float(w.get("salary_wc", WORKER_WAGE_WC)) for w in workers))
         )
-
     
         desc = "Use the buttons below to manage your city."
         if header:
@@ -1065,18 +1059,20 @@ class CityBuilder(commands.Cog):
     
         e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
-        e.add_field(name="👷 Workers",
-                    value=(f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
-                           f"Capacity **{cap}**\nWages per tick: **{wages_local:.2f} {cur}** "
-                           f"(= {trunc2(hired * WORKER_WAGE_WC):.2f} WC)"),
-                    inline=False)
+        e.add_field(
+            name="👷 Workers",
+            value=(f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · Capacity **{cap}**\n"
+                   f"Wages per tick: **{total_wage_local:.2f} {cur}**"),
+            inline=False
+        )
         e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
         e.add_field(name="⏳ Upkeep per Tick", value=f"**{local_upkeep:.2f} {cur}/t**", inline=True)
         e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
         return e
 
 
-    
+
+        
     async def build_help_embed(self, user: discord.abc.User) -> discord.Embed:
         e = discord.Embed(
             title="🏗️ Build",
@@ -1089,20 +1085,15 @@ class CityBuilder(commands.Cog):
             local_cost = await self._wc_to_local(user, wc_cost)
             local_upkeep = await self._wc_to_local(user, wc_upkeep)
             _, cur = await self._get_rate_currency(user)
-            # inside build_help_embed loop
+            produces = ", ".join(f"{r}+{a}/tick" for r, a in BUILDINGS[name]["produces"].items()) or "—"
             note = " (+1 worker capacity)" if name == "house" else ""
             lines.append(
                 f"**{name}** — Cost **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC) | "
-                f"Upkeep **{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t) | Produces {produces or '—'}{note}"
-            )
-
-            produces = ", ".join(f"{r}+{a}/tick" for r, a in BUILDINGS[name]["produces"].items())
-            lines.append(
-                f"**{name}** — Cost **{local_cost:.2f} {cur}** | "
-                f"Upkeep **{local_upkeep:.2f} {cur}/t**) | Produces {produces}"
+                f"Upkeep **{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t) | Produces {produces}{note}"
             )
         e.add_field(name="Catalog", value="\n".join(lines) or "—", inline=False)
         return e
+
 
 
 
