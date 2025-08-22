@@ -18,7 +18,7 @@ BUILDINGS: Dict[str, Dict] = {
 TICK_SECONDS = 3600  # hourly ticks
 
 # ====== NationStates config ======
-NS_USER_AGENT = "9003"
+NS_USER_AGENT = "9005"
 NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 
 # Default composite: 46 + a few companions (tweak freely)
