@@ -8,6 +8,8 @@ import discord
 from discord import ui
 from redbot.core import commands, Config
 import random
+import uuid
+
 
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
@@ -404,19 +406,8 @@ class HireWorkerBtn(ui.Button):
         view: WorkersView = self.view  # type: ignore
         cog = view.cog
 
-        # Defer right away to avoid 3s timeout
-        try:
-            await interaction.response.defer()  # leave public; use defer(ephemeral=True) if you want it private
-        except Exception:
-            pass  # already responded elsewhere is fine
-
-        try:
-            cand = await cog._fetch_random_worker_candidate(interaction.user)
-        except Exception:
-            # If we already deferred, use followup; otherwise send ephemeral
-            if interaction.response.is_done():
-                return await interaction.followup.send("❌ Couldn’t fetch a candidate right now.", ephemeral=True)
-            return await interaction.response.send_message("❌ Couldn’t fetch a candidate right now.", ephemeral=True)
+        # Generate a candidate instantly (no external API latency)
+        cand = await cog._fetch_random_worker_candidate(interaction.user)
 
         # Show salary in local currency only
         local_salary = await cog._wc_to_local(interaction.user, float(cand["salary_wc"]))
@@ -428,11 +419,11 @@ class HireWorkerBtn(ui.Button):
         )
         e.set_image(url=cand["image"])
 
-        # After deferring, edit the original message
-        await interaction.message.edit(
+        await interaction.response.edit_message(
             embed=e,
             view=ConfirmHireView(cog, view.author, cand, show_admin=view.show_admin),
         )
+
 
 
 
@@ -603,33 +594,27 @@ class CityBuilder(commands.Cog):
             workers=[],                 # NEW: [{"id": str, "name": str, "bio": str, "image": str, "salary_wc": float}]
         )
         self.task = bot.loop.create_task(self.resource_tick())
-
+    
     async def _fetch_random_worker_candidate(self, user: discord.abc.User) -> dict:
         """
-        Returns a worker dict:
+        Returns a worker dict using a Picsum image:
         {"id","name","bio","image","salary_wc"}
-        - Headshot & bio via randomuser.me
-        - Salary randomized around WORKER_WAGE_WC
+        - Image: https://picsum.photos/seed/<seed>/512/512
+        - Salary: random ±25% around WORKER_WAGE_WC, clamped and 2dp
+        - Bio: short, local-only
         """
-        url = "https://randomuser.me/api/?inc=name,picture,location,dob,login&noinfo&nat=us,gb,ca,au,nz"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                data = await resp.json()
+        seed = uuid.uuid4().hex
+        img = f"https://picsum.photos/seed/{seed}/512/512"
     
-        r = data["results"][0]
-        name = f"{r['name']['first']} {r['name']['last']}"
-        city = r["location"]["city"]
-        country = r["location"]["country"]
-        age = int(r["dob"]["age"])
-        img = r["picture"]["large"]
-        wid = r["login"]["uuid"]
-    
-        # Randomize salary around baseline (e.g., ±25%, then clamp and truncate to 2dp)
+        # Randomize salary around baseline (±25%), clamp to [0.25..3.00], 2dp
         factor = random.uniform(0.75, 1.25)
         salary_wc = trunc2(max(0.25, min(3.0, WORKER_WAGE_WC * factor)))
     
-        bio = f"{name}, {age}, from {city}, {country}"
-        return {"id": wid, "name": name, "bio": bio, "image": img, "salary_wc": salary_wc}
+        name = f"Local Hire {seed[:6].upper()}"
+        bio = "Motivated local applicant ready to start."
+    
+        return {"id": seed, "name": name, "bio": bio, "image": img, "salary_wc": salary_wc}
+
 
 
     async def _get_workers(self, user: discord.abc.User) -> list:
