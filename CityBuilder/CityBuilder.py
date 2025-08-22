@@ -404,10 +404,18 @@ class HireWorkerBtn(ui.Button):
         view: WorkersView = self.view  # type: ignore
         cog = view.cog
 
-        # Pull a candidate
+        # Defer right away to avoid 3s timeout
+        try:
+            await interaction.response.defer()  # leave public; use defer(ephemeral=True) if you want it private
+        except Exception:
+            pass  # already responded elsewhere is fine
+
         try:
             cand = await cog._fetch_random_worker_candidate(interaction.user)
-        except Exception as e:
+        except Exception:
+            # If we already deferred, use followup; otherwise send ephemeral
+            if interaction.response.is_done():
+                return await interaction.followup.send("❌ Couldn’t fetch a candidate right now.", ephemeral=True)
             return await interaction.response.send_message("❌ Couldn’t fetch a candidate right now.", ephemeral=True)
 
         # Show salary in local currency only
@@ -420,10 +428,12 @@ class HireWorkerBtn(ui.Button):
         )
         e.set_image(url=cand["image"])
 
-        await interaction.response.edit_message(
+        # After deferring, edit the original message
+        await interaction.message.edit(
             embed=e,
             view=ConfirmHireView(cog, view.author, cand, show_admin=view.show_admin),
         )
+
 
 
 class ConfirmHireView(ui.View):
