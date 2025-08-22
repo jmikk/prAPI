@@ -668,7 +668,7 @@ class CityBuilder(commands.Cog):
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
         e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
         e.add_field(name="⏳ Upkeep per Tick",
-                    value=f"**{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t)", inline=True)
+                    value=f"**{local_upkeep:.2f} {cur}/t**", inline=True)
         e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
         return e
 
