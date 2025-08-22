@@ -417,7 +417,7 @@ class HireWorkerBtn(ui.Button):
                 "• Reliability: ⭐⭐⭐\n"
                 "• Safety: ⭐⭐⭐⭐\n"
                 "• Salary: "
-                f"**{wage_local:.2f} {cur}** per tick (={WORKER_WAGE_WC:.2f} WC)"
+                f"**{wage_local:.2f} {cur}** per tick"
             )
         )
         e.set_image(url=img)
@@ -612,7 +612,7 @@ class CityBuilder(commands.Cog):
                            f"Capacity **{cap}**"),
                     inline=False)
         e.add_field(name="Wage",
-                    value=f"**{wage_local:.2f} {cur}** per worker per tick (={WORKER_WAGE_WC:.2f} WC)",
+                    value=f"**{wage_local:.2f} {cur}** per worker per tick",
                     inline=False)
         e.add_field(name="Staffing by Building", value=staffed_txt, inline=False)
         return e
@@ -1008,8 +1008,7 @@ class CityBuilder(commands.Cog):
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
         e.add_field(name="👷 Workers",
                     value=(f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
-                           f"Capacity **{cap}**\nWages per tick: **{wages_local:.2f} {cur}** "
-                           f"(= {trunc2(hired * WORKER_WAGE_WC):.2f} WC)"),
+                           f"Capacity **{cap}**\nWages per tick: **{wages_local:.2f} {cur}** ",
                     inline=False)
         e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
         e.add_field(name="⏳ Upkeep per Tick", value=f"**{local_upkeep:.2f} {cur}/t**", inline=True)
@@ -1035,8 +1034,8 @@ class CityBuilder(commands.Cog):
             note = " (+1 worker capacity)" if name == "house" else ""
     
             lines.append(
-                f"**{name}** — Cost **{local_cost:.2f} {cur}** (={wc_cost:.2f} WC) | "
-                f"Upkeep **{local_upkeep:.2f} {cur}/t** (={wc_upkeep:.2f} WC/t) | Produces {produces_str}{note}"
+                f"**{name}** — Cost **{local_cost:.2f} {cur}** | "
+                f"Upkeep **{local_upkeep:.2f} {cur}/t** | Produces {produces_str}{note}"
             )
     
         e.add_field(name="Catalog", value="\n".join(lines) or "—", inline=False)
@@ -1223,7 +1222,7 @@ class BuildSelect(ui.Select):
         if bank_local + 1e-9 < local_cost:
             return await interaction.response.send_message(
                 f"❌ Not enough in bank for **{building}**. "
-                f"Need **{local_cost:.2f} {self.currency}** (={wc_cost:.2f} WC).",
+                f"Need **{local_cost:.2f} {self.currency}**.",
                 ephemeral=True
             )
 
@@ -1237,7 +1236,7 @@ class BuildSelect(ui.Select):
         bld[building] = {"count": curcnt + 1}
         await self.cog.config.user(interaction.user).buildings.set(bld)
 
-        header = f"🏗️ Built **{building}** for **{local_cost:.2f} {self.currency}** (={wc_cost:.2f} WC)."
+        header = f"🏗️ Built **{building}** for **{local_cost:.2f} {self.currency}**."
         embed = await self.cog.make_city_embed(interaction.user, header=header)
         await interaction.response.edit_message(
             embed=embed,
