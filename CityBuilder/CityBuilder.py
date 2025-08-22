@@ -1036,13 +1036,13 @@ class CityBuilder(commands.Cog):
             wc_upkeep = float(data["upkeep"])
             local_cost = await self._wc_to_local(user, wc_cost)
             local_upkeep = await self._wc_to_local(user, wc_upkeep)
-            produces_str = ", ".join(f"{r}+{a}/tick" for r, a in data["produces "].items()) or "—"
+            produces_str = ", ".join(f"{r}+{a}/tick" for r, a in data["produces"].items()) or "—"
             _, cur = await self._get_rate_currency(user)
             note = " (+1 worker capacity)" if name == "house" else ""
     
             lines.append(
                 f"**{name}** — Cost **{local_cost:.2f} {cur}** | "
-                f"Upkeep **{local_upkeep:.2f} {cur}/t** | Produces {produces_str}{note}"
+                f"Upkeep **{local_upkeep:.2f} {cur}/t** | Produces {produces_str} {note}"
             )
     
         e.add_field(name="Catalog", value="\n".join(lines) or "—", inline=False)
