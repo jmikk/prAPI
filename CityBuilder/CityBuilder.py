@@ -603,9 +603,13 @@ class CityBuilder(commands.Cog):
         rate, cur = await self._get_rate_currency(user)
         wage_local = await self._wc_to_local(user, WORKER_WAGE_WC)
     
-        lines = [f"• **{b}** staffed: {st.get(b,0)}" for b in (d.get("buildings") or {}).keys()]
-        staffed_txt = "\n".join(lines.replace("house","")) or "None"
-    
+        lines = [
+            f"• **{b}** staffed: {st.get(b, 0)}"
+            for b in (d.get("buildings") or {}).keys()
+            if b != "house"          # don't list houses
+        ]
+        staffed_txt = "\n".join(lines) or "None"
+            
         e = discord.Embed(title="👷 Workers", description="Hire and assign workers to buildings to enable production.")
         e.add_field(name="Status",
                     value=(f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
@@ -1201,15 +1205,11 @@ class BuildSelect(ui.Select):
             wc_upkeep = trunc2(BUILDINGS[name]["upkeep"])
             local_cost = trunc2(wc_cost * self.rate)
             local_upkeep = trunc2(wc_upkeep * self.rate)
-            options.append(
-                discord.SelectOption(
-                    label=name,
-                    description=(
-                        f"Cost {local_cost:.2f} {self.currency}| "
-                        f"Upkeep {local_upkeep:.2f} {self.currency}/t"
-                    )
-                )
-            )
+            desc = f"Cost {local_cost:.2f} {self.currency} · Upkeep {local_upkeep:.2f} {self.currency}/t"
+            if len(desc) > 96:
+                desc = f"Cost {local_cost:.2f} · Upkeep {local_upkeep:.2f}/t"
+            options.append(discord.SelectOption(label=name, description=desc))
+
 
         super().__init__(
             placeholder="Choose a building (local prices shown)",
