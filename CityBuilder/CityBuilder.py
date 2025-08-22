@@ -10,9 +10,9 @@ from redbot.core import commands, Config
 
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
-    "farm":    {"cost": 100.0, "upkeep": 2.0, "produces": {"food": 5}},   # per building per tick (WC)
-    "mine":    {"cost": 200.0, "upkeep": 3.0, "produces": {"metal": 2}},
-    "factory": {"cost": 500.0, "upkeep": 5.0, "produces": {"goods": 1}},
+    "Farm":    {"cost": 100.0, "upkeep": 2.0, "produces": {"food": 5}},   # per building per tick (WC)
+    "Mine":    {"cost": 200.0, "upkeep": 3.0, "produces": {"metal": 2}},
+    "Factory": {"cost": 500.0, "upkeep": 5.0, "produces": {"goods": 1}},
 }
 
 TICK_SECONDS = 3600  # hourly ticks
