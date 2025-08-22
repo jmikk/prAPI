@@ -1006,12 +1006,21 @@ class CityBuilder(commands.Cog):
     
         e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
-        e.add_field(name="👷 Workers",
-                    value=(f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · Capacity **{cap}**\nWages per tick: **{wages_local:.2f} {cur}** ",inline=False)
+        e.add_field(
+            name="👷 Workers",
+            value=(
+                f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
+                f"Capacity **{cap}**\n"
+                f"Wages per tick: **{wages_local:.2f} {cur}** "
+                f"(= {trunc2(hired * WORKER_WAGE_WC):.2f} WC)"
+            ),
+            inline=False,
+        )
         e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
         e.add_field(name="⏳ Upkeep per Tick", value=f"**{local_upkeep:.2f} {cur}/t**", inline=True)
         e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
         return e
+
 
 
     
