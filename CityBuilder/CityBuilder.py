@@ -604,7 +604,7 @@ class CityBuilder(commands.Cog):
         wage_local = await self._wc_to_local(user, WORKER_WAGE_WC)
     
         lines = [f"• **{b}** staffed: {st.get(b,0)}" for b in (d.get("buildings") or {}).keys()]
-        staffed_txt = "\n".join(lines.replace("house","") or "None"
+        staffed_txt = "\n".join(lines.replace("house","")) or "None"
     
         e = discord.Embed(title="👷 Workers", description="Hire and assign workers to buildings to enable production.")
         e.add_field(name="Status",
