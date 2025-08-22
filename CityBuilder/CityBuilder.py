@@ -405,8 +405,8 @@ class HireWorkerBtn(ui.Button):
         cog = view.cog
 
         # simple “candidate”
-        seed = random.randint(1000, 9999)
-        img = f"https://thispersondoesnotexist.com/image"
+        seed = random.randint(1, 70)
+        img = f"https://i.pravatar.cc/150?img={seed}"
         wage_local = await cog._wc_to_local(interaction.user, WORKER_WAGE_WC)
         _, cur = await cog._get_rate_currency(interaction.user)
 
