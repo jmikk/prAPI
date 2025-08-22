@@ -395,6 +395,7 @@ class WorkersView(ui.View):
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
+        
 class HireWorkerBtn(ui.Button):
     def __init__(self):
         super().__init__(label="Hire Worker", style=discord.ButtonStyle.success, custom_id="city:workers:hire")
@@ -405,7 +406,7 @@ class HireWorkerBtn(ui.Button):
 
         # simple “candidate”
         seed = random.randint(1000, 9999)
-        img = f"https://picsum.photos/seed/worker{seed}/640/360"
+        img = f"https://thispersondoesnotexist.com/image"
         wage_local = await cog._wc_to_local(interaction.user, WORKER_WAGE_WC)
         _, cur = await cog._get_rate_currency(interaction.user)
 
