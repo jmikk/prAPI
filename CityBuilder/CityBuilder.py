@@ -275,45 +275,68 @@ class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
 
 
 class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
-    amount = discord.ui.TextInput(label="Wellcoins to withdraw (WC)", placeholder="e.g. 50", required=True)
-
-    def __init__(self, cog: "CityBuilder"):
+    def __init__(self, cog: "CityBuilder", max_local: Optional[float] = None, currency: Optional[str] = None):
         super().__init__()
         self.cog = cog
+        self.max_local = trunc2(max_local or 0.0)
+        self.currency = currency or "Local"
+
+        label = f"Amount to withdraw (max {self.max_local:.2f} {self.currency})"
+        placeholder = f"{self.max_local:.2f}" if max_local is not None else "e.g. 50.00"
+
+        self.amount = discord.ui.TextInput(
+            label=label,
+            placeholder=placeholder,
+            required=True
+        )
+        self.add_item(self.amount)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # Parse local amount
         try:
-            amt_wc = trunc2(float(self.amount.value))
+            amt_local = trunc2(float(self.amount.value))
         except ValueError:
             return await interaction.response.send_message("❌ That’s not a number.", ephemeral=True)
-        if amt_wc <= 0:
+        if amt_local <= 0:
             return await interaction.response.send_message("❌ Amount must be positive.", ephemeral=True)
-    
-        # Local required for this many WC
-        local_needed = await self.cog._wc_to_local(interaction.user, amt_wc)
+
+        # Check bank balance in local
         bank_local = trunc2(float(await self.cog.config.user(interaction.user).bank()))
-        if bank_local + 1e-9 < local_needed:
-            _, cur = await self.cog._get_rate_currency(interaction.user)
+        if bank_local + 1e-9 < amt_local:
             return await interaction.response.send_message(
-                f"❌ Not enough in bank. Need **{local_needed:.2f} {cur}**.",
+                f"❌ Not enough in bank. You have **{bank_local:.2f} {self.currency}**.",
                 ephemeral=True
             )
-    
+
+        # Convert local → WC
+        amt_wc = await self.cog._local_to_wc(interaction.user, amt_local)
+        if amt_wc <= 0:
+            return await interaction.response.send_message(
+                "❌ Amount too small to convert to at least **0.01 WC** at the current rate.",
+                ephemeral=True
+            )
+
         # Deduct local from bank
-        bank_local = trunc2(bank_local - local_needed)
-        await self.cog.config.user(interaction.user).bank.set(bank_local)
-    
-        # Credit wallet WC
+        new_bank = trunc2(bank_local - amt_local)
+        await self.cog.config.user(interaction.user).bank.set(new_bank)
+
+        # Credit WC to wallet
         nexus = self.cog.bot.get_cog("NexusExchange")
         if not nexus:
+            # Undo deduction if Nexus is missing
+            await self.cog.config.user(interaction.user).bank.set(bank_local)
             return await interaction.response.send_message("⚠️ NexusExchange not loaded.", ephemeral=True)
-    
+
         await nexus.add_wellcoins(interaction.user, amt_wc)
+
+        # Confirm
         _, cur = await self.cog._get_rate_currency(interaction.user)
         await interaction.response.send_message(
-            f"✅ Withdrew **{local_needed:.2f} {cur}** → {amt_wc:.2f} WC. New bank: **{bank_local:.2f} {cur}**",
+            f"✅ Withdrew **{amt_local:.2f} {cur}** → **{amt_wc:.2f} WC**.\n"
+            f"New bank: **{new_bank:.2f} {cur}**",
             ephemeral=True
         )
+
 
 
 # ====== Setup: Prompt+Modal ======
@@ -592,6 +615,13 @@ class CityBuilder(commands.Cog):
             staffing={},                # {"farm": 0, "mine": 0, ...}# optional for debugging
         )
         self.task = bot.loop.create_task(self.resource_tick())
+
+    async def _local_to_wc(self, user: discord.abc.User, local_amount: float) -> float:
+        """Convert local currency → WC using the user's current rate, truncating to 2 decimals."""
+        rate, _ = await self._get_rate_currency(user)
+        rate = float(rate) if rate else 1.0
+        return trunc2(trunc2(local_amount) / rate)
+
 
     async def workers_embed(self, user: discord.abc.User) -> discord.Embed:
         d = await self.config.user(user).all()
@@ -1301,7 +1331,10 @@ class BankWithdrawBtn(ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         view: BankView = self.view  # type: ignore
-        await interaction.response.send_modal(WithdrawModal(view.cog))
+        bank_local = trunc2(float(await view.cog.config.user(interaction.user).bank()))
+        _, cur = await view.cog._get_rate_currency(interaction.user)
+        await interaction.response.send_modal(WithdrawModal(view.cog, max_local=bank_local, currency=cur))
+
 
 # ====== Shared Back button ======
 class BackBtn(ui.Button):
