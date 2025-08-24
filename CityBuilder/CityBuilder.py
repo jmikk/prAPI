@@ -20,7 +20,7 @@ BUILDINGS: Dict[str, Dict] = {
 }
 
 # Per-worker wage (in WC) per tick; user pays in local currency at their rate
-WORKER_WAGE_WC = 1.0
+WORKER_WAGE_WC = 5.0
 
 
 TICK_SECONDS = 3600  # hourly ticks
