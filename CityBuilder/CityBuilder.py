@@ -2482,46 +2482,125 @@ class RemoveBuyOrderModal(discord.ui.Modal, title="🗑️ Remove Buy Order"):
 
 
 # --------- Buyer view (purchase listings) ----------
+# ------ REPLACE your StoreBuyView & PurchaseListingSelect with this ------
 class StoreBuyView(ui.View):
-    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+    PAGE_SIZE = 25  # Discord select limit
+
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool, page: int = 0):
         super().__init__(timeout=180)
         self.cog = cog
         self.author = author
-        self.select = PurchaseListingSelect(cog)
+        self.show_admin = show_admin
+        self.page = max(0, int(page))
+        self.total_pages = 1  # will be set on refresh
+        self._all_items: list[tuple[int, dict]] = []  # [(owner_id, listing_dict)]
+
+        self.select = PurchaseListingSelect(cog, self)
         self.add_item(self.select)
+        self.add_item(PrevPageBtn())
+        self.add_item(NextPageBtn())
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == self.author.id
 
+    async def load_all_items(self, viewer: discord.abc.User):
+        """Build the full list of (owner_id, listing) across all users, filtered & sorted."""
+        self._all_items.clear()
+        all_users = await self.cog.config.all_users()
+
+        for owner_id, udata in all_users.items():
+            if int(owner_id) == viewer.id:
+                continue
+            for it in (udata.get("store_sell_listings") or []):
+                # Compute effective (escrow-backed) stock
+                effective_stock = (
+                    self.cog._effective_stock_from_escrow(it)
+                    if hasattr(self.cog, "_effective_stock_from_escrow")
+                    else int(it.get("stock") or 0)
+                )
+                if effective_stock <= 0:
+                    continue
+                self._all_items.append((int(owner_id), it))
+
+        # optional stable sort by name then id
+        self._all_items.sort(key=lambda p: (str(p[1].get("name") or ""), str(p[1].get("id") or "")))
+
+        # compute total pages
+        n = len(self._all_items)
+        self.total_pages = max(1, (n + self.PAGE_SIZE - 1) // self.PAGE_SIZE)
+        self.page = min(self.page, self.total_pages - 1)  # clamp
+
+    def slice_for_page(self) -> list[tuple[int, dict]]:
+        start = self.page * self.PAGE_SIZE
+        end = start + self.PAGE_SIZE
+        return self._all_items[start:end]
+
+    async def refresh(self, viewer: discord.abc.User):
+        """Rebuild options for the current page."""
+        await self.load_all_items(viewer)
+        await self.select.refresh(viewer)
 
 class PurchaseListingSelect(ui.Select):
-    def __init__(self, cog: "CityBuilder"):
+    def __init__(self, cog: "CityBuilder", view: "StoreBuyView"):
         self.cog = cog
-        options = []
-        # Build options across all users
-        options = []  # [(owner_id, listing)]
-        # We'll store owner_id in the option value as "ownerId|listingId"
-        # Render below in callback
-        super().__init__(placeholder="Buy 1 unit from a listing", min_values=1, max_values=1, options=[])
-   
+        self._view = view
+        super().__init__(placeholder="Loading listings…", min_values=1, max_values=1, options=[])
+
+    async def refresh(self, viewer: discord.abc.User):
+        # Build page options with viewer prices
+        opts: list[discord.SelectOption] = []
+        rate, _cur = await self.cog._get_rate_currency(viewer)
+
+        page_items = self._view.slice_for_page()
+        for owner_id, item in page_items:
+            price_wc = float(item.get("price_wc") or 0.0)
+            price_local_fee = trunc2((await self.cog._wc_to_local(viewer, price_wc)) * 1.10)
+
+            # Effective stock (escrow-aware)
+            effective_stock = (
+                self.cog._effective_stock_from_escrow(item)
+                if hasattr(self.cog, "_effective_stock_from_escrow")
+                else int(item.get("stock") or 0)
+            )
+            if effective_stock <= 0:
+                continue
+
+            label = f'{item.get("name")} [Stock {effective_stock}]'
+            desc = f'Price {price_local_fee:.2f} in your currency (incl. fee)'
+            value = f'{owner_id}|{item.get("id")}'
+            opts.append(discord.SelectOption(label=label[:100], description=desc[:100], value=value))
+
+        if not opts:
+            opts = [discord.SelectOption(label="No available listings on this page", description="—", value="none")]
+
+        self.options = opts
+        # Show page indicator in the placeholder
+        self.placeholder = f"Buy 1 unit — Page {self._view.page+1}/{self._view.total_pages}"
+
     async def callback(self, interaction: discord.Interaction):
         value = self.values[0]
         if value == "none":
-            return await interaction.response.send_message("Nothing to buy right now.", ephemeral=True)
+            return await interaction.response.send_message("Nothing to buy on this page.", ephemeral=True)
+
         owner_s, lid = value.split("|", 1)
         owner_id = int(owner_s)
         if owner_id == interaction.user.id:
             return await interaction.response.send_message("You can’t buy your own listing.", ephemeral=True)
-    
+
+        # Fetch listing fresh (race-safe)
         owner_conf = self.cog.config.user_from_id(owner_id)
         owner_data = await owner_conf.all()
         listings = list(owner_data.get("store_sell_listings") or [])
         listing = next((x for x in listings if x.get("id") == lid), None)
         if not listing:
             return await interaction.response.send_message("Listing unavailable.", ephemeral=True)
-    
-        eff_stock = self.cog._effective_stock_from_escrow(listing) if hasattr(self.cog, "_effective_stock_from_escrow") else int(listing.get("stock", 0) or 0)
+
+        eff_stock = (
+            self.cog._effective_stock_from_escrow(listing)
+            if hasattr(self.cog, "_effective_stock_from_escrow")
+            else int(listing.get("stock", 0) or 0)
+        )
         if eff_stock <= 0:
             # reflect 0 stock for visibility
             listing["stock"] = 0
@@ -2531,14 +2610,14 @@ class PurchaseListingSelect(ui.Select):
                     break
             await owner_conf.store_sell_listings.set(listings)
             return await interaction.response.send_message("⚠️ This listing is currently out of stock.", ephemeral=True)
-    
+
         price_wc = float(listing.get("price_wc") or 0.0)
         buyer_price_local = trunc2((await self.cog._wc_to_local(interaction.user, price_wc)) * 1.10)
-    
+
         bundle = {k: int(v) for k, v in (listing.get("bundle") or {}).items()}
         _, buyer_cur = await self.cog._get_rate_currency(interaction.user)
         bundle_txt = ", ".join([f"{k}+{v}" for k, v in bundle.items()]) or "—"
-    
+
         confirm_embed = discord.Embed(
             title="Confirm Purchase",
             description=(
@@ -2548,8 +2627,7 @@ class PurchaseListingSelect(ui.Select):
                 "Do you want to proceed?"
             )
         )
-    
-        # Send ephemeral confirmation popup
+
         await interaction.response.send_message(
             embed=confirm_embed,
             view=ConfirmPurchaseView(
@@ -2566,29 +2644,33 @@ class PurchaseListingSelect(ui.Select):
             ephemeral=True
         )
 
-    async def refresh(self, viewer: discord.abc.User):
-        # Build dynamic options with viewer price
-        opts: list[discord.SelectOption] = []
-        all_users = await self.cog.config.all_users()
-        for owner_id, udata in all_users.items():
-            if str(owner_id) == str(viewer.id):
-                continue  # don't buy from self
-            for item in (udata.get("store_sell_listings") or []):
-                if int(item.get("stock", 0)) <= 0:
-                    continue
-                price_wc = float(item.get("price_wc") or 0.0)
-                price_local = await self.cog._wc_to_local(viewer, price_wc)
-                price_local_fee = trunc2(price_local * 1.10)  # buyer pays 10% fee
-                effective_stock = self.cog._effective_stock_from_escrow(item)
-                if effective_stock <= 0:
-                    continue
-                label = f'{item.get("name")} [Stock {effective_stock}]'
-                desc = f'Price {price_local_fee:.2f} in your currency (incl. 10% fee)'
-                value = f'{owner_id}|{item.get("id")}'
-                opts.append(discord.SelectOption(label=label[:100], description=desc[:100], value=value))
-        if not opts:
-            opts = [discord.SelectOption(label="No available listings", description="—", value="none")]
-        self.options = opts
+# ------ NEW: pager buttons ------
+class PrevPageBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="◀ Prev", style=discord.ButtonStyle.secondary)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: StoreBuyView = self.view  # type: ignore
+        if view.page > 0:
+            view.page -= 1
+            await view.select.refresh(interaction.user)
+            await interaction.response.edit_message(view=view)
+        else:
+            await interaction.response.send_message("Already at the first page.", ephemeral=True)
+
+class NextPageBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Next ▶", style=discord.ButtonStyle.secondary)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: StoreBuyView = self.view  # type: ignore
+        if view.page + 1 < view.total_pages:
+            view.page += 1
+            await view.select.refresh(interaction.user)
+            await interaction.response.edit_message(view=view)
+        else:
+            await interaction.response.send_message("Already at the last page.", ephemeral=True)
+
 
 
 class StoreSellToOrdersView(ui.View):
