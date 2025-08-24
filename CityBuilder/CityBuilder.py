@@ -893,23 +893,24 @@ class CityBuilder(commands.Cog):
     async def buildings_overview_embed(self, user: discord.abc.User) -> discord.Embed:
         """
         Overview of user's buildings grouped by tier.
-        Shows tiers even if empty (as  — ).
+        Shows the TOTAL count per tier (0 if empty).
         """
         d = await self.config.user(user).all()
         grouped = self._group_owned_by_tier(d)
+    
         lines = []
         for t in self._all_tiers():
             entries = grouped.get(t, [])
-            if not entries:
-                lines.append(f"**Tier {t}** — —")
-            else:
-                for t in self._all_tiers():
-                    entries = grouped.get(t, [])
-                    total = sum(cnt for _, cnt in entries)
-                lines.append(f"**Tier {t}** — {total}")
-        e = discord.Embed(title="🏗️ Buildings by Tier", description="\n".join(lines) or "—")
+            total = sum(cnt for _, cnt in entries)
+            lines.append(f"**Tier {t}** — {total}")
+    
+        e = discord.Embed(
+            title="🏗️ Buildings by Tier",
+            description="\n".join(lines) or "—"
+        )
         e.set_footer(text="Select a tier below to view details.")
         return e
+
     
     async def buildings_tier_embed(self, user: discord.abc.User, tier: int) -> discord.Embed:
         """
