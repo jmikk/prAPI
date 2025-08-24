@@ -870,7 +870,7 @@ class CityBuilder(commands.Cog):
         return int((time.time() // TICK_SECONDS + 1) * TICK_SECONDS)
 
     def _all_tiers(self) -> list:
-    """Sorted unique tiers from BUILDINGS."""
+        """Sorted unique tiers from BUILDINGS."""
         tiers = sorted({int(data.get("tier", 0)) for data in BUILDINGS.values()})
         return tiers
 
