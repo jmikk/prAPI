@@ -11,10 +11,10 @@ import random
 
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
-    "house":   {"cost": 50.0,  "upkeep": 0, "produces": {},"capacity": 1},  # +1 worker capacity
-    "farm":    {"cost": 100.0, "upkeep": 0, "produces": {"food": 5}},
-    "mine":    {"cost": 200.0, "upkeep": 0, "produces": {"metal": 2}},
-    "factory": {"cost": 500.0, "upkeep": 5, "produces": {"goods": 1}},
+    "house":   {"cost": 50.0,  "upkeep": 0, "produces": {},"capacity": 1, "tier": 0},  # +1 worker capacity
+    "farm":    {"cost": 100.0, "upkeep": 0, "produces": {"food": 5}, "tier": 1},
+    "mine":    {"cost": 200.0, "upkeep": 0, "produces": {"metal": 2}, "tier": 1},
+    "factory": {"cost": 500.0, "upkeep": 5, "produces": {"goods": 1}, "tier": 1},
 }
 
 # Per-worker wage (in WC) per tick; user pays in local currency at their rate
@@ -613,8 +613,33 @@ class CityBuilder(commands.Cog):
             workers_hired=0,            # total hired workers
             workers_unassigned=0,       # idle workers
             staffing={},                # {"farm": 0, "mine": 0, ...}# optional for debugging
+
+            store_sell_listings=[],  # [{id:str, name:str, bundle:{res:int}, price_wc:float, stock:int}]
+            store_buy_orders=[],     # [{id:str, resource:str, qty:int, price_wc:float}]
         )
         self.task = bot.loop.create_task(self.resource_tick())
+
+    async def _adjust_resources(self, user: discord.abc.User, delta: Dict[str, int]) -> None:
+        d = await self.config.user(user).all()
+        res = dict(d.get("resources") or {})
+        for k, v in delta.items():
+            res[k] = int(res.get(k, 0)) + int(v)
+            if res[k] < 0:
+                res[k] = 0
+        await self.config.user(user).resources.set(res)
+    
+    async def _charge_bank_local(self, user: discord.abc.User, amount_local: float) -> bool:
+        amt = trunc2(amount_local)
+        bank_local = trunc2(float(await self.config.user(user).bank()))
+        if bank_local + 1e-9 < amt:
+            return False
+        await self.config.user(user).bank.set(trunc2(bank_local - amt))
+        return True
+    
+    async def _credit_bank_local(self, user: discord.abc.User, amount_local: float) -> None:
+        bank_local = trunc2(float(await self.config.user(user).bank()))
+        await self.config.user(user).bank.set(trunc2(bank_local + trunc2(amount_local)))
+
 
     async def _local_to_wc(self, user: discord.abc.User, local_amount: float) -> float:
         """Convert local currency → WC using the user's current rate, truncating to 2 decimals."""
@@ -642,8 +667,7 @@ class CityBuilder(commands.Cog):
             
         e = discord.Embed(title="👷 Workers", description="Hire and assign workers to buildings to enable production.")
         e.add_field(name="Status",
-                    value=(f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
-                           f"Capacity **{cap}**"),
+                    value=(f"Hired **{hired}** · Capacity **{cap}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "),
                     inline=False)
         e.add_field(name="Wage",
                     value=f"**{wage_local:.2f} {cur}** per worker per tick",
@@ -1114,6 +1138,17 @@ class RateView(ui.View):
             return False
         return True
 
+class StoreBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Store", style=discord.ButtonStyle.secondary, custom_id="city:store")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        embed = await view.cog.store_home_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=StoreMenuView(view.cog, view.author, show_admin=view.show_admin),
+        )
 
 class RecalcRateBtn(ui.Button):
     def __init__(self):
@@ -1153,6 +1188,7 @@ class CityMenuView(ui.View):
         self.add_item(BuildBtn())
         self.add_item(BankBtn())
         self.add_item(WorkersBtn())
+        self.add_item(StoreBtn())
         if show_admin:
             self.add_item(NextDayBtn())
             self.add_item(RateBtn())  # add after BankBtn
@@ -1334,6 +1370,501 @@ class BankWithdrawBtn(ui.Button):
         bank_local = trunc2(float(await view.cog.config.user(interaction.user).bank()))
         _, cur = await view.cog._get_rate_currency(interaction.user)
         await interaction.response.send_modal(WithdrawModal(view.cog, max_local=bank_local, currency=cur))
+
+# ====== Store UI ======
+class StoreMenuView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.add_item(MyListingsBtn())
+        self.add_item(AddSellListingBtn())
+        self.add_item(AddBuyOrderBtn())
+        self.add_item(BrowseStoresBtn())
+        self.add_item(FulfillBuyOrdersBtn())
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
+class MyListingsBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="My Listings", style=discord.ButtonStyle.secondary, custom_id="store:mine")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: StoreMenuView = self.view  # type: ignore
+        e = await view.cog.store_my_listings_embed(interaction.user)
+        await interaction.response.edit_message(embed=e, view=StoreManageMyView(view.cog, view.author, view.children[-1].show_admin))  # BackBtn is last
+
+
+class StoreManageMyView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.add_item(RemoveListingBtn())
+        self.add_item(RemoveBuyOrderBtn())
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+
+class AddSellListingBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Add Sell Listing", style=discord.ButtonStyle.success, custom_id="store:addsell")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: StoreMenuView = self.view  # type: ignore
+        await interaction.response.send_modal(AddSellListingModal(view.cog))
+
+
+class AddBuyOrderBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Add Buy Order", style=discord.ButtonStyle.success, custom_id="store:addbuy")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: StoreMenuView = self.view  # type: ignore
+        await interaction.response.send_modal(AddBuyOrderModal(view.cog))
+
+
+class BrowseStoresBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Browse Stores", style=discord.ButtonStyle.primary, custom_id="store:browse")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: StoreMenuView = self.view  # type: ignore
+        e = await view.cog.store_browse_embed(interaction.user)
+        buyview = StoreBuyView(view.cog, view.author, view.children[-1].show_admin)
+        await buyview.select.refresh(interaction.user)
+        await interaction.response.edit_message(embed=e, view=buyview)
+
+
+class FulfillBuyOrdersBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Fulfill Buy Orders", style=discord.ButtonStyle.primary, custom_id="store:fulfill")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: StoreMenuView = self.view  # type: ignore
+        e = await view.cog.store_fulfill_embed(interaction.user)
+        sellview = StoreSellToOrdersView(view.cog, view.author, view.children[-1].show_admin)
+        await sellview.select.refresh(interaction.user)
+        await interaction.response.edit_message(embed=e, view=sellview)
+
+
+class RemoveListingBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Remove Sell Listing", style=discord.ButtonStyle.danger, custom_id="store:removesell")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: StoreManageMyView = self.view  # type: ignore
+        await interaction.response.send_modal(RemoveSellListingModal(view.cog))
+
+
+class RemoveBuyOrderBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Remove Buy Order", style=discord.ButtonStyle.danger, custom_id="store:removebuy")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: StoreManageMyView = self.view  # type: ignore
+        await interaction.response.send_modal(RemoveBuyOrderModal(view.cog))
+
+
+# --------- Modals ----------
+class AddSellListingModal(discord.ui.Modal, title="➕ New Sell Listing"):
+    name = discord.ui.TextInput(label="Listing name", placeholder="e.g., 9003's Rock Stew", required=True, max_length=60)
+    bundle = discord.ui.TextInput(
+        label="Bundle (comma list)",
+        placeholder="food:1, metal:1",
+        required=True
+    )
+    price = discord.ui.TextInput(
+        label="Price (shown in your currency; saved in WC)",
+        placeholder="e.g., 25.00",
+        required=True
+    )
+    stock = discord.ui.TextInput(label="Stock units", placeholder="e.g., 10", required=True)
+
+    def __init__(self, cog: "CityBuilder"):
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Parse bundle
+        def parse_bundle(s: str) -> Dict[str, int]:
+            out: Dict[str, int] = {}
+            for part in s.split(","):
+                if not part.strip():
+                    continue
+                if ":" not in part:
+                    raise ValueError("Use key:value like food:1")
+                k, v = [x.strip().lower() for x in part.split(":", 1)]
+                if k == "ore":  # map alias
+                    k = "metal"
+                if k not in ("food", "metal", "goods"):
+                    raise ValueError(f"Unknown resource '{k}'. Use food, metal, goods.")
+                amt = int(v)
+                if amt <= 0:
+                    raise ValueError("Amounts must be positive integers.")
+                out[k] = out.get(k, 0) + amt
+            return out
+
+        try:
+            bundle = parse_bundle(str(self.bundle.value))
+            price_local = float(str(self.price.value))
+            stock = int(str(self.stock.value))
+            if price_local <= 0 or stock <= 0:
+                raise ValueError
+        except Exception as e:
+            return await interaction.response.send_message(f"❌ Invalid input: {e}", ephemeral=True)
+
+        # Convert local -> WC (no fee when *setting* a price; we store pure WC)
+        price_wc = await self.cog._local_to_wc(interaction.user, price_local)
+
+        # Save listing
+        d = await self.cog.config.user(interaction.user).all()
+        lst = list(d.get("store_sell_listings") or [])
+        new_id = f"S{random.randint(10_000, 99_999)}"
+        lst.append({"id": new_id, "name": str(self.name.value).strip(), "bundle": bundle, "price_wc": float(price_wc), "stock": int(stock)})
+        await self.cog.config.user(interaction.user).store_sell_listings.set(lst)
+
+        e = await self.cog.store_my_listings_embed(interaction.user, header=f"✅ Added listing **{self.name.value}** at {price_local:.2f} (your currency).")
+        await interaction.response.send_message(embed=e, ephemeral=True)
+
+
+class AddBuyOrderModal(discord.ui.Modal, title="➕ New Buy Order"):
+    resource = discord.ui.TextInput(label="Resource (food / metal / goods)", required=True)
+    qty = discord.ui.TextInput(label="Quantity wanted", required=True)
+    price = discord.ui.TextInput(label="Offered price per unit (your currency; saved in WC)", required=True)
+
+    def __init__(self, cog: "CityBuilder"):
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        r = str(self.resource.value).strip().lower()
+        if r == "ore":
+            r = "metal"
+        if r not in ("food", "metal", "goods"):
+            return await interaction.response.send_message("❌ Resource must be food, metal, or goods.", ephemeral=True)
+        try:
+            qty = int(str(self.qty.value))
+            price_local = float(str(self.price.value))
+            if qty <= 0 or price_local <= 0:
+                raise ValueError
+        except Exception:
+            return await interaction.response.send_message("❌ Quantity and price must be positive numbers.", ephemeral=True)
+
+        price_wc = await self.cog._local_to_wc(interaction.user, price_local)
+        d = await self.cog.config.user(interaction.user).all()
+        lst = list(d.get("store_buy_orders") or [])
+        new_id = f"B{random.randint(10_000, 99_999)}"
+        lst.append({"id": new_id, "resource": r, "qty": qty, "price_wc": float(price_wc)})
+        await self.cog.config.user(interaction.user).store_buy_orders.set(lst)
+        await interaction.response.send_message(f"✅ Buy order **{new_id}** created: {qty} {r} at {price_local:.2f} (your currency).", ephemeral=True)
+
+
+class RemoveSellListingModal(discord.ui.Modal, title="🗑️ Remove Sell Listing"):
+    listing_id = discord.ui.TextInput(label="Listing ID", placeholder="e.g., S12345", required=True)
+
+    def __init__(self, cog: "CityBuilder"):
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        lid = str(self.listing_id.value).strip()
+        lst = list(await self.cog.config.user(interaction.user).store_sell_listings())
+        new = [x for x in lst if x.get("id") != lid]
+        if len(new) == len(lst):
+            return await interaction.response.send_message("❌ Listing not found.", ephemeral=True)
+        await self.cog.config.user(interaction.user).store_sell_listings.set(new)
+        await interaction.response.send_message(f"✅ Removed listing **{lid}**.", ephemeral=True)
+
+
+class RemoveBuyOrderModal(discord.ui.Modal, title="🗑️ Remove Buy Order"):
+    order_id = discord.ui.TextInput(label="Order ID", placeholder="e.g., B54321", required=True)
+
+    def __init__(self, cog: "CityBuilder"):
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        oid = str(self.order_id.value).strip()
+        lst = list(await self.cog.config.user(interaction.user).store_buy_orders())
+        new = [x for x in lst if x.get("id") != oid]
+        if len(new) == len(lst):
+            return await interaction.response.send_message("❌ Order not found.", ephemeral=True)
+        await self.cog.config.user(interaction.user).store_buy_orders.set(new)
+        await interaction.response.send_message(f"✅ Removed order **{oid}**.", ephemeral=True)
+
+
+# --------- Buyer view (purchase listings) ----------
+class StoreBuyView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.select = PurchaseListingSelect(cog)
+        self.add_item(self.select)
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+
+class PurchaseListingSelect(ui.Select):
+    def __init__(self, cog: "CityBuilder"):
+        self.cog = cog
+        options = []
+        # Build options across all users
+        options = []  # [(owner_id, listing)]
+        # We'll store owner_id in the option value as "ownerId|listingId"
+        # Render below in callback
+        super().__init__(placeholder="Buy 1 unit from a listing", min_values=1, max_values=1, options=[])
+   async def callback(self, interaction: discord.Interaction):
+        value = self.values[0]
+        if value == "none":
+            return await interaction.response.send_message("Nothing to buy right now.", ephemeral=True)
+        owner_s, lid = value.split("|", 1)
+        owner_id = int(owner_s)
+        if owner_id == interaction.user.id:
+            return await interaction.response.send_message("You can’t buy your own listing.", ephemeral=True)
+
+        # Fetch listing
+        owner_data = await self.cog.config._get_base_group(owner_id).all()  # private helper OK in Red
+        listings = list(owner_data.get("store_sell_listings") or [])
+        listing = next((x for x in listings if x.get("id") == lid), None)
+        if not listing or int(listing.get("stock", 0)) <= 0:
+            return await interaction.response.send_message("Listing unavailable.", ephemeral=True)
+
+        price_wc = float(listing.get("price_wc") or 0.0)
+        # Buyer pays in local + fee
+        buyer_price_local = await self.cog._wc_to_local(interaction.user, price_wc)
+        buyer_price_local = trunc2(buyer_price_local * 1.10)
+
+        # Charge buyer
+        ok = await self.cog._charge_bank_local(interaction.user, buyer_price_local)
+        if not ok:
+            return await interaction.response.send_message(f"❌ Not enough funds. Need **{buyer_price_local:.2f}** in your currency (incl. 10% fee).", ephemeral=True)
+
+        # Add bundle to buyer
+        bundle = dict(listing.get("bundle") or {})
+        await self.cog._adjust_resources(interaction.user, bundle)
+
+        # Decrement seller stock
+        for it in listings:
+            if it.get("id") == lid:
+                it["stock"] = int(it.get("stock", 0)) - 1
+                break
+        await self.cog.config._get_base_group(owner_id).store_sell_listings.set(listings)
+
+        # Credit seller (after fee)
+        seller_user = self.cog.bot.get_user(owner_id)
+        if seller_user:
+            seller_payout_local = await self.cog._wc_to_local(seller_user, price_wc)
+            seller_payout_local = trunc2(seller_payout_local * 0.90)
+            await self.cog._credit_bank_local(seller_user, seller_payout_local)
+
+        # Confirm to buyer
+        e = await self.cog.make_city_embed(interaction.user, header=f"🛒 Purchased **{listing.get('name')}** for **{buyer_price_local:.2f}** (your currency).")
+        await interaction.response.edit_message(embed=e, view=CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user)))
+
+
+    async def refresh(self, viewer: discord.abc.User):
+        # Build dynamic options with viewer price
+        opts: list[discord.SelectOption] = []
+        all_users = await self.cog.config.all_users()
+        for owner_id, udata in all_users.items():
+            if str(owner_id) == str(viewer.id):
+                continue  # don't buy from self
+            for item in (udata.get("store_sell_listings") or []):
+                if int(item.get("stock", 0)) <= 0:
+                    continue
+                price_wc = float(item.get("price_wc") or 0.0)
+                price_local = await self.cog._wc_to_local(viewer, price_wc)
+                price_local_fee = trunc2(price_local * 1.10)  # buyer pays 10% fee
+                label = f'{item.get("name")} [Stock {item.get("stock")}]'
+                desc = f'Price {price_local_fee:.2f} in your currency (incl. 10% fee)'
+                value = f'{owner_id}|{item.get("id")}'
+                opts.append(discord.SelectOption(label=label[:100], description=desc[:100], value=value))
+        if not opts:
+            opts = [discord.SelectOption(label="No available listings", description="—", value="none")]
+        self.options = opts
+
+
+class StoreSellToOrdersView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.select = FulfillOrderSelect(cog)
+        self.add_item(self.select)
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+
+
+class FulfillOrderSelect(ui.Select):
+    def __init__(self, cog: "CityBuilder"):
+        self.cog = cog
+        super().__init__(placeholder="Sell 1 unit into a buy order", min_values=1, max_values=1, options=[])
+
+    async def refresh(self, seller: discord.abc.User):
+        opts = []
+        all_users = await self.cog.config.all_users()
+        for owner_id, udata in all_users.items():
+            if int(owner_id) == seller.id:
+                continue
+            for o in (udata.get("store_buy_orders") or []):
+                if int(o.get("qty", 0)) <= 0:
+                    continue
+                res = o.get("resource")
+                price_wc = float(o.get("price_wc") or 0.0)
+                # Show seller payout in seller currency (w/ 10% fee)
+                payout_local = await self.cog._wc_to_local(seller, price_wc)
+                payout_local_fee = trunc2(payout_local * 0.90)
+                label = f'Order {o.get("id")} · {res} x{int(o.get("qty"))}'
+                desc = f'Payout {payout_local_fee:.2f} (your currency, after 10% fee)'
+                value = f'{owner_id}|{o.get("id")}'
+                opts.append(discord.SelectOption(label=label[:100], description=desc[:100], value=value))
+        if not opts:
+            opts = [discord.SelectOption(label="No open buy orders", description="—", value="none")]
+        self.options = opts
+   
+    async def callback(self, interaction: discord.Interaction):
+        value = self.values[0]
+        if value == "none":
+            return await interaction.response.send_message("No orders to fulfill.", ephemeral=True)
+        buyer_s, oid = value.split("|", 1)
+        buyer_id = int(buyer_s)
+
+        # Pull order
+        buyer_data = await self.cog.config._get_base_group(buyer_id).all()
+        orders = list(buyer_data.get("store_buy_orders") or [])
+        order = next((x for x in orders if x.get("id") == oid), None)
+        if not order or int(order.get("qty", 0)) <= 0:
+            return await interaction.response.send_message("Order unavailable.", ephemeral=True)
+
+        res = order.get("resource")
+        # Check seller has resource
+        d = await self.cog.config.user(interaction.user).all()
+        have = int((d.get("resources") or {}).get(res, 0))
+        if have <= 0:
+            return await interaction.response.send_message(f"❌ You don’t have any **{res}** to sell.", ephemeral=True)
+
+        price_wc = float(order.get("price_wc") or 0.0)
+
+        # Buyer (order owner) is charged price+fee in THEIR local
+        buyer_user = self.cog.bot.get_user(buyer_id)
+        if not buyer_user:
+            return await interaction.response.send_message("Buyer not present; try later.", ephemeral=True)
+
+        buyer_charge_local = await self.cog._wc_to_local(buyer_user, price_wc)
+        buyer_charge_local = trunc2(buyer_charge_local * 1.10)
+        ok = await self.cog._charge_bank_local(buyer_user, buyer_charge_local)
+        if not ok:
+            return await interaction.response.send_message("❌ Buyer lacks funds to complete this order.", ephemeral=True)
+
+        # Transfer resource: seller -> buyer
+        await self.cog._adjust_resources(interaction.user, {res: -1})
+        await self.cog._adjust_resources(buyer_user, {res: +1})
+
+        # Decrease order qty
+        for o in orders:
+            if o.get("id") == oid:
+                o["qty"] = int(o.get("qty", 0)) - 1
+                break
+        await self.cog.config._get_base_group(buyer_id).store_buy_orders.set(orders)
+
+        # Credit seller (after fee) in seller local
+        seller_payout_local = await self.cog._wc_to_local(interaction.user, price_wc)
+        seller_payout_local = trunc2(seller_payout_local * 0.90)
+        await self.cog._credit_bank_local(interaction.user, seller_payout_local)
+
+        # Confirm to seller
+        e = await self.cog.make_city_embed(interaction.user, header=f"✅ Sold **1 {res}** for **{seller_payout_local:.2f}** (your currency, after fee).")
+        await interaction.response.edit_message(embed=e, view=CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user)))
+
+
+# ====== Store helpers & embeds ======
+async def store_home_embed(self, user: discord.abc.User) -> discord.Embed:
+    e = discord.Embed(
+        title="🛒 Player Store",
+        description="Create sell listings for **bundles**, post **buy orders** for resources, "
+                    "and trade across currencies.\n\n"
+                    "Fees: Buyer +10% on conversion · Seller −10% on payout."
+    )
+    e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
+    e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
+    return e
+
+async def store_my_listings_embed(self, user: discord.abc.User, header: str | None = None) -> discord.Embed:
+    d = await self.config.user(user).all()
+    lst = list(d.get("store_sell_listings") or [])
+    orders = list(d.get("store_buy_orders") or [])
+    rate, cur = await self._get_rate_currency(user)
+    def fmt_bundle(b: Dict[str, int]) -> str:
+        if not b: return "—"
+        return ", ".join([f"{k}+{v}" for k, v in b.items()])
+    sell_lines = []
+    for it in lst:
+        p_local = trunc2(float(it.get("price_wc") or 0.0) * rate)
+        sell_lines.append(f"• **{it.get('id')}** — {it.get('name')} | {fmt_bundle(it.get('bundle') or {})} | "
+                          f"Price **{p_local:.2f} {cur}** | Stock {int(it.get('stock') or 0)}")
+    buy_lines = []
+    for o in orders:
+        p_local = trunc2(float(o.get("price_wc") or 0.0) * rate)
+        buy_lines.append(f"• **{o.get('id')}** — {o.get('resource')} ×{int(o.get('qty') or 0)} @ **{p_local:.2f} {cur}** /u")
+    desc = (header + "\n\n" if header else "") + "**Your Sell Listings**\n" + ("\n".join(sell_lines) or "—")
+    e = discord.Embed(title="🧾 My Store", description=desc)
+    e.add_field(name="Your Buy Orders", value=("\n".join(buy_lines) or "—"), inline=False)
+    return e
+
+async def store_browse_embed(self, viewer: discord.abc.User) -> discord.Embed:
+    all_users = await self.config.all_users()
+    rate, cur = await self._get_rate_currency(viewer)
+    lines = []
+    for owner_id, udata in all_users.items():
+        if int(owner_id) == viewer.id:
+            continue
+        for it in (udata.get("store_sell_listings") or []):
+            if int(it.get("stock", 0)) <= 0: 
+                continue
+            price_wc = float(it.get("price_wc") or 0.0)
+            price_local = trunc2(price_wc * rate * 1.10)  # include buyer fee
+            owner = self.bot.get_user(int(owner_id))
+            owner_name = owner.display_name if owner else f"User {owner_id}"
+            bundle = ", ".join([f"{k}+{v}" for k, v in (it.get("bundle") or {}).items()]) or "—"
+            lines.append(f"• **{it.get('id')}** — {it.get('name')} by *{owner_name}* · {bundle} · "
+                         f"**{price_local:.2f} {cur}** (incl. fee) · Stock {int(it.get('stock') or 0)}")
+    e = discord.Embed(title="🛍️ Browse Listings", description="\n".join(lines) or "No listings available.")
+    return e
+
+async def store_fulfill_embed(self, seller: discord.abc.User) -> discord.Embed:
+    all_users = await self.config.all_users()
+    rate, cur = await self._get_rate_currency(seller)
+    lines = []
+    for owner_id, udata in all_users.items():
+        if int(owner_id) == seller.id:
+            continue
+        for o in (udata.get("store_buy_orders") or []):
+            if int(o.get("qty", 0)) <= 0:
+                continue
+            res = o.get("resource")
+            price_wc = float(o.get("price_wc") or 0.0)
+            payout_local = trunc2(price_wc * rate * 0.90)  # after seller fee
+            owner = self.bot.get_user(int(owner_id))
+            owner_name = owner.display_name if owner else f"User {owner_id}"
+            lines.append(f"• **{o.get('id')}** — {res} ×{int(o.get('qty') or 0)} from *{owner_name}* "
+                         f"@ **{payout_local:.2f} {cur}** (after fee)")
+    return discord.Embed(title="📦 Fulfill Buy Orders", description="\n".join(lines) or "No open buy orders.")
+
 
 
 # ====== Shared Back button ======
