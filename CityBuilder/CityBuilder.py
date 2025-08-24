@@ -630,6 +630,37 @@ class CityBuilder(commands.Cog):
         e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
         e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
         return e
+
+    def _bundle_mul(self, bundle: Dict[str, int], n: int) -> Dict[str, int]:
+        return {k: int(v) * int(n) for k, v in (bundle or {}).items()}
+
+    def _bundle_sub(self, a: Dict[str, int], b: Dict[str, int]) -> Dict[str, int]:
+        out = dict(a or {})
+        for k, v in (b or {}).items():
+            out[k] = int(out.get(k, 0)) - int(v)
+            if out[k] <= 0:
+                out[k] = 0
+        return out
+    
+    def _bundle_add(self, a: Dict[str, int], b: Dict[str, int]) -> Dict[str, int]:
+        out = dict(a or {})
+        for k, v in (b or {}).items():
+            out[k] = int(out.get(k, 0)) + int(v)
+        return out
+    
+    def _effective_stock_from_escrow(self, listing: Dict) -> int:
+        """
+        Derive usable stock from escrow vs per-unit bundle.
+        If 'escrow' missing (legacy), fall back to listing['stock'] (best effort).
+        """
+        bundle = {k: int(v) for k, v in (listing.get("bundle") or {}).items()}
+        escrow = {k: int(v) for k, v in (listing.get("escrow") or {}).items()}
+        if not bundle:
+            return 0
+        # Units possible with current escrow
+        possible = min((escrow.get(k, 0) // max(1, bundle[k])) for k in bundle.keys())
+        return min(int(listing.get("stock", 0)), possible)
+
     
     async def store_my_listings_embed(self, user: discord.abc.User, header: Optional[str] = None) -> discord.Embed:
         d = await self.config.user(user).all()
@@ -661,17 +692,32 @@ class CityBuilder(commands.Cog):
             if int(owner_id) == viewer.id:
                 continue
             for it in (udata.get("store_sell_listings") or []):
-                if int(it.get("stock", 0)) <= 0: 
+                # Compute effective (escrow-backed) stock FIRST
+                effective_stock = (
+                    self._effective_stock_from_escrow(it)
+                    if hasattr(self, "_effective_stock_from_escrow")
+                    else int(it.get("stock") or 0)
+                )
+                if effective_stock <= 0:
                     continue
+    
                 price_wc = float(it.get("price_wc") or 0.0)
                 price_local = trunc2(price_wc * rate * 1.10)  # include buyer fee
                 owner = self.bot.get_user(int(owner_id))
                 owner_name = owner.display_name if owner else f"User {owner_id}"
                 bundle = ", ".join([f"{k}+{v}" for k, v in (it.get("bundle") or {}).items()]) or "—"
-                lines.append(f"• **{it.get('id')}** — {it.get('name')} by *{owner_name}* · {bundle} · "
-                             f"**{price_local:.2f} {cur}** (incl. fee) · Stock {int(it.get('stock') or 0)}")
-        e = discord.Embed(title="🛍️ Browse Listings", description="\n".join(lines) or "No listings available.")
+    
+                lines.append(
+                    f"• **{it.get('id')}** — {it.get('name')} by *{owner_name}* · {bundle} · "
+                    f"**{price_local:.2f} {cur}** (incl. fee) · Stock {effective_stock}"
+                )
+    
+        e = discord.Embed(
+            title="🛍️ Browse Listings",
+            description="\n".join(lines) or "No listings available."
+        )
         return e
+
     
     async def store_fulfill_embed(self, seller: discord.abc.User) -> discord.Embed:
         all_users = await self.config.all_users()
@@ -1596,7 +1642,7 @@ class AddSellListingModal(discord.ui.Modal, title="➕ New Sell Listing"):
                 if ":" not in part:
                     raise ValueError("Use key:value like food:1")
                 k, v = [x.strip().lower() for x in part.split(":", 1)]
-                if k == "ore":  # map alias
+                if k == "ore":
                     k = "metal"
                 if k not in ("food", "metal", "goods"):
                     raise ValueError(f"Unknown resource '{k}'. Use food, metal, goods.")
@@ -1605,28 +1651,69 @@ class AddSellListingModal(discord.ui.Modal, title="➕ New Sell Listing"):
                     raise ValueError("Amounts must be positive integers.")
                 out[k] = out.get(k, 0) + amt
             return out
-
+    
         try:
             bundle = parse_bundle(str(self.bundle.value))
             price_local = float(str(self.price.value))
-            stock = int(str(self.stock.value))
-            if price_local <= 0 or stock <= 0:
+            requested_stock = int(str(self.stock.value))
+            if price_local <= 0 or requested_stock <= 0:
                 raise ValueError
         except Exception as e:
             return await interaction.response.send_message(f"❌ Invalid input: {e}", ephemeral=True)
-
-        # Convert local -> WC (no fee when *setting* a price; we store pure WC)
+    
+        # Convert local -> WC (store pure WC)
         price_wc = await self.cog._local_to_wc(interaction.user, price_local)
-
-        # Save listing
+    
+        # Check seller resources and compute craftable stock
+        d = await self.cog.config.user(interaction.user).all()
+        inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
+    
+        def max_units_from_inventory(inv: Dict[str, int], per_unit: Dict[str, int]) -> int:
+            if not per_unit:
+                return 0
+            vals = []
+            for r, need in per_unit.items():
+                have = int(inv.get(r, 0))
+                if need <= 0:
+                    return 0
+                vals.append(have // need)
+            return min(vals) if vals else 0
+    
+        craftable = max_units_from_inventory(inv, bundle)
+        final_stock = min(requested_stock, craftable)
+    
+        if final_stock <= 0:
+            return await interaction.response.send_message(
+                "❌ You don’t currently have the resources to back that listing (stock would be 0).",
+                ephemeral=True
+            )
+    
+        # ESCROW: remove resources upfront from seller and store on the listing
+        escrow_total = self.cog._bundle_mul(bundle, final_stock)
+        # Deduct from seller inventory
+        await self.cog._adjust_resources(interaction.user, {k: -v for k, v in escrow_total.items()})
+    
+        # Save listing with escrow
         d = await self.cog.config.user(interaction.user).all()
         lst = list(d.get("store_sell_listings") or [])
         new_id = f"S{random.randint(10_000, 99_999)}"
-        lst.append({"id": new_id, "name": str(self.name.value).strip(), "bundle": bundle, "price_wc": float(price_wc), "stock": int(stock)})
+        lst.append({
+            "id": new_id,
+            "name": str(self.name.value).strip(),
+            "bundle": bundle,
+            "price_wc": float(price_wc),
+            "stock": int(final_stock),
+            "escrow": escrow_total,  # total reserved resources
+        })
         await self.cog.config.user(interaction.user).store_sell_listings.set(lst)
-
-        e = await self.cog.store_my_listings_embed(interaction.user, header=f"✅ Added listing **{self.name.value}** at {price_local:.2f} (your currency).")
+    
+        e = await self.cog.store_my_listings_embed(
+            interaction.user,
+            header=f"✅ Added listing **{self.name.value}** at {price_local:.2f} (your currency). "
+                   f"Escrowed stock: {final_stock}."
+        )
         await interaction.response.send_message(embed=e, ephemeral=True)
+
 
 
 class AddBuyOrderModal(discord.ui.Modal, title="➕ New Buy Order"):
@@ -1781,7 +1868,10 @@ class PurchaseListingSelect(ui.Select):
                 price_wc = float(item.get("price_wc") or 0.0)
                 price_local = await self.cog._wc_to_local(viewer, price_wc)
                 price_local_fee = trunc2(price_local * 1.10)  # buyer pays 10% fee
-                label = f'{item.get("name")} [Stock {item.get("stock")}]'
+                effective_stock = self.cog._effective_stock_from_escrow(item)
+                if effective_stock <= 0:
+                    continue
+                label = f'{item.get("name")} [Stock {effective_stock}]'
                 desc = f'Price {price_local_fee:.2f} in your currency (incl. 10% fee)'
                 value = f'{owner_id}|{item.get("id")}'
                 opts.append(discord.SelectOption(label=label[:100], description=desc[:100], value=value))
