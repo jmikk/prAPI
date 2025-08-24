@@ -720,23 +720,73 @@ class CityBuilder(commands.Cog):
 
     
     async def store_fulfill_embed(self, seller: discord.abc.User) -> discord.Embed:
+        """
+        Show buy orders another player posted that the seller can likely fulfill *now*.
+        - Filters to orders where the seller has at least 1 unit of the resource.
+        - Computes seller payout (after 10% fee) in seller's currency.
+        - Best-effort flag if buyer appears short on funds (bank < price_in_buyer_currency + 10%).
+        """
         all_users = await self.config.all_users()
-        rate, cur = await self._get_rate_currency(seller)
+        seller_rate, seller_cur = await self._get_rate_currency(seller)
+    
+        # Seller inventory snapshot
+        d = await self.config.user(seller).all()
+        inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
+    
         lines = []
+    
         for owner_id, udata in all_users.items():
-            if int(owner_id) == seller.id:
+            buyer_id = int(owner_id)
+            if buyer_id == seller.id:
                 continue
+    
+            # Pull buyer info we might need
+            try:
+                buyer_user = self.bot.get_user(buyer_id)
+                buyer_rate, _buyer_cur = await self._get_rate_currency(buyer_user) if buyer_user else (1.0, "Local")
+                buyer_bank_local = float((udata or {}).get("bank", 0.0))
+            except Exception:
+                buyer_user = None
+                buyer_rate, _buyer_cur, buyer_bank_local = (1.0, "Local", 0.0)
+    
             for o in (udata.get("store_buy_orders") or []):
-                if int(o.get("qty", 0)) <= 0:
+                qty = int(o.get("qty", 0) or 0)
+                if qty <= 0:
                     continue
-                res = o.get("resource")
+    
+                res = str(o.get("resource") or "").lower()
+                if res == "ore":
+                    res = "metal"
+    
+                # Only show if seller has the resource *now*
+                if int(inv.get(res, 0)) <= 0:
+                    continue
+    
                 price_wc = float(o.get("price_wc") or 0.0)
-                payout_local = trunc2(price_wc * rate * 0.90)  # after seller fee
-                owner = self.bot.get_user(int(owner_id))
-                owner_name = owner.display_name if owner else f"User {owner_id}"
-                lines.append(f"• **{o.get('id')}** — {res} ×{int(o.get('qty') or 0)} from *{owner_name}* "
-                             f"@ **{payout_local:.2f} {cur}** (after fee)")
-        return discord.Embed(title="📦 Fulfill Buy Orders", description="\n".join(lines) or "No open buy orders.")
+                if price_wc <= 0:
+                    continue
+    
+                # Seller payout (after fee), shown in seller currency
+                payout_local = trunc2(price_wc * seller_rate * 0.90)
+    
+                # Quick check whether buyer likely has the funds (buyer pays +10% in their currency)
+                buyer_charge_local = trunc2(price_wc * buyer_rate * 1.10)
+                buyer_ok = (buyer_bank_local + 1e-9) >= buyer_charge_local
+    
+                owner = self.bot.get_user(buyer_id)
+                owner_name = owner.display_name if owner else f"User {buyer_id}"
+    
+                warn_txt = "" if buyer_ok else " _(buyer may be short on funds)_"
+                lines.append(
+                    f"• **{o.get('id')}** — {res} ×{qty} from *{owner_name}* "
+                    f"@ **{payout_local:.2f} {seller_cur}** (after fee){warn_txt}"
+                )
+    
+        return discord.Embed(
+            title="📦 Fulfill Buy Orders",
+            description="\n".join(lines) or "No open buy orders you can fulfill right now."
+        )
+
 
 
 
@@ -1520,7 +1570,7 @@ class StoreMenuView(ui.View):
         self.add_item(AddSellListingBtn())
         self.add_item(AddBuyOrderBtn())
         self.add_item(BrowseStoresBtn())
-        self.add_item(FulfillBuyOrdersBtn())
+        #self.add_item(FulfillBuyOrdersBtn())
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
