@@ -1892,8 +1892,7 @@ class CityBuilder(commands.Cog):
         e.add_field(
             name="👷 Workers",
             value=(
-                f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
-                f"Capacity **{cap}**\n"
+                f"Hired **{hired}** · Capacity **{cap}**\n Assigned **{assigned}** · Unassigned **{unassigned}** \n"
                 f"Wages per tick: **{wages_local:.2f} {cur}** "
             ),
             inline=False,
