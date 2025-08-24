@@ -8,6 +8,7 @@ import discord
 from discord import ui
 from redbot.core import commands, Config
 import random
+import time
 
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
@@ -817,6 +818,16 @@ class CityBuilder(commands.Cog):
         )
         self.task = bot.loop.create_task(self.resource_tick())
 
+    def _next_tick_ts(self) -> int:
+        """
+        Returns the next tick boundary in Unix seconds.
+        Uses the global TICK_SECONDS interval and aligns to the next multiple
+        after 'now', which matches the sleep-based loop well enough.
+        """
+        now = time.time()
+        return int((now // TICK_SECONDS + 1) * TICK_SECONDS)
+
+
     # ====== Store helpers & embeds ======
     async def store_home_embed(self, user: discord.abc.User) -> discord.Embed:
         e = discord.Embed(
@@ -1446,6 +1457,13 @@ class CityBuilder(commands.Cog):
         e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
         e.add_field(name="⏳ Upkeep per Tick", value=f"**{local_upkeep:.2f} {cur}/t**", inline=True)
         e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
+        next_ts = self._next_tick_ts()
+        e.add_field(
+            name="🕒 Next Tick",
+            value=f"<t:{next_ts}:R>  —  <t:{next_ts}:T>",
+            inline=False
+        )
+
         return e
 
 
