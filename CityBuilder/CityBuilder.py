@@ -975,7 +975,7 @@ class CityBuilder(commands.Cog):
                 if res in out:
                     producers.append(f"{bname}(+{int(out[res])}/t)")
             prod_txt = ", ".join(producers) if producers else "—"
-            lines.append(f"• **{res}** — qty **{qty}** · producers: {prod_txt}")
+            lines.append(f"• **{res}** — qty **{qty}** · produced by: {prod_txt}")
     
         if not lines:
             lines = ["—"]
