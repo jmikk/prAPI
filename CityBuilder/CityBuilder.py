@@ -1574,8 +1574,17 @@ class CityBuilder(commands.Cog):
                 continue  # hide empty tiers on the main card; they’ll appear in the browser
             row = " | ".join(f"{name}×{cnt}" for name, cnt in entries)
             tier_lines.append(f"**Tier {t}** — {row}")
-        btxt = "\n".join(tier_lines) or "None"      
         
+        grouped = self._group_owned_by_tier(d)
+        tier_lines = []
+        for t in self._all_tiers():
+            entries = grouped.get(t, [])
+            total = sum(cnt for _, cnt in entries)
+            if total == 0:
+                continue  # keep empty tiers off the main card; remove this line if you want to show 0s
+            tier_lines.append(f"**Tier {t}** — {total}")
+        btxt = "\n".join(tier_lines) or "None"
+
         rtxt = "\n".join(f"• **{k}**: {v}" for k, v in res.items()) or "None"
     
         e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
