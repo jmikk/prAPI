@@ -903,8 +903,10 @@ class CityBuilder(commands.Cog):
             if not entries:
                 lines.append(f"**Tier {t}** — —")
             else:
-                count = name * cnt for name, cnt in entries
-                lines.append(f"**Tier {t}** — {row}")
+                for t in self._all_tiers():
+                    entries = grouped.get(t, [])
+                    total = sum(cnt for _, cnt in entries)
+                lines.append(f"**Tier {t}** — {total}")
         e = discord.Embed(title="🏗️ Buildings by Tier", description="\n".join(lines) or "—")
         e.set_footer(text="Select a tier below to view details.")
         return e
