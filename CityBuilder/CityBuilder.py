@@ -10,6 +10,7 @@ from redbot.core import commands, Config
 import random
 import time
 
+
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
     "house":   {"cost": 50.0,  "upkeep": 0, "produces": {},"capacity": 1, "tier": 0},  # +1 worker capacity
