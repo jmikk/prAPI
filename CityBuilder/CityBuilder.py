@@ -1881,13 +1881,34 @@ class CityBuilder(commands.Cog):
         per_tick_local = trunc2(local_upkeep + wages_local)
         if per_tick_local > 0:
             ticks_left = int(bank_local // per_tick_local)
-            # convert ticks to hours (TICK_SECONDS is 3600)
             hours_left = ticks_left * (TICK_SECONDS // 3600)
             runway_txt = f"~{ticks_left} ticks (~{hours_left}h)"
         else:
             runway_txt = "∞ (no upkeep/wages)"
     
-        ...
+        desc = "Use the buttons below to manage your city."
+        if header:
+            desc = f"{header}\n\n{desc}"
+    
+        # ✅ CREATE THE EMBED BEFORE ADDING FIELDS
+        e = discord.Embed(
+            title=f"🌆 {getattr(user, 'display_name', 'Your')} City",
+            description=desc
+        )
+    
+        grouped = self._group_owned_by_tier(d)
+        tier_lines = []
+        for t in self._all_tiers():
+            entries = grouped.get(t, [])
+            if not entries:
+                continue
+            row = " | ".join(f"{name}×{cnt}" for name, cnt in entries)
+            tier_lines.append(f"**Tier {t}** — {row}")
+        btxt = "\n".join(tier_lines) or "None"
+    
+        rtxt = "\n".join(f"• **{k}**: {v}" for k, v in res.items()) or "None"
+    
+        # Add fields after embed is defined
         e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
         e.add_field(
@@ -1902,9 +1923,8 @@ class CityBuilder(commands.Cog):
         )
         e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
         e.add_field(name="⏳ Upkeep per Tick", value=f"**{per_tick_local:.2f} {cur}/t**", inline=True)
-    
-        # NEW: runway field
         e.add_field(name="📉 Runway", value=runway_txt, inline=False)
+        e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
     
         next_ts = self._next_tick_ts()
         e.add_field(
@@ -1912,7 +1932,9 @@ class CityBuilder(commands.Cog):
             value=f"<t:{next_ts}:R>  —  <t:{next_ts}:T>",
             inline=False
         )
+    
         return e
+
 
 
 
