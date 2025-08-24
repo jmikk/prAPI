@@ -815,8 +815,8 @@ class CityBuilder(commands.Cog):
 
             store_sell_listings=[],  # [{id:str, name:str, bundle:{res:int}, price_wc: float, stock:int}]
             store_buy_orders=[],     # [{id:str, resource:str, qty:int, price_wc:float}]
-            self.next_tick_at: Optional[int] = None
         )
+        self.next_tick_at: Optional[int] = None
         self.task = bot.loop.create_task(self.resource_tick())
 
     def _next_tick_ts(self) -> int:
