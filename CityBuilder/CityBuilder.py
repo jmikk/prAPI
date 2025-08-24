@@ -590,6 +590,204 @@ class UnassignSelect(ui.Select):
         )
 
 
+# ====== Store confirmations ======
+class ConfirmPurchaseView(ui.View):
+    def __init__(
+        self,
+        cog: "CityBuilder",
+        buyer: discord.abc.User,
+        owner_id: int,
+        listing_id: str,
+        listing_name: str,
+        bundle: Dict[str, int],
+        price_wc: float,
+        buyer_price_local: float,
+        show_admin: bool,
+    ):
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.buyer = buyer
+        self.owner_id = int(owner_id)
+        self.listing_id = listing_id
+        self.listing_name = listing_name
+        self.bundle = dict(bundle)
+        self.price_wc = float(price_wc)
+        self.buyer_price_local = float(buyer_price_local)
+        self.show_admin = show_admin
+        self.add_item(ConfirmPurchaseBtn())
+        self.add_item(CancelConfirmBtn())
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.buyer.id
+
+
+class ConfirmPurchaseBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Confirm Purchase", style=discord.ButtonStyle.success)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: ConfirmPurchaseView = self.view  # type: ignore
+        cog = view.cog
+
+        # Re-load seller listing (to avoid race conditions)
+        owner_conf = cog.config.user_from_id(view.owner_id)
+        owner_data = await owner_conf.all()
+        listings = list(owner_data.get("store_sell_listings") or [])
+        listing = next((x for x in listings if x.get("id") == view.listing_id), None)
+        if not listing:
+            return await interaction.response.send_message("Listing unavailable.", ephemeral=True)
+
+        # Check effective stock again
+        eff_stock = cog._effective_stock_from_escrow(listing) if hasattr(cog, "_effective_stock_from_escrow") else int(listing.get("stock", 0) or 0)
+        if eff_stock <= 0:
+            listing["stock"] = 0
+            for i, it in enumerate(listings):
+                if it.get("id") == view.listing_id:
+                    listings[i] = listing
+                    break
+            await owner_conf.store_sell_listings.set(listings)
+            return await interaction.response.send_message("⚠️ This listing is currently out of stock.", ephemeral=True)
+
+        # Charge buyer (uses price calculated earlier)
+        ok = await cog._charge_bank_local(view.buyer, trunc2(view.buyer_price_local))
+        if not ok:
+            return await interaction.response.send_message(
+                f"❌ Not enough funds. Need **{view.buyer_price_local:.2f}** (incl. 10% fee).",
+                ephemeral=True
+            )
+
+        # Transfer one unit from escrow → buyer
+        bundle = {k: int(v) for k, v in (listing.get("bundle") or {}).items()}
+        escrow = {k: int(v) for k, v in (listing.get("escrow") or {}).items()}
+        for r, need in bundle.items():
+            escrow[r] = max(0, int(escrow.get(r, 0)) - int(need))
+        listing["escrow"] = escrow
+        listing["stock"] = max(0, int(listing.get("stock", 0)) - 1)
+
+        # Save seller listing
+        for i, it in enumerate(listings):
+            if it.get("id") == view.listing_id:
+                listings[i] = listing
+                break
+        await owner_conf.store_sell_listings.set(listings)
+
+        # Give items to buyer
+        await cog._adjust_resources(view.buyer, bundle)
+
+        # Credit seller (after fee)
+        seller_user = cog.bot.get_user(view.owner_id)
+        if seller_user:
+            seller_payout_local = trunc2((await cog._wc_to_local(seller_user, float(listing.get("price_wc") or view.price_wc))) * 0.90)
+            await cog._credit_bank_local(seller_user, seller_payout_local)
+
+        # Feedback + return to main menu
+        e = await cog.make_city_embed(
+            view.buyer,
+            header=f"🛒 Purchased **{view.listing_name}** for **{view.buyer_price_local:.2f}** (incl. fee)."
+        )
+        await interaction.response.edit_message(
+            embed=e,
+            view=CityMenuView(cog, view.buyer, show_admin=view.show_admin)
+        )
+
+
+class ConfirmSellToOrderView(ui.View):
+    def __init__(
+        self,
+        cog: "CityBuilder",
+        seller: discord.abc.User,
+        buyer_id: int,
+        order_id: str,
+        resource: str,
+        price_wc: float,
+        seller_payout_local: float,
+        show_admin: bool,
+    ):
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.seller = seller
+        self.buyer_id = int(buyer_id)
+        self.order_id = order_id
+        self.resource = resource
+        self.price_wc = float(price_wc)
+        self.seller_payout_local = float(seller_payout_local)
+        self.show_admin = show_admin
+        self.add_item(ConfirmSellBtn())
+        self.add_item(CancelConfirmBtn())
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.seller.id
+
+
+class ConfirmSellBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Confirm Sale", style=discord.ButtonStyle.success)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: ConfirmSellToOrderView = self.view  # type: ignore
+        cog = view.cog
+
+        # Reload buyer order
+        buyer_conf = cog.config.user_from_id(view.buyer_id)
+        buyer_data = await buyer_conf.all()
+        orders = list(buyer_data.get("store_buy_orders") or [])
+        order = next((x for x in orders if x.get("id") == view.order_id), None)
+        if not order or int(order.get("qty", 0)) <= 0:
+            return await interaction.response.send_message("Order unavailable.", ephemeral=True)
+
+        res = str(order.get("resource") or "").lower()
+        if res == "ore":
+            res = "metal"
+
+        # Ensure seller still has the item
+        d = await cog.config.user(view.seller).all()
+        if int((d.get("resources") or {}).get(res, 0)) <= 0:
+            return await interaction.response.send_message(f"❌ You no longer have **{res}**.", ephemeral=True)
+
+        price_wc = float(order.get("price_wc") or view.price_wc)
+
+        # Charge buyer (+10%)
+        buyer_user = cog.bot.get_user(view.buyer_id)
+        if not buyer_user:
+            return await interaction.response.send_message("Buyer not present; try later.", ephemeral=True)
+        buyer_charge_local = trunc2((await cog._wc_to_local(buyer_user, price_wc)) * 1.10)
+        ok = await cog._charge_bank_local(buyer_user, buyer_charge_local)
+        if not ok:
+            return await interaction.response.send_message("❌ Buyer lacks funds to complete this order.", ephemeral=True)
+
+        # Transfer resource
+        await cog._adjust_resources(view.seller, {res: -1})
+        await cog._adjust_resources(buyer_user, {res: +1})
+
+        # Decrement order
+        for o in orders:
+            if o.get("id") == view.order_id:
+                o["qty"] = int(o.get("qty", 0)) - 1
+                break
+        await buyer_conf.store_buy_orders.set(orders)
+
+        # Credit seller (−10%)
+        seller_payout_local = trunc2((await cog._wc_to_local(view.seller, price_wc)) * 0.90)
+        await cog._credit_bank_local(view.seller, seller_payout_local)
+
+        e = await cog.make_city_embed(
+            view.seller,
+            header=f"✅ Sold **1 {res}** for **{seller_payout_local:.2f}** (after fee)."
+        )
+        await interaction.response.edit_message(
+            embed=e,
+            view=CityMenuView(cog, view.seller, show_admin=view.show_admin)
+        )
+
+
+class CancelConfirmBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Cancel", style=discord.ButtonStyle.secondary)
+
+    async def callback(self, interaction: discord.Interaction):
+        # Just close the ephemeral confirmation
+        await interaction.response.send_message("❎ Cancelled.", ephemeral=True)
+
 
 # ====== Cog ======
 class CityBuilder(commands.Cog):
@@ -1865,7 +2063,6 @@ class PurchaseListingSelect(ui.Select):
         if owner_id == interaction.user.id:
             return await interaction.response.send_message("You can’t buy your own listing.", ephemeral=True)
     
-        # 👉 Use the public Red config API
         owner_conf = self.cog.config.user_from_id(owner_id)
         owner_data = await owner_conf.all()
         listings = list(owner_data.get("store_sell_listings") or [])
@@ -1875,9 +2072,8 @@ class PurchaseListingSelect(ui.Select):
     
         eff_stock = self.cog._effective_stock_from_escrow(listing) if hasattr(self.cog, "_effective_stock_from_escrow") else int(listing.get("stock", 0) or 0)
         if eff_stock <= 0:
-            # show 0 stock and save
+            # reflect 0 stock for visibility
             listing["stock"] = 0
-            listing["escrow"] = listing.get("escrow") or {}
             for i, it in enumerate(listings):
                 if it.get("id") == lid:
                     listings[i] = listing
@@ -1888,48 +2084,36 @@ class PurchaseListingSelect(ui.Select):
         price_wc = float(listing.get("price_wc") or 0.0)
         buyer_price_local = trunc2((await self.cog._wc_to_local(interaction.user, price_wc)) * 1.10)
     
-        # Charge buyer
-        ok = await self.cog._charge_bank_local(interaction.user, buyer_price_local)
-        if not ok:
-            return await interaction.response.send_message(
-                f"❌ Not enough funds. Need **{buyer_price_local:.2f}** in your currency (incl. 10% fee).",
-                ephemeral=True
-            )
-    
-        # Transfer one unit from escrow → buyer
         bundle = {k: int(v) for k, v in (listing.get("bundle") or {}).items()}
-        escrow = {k: int(v) for k, v in (listing.get("escrow") or {}).items()}
-        for r, need in bundle.items():
-            escrow[r] = max(0, int(escrow.get(r, 0)) - int(need))
-        listing["escrow"] = escrow
-        listing["stock"] = max(0, int(listing.get("stock", 0)) - 1)
+        _, buyer_cur = await self.cog._get_rate_currency(interaction.user)
+        bundle_txt = ", ".join([f"{k}+{v}" for k, v in bundle.items()]) or "—"
     
-        # Save listing changes back to the seller
-        for i, it in enumerate(listings):
-            if it.get("id") == lid:
-                listings[i] = listing
-                break
-        await owner_conf.store_sell_listings.set(listings)
-    
-        # Give items to buyer
-        await self.cog._adjust_resources(interaction.user, bundle)
-    
-        # Credit seller (after fee)
-        seller_user = self.cog.bot.get_user(owner_id)
-        if seller_user:
-            seller_payout_local = trunc2((await self.cog._wc_to_local(seller_user, price_wc)) * 0.90)
-            await self.cog._credit_bank_local(seller_user, seller_payout_local)
-    
-        e = await self.cog.make_city_embed(
-            interaction.user,
-            header=f"🛒 Purchased **{listing.get('name')}** for **{buyer_price_local:.2f}** (your currency)."
+        confirm_embed = discord.Embed(
+            title="Confirm Purchase",
+            description=(
+                f"**{listing.get('name')}**\n"
+                f"Bundle: {bundle_txt}\n"
+                f"Price: **{buyer_price_local:.2f} {buyer_cur}** (incl. 10% fee)\n\n"
+                "Do you want to proceed?"
+            )
         )
-        await interaction.response.edit_message(
-            embed=e,
-            view=CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
+    
+        # Send ephemeral confirmation popup
+        await interaction.response.send_message(
+            embed=confirm_embed,
+            view=ConfirmPurchaseView(
+                self.cog,
+                interaction.user,
+                owner_id,
+                lid,
+                str(listing.get("name") or "Item"),
+                bundle,
+                price_wc,
+                buyer_price_local,
+                show_admin=self.cog._is_adminish(interaction.user),
+            ),
+            ephemeral=True
         )
-
-
 
     async def refresh(self, viewer: discord.abc.User):
         # Build dynamic options with viewer price
@@ -2004,7 +2188,6 @@ class FulfillOrderSelect(ui.Select):
         buyer_s, oid = value.split("|", 1)
         buyer_id = int(buyer_s)
     
-        # 👉 Use the public Red config API
         buyer_conf = self.cog.config.user_from_id(buyer_id)
         buyer_data = await buyer_conf.all()
         orders = list(buyer_data.get("store_buy_orders") or [])
@@ -2012,44 +2195,43 @@ class FulfillOrderSelect(ui.Select):
         if not order or int(order.get("qty", 0)) <= 0:
             return await interaction.response.send_message("Order unavailable.", ephemeral=True)
     
-        res = order.get("resource")
+        res = str(order.get("resource") or "").lower()
+        if res == "ore":
+            res = "metal"
+    
+        # Seller must have at least 1 unit
         d = await self.cog.config.user(interaction.user).all()
         if int((d.get("resources") or {}).get(res, 0)) <= 0:
             return await interaction.response.send_message(f"❌ You don’t have any **{res}** to sell.", ephemeral=True)
     
         price_wc = float(order.get("price_wc") or 0.0)
-        buyer_user = self.cog.bot.get_user(buyer_id)
-        if not buyer_user:
-            return await interaction.response.send_message("Buyer not present; try later.", ephemeral=True)
-    
-        buyer_charge_local = trunc2((await self.cog._wc_to_local(buyer_user, price_wc)) * 1.10)
-        ok = await self.cog._charge_bank_local(buyer_user, buyer_charge_local)
-        if not ok:
-            return await interaction.response.send_message("❌ Buyer lacks funds to complete this order.", ephemeral=True)
-    
-        # Transfer resource
-        await self.cog._adjust_resources(interaction.user, {res: -1})
-        await self.cog._adjust_resources(buyer_user, {res: +1})
-    
-        # Decrease order qty and save back to buyer
-        for o in orders:
-            if o.get("id") == oid:
-                o["qty"] = int(o.get("qty", 0)) - 1
-                break
-        await buyer_conf.store_buy_orders.set(orders)
-    
-        # Credit seller (after fee)
         seller_payout_local = trunc2((await self.cog._wc_to_local(interaction.user, price_wc)) * 0.90)
-        await self.cog._credit_bank_local(interaction.user, seller_payout_local)
+        _, seller_cur = await self.cog._get_rate_currency(interaction.user)
     
-        e = await self.cog.make_city_embed(
-            interaction.user,
-            header=f"✅ Sold **1 {res}** for **{seller_payout_local:.2f}** (your currency, after fee)."
+        confirm_embed = discord.Embed(
+            title="Confirm Sale",
+            description=(
+                f"Sell **1 {res}** into order **{oid}**\n"
+                f"Payout: **{seller_payout_local:.2f} {seller_cur}** (after 10% fee)\n\n"
+                "Do you want to proceed?"
+            )
         )
-        await interaction.response.edit_message(
-            embed=e,
-            view=CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
+    
+        await interaction.response.send_message(
+            embed=confirm_embed,
+            view=ConfirmSellToOrderView(
+                self.cog,
+                interaction.user,
+                buyer_id,
+                oid,
+                res,
+                price_wc,
+                seller_payout_local,
+                show_admin=self.cog._is_adminish(interaction.user),
+            ),
+            ephemeral=True
         )
+
 
 
 
