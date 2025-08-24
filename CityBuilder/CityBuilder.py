@@ -2275,11 +2275,11 @@ class BrowseStoresBtn(ui.Button):
         super().__init__(label="Browse Stores", style=discord.ButtonStyle.primary, custom_id="store:browse")
 
     async def callback(self, interaction: discord.Interaction):
-        view: StoreMenuView = self.view  # type: ignore
         e = await view.cog.store_browse_embed(interaction.user)
         buyview = StoreBuyView(view.cog, view.author, view.children[-1].show_admin)
-        await buyview.select.refresh(interaction.user)
+        await buyview.refresh(interaction.user)  # <— load items + build the first page
         await interaction.response.edit_message(embed=e, view=buyview)
+    
 
 
 class FulfillBuyOrdersBtn(ui.Button):
@@ -2548,16 +2548,16 @@ class PurchaseListingSelect(ui.Select):
         super().__init__(placeholder="Loading listings…", min_values=1, max_values=1, options=[])
 
     async def refresh(self, viewer: discord.abc.User):
-        # Build page options with viewer prices
+        # Ensure the view has data (in case refresh() on the view wasn't called)
+        if not self._view._all_items:
+            await self._view.load_all_items(viewer)
+    
         opts: list[discord.SelectOption] = []
-        rate, _cur = await self.cog._get_rate_currency(viewer)
-
         page_items = self._view.slice_for_page()
         for owner_id, item in page_items:
             price_wc = float(item.get("price_wc") or 0.0)
             price_local_fee = trunc2((await self.cog._wc_to_local(viewer, price_wc)) * 1.10)
-
-            # Effective stock (escrow-aware)
+    
             effective_stock = (
                 self.cog._effective_stock_from_escrow(item)
                 if hasattr(self.cog, "_effective_stock_from_escrow")
@@ -2565,18 +2565,18 @@ class PurchaseListingSelect(ui.Select):
             )
             if effective_stock <= 0:
                 continue
-
+    
             label = f'{item.get("name")} [Stock {effective_stock}]'
             desc = f'Price {price_local_fee:.2f} in your currency (incl. fee)'
             value = f'{owner_id}|{item.get("id")}'
             opts.append(discord.SelectOption(label=label[:100], description=desc[:100], value=value))
-
+    
         if not opts:
             opts = [discord.SelectOption(label="No available listings on this page", description="—", value="none")]
-
+    
         self.options = opts
-        # Show page indicator in the placeholder
         self.placeholder = f"Buy 1 unit — Page {self._view.page+1}/{self._view.total_pages}"
+
 
     async def callback(self, interaction: discord.Interaction):
         value = self.values[0]
