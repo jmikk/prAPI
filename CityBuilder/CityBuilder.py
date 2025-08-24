@@ -32,90 +32,6 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 # Default composite: 46 + a few companions (tweak freely)
 DEFAULT_SCALES = [46, 1, 10, 39]
 
-def _resource_tier_map(self) -> Dict[str, int]:
-    """
-    Map each resource to the *lowest* tier of any building that produces it.
-    Example: if farm (t1) and factory (t2) both produce 'food', tier is 1.
-    """
-    m: Dict[str, int] = {}
-    for bname, meta in BUILDINGS.items():
-        tier = int(meta.get("tier", 0))
-        for res in (meta.get("produces") or {}).keys():
-            if res not in m:
-                m[res] = tier
-            else:
-                m[res] = min(m[res], tier)
-    return m
-
-def _group_resources_by_tier(self, user_data: dict) -> Dict[int, list]:
-    """
-    Returns {tier: [(resource, qty), ...]} for current inventory.
-    Resources with no producer mapping are ignored.
-    """
-    inv = {k: int(v) for k, v in (user_data.get("resources") or {}).items()}
-    r2t = self._resource_tier_map()
-    by_tier: Dict[int, list] = {}
-    for r, qty in inv.items():
-        if qty <= 0:
-            continue
-        if r not in r2t:
-            # skip unknown/unmapped resources
-            continue
-        t = int(r2t[r])
-        by_tier.setdefault(t, []).append((r, qty))
-    for t in by_tier:
-        by_tier[t].sort(key=lambda p: p[0])
-    return by_tier
-
-async def resources_overview_embed(self, user: discord.abc.User) -> discord.Embed:
-    """
-    Overview of user's resources grouped by tier (totals per tier).
-    Shows tiers even if empty as '—'.
-    """
-    d = await self.config.user(user).all()
-    grouped = self._group_resources_by_tier(d)
-    lines = []
-    for t in self._all_tiers():
-        entries = grouped.get(t, [])
-        total = sum(q for _, q in entries)
-        lines.append(f"**Tier {t}** — {total if total > 0 else '—'}")
-    e = discord.Embed(title="📦 Resources by Tier", description="\n".join(lines) or "—")
-    e.set_footer(text="Select a tier below to view details.")
-    return e
-
-async def resources_tier_embed(self, user: discord.abc.User, tier: int) -> discord.Embed:
-    """
-    Detail view for a resource tier: shows each resource, qty, and which buildings (at this tier)
-    can produce it, with per-building output rate.
-    """
-    d = await self.config.user(user).all()
-    inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
-    lines = []
-
-    # collect all resources that *map* to this tier
-    r2t = self._resource_tier_map()
-    tier_resources = [r for r, t in r2t.items() if int(t) == int(tier)]
-
-    # for each resource at this tier, show qty and producers (at this tier)
-    for res in sorted(tier_resources):
-        qty = int(inv.get(res, 0))
-        producers = []
-        for bname, meta in sorted(BUILDINGS.items()):
-            if int(meta.get("tier", 0)) != int(tier):
-                continue
-            out = meta.get("produces") or {}
-            if res in out:
-                producers.append(f"{bname}(+{int(out[res])}/t)")
-        prod_txt = ", ".join(producers) if producers else "—"
-        lines.append(f"• **{res}** — qty **{qty}** · producers: {prod_txt}")
-
-    if not lines:
-        lines = ["—"]
-
-    return discord.Embed(title=f"📦 Tier {tier} Resources", description="\n".join(lines))
-
-
-
 class ViewResourcesBtn(ui.Button):
     def __init__(self):
         super().__init__(label="View Resources", style=discord.ButtonStyle.secondary, custom_id="city:resources:view")
@@ -983,6 +899,89 @@ class CityBuilder(commands.Cog):
         )
         self.next_tick_at: Optional[int] = None
         self.task = bot.loop.create_task(self.resource_tick())
+
+    def _resource_tier_map(self) -> Dict[str, int]:
+        """
+        Map each resource to the *lowest* tier of any building that produces it.
+        Example: if farm (t1) and factory (t2) both produce 'food', tier is 1.
+        """
+        m: Dict[str, int] = {}
+        for bname, meta in BUILDINGS.items():
+            tier = int(meta.get("tier", 0))
+            for res in (meta.get("produces") or {}).keys():
+                if res not in m:
+                    m[res] = tier
+                else:
+                    m[res] = min(m[res], tier)
+        return m
+    
+    def _group_resources_by_tier(self, user_data: dict) -> Dict[int, list]:
+        """
+        Returns {tier: [(resource, qty), ...]} for current inventory.
+        Resources with no producer mapping are ignored.
+        """
+        inv = {k: int(v) for k, v in (user_data.get("resources") or {}).items()}
+        r2t = self._resource_tier_map()
+        by_tier: Dict[int, list] = {}
+        for r, qty in inv.items():
+            if qty <= 0:
+                continue
+            if r not in r2t:
+                # skip unknown/unmapped resources
+                continue
+            t = int(r2t[r])
+            by_tier.setdefault(t, []).append((r, qty))
+        for t in by_tier:
+            by_tier[t].sort(key=lambda p: p[0])
+        return by_tier
+    
+    async def resources_overview_embed(self, user: discord.abc.User) -> discord.Embed:
+        """
+        Overview of user's resources grouped by tier (totals per tier).
+        Shows tiers even if empty as '—'.
+        """
+        d = await self.config.user(user).all()
+        grouped = self._group_resources_by_tier(d)
+        lines = []
+        for t in self._all_tiers():
+            entries = grouped.get(t, [])
+            total = sum(q for _, q in entries)
+            lines.append(f"**Tier {t}** — {total if total > 0 else '—'}")
+        e = discord.Embed(title="📦 Resources by Tier", description="\n".join(lines) or "—")
+        e.set_footer(text="Select a tier below to view details.")
+        return e
+    
+    async def resources_tier_embed(self, user: discord.abc.User, tier: int) -> discord.Embed:
+        """
+        Detail view for a resource tier: shows each resource, qty, and which buildings (at this tier)
+        can produce it, with per-building output rate.
+        """
+        d = await self.config.user(user).all()
+        inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
+        lines = []
+    
+        # collect all resources that *map* to this tier
+        r2t = self._resource_tier_map()
+        tier_resources = [r for r, t in r2t.items() if int(t) == int(tier)]
+    
+        # for each resource at this tier, show qty and producers (at this tier)
+        for res in sorted(tier_resources):
+            qty = int(inv.get(res, 0))
+            producers = []
+            for bname, meta in sorted(BUILDINGS.items()):
+                if int(meta.get("tier", 0)) != int(tier):
+                    continue
+                out = meta.get("produces") or {}
+                if res in out:
+                    producers.append(f"{bname}(+{int(out[res])}/t)")
+            prod_txt = ", ".join(producers) if producers else "—"
+            lines.append(f"• **{res}** — qty **{qty}** · producers: {prod_txt}")
+    
+        if not lines:
+            lines = ["—"]
+    
+        return discord.Embed(title=f"📦 Tier {tier} Resources", description="\n".join(lines))
+
 
     def _next_tick_ts(self) -> int:
         if getattr(self, "next_tick_at", None):
