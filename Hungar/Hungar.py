@@ -1745,7 +1745,8 @@ class Hungar(commands.Cog):
             if not pdata.get("is_npc") and pdata.get("kill_list"):
                 uid = pid
                 if isinstance(uid, str) and uid.isdigit():
-                    current = await self.config.user_from_id(int(uid)).kill_count()
+                    uid = int(uid)
+                    current = await self.config.user_from_id(uid).kill_count()
                     await self.config.user_from_id(uid).kill_count.set(current + len(pdata["kill_list"]))
     
         # Write result file (safe if no winner or no bonus)
