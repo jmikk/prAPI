@@ -2275,10 +2275,12 @@ class BrowseStoresBtn(ui.Button):
         super().__init__(label="Browse Stores", style=discord.ButtonStyle.primary, custom_id="store:browse")
 
     async def callback(self, interaction: discord.Interaction):
+        view: StoreMenuView = self.view  # <-- you were missing this line
         e = await view.cog.store_browse_embed(interaction.user)
-        buyview = StoreBuyView(view.cog, view.author, view.children[-1].show_admin)
-        await buyview.refresh(interaction.user)  # <— load items + build the first page
+        buyview = StoreBuyView(view.cog, view.author, show_admin=view.children[-1].show_admin)
+        await buyview.refresh(interaction.user)  # load items + build first page
         await interaction.response.edit_message(embed=e, view=buyview)
+
     
 
 
