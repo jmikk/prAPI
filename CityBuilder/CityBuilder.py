@@ -924,7 +924,18 @@ class CityBuilder(commands.Cog):
             store_buy_orders=[],     # [{id:str, resource:str, qty:int, price_wc:float}]
         )
         self.next_tick_at: Optional[int] = None
-        self.task = bot.loop.create_task(self.resource_tick())
+
+    async def cog_load(self):
+    # Start background tick after the bot is ready to load cogs
+    # (safer than doing it in __init__)
+    self.task = asyncio.create_task(self.resource_tick())
+
+    def cog_unload(self):
+        # Cancel the background task cleanly
+        task = getattr(self, "task", None)
+        if task:
+            task.cancel()
+
 
 
     # --- Scoring params (tweak to taste) ---
@@ -2296,11 +2307,13 @@ class BrowseStoresBtn(ui.Button):
         super().__init__(label="Browse Stores", style=discord.ButtonStyle.primary, custom_id="store:browse")
 
     async def callback(self, interaction: discord.Interaction):
-        view: StoreMenuView = self.view  # <-- you were missing this line
+        view: StoreMenuView = self.view  # type: ignore
         e = await view.cog.store_browse_embed(interaction.user)
-        buyview = StoreBuyView(view.cog, view.author, show_admin=view.children[-1].show_admin)
-        await buyview.refresh(interaction.user)  # load items + build first page
+
+        buyview = StoreBuyView(view.cog, view.author, view.children[-1].show_admin)
+        await buyview.refresh(interaction.user)  # build first page
         await interaction.response.edit_message(embed=e, view=buyview)
+
 
     
 
