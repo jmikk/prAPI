@@ -32,6 +32,32 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 # Default composite: 46 + a few companions (tweak freely)
 DEFAULT_SCALES = [46, 1, 10, 39]
 
+class LeaderboardBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Leaderboard", style=discord.ButtonStyle.secondary, custom_id="city:lb")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        e = await view.cog.leaderboard_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=e,
+            view=LeaderboardView(view.cog, view.author, show_admin=view.show_admin)
+        )
+
+class LeaderboardView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
 class ViewResourcesBtn(ui.Button):
     def __init__(self):
         super().__init__(label="View Resources", style=discord.ButtonStyle.secondary, custom_id="city:resources:view")
@@ -899,6 +925,134 @@ class CityBuilder(commands.Cog):
         )
         self.next_tick_at: Optional[int] = None
         self.task = bot.loop.create_task(self.resource_tick())
+
+
+    # --- Scoring params (tweak to taste) ---
+    def _score_params(self) -> dict:
+        """
+        Building score dominates; each tier is exponentially more valuable.
+        - Buildings:   b_score = b_base * (b_growth ** tier) * count
+        - Resources:   r_score = r_base * (r_growth ** tier) * qty
+        """
+        return {
+            "b_base": 100.0,  # base points per T0 building
+            "b_growth": 3.0,  # exponential growth per tier for buildings
+            "r_base": 1.0,    # base points per unit of T0 resource
+            "r_growth": 2.0,  # exponential growth per tier for resources
+            "top_n": 10,      # leaderboard size
+        }
+    
+    def _building_tier_totals(self, user_data: dict) -> dict[int, int]:
+        """
+        Returns {tier: total_count_of_buildings_at_that_tier}.
+        """
+        by_tier: dict[int, int] = {}
+        owned = (user_data.get("buildings") or {})
+        for name, meta in BUILDINGS.items():
+            t = int(meta.get("tier", 0))
+            cnt = int((owned.get(name) or {}).get("count", 0))
+            if cnt > 0:
+                by_tier[t] = by_tier.get(t, 0) + cnt
+        return by_tier
+    
+    def _resource_tier_map(self) -> Dict[str, int]:
+        """
+        Map each resource to the *lowest* tier of any building that produces it.
+        (Re-using the same logic you already adopted earlier.)
+        """
+        m: Dict[str, int] = {}
+        for bname, meta in BUILDINGS.items():
+            tier = int(meta.get("tier", 0))
+            for res in (meta.get("produces") or {}).keys():
+                if res not in m:
+                    m[res] = tier
+                else:
+                    m[res] = min(m[res], tier)
+        return m
+    
+    def _resource_tier_totals(self, user_data: dict) -> dict[int, int]:
+        """
+        Returns {tier: total_qty_of_resources_at_that_tier}.
+        Resources with no producer mapping are ignored.
+        """
+        inv = {k: int(v) for k, v in (user_data.get("resources") or {}).items()}
+        r2t = self._resource_tier_map()
+        out: dict[int, int] = {}
+        for r, qty in inv.items():
+            if qty <= 0 or r not in r2t:
+                continue
+            t = int(r2t[r])
+            out[t] = out.get(t, 0) + qty
+        return out
+    
+    def _compute_user_score_from_data(self, user_data: dict) -> float:
+        """
+        Pure function version (uses user_data) so we can score everyone quickly.
+        """
+        p = self._score_params()
+        b_totals = self._building_tier_totals(user_data)
+        r_totals = self._resource_tier_totals(user_data)
+    
+        score = 0.0
+        # Buildings dominate
+        for t, cnt in b_totals.items():
+            score += p["b_base"] * (p["b_growth"] ** int(t)) * float(cnt)
+        # Resources contribute less
+        for t, qty in r_totals.items():
+            score += p["r_base"] * (p["r_growth"] ** int(t)) * float(qty)
+        return float(int(score))  # keep it neat (integer points)
+    
+    async def user_score(self, user: discord.abc.User) -> float:
+        d = await self.config.user(user).all()
+        return self._compute_user_score_from_data(d)
+    
+    async def leaderboard_embed(self, requester: discord.abc.User) -> discord.Embed:
+        """
+        Computes all users' scores, shows Top N and the requester's rank.
+        """
+        params = self._score_params()
+        top_n = int(params.get("top_n", 10))
+    
+        all_users = await self.config.all_users()
+    
+        # Build (user_id, score) pairs
+        scored: list[tuple[int, float]] = []
+        for uid, udata in all_users.items():
+            try:
+                s = self._compute_user_score_from_data(udata or {})
+            except Exception:
+                s = 0.0
+            scored.append((int(uid), s))
+    
+        # Sort desc by score, then asc by user id for stability
+        scored.sort(key=lambda tup: (-tup[1], tup[0]))
+    
+        # Find requester rank
+        req_id = int(getattr(requester, "id", 0))
+        rank_map = {uid: i + 1 for i, (uid, _) in enumerate(scored)}
+        my_rank = rank_map.get(req_id, None)
+        my_score = next((s for (uid, s) in scored if uid == req_id), 0.0)
+    
+        # Build Top N lines
+        lines = []
+        for i, (uid, score) in enumerate(scored[:top_n], start=1):
+            u = self.bot.get_user(uid)
+            name = u.display_name if u else f"User {uid}"
+            medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"#{i}"
+            lines.append(f"{medal} **{name}** — **{int(score)}** pts")
+    
+        if not lines:
+            lines = ["—"]
+    
+        footer = f"Your rank: #{my_rank} — {int(my_score)} pts" if my_rank else "You’re not ranked yet."
+    
+        e = discord.Embed(
+            title="🏆 City Leaderboard",
+            description="\n".join(lines)
+        )
+        e.set_footer(text=footer)
+        return e
+
 
     def _resource_tier_map(self) -> Dict[str, int]:
         """
@@ -1860,14 +2014,15 @@ class CityMenuView(ui.View):
         self.cog = cog
         self.author = author
         self.show_admin = show_admin
-
+#menu buttons
         self.add_item(ViewBtn())
         self.add_item(BuildBtn())
         self.add_item(BankBtn())
         self.add_item(WorkersBtn())
         self.add_item(StoreBtn())
         self.add_item(ViewBuildingsBtn())  
-        self.add_item(ViewResourcesBtn())   
+        self.add_item(ViewResourcesBtn())
+        self.add_item(LeaderboardBtn())     
         if show_admin:
             self.add_item(NextDayBtn())
             self.add_item(RateBtn()) 
