@@ -548,8 +548,8 @@ class HireWorkerBtn(ui.Button):
             title="👤 Candidate: General Worker",
             description=(
                 "Hard-working, adaptable, and ready to operate your facilities.\n"
-                "• Reliability: {Reliability}\n"
-                "• Safety: {Safety}\n"
+                f"• Reliability: {Reliability}\n"
+                f"• Safety: {Safety}\n"
                 "• Salary: "
                 f"**{wage_local:.2f} {cur}** per tick"
             )
