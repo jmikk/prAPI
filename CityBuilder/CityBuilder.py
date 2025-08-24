@@ -1039,12 +1039,15 @@ class CityBuilder(commands.Cog):
             u = self.bot.get_user(uid)
             name = u.display_name if u else f"User {uid}"
             medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"#{i}"
-            lines.append(f"{medal} **{name}** — **{int(score)}** pts")
+            lines.append(f"{medal} **{name}** — **{score:,.0f}** pts")  # 👈 commas
     
         if not lines:
             lines = ["—"]
     
-        footer = f"Your rank: #{my_rank} — {int(my_score)} pts" if my_rank else "You’re not ranked yet."
+        footer = (
+            f"Your rank: #{my_rank} — {my_score:,.0f} pts"
+            if my_rank else "You’re not ranked yet."
+        )
     
         e = discord.Embed(
             title="🏆 City Leaderboard",
@@ -1052,6 +1055,7 @@ class CityBuilder(commands.Cog):
         )
         e.set_footer(text=footer)
         return e
+
 
 
     def _resource_tier_map(self) -> Dict[str, int]:
