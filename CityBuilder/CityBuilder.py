@@ -32,6 +32,126 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 # Default composite: 46 + a few companions (tweak freely)
 DEFAULT_SCALES = [46, 1, 10, 39]
 
+def _resource_tier_map(self) -> Dict[str, int]:
+    """
+    Map each resource to the *lowest* tier of any building that produces it.
+    Example: if farm (t1) and factory (t2) both produce 'food', tier is 1.
+    """
+    m: Dict[str, int] = {}
+    for bname, meta in BUILDINGS.items():
+        tier = int(meta.get("tier", 0))
+        for res in (meta.get("produces") or {}).keys():
+            if res not in m:
+                m[res] = tier
+            else:
+                m[res] = min(m[res], tier)
+    return m
+
+def _group_resources_by_tier(self, user_data: dict) -> Dict[int, list]:
+    """
+    Returns {tier: [(resource, qty), ...]} for current inventory.
+    Resources with no producer mapping are ignored.
+    """
+    inv = {k: int(v) for k, v in (user_data.get("resources") or {}).items()}
+    r2t = self._resource_tier_map()
+    by_tier: Dict[int, list] = {}
+    for r, qty in inv.items():
+        if qty <= 0:
+            continue
+        if r not in r2t:
+            # skip unknown/unmapped resources
+            continue
+        t = int(r2t[r])
+        by_tier.setdefault(t, []).append((r, qty))
+    for t in by_tier:
+        by_tier[t].sort(key=lambda p: p[0])
+    return by_tier
+
+async def resources_overview_embed(self, user: discord.abc.User) -> discord.Embed:
+    """
+    Overview of user's resources grouped by tier (totals per tier).
+    Shows tiers even if empty as '—'.
+    """
+    d = await self.config.user(user).all()
+    grouped = self._group_resources_by_tier(d)
+    lines = []
+    for t in self._all_tiers():
+        entries = grouped.get(t, [])
+        total = sum(q for _, q in entries)
+        lines.append(f"**Tier {t}** — {total if total > 0 else '—'}")
+    e = discord.Embed(title="📦 Resources by Tier", description="\n".join(lines) or "—")
+    e.set_footer(text="Select a tier below to view details.")
+    return e
+
+async def resources_tier_embed(self, user: discord.abc.User, tier: int) -> discord.Embed:
+    """
+    Detail view for a resource tier: shows each resource, qty, and which buildings (at this tier)
+    can produce it, with per-building output rate.
+    """
+    d = await self.config.user(user).all()
+    inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
+    lines = []
+
+    # collect all resources that *map* to this tier
+    r2t = self._resource_tier_map()
+    tier_resources = [r for r, t in r2t.items() if int(t) == int(tier)]
+
+    # for each resource at this tier, show qty and producers (at this tier)
+    for res in sorted(tier_resources):
+        qty = int(inv.get(res, 0))
+        producers = []
+        for bname, meta in sorted(BUILDINGS.items()):
+            if int(meta.get("tier", 0)) != int(tier):
+                continue
+            out = meta.get("produces") or {}
+            if res in out:
+                producers.append(f"{bname}(+{int(out[res])}/t)")
+        prod_txt = ", ".join(producers) if producers else "—"
+        lines.append(f"• **{res}** — qty **{qty}** · producers: {prod_txt}")
+
+    if not lines:
+        lines = ["—"]
+
+    return discord.Embed(title=f"📦 Tier {tier} Resources", description="\n".join(lines))
+
+
+
+class ViewResourcesBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="View Resources", style=discord.ButtonStyle.secondary, custom_id="city:resources:view")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        e = await view.cog.resources_overview_embed(interaction.user)
+        tier_view = ResourcesTierView(view.cog, view.author, show_admin=view.show_admin)
+        await interaction.response.edit_message(embed=e, view=tier_view)
+
+class ResourcesTierView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.show_admin = show_admin
+        for t in self.cog._all_tiers():
+            self.add_item(ResourceTierButton(t))
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+class ResourceTierButton(ui.Button):
+    def __init__(self, tier: int):
+        super().__init__(label=f"Tier {tier}", style=discord.ButtonStyle.primary, custom_id=f"city:resources:tier:{tier}")
+        self.tier = int(tier)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: ResourcesTierView = self.view  # type: ignore
+        e = await view.cog.resources_tier_embed(interaction.user, self.tier)
+        await interaction.response.edit_message(embed=e, view=view)
+
 
 class ViewBuildingsBtn(ui.Button):
     def __init__(self):
@@ -1585,8 +1705,16 @@ class CityBuilder(commands.Cog):
             tier_lines.append(f"**Tier {t}** — {total}")
         btxt = "\n".join(tier_lines) or "None"
 
-        rtxt = "\n".join(f"• **{k}**: {v}" for k, v in res.items()) or "None"
-    
+        # Resources (grouped by tier, totals per tier)
+        grouped_res = self._group_resources_by_tier(d)
+        res_tier_lines = []
+        for t in self._all_tiers():
+            entries = grouped_res.get(t, [])
+            total = sum(q for _, q in entries)
+            if total > 0:
+                res_tier_lines.append(f"**Tier {t}** — {total}")
+        rtxt = "\n".join(res_tier_lines) or "None"
+        
         e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
         e.add_field(
@@ -1740,6 +1868,7 @@ class CityMenuView(ui.View):
         self.add_item(WorkersBtn())
         self.add_item(StoreBtn())
         self.add_item(ViewBuildingsBtn())  
+        self.add_item(ViewResourcesBtn())   
         if show_admin:
             self.add_item(NextDayBtn())
             self.add_item(RateBtn()) 
