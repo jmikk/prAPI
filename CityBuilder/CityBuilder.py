@@ -928,7 +928,7 @@ class CityBuilder(commands.Cog):
     async def cog_load(self):
     # Start background tick after the bot is ready to load cogs
     # (safer than doing it in __init__)
-    self.task = asyncio.create_task(self.resource_tick())
+        self.task = asyncio.create_task(self.resource_tick())
 
     def cog_unload(self):
         # Cancel the background task cleanly
