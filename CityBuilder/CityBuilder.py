@@ -376,7 +376,7 @@ class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
 
         _, cur = await self.cog._get_rate_currency(interaction.user)
         await interaction.response.send_message(
-            f"✅ Deposited {amt_wc:.2f} WC → **{local_credit:.2f} {cur}**. New bank: **{bank_local:.2f} {cur}**",
+            f"✅ Deposited {amt_wc:.2f} WC → **{local_credit:.2f} {cur}**. New treasury: **{bank_local:.2f} {cur}**",
             ephemeral=True
         )
 
@@ -412,7 +412,7 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
         bank_local = trunc2(float(await self.cog.config.user(interaction.user).bank()))
         if bank_local + 1e-9 < amt_local:
             return await interaction.response.send_message(
-                f"❌ Not enough in bank. You have **{bank_local:.2f} {self.currency}**.",
+                f"❌ Not enough in the treasury. You have **{bank_local:.2f} {self.currency}**.",
                 ephemeral=True
             )
 
@@ -441,7 +441,7 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
         _, cur = await self.cog._get_rate_currency(interaction.user)
         await interaction.response.send_message(
             f"✅ Withdrew **{amt_local:.2f} {cur}** → **{amt_wc:.2f} WC**.\n"
-            f"New bank: **{new_bank:.2f} {cur}**",
+            f"New treasury balance: **{new_bank:.2f} {cur}**",
             ephemeral=True
         )
 
@@ -1260,7 +1260,7 @@ class CityBuilder(commands.Cog):
         e.add_field(
             name="💰 Your Balance",
             value=(
-                f"Bank: **{bank_local:.2f} {cur}**\n"
+                f"Treasury: **{bank_local:.2f} {cur}**\n"
                 f"Wallet: **{wallet_wc:.2f} WC** (≈ **{wallet_local:.2f} {cur}**)\n"
                 f"Total: **{total_local:.2f} {cur}**"
             ),
@@ -1895,7 +1895,6 @@ class CityBuilder(commands.Cog):
                 f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
                 f"Capacity **{cap}**\n"
                 f"Wages per tick: **{wages_local:.2f} {cur}** "
-                f"(= {trunc2(hired * WORKER_WAGE_WC):.2f} WC)"
             ),
             inline=False,
         )
