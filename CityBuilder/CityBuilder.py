@@ -540,13 +540,16 @@ class HireWorkerBtn(ui.Button):
         img = f"https://i.pravatar.cc/150?img={seed}"
         wage_local = await cog._wc_to_local(interaction.user, WORKER_WAGE_WC)
         _, cur = await cog._get_rate_currency(interaction.user)
+        
+        Reliability = random.choice(["⭐","⭐⭐","⭐⭐⭐","⭐⭐⭐⭐","⭐⭐⭐⭐⭐"])
+        Safety = random.choice(["⭐","⭐⭐","⭐⭐⭐","⭐⭐⭐⭐","⭐⭐⭐⭐⭐"])
 
         e = discord.Embed(
             title="👤 Candidate: General Worker",
             description=(
                 "Hard-working, adaptable, and ready to operate your facilities.\n"
-                "• Reliability: ⭐⭐⭐\n"
-                "• Safety: ⭐⭐⭐⭐\n"
+                "• Reliability: {Reliability}\n"
+                "• Safety: {Safety}\n"
                 "• Salary: "
                 f"**{wage_local:.2f} {cur}** per tick"
             )
