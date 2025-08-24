@@ -868,7 +868,6 @@ class CityBuilder(commands.Cog):
         if getattr(self, "next_tick_at", None):
             return int(self.next_tick_at)
         return int((time.time() // TICK_SECONDS + 1) * TICK_SECONDS)
-        def _all_tiers(self) -> list:
 
     def _all_tiers(self) -> list:
     """Sorted unique tiers from BUILDINGS."""
