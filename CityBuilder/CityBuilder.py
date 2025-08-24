@@ -631,7 +631,7 @@ class CityBuilder(commands.Cog):
         e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
         return e
     
-    async def store_my_listings_embed(self, user: discord.abc.User, header: str | None = None) -> discord.Embed:
+    async def store_my_listings_embed(self, user: discord.abc.User, header: Optional[str] = None) -> discord.Embed:
         d = await self.config.user(user).all()
         lst = list(d.get("store_sell_listings") or [])
         orders = list(d.get("store_buy_orders") or [])
