@@ -869,9 +869,11 @@ class CityBuilder(commands.Cog):
             return int(self.next_tick_at)
         return int((time.time() // TICK_SECONDS + 1) * TICK_SECONDS)
         def _all_tiers(self) -> list:
-    """Sorted unique tiers from BUILDINGS."""
-    tiers = sorted({int(data.get("tier", 0)) for data in BUILDINGS.values()})
-    return tiers
+
+    def _all_tiers(self) -> list:
+        """Sorted unique tiers from BUILDINGS."""
+        tiers = sorted({int(data.get("tier", 0)) for data in BUILDINGS.values()})
+        return tiers
 
     def _group_owned_by_tier(self, user_data: dict) -> Dict[int, list]:
         """
