@@ -1232,27 +1232,31 @@ class CityBuilder(commands.Cog):
 
 
     # ====== Store helpers & embeds ======
-    async def store_home_embed(self, user: discord.abc.User) -> discord.Embed:
-        e = discord.Embed(
-            title="🛒 Player Store",
-            description="Create sell listings for **bundles**, post **buy orders** for resources, "
-                        "and trade across currencies.\n\n"
-                        "Fees: Buyer +10% on conversion · Seller −10% on payout."
-        )
-        e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
-        e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
-        return e
+async def store_home_embed(self, user: discord.abc.User) -> discord.Embed:
+    bank_local = trunc2(float(await self.config.user(user).bank()))
+    wallet_wc = await self._get_wallet_wc(user)
+    rate, cur = await self._get_rate_currency(user)
+    wallet_local = await self._wc_to_local(user, wallet_wc)
+    total_local = trunc2(bank_local + wallet_local)
 
-    def _bundle_mul(self, bundle: Dict[str, int], n: int) -> Dict[str, int]:
-        return {k: int(v) * int(n) for k, v in (bundle or {}).items()}
+    e = discord.Embed(
+        title="🛒 Player Store",
+        description="Create sell listings for **bundles**, post **buy orders** for resources, and trade across currencies.\n\n"
+                    "Fees: Buyer **+10%** on conversion · Seller **−10%** on payout."
+    )
+    e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
+    e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
+    e.add_field(
+        name="💰 Your Balance",
+        value=(
+            f"Bank: **{bank_local:.2f} {cur}**\n"
+            f"Wallet: **{wallet_wc:.2f} WC** (≈ **{wallet_local:.2f} {cur}**)\n"
+            f"Total: **{total_local:.2f} {cur}**"
+        ),
+        inline=False
+    )
+    return e
 
-    def _bundle_sub(self, a: Dict[str, int], b: Dict[str, int]) -> Dict[str, int]:
-        out = dict(a or {})
-        for k, v in (b or {}).items():
-            out[k] = int(out.get(k, 0)) - int(v)
-            if out[k] <= 0:
-                out[k] = 0
-        return out
     
     def _bundle_add(self, a: Dict[str, int], b: Dict[str, int]) -> Dict[str, int]:
         out = dict(a or {})
@@ -1954,7 +1958,6 @@ class RateView(ui.View):
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
-
 class StoreBtn(ui.Button):
     def __init__(self):
         super().__init__(label="Store", style=discord.ButtonStyle.secondary, custom_id="city:store")
@@ -1962,7 +1965,14 @@ class StoreBtn(ui.Button):
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
 
-        # Build the intro embed inline so we don't require cog.store_home_embed()
+        # ── NEW: pull balances ─────────────────────────────────────────────
+        bank_local = trunc2(float(await view.cog.config.user(interaction.user).bank()))
+        wallet_wc = await view.cog._get_wallet_wc(interaction.user)
+        rate, cur = await view.cog._get_rate_currency(interaction.user)
+        wallet_local = await view.cog._wc_to_local(interaction.user, wallet_wc)
+        total_local = trunc2(bank_local + wallet_local)
+        # ───────────────────────────────────────────────────────────────────
+
         e = discord.Embed(
             title="🛒 Player Store",
             description=(
@@ -1974,15 +1984,26 @@ class StoreBtn(ui.Button):
         e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
         e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
 
-        # If you already have StoreMenuView defined, show it; otherwise just show the embed.
+        # ── NEW: show balances ─────────────────────────────────────────────
+        e.add_field(
+            name="💰 Your Balance",
+            value=(
+                f"Bank: **{bank_local:.2f} {cur}**\n"
+                f"Wallet: **{wallet_wc:.2f} WC** (≈ **{wallet_local:.2f} {cur}**)\n"
+                f"Total: **{total_local:.2f} {cur}**"
+            ),
+            inline=False
+        )
+        # ───────────────────────────────────────────────────────────────────
+
         try:
             await interaction.response.edit_message(
                 embed=e,
                 view=StoreMenuView(view.cog, view.author, show_admin=view.show_admin),  # type: ignore
             )
         except NameError:
-            # Fallback if StoreMenuView isn't defined yet
             await interaction.response.edit_message(embed=e, view=view)
+
 
 
 class RecalcRateBtn(ui.Button):
