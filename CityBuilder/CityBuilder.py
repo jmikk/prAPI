@@ -1243,30 +1243,30 @@ class CityBuilder(commands.Cog):
 
 
     # ====== Store helpers & embeds ======
-async def store_home_embed(self, user: discord.abc.User) -> discord.Embed:
-    bank_local = trunc2(float(await self.config.user(user).bank()))
-    wallet_wc = await self._get_wallet_wc(user)
-    rate, cur = await self._get_rate_currency(user)
-    wallet_local = await self._wc_to_local(user, wallet_wc)
-    total_local = trunc2(bank_local + wallet_local)
-
-    e = discord.Embed(
-        title="🛒 Player Store",
-        description="Create sell listings for **bundles**, post **buy orders** for resources, and trade across currencies.\n\n"
-                    "Fees: Buyer **+10%** on conversion · Seller **−10%** on payout."
-    )
-    e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
-    e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
-    e.add_field(
-        name="💰 Your Balance",
-        value=(
-            f"Bank: **{bank_local:.2f} {cur}**\n"
-            f"Wallet: **{wallet_wc:.2f} WC** (≈ **{wallet_local:.2f} {cur}**)\n"
-            f"Total: **{total_local:.2f} {cur}**"
-        ),
-        inline=False
-    )
-    return e
+    async def store_home_embed(self, user: discord.abc.User) -> discord.Embed:
+        bank_local = trunc2(float(await self.config.user(user).bank()))
+        wallet_wc = await self._get_wallet_wc(user)
+        rate, cur = await self._get_rate_currency(user)
+        wallet_local = await self._wc_to_local(user, wallet_wc)
+        total_local = trunc2(bank_local + wallet_local)
+    
+        e = discord.Embed(
+            title="🛒 Player Store",
+            description="Create sell listings for **bundles**, post **buy orders** for resources, and trade across currencies.\n\n"
+                        "Fees: Buyer **+10%** on conversion · Seller **−10%** on payout."
+        )
+        e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
+        e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
+        e.add_field(
+            name="💰 Your Balance",
+            value=(
+                f"Bank: **{bank_local:.2f} {cur}**\n"
+                f"Wallet: **{wallet_wc:.2f} WC** (≈ **{wallet_local:.2f} {cur}**)\n"
+                f"Total: **{total_local:.2f} {cur}**"
+            ),
+            inline=False
+        )
+        return e
 
     
     def _bundle_add(self, a: Dict[str, int], b: Dict[str, int]) -> Dict[str, int]:
