@@ -619,6 +619,81 @@ class CityBuilder(commands.Cog):
         )
         self.task = bot.loop.create_task(self.resource_tick())
 
+    # ====== Store helpers & embeds ======
+    async def store_home_embed(self, user: discord.abc.User) -> discord.Embed:
+        e = discord.Embed(
+            title="🛒 Player Store",
+            description="Create sell listings for **bundles**, post **buy orders** for resources, "
+                        "and trade across currencies.\n\n"
+                        "Fees: Buyer +10% on conversion · Seller −10% on payout."
+        )
+        e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
+        e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
+        return e
+    
+    async def store_my_listings_embed(self, user: discord.abc.User, header: str | None = None) -> discord.Embed:
+        d = await self.config.user(user).all()
+        lst = list(d.get("store_sell_listings") or [])
+        orders = list(d.get("store_buy_orders") or [])
+        rate, cur = await self._get_rate_currency(user)
+        def fmt_bundle(b: Dict[str, int]) -> str:
+            if not b: return "—"
+            return ", ".join([f"{k}+{v}" for k, v in b.items()])
+        sell_lines = []
+        for it in lst:
+            p_local = trunc2(float(it.get("price_wc") or 0.0) * rate)
+            sell_lines.append(f"• **{it.get('id')}** — {it.get('name')} | {fmt_bundle(it.get('bundle') or {})} | "
+                              f"Price **{p_local:.2f} {cur}** | Stock {int(it.get('stock') or 0)}")
+        buy_lines = []
+        for o in orders:
+            p_local = trunc2(float(o.get("price_wc") or 0.0) * rate)
+            buy_lines.append(f"• **{o.get('id')}** — {o.get('resource')} ×{int(o.get('qty') or 0)} @ **{p_local:.2f} {cur}** /u")
+        desc = (header + "\n\n" if header else "") + "**Your Sell Listings**\n" + ("\n".join(sell_lines) or "—")
+        e = discord.Embed(title="🧾 My Store", description=desc)
+        e.add_field(name="Your Buy Orders", value=("\n".join(buy_lines) or "—"), inline=False)
+        return e
+    
+    async def store_browse_embed(self, viewer: discord.abc.User) -> discord.Embed:
+        all_users = await self.config.all_users()
+        rate, cur = await self._get_rate_currency(viewer)
+        lines = []
+        for owner_id, udata in all_users.items():
+            if int(owner_id) == viewer.id:
+                continue
+            for it in (udata.get("store_sell_listings") or []):
+                if int(it.get("stock", 0)) <= 0: 
+                    continue
+                price_wc = float(it.get("price_wc") or 0.0)
+                price_local = trunc2(price_wc * rate * 1.10)  # include buyer fee
+                owner = self.bot.get_user(int(owner_id))
+                owner_name = owner.display_name if owner else f"User {owner_id}"
+                bundle = ", ".join([f"{k}+{v}" for k, v in (it.get("bundle") or {}).items()]) or "—"
+                lines.append(f"• **{it.get('id')}** — {it.get('name')} by *{owner_name}* · {bundle} · "
+                             f"**{price_local:.2f} {cur}** (incl. fee) · Stock {int(it.get('stock') or 0)}")
+        e = discord.Embed(title="🛍️ Browse Listings", description="\n".join(lines) or "No listings available.")
+        return e
+    
+    async def store_fulfill_embed(self, seller: discord.abc.User) -> discord.Embed:
+        all_users = await self.config.all_users()
+        rate, cur = await self._get_rate_currency(seller)
+        lines = []
+        for owner_id, udata in all_users.items():
+            if int(owner_id) == seller.id:
+                continue
+            for o in (udata.get("store_buy_orders") or []):
+                if int(o.get("qty", 0)) <= 0:
+                    continue
+                res = o.get("resource")
+                price_wc = float(o.get("price_wc") or 0.0)
+                payout_local = trunc2(price_wc * rate * 0.90)  # after seller fee
+                owner = self.bot.get_user(int(owner_id))
+                owner_name = owner.display_name if owner else f"User {owner_id}"
+                lines.append(f"• **{o.get('id')}** — {res} ×{int(o.get('qty') or 0)} from *{owner_name}* "
+                             f"@ **{payout_local:.2f} {cur}** (after fee)")
+        return discord.Embed(title="📦 Fulfill Buy Orders", description="\n".join(lines) or "No open buy orders.")
+
+
+
     async def _adjust_resources(self, user: discord.abc.User, delta: Dict[str, int]) -> None:
         d = await self.config.user(user).all()
         res = dict(d.get("resources") or {})
@@ -1625,7 +1700,8 @@ class PurchaseListingSelect(ui.Select):
         # We'll store owner_id in the option value as "ownerId|listingId"
         # Render below in callback
         super().__init__(placeholder="Buy 1 unit from a listing", min_values=1, max_values=1, options=[])
-   async def callback(self, interaction: discord.Interaction):
+   
+    async def callback(self, interaction: discord.Interaction):
         value = self.values[0]
         if value == "none":
             return await interaction.response.send_message("Nothing to buy right now.", ephemeral=True)
@@ -1790,80 +1866,6 @@ class FulfillOrderSelect(ui.Select):
         # Confirm to seller
         e = await self.cog.make_city_embed(interaction.user, header=f"✅ Sold **1 {res}** for **{seller_payout_local:.2f}** (your currency, after fee).")
         await interaction.response.edit_message(embed=e, view=CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user)))
-
-
-# ====== Store helpers & embeds ======
-async def store_home_embed(self, user: discord.abc.User) -> discord.Embed:
-    e = discord.Embed(
-        title="🛒 Player Store",
-        description="Create sell listings for **bundles**, post **buy orders** for resources, "
-                    "and trade across currencies.\n\n"
-                    "Fees: Buyer +10% on conversion · Seller −10% on payout."
-    )
-    e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
-    e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
-    return e
-
-async def store_my_listings_embed(self, user: discord.abc.User, header: str | None = None) -> discord.Embed:
-    d = await self.config.user(user).all()
-    lst = list(d.get("store_sell_listings") or [])
-    orders = list(d.get("store_buy_orders") or [])
-    rate, cur = await self._get_rate_currency(user)
-    def fmt_bundle(b: Dict[str, int]) -> str:
-        if not b: return "—"
-        return ", ".join([f"{k}+{v}" for k, v in b.items()])
-    sell_lines = []
-    for it in lst:
-        p_local = trunc2(float(it.get("price_wc") or 0.0) * rate)
-        sell_lines.append(f"• **{it.get('id')}** — {it.get('name')} | {fmt_bundle(it.get('bundle') or {})} | "
-                          f"Price **{p_local:.2f} {cur}** | Stock {int(it.get('stock') or 0)}")
-    buy_lines = []
-    for o in orders:
-        p_local = trunc2(float(o.get("price_wc") or 0.0) * rate)
-        buy_lines.append(f"• **{o.get('id')}** — {o.get('resource')} ×{int(o.get('qty') or 0)} @ **{p_local:.2f} {cur}** /u")
-    desc = (header + "\n\n" if header else "") + "**Your Sell Listings**\n" + ("\n".join(sell_lines) or "—")
-    e = discord.Embed(title="🧾 My Store", description=desc)
-    e.add_field(name="Your Buy Orders", value=("\n".join(buy_lines) or "—"), inline=False)
-    return e
-
-async def store_browse_embed(self, viewer: discord.abc.User) -> discord.Embed:
-    all_users = await self.config.all_users()
-    rate, cur = await self._get_rate_currency(viewer)
-    lines = []
-    for owner_id, udata in all_users.items():
-        if int(owner_id) == viewer.id:
-            continue
-        for it in (udata.get("store_sell_listings") or []):
-            if int(it.get("stock", 0)) <= 0: 
-                continue
-            price_wc = float(it.get("price_wc") or 0.0)
-            price_local = trunc2(price_wc * rate * 1.10)  # include buyer fee
-            owner = self.bot.get_user(int(owner_id))
-            owner_name = owner.display_name if owner else f"User {owner_id}"
-            bundle = ", ".join([f"{k}+{v}" for k, v in (it.get("bundle") or {}).items()]) or "—"
-            lines.append(f"• **{it.get('id')}** — {it.get('name')} by *{owner_name}* · {bundle} · "
-                         f"**{price_local:.2f} {cur}** (incl. fee) · Stock {int(it.get('stock') or 0)}")
-    e = discord.Embed(title="🛍️ Browse Listings", description="\n".join(lines) or "No listings available.")
-    return e
-
-async def store_fulfill_embed(self, seller: discord.abc.User) -> discord.Embed:
-    all_users = await self.config.all_users()
-    rate, cur = await self._get_rate_currency(seller)
-    lines = []
-    for owner_id, udata in all_users.items():
-        if int(owner_id) == seller.id:
-            continue
-        for o in (udata.get("store_buy_orders") or []):
-            if int(o.get("qty", 0)) <= 0:
-                continue
-            res = o.get("resource")
-            price_wc = float(o.get("price_wc") or 0.0)
-            payout_local = trunc2(price_wc * rate * 0.90)  # after seller fee
-            owner = self.bot.get_user(int(owner_id))
-            owner_name = owner.display_name if owner else f"User {owner_id}"
-            lines.append(f"• **{o.get('id')}** — {res} ×{int(o.get('qty') or 0)} from *{owner_name}* "
-                         f"@ **{payout_local:.2f} {cur}** (after fee)")
-    return discord.Embed(title="📦 Fulfill Buy Orders", description="\n".join(lines) or "No open buy orders.")
 
 
 
