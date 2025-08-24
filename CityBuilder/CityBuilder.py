@@ -1562,16 +1562,38 @@ class CityBuilder(commands.Cog):
             return trunc2(float(await nexus.config.user(user).wallet()))
         except Exception:
             return 0.0
-
+    
     async def bank_help_embed(self, user: discord.abc.User) -> discord.Embed:
         bank_local = trunc2(float(await self.config.user(user).bank()))
+        d = await self.config.user(user).all()
+        bld = d.get("buildings", {})
         _, cur = await self._get_rate_currency(user)
+    
+        # compute upkeep + wages (in local), same as main panel
+        wc_upkeep = 0.0
+        for b, info in bld.items():
+            if b in BUILDINGS:
+                wc_upkeep += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
+        wc_upkeep = trunc2(wc_upkeep)
+        local_upkeep = await self._wc_to_local(user, wc_upkeep)
+        wages_local = await self._wc_to_local(user, trunc2(int(d.get("workers_hired") or 0) * WORKER_WAGE_WC))
+        per_tick_local = trunc2(local_upkeep + wages_local)
+    
+        if per_tick_local > 0:
+            ticks_left = int(bank_local // per_tick_local)
+            hours_left = ticks_left * (TICK_SECONDS // 3600)
+            runway_txt = f"~{ticks_left} ticks (~{hours_left}h)"
+        else:
+            runway_txt = "∞ (no upkeep/wages)"
+    
         e = discord.Embed(
             title="🏦 Bank",
             description="Your **Bank** pays wages/upkeep each tick in your **local currency**. "
                         "If the bank can’t cover upkeep, **production halts**."
         )
         e.add_field(name="Current Balance", value=f"**{bank_local:.2f} {cur}**", inline=False)
+        e.add_field(name="Per-Tick Need", value=f"**{per_tick_local:.2f} {cur}/t**", inline=True)
+        e.add_field(name="Runway", value=runway_txt, inline=True)
         e.add_field(
             name="Tips",
             value="• Deposit: wallet **WC → local** bank\n"
@@ -1579,6 +1601,7 @@ class CityBuilder(commands.Cog):
             inline=False,
         )
         return e
+
 
 
     # --- FX helpers ---
@@ -1830,7 +1853,6 @@ class CityBuilder(commands.Cog):
         await self.config.user(user).bank.set(bank_local)
 
 
-    # -------------- embeds & helpers --------------
     async def make_city_embed(self, user: discord.abc.User, header: Optional[str] = None) -> discord.Embed:
         d = await self.config.user(user).all()
         res = d.get("resources", {})
@@ -1855,62 +1877,43 @@ class CityBuilder(commands.Cog):
         cap = await self._worker_capacity(user)
         wages_local = await self._wc_to_local(user, trunc2(hired * WORKER_WAGE_WC))
     
-        desc = "Use the buttons below to manage your city."
-        if header:
-            desc = f"{header}\n\n{desc}"
+        # NEW: per-tick need & runway
+        per_tick_local = trunc2(local_upkeep + wages_local)
+        if per_tick_local > 0:
+            ticks_left = int(bank_local // per_tick_local)
+            # convert ticks to hours (TICK_SECONDS is 3600)
+            hours_left = ticks_left * (TICK_SECONDS // 3600)
+            runway_txt = f"~{ticks_left} ticks (~{hours_left}h)"
+        else:
+            runway_txt = "∞ (no upkeep/wages)"
     
-        e = discord.Embed(title=f"🌆 {getattr(user, 'display_name', 'Your')} City", description=desc)
-            
-        grouped = self._group_owned_by_tier(d)
-        tier_lines = []
-        for t in self._all_tiers():
-            entries = grouped.get(t, [])
-            if not entries:
-                continue  # hide empty tiers on the main card; they’ll appear in the browser
-            row = " | ".join(f"{name}×{cnt}" for name, cnt in entries)
-            tier_lines.append(f"**Tier {t}** — {row}")
-        
-        grouped = self._group_owned_by_tier(d)
-        tier_lines = []
-        for t in self._all_tiers():
-            entries = grouped.get(t, [])
-            total = sum(cnt for _, cnt in entries)
-            if total == 0:
-                continue  # keep empty tiers off the main card; remove this line if you want to show 0s
-            tier_lines.append(f"**Tier {t}** — {total}")
-        btxt = "\n".join(tier_lines) or "None"
-
-        # Resources (grouped by tier, totals per tier)
-        grouped_res = self._group_resources_by_tier(d)
-        res_tier_lines = []
-        for t in self._all_tiers():
-            entries = grouped_res.get(t, [])
-            total = sum(q for _, q in entries)
-            if total > 0:
-                res_tier_lines.append(f"**Tier {t}** — {total}")
-        rtxt = "\n".join(res_tier_lines) or "None"
-        
+        ...
         e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
         e.add_field(name="📦 Resources", value=rtxt, inline=False)
         e.add_field(
             name="👷 Workers",
             value=(
-                f"Hired **{hired}** · Capacity **{cap}**\n Assigned **{assigned}** · Unassigned **{unassigned}** \n"
+                f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
+                f"Capacity **{cap}**\n"
                 f"Wages per tick: **{wages_local:.2f} {cur}** "
+                f"(= {trunc2(hired * WORKER_WAGE_WC):.2f} WC)"
             ),
             inline=False,
         )
         e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
-        e.add_field(name="⏳ Upkeep per Tick", value=f"**{local_upkeep:.2f} {cur}/t**", inline=True)
-        e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
+        e.add_field(name="⏳ Upkeep per Tick", value=f"**{per_tick_local:.2f} {cur}/t**", inline=True)
+    
+        # NEW: runway field
+        e.add_field(name="📉 Runway", value=runway_txt, inline=False)
+    
         next_ts = self._next_tick_ts()
         e.add_field(
             name="🕒 Next Tick",
             value=f"<t:{next_ts}:R>  —  <t:{next_ts}:T>",
             inline=False
         )
-
         return e
+
 
 
 
