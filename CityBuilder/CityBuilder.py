@@ -1568,7 +1568,7 @@ class StoreMenuView(ui.View):
         self.author = author
         self.add_item(MyListingsBtn())
         self.add_item(AddSellListingBtn())
-        self.add_item(AddBuyOrderBtn())
+        #self.add_item(AddBuyOrderBtn())
         self.add_item(BrowseStoresBtn())
         #self.add_item(FulfillBuyOrdersBtn())
         self.add_item(BackBtn(show_admin))
