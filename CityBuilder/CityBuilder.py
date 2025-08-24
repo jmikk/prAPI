@@ -1219,11 +1219,29 @@ class StoreBtn(ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
-        embed = await view.cog.store_home_embed(interaction.user)
-        await interaction.response.edit_message(
-            embed=embed,
-            view=StoreMenuView(view.cog, view.author, show_admin=view.show_admin),
+
+        # Build the intro embed inline so we don't require cog.store_home_embed()
+        e = discord.Embed(
+            title="🛒 Player Store",
+            description=(
+                "Create sell listings for **bundles**, post **buy orders** for resources, "
+                "and trade across currencies.\n\n"
+                "Fees: Buyer **+10%** on conversion · Seller **−10%** on payout."
+            ),
         )
+        e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
+        e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
+
+        # If you already have StoreMenuView defined, show it; otherwise just show the embed.
+        try:
+            await interaction.response.edit_message(
+                embed=e,
+                view=StoreMenuView(view.cog, view.author, show_admin=view.show_admin),  # type: ignore
+            )
+        except NameError:
+            # Fallback if StoreMenuView isn't defined yet
+            await interaction.response.edit_message(embed=e, view=view)
+
 
 class RecalcRateBtn(ui.Button):
     def __init__(self):
