@@ -813,19 +813,17 @@ class CityBuilder(commands.Cog):
             workers_unassigned=0,       # idle workers
             staffing={},                # {"farm": 0, "mine": 0, ...}# optional for debugging
 
-            store_sell_listings=[],  # [{id:str, name:str, bundle:{res:int}, price_wc:float, stock:int}]
+            store_sell_listings=[],  # [{id:str, name:str, bundle:{res:int}, price_wc: float, stock:int}]
             store_buy_orders=[],     # [{id:str, resource:str, qty:int, price_wc:float}]
+            self.next_tick_at: Optional[int] = None
         )
         self.task = bot.loop.create_task(self.resource_tick())
 
     def _next_tick_ts(self) -> int:
-        """
-        Returns the next tick boundary in Unix seconds.
-        Uses the global TICK_SECONDS interval and aligns to the next multiple
-        after 'now', which matches the sleep-based loop well enough.
-        """
-        now = time.time()
-        return int((now // TICK_SECONDS + 1) * TICK_SECONDS)
+        if getattr(self, "next_tick_at", None):
+            return int(self.next_tick_at)
+        return int((time.time() // TICK_SECONDS + 1) * TICK_SECONDS)
+
 
 
     # ====== Store helpers & embeds ======
@@ -1352,6 +1350,7 @@ class CityBuilder(commands.Cog):
         await self.bot.wait_until_ready()
         while True:
             await self.process_all_ticks()
+            self.next_tick_at = int(time.time()) + TICK_SECONDS
             await asyncio.sleep(TICK_SECONDS)
 
     async def process_all_ticks(self):
