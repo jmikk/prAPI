@@ -32,6 +32,50 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 # Default composite: 46 + a few companions (tweak freely)
 DEFAULT_SCALES = [46, 1, 10, 39]
 
+
+class ViewBuildingsBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="View Buildings", style=discord.ButtonStyle.secondary, custom_id="city:buildings:view")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        e = await view.cog.buildings_overview_embed(interaction.user)
+        tier_view = BuildingsTierView(view.cog, view.author, show_admin=view.show_admin)
+        await interaction.response.edit_message(embed=e, view=tier_view)
+
+
+class BuildingsTierView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.show_admin = show_admin
+
+        # Add a button per tier dynamically
+        for t in self.cog._all_tiers():
+            self.add_item(TierButton(t))
+
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
+class TierButton(ui.Button):
+    def __init__(self, tier: int):
+        super().__init__(label=f"Tier {tier}", style=discord.ButtonStyle.primary, custom_id=f"city:buildings:tier:{tier}")
+        self.tier = int(tier)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: BuildingsTierView = self.view  # type: ignore
+        e = await view.cog.buildings_tier_embed(interaction.user, self.tier)
+        # Reuse the same view so user can pick other tiers or go Back
+        await interaction.response.edit_message(embed=e, view=view)
+
+
 # ====== Utility ======
 def trunc2(x: float) -> float:
     """Truncate (not round) to 2 decimals to match wallet behavior."""
@@ -824,6 +868,85 @@ class CityBuilder(commands.Cog):
         if getattr(self, "next_tick_at", None):
             return int(self.next_tick_at)
         return int((time.time() // TICK_SECONDS + 1) * TICK_SECONDS)
+        def _all_tiers(self) -> list:
+    """Sorted unique tiers from BUILDINGS."""
+    tiers = sorted({int(data.get("tier", 0)) for data in BUILDINGS.values()})
+    return tiers
+
+    def _group_owned_by_tier(self, user_data: dict) -> Dict[int, list]:
+        """
+        Returns {tier: [(name, count), ...]} containing only buildings the user owns (>0).
+        """
+        by_tier: Dict[int, list] = {}
+        owned = (user_data.get("buildings") or {})
+        for name, meta in BUILDINGS.items():
+            tier = int(meta.get("tier", 0))
+            cnt = int((owned.get(name) or {}).get("count", 0))
+            if cnt > 0:
+                by_tier.setdefault(tier, []).append((name, cnt))
+        # sort names within each tier
+        for t in by_tier:
+            by_tier[t].sort(key=lambda p: p[0])
+        return by_tier
+    
+    async def buildings_overview_embed(self, user: discord.abc.User) -> discord.Embed:
+        """
+        Overview of user's buildings grouped by tier.
+        Shows tiers even if empty (as  — ).
+        """
+        d = await self.config.user(user).all()
+        grouped = self._group_owned_by_tier(d)
+        lines = []
+        for t in self._all_tiers():
+            entries = grouped.get(t, [])
+            if not entries:
+                lines.append(f"**Tier {t}** — —")
+            else:
+                row = " | ".join(f"{name}×{cnt}" for name, cnt in entries)
+                lines.append(f"**Tier {t}** — {row}")
+        e = discord.Embed(title="🏗️ Buildings by Tier", description="\n".join(lines) or "—")
+        e.set_footer(text="Select a tier below to view details.")
+        return e
+    
+    async def buildings_tier_embed(self, user: discord.abc.User, tier: int) -> discord.Embed:
+        """
+        Detailed view for a single tier: cost, upkeep, inputs/outputs.
+        Inputs are shown if you later add them to BUILDINGS (uses key 'inputs').
+        """
+        d = await self.config.user(user).all()
+        rate, cur = await self._get_rate_currency(user)
+        lines = []
+        for name, meta in sorted(BUILDINGS.items()):
+            if int(meta.get("tier", 0)) != int(tier):
+                continue
+            cnt = int((d.get("buildings") or {}).get(name, {}).get("count", 0))
+            cost_wc = float(meta.get("cost", 0.0))
+            upkeep_wc = float(meta.get("upkeep", 0.0))
+            cost_local = trunc2(cost_wc * rate)
+            upkeep_local = trunc2(upkeep_wc * rate)
+            inputs = meta.get("inputs") or {}
+            outputs = meta.get("produces") or {}
+    
+            def fmt_io(io: Dict[str, int]) -> str:
+                return ", ".join(f"{k}+{v}" for k, v in io.items()) if io else "—"
+    
+            cap_note = ""
+            if name == "house":
+                cap = int(meta.get("capacity", 0))
+                if cap:
+                    cap_note = f" · Capacity +{cap}"
+    
+            lines.append(
+                f"• **{name}** "
+                f"(owned {cnt})\n"
+                f"  Cost **{cost_local:.2f} {cur}** · Upkeep **{upkeep_local:.2f} {cur}/t**{cap_note}\n"
+                f"  Inputs: {fmt_io(inputs)}\n"
+                f"  Outputs: {fmt_io(outputs)}"
+            )
+        if not lines:
+            lines = ["—"]
+        e = discord.Embed(title=f"🏗️ Tier {tier} — Details", description="\n".join(lines))
+        return e
 
 
 
@@ -1438,8 +1561,17 @@ class CityBuilder(commands.Cog):
             desc = f"{header}\n\n{desc}"
     
         e = discord.Embed(title=f"🌆 {getattr(user, 'display_name', 'Your')} City", description=desc)
-    
-        btxt = "\n".join(f"• **{b}** × {info.get('count', 0)}" for b, info in bld.items()) or "None"
+            
+        grouped = self._group_owned_by_tier(d)
+        tier_lines = []
+        for t in self._all_tiers():
+            entries = grouped.get(t, [])
+            if not entries:
+                continue  # hide empty tiers on the main card; they’ll appear in the browser
+            row = " | ".join(f"{name}×{cnt}" for name, cnt in entries)
+            tier_lines.append(f"**Tier {t}** — {row}")
+        btxt = "\n".join(tier_lines) or "None"      
+        
         rtxt = "\n".join(f"• **{k}**: {v}" for k, v in res.items()) or "None"
     
         e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
@@ -1594,9 +1726,10 @@ class CityMenuView(ui.View):
         self.add_item(BankBtn())
         self.add_item(WorkersBtn())
         self.add_item(StoreBtn())
+        self.add_item(ViewBuildingsBtn())  
         if show_admin:
             self.add_item(NextDayBtn())
-            self.add_item(RateBtn())  # add after BankBtn
+            self.add_item(RateBtn()) 
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id:
