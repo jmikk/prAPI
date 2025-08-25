@@ -441,7 +441,7 @@ class StockMarket(commands.Cog):
                 else:
                     if new_price <= .01:
                         if random.random() < 0.5:
-                            new_price = 0.01
+                            new_price = .10
                             await self._announce_recovery(stock_name)
                         else:
                             to_delist.append(stock_name)
