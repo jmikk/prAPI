@@ -33,6 +33,90 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 DEFAULT_SCALES = [46, 1, 10, 39]
 
 
+class BuildingsTierActionsView(ui.View):
+    """
+    After a tier is selected, show buttons to build 1 unit of any building in that tier.
+    """
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, tier: int, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.tier = int(tier)
+        self.show_admin = show_admin
+
+        # Add one button per building in this tier
+        for name, meta in BUILDINGS.items():
+            if int(meta.get("tier", 0)) == self.tier:
+                self.add_item(BuildInTierBtn(name))
+
+        # Back to the tier list
+        self.add_item(BackToTiersBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
+class BuildInTierBtn(ui.Button):
+    def __init__(self, bname: str):
+        # label shows the building name; we’ll show local price in the ephemeral error/confirm text
+        super().__init__(label=f"Build {bname}", style=discord.ButtonStyle.success, custom_id=f"city:build:tier:{bname}")
+        self.bname = bname
+
+    async def callback(self, interaction: discord.Interaction):
+        view: BuildingsTierActionsView = self.view  # type: ignore
+        cog = view.cog
+        user = interaction.user
+
+        if self.bname not in BUILDINGS:
+            return await interaction.response.send_message("⚠️ Unknown building.", ephemeral=True)
+
+        # Compute current local price from WC cost
+        wc_cost = trunc2(float(BUILDINGS[self.bname].get("cost", 0.0)))
+        rate, cur = await cog._get_rate_currency(user)
+        local_cost = trunc2(wc_cost * rate)
+
+        # Check bank balance
+        bank_local = trunc2(float(await cog.config.user(user).bank()))
+        if bank_local + 1e-9 < local_cost:
+            return await interaction.response.send_message(
+                f"❌ Not enough in bank for **{self.bname}**. Need **{local_cost:.2f} {cur}**.",
+                ephemeral=True
+            )
+
+        # Deduct local, add building
+        await cog.config.user(user).bank.set(trunc2(bank_local - local_cost))
+        bld = await cog.config.user(user).buildings()
+        curcnt = int((bld.get(self.bname) or {}).get("count", 0))
+        bld[self.bname] = {"count": curcnt + 1}
+        await cog.config.user(user).buildings.set(bld)
+
+        # Refresh the tier details (so the new owned count shows), keep the action buttons
+        header = f"🏗️ Built **{self.bname}** for **{local_cost:.2f} {cur}**."
+        e = await cog.buildings_tier_embed(user, view.tier)
+        if e.description:
+            e.description = f"{header}\n\n{e.description}"
+        else:
+            e.description = header
+
+        await interaction.response.edit_message(embed=e, view=view)
+
+
+class BackToTiersBtn(ui.Button):
+    def __init__(self, show_admin: bool):
+        super().__init__(label="Back to Tiers", style=discord.ButtonStyle.secondary, custom_id="city:buildings:tiers:back")
+        self.show_admin = show_admin
+
+    async def callback(self, interaction: discord.Interaction):
+        view: BuildingsTierActionsView = self.view  # type: ignore
+        tier_view = BuildingsTierView(view.cog, view.author, show_admin=self.show_admin)
+        e = await view.cog.buildings_overview_embed(interaction.user)
+        await interaction.response.edit_message(embed=e, view=tier_view)
+
+
+
 class RecycleResourcesBtn(ui.Button):
     def __init__(self):
         super().__init__(label="Recycle Resources", style=discord.ButtonStyle.success, custom_id="city:recycle:res")
@@ -301,10 +385,11 @@ class TierButton(ui.Button):
         self.tier = int(tier)
 
     async def callback(self, interaction: discord.Interaction):
-        view: BuildingsTierView = self.view  # type: ignore
         e = await view.cog.buildings_tier_embed(interaction.user, self.tier)
-        # Reuse the same view so user can pick other tiers or go Back
-        await interaction.response.edit_message(embed=e, view=view)
+        actions = BuildingsTierActionsView(view.cog, view.author, self.tier, show_admin=view.show_admin)
+        await interaction.response.edit_message(embed=e, view=actions)
+
+
 
 
 # ====== Utility ======
