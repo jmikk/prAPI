@@ -1465,7 +1465,6 @@ class CityBuilder(commands.Cog):
             buy_lines.append(f"• **{o.get('id')}** — {o.get('resource')} ×{int(o.get('qty') or 0)} @ **{p_local:.2f} {cur}** /u")
         desc = (header + "\n\n" if header else "") + "**Your Sell Listings**\n" + ("\n".join(sell_lines) or "—")
         e = discord.Embed(title="🧾 My Store", description=desc)
-        e.add_field(name="Your Buy Orders", value=("\n".join(buy_lines) or "—"), inline=False)
         return e
     
     async def store_browse_embed(self, viewer: discord.abc.User) -> discord.Embed:
