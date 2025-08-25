@@ -58,6 +58,108 @@ class BuildingsTierActionsView(ui.View):
             return False
         return True
 
+class WorkersTierView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.show_admin = show_admin
+        for t in self.cog._all_tiers():
+            self.add_item(WorkersTierButton(t))
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+class WorkersTierButton(ui.Button):
+    def __init__(self, tier: int):
+        super().__init__(label=f"Tier {tier}", style=discord.ButtonStyle.primary, custom_id=f"city:workers:tier:{tier}")
+        self.tier = int(tier)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: WorkersTierView = self.view  # type: ignore
+        e = await view.cog.workers_tier_detail_embed(interaction.user, self.tier)
+        await interaction.response.edit_message(
+            embed=e,
+            view=WorkersTierActionsView(view.cog, view.author, self.tier, view.show_admin),
+        )
+
+class WorkersTierActionsView(ui.View):
+    """
+    Shows one 'Assign to {building}' button per staffed building in this tier.
+    """
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, tier: int, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.tier = int(tier)
+        self.show_admin = show_admin
+
+        # Add one assign button per building in this tier (skip houses)
+        for name, meta in BUILDINGS.items():
+            if int(meta.get("tier", 0)) == self.tier and name != "house":
+                self.add_item(AssignOneBtn(name, self.tier))
+
+        # Optional: include an Unassign menu or a “Unassign from {building}” button if you want.
+        self.add_item(BackToWorkersTiersBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+class AssignOneBtn(ui.Button):
+    def __init__(self, bname: str, tier: int):
+        super().__init__(label=f"Assign → {bname}", style=discord.ButtonStyle.success, custom_id=f"city:workers:assign:{bname}")
+        self.bname = bname
+        self.tier = int(tier)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: WorkersTierActionsView = self.view  # type: ignore
+        cog = view.cog
+        await cog._reconcile_staffing(interaction.user)
+        d = await cog.config.user(interaction.user).all()
+        st = await cog._get_staffing(interaction.user)
+
+        # checks
+        owned = int((d.get("buildings") or {}).get(self.bname, {}).get("count", 0))
+        if owned <= 0:
+            return await interaction.response.send_message(f"❌ You have no **{self.bname}**.", ephemeral=True)
+
+        assigned = int(st.get(self.bname, 0))
+        if assigned >= owned:
+            return await interaction.response.send_message(f"❌ All **{self.bname}** are already staffed.", ephemeral=True)
+
+        hired = int(d.get("workers_hired") or 0)
+        total_assigned = sum(int(v) for v in st.values())
+        unassigned = max(0, hired - total_assigned)
+        if unassigned <= 0:
+            return await interaction.response.send_message("❌ No unassigned workers available.", ephemeral=True)
+
+        # assign 1
+        st[self.bname] = assigned + 1
+        await cog._set_staffing(interaction.user, st)
+        await cog._reconcile_staffing(interaction.user)  # clamp to capacity
+
+        # refresh tier details
+        e = await cog.workers_tier_detail_embed(interaction.user, self.tier)
+        await interaction.response.edit_message(embed=e, view=view)
+
+class BackToWorkersTiersBtn(ui.Button):
+    def __init__(self, show_admin: bool):
+        super().__init__(label="Back to Tiers", style=discord.ButtonStyle.secondary, custom_id="city:workers:tiers:back")
+        self.show_admin = show_admin
+
+    async def callback(self, interaction: discord.Interaction):
+        view: WorkersTierActionsView = self.view  # type: ignore
+        e = await view.cog.workers_overview_by_tier_embed(interaction.user)
+        await interaction.response.edit_message(embed=e, view=WorkersTierView(view.cog, view.author, self.show_admin))
+
+
 
 class BuildInTierBtn(ui.Button):
     def __init__(self, bname: str):
@@ -1106,6 +1208,64 @@ class CityBuilder(commands.Cog):
         task = getattr(self, "task", None)
         if task:
             task.cancel()
+
+    def _staffing_totals_by_tier(self, user_data: dict) -> dict[int, tuple[int, int]]:
+        """
+        Returns {tier: (assigned_in_tier, max_staffable_in_tier)}.
+        max_staffable = owned count (1 worker per building unit).
+        """
+        by_tier: dict[int, tuple[int, int]] = {}
+        bld = user_data.get("buildings") or {}
+        st = {k: int(v) for k, v in (user_data.get("staffing") or {}).items()}
+    
+        for name, meta in BUILDINGS.items():
+            t = int(meta.get("tier", 0))
+            owned = int((bld.get(name) or {}).get("count", 0))
+            if owned <= 0 or name == "house":
+                # houses don’t take staffing
+                continue
+            assigned = min(int(st.get(name, 0)), owned)
+            a, m = by_tier.get(t, (0, 0))
+            by_tier[t] = (a + assigned, m + owned)
+        return by_tier
+
+    async def workers_overview_by_tier_embed(self, user: discord.abc.User) -> discord.Embed:
+        d = await self.config.user(user).all()
+        hired = int(d.get("workers_hired") or 0)
+        st = await self._get_staffing(user)
+        assigned_total = sum(int(v) for v in st.values())
+        unassigned = max(0, hired - assigned_total)
+    
+        by_tier = self._staffing_totals_by_tier(d)
+        lines = []
+        for t in self._all_tiers():
+            a, m = by_tier.get(t, (0, 0))
+            lines.append(f"**Tier {t}** — {a}/{m} staffed")
+    
+        e = discord.Embed(title="👷 Workers by Tier",
+                          description="Pick a tier to assign workers to buildings.")
+        e.add_field(name="Tiers", value="\n".join(lines) or "—", inline=False)
+        e.add_field(name="Totals", value=f"Hired **{hired}** · Assigned **{assigned_total}** · Unassigned **{unassigned}**", inline=False)
+        return e
+
+
+    async def workers_tier_detail_embed(self, user: discord.abc.User, tier: int) -> discord.Embed:
+        d = await self.config.user(user).all()
+        st = await self._get_staffing(user)
+        lines = []
+        for name, meta in sorted(BUILDINGS.items()):
+            if int(meta.get("tier", 0)) != int(tier) or name == "house":
+                continue
+            owned = int((d.get("buildings") or {}).get(name, {}).get("count", 0))
+            if owned <= 0:
+                continue
+            staffed = min(int(st.get(name, 0)), owned)
+            lines.append(f"• **{name}** — {staffed}/{owned} staffed")
+        if not lines:
+            lines = ["—"]
+        return discord.Embed(title=f"👷 Tier {tier} — Staffing", description="\n".join(lines))
+
+
 
     async def how_to_play_embed(self, user: discord.abc.User) -> discord.Embed:
         e = discord.Embed(
@@ -2242,11 +2402,12 @@ class WorkersBtn(ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
-        embed = await view.cog.workers_embed(interaction.user)
+        embed = await view.cog.workers_overview_by_tier_embed(interaction.user)
         await interaction.response.edit_message(
             embed=embed,
-            view=WorkersView(view.cog, view.author, show_admin=view.show_admin),
+            view=WorkersTierView(view.cog, view.author, show_admin=view.show_admin),
         )
+
 
 
 class ViewBtn(ui.Button):
