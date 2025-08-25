@@ -2359,7 +2359,7 @@ class StoreManageMyView(ui.View):
         self.cog = cog
         self.author = author
         self.add_item(RemoveListingBtn())
-        self.add_item(RemoveBuyOrderBtn())
+        #self.add_item(RemoveBuyOrderBtn())
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -2396,15 +2396,6 @@ class RemoveListingBtn(ui.Button):
     async def callback(self, interaction: discord.Interaction):
         view: StoreManageMyView = self.view  # type: ignore
         await interaction.response.send_modal(RemoveSellListingModal(view.cog))
-
-
-class RemoveBuyOrderBtn(ui.Button):
-    def __init__(self):
-        super().__init__(label="Remove Buy Order", style=discord.ButtonStyle.danger, custom_id="store:removebuy")
-
-    async def callback(self, interaction: discord.Interaction):
-        view: StoreManageMyView = self.view  # type: ignore
-        await interaction.response.send_modal(RemoveBuyOrderModal(view.cog))
 
 
 # --------- Modals ----------
@@ -2525,25 +2516,6 @@ class RemoveSellListingModal(discord.ui.Modal, title="🗑️ Remove Sell Listin
         await interaction.response.send_message(f"✅ Removed listing **{lid}**.", ephemeral=True)
 
 
-class RemoveBuyOrderModal(discord.ui.Modal, title="🗑️ Remove Buy Order"):
-    order_id = discord.ui.TextInput(label="Order ID", placeholder="e.g., B54321", required=True)
-
-    def __init__(self, cog: "CityBuilder"):
-        super().__init__()
-        self.cog = cog
-
-    async def on_submit(self, interaction: discord.Interaction):
-        oid = str(self.order_id.value).strip()
-        lst = list(await self.cog.config.user(interaction.user).store_buy_orders())
-        new = [x for x in lst if x.get("id") != oid]
-        if len(new) == len(lst):
-            return await interaction.response.send_message("❌ Order not found.", ephemeral=True)
-        await self.cog.config.user(interaction.user).store_buy_orders.set(new)
-        await interaction.response.send_message(f"✅ Removed order **{oid}**.", ephemeral=True)
-
-
-# --------- Buyer view (purchase listings) ----------
-# ------ REPLACE your StoreBuyView & PurchaseListingSelect with this ------
 class StoreBuyView(ui.View):
     PAGE_SIZE = 25  # Discord select limit
 
