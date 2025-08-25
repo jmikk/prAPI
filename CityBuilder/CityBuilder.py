@@ -1617,43 +1617,53 @@ class CityBuilder(commands.Cog):
     
     async def buildings_tier_embed(self, user: discord.abc.User, tier: int) -> discord.Embed:
         """
-        Detailed view for a single tier: cost, upkeep, inputs/outputs.
-        Inputs are shown if you later add them to BUILDINGS (uses key 'inputs').
+        Detailed view for a single tier: local cost, upkeep (/t), and clear multi-input/output lines.
         """
         d = await self.config.user(user).all()
         rate, cur = await self._get_rate_currency(user)
+    
+        def fmt_io(io: Dict[str, int], *, per_tick: bool = True) -> str:
+            if not io:
+                return "—"
+            suf = "/t" if per_tick else ""
+            # Example: "metal+2/t, food+1/t, scrap+5/t"
+            return ", ".join(f"{k}+{int(v)}{suf}" for k, v in io.items())
+    
         lines = []
         for name, meta in sorted(BUILDINGS.items()):
             if int(meta.get("tier", 0)) != int(tier):
                 continue
+    
             cnt = int((d.get("buildings") or {}).get(name, {}).get("count", 0))
-            cost_wc = float(meta.get("cost", 0.0))
-            upkeep_wc = float(meta.get("upkeep", 0.0))
+            cost_wc = trunc2(float(meta.get("cost", 0.0)))
+            upkeep_wc = trunc2(float(meta.get("upkeep", 0.0)))
             cost_local = trunc2(cost_wc * rate)
             upkeep_local = trunc2(upkeep_wc * rate)
+    
             inputs = meta.get("inputs") or {}
             outputs = meta.get("produces") or {}
     
-            def fmt_io(io: Dict[str, int]) -> str:
-                return ", ".join(f"{k}+{v}" for k, v in io.items()) if io else "—"
-    
+            # Optional note for houses
             cap_note = ""
             if name == "house":
                 cap = int(meta.get("capacity", 0))
                 if cap:
                     cap_note = f" · Capacity +{cap}"
     
+            # Build the block for this building
             lines.append(
-                f"• **{name}** "
-                f"(owned {cnt})\n"
+                f"• **{name}** (owned {cnt})\n"
                 f"  Cost **{cost_local:.2f} {cur}** · Upkeep **{upkeep_local:.2f} {cur}/t**{cap_note}\n"
-                f"  Inputs: {fmt_io(inputs)}\n"
-                f"  Outputs: {fmt_io(outputs)}"
+                f"  **Inputs:**  {fmt_io(inputs)}\n"
+                f"  **Outputs:** {fmt_io(outputs)}"
             )
+    
         if not lines:
             lines = ["—"]
+    
         e = discord.Embed(title=f"🏗️ Tier {tier} — Details", description="\n".join(lines))
         return e
+
     
 
     def _effective_stock_from_escrow(self, listing: Dict) -> int:
