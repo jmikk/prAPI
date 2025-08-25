@@ -1899,14 +1899,11 @@ class CityBuilder(commands.Cog):
             description=desc
         )
     
-        grouped = self._group_owned_by_tier(d)
+        grouped_owned = self._group_owned_by_tier(d)  # {tier: [(name, count), ...]} (only >0)
         tier_lines = []
-        for t in self._all_tiers():
-            entries = grouped.get(t, [])
-            if not entries:
-                continue
-            row = " | ".join(f"{name}×{cnt}" for name, cnt in entries)
-            tier_lines.append(f"**Tier {t}** — {row}")
+        for t in self._all_tiers():  # tiers derived from BUILDINGS, so includes empty tiers
+            total = sum(cnt for _, cnt in grouped_owned.get(t, []))
+            tier_lines.append(f"**Tier {t}** — {total}")
         btxt = "\n".join(tier_lines) or "None"
     
         rtxt = "\n".join(f"• **{k}**: {v}" for k, v in res.items()) or "None"
