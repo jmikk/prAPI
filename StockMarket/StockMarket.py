@@ -494,7 +494,7 @@ class StockMarket(commands.Cog):
         if channel_id:
             channel = self.bot.get_channel(channel_id)
             if channel:
-                await channel.send(f"**{stock_name}** narrowly avoided bankruptcy and is now trading at **0.01 WC**!")
+                await channel.send(f"**{stock_name}** narrowly avoided bankruptcy and is now trading at **0.10 WC**!")
     
     async def _announce_bankruptcy(self, stock_name):
         channel_id = await self.config.announcement_channel()
