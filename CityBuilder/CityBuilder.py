@@ -385,9 +385,11 @@ class TierButton(ui.Button):
         self.tier = int(tier)
 
     async def callback(self, interaction: discord.Interaction):
+        view: BuildingsTierView = self.view  # <-- get the parent view
         e = await view.cog.buildings_tier_embed(interaction.user, self.tier)
         actions = BuildingsTierActionsView(view.cog, view.author, self.tier, show_admin=view.show_admin)
         await interaction.response.edit_message(embed=e, view=actions)
+
 
 
 
