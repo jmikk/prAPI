@@ -1878,6 +1878,8 @@ class CityBuilder(commands.Cog):
         unassigned = max(0, hired - assigned)
         cap = await self._worker_capacity(user)
         wages_local = await self._wc_to_local(user, trunc2(hired * WORKER_WAGE_WC))
+        per_tick_local = trunc2(local_upkeep + wages_local)
+
        
         if per_tick_local > 0:
             ticks_left = int(bank_local // per_tick_local)
