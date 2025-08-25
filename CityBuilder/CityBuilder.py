@@ -194,22 +194,6 @@ class WorkersTierButton(ui.Button):
             view=WorkersTierActionsView(view.cog, view.author, self.tier, view.show_admin),
         )
 
-class WorkersTierActionsView(ui.View):
-    """
-    Shows one 'Assign to {building}' button per staffed building in this tier.
-    """
-    def __init__(self, cog: "CityBuilder", author: discord.abc.User, tier: int, show_admin: bool):
-        super().__init__(timeout=180)
-        self.cog = cog
-        self.author = author
-        self.tier = int(tier)
-        self.show_admin = show_admin
-
-        # Add one assign button per building in this tier (skip houses)
-        for name, meta in BUILDINGS.items():
-            if int(meta.get("tier", 0)) == self.tier and name != "house":
-                self.add_item(AssignOneBtn(name, self.tier))
-
         # Optional: include an Unassign menu or a “Unassign from {building}” button if you want.
         self.add_item(BackToWorkersTiersBtn(show_admin))
 
@@ -218,43 +202,6 @@ class WorkersTierActionsView(ui.View):
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
-
-class AssignOneBtn(ui.Button):
-    def __init__(self, bname: str, tier: int):
-        super().__init__(label=f"Assign → {bname}", style=discord.ButtonStyle.success, custom_id=f"city:workers:assign:{bname}")
-        self.bname = bname
-        self.tier = int(tier)
-
-    async def callback(self, interaction: discord.Interaction):
-        view: WorkersTierActionsView = self.view  # type: ignore
-        cog = view.cog
-        await cog._reconcile_staffing(interaction.user)
-        d = await cog.config.user(interaction.user).all()
-        st = await cog._get_staffing(interaction.user)
-
-        # checks
-        owned = int((d.get("buildings") or {}).get(self.bname, {}).get("count", 0))
-        if owned <= 0:
-            return await interaction.response.send_message(f"❌ You have no **{self.bname}**.", ephemeral=True)
-
-        assigned = int(st.get(self.bname, 0))
-        if assigned >= owned:
-            return await interaction.response.send_message(f"❌ All **{self.bname}** are already staffed.", ephemeral=True)
-
-        hired = int(d.get("workers_hired") or 0)
-        total_assigned = sum(int(v) for v in st.values())
-        unassigned = max(0, hired - total_assigned)
-        if unassigned <= 0:
-            return await interaction.response.send_message("❌ No unassigned workers available.", ephemeral=True)
-
-        # assign 1
-        st[self.bname] = assigned + 1
-        await cog._set_staffing(interaction.user, st)
-        await cog._reconcile_staffing(interaction.user)  # clamp to capacity
-
-        # refresh tier details
-        e = await cog.workers_tier_detail_embed(interaction.user, self.tier)
-        await interaction.response.edit_message(embed=e, view=view)
 
 class BackToWorkersTiersBtn(ui.Button):
     def __init__(self, show_admin: bool):
