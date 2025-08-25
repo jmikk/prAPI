@@ -1108,6 +1108,20 @@ class CityBuilder(commands.Cog):
         if task:
             task.cancel()
 
+    def _wage_multiplier(self, hired: int, cap: int) -> float:
+        if hired <= cap:
+            return 1.0
+        overflow = hired - cap
+        if cap <= 0:
+            return 1.0 + float(overflow)  # no housing at all → harsh penalty
+        return 1.0 + (float(overflow) / float(cap))
+    
+    def _compute_wages_wc_from_numbers(self, hired: int, cap: int) -> float:
+        base = trunc2(hired * WORKER_WAGE_WC)
+        mult = self._wage_multiplier(hired, cap)
+        return trunc2(base * mult)
+
+
 
 
     # --- Scoring params (tweak to taste) ---
@@ -2001,7 +2015,9 @@ class CityBuilder(commands.Cog):
     
         # Wages (WC)
         hired = int(d.get("workers_hired") or 0)
-        wages_wc = trunc2(hired * WORKER_WAGE_WC)
+        cap = await self._worker_capacity(user)
+        wages_wc = self._compute_wages_wc_from_numbers(hired, cap)
+
     
         # Total WC → Local
         need_local = await self._wc_to_local(user, trunc2(total_upkeep_wc + wages_wc))
@@ -2052,7 +2068,9 @@ class CityBuilder(commands.Cog):
         assigned = sum(st.values())
         unassigned = max(0, hired - assigned)
         cap = await self._worker_capacity(user)
-        wages_local = await self._wc_to_local(user, trunc2(hired * WORKER_WAGE_WC))
+        cap = await self._worker_capacity(user)
+        wages_wc = self._compute_wages_wc_from_numbers(hired, cap)
+        wages_local = await self._wc_to_local(user, wages_wc)
         per_tick_local = trunc2(local_upkeep + wages_local)
 
        
