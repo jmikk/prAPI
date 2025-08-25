@@ -32,6 +32,53 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 # Default composite: 46 + a few companions (tweak freely)
 DEFAULT_SCALES = [46, 1, 10, 39]
 
+class WorkersTiersMenuView(discord.ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.show_admin = show_admin
+
+        # One button per tier
+        for t in self.cog._all_tiers():
+            self.add_item(WorkersTierButton(t))
+
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
+class WorkersBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Workers", style=discord.ButtonStyle.secondary, custom_id="city:workers")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        embed = await view.cog.workers_overview_by_tier_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=WorkersTiersMenuView(view.cog, view.author, show_admin=view.show_admin),
+        )
+
+class WorkersTierButton(ui.Button):
+    def __init__(self, tier: int):
+        super().__init__(label=f"Tier {tier}", style=discord.ButtonStyle.primary, custom_id=f"city:workers:tier:{tier}")
+        self.tier = int(tier)
+
+    async def callback(self, interaction: discord.Interaction):
+        parent: WorkersTiersMenuView = self.view  # type: ignore
+        e = await parent.cog.workers_tier_detail_embed(interaction.user, self.tier)
+        # 👇 open the detailed view that has green + red buttons
+        await interaction.response.edit_message(
+            embed=e,
+            view=WorkersTierView(parent.cog, parent.author, self.tier, parent.show_admin),
+        )
+
+
 
 class BuildingsTierActionsView(ui.View):
     """
@@ -215,9 +262,12 @@ class BackToWorkersTiersBtn(ui.Button):
         self.show_admin = show_admin
 
     async def callback(self, interaction: discord.Interaction):
-        view: WorkersTierActionsView = self.view  # type: ignore
-        e = await view.cog.workers_overview_by_tier_embed(interaction.user)
-        await interaction.response.edit_message(embed=e, view=WorkersTierView(view.cog, view.author, self.show_admin))
+        e = await self.view.cog.workers_overview_by_tier_embed(interaction.user)  # type: ignore
+        await interaction.response.edit_message(
+            embed=e,
+            view=WorkersTiersMenuView(self.view.cog, self.view.author, show_admin=self.show_admin),  # type: ignore
+        )
+
 
 
 
@@ -2465,20 +2515,6 @@ class CityMenuView(ui.View):
         if interaction.user.id != self.author.id:
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
         return interaction.user.id == self.author.id
-
-class WorkersBtn(ui.Button):
-    def __init__(self):
-        super().__init__(label="Workers", style=discord.ButtonStyle.secondary, custom_id="city:workers")
-
-    async def callback(self, interaction: discord.Interaction):
-        view: CityMenuView = self.view  # type: ignore
-        embed = await view.cog.workers_overview_by_tier_embed(interaction.user)
-        await interaction.response.edit_message(
-            embed=embed,
-            view=WorkersTierView(view.cog, view.author, show_admin=view.show_admin),
-        )
-
-
 
 class ViewBtn(ui.Button):
     def __init__(self):
