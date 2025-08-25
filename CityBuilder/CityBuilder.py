@@ -58,14 +58,20 @@ class BuildingsTierActionsView(ui.View):
             return False
         return True
 
-class WorkersTierView(ui.View):
-    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+class WorkersTierView(discord.ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, tier: int, show_admin: bool):
         super().__init__(timeout=180)
         self.cog = cog
         self.author = author
+        self.tier = tier
         self.show_admin = show_admin
-        for t in self.cog._all_tiers():
-            self.add_item(WorkersTierButton(t))
+
+        # Dynamically add one assign + one unassign button per building in this tier
+        for name, meta in sorted(BUILDINGS.items()):
+            if int(meta.get("tier", 0)) == int(tier) and name != "house":
+                self.add_item(AssignWorkerToBuildingBtn(name))
+                self.add_item(UnassignWorkerFromBuildingBtn(name))
+
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -73,6 +79,60 @@ class WorkersTierView(ui.View):
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
+
+class AssignWorkerToBuildingBtn(discord.ui.Button):
+    def __init__(self, building: str):
+        super().__init__(label=f"+ {building}", style=discord.ButtonStyle.success)
+        self.building = building
+
+    async def callback(self, interaction: discord.Interaction):
+        view: WorkersTierView = self.view  # type: ignore
+        cog = view.cog
+        user = interaction.user
+
+        d = await cog.config.user(user).all()
+        st = await cog._get_staffing(user)
+        owned = int((d.get("buildings") or {}).get(self.building, {}).get("count", 0))
+        if owned <= 0:
+            return await interaction.response.send_message(f"❌ You don’t own any {self.building}.", ephemeral=True)
+
+        if int(d.get("workers_unassigned") or 0) <= 0:
+            return await interaction.response.send_message("❌ No unassigned workers available.", ephemeral=True)
+
+        if st.get(self.building, 0) >= owned:
+            return await interaction.response.send_message(f"❌ All {self.building} are already staffed.", ephemeral=True)
+
+        st[self.building] = st.get(self.building, 0) + 1
+        await cog._set_staffing(user, st)
+        await cog.config.user(user).workers_unassigned.set(int(d.get("workers_unassigned") or 0) - 1)
+
+        e = await cog.workers_tier_detail_embed(user, view.tier)
+        await interaction.response.edit_message(embed=e, view=view)
+
+
+class UnassignWorkerFromBuildingBtn(discord.ui.Button):
+    def __init__(self, building: str):
+        super().__init__(label=f"– {building}", style=discord.ButtonStyle.danger)  # red
+        self.building = building
+
+    async def callback(self, interaction: discord.Interaction):
+        view: WorkersTierView = self.view  # type: ignore
+        cog = view.cog
+        user = interaction.user
+
+        st = await cog._get_staffing(user)
+        if st.get(self.building, 0) <= 0:
+            return await interaction.response.send_message(f"❌ No workers assigned to {self.building}.", ephemeral=True)
+
+        st[self.building] -= 1
+        await cog._set_staffing(user, st)
+        un = int((await cog.config.user(user).workers_unassigned()) or 0) + 1
+        await cog.config.user(user).workers_unassigned.set(un)
+
+        e = await cog.workers_tier_detail_embed(user, view.tier)
+        await interaction.response.edit_message(embed=e, view=view)
+
+
 
 class WorkersTierButton(ui.Button):
     def __init__(self, tier: int):
@@ -1246,6 +1306,7 @@ class CityBuilder(commands.Cog):
                           description="Pick a tier to assign workers to buildings.")
         e.add_field(name="Tiers", value="\n".join(lines) or "—", inline=False)
         e.add_field(name="Totals", value=f"Hired **{hired}** · Assigned **{assigned_total}** · Unassigned **{unassigned}**", inline=False)
+        e.set_footer(text=f"Unassigned: {unassigned}")
         return e
 
 
@@ -1259,11 +1320,20 @@ class CityBuilder(commands.Cog):
             owned = int((d.get("buildings") or {}).get(name, {}).get("count", 0))
             if owned <= 0:
                 continue
-            staffed = min(int(st.get(name, 0)), owned)
+            staffed = int(st.get(name, 0))
             lines.append(f"• **{name}** — {staffed}/{owned} staffed")
         if not lines:
             lines = ["—"]
-        return discord.Embed(title=f"👷 Tier {tier} — Staffing", description="\n".join(lines))
+    
+        # totals for footer
+        hired = int(d.get("workers_hired") or 0)
+        assigned_total = sum(int(v) for v in st.values())
+        unassigned = max(0, hired - assigned_total)
+    
+        e = discord.Embed(title=f"👷 Tier {tier} — Staffing", description="\n".join(lines))
+        e.set_footer(text=f"Total workers: {hired} | Unassigned: {unassigned}")
+        return e
+
 
 
 
