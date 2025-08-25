@@ -1905,39 +1905,6 @@ Helpful Resources:
         }
         return colors.get(category.upper(), 0xFFFFFF)  # Default to white if not found
 
-    @commands.guild_only()
-    @commands.command(name="richest")
-    async def richest(self, ctx):
-        """Display the top 3 richest users in WellCoins, combining wallet and bank balance."""
-        
-        all_users = await self.config.all_users()
-        balances = []
-    
-        for user_id, data in all_users.items():
-            member = ctx.guild.get_member(user_id)
-            if member is None:
-                continue
-    
-            user_data = self.config.user(member)
-            wallet = data.get("master_balance", 0)
-            bank = await user_data.bank_total()  # Assuming bank_total is an async method
-            total = round(wallet + bank, 2)
-    
-            balances.append((member, total))
-    
-        top_users = sorted(balances, key=lambda x: x[1], reverse=True)[:3]
-    
-        embed = discord.Embed(title="🏆 Top 3 Richest Users 🏆", color=discord.Color.gold())
-        
-        if not top_users:
-            embed.description = "No users have any WellCoins yet."
-        else:
-            for rank, (user, balance) in enumerate(top_users, start=1):
-                embed.add_field(name=f"#{rank} {user.display_name}", value=f"💰 `{balance:,.2f}` WellCoins", inline=False)
-    
-        await ctx.send(embed=embed)
-
-
 
     @commands.Cog.listener()
     async def on_message(self, message):
