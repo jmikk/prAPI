@@ -38,11 +38,8 @@ class WorkersTiersMenuView(discord.ui.View):
         self.cog = cog
         self.author = author
         self.show_admin = show_admin
-
-        # One button per tier
         for t in self.cog._all_tiers():
             self.add_item(WorkersTierButton(t))
-
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -50,6 +47,7 @@ class WorkersTiersMenuView(discord.ui.View):
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
+
 
 
 class WorkersBtn(ui.Button):
@@ -64,19 +62,20 @@ class WorkersBtn(ui.Button):
             view=WorkersTiersMenuView(view.cog, view.author, show_admin=view.show_admin),
         )
 
+
 class WorkersTierButton(ui.Button):
     def __init__(self, tier: int):
         super().__init__(label=f"Tier {tier}", style=discord.ButtonStyle.primary, custom_id=f"city:workers:tier:{tier}")
         self.tier = int(tier)
 
     async def callback(self, interaction: discord.Interaction):
-        parent: WorkersTiersMenuView = self.view  # type: ignore
-        e = await parent.cog.workers_tier_detail_embed(interaction.user, self.tier)
-        # 👇 open the detailed view that has green + red buttons
+        menu: WorkersTiersMenuView = self.view  # type: ignore
+        e = await menu.cog.workers_tier_detail_embed(interaction.user, self.tier)
         await interaction.response.edit_message(
             embed=e,
-            view=WorkersTierView(parent.cog, parent.author, self.tier, parent.show_admin),
+            view=WorkersTierView(menu.cog, menu.author, self.tier, menu.show_admin),  # 👈 pass tier!
         )
+
 
 
 
@@ -209,11 +208,13 @@ class BackToWorkersTiersBtn(ui.Button):
         self.show_admin = show_admin
 
     async def callback(self, interaction: discord.Interaction):
-        e = await self.view.cog.workers_overview_by_tier_embed(interaction.user)  # type: ignore
+        detail: WorkersTierActionsView | WorkersTierView = self.view  # type: ignore
+        e = await detail.cog.workers_overview_by_tier_embed(interaction.user)
         await interaction.response.edit_message(
             embed=e,
-            view=WorkersTiersMenuView(self.view.cog, self.view.author, show_admin=self.show_admin),  # type: ignore
+            view=WorkersTiersMenuView(detail.cog, detail.author, show_admin=self.show_admin),
         )
+
 
 
 
