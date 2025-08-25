@@ -2026,7 +2026,7 @@ class StoreBtn(ui.Button):
         e.add_field(
             name="💰 Your Balance",
             value=(
-                f"Bank: **{bank_local:.2f} {cur}**\n"
+                f"Treasury: **{bank_local:.2f} {cur}**\n"
                 f"Wallet: **{wallet_wc:.2f} WC** (≈ **{wallet_local:.2f} {cur}**)\n"
                 f"Total: **{total_local:.2f} {cur}**"
             ),
