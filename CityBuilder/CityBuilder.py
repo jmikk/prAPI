@@ -1910,47 +1910,80 @@ class CityBuilder(commands.Cog):
         if not bld:
             return
     
+        # Keep staffing consistent first
         await self._reconcile_staffing(user)
         st = await self._get_staffing(user)
     
-        # Buildings upkeep (WC)
-        total_upkeep_wc = 0.0
-        for b, info in bld.items():
-            if b in BUILDINGS:
-                total_upkeep_wc += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
-        total_upkeep_wc = trunc2(total_upkeep_wc)
-    
-        # Wages (WC)
-        hired = int(d.get("workers_hired") or 0)
-        cap = await self._worker_capacity(user)
-        wages_wc = self._compute_wages_wc_from_numbers(hired, cap)
-
-    
-        # Total WC → Local
-        need_local = await self._wc_to_local(user, trunc2(total_upkeep_wc + wages_wc))
+        # Snapshot bank & capacity
         bank_local = trunc2(float(d.get("bank", 0.0)))
+        cap = await self._worker_capacity(user)
     
-        # If we can't pay **everything**, halt production and don't charge
-        if bank_local + 1e-9 < need_local:
-            return
-    
-        # Deduct funds
-        bank_local = trunc2(bank_local - need_local)
-    
-        # Production only from staffed units
-        new_resources = dict(d.get("resources", {}))
+        # Build a list of **staffed units**: one entry per producing building *instance*
+        # e.g., if you have 3 factories and 2 are staffed, you get 2 units of ("factory", tier)
+        units: list[tuple[int, str]] = []
         for b, info in bld.items():
             if b not in BUILDINGS:
                 continue
+            tier = int(BUILDINGS[b].get("tier", 0))
             cnt = int(info.get("count", 0))
             staffed = min(cnt, int(st.get(b, 0)))
-            if staffed <= 0:
+            # Houses don't need staff and produce nothing; skip them for funding
+            if b == "house" or staffed <= 0:
                 continue
-            for res, amt in BUILDINGS[b]["produces"].items():
-                new_resources[res] = int(new_resources.get(res, 0)) + int(amt * staffed)
+            for _ in range(staffed):
+                units.append((tier, b))
     
+        if not units:
+            return  # nothing staffed → nothing to run
+    
+        # Highest tier first
+        units.sort(key=lambda t: (-t[0], t[1]))
+    
+        # Greedy selection of units we can afford this tick
+        selected_counts: Dict[str, int] = {}
+        funded_workers = 0
+        total_upkeep_wc = 0.0
+    
+        for tier, b in units:
+            # Tentatively add this unit
+            trial_workers = funded_workers + 1
+            trial_upkeep_wc = trunc2(total_upkeep_wc + float(BUILDINGS[b].get("upkeep", 0.0)))
+    
+            # Recompute total wages *with your existing overflow formula*
+            wages_wc_trial = self._compute_wages_wc_from_numbers(trial_workers, cap)
+    
+            # Convert total WC (upkeep + wages) to local for affordability check
+            need_local_trial = await self._wc_to_local(user, trunc2(trial_upkeep_wc + wages_wc_trial))
+    
+            if need_local_trial <= bank_local + 1e-9:
+                # We can afford to run this additional unit
+                funded_workers = trial_workers
+                total_upkeep_wc = trial_upkeep_wc
+                selected_counts[b] = selected_counts.get(b, 0) + 1
+            # else: skip this unit and continue trying lower tiers
+    
+        # If we couldn’t afford even one staffed unit, do nothing (no charge, no production)
+        if funded_workers <= 0:
+            return
+    
+        # Final wage cost for the funded workers and final local charge
+        wages_wc_final = self._compute_wages_wc_from_numbers(funded_workers, cap)
+        need_local_final = await self._wc_to_local(user, trunc2(total_upkeep_wc + wages_wc_final))
+    
+        # Deduct funds
+        bank_local = trunc2(bank_local - need_local_final)
+    
+        # Produce only from funded (selected) units
+        new_resources = dict(d.get("resources", {}))
+        for b, n in selected_counts.items():
+            produces = BUILDINGS[b].get("produces") or {}
+            for res, amt in produces.items():
+                new_resources[res] = int(new_resources.get(res, 0)) + int(amt) * int(n)
+    
+        # Save
         await self.config.user(user).resources.set(new_resources)
         await self.config.user(user).bank.set(bank_local)
+
 
 
     async def make_city_embed(self, user: discord.abc.User, header: Optional[str] = None) -> discord.Embed:
