@@ -1906,7 +1906,13 @@ class CityBuilder(commands.Cog):
             tier_lines.append(f"**Tier {t}** — {total}")
         btxt = "\n".join(tier_lines) or "None"
     
-        rtxt = "\n".join(f"• **{k}**: {v}" for k, v in res.items()) or "None"
+        # 📦 Resources: counts by tier (always show every tier)
+        grouped_res = self._group_resources_by_tier(d)  # {tier: [(res, qty), ...]}
+        res_tier_lines = []
+        for t in self._all_tiers():
+            total = sum(q for _, q in grouped_res.get(t, []))
+            res_tier_lines.append(f"**Tier {t}** — {total}")
+        rtxt = "\n".join(res_tier_lines) or "None"
     
         # Add fields after embed is defined
         e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
