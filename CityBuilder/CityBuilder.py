@@ -1583,7 +1583,7 @@ class CityBuilder(commands.Cog):
             ticks_left = int(bank_local // per_tick_local)
             seconds_left = ticks_left * TICK_SECONDS
             end_ts = int(time.time()) + seconds_left
-            runway_txt = f"about {ticks_left} ticks — runs out <t:{end_ts}:R> (<t:{end_ts}:T>)"
+            runway_txt = f"About {ticks_left} ticks — runs out <t:{end_ts}:R> (<t:{end_ts}:T>)"
         else:
             runway_txt = "∞ (no upkeep/wages)"
 
@@ -1885,7 +1885,7 @@ class CityBuilder(commands.Cog):
             ticks_left = int(bank_local // per_tick_local)
             seconds_left = ticks_left * TICK_SECONDS
             end_ts = int(time.time()) + seconds_left
-            runway_txt = f"about {ticks_left} ticks — runs out <t:{end_ts}:R> (<t:{end_ts}:T>)"
+            runway_txt = f"About {ticks_left} ticks — runs out <t:{end_ts}:R> (<t:{end_ts}:T>)"
         else:
             runway_txt = "∞ (no upkeep/wages)"
 
@@ -1923,7 +1923,7 @@ class CityBuilder(commands.Cog):
             inline=False,
         )
         e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
-        e.add_field(name="⏳ Upkeep per Tick", value=f"**{per_tick_local:.2f} {cur}/t**", inline=True)
+        e.add_field(name="⏳ Total Upkeep per Tick", value=f"**{per_tick_local:.2f} {cur}/t**", inline=True)
         e.add_field(name="📉 Runway", value=runway_txt, inline=False)
         e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
     
