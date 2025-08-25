@@ -1581,10 +1581,12 @@ class CityBuilder(commands.Cog):
     
         if per_tick_local > 0:
             ticks_left = int(bank_local // per_tick_local)
-            hours_left = ticks_left * (TICK_SECONDS // 3600)
-            runway_txt = f"~{ticks_left} ticks (~{hours_left}h)"
+            seconds_left = ticks_left * TICK_SECONDS
+            end_ts = int(time.time()) + seconds_left
+            runway_txt = f"about {ticks_left} ticks — runs out <t:{end_ts}:R> (<t:{end_ts}:T>)"
         else:
             runway_txt = "∞ (no upkeep/wages)"
+
     
         e = discord.Embed(
             title="🏦 Bank",
@@ -1917,7 +1919,6 @@ class CityBuilder(commands.Cog):
                 f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
                 f"Capacity **{cap}**\n"
                 f"Wages per tick: **{wages_local:.2f} {cur}** "
-                f"(= {trunc2(hired * WORKER_WAGE_WC):.2f} WC)"
             ),
             inline=False,
         )
