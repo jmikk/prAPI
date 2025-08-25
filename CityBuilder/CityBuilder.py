@@ -1107,6 +1107,25 @@ class CityBuilder(commands.Cog):
         if task:
             task.cancel()
 
+    async def how_to_play_embed(self, user: discord.abc.User) -> discord.Embed:
+        e = discord.Embed(
+            title="📖 How to Play CityBuilder",
+            description=(
+                "Welcome to **CityBuilder**! Here’s the basics:\n\n"
+                "🏗️ **Buildings** — Buy farms, mines, factories, and houses. "
+                "Houses increase worker capacity, other buildings produce resources.\n\n"
+                "👷 **Workers** — Hire and assign workers to staffed buildings so they actually produce.\n\n"
+                "📦 **Resources** — Produced each tick (1h). Resources can be recycled into scrap or sold.\n\n"
+                "🏦 **Treasury** — Pays upkeep and wages every tick. If empty, production halts.\n\n"
+                "🛒 **Store** — Trade resources with other players. Buyers pay +10% fee, sellers lose −10% on payout.\n\n"
+                "♻️ **Recycle** — Convert unwanted resources/buildings into scrap (Tier 0).\n\n"
+                "🏆 **Leaderboard** — Score is based on your buildings (mainly) and resources."
+            )
+        )
+        e.set_footer(text="Tip: Use `$city` anytime to return to your main city panel.")
+        return e
+
+
     def _bundle_mul(self, per_unit: Dict[str, int], units: int) -> Dict[str, int]:
         return {k: int(v) * int(units) for k, v in (per_unit or {}).items()}
 
@@ -2140,6 +2159,7 @@ class CityMenuView(ui.View):
         self.add_item(ViewResourcesBtn())
         self.add_item(LeaderboardBtn())
         self.add_item(RecycleBtn())
+        self.add_item(HowToPlayBtn())
         if show_admin:
             self.add_item(NextDayBtn())
             self.add_item(RateBtn()) 
@@ -2171,9 +2191,35 @@ class ViewBtn(ui.Button):
         embed = await view.cog.make_city_embed(interaction.user)
         await interaction.response.edit_message(embed=embed, view=view)
 
+class HowToPlayBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="How to Play", style=discord.ButtonStyle.primary, custom_id="city:howtoplay")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        e = await view.cog.how_to_play_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=e,
+            view=HowToPlayView(view.cog, view.author, show_admin=view.show_admin),
+        )
+
+class HowToPlayView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
 class BankBtn(ui.Button):
     def __init__(self):
-        super().__init__(label="Bank", style=discord.ButtonStyle.secondary, custom_id="city:bank")
+        super().__init__(label="Bank", style=discord.ButtonStyle.success, custom_id="city:bank")
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
