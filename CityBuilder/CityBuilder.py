@@ -118,7 +118,7 @@ class WorkersTierView(discord.ui.View):
                 self.add_item(AssignWorkerToBuildingBtn(name))
                 self.add_item(UnassignWorkerFromBuildingBtn(name))
 
-        self.add_item(BackBtn(show_admin))
+        self.add_item(BackToWorkersTiersBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id:
