@@ -1468,7 +1468,7 @@ class CityBuilder(commands.Cog):
             
         e = discord.Embed(title="👷 Workers", description="Hire and assign workers to buildings to enable production.")
         e.add_field(name="Status",
-                    value=(f"Hired **{hired}** · Capacity **{cap}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "),
+                    value=(f"Hired **{hired}** · Capacity **{cap}** · Assigned **{assigned}** · Unassigned **{unassigned}**"),
                     inline=False)
         e.add_field(name="Wage",
                     value=f"**{wage_local:.2f} {cur}** per worker per tick",
@@ -1917,7 +1917,7 @@ class CityBuilder(commands.Cog):
         e.add_field(
             name="👷 Workers",
             value=(
-                f"Hired **{hired}** · Capacity **{cap}** · Assigned **{assigned}** · Unassigned **{unassigned}**"
+                f"Hired **{hired}** · Capacity **{cap}** · Assigned **{assigned}** · Unassigned **{unassigned}**\n"
                 f"Wages per tick: **{wages_local:.2f} {cur}** "
             ),
             inline=False,
