@@ -1878,16 +1878,15 @@ class CityBuilder(commands.Cog):
         unassigned = max(0, hired - assigned)
         cap = await self._worker_capacity(user)
         wages_local = await self._wc_to_local(user, trunc2(hired * WORKER_WAGE_WC))
-    
-        # NEW: per-tick need & runway
-        per_tick_local = trunc2(local_upkeep + wages_local)
+       
         if per_tick_local > 0:
             ticks_left = int(bank_local // per_tick_local)
-            hours_left = ticks_left * (TICK_SECONDS // 3600)
-            runway_txt = f"~{ticks_left} ticks (~{hours_left}h)"
+            seconds_left = ticks_left * TICK_SECONDS
+            end_ts = int(time.time()) + seconds_left
+            runway_txt = f"about {ticks_left} ticks — runs out <t:{end_ts}:R> (<t:{end_ts}:T>)"
         else:
             runway_txt = "∞ (no upkeep/wages)"
-    
+
         desc = "Use the buttons below to manage your city."
         if header:
             desc = f"{header}\n\n{desc}"
