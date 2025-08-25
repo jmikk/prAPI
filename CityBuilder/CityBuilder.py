@@ -1589,7 +1589,7 @@ class CityBuilder(commands.Cog):
 
     
         e = discord.Embed(
-            title="🏦 Bank",
+            title="🏦 Treasury",
             description="Your **Bank** pays wages/upkeep each tick in your **local currency**. "
                         "If the bank can’t cover upkeep, **production halts**."
         )
@@ -1922,7 +1922,7 @@ class CityBuilder(commands.Cog):
             ),
             inline=False,
         )
-        e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
+        e.add_field(name="🏦 Treasury", value=f"**{bank_local:.2f} {cur}**", inline=True)
         e.add_field(name="⏳ Total Upkeep per Tick", value=f"**{per_tick_local:.2f} {cur}/t**", inline=True)
         e.add_field(name="📉 Runway", value=runway_txt, inline=False)
         e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
