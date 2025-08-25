@@ -16,7 +16,7 @@ BUILDINGS: Dict[str, Dict] = {
     "house":   {"cost": 50.0,  "upkeep": 0, "produces": {},"capacity": 1, "tier": 0},  # +1 worker capacity
     "farm":    {"cost": 100.0, "upkeep": 0, "produces": {"food": 5}, "tier": 1},
     "mine":    {"cost": 200.0, "upkeep": 0, "produces": {"metal": 2}, "tier": 1},
-    "factory": {"cost": 500.0, "upkeep": 5, "produces": {"goods": 1}, "tier": 1},
+    "factory": {"cost": 500.0, "upkeep": 5, "inputs": {"metal": 1}, "produces": {"goods": 1}, "tier": 2},
 }
 
 # Per-worker wage (in WC) per tick; user pays in local currency at their rate
@@ -1903,86 +1903,120 @@ class CityBuilder(commands.Cog):
             user = self.bot.get_user(user_id)
             if user:
                 await self.process_tick(user)
-
+    
     async def process_tick(self, user: discord.abc.User):
+        """
+        Pay-as-you-go production:
+        - Sort staffed building *units* by descending tier.
+        - For each unit, compute marginal WC cost (its upkeep + 1 worker's marginal wage incl. housing overflow).
+        - Convert that marginal WC to local; if treasury can cover it and inputs exist, run the unit:
+            * Deduct local funds
+            * Consume inputs
+            * Add outputs
+            * Count that worker as 'used' (affects next unit's marginal wage via overflow)
+        - Stop when funds or inputs run out.
+        """
         d = await self.config.user(user).all()
         bld = d.get("buildings", {})
         if not bld:
             return
     
-        # Keep staffing consistent first
+        # Ensure staffing consistency
         await self._reconcile_staffing(user)
         st = await self._get_staffing(user)
     
-        # Snapshot bank & capacity
+        # Snapshot inventory + treasury (local)
+        new_resources = dict(d.get("resources", {}))
         bank_local = trunc2(float(d.get("bank", 0.0)))
+    
+        # Quick exit: nothing staffed
+        any_staffed = any(min(int((bld.get(b) or {}).get("count", 0)), int(st.get(b, 0))) > 0 for b in bld.keys())
+        if not any_staffed:
+            return
+    
+        # Capacity affects wage overflow
         cap = await self._worker_capacity(user)
     
-        # Build a list of **staffed units**: one entry per producing building *instance*
-        # e.g., if you have 3 factories and 2 are staffed, you get 2 units of ("factory", tier)
+        # --- Build a flat list of staffed building *units* with their tier/name ---
+        # Each element is (tier:int, name:str)
         units: list[tuple[int, str]] = []
-        for b, info in bld.items():
-            if b not in BUILDINGS:
+        for bname, info in bld.items():
+            if bname not in BUILDINGS:
                 continue
-            tier = int(BUILDINGS[b].get("tier", 0))
             cnt = int(info.get("count", 0))
-            staffed = min(cnt, int(st.get(b, 0)))
-            # Houses don't need staff and produce nothing; skip them for funding
-            if b == "house" or staffed <= 0:
+            staffed = min(cnt, int(st.get(bname, 0)))
+            if staffed <= 0:
                 continue
-            for _ in range(staffed):
-                units.append((tier, b))
-    
-        if not units:
-            return  # nothing staffed → nothing to run
+            tier = int(BUILDINGS[bname].get("tier", 0))
+            units.extend((tier, bname) for _ in range(staffed))
     
         # Highest tier first
         units.sort(key=lambda t: (-t[0], t[1]))
     
-        # Greedy selection of units we can afford this tick
-        selected_counts: Dict[str, int] = {}
-        funded_workers = 0
-        total_upkeep_wc = 0.0
+        # Helper to get marginal wage (WC) of adding the Nth paid worker
+        def _marginal_wage_wc(n_workers_before: int) -> float:
+            # total(n) - total(n-1), using the same overflow schedule as your global wage function
+            before = self._compute_wages_wc_from_numbers(n_workers_before, cap)
+            after = self._compute_wages_wc_from_numbers(n_workers_before + 1, cap)
+            return trunc2(after - before)
     
-        for tier, b in units:
-            # Tentatively add this unit
-            trial_workers = funded_workers + 1
-            trial_upkeep_wc = trunc2(total_upkeep_wc + float(BUILDINGS[b].get("upkeep", 0.0)))
+        used_workers = 0  # number of workers we actually fund this tick
     
-            # Recompute total wages *with your existing overflow formula*
-            wages_wc_trial = self._compute_wages_wc_from_numbers(trial_workers, cap)
+        # For each staffed unit in priority order, attempt to fund and run it
+        for tier, bname in units:
+            meta = BUILDINGS[bname]
+            # Per-unit upkeep in WC
+            upkeep_wc = trunc2(float(meta.get("upkeep", 0.0)))
     
-            # Convert total WC (upkeep + wages) to local for affordability check
-            need_local_trial = await self._wc_to_local(user, trunc2(trial_upkeep_wc + wages_wc_trial))
+            # Marginal wage (WC) for adding this worker
+            wage_wc = _marginal_wage_wc(used_workers)
     
-            if need_local_trial <= bank_local + 1e-9:
-                # We can afford to run this additional unit
-                funded_workers = trial_workers
-                total_upkeep_wc = trial_upkeep_wc
-                selected_counts[b] = selected_counts.get(b, 0) + 1
-            # else: skip this unit and continue trying lower tiers
+            # Total marginal WC for this unit
+            unit_wc = trunc2(upkeep_wc + wage_wc)
     
-        # If we couldn’t afford even one staffed unit, do nothing (no charge, no production)
-        if funded_workers <= 0:
-            return
+            # Convert to local to compare against treasury
+            unit_local = await self._wc_to_local(user, unit_wc)
+            if bank_local + 1e-9 < unit_local:
+                # Not enough funds to run more units; stop early
+                break
     
-        # Final wage cost for the funded workers and final local charge
-        wages_wc_final = self._compute_wages_wc_from_numbers(funded_workers, cap)
-        need_local_final = await self._wc_to_local(user, trunc2(total_upkeep_wc + wages_wc_final))
+            # Check if we have inputs to run ONE unit
+            inputs = {k: int(v) for k, v in (meta.get("inputs") or {}).items()}
+            can_run = True
+            for res, need in inputs.items():
+                if need <= 0:
+                    continue
+                if int(new_resources.get(res, 0)) < need:
+                    can_run = False
+                    break
+            if not can_run:
+                # Skip this unit; maybe lower-tier units can still run
+                continue
     
-        # Deduct funds
-        bank_local = trunc2(bank_local - need_local_final)
+            # PAY for this unit
+            bank_local = trunc2(bank_local - unit_local)
     
-        # Produce only from funded (selected) units
-        new_resources = dict(d.get("resources", {}))
-        for b, n in selected_counts.items():
-            produces = BUILDINGS[b].get("produces") or {}
-            for res, amt in produces.items():
-                new_resources[res] = int(new_resources.get(res, 0)) + int(amt) * int(n)
+            # CONSUME inputs
+            for res, need in inputs.items():
+                if need <= 0:
+                    continue
+                new_resources[res] = int(new_resources.get(res, 0)) - need
+                if new_resources[res] < 0:
+                    new_resources[res] = 0  # safety
     
-        # Save
+            # PRODUCE outputs
+            for res, amt in (meta.get("produces") or {}).items():
+                if amt <= 0:
+                    continue
+                new_resources[res] = int(new_resources.get(res, 0)) + int(amt)
+    
+            # Count this worker as funded/used
+            used_workers += 1
+    
+        # Save final inventory and treasury
         await self.config.user(user).resources.set(new_resources)
         await self.config.user(user).bank.set(bank_local)
+
 
 
 
