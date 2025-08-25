@@ -179,29 +179,6 @@ class UnassignWorkerFromBuildingBtn(discord.ui.Button):
         await interaction.response.edit_message(embed=e, view=view)
 
 
-
-class WorkersTierButton(ui.Button):
-    def __init__(self, tier: int):
-        super().__init__(label=f"Tier {tier}", style=discord.ButtonStyle.primary, custom_id=f"city:workers:tier:{tier}")
-        self.tier = int(tier)
-
-    async def callback(self, interaction: discord.Interaction):
-        view: WorkersTierView = self.view  # type: ignore
-        e = await view.cog.workers_tier_detail_embed(interaction.user, self.tier)
-        await interaction.response.edit_message(
-            embed=e,
-            view=WorkersTierActionsView(view.cog, view.author, self.tier, view.show_admin),
-        )
-
-        # Optional: include an Unassign menu or a “Unassign from {building}” button if you want.
-        self.add_item(BackToWorkersTiersBtn(show_admin))
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id != self.author.id:
-            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
-            return False
-        return True
-
 class BackToWorkersTiersBtn(ui.Button):
     def __init__(self, show_admin: bool):
         super().__init__(label="Back to Tiers", style=discord.ButtonStyle.secondary, custom_id="city:workers:tiers:back")
