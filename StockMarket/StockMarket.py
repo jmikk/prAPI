@@ -101,13 +101,7 @@ class StockMarket(commands.Cog):
                 label += " [Commodity]"
             choices.append(app_commands.Choice(name=label, value=name.upper()))
     
-        return choices[:25]
-
-
-
-    
-        
-
+        return choices[:25]        
 
     def __init__(self, bot):
         self.bot = bot
@@ -139,7 +133,7 @@ class StockMarket(commands.Cog):
             for name, data in stocks.items():
                 if data.get("delisted", False):
                     continue
-                self._hourly_start_prices[name] = data["price"]  # 🟢 FIXED: Now inside the loop
+                self._hourly_start_prices[name] = data["price"]  
     
         await self.recalculate_all_stock_prices()
         await self.apply_daily_commodity_price_update()
@@ -435,7 +429,7 @@ class StockMarket(commands.Cog):
     
                 # Market activity influence
                 market_change = 0.01 * (self.last_day_trades / 10000)
-                market_change = max(-0.02, min(market_change, 0.02)) 
+                market_change = max(-0.05, min(market_change, 0.05)) 
     
                 # Final percent change calculation
                 total_percent_change = base_percent + tag_bonus + (market_change * 100)
@@ -445,7 +439,7 @@ class StockMarket(commands.Cog):
                 if data.get("commodity", False):
                     new_price = max(1.0, new_price)
                 else:
-                    if new_price <= 0:
+                    if new_price <= .01:
                         if random.random() < 0.5:
                             new_price = 0.01
                             await self._announce_recovery(stock_name)
