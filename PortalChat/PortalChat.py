@@ -44,6 +44,35 @@ class PortalChat(commands.Cog):
     async def _get_links(self) -> List[dict]:
         return await self.config.links()
 
+    async def _resolve_webhook_for_pair(self, src_channel_id: int, dest_channel_id: int) -> Optional[str]:
+        """
+        Try to find the correct webhook URL for (source channel -> destination channel)
+        by checking known links for the source and fetching their webhook to compare channel_id.
+        """
+        try:
+            links = await self._get_links()
+            candidates = [l.get("webhook_url") for l in links
+                          if l.get("source_channel_id") == src_channel_id and l.get("webhook_url")]
+            if not candidates:
+                return None
+    
+            if self.session is None or self.session.closed:
+                self.session = aiohttp.ClientSession()
+    
+            for url in candidates:
+                try:
+                    wh = discord.Webhook.from_url(url, session=self.session)
+                    # Fetch full webhook to get its channel_id
+                    full = await wh.fetch()
+                    if getattr(full, "channel_id", None) == dest_channel_id:
+                        return url
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return None
+
+
     async def _set_links(self, links: List[dict]) -> None:
         await self.config.links.set(links)
 
@@ -208,12 +237,39 @@ class PortalChat(commands.Cog):
 
         wh_url = val.get("w") if isinstance(val, dict) else None
         if not wh_url:
-            if owner and self.edit_debug:
+            # Try to re-hydrate the webhook URL from links based on destination channel
+            dest_channel_id = val["c"] if isinstance(val, dict) else val[0]
+            wh_url = await self._resolve_webhook_for_pair(after.channel.id, dest_channel_id)
+        
+            if wh_url:
+                # Save back into mapping for future edits
                 try:
-                    await owner.send(f"📝 EDIT: mapping found but no webhook URL for source msg {after.id}")
+                    async with self._lock:
+                        mapping = await self.config.mapping()
+                        entry = mapping.get(str(after.id), {})
+                        if isinstance(entry, dict):
+                            entry["w"] = wh_url
+                            entry["ts"] = int(datetime.utcnow().timestamp())
+                            mapping[str(after.id)] = entry
+                            await self.config.mapping.set(mapping)
+                    if owner and self.edit_debug:
+                        try:
+                            await owner.send(f"📝 EDIT: rehydrated webhook URL for source msg {after.id}")
+                        except Exception:
+                            pass
                 except Exception:
                     pass
-            return
+            else:
+                if owner and self.edit_debug:
+                    try:
+                        await owner.send(
+                            f"📝 EDIT: mapping found but no webhook URL for source msg {after.id} "
+                            f"and could not resolve from links."
+                        )
+                    except Exception:
+                        pass
+                return
+
 
         new_content = after.content or None
         new_embeds: List[discord.Embed] = []
