@@ -199,6 +199,29 @@ class PortalChat(commands.Cog):
             await self._set_links(kept)
         await ctx.send(f"Removed {len(removed)} broken link(s). Kept {len(kept)}.")
 
+    @commands.Cog.listener("on_raw_reaction_add")
+    async def relay_reaction_add(self, payload: discord.RawReactionActionEvent):
+        # Ignore bots and webhooks
+        if payload.user_id == self.bot.user.id:
+            return
+    
+        # See if this original message was relayed
+        mapping = await self.config.mapping()
+        if str(payload.message_id) not in mapping:
+            return
+        
+        dest_channel_id, dest_message_id = mapping[str(payload.message_id)]
+        channel = self.bot.get_channel(dest_channel_id)
+        if not channel:
+            return
+    
+        try:
+            msg = await channel.fetch_message(dest_message_id)
+            await msg.add_reaction(payload.emoji)
+        except Exception as e:
+            print(f"Failed to sync reaction: {e}")
+
+
 
 async def setup(bot: Red) -> None:
     await bot.add_cog(PortalChat(bot))
