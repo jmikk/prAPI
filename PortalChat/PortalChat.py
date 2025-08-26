@@ -58,15 +58,16 @@ class PortalChat(commands.Cog):
         if self.session is None or self.session.closed:
             self.session = aiohttp.ClientSession()
         wh = discord.Webhook.from_url(webhook_url, session=self.session)
+            # discord.py expects sequences, not None
         await wh.send(
-                content=content,
-                username=username,
-                avatar_url=avatar_url,
-                files=files or None,
-                embeds=embeds or None,
-                allowed_mentions=AllowedMentions.none(),
-                wait=False,
-            )
+            content=content,
+            username=username,
+            avatar_url=avatar_url,
+            files=files or [],
+            embeds=embeds or [],
+            allowed_mentions=AllowedMentions.none(),
+            wait=False,
+        )
 
     @commands.Cog.listener("on_message")
     async def relay_message(self, message: discord.Message):
@@ -96,8 +97,12 @@ class PortalChat(commands.Cog):
         except Exception as e:
             await message.channel.send(f"⚠️ Failed to process some embeds: {e}")
 
+        # If nothing to send, bail out early to avoid API errors
+        if not content and not files and not embeds:
+            return
+
         avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
-        username = message.author.display_name
+        username = message.author.display_name or str(message.author)
 
         for link in links:
             webhook_url = link.get("webhook_url")
