@@ -13,17 +13,19 @@ from datetime import datetime, timedelta
 
 class PortalChat(commands.Cog):
     """
-    Link messages from one channel to another (even across servers) using webhooks.
-    Also syncs reactions (add/remove) between source and destination messages.
+    Link messages cross-server via webhooks and sync reactions **both ways**.
+    - Messages: Source channel → destination webhook (can be cross-server).
+    - Reactions: Add/remove mirrored in both directions.
+    - Loop safety: ignores reactions from any bot users; keeps a timestamped map; prunes regularly.
     """
 
     __author__ = "you"
-    __version__ = "1.5.0"
+    __version__ = "1.6.0"
 
     def __init__(self, bot: Red) -> None:
         self.bot = bot
         self.config = Config.get_conf(self, identifier=0xC0FFEE10, force_registration=True)
-        # mapping: original_msg_id -> {"c": dest_channel_id, "m": dest_msg_id, "ts": unix_timestamp}
+        # mapping: message_id -> {"c": counterpart_channel_id, "m": counterpart_message_id, "ts": unix_timestamp}
         self.config.register_global(links=[], mapping={}, max_age_days=7, max_map=5000)
         self._lock = asyncio.Lock()
         self.session: aiohttp.ClientSession | None = aiohttp.ClientSession()
@@ -33,6 +35,9 @@ class PortalChat(commands.Cog):
         except RuntimeError:
             pass
 
+    # -----------------------------
+    # Helpers
+    # -----------------------------
     async def _get_links(self) -> List[dict]:
         return await self.config.links()
 
@@ -61,9 +66,39 @@ class PortalChat(commands.Cog):
             files=files or [],
             embeds=embeds or [],
             allowed_mentions=AllowedMentions.none(),
-            wait=True,  # wait True so we get a Message back
+            wait=True,
         )
 
+    async def _save_bidirectional_mapping(self, a_msg: discord.Message, b_msg: discord.Message):
+        now_ts = int(datetime.utcnow().timestamp())
+        async with self._lock:
+            mapping = await self.config.mapping()
+            mapping[str(a_msg.id)] = {"c": b_msg.channel.id, "m": b_msg.id, "ts": now_ts}
+            mapping[str(b_msg.id)] = {"c": a_msg.channel.id, "m": a_msg.id, "ts": now_ts}
+            # size-based prune using config cap
+            max_map = await self.config.max_map()
+            if len(mapping) > max_map:
+                items = sorted(mapping.items(), key=lambda kv: kv[1].get("ts", 0))
+                drop = max(1, len(items) // 5)  # drop oldest ~20%
+                for k, _ in items[:drop]:
+                    mapping.pop(k, None)
+            await self.config.mapping.set(mapping)
+
+    def _is_bot_user(self, guild_id: Optional[int], user_id: int) -> bool:
+        if user_id == self.bot.user.id:
+            return True
+        if guild_id:
+            guild = self.bot.get_guild(guild_id)
+            if guild:
+                member = guild.get_member(user_id)
+                if member:
+                    return bool(member.bot)
+        # Fallback: unknown user; treat as non-bot
+        return False
+
+    # -----------------------------
+    # Message relay
+    # -----------------------------
     @commands.Cog.listener("on_message")
     async def relay_message(self, message: discord.Message):
         if message.author.bot:
@@ -95,7 +130,6 @@ class PortalChat(commands.Cog):
         if not content and not files and not embeds:
             return
 
-        # Format webhook username as Nickname (Server), trimmed to Discord limit (32)
         avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
         username = f"{message.author.display_name} ({message.guild.name})"
         if len(username) > 32:
@@ -115,21 +149,7 @@ class PortalChat(commands.Cog):
                     embeds=embeds.copy() if embeds else None,
                 )
                 if relayed_msg:
-                    async with self._lock:
-                        mapping = await self.config.mapping()
-                        mapping[str(message.id)] = {
-                            "c": relayed_msg.channel.id,
-                            "m": relayed_msg.id,
-                            "ts": int(datetime.utcnow().timestamp()),
-                        }
-                        # size-based prune using config cap
-                        max_map = await self.config.max_map()
-                        if len(mapping) > max_map:
-                            items = sorted(mapping.items(), key=lambda kv: kv[1].get("ts", 0))
-                            drop = max(1, len(items) // 5)  # drop oldest ~20%
-                            for k, _ in items[:drop]:
-                                mapping.pop(k, None)
-                        await self.config.mapping.set(mapping)
+                    await self._save_bidirectional_mapping(message, relayed_msg)
             except Exception as e:
                 owner = (await self.bot.application_info()).owner
                 try:
@@ -137,60 +157,63 @@ class PortalChat(commands.Cog):
                 except Exception:
                     pass
 
+    # -----------------------------
+    # Reaction mirroring (bi-directional)
+    # -----------------------------
     @commands.Cog.listener("on_raw_reaction_add")
     async def relay_reaction_add(self, payload: discord.RawReactionActionEvent):
-        # Ignore the bot itself
-        if payload.user_id == self.bot.user.id:
+        # Ignore any bot reactions to avoid loops across multiple bots
+        if self._is_bot_user(payload.guild_id, payload.user_id):
             return
         mapping = await self.config.mapping()
-        key = str(payload.message_id)
-        val = mapping.get(key)
+        val = mapping.get(str(payload.message_id))
         if not val:
             return
-        if isinstance(val, dict):
-            dest_channel_id, dest_msg_id = val["c"], val["m"]
-        else:
-            # backward compatibility with old tuple format
-            dest_channel_id, dest_msg_id = val
-        channel = self.bot.get_channel(dest_channel_id)
-        if not channel:
+        dest_channel = self.bot.get_channel(val["c"]) if isinstance(val, dict) else self.bot.get_channel(val[0])
+        dest_msg_id = val["m"] if isinstance(val, dict) else val[1]
+        if not dest_channel:
             return
         try:
-            msg = await channel.fetch_message(dest_msg_id)
+            msg = await dest_channel.fetch_message(dest_msg_id)
+            # Add reaction if it's not already present with at least one count
+            # (Discord dedups add_reaction calls, but this is cheap)
             await msg.add_reaction(payload.emoji)
         except Exception:
             pass
 
     @commands.Cog.listener("on_raw_reaction_remove")
     async def relay_reaction_remove(self, payload: discord.RawReactionActionEvent):
+        # Ignore bot-originated removals (rare, but keep symmetry)
+        if self._is_bot_user(payload.guild_id, payload.user_id):
+            return
         mapping = await self.config.mapping()
-        key = str(payload.message_id)
-        val = mapping.get(key)
+        val = mapping.get(str(payload.message_id))
         if not val:
             return
-        if isinstance(val, dict):
-            dest_channel_id, dest_msg_id = val["c"], val["m"]
-        else:
-            dest_channel_id, dest_msg_id = val
-        channel = self.bot.get_channel(dest_channel_id)
-        if not channel:
+        dest_channel = self.bot.get_channel(val["c"]) if isinstance(val, dict) else self.bot.get_channel(val[0])
+        dest_msg_id = val["m"] if isinstance(val, dict) else val[1]
+        if not dest_channel:
             return
         try:
-            # Only remove the mirrored reaction if the source no longer has that emoji
+            # Only remove the mirrored reaction if the source no longer has that emoji at all
             try:
-                source_channel = self.bot.get_channel(payload.channel_id)
-                if source_channel:
-                    source_msg = await source_channel.fetch_message(payload.message_id)
-                    if any(str(r.emoji) == str(payload.emoji) for r in source_msg.reactions):
-                        return  # still present in source; keep mirrored reaction
+                if payload.guild_id and payload.channel_id:
+                    src_channel = self.bot.get_channel(payload.channel_id)
+                    if src_channel:
+                        src_msg = await src_channel.fetch_message(payload.message_id)
+                        if any(str(r.emoji) == str(payload.emoji) for r in src_msg.reactions):
+                            return  # still present in source; keep mirrored reaction
             except Exception:
                 pass
 
-            msg = await channel.fetch_message(dest_msg_id)
+            msg = await dest_channel.fetch_message(dest_msg_id)
             await msg.remove_reaction(payload.emoji, self.bot.user)
         except Exception:
             pass
 
+    # -----------------------------
+    # Admin commands
+    # -----------------------------
     @commands.group(name="portal")
     @checks.admin_or_permissions(manage_guild=True)
     async def portal(self, ctx: commands.Context):
@@ -198,12 +221,7 @@ class PortalChat(commands.Cog):
         pass
 
     @portal.command(name="add")
-    async def portal_add(
-        self,
-        ctx: commands.Context,
-        source: discord.TextChannel,
-        webhook_url: str,
-    ):
+    async def portal_add(self, ctx: commands.Context, source: discord.TextChannel, webhook_url: str):
         async with self._lock:
             links = await self._get_links()
             if any(l for l in links if l["source_channel_id"] == source.id and l["webhook_url"] == webhook_url):
@@ -213,12 +231,7 @@ class PortalChat(commands.Cog):
         await ctx.send(f"✅ Linked {source.mention} → {webhook_url}.")
 
     @portal.command(name="remove")
-    async def portal_remove(
-        self,
-        ctx: commands.Context,
-        source: discord.TextChannel,
-        webhook_url: str,
-    ):
+    async def portal_remove(self, ctx: commands.Context, source: discord.TextChannel, webhook_url: str):
         async with self._lock:
             links = await self._get_links()
             new_links = [l for l in links if not (l["source_channel_id"] == source.id and l["webhook_url"] == webhook_url)]
@@ -253,9 +266,9 @@ class PortalChat(commands.Cog):
             await self._set_links(kept)
         await ctx.send(f"Removed {len(removed)} broken link(s). Kept {len(kept)}.")
 
-    # -------------
+    # -----------------------------
     # Housekeeping
-    # -------------
+    # -----------------------------
     @tasks.loop(minutes=30)
     async def _purge_old_mappings(self):
         try:
@@ -270,7 +283,7 @@ class PortalChat(commands.Cog):
                 if isinstance(v, dict):
                     if v.get("ts", 0) >= cutoff:
                         new_map[k] = v
-                # tuples are treated as stale and dropped to reclaim memory
+                # tuples are treated as stale and dropped
             await self.config.mapping.set(new_map)
         except Exception:
             pass
