@@ -102,8 +102,8 @@ class PortalChat(commands.Cog):
             return
 
         avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
-        username = message.author.display_name or str(message.author)
-
+        username = f"{message.author.display_name} ({message.guild.name})"[:32]
+        
         for link in links:
             webhook_url = link.get("webhook_url")
             if not webhook_url:
