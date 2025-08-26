@@ -58,7 +58,7 @@ class PortalChat(commands.Cog):
         if self.session is None or self.session.closed:
             self.session = aiohttp.ClientSession()
         wh = discord.Webhook.from_url(webhook_url, session=self.session)
-            await wh.send(
+        await wh.send(
                 content=content,
                 username=username,
                 avatar_url=avatar_url,
