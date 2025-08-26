@@ -20,7 +20,7 @@ class PortalChat(commands.Cog):
     """
 
     __author__ = "you"
-    __version__ = "1.7.0"
+    __version__ = "1.7.1"
 
     def __init__(self, bot: Red) -> None:
         self.bot = bot
@@ -29,6 +29,9 @@ class PortalChat(commands.Cog):
         self.config.register_global(links=[], mapping={}, max_age_days=7, max_map=5000)
         self._lock = asyncio.Lock()
         self.session: aiohttp.ClientSession | None = aiohttp.ClientSession()
+        # Edit debug + dry-run (so you can test publicly without editing live webhook messages)
+        self.edit_debug: bool = True
+        self.edit_dry_run: bool = True
         # start periodic cleanup
         try:
             self._purge_old_mappings.start()
@@ -82,7 +85,7 @@ class PortalChat(commands.Cog):
                 drop = max(1, len(items) // 5)  # drop oldest ~20%
                 for k, _ in items[:drop]:
                     mapping.pop(k, None)
-            await self.config.mapping.set(mapping)
+            await self.config.mapping.set(mapping):
         now_ts = int(datetime.utcnow().timestamp())
         async with self._lock:
             mapping = await self.config.mapping()
@@ -175,18 +178,43 @@ class PortalChat(commands.Cog):
     # -----------------------------
     @commands.Cog.listener("on_message_edit")
     async def mirror_edit(self, before: discord.Message, after: discord.Message):
-        # Ignore bots/webhooks and DMs
-        if after.author.bot or after.webhook_id is not None or not after.guild:
+        # Filters
+        reason_skip = None
+        if after.author.bot:
+            reason_skip = "author is a bot"
+        elif after.webhook_id is not None:
+            reason_skip = "message is a webhook"
+        elif not after.guild:
+            reason_skip = "DM message"
+
+        owner = (await self.bot.application_info()).owner if getattr(self, "edit_debug", False) else None
+        if reason_skip:
+            if owner and self.edit_debug:
+                try:
+                    await owner.send(f"📝 EDIT skip: {reason_skip} in #{after.channel} | msg {after.id}")
+                except Exception:
+                    pass
             return
+
         mapping = await self.config.mapping()
         val = mapping.get(str(after.id))
         if not val:
+            if owner and self.edit_debug:
+                try:
+                    await owner.send(f"📝 EDIT: no mapping for source msg {after.id} in #{after.channel}")
+                except Exception:
+                    pass
             return
-        # Need the webhook URL to edit the webhook message
+
         wh_url = val.get("w") if isinstance(val, dict) else None
         if not wh_url:
+            if owner and self.edit_debug:
+                try:
+                    await owner.send(f"📝 EDIT: mapping found but no webhook URL for source msg {after.id}")
+                except Exception:
+                    pass
             return
-        # Prepare new content/embeds
+
         new_content = after.content or None
         new_embeds: List[discord.Embed] = []
         try:
@@ -194,17 +222,40 @@ class PortalChat(commands.Cog):
                 new_embeds.append(e)
         except Exception:
             pass
+
+        if owner and self.edit_debug:
+            try:
+                preview = (new_content[:120] + "…") if (new_content and len(new_content) > 123) else (new_content or "<no content>")
+                await owner.send(
+                    "
+".join([
+                        "🧪 EDIT DEBUG (dry-run=" + str(self.edit_dry_run) + ")",
+                        f"source: #{after.channel} / msg {after.id}",
+                        f"dest:   msg {val['m']}",
+                        f"embeds: {len(new_embeds)}",
+                        f"content preview: {preview}",
+                        f"webhook: {wh_url[:60]}...",
+                    ])
+                )
+            except Exception:
+                pass
+
+        if getattr(self, "edit_dry_run", False):
+            # Do not actually edit the webhook while testing publicly
+            return
+
+        # Perform actual webhook edit
         try:
             if self.session is None or self.session.closed:
                 self.session = aiohttp.ClientSession()
             wh = discord.Webhook.from_url(wh_url, session=self.session)
             await wh.edit_message(val["m"], content=new_content, embeds=new_embeds or [])
         except Exception as e:
-            owner = (await self.bot.application_info()).owner
-            try:
-                await owner.send(f"❌ Failed to mirror edit for message in {after.channel.mention}: {type(e).__name__}: {e}")
-            except Exception:
-                pass
+            if owner and self.edit_debug:
+                try:
+                    await owner.send(f"❌ EDIT: failed to edit dest msg {val['m']} for source {after.id}: {type(e).__name__}: {e}")
+                except Exception:
+                    pass
 
     # -----------------------------
     # Reaction mirroring (bi-directional)
@@ -299,7 +350,21 @@ class PortalChat(commands.Cog):
             s = self.bot.get_channel(l["source_channel_id"]) or f"<#{l['source_channel_id']}>"
             d = l["webhook_url"]
             lines.append(f"• {getattr(s, 'mention', s)} → {d}")
-        await ctx.send("**Active portal links:**\n" + "\n".join(lines))
+        await ctx.send("**Active portal links:**
+" + "
+".join(lines))
+
+    @portal.command(name="editdebug")
+    async def portal_editdebug(self, ctx: commands.Context, mode: bool):
+        """Enable/disable owner DM debug logs for edit mirroring (default: on)."""
+        self.edit_debug = mode
+        await ctx.send(f"Edit debug {'enabled' if mode else 'disabled'}.")
+
+    @portal.command(name="editdryrun")
+    async def portal_editdryrun(self, ctx: commands.Context, mode: bool):
+        """Toggle dry-run for edit mirroring (no webhook edits when on)."""
+        self.edit_dry_run = mode
+        await ctx.send(f"Edit dry-run {'enabled' if mode else 'disabled'}.")
 
     @portal.command(name="clearbroken")
     async def portal_clearbroken(self, ctx: commands.Context):
