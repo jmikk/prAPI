@@ -85,7 +85,7 @@ class PortalChat(commands.Cog):
                 drop = max(1, len(items) // 5)  # drop oldest ~20%
                 for k, _ in items[:drop]:
                     mapping.pop(k, None)
-            await self.config.mapping.set(mapping):
+            await self.config.mapping.set(mapping)
         now_ts = int(datetime.utcnow().timestamp())
         async with self._lock:
             mapping = await self.config.mapping()
