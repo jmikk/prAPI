@@ -95,6 +95,7 @@ class PortalChat(commands.Cog):
             for e in message.embeds:
                 embeds.append(e)
         except Exception as e:
+            owner = (await self.bot.application_info()).owner
             await message.channel.send(f"⚠️ Failed to process some embeds: {e}")
 
         # If nothing to send, bail out early to avoid API errors
@@ -118,9 +119,10 @@ class PortalChat(commands.Cog):
                     files=files.copy() if files else None,
                     embeds=embeds.copy() if embeds else None,
                 )
-                await message.channel.send(f"✅ Message relayed to webhook {webhook_url[:60]}...")
             except Exception as e:
                 await message.channel.send(f"❌ Failed to send message to webhook: {e}")
+                owner = (await self.bot.application_info()).owner
+                await owner.send(f"❌ Failed to send message to webhook in {message.channel.mention}: {e}")
 
     @commands.group(name="portal")
     @checks.admin_or_permissions(manage_guild=True)
