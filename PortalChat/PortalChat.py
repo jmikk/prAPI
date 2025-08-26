@@ -34,7 +34,7 @@ MENTION_RE = re.compile(r"<@!?\d+>|<@&\d+>|@everyone|@here")
 
 __all__ = ["CrossPortal"]
 
-class CrossPortal(commands.Cog):
+class PortalChat(commands.Cog):
     """Cross-server portal chat using webhooks, with admin controls and reply buttons."""
 
     default_guild = {
