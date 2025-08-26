@@ -2,6 +2,8 @@ from __future__ import annotations
 import asyncio
 from typing import Dict, List, Optional
 
+import aiohttp
+
 import discord
 from discord import AllowedMentions
 from redbot.core import commands, Config, checks
@@ -25,13 +27,15 @@ class PortalChat(commands.Cog):
     """
 
     __author__ = "you"
-    __version__ = "1.3.0"
+    __version__ = "1.3.1"
 
     def __init__(self, bot: Red) -> None:
         self.bot = bot
         self.config = Config.get_conf(self, identifier=0xC0FFEE10, force_registration=True)
         self.config.register_global(links=[])
         self._lock = asyncio.Lock()
+        # dedicated aiohttp session for webhooks
+        self.session: aiohttp.ClientSession | None = aiohttp.ClientSession()
 
     async def _get_links(self) -> List[dict]:
         return await self.config.links()
@@ -51,8 +55,9 @@ class PortalChat(commands.Cog):
         files: List[discord.File] | None = None,
         embeds: List[discord.Embed] | None = None,
     ) -> None:
-        async with self.bot.http_session as session:
-            wh = discord.Webhook.from_url(webhook_url, session=session)
+        if self.session is None or self.session.closed:
+            self.session = aiohttp.ClientSession()
+        wh = discord.Webhook.from_url(webhook_url, session=self.session)
             await wh.send(
                 content=content,
                 username=username,
@@ -190,3 +195,13 @@ class PortalChat(commands.Cog):
 
 async def setup(bot: Red) -> None:
     await bot.add_cog(PortalChat(bot))
+
+async def teardown(bot: Red) -> None:
+    cog = bot.get_cog("PortalChat")
+    if cog and getattr(cog, "session", None):
+        try:
+            await cog.session.close()
+        except Exception:
+            pass
+
+    
