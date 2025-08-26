@@ -2,40 +2,36 @@ from __future__ import annotations
 import asyncio
 from typing import Dict, List, Optional
 
-import aiohttp
-
 import discord
 from discord import AllowedMentions
 from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
+import aiohttp
+from discord.ext import tasks
+from datetime import datetime, timedelta
 
 
 class PortalChat(commands.Cog):
     """
     Link messages from one channel to another (even across servers) using webhooks.
-
-    • Create a link from a *source* channel to a *destination webhook*.
-    • The cog stores the webhook in the destination.
-    • Messages in the source are re-posted to the destination via the webhook
-      with the original author's display name and avatar.
-
-    Notes & Permissions:
-    - Bot needs: Read Messages, Read Message History in the source channel.
-    - In the destination channel: Manage Webhooks, Send Messages, Attach Files, Embed Links.
-    - We ignore messages created by webhooks to prevent loops.
-    - Mentions are sanitized (no pings) by default.
+    Also syncs reactions (add/remove) between source and destination messages.
     """
 
     __author__ = "you"
-    __version__ = "1.3.1"
+    __version__ = "1.5.0"
 
     def __init__(self, bot: Red) -> None:
         self.bot = bot
         self.config = Config.get_conf(self, identifier=0xC0FFEE10, force_registration=True)
-        self.config.register_global(links=[])
+        # mapping: original_msg_id -> {"c": dest_channel_id, "m": dest_msg_id, "ts": unix_timestamp}
+        self.config.register_global(links=[], mapping={}, max_age_days=7, max_map=5000)
         self._lock = asyncio.Lock()
-        # dedicated aiohttp session for webhooks
         self.session: aiohttp.ClientSession | None = aiohttp.ClientSession()
+        # start periodic cleanup
+        try:
+            self._purge_old_mappings.start()
+        except RuntimeError:
+            pass
 
     async def _get_links(self) -> List[dict]:
         return await self.config.links()
@@ -54,19 +50,18 @@ class PortalChat(commands.Cog):
         avatar_url: Optional[str],
         files: List[discord.File] | None = None,
         embeds: List[discord.Embed] | None = None,
-    ) -> None:
+    ) -> Optional[discord.Message]:
         if self.session is None or self.session.closed:
             self.session = aiohttp.ClientSession()
         wh = discord.Webhook.from_url(webhook_url, session=self.session)
-            # discord.py expects sequences, not None
-        await wh.send(
+        return await wh.send(
             content=content,
             username=username,
             avatar_url=avatar_url,
             files=files or [],
             embeds=embeds or [],
             allowed_mentions=AllowedMentions.none(),
-            wait=False,
+            wait=True,  # wait True so we get a Message back
         )
 
     @commands.Cog.listener("on_message")
@@ -87,31 +82,31 @@ class PortalChat(commands.Cog):
         try:
             for attachment in message.attachments:
                 files.append(await attachment.to_file())
-        except Exception as e:
-            await message.channel.send(f"⚠️ Failed to fetch some attachments: {e}")
+        except Exception:
+            pass
 
         embeds: List[discord.Embed] = []
         try:
             for e in message.embeds:
                 embeds.append(e)
-        except Exception as e:
-            owner = (await self.bot.application_info()).owner
-            await message.channel.send(f"⚠️ Failed to process some embeds: {e}")
+        except Exception:
+            pass
 
-        # If nothing to send, bail out early to avoid API errors
         if not content and not files and not embeds:
             return
 
+        # Format webhook username as Nickname (Server), trimmed to Discord limit (32)
         avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
-        username = f"{message.author.display_name} ({message.guild.name})"[:32]
-        
+        username = f"{message.author.display_name} ({message.guild.name})"
+        if len(username) > 32:
+            username = username[:32]
+
         for link in links:
             webhook_url = link.get("webhook_url")
             if not webhook_url:
-                await message.channel.send("❌ No webhook URL configured for this link.")
                 continue
             try:
-                await self._send_via_webhook(
+                relayed_msg = await self._send_via_webhook(
                     webhook_url=webhook_url,
                     content=content,
                     username=username,
@@ -119,10 +114,82 @@ class PortalChat(commands.Cog):
                     files=files.copy() if files else None,
                     embeds=embeds.copy() if embeds else None,
                 )
+                if relayed_msg:
+                    async with self._lock:
+                        mapping = await self.config.mapping()
+                        mapping[str(message.id)] = {
+                            "c": relayed_msg.channel.id,
+                            "m": relayed_msg.id,
+                            "ts": int(datetime.utcnow().timestamp()),
+                        }
+                        # size-based prune using config cap
+                        max_map = await self.config.max_map()
+                        if len(mapping) > max_map:
+                            items = sorted(mapping.items(), key=lambda kv: kv[1].get("ts", 0))
+                            drop = max(1, len(items) // 5)  # drop oldest ~20%
+                            for k, _ in items[:drop]:
+                                mapping.pop(k, None)
+                        await self.config.mapping.set(mapping)
             except Exception as e:
-                await message.channel.send(f"❌ Failed to send message to webhook: {e}")
                 owner = (await self.bot.application_info()).owner
-                await owner.send(f"❌ Failed to send message to webhook in {message.channel.mention}: {e}")
+                try:
+                    await owner.send(f"❌ Failed to send message to webhook in {message.channel.mention}: {type(e).__name__}: {e}")
+                except Exception:
+                    pass
+
+    @commands.Cog.listener("on_raw_reaction_add")
+    async def relay_reaction_add(self, payload: discord.RawReactionActionEvent):
+        # Ignore the bot itself
+        if payload.user_id == self.bot.user.id:
+            return
+        mapping = await self.config.mapping()
+        key = str(payload.message_id)
+        val = mapping.get(key)
+        if not val:
+            return
+        if isinstance(val, dict):
+            dest_channel_id, dest_msg_id = val["c"], val["m"]
+        else:
+            # backward compatibility with old tuple format
+            dest_channel_id, dest_msg_id = val
+        channel = self.bot.get_channel(dest_channel_id)
+        if not channel:
+            return
+        try:
+            msg = await channel.fetch_message(dest_msg_id)
+            await msg.add_reaction(payload.emoji)
+        except Exception:
+            pass
+
+    @commands.Cog.listener("on_raw_reaction_remove")
+    async def relay_reaction_remove(self, payload: discord.RawReactionActionEvent):
+        mapping = await self.config.mapping()
+        key = str(payload.message_id)
+        val = mapping.get(key)
+        if not val:
+            return
+        if isinstance(val, dict):
+            dest_channel_id, dest_msg_id = val["c"], val["m"]
+        else:
+            dest_channel_id, dest_msg_id = val
+        channel = self.bot.get_channel(dest_channel_id)
+        if not channel:
+            return
+        try:
+            # Only remove the mirrored reaction if the source no longer has that emoji
+            try:
+                source_channel = self.bot.get_channel(payload.channel_id)
+                if source_channel:
+                    source_msg = await source_channel.fetch_message(payload.message_id)
+                    if any(str(r.emoji) == str(payload.emoji) for r in source_msg.reactions):
+                        return  # still present in source; keep mirrored reaction
+            except Exception:
+                pass
+
+            msg = await channel.fetch_message(dest_msg_id)
+            await msg.remove_reaction(payload.emoji, self.bot.user)
+        except Exception:
+            pass
 
     @commands.group(name="portal")
     @checks.admin_or_permissions(manage_guild=True)
@@ -137,22 +204,12 @@ class PortalChat(commands.Cog):
         source: discord.TextChannel,
         webhook_url: str,
     ):
-        """Link messages from **source** channel to a **destination webhook URL**.
-
-        Example: `[p]portal add #from-here https://discord.com/api/webhooks/...`
-        """
         async with self._lock:
             links = await self._get_links()
             if any(l for l in links if l["source_channel_id"] == source.id and l["webhook_url"] == webhook_url):
                 return await ctx.send("That link already exists.")
-            links.append(
-                {
-                    "source_channel_id": source.id,
-                    "webhook_url": webhook_url,
-                }
-            )
+            links.append({"source_channel_id": source.id, "webhook_url": webhook_url})
             await self._set_links(links)
-
         await ctx.send(f"✅ Linked {source.mention} → {webhook_url}.")
 
     @portal.command(name="remove")
@@ -162,7 +219,6 @@ class PortalChat(commands.Cog):
         source: discord.TextChannel,
         webhook_url: str,
     ):
-        """Remove an existing portal link from **source** to **webhook URL**."""
         async with self._lock:
             links = await self._get_links()
             new_links = [l for l in links if not (l["source_channel_id"] == source.id and l["webhook_url"] == webhook_url)]
@@ -173,7 +229,6 @@ class PortalChat(commands.Cog):
 
     @portal.command(name="list")
     async def portal_list(self, ctx: commands.Context):
-        """List all active portal links."""
         links = await self._get_links()
         if not links:
             return await ctx.send("No links configured.")
@@ -186,7 +241,6 @@ class PortalChat(commands.Cog):
 
     @portal.command(name="clearbroken")
     async def portal_clearbroken(self, ctx: commands.Context):
-        """Remove links whose source channels are no longer accessible."""
         async with self._lock:
             links = await self._get_links()
             kept = []
@@ -199,28 +253,40 @@ class PortalChat(commands.Cog):
             await self._set_links(kept)
         await ctx.send(f"Removed {len(removed)} broken link(s). Kept {len(kept)}.")
 
-    @commands.Cog.listener("on_raw_reaction_add")
-    async def relay_reaction_add(self, payload: discord.RawReactionActionEvent):
-        # Ignore bots and webhooks
-        if payload.user_id == self.bot.user.id:
-            return
-    
-        # See if this original message was relayed
-        mapping = await self.config.mapping()
-        if str(payload.message_id) not in mapping:
-            return
-        
-        dest_channel_id, dest_message_id = mapping[str(payload.message_id)]
-        channel = self.bot.get_channel(dest_channel_id)
-        if not channel:
-            return
-    
+    # -------------
+    # Housekeeping
+    # -------------
+    @tasks.loop(minutes=30)
+    async def _purge_old_mappings(self):
         try:
-            msg = await channel.fetch_message(dest_message_id)
-            await msg.add_reaction(payload.emoji)
-        except Exception as e:
-            print(f"Failed to sync reaction: {e}")
+            mapping = await self.config.mapping()
+            if not mapping:
+                return
+            max_age_days = await self.config.max_age_days()
+            cutoff = int((datetime.utcnow() - timedelta(days=max_age_days)).timestamp())
+            # keep dict entries newer than cutoff; drop old tuple entries (no ts)
+            new_map = {}
+            for k, v in mapping.items():
+                if isinstance(v, dict):
+                    if v.get("ts", 0) >= cutoff:
+                        new_map[k] = v
+                # tuples are treated as stale and dropped to reclaim memory
+            await self.config.mapping.set(new_map)
+        except Exception:
+            pass
 
+    @_purge_old_mappings.before_loop
+    async def _before_purge(self):
+        await self.bot.wait_until_ready()
+
+    def cog_unload(self):
+        if hasattr(self, "_purge_old_mappings") and self._purge_old_mappings.is_running():
+            self._purge_old_mappings.cancel()
+        if self.session and not self.session.closed:
+            try:
+                asyncio.create_task(self.session.close())
+            except Exception:
+                pass
 
 
 async def setup(bot: Red) -> None:
@@ -233,5 +299,3 @@ async def teardown(bot: Red) -> None:
             await cog.session.close()
         except Exception:
             pass
-
-    
