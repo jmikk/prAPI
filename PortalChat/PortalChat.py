@@ -20,7 +20,7 @@ class PortalChat(commands.Cog):
     """
 
     __author__ = "you"
-    __version__ = "1.6.0"
+    __version__ = "1.7.0"
 
     def __init__(self, bot: Red) -> None:
         self.bot = bot
@@ -69,7 +69,20 @@ class PortalChat(commands.Cog):
             wait=True,
         )
 
-    async def _save_bidirectional_mapping(self, a_msg: discord.Message, b_msg: discord.Message):
+    async def _save_bidirectional_mapping(self, a_msg: discord.Message, b_msg: discord.Message, webhook_url: str):
+        now_ts = int(datetime.utcnow().timestamp())
+        async with self._lock:
+            mapping = await self.config.mapping()
+            mapping[str(a_msg.id)] = {"c": b_msg.channel.id, "m": b_msg.id, "w": webhook_url, "ts": now_ts}
+            mapping[str(b_msg.id)] = {"c": a_msg.channel.id, "m": a_msg.id, "w": webhook_url, "ts": now_ts}
+            # size-based prune using config cap
+            max_map = await self.config.max_map()
+            if len(mapping) > max_map:
+                items = sorted(mapping.items(), key=lambda kv: kv[1].get("ts", 0))
+                drop = max(1, len(items) // 5)  # drop oldest ~20%
+                for k, _ in items[:drop]:
+                    mapping.pop(k, None)
+            await self.config.mapping.set(mapping):
         now_ts = int(datetime.utcnow().timestamp())
         async with self._lock:
             mapping = await self.config.mapping()
@@ -149,13 +162,49 @@ class PortalChat(commands.Cog):
                     embeds=embeds.copy() if embeds else None,
                 )
                 if relayed_msg:
-                    await self._save_bidirectional_mapping(message, relayed_msg)
+                    await self._save_bidirectional_mapping(message, relayed_msg, webhook_url)
             except Exception as e:
                 owner = (await self.bot.application_info()).owner
                 try:
                     await owner.send(f"❌ Failed to send message to webhook in {message.channel.mention}: {type(e).__name__}: {e}")
                 except Exception:
                     pass
+
+    # -----------------------------
+    # Edit mirroring (source -> destination webhook)
+    # -----------------------------
+    @commands.Cog.listener("on_message_edit")
+    async def mirror_edit(self, before: discord.Message, after: discord.Message):
+        # Ignore bots/webhooks and DMs
+        if after.author.bot or after.webhook_id is not None or not after.guild:
+            return
+        mapping = await self.config.mapping()
+        val = mapping.get(str(after.id))
+        if not val:
+            return
+        # Need the webhook URL to edit the webhook message
+        wh_url = val.get("w") if isinstance(val, dict) else None
+        if not wh_url:
+            return
+        # Prepare new content/embeds
+        new_content = after.content or None
+        new_embeds: List[discord.Embed] = []
+        try:
+            for e in after.embeds:
+                new_embeds.append(e)
+        except Exception:
+            pass
+        try:
+            if self.session is None or self.session.closed:
+                self.session = aiohttp.ClientSession()
+            wh = discord.Webhook.from_url(wh_url, session=self.session)
+            await wh.edit_message(val["m"], content=new_content, embeds=new_embeds or [])
+        except Exception as e:
+            owner = (await self.bot.application_info()).owner
+            try:
+                await owner.send(f"❌ Failed to mirror edit for message in {after.channel.mention}: {type(e).__name__}: {e}")
+            except Exception:
+                pass
 
     # -----------------------------
     # Reaction mirroring (bi-directional)
