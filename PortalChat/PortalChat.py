@@ -25,16 +25,11 @@ class PortalChat(commands.Cog):
     """
 
     __author__ = "you"
-    __version__ = "1.2.0"
+    __version__ = "1.3.0"
 
     def __init__(self, bot: Red) -> None:
         self.bot = bot
         self.config = Config.get_conf(self, identifier=0xC0FFEE10, force_registration=True)
-        # A list of link objects stored globally, since links can span guilds
-        # link schema: {
-        #   "source_channel_id": int,
-        #   "webhook_url": str
-        # }
         self.config.register_global(links=[])
         self._lock = asyncio.Lock()
 
@@ -71,7 +66,7 @@ class PortalChat(commands.Cog):
     @commands.Cog.listener("on_message")
     async def relay_message(self, message: discord.Message):
         if message.author.bot:
-            pass
+            return
         if not message.guild or not isinstance(message.channel, discord.TextChannel):
             return
         if message.webhook_id is not None:
@@ -86,15 +81,15 @@ class PortalChat(commands.Cog):
         try:
             for attachment in message.attachments:
                 files.append(await attachment.to_file())
-        except Exception:
-            pass
+        except Exception as e:
+            await message.channel.send(f"⚠️ Failed to fetch some attachments: {e}")
 
         embeds: List[discord.Embed] = []
         try:
             for e in message.embeds:
                 embeds.append(e)
-        except Exception:
-            pass
+        except Exception as e:
+            await message.channel.send(f"⚠️ Failed to process some embeds: {e}")
 
         avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
         username = message.author.display_name
@@ -102,6 +97,7 @@ class PortalChat(commands.Cog):
         for link in links:
             webhook_url = link.get("webhook_url")
             if not webhook_url:
+                await message.channel.send("❌ No webhook URL configured for this link.")
                 continue
             try:
                 await self._send_via_webhook(
@@ -112,8 +108,9 @@ class PortalChat(commands.Cog):
                     files=files.copy() if files else None,
                     embeds=embeds.copy() if embeds else None,
                 )
-            except Exception:
-                continue
+                await message.channel.send(f"✅ Message relayed to webhook {webhook_url[:60]}...")
+            except Exception as e:
+                await message.channel.send(f"❌ Failed to send message to webhook: {e}")
 
     @commands.group(name="portal")
     @checks.admin_or_permissions(manage_guild=True)
