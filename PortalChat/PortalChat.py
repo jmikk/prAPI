@@ -335,6 +335,3 @@ class ReplyModal(discord.ui.Modal, title="Portal Reply"):
         await interaction.response.defer(ephemeral=True)
         await self.cog.handle_reply_submit(interaction, self.origin_payload, str(self.reply_input.value))
 
-# -------------------- SETUP --------------------
-async def setup(bot):
-    await bot.add_cog(CrossPortal(bot))
