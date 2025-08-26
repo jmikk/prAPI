@@ -1,25 +1,24 @@
-# portalchat.py
 from __future__ import annotations
 import re
 from typing import Dict, List, Optional
 
 import discord
-from redbot.core import commands, checks, Config  # <-- use Red's commands.Cog
+from redbot.core import commands, checks, Config
 
 MENTION_RE = re.compile(r"<@!?\d+>|<@&\d+>|@everyone|@here")
 
 __all__ = ["PortalChat"]
 
-class PortalChat(commands.Cog):  # <-- inherits from redbot.core.commands.Cog
+class PortalChat(commands.Cog):
     """Cross-server portal chat using webhooks, with admin controls and reply buttons."""
 
     default_guild = {
-        "allowed_channels": [],
-        "partners": {},          # {str_guild_id: webhook_url}
-        "banned_users": [],
-        "enable_replies": True,
+        "allowed_channels": [],              # list[int]
+        "partners": {},                      # {str_guild_id: webhook_url}
+        "banned_users": [],                  # list[int]
+        "enable_replies": True,              # show Reply controls beneath mirrored msgs
     }
-    default_global = {"message_map": {}}
+    default_global = {"message_map": {}}     # mirrored_msg_id(str) -> origin payload
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -27,6 +26,7 @@ class PortalChat(commands.Cog):  # <-- inherits from redbot.core.commands.Cog
         self.config.register_guild(**self.default_guild)
         self.config.register_global(**self.default_global)
 
+    # ---------- utils ----------
     @staticmethod
     def _display_name(member: discord.Member) -> str:
         base = member.nick or member.name
@@ -81,9 +81,10 @@ class PortalChat(commands.Cog):  # <-- inherits from redbot.core.commands.Cog
         except Exception:
             pass
 
-    # -------- Listeners --------
+    # ---------- relay ----------
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+        # ignore bots / DMs
         if message.guild is None or message.author.bot:
             return
 
@@ -95,9 +96,9 @@ class PortalChat(commands.Cog):  # <-- inherits from redbot.core.commands.Cog
 
         username = self._display_name(message.author)
         avatar_url = message.author.display_avatar.url if message.author.display_avatar else None
-
         content = self._sanitize_content(message.content or "")
 
+        # baseline: link attachments
         attach_lines = []
         for a in message.attachments:
             safe_name = self._sanitize_content(a.filename)
@@ -118,17 +119,17 @@ class PortalChat(commands.Cog):  # <-- inherits from redbot.core.commands.Cog
             "origin_excerpt": (message.content[:100] + "…") if message.content and len(message.content) > 100 else (message.content or ""),
         }
 
-        for _, webhook_url in partners.items():
+        for _gid, webhook_url in partners.items():
             mirrored = await self._send_via_webhook(
                 webhook_url=webhook_url,
                 content=content,
                 username=username,
                 avatar_url=avatar_url,
-                embeds=None,
             )
             if not mirrored:
                 continue
 
+            # save mapping for reply UI (optional feature)
             try:
                 async with self.config.message_map() as mmap:
                     mmap[str(mirrored.id)] = origin_hint
@@ -138,7 +139,7 @@ class PortalChat(commands.Cog):  # <-- inherits from redbot.core.commands.Cog
             if guild_conf.get("enable_replies", True) and isinstance(mirrored.channel, discord.TextChannel):
                 await self._post_reply_controls(mirrored.channel, origin_hint)
 
-    # -------- Admin commands --------
+    # ---------- admin cmds ----------
     @commands.group(name="portal")
     @commands.guild_only()
     @checks.admin()
@@ -205,8 +206,49 @@ class PortalChat(commands.Cog):  # <-- inherits from redbot.core.commands.Cog
         await self.config.guild(ctx.guild).enable_replies().set(not cur)
         await ctx.send(f"💬 Reply controls are now {'enabled' if not cur else 'disabled'}.")
 
+    # ---------- reply handlers ----------
+    async def launch_reply_modal(self, interaction: discord.Interaction, origin_payload: dict):
+        modal = ReplyModal(self, origin_payload)
+        await interaction.response.send_modal(modal)
 
-# ---- UI Components ----
+    async def handle_reply_submit(self, interaction: discord.Interaction, origin_payload: dict, reply_text: str):
+        guild = interaction.guild
+        if not guild:
+            return
+        conf = await self.config.guild(guild).all()
+        partners: Dict[str, str] = conf["partners"]
+        if not partners:
+            await interaction.followup.send("No partners configured for this server.", ephemeral=True)
+            return
+
+        member = interaction.user if isinstance(interaction.user, discord.Member) else None
+        username = (self._display_name(member) if member else interaction.user.display_name)
+        avatar_url = interaction.user.display_avatar.url if interaction.user else None
+
+        reply_text = self._sanitize_content(reply_text)
+        ref_author = origin_payload.get("origin_author_name", "someone")
+        excerpt = origin_payload.get("origin_excerpt", "")
+        hint = f"Replying to {ref_author}: '{excerpt}'" if excerpt else f"Replying to {ref_author}"
+
+        successes = 0
+        for _gid, webhook_url in partners.items():
+            msg = await self._send_via_webhook(
+                webhook_url=webhook_url,
+                content=reply_text,
+                username=username,
+                avatar_url=avatar_url,
+                reference_hint=hint,
+            )
+            if msg:
+                successes += 1
+
+        if successes:
+            await interaction.followup.send(f"Sent reply across the portal to {successes} destination(s).", ephemeral=True)
+        else:
+            await interaction.followup.send("Failed to send reply.", ephemeral=True)
+
+
+# ---------- UI ----------
 class ReplyController(discord.ui.View):
     def __init__(self, cog: PortalChat, origin_payload: dict, *, timeout: Optional[float] = 300):
         super().__init__(timeout=timeout)
@@ -235,6 +277,6 @@ class ReplyModal(discord.ui.Modal, title="Portal Reply"):
         await interaction.response.defer(ephemeral=True)
         await self.cog.handle_reply_submit(interaction, self.origin_payload, str(self.reply_input.value))
 
-# Methods the view calls:
-async def setup(bot):  # kept for single-file testing, but package-style setup is below in __init__.py
+
+async def setup(bot):
     await bot.add_cog(PortalChat(bot))
