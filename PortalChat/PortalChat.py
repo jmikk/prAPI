@@ -348,9 +348,7 @@ class PortalChat(commands.Cog):
             s = self.bot.get_channel(l["source_channel_id"]) or f"<#{l['source_channel_id']}>"
             d = l["webhook_url"]
             lines.append(f"• {getattr(s, 'mention', s)} → {d}")
-        await ctx.send("**Active portal links:**
-" + "
-".join(lines))
+        await ctx.send("**Active portal links:**" + "".join(lines))
 
     @portal.command(name="editdebug")
     async def portal_editdebug(self, ctx: commands.Context, mode: bool):
