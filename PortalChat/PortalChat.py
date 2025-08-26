@@ -1,282 +1,292 @@
 from __future__ import annotations
-import re
-from typing import Dict, List, Optional
+import asyncio
+from typing import Dict, List, Optional, Tuple
 
 import discord
-from redbot.core import commands, checks, Config
+from discord import AllowedMentions
+from redbot.core import commands, Config, checks
+from redbot.core.bot import Red
 
-MENTION_RE = re.compile(r"<@!?\d+>|<@&\d+>|@everyone|@here")
-
-__all__ = ["PortalChat"]
 
 class PortalChat(commands.Cog):
-    """Cross-server portal chat using webhooks, with admin controls and reply buttons."""
+    """
+    Link messages from one channel to another (even across servers) using webhooks.
 
-    default_guild = {
-        "allowed_channels": [],              # list[int]
-        "partners": {},                      # {str_guild_id: webhook_url}
-        "banned_users": [],                  # list[int]
-        "enable_replies": True,              # show Reply controls beneath mirrored msgs
-    }
-    default_global = {"message_map": {}}     # mirrored_msg_id(str) -> origin payload
+    • Create a link from a *source* channel to a *destination* channel.
+    • The cog creates (or uses) a webhook in the destination channel.
+    • Messages in the source are re-posted to the destination via the webhook
+      with the original author's display name and avatar.
 
-    def __init__(self, bot: commands.Bot):
+    Notes & Permissions:
+    - Bot needs: Read Messages, Read Message History in the source channel.
+    - In the destination channel: Manage Webhooks, Send Messages, Attach Files, Embed Links.
+    - We ignore messages created by webhooks to prevent loops.
+    - Mentions are sanitized (no pings) by default.
+    """
+
+    __author__ = "you"
+    __version__ = "1.0.0"
+
+    def __init__(self, bot: Red) -> None:
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=0xC0FFEE77B07)
-        self.config.register_guild(**self.default_guild)
-        self.config.register_global(**self.default_global)
+        self.config = Config.get_conf(self, identifier=0xC0FFEE10, force_registration=True)
+        # A list of link objects stored globally, since links can span guilds
+        # link schema: {
+        #   "source_channel_id": int,
+        #   "dest_channel_id": int,
+        #   "webhook_id": Optional[int],
+        #   "webhook_url": Optional[str]
+        # }
+        self.config.register_global(links=[])
+        self._lock = asyncio.Lock()
 
-    # ---------- utils ----------
-    @staticmethod
-    def _display_name(member: discord.Member) -> str:
-        base = member.nick or member.name
-        guild_name = member.guild.name
-        combo = f"{base} ~ {guild_name}"
-        return combo if len(combo) <= 80 else combo[:77] + "…"
+    # -----------------------------
+    # Utilities
+    # -----------------------------
 
-    @staticmethod
-    def _sanitize_content(text: str) -> str:
-        def repl(m: re.Match) -> str:
-            return m.group(0).replace("@", "@\u200b")
-        return MENTION_RE.sub(repl, text)
+    async def _get_links(self) -> List[dict]:
+        return await self.config.links()
 
-    @staticmethod
-    def _allowed_mentions() -> discord.AllowedMentions:
-        return discord.AllowedMentions(users=False, roles=False, everyone=False, replied_user=False)
+    async def _set_links(self, links: List[dict]) -> None:
+        await self.config.links.set(links)
+
+    async def _find_link(self, source_id: int, dest_id: int) -> Optional[dict]:
+        links = await self._get_links()
+        for l in links:
+            if l.get("source_channel_id") == source_id and l.get("dest_channel_id") == dest_id:
+                return l
+        return None
+
+    async def _find_links_from_source(self, source_id: int) -> List[dict]:
+        return [l for l in await self._get_links() if l.get("source_channel_id") == source_id]
+
+    async def _ensure_webhook(self, dest_channel: discord.TextChannel) -> Tuple[int, str]:
+        """Create a webhook in the destination channel if needed. Returns (id, url)."""
+        # Try to reuse an existing webhook owned by this bot if present.
+        try:
+            hooks = await dest_channel.webhooks()
+        except discord.Forbidden:
+            raise commands.UserFeedbackCheckFailure(
+                "I can't access webhooks in the destination channel. I need 'Manage Webhooks'."
+            )
+        for wh in hooks:
+            if wh.user and wh.user.id == self.bot.user.id:
+                return wh.id, wh.url
+        # Create new webhook
+        try:
+            wh = await dest_channel.create_webhook(name="PortalChat", reason="Channel link relay")
+            return wh.id, wh.url
+        except discord.Forbidden:
+            raise commands.UserFeedbackCheckFailure(
+                "I wasn't able to create a webhook. Do I have 'Manage Webhooks' in the destination?"
+            )
 
     async def _send_via_webhook(
         self,
         webhook_url: str,
-        content: str,
+        content: str | None,
         username: str,
-        avatar_url: Optional[str] = None,
-        files: Optional[List[discord.File]] = None,
-        embeds: Optional[List[discord.Embed]] = None,
-        reference_hint: Optional[str] = None,
-    ) -> Optional[discord.WebhookMessage]:
-        try:
-            wh = discord.Webhook.from_url(webhook_url, client=self.bot)
-            if reference_hint:
-                content = f"↪️ {reference_hint}\n{content}" if content else f"↪️ {reference_hint}"
-            return await wh.send(
-                content=content or None,
-                username=username,
-                avatar_url=avatar_url,
-                wait=True,
-                allowed_mentions=self._allowed_mentions(),
-                files=files or None,
-                embeds=embeds or None,
-            )
-        except Exception:
-            return None
-
-    async def _post_reply_controls(self, channel: discord.TextChannel, origin_payload: dict):
-        view = ReplyController(self, origin_payload)
-        try:
-            await channel.send(
-                content=f"Reply to **{origin_payload.get('origin_author_name','someone')}**'s message above:",
-                view=view,
-                allowed_mentions=self._allowed_mentions(),
-            )
-        except Exception:
-            pass
-
-    # ---------- relay ----------
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
-        # ignore bots / DMs
-        if message.guild is None or message.author.bot:
-            return
-
-        guild_conf = await self.config.guild(message.guild).all()
-        if message.channel.id not in guild_conf["allowed_channels"]:
-            return
-        if message.author.id in set(guild_conf["banned_users"]):
-            return
-
-        username = self._display_name(message.author)
-        avatar_url = message.author.display_avatar.url if message.author.display_avatar else None
-        content = self._sanitize_content(message.content or "")
-
-        # baseline: link attachments
-        attach_lines = []
-        for a in message.attachments:
-            safe_name = self._sanitize_content(a.filename)
-            attach_lines.append(f"[Attachment: {safe_name}] {a.url}")
-        if attach_lines:
-            content = (content + "\n" if content else "") + "\n".join(attach_lines)
-
-        partners: Dict[str, str] = guild_conf["partners"]
-        if not partners:
-            return
-
-        origin_hint = {
-            "origin_guild_id": message.guild.id,
-            "origin_channel_id": message.channel.id,
-            "origin_message_id": message.id,
-            "origin_author_id": message.author.id,
-            "origin_author_name": username,
-            "origin_excerpt": (message.content[:100] + "…") if message.content and len(message.content) > 100 else (message.content or ""),
-        }
-
-        for _gid, webhook_url in partners.items():
-            mirrored = await self._send_via_webhook(
-                webhook_url=webhook_url,
+        avatar_url: Optional[str],
+        files: List[discord.File] | None = None,
+        embeds: List[discord.Embed] | None = None,
+    ) -> None:
+        # Use Red's shared aiohttp session
+        async with self.bot.http_session as session:
+            wh = discord.Webhook.from_url(webhook_url, session=session)
+            await wh.send(
                 content=content,
                 username=username,
                 avatar_url=avatar_url,
+                files=files or None,
+                embeds=embeds or None,
+                allowed_mentions=AllowedMentions.none(),
+                wait=False,
             )
-            if not mirrored:
+
+    # -----------------------------
+    # Listener
+    # -----------------------------
+
+    @commands.Cog.listener("on_message")
+    async def relay_message(self, message: discord.Message):
+        # Basic filters
+        if message.author.bot:
+            # Webhooks are bot-like; we'll further exclude webhook messages explicitly below.
+            pass
+        # Don't relay DMs or system messages
+        if not message.guild or not isinstance(message.channel, discord.TextChannel):
+            return
+        if message.webhook_id is not None:
+            # Never relay webhook messages (prevents echo loops)
+            return
+
+        links = await self._find_links_from_source(message.channel.id)
+        if not links:
+            return
+
+        # Build content and gather files/embeds
+        content = message.content or None
+        files: List[discord.File] = []
+        try:
+            for attachment in message.attachments:
+                files.append(await attachment.to_file())
+        except Exception:
+            # If any file fails, still try to send others
+            pass
+
+        # Use only safe-to-forward embeds (discord.Embed instances already are)
+        embeds: List[discord.Embed] = []
+        try:
+            for e in message.embeds:
+                # Only forward rich/message embeds; skip unknown types if desired
+                embeds.append(e)
+        except Exception:
+            pass
+
+        avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
+        username = message.author.display_name
+
+        # Relay to each destination
+        for link in links:
+            webhook_url = link.get("webhook_url")
+            dest_id = link.get("dest_channel_id")
+
+            # Validate destination still exists
+            dest_channel = self.bot.get_channel(dest_id)
+            if dest_channel is None:
+                # Skip silently; admin can clean stale links
                 continue
 
-            # save mapping for reply UI (optional feature)
             try:
-                async with self.config.message_map() as mmap:
-                    mmap[str(mirrored.id)] = origin_hint
-            except Exception:
-                pass
+                await self._send_via_webhook(
+                    webhook_url=webhook_url,
+                    content=content,
+                    username=username,
+                    avatar_url=avatar_url,
+                    files=files.copy() if files else None,
+                    embeds=embeds.copy() if embeds else None,
+                )
+            except discord.HTTPException:
+                # If webhook is invalid (deleted/unauthorized), try to recreate once
+                try:
+                    wh_id, wh_url = await self._ensure_webhook(dest_channel)
+                except commands.UserFeedbackCheckFailure:
+                    continue
+                # Update stored webhook and retry
+                async with self._lock:
+                    all_links = await self._get_links()
+                    for l in all_links:
+                        if l.get("source_channel_id") == link["source_channel_id"] and l.get("dest_channel_id") == dest_id:
+                            l["webhook_id"] = wh_id
+                            l["webhook_url"] = wh_url
+                    await self._set_links(all_links)
+                try:
+                    await self._send_via_webhook(
+                        webhook_url=wh_url,
+                        content=content,
+                        username=username,
+                        avatar_url=avatar_url,
+                        files=files.copy() if files else None,
+                        embeds=embeds.copy() if embeds else None,
+                    )
+                except Exception:
+                    # Give up for this destination
+                    continue
 
-            if guild_conf.get("enable_replies", True) and isinstance(mirrored.channel, discord.TextChannel):
-                await self._post_reply_controls(mirrored.channel, origin_hint)
+    # -----------------------------
+    # Commands
+    # -----------------------------
 
-    # ---------- admin cmds ----------
-    @commands.group(name="portal")
-    @commands.guild_only()
-    @checks.admin()
-    async def portal_group(self, ctx: commands.Context):
-        """Configure the cross-server portal."""
+    @commands.group(name="linkch")
+    @checks.admin_or_permissions(manage_guild=True)
+    async def linkch(self, ctx: commands.Context):
+        """Manage channel links (source -> destination)."""
         pass
 
-    @portal_group.command(name="addchannel")
-    async def portal_addchannel(self, ctx: commands.Context, channel: discord.TextChannel):
-        async with self.config.guild(ctx.guild).allowed_channels() as chans:
-            if channel.id not in chans:
-                chans.append(channel.id)
-        await ctx.send(f"✅ Added {channel.mention} to portal channels.")
+    @linkch.command(name="add")
+    async def linkch_add(
+        self,
+        ctx: commands.Context,
+        source: discord.TextChannel,
+        destination: discord.TextChannel,
+    ):
+        """Link messages from **source** channel to **destination** channel.
 
-    @portal_group.command(name="removechannel")
-    async def portal_removechannel(self, ctx: commands.Context, channel: discord.TextChannel):
-        async with self.config.guild(ctx.guild).allowed_channels() as chans:
-            if channel.id in chans:
-                chans.remove(channel.id)
-        await ctx.send(f"🗑️ Removed {channel.mention} from portal channels.")
+        Example: `[p]linkch add #from-here #to-there`
+        You can reference channels in other servers by ID.
+        """
+        # Basic sanity checks
+        if source.id == destination.id:
+            return await ctx.send("Source and destination cannot be the same channel.")
 
-    @portal_group.command(name="list")
-    async def portal_list(self, ctx: commands.Context):
-        conf = await self.config.guild(ctx.guild).all()
-        chans = ", ".join(f"<#{cid}>" for cid in conf["allowed_channels"]) or "(none)"
-        partners = "\n".join(f"Guild {gid}: {url}" for gid, url in conf["partners"].items()) or "(none)"
-        banned = ", ".join(f"<@{uid}>" for uid in conf["banned_users"]) or "(none)"
+        # Ensure webhook exists/usable in destination
+        try:
+            wh_id, wh_url = await self._ensure_webhook(destination)
+        except commands.UserFeedbackCheckFailure as e:
+            return await ctx.send(str(e))
+
+        async with self._lock:
+            links = await self._get_links()
+            if any(l for l in links if l["source_channel_id"] == source.id and l["dest_channel_id"] == destination.id):
+                return await ctx.send("That link already exists.")
+            links.append(
+                {
+                    "source_channel_id": source.id,
+                    "dest_channel_id": destination.id,
+                    "webhook_id": wh_id,
+                    "webhook_url": wh_url,
+                }
+            )
+            await self._set_links(links)
+
         await ctx.send(
-            f"**Allowed Channels:** {chans}\n"
-            f"**Partners:**\n{partners}\n"
-            f"**Banned:** {banned}\n"
-            f"**Reply Controls:** {'on' if conf.get('enable_replies', True) else 'off'}"
+            f"✅ Linked {source.mention} → {destination.mention}. Messages in the source will mirror to the destination."
         )
 
-    @portal_group.command(name="addpartner")
-    async def portal_addpartner(self, ctx: commands.Context, partner_guild_id: int, webhook_url: str):
-        async with self.config.guild(ctx.guild).partners() as partners:
-            partners[str(partner_guild_id)] = webhook_url
-        await ctx.send(f"🤝 Partner {partner_guild_id} set.")
+    @linkch.command(name="remove")
+    async def linkch_remove(
+        self,
+        ctx: commands.Context,
+        source: discord.TextChannel,
+        destination: discord.TextChannel,
+    ):
+        """Remove an existing link from **source** to **destination**."""
+        async with self._lock:
+            links = await self._get_links()
+            new_links = [l for l in links if not (l["source_channel_id"] == source.id and l["dest_channel_id"] == destination.id)]
+            if len(new_links) == len(links):
+                return await ctx.send("No such link was found.")
+            await self._set_links(new_links)
+        await ctx.send(f"🗑️ Removed link {source.mention} → {destination.mention}.")
 
-    @portal_group.command(name="removepartner")
-    async def portal_removepartner(self, ctx: commands.Context, partner_guild_id: int):
-        async with self.config.guild(ctx.guild).partners() as partners:
-            partners.pop(str(partner_guild_id), None)
-        await ctx.send(f"🗑️ Partner {partner_guild_id} removed.")
+    @linkch.command(name="list")
+    async def linkch_list(self, ctx: commands.Context):
+        """List all active links."""
+        links = await self._get_links()
+        if not links:
+            return await ctx.send("No links configured.")
+        lines = []
+        for l in links:
+            s = self.bot.get_channel(l["source_channel_id"]) or f"<#{l['source_channel_id']}>"
+            d = self.bot.get_channel(l["dest_channel_id"]) or f"<#{l['dest_channel_id']}>"
+            lines.append(f"• {getattr(s, 'mention', s)} → {getattr(d, 'mention', d)}")
+        await ctx.send("**Active links:**\n" + "\n".join(lines))
 
-    @portal_group.command(name="ban")
-    async def portal_ban(self, ctx: commands.Context, user: discord.User):
-        async with self.config.guild(ctx.guild).banned_users() as banned:
-            if user.id not in banned:
-                banned.append(user.id)
-        await ctx.send(f"🚫 Banned {user.mention} from portal relays.")
-
-    @portal_group.command(name="unban")
-    async def portal_unban(self, ctx: commands.Context, user: discord.User):
-        async with self.config.guild(ctx.guild).banned_users() as banned:
-            if user.id in banned:
-                banned.remove(user.id)
-        await ctx.send(f"✅ Unbanned {user.mention} for portal relays.")
-
-    @portal_group.command(name="togglereplies")
-    async def portal_toggle_replies(self, ctx: commands.Context):
-        cur = await self.config.guild(ctx.guild).enable_replies()
-        await self.config.guild(ctx.guild).enable_replies().set(not cur)
-        await ctx.send(f"💬 Reply controls are now {'enabled' if not cur else 'disabled'}.")
-
-    # ---------- reply handlers ----------
-    async def launch_reply_modal(self, interaction: discord.Interaction, origin_payload: dict):
-        modal = ReplyModal(self, origin_payload)
-        await interaction.response.send_modal(modal)
-
-    async def handle_reply_submit(self, interaction: discord.Interaction, origin_payload: dict, reply_text: str):
-        guild = interaction.guild
-        if not guild:
-            return
-        conf = await self.config.guild(guild).all()
-        partners: Dict[str, str] = conf["partners"]
-        if not partners:
-            await interaction.followup.send("No partners configured for this server.", ephemeral=True)
-            return
-
-        member = interaction.user if isinstance(interaction.user, discord.Member) else None
-        username = (self._display_name(member) if member else interaction.user.display_name)
-        avatar_url = interaction.user.display_avatar.url if interaction.user else None
-
-        reply_text = self._sanitize_content(reply_text)
-        ref_author = origin_payload.get("origin_author_name", "someone")
-        excerpt = origin_payload.get("origin_excerpt", "")
-        hint = f"Replying to {ref_author}: '{excerpt}'" if excerpt else f"Replying to {ref_author}"
-
-        successes = 0
-        for _gid, webhook_url in partners.items():
-            msg = await self._send_via_webhook(
-                webhook_url=webhook_url,
-                content=reply_text,
-                username=username,
-                avatar_url=avatar_url,
-                reference_hint=hint,
-            )
-            if msg:
-                successes += 1
-
-        if successes:
-            await interaction.followup.send(f"Sent reply across the portal to {successes} destination(s).", ephemeral=True)
-        else:
-            await interaction.followup.send("Failed to send reply.", ephemeral=True)
+    @linkch.command(name="clearbroken")
+    async def linkch_clearbroken(self, ctx: commands.Context):
+        """Remove links whose destination channels are no longer accessible."""
+        async with self._lock:
+            links = await self._get_links()
+            kept = []
+            removed = []
+            for l in links:
+                if self.bot.get_channel(l["dest_channel_id"]) is None:
+                    removed.append(l)
+                else:
+                    kept.append(l)
+            await self._set_links(kept)
+        await ctx.send(f"Removed {len(removed)} broken link(s). Kept {len(kept)}.")
 
 
-# ---------- UI ----------
-class ReplyController(discord.ui.View):
-    def __init__(self, cog: PortalChat, origin_payload: dict, *, timeout: Optional[float] = 300):
-        super().__init__(timeout=timeout)
-        self.cog = cog
-        self.origin_payload = origin_payload
-        self.add_item(ReplyButton(cog, origin_payload))
-
-class ReplyButton(discord.ui.Button):
-    def __init__(self, cog: PortalChat, origin_payload: dict):
-        super().__init__(label="Reply", style=discord.ButtonStyle.primary, custom_id=f"portal_reply:{origin_payload.get('origin_message_id','0')}")
-        self.cog = cog
-        self.origin_payload = origin_payload
-
-    async def callback(self, interaction: discord.Interaction):
-        await self.cog.launch_reply_modal(interaction, self.origin_payload)
-
-class ReplyModal(discord.ui.Modal, title="Portal Reply"):
-    def __init__(self, cog: PortalChat, origin_payload: dict):
-        super().__init__()
-        self.cog = cog
-        self.origin_payload = origin_payload
-        self.reply_input = discord.ui.TextInput(label="Your reply", style=discord.TextStyle.paragraph, max_length=1800, required=True)
-        self.add_item(self.reply_input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-        await self.cog.handle_reply_submit(interaction, self.origin_payload, str(self.reply_input.value))
-
-
-async def setup(bot):
+async def setup(bot: Red) -> None:
     await bot.add_cog(PortalChat(bot))
