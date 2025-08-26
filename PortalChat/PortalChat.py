@@ -25,7 +25,7 @@ class PortalChat(commands.Cog):
     """
 
     __author__ = "you"
-    __version__ = "1.0.0"
+    __version__ = "1.1.0"
 
     def __init__(self, bot: Red) -> None:
         self.bot = bot
@@ -197,14 +197,14 @@ class PortalChat(commands.Cog):
     # Commands
     # -----------------------------
 
-    @commands.group(name="linkch")
+    @commands.group(name="portal")
     @checks.admin_or_permissions(manage_guild=True)
-    async def linkch(self, ctx: commands.Context):
+    async def portal(self, ctx: commands.Context):
         """Manage channel links (source -> destination)."""
         pass
 
-    @linkch.command(name="add")
-    async def linkch_add(
+    @portal.command(name="add")
+    async def portal_add(
         self,
         ctx: commands.Context,
         source: discord.TextChannel,
@@ -243,8 +243,8 @@ class PortalChat(commands.Cog):
             f"✅ Linked {source.mention} → {destination.mention}. Messages in the source will mirror to the destination."
         )
 
-    @linkch.command(name="remove")
-    async def linkch_remove(
+    @portal.command(name="remove")
+    async def portal_remove(
         self,
         ctx: commands.Context,
         source: discord.TextChannel,
@@ -259,8 +259,8 @@ class PortalChat(commands.Cog):
             await self._set_links(new_links)
         await ctx.send(f"🗑️ Removed link {source.mention} → {destination.mention}.")
 
-    @linkch.command(name="list")
-    async def linkch_list(self, ctx: commands.Context):
+    @portal.command(name="list")
+    async def portal_list(self, ctx: commands.Context):
         """List all active links."""
         links = await self._get_links()
         if not links:
@@ -272,8 +272,8 @@ class PortalChat(commands.Cog):
             lines.append(f"• {getattr(s, 'mention', s)} → {getattr(d, 'mention', d)}")
         await ctx.send("**Active links:**\n" + "\n".join(lines))
 
-    @linkch.command(name="clearbroken")
-    async def linkch_clearbroken(self, ctx: commands.Context):
+    @portal.command(name="clearbroken")
+    async def portal_clearbroken(self, ctx: commands.Context):
         """Remove links whose destination channels are no longer accessible."""
         async with self._lock:
             links = await self._get_links()
