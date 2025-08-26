@@ -226,9 +226,7 @@ class PortalChat(commands.Cog):
         if owner and self.edit_debug:
             try:
                 preview = (new_content[:120] + "…") if (new_content and len(new_content) > 123) else (new_content or "<no content>")
-                await owner.send(
-                    "
-".join([
+                await owner.send("".join([
                         "🧪 EDIT DEBUG (dry-run=" + str(self.edit_dry_run) + ")",
                         f"source: #{after.channel} / msg {after.id}",
                         f"dest:   msg {val['m']}",
