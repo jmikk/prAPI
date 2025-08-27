@@ -44,6 +44,64 @@ class PortalChat(commands.Cog):
     async def _get_links(self) -> List[dict]:
         return await self.config.links()
 
+    async def _save_bidirectional_mapping(self, a_msg: discord.Message, b_msg: discord.Message, webhook_url: str):
+        """
+        Save a <-> mapping for message IDs, including the webhook URL used to create the
+        destination message so we can later edit/delete via the webhook API.
+        """
+        now_ts = int(datetime.utcnow().timestamp())
+        async with self._lock:
+            mapping = await self.config.mapping()
+            mapping[str(a_msg.id)] = {"c": b_msg.channel.id, "m": b_msg.id, "w": webhook_url, "ts": now_ts}
+            mapping[str(b_msg.id)] = {"c": a_msg.channel.id, "m": a_msg.id, "w": webhook_url, "ts": now_ts}
+            # size-based prune using config cap
+            max_map = await self.config.max_map()
+            if len(mapping) > max_map:
+                items = sorted(mapping.items(), key=lambda kv: kv[1].get("ts", 0) if isinstance(kv[1], dict) else 0)
+                drop = max(1, len(items) // 5)  # drop oldest ~20%
+                for k, _ in items[:drop]:
+                    mapping.pop(k, None)
+            await self.config.mapping.set(mapping)
+
+        async def _delete_counterpart_message(self, src_channel_id: int, dest_channel_id: int, dest_message_id: int, wh_url: Optional[str]) -> None:
+            """
+            Try to delete the counterpart message, preferring webhook deletion when we have (or can rehydrate) the webhook.
+            Falls back to standard deletion if the bot has permissions in the destination channel.
+            """
+            # Rehydrate webhook if missing
+            if not wh_url:
+                try:
+                    wh_url = await self._resolve_webhook_for_pair(src_channel_id, dest_channel_id)
+                except Exception:
+                    wh_url = None
+    
+            # Try webhook deletion (best for webhook-authored messages)
+            if wh_url:
+                try:
+                    if self.session is None or self.session.closed:
+                        self.session = aiohttp.ClientSession()
+                    wh = discord.Webhook.from_url(wh_url, session=self.session)
+                    await wh.delete_message(dest_message_id)
+                    return
+                except Exception:
+                    # fall back to standard deletion
+                    pass
+    
+            # Fallback: use bot perms to delete
+            dest_channel = self.bot.get_channel(dest_channel_id)
+            if not isinstance(dest_channel, discord.TextChannel):
+                return
+            try:
+                msg = await dest_channel.fetch_message(dest_message_id)
+            except Exception:
+                return
+            try:
+                await msg.delete()
+            except Exception:
+                # no perms or already gone; swallow
+                pass
+
+
     async def _resolve_webhook_for_pair(self, src_channel_id: int, dest_channel_id: int) -> Optional[str]:
         """
         Try to find the correct webhook URL for (source channel -> destination channel)
@@ -71,6 +129,50 @@ class PortalChat(commands.Cog):
         except Exception:
             pass
         return None
+
+    @commands.Cog.listener("on_raw_message_delete")
+    async def mirror_delete(self, payload: discord.RawMessageDeleteEvent):
+        """
+        When a message is deleted in either linked channel, delete its counterpart.
+        Uses the mapping to find the other side. Removes both mapping entries first
+        to avoid ping-pong.
+        """
+        # Ignore system/Guildless cases are fine; we only rely on IDs here.
+        try:
+            async with self._lock:
+                mapping = await self.config.mapping()
+                val = mapping.pop(str(payload.message_id), None)
+
+                # Nothing to mirror
+                if not val:
+                    await self.config.mapping.set(mapping)
+                    return
+
+                # Prepare to also drop the counterpart's reverse entry
+                try:
+                    counterpart_key = str(val["m"] if isinstance(val, dict) else val[1])
+                    mapping.pop(counterpart_key, None)
+                except Exception:
+                    pass
+
+                await self.config.mapping.set(mapping)
+
+            # With mapping removed, we can safely delete the counterpart (no loops)
+            dest_channel_id = val["c"] if isinstance(val, dict) else val[0]
+            dest_message_id = val["m"] if isinstance(val, dict) else val[1]
+            wh_url = val.get("w") if isinstance(val, dict) else None
+
+            await self._delete_counterpart_message(
+                src_channel_id=payload.channel_id,
+                dest_channel_id=dest_channel_id,
+                dest_message_id=dest_message_id,
+                wh_url=wh_url,
+            )
+
+        except Exception:
+            # Silent fail to avoid noisy logs; your edit_debug flag only covers edits.
+            pass
+
 
 
     async def _set_links(self, links: List[dict]) -> None:
@@ -396,15 +498,26 @@ class PortalChat(commands.Cog):
 
     @portal.command(name="list")
     async def portal_list(self, ctx: commands.Context):
+        """Send the configured portal links to the bot owner via DM."""
         links = await self._get_links()
         if not links:
             return await ctx.send("No links configured.")
+
         lines = []
         for l in links:
             s = self.bot.get_channel(l["source_channel_id"]) or f"<#{l['source_channel_id']}>"
             d = l["webhook_url"]
             lines.append(f"• {getattr(s, 'mention', s)} → {d}")
-        await ctx.send("**Active portal links:**" + "".join(lines))
+
+        owner = (await self.bot.application_info()).owner
+        msg = "**Active portal links:**\n" + "\n".join(lines)
+
+        try:
+            await owner.send(msg)
+            await ctx.send("📬 Sent the portal list to the bot owner.")
+        except discord.Forbidden:
+            await ctx.send("❌ Could not DM the bot owner. Do they have DMs disabled?")
+
 
     @portal.command(name="editdebug")
     async def portal_editdebug(self, ctx: commands.Context, mode: bool):
