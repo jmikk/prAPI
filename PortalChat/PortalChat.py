@@ -1,7 +1,6 @@
 from __future__ import annotations
 import asyncio
 from typing import Dict, List, Optional
-
 import discord
 from discord import AllowedMentions
 from redbot.core import commands, Config, checks
@@ -19,7 +18,7 @@ class PortalChat(commands.Cog):
     """
 
     __author__ = "you"
-    __version__ = "1.7.1"
+    __version__ = "2.7.1"
 
     def __init__(self, bot: Red) -> None:
         self.bot = bot
