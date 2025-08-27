@@ -265,11 +265,17 @@ class PortalChat(commands.Cog):
                 files.append(await attachment.to_file())
         except Exception:
             pass
-
+        
         embeds: List[discord.Embed] = []
         try:
             for e in message.embeds:
                 embeds.append(e)
+        
+            for attachment in message.attachments:
+                if attachment.filename.lower().endswith(".gif"):
+                    embeds.append(discord.Embed().set_image(url=attachment.url))
+                else:
+                    files.append(await attachment.to_file())
         except Exception:
             pass
 
