@@ -10,7 +10,6 @@ import aiohttp
 from discord.ext import tasks
 from datetime import datetime, timedelta
 
-
 class PortalChat(commands.Cog):
     """
     Link messages cross-server via webhooks and sync reactions **both ways**.
@@ -38,6 +37,73 @@ class PortalChat(commands.Cog):
         except RuntimeError:
             pass
 
+    async def _delete_counterpart_message(
+        self,
+        src_channel_id: int,
+        dest_channel_id: int,
+        dest_message_id: int,
+        wh_url: Optional[str]
+    ) -> None:
+        """
+        Try to delete the counterpart message, preferring webhook deletion when we have (or can rehydrate) the webhook.
+        Falls back to standard deletion if the bot has permissions in the destination channel.
+        """
+        # Rehydrate webhook if missing
+        if not wh_url:
+            try:
+                wh_url = await self._resolve_webhook_for_pair(src_channel_id, dest_channel_id)
+            except Exception:
+                wh_url = None
+
+        # Try webhook deletion first (works only if the message was created by THIS webhook)
+        if wh_url:
+            try:
+                if self.session is None or self.session.closed:
+                    self.session = aiohttp.ClientSession()
+                wh = discord.Webhook.from_url(wh_url, session=self.session)
+
+                # If the message lives in a thread, pass thread_id for reliability
+                dest_channel = self.bot.get_channel(dest_channel_id)
+                thread_id = None
+                if isinstance(dest_channel, (discord.Thread,)):
+                    thread_id = dest_channel.id
+
+                # discord.py supports thread_id kwarg for webhook message ops
+                if thread_id:
+                    await wh.delete_message(dest_message_id, thread_id=thread_id)
+                else:
+                    await wh.delete_message(dest_message_id)
+                return
+            except discord.NotFound:
+                # Already gone; consider this a success
+                return
+            except Exception as e:
+                if getattr(self, "edit_debug", False):
+                    try:
+                        owner = (await self.bot.application_info()).owner
+                        await owner.send(f"🧹 Webhook delete failed for {dest_message_id}: {type(e).__name__}: {e}")
+                    except Exception:
+                        pass
+                # fall back to standard deletion
+
+        # Fallback: use bot perms to delete
+        dest_channel = self.bot.get_channel(dest_channel_id)
+        if not isinstance(dest_channel, discord.TextChannel) and not isinstance(dest_channel, discord.Thread):
+            return
+        try:
+            msg = await dest_channel.fetch_message(dest_message_id)
+        except Exception:
+            return
+        try:
+            await msg.delete()
+        except Exception as e:
+            if getattr(self, "edit_debug", False):
+                try:
+                    owner = (await self.bot.application_info()).owner
+                    await owner.send(f"🧹 Fallback delete failed for {dest_message_id}: {type(e).__name__}: {e}")
+                except Exception:
+                    pass
+
     # -----------------------------
     # Helpers
     # -----------------------------
@@ -62,45 +128,6 @@ class PortalChat(commands.Cog):
                 for k, _ in items[:drop]:
                     mapping.pop(k, None)
             await self.config.mapping.set(mapping)
-
-        async def _delete_counterpart_message(self, src_channel_id: int, dest_channel_id: int, dest_message_id: int, wh_url: Optional[str]) -> None:
-            """
-            Try to delete the counterpart message, preferring webhook deletion when we have (or can rehydrate) the webhook.
-            Falls back to standard deletion if the bot has permissions in the destination channel.
-            """
-            # Rehydrate webhook if missing
-            if not wh_url:
-                try:
-                    wh_url = await self._resolve_webhook_for_pair(src_channel_id, dest_channel_id)
-                except Exception:
-                    wh_url = None
-    
-            # Try webhook deletion (best for webhook-authored messages)
-            if wh_url:
-                try:
-                    if self.session is None or self.session.closed:
-                        self.session = aiohttp.ClientSession()
-                    wh = discord.Webhook.from_url(wh_url, session=self.session)
-                    await wh.delete_message(dest_message_id)
-                    return
-                except Exception:
-                    # fall back to standard deletion
-                    pass
-    
-            # Fallback: use bot perms to delete
-            dest_channel = self.bot.get_channel(dest_channel_id)
-            if not isinstance(dest_channel, discord.TextChannel):
-                return
-            try:
-                msg = await dest_channel.fetch_message(dest_message_id)
-            except Exception:
-                return
-            try:
-                await msg.delete()
-            except Exception:
-                # no perms or already gone; swallow
-                pass
-
 
     async def _resolve_webhook_for_pair(self, src_channel_id: int, dest_channel_id: int) -> Optional[str]:
         """
@@ -202,34 +229,6 @@ class PortalChat(commands.Cog):
             allowed_mentions=AllowedMentions.none(),
             wait=True,
         )
-
-    async def _save_bidirectional_mapping(self, a_msg: discord.Message, b_msg: discord.Message, webhook_url: str):
-        now_ts = int(datetime.utcnow().timestamp())
-        async with self._lock:
-            mapping = await self.config.mapping()
-            mapping[str(a_msg.id)] = {"c": b_msg.channel.id, "m": b_msg.id, "w": webhook_url, "ts": now_ts}
-            mapping[str(b_msg.id)] = {"c": a_msg.channel.id, "m": a_msg.id, "w": webhook_url, "ts": now_ts}
-            # size-based prune using config cap
-            max_map = await self.config.max_map()
-            if len(mapping) > max_map:
-                items = sorted(mapping.items(), key=lambda kv: kv[1].get("ts", 0))
-                drop = max(1, len(items) // 5)  # drop oldest ~20%
-                for k, _ in items[:drop]:
-                    mapping.pop(k, None)
-            await self.config.mapping.set(mapping)
-        now_ts = int(datetime.utcnow().timestamp())
-        async with self._lock:
-            mapping = await self.config.mapping()
-            mapping[str(a_msg.id)] = {"c": b_msg.channel.id, "m": b_msg.id, "ts": now_ts}
-            mapping[str(b_msg.id)] = {"c": a_msg.channel.id, "m": a_msg.id, "ts": now_ts}
-            # size-based prune using config cap
-            max_map = await self.config.max_map()
-            if len(mapping) > max_map:
-                items = sorted(mapping.items(), key=lambda kv: kv[1].get("ts", 0))
-                drop = max(1, len(items) // 5)  # drop oldest ~20%
-                for k, _ in items[:drop]:
-                    mapping.pop(k, None)
-            await self.config.mapping.set(mapping)
 
     def _is_bot_user(self, guild_id: Optional[int], user_id: int) -> bool:
         if user_id == self.bot.user.id:
