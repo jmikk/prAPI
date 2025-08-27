@@ -18,7 +18,7 @@ class PortalChat(commands.Cog):
     """
 
     __author__ = "you"
-    __version__ = "2.7.1"
+    __version__ = "2.0.0"
 
     def __init__(self, bot: Red) -> None:
         self.bot = bot
