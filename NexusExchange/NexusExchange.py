@@ -19,7 +19,7 @@ import json
 from redbot.core.utils.chat_formatting import humanize_number
 import math
 from collections import defaultdict
-
+from typing import Optional
 
 def is_citizen():
     async def predicate(ctx):
@@ -151,7 +151,7 @@ class VerifyNationModal(discord.ui.Modal, title="Verify your NationStates nation
 
 
 class VerifyButton(discord.ui.View):
-    def __init__(self, cog: commands.Cog, timeout: float | None = 600):
+    def __init__(self, cog: commands.Cog, timeout: Optional[float] = 600):
         super().__init__(timeout=timeout)
         self.cog = cog
 
