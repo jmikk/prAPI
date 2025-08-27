@@ -264,29 +264,57 @@ class PortalChat(commands.Cog):
         embeds: List[discord.Embed] = []
 
         try:
-            # Keep existing embeds (e.g., Tenor/Giphy/Discord CDN links)
+            # 1) Separate Tenor/Giphy "GIF picker" embeds (need URL passthrough)
+            tenor_like_urls: List[str] = []
             for e in message.embeds:
-                embeds.append(e)
+                # Normalize fields that might be None
+                prov = (getattr(e, "provider", None) or {})
+                prov_name = (getattr(prov, "name", None) or "").lower()
+                e_url = (getattr(e, "url", None) or "").lower()
+                thumb_url = (getattr(getattr(e, "thumbnail", None), "url", None) or "").lower()
+                video_url = (getattr(getattr(e, "video", None), "url", None) or "").lower()
 
-            # Single pass over attachments
+                is_tenor = any(u for u in [e_url, thumb_url, video_url] if ("tenor.com" in u or "media.tenor.com" in u)) or prov_name == "tenor"
+                is_giphy = any(u for u in [e_url, thumb_url, video_url] if ("giphy.com" in u or "media.giphy.com" in u)) or prov_name == "giphy"
+
+                if is_tenor or is_giphy:
+                    # Prefer the canonical URL Discord would unfurl
+                    # Order of preference: e.url -> video.url -> thumbnail.url
+                    canonical = (getattr(e, "url", None)
+                                 or (getattr(getattr(e, "video", None), "url", None))
+                                 or (getattr(getattr(e, "thumbnail", None), "url", None)))
+                    if canonical:
+                        tenor_like_urls.append(canonical)
+                else:
+                    # Non-Tenor/Giphy embeds pass through unchanged
+                    embeds.append(e)
+
+            # Append Tenor/Giphy URLs to content so Discord re-unfurls them
+            if tenor_like_urls:
+                # Avoid duplicating URLs already present in content
+                existing = (content or "")
+                to_add = [u for u in tenor_like_urls if (u not in existing)]
+                if to_add:
+                    content = (existing + ("\n" if existing else "") + "\n".join(to_add)) if existing else "\n".join(to_add)
+
+            # 2) Single pass over attachments
             for attachment in message.attachments:
                 fname = (attachment.filename or "").lower()
+                # spoiler detection works as method or property across discord.py versions
                 is_spoiler = getattr(attachment, "is_spoiler", None)
                 if callable(is_spoiler):
-                    # Older discord.py versions used method; newer uses property
                     is_spoiler = attachment.is_spoiler()
                 elif is_spoiler is None:
-                    # Fallback: check name
                     is_spoiler = fname.startswith("spoiler_")
 
                 if fname.endswith(".gif") and not is_spoiler:
-                    # Inline autoplay GIF via embed instead of uploading as file
+                    # Inline autoplay GIF via embed (CDN URL) instead of re-upload
                     embeds.append(discord.Embed().set_image(url=attachment.url))
                 else:
-                    # Keep spoilers and non-gif files as real attachments
                     files.append(await attachment.to_file(spoiler=is_spoiler))
         except Exception:
             pass
+
 
         if not content and not files and not embeds:
             return
