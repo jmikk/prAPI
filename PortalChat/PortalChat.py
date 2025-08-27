@@ -29,8 +29,8 @@ class PortalChat(commands.Cog):
         self._lock = asyncio.Lock()
         self.session: aiohttp.ClientSession | None = aiohttp.ClientSession()
         # Edit debug + dry-run (so you can test publicly without editing live webhook messages)
-        self.edit_debug: bool = True
-        self.edit_dry_run: bool = True
+        self.edit_debug: bool = False
+        self.edit_dry_run: bool = False
         # start periodic cleanup
         try:
             self._purge_old_mappings.start()
