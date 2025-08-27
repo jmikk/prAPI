@@ -259,23 +259,32 @@ class PortalChat(commands.Cog):
             return
 
         content = message.content or None
+
         files: List[discord.File] = []
-        try:
-            for attachment in message.attachments:
-                files.append(await attachment.to_file())
-        except Exception:
-            pass
-        
         embeds: List[discord.Embed] = []
+
         try:
+            # Keep existing embeds (e.g., Tenor/Giphy/Discord CDN links)
             for e in message.embeds:
                 embeds.append(e)
-        
+
+            # Single pass over attachments
             for attachment in message.attachments:
-                if attachment.filename.lower().endswith(".gif"):
+                fname = (attachment.filename or "").lower()
+                is_spoiler = getattr(attachment, "is_spoiler", None)
+                if callable(is_spoiler):
+                    # Older discord.py versions used method; newer uses property
+                    is_spoiler = attachment.is_spoiler()
+                elif is_spoiler is None:
+                    # Fallback: check name
+                    is_spoiler = fname.startswith("spoiler_")
+
+                if fname.endswith(".gif") and not is_spoiler:
+                    # Inline autoplay GIF via embed instead of uploading as file
                     embeds.append(discord.Embed().set_image(url=attachment.url))
                 else:
-                    files.append(await attachment.to_file())
+                    # Keep spoilers and non-gif files as real attachments
+                    files.append(await attachment.to_file(spoiler=is_spoiler))
         except Exception:
             pass
 
