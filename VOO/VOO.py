@@ -236,7 +236,7 @@ class VOO(commands.Cog):
         """Long-running SSE reader with auto-reconnect and idle timeout (1h)."""
         idle_limit = timedelta(hours=1)
         backoff = 3
-
+    
         while True:
             try:
                 ua = await self._get_user_agent_global()
@@ -245,27 +245,43 @@ class VOO(commands.Cog):
                 async with self.session.get(FOUNDING_SSE_URL, headers=headers) as resp:
                     resp.raise_for_status()
                     self.last_event_at = datetime.now(timezone.utc)
-
+    
                     async for raw_line in resp.content:
                         # Idle watchdog
                         if self.last_event_at and datetime.now(timezone.utc) - self.last_event_at > idle_limit:
                             log.warning("SSE idle > 1 hour; reconnecting.")
                             break
-
+    
                         line = raw_line.decode("utf-8", errors="ignore").strip()
-                        if not line:
+    
+                        # Count ANY traffic as activity (including heartbeats & field lines)
+                        if line == "":
+                            # blank line that ends an SSE event; still counts as activity
+                            self.last_event_at = datetime.now(timezone.utc)
                             continue
+    
+                        # Heartbeat/comment lines start with ":" per SSE spec
+                        if line.startswith(":"):
+                            self.last_event_at = datetime.now(timezone.utc)
+                            continue
+    
+                        # Normal data events
                         if line.startswith("data:"):
                             payload = line[5:].strip()
-                            await self._handle_sse_data(payload)
                             self.last_event_at = datetime.now(timezone.utc)
-                            await self._refresh_all_embeds()
-                        # Ignore other SSE fields (event:, id:, etc.)
-
+                            await self._handle_sse_data(payload)
+                            # (no need to refresh embeds here unless your handler doesn’t)
+                            continue
+    
+                        # Other SSE fields (event:, id:, retry:) also count as activity
+                        if line.startswith(("event:", "id:", "retry:")):
+                            self.last_event_at = datetime.now(timezone.utc)
+                            continue
+    
                 # Reconnect loop
                 await asyncio.sleep(backoff)
-                backoff = min(backoff * 2, 60)  # cap backoff
-
+                backoff = min(backoff * 2, 60)
+    
             except asyncio.CancelledError:
                 log.info("SSE listener cancelled.")
                 raise
@@ -273,6 +289,7 @@ class VOO(commands.Cog):
                 log.exception("SSE listener error: %r", e)
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 60)
+
 
     async def _handle_sse_data(self, data_line: str):
         """
