@@ -467,20 +467,56 @@ class VOO(commands.Cog):
         current = await user_conf.sent_count()
         await user_conf.sent_count.set(current + len(batch))
 
-        # Build a link button
-        class RecruitLinkView(discord.ui.View):
-            def __init__(self, url: str):
-                super().__init__(timeout=None)
+                # Build a link+reminder view
+        class RecruitView(discord.ui.View):
+            def __init__(self, cog: "VOO", link_url: str, guild: discord.Guild, user: discord.abc.User):
+                super().__init__(timeout=1200)  # 20 min, enough time to click a reminder
+                self.cog = cog
+                self.guild = guild
+                self.user = user
+                # Link button
                 self.add_item(
                     discord.ui.Button(
                         label="Open Recruit Link",
-                        url=url,
+                        url=link_url,
                         style=discord.ButtonStyle.link
                     )
                 )
 
-        view = RecruitLinkView(link)
-        
+            @discord.ui.button(label="Remind in 40s", style=discord.ButtonStyle.secondary, custom_id="voo:remind:40")
+            async def remind_40(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await self._schedule(interaction, 40)
+
+            @discord.ui.button(label="Remind in 50s", style=discord.ButtonStyle.secondary, custom_id="voo:remind:50")
+            async def remind_50(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await self._schedule(interaction, 50)
+
+            @discord.ui.button(label="Remind in 60s", style=discord.ButtonStyle.secondary, custom_id="voo:remind:60")
+            async def remind_60(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await self._schedule(interaction, 60)
+
+            @discord.ui.button(label="Remind in 120s", style=discord.ButtonStyle.secondary, custom_id="voo:remind:120")
+            async def remind_120(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await self._schedule(interaction, 120)
+
+            async def _schedule(self, interaction: discord.Interaction, seconds: int):
+                # schedule the ping and acknowledge ephemerally
+                await self.cog._schedule_reminder(self.guild, self.user, seconds)
+                try:
+                    await interaction.response.send_message(
+                        f"Okay! I’ll ping you in **{seconds} seconds**.",
+                        ephemeral=True,
+                        delete_after=3.0
+                    )
+                except discord.InteractionResponded:
+                    await interaction.followup.send(
+                        f"Okay! I’ll ping you in **{seconds} seconds**.",
+                        ephemeral=True,
+                        delete_after=3.0
+                    )
+
+        view = RecruitView(self, link, interaction.guild, interaction.user)
+
         await interaction.response.send_message(
             content=(
                 f"Here’s your recruitment link for **{len(batch)}** nation(s).\n"
@@ -490,6 +526,7 @@ class VOO(commands.Cog):
             view=view,
             ephemeral=True,
         )
+
 
     # ---------- Commands ----------
     @commands.group(name="voo")
@@ -989,6 +1026,47 @@ class VOO(commands.Cog):
             f"(DoW={target.weekday()}, {target.hour:02d}:{target.minute:02d}).\n"
             f"It will run once when the scheduler ticks that minute."
         )
+
+    async def _schedule_reminder(self, guild: discord.Guild, user: discord.abc.User, seconds: int):
+        """
+        Sleep for `seconds`, then ping the user in the configured control channel (or current),
+        and auto-delete the ping after a few seconds so the VOO embed remains last.
+        """
+        # choose channel: prefer control channel; else try system channel; else first text channel
+        channel = None
+        try:
+            channel_id = await self.config.guild(guild).channel_id()
+            if channel_id:
+                channel = guild.get_channel(channel_id)
+            if channel is None:
+                channel = guild.system_channel
+            if channel is None:
+                # last resort: first text channel the bot can send to
+                for c in guild.text_channels:
+                    if c.permissions_for(guild.me).send_messages:
+                        channel = c
+                        break
+        except Exception:
+            pass
+
+        if channel is None:
+            # Nowhere to ping; nothing we can do safely
+            return
+
+        async def _job():
+            try:
+                await asyncio.sleep(max(1, int(seconds)))
+                # Send ping and auto-delete quickly (e.g. after 5s)
+                await channel.send(
+                    content=f"{user.mention} ⏰ Recruit reminder!",
+                    delete_after=5.0
+                )
+            except Exception:
+                log.exception("Failed to send reminder ping for user %s", user)
+
+        # fire-and-forget task
+        asyncio.create_task(_job(), name=f"VOO_Reminder_{guild.id}_{user.id}_{seconds}")
+
         
 
 
