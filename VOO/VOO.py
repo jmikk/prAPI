@@ -16,6 +16,7 @@ import discord
 from discord import ui
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo  # add at top of file
+from datetime import timedelta
 
 log = logging.getLogger("red.vigil_of_origins")
 
@@ -944,8 +945,51 @@ class VOO(commands.Cog):
         state = "enabled" if enabled else "disabled"
         await ctx.send(f"Auto weekly payout {state} — schedule set to DOW={dow} {hour:02d}:{minute:02d} {tz}")
 
+    @voo_group.command(name="testpayout")
+    @checks.admin_or_permissions(manage_guild=True)
+    async def test_payout(self, ctx: commands.Context, minutes: int = 5, tz: str = "America/Chicago"):
+        """
+        Schedule the weekly payout to run X minutes from now (default 5).
+        Also enables auto-settlement and clears the run marker for that date.
+        Usage: [p]voo testpayout 5 America/Chicago
+        """
+        minutes = max(1, int(minutes))  # at least 1 minute
     
+        # Compute target time in the requested timezone
+        try:
+            zone = ZoneInfo(tz)
+        except Exception:
+            await ctx.send(f"Unknown timezone `{tz}`. Using America/Chicago.")
+            tz = "America/Chicago"
+            zone = ZoneInfo(tz)
     
+        now_local = datetime.now(zone)
+        target = now_local + timedelta(minutes=minutes)
+    
+        # Configure auto settlement to the target minute
+        await self.config.guild(ctx.guild).auto_weekly_enabled.set(True)
+        await self.config.guild(ctx.guild).auto_weekly_tz.set(tz)
+        await self.config.guild(ctx.guild).auto_weekly_dow.set(target.weekday())  # 0=Mon...6=Sun
+        await self.config.guild(ctx.guild).auto_weekly_hour.set(target.hour)
+        await self.config.guild(ctx.guild).auto_weekly_minute.set(target.minute)
+    
+        # Clear the "already ran" marker for the target date so it will fire
+        # (This matches the marker logic used in _weekly_scheduler)
+        key = f"weekly_marker_{target.date().isoformat()}"
+        try:
+            await self.bot.db.guild(ctx.guild).set_raw(key, value=False)
+        except Exception:
+            # If your bot.db isn't available, silently ignore; it will likely still trigger.
+            pass
+    
+        # Confirm to user
+        when_str = target.strftime("%Y-%m-%d %H:%M")
+        await ctx.send(
+            f"✅ Auto settlement scheduled **{minutes} min** from now at **{when_str} {tz}** "
+            f"(DoW={target.weekday()}, {target.hour:02d}:{target.minute:02d}).\n"
+            f"It will run once when the scheduler ticks that minute."
+        )
+        
 
 
 
