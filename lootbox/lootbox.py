@@ -18,14 +18,17 @@ class lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
-        default_global = {
+              # Put policy on the GUILD scope
+        default_guild = {
             "cooldown_policy": {
-                "default": {"rate": 1, "per": 86400},  # 1 use / hour
-                "roles": {                             # role_id : policy
+                "default": {"rate": 1, "per": 3600},  # 1 use / hour
+                "roles": {  # role_id : {"rate": int, "per": int}
                     # "1098646004250726420": {"rate": 2, "per": 3600},
                     # "1098673767858843648": {"rate": 3, "per": 3600},
                 },
-            },
+            }
+        }
+        default_global = {
             "season": 4,
             "categories": ["common","uncommon", "rare", "ultra-rare","epic"],
             "useragent": "",
@@ -34,6 +37,7 @@ class lootbox(commands.Cog):
         }
         default_user = {
         }
+        self.config.register_guild(**default_guild)
         self.config.register_global(**default_global)
         self.config.register_user(**default_user)
 
@@ -140,7 +144,6 @@ class lootbox(commands.Cog):
         #await ctx.send(nationname)
         categories = await self.config.categories()
         useragent = await self.config.useragent()
-        cooldown = await self.config.cooldown()
         if cooldown > 86400:
             cooldown = 86400
 
@@ -205,7 +208,6 @@ class lootbox(commands.Cog):
                     if prepare_response.status != 200:
                         if prepare_response.status == 409 or 403:
                             await ctx.send("No loot boxes ready! Give me a minute or so to wrap one up for you.")
-                            await self.config.user(ctx.author).uses.set(uses - 1)
                             return
 
                             
@@ -301,4 +303,4 @@ class lootbox(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(Lootbox(bot))
+    bot.add_cog(lootbox(bot))
