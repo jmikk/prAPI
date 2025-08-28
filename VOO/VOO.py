@@ -505,8 +505,16 @@ class VOO(commands.Cog):
             async def remind_120(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await self._schedule(interaction, 120)
 
+            # inside RecruitView in handle_recruit
             async def _schedule(self, interaction: discord.Interaction, seconds: int):
-                await self.cog._schedule_reminder(interaction, seconds)
+                # 1) silently defer so Discord is satisfied (no message shown)
+                try:
+                    await interaction.response.defer(ephemeral=True)  # no ack text
+                except discord.InteractionResponded:
+                    pass  # already deferred/responded somehow
+            
+                # 2) schedule the reminder; it will send the ephemeral followup later
+                await self.cog._schedule_reminder(interaction, max(1, int(seconds)))
         view = RecruitView(self, link)
 
 
