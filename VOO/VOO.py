@@ -821,7 +821,7 @@ class VOO(commands.Cog):
                 await asyncio.sleep(600)
 
     async def _run_weekly_payout(self, guild: discord.Guild):
-        """Distribute weekly pot, post leaderboard, clear roles & counters."""
+        """Distribute weekly pot, post leaderboard with % breakdown, then reset."""
         gconf = self.config.guild(guild)
         ws: dict = await gconf.weekly_sent()
         pot = int(await gconf.weekly_pot())
@@ -829,10 +829,10 @@ class VOO(commands.Cog):
         channel_id = await gconf.channel_id()
         channel = guild.get_channel(channel_id) if channel_id else None
     
-        # Build rows
+        # Aggregate rows
         rows = []
         total_sent = 0
-        for uid_str, cnt in ws.items():
+        for uid_str, cnt in (ws or {}).items():
             try:
                 cnt = int(cnt)
                 if cnt > 0:
@@ -842,51 +842,72 @@ class VOO(commands.Cog):
             except Exception:
                 continue
     
-        # Compose leaderboard embed
-        embed = discord.Embed(
-            title="Weekly Recruitment Results",
-            color=discord.Color.gold(),
-            description="No recruiters this week." if not rows else None,
-        )
+        embed = discord.Embed(title="Weekly Recruitment Results", color=discord.Color.gold())
     
-        if rows and total_sent > 0:
-            rows.sort(key=lambda x: (-x[1], x[0]))
-            lines = []
-            for i, (uid, cnt) in enumerate(rows[:25], start=1):
-                member = guild.get_member(uid)
-                name = member.display_name if member else f"<@{uid}>"
-                lines.append(f"**{i}.** {name} — **{cnt}** TGs")
-            embed.description = "\n".join(lines)
-            embed.add_field(name="Weekly Pot", value=f"{pot} Wellcoins", inline=True)
-            embed.add_field(name="Minimum per user", value=f"{min_payout} WC (not from pot)", inline=True)
-            embed.set_footer(text=f"Total TGs: {total_sent} • Payouts now processing")
+        if not rows or total_sent == 0:
+            embed.description = "No recruiters this week."
+            try:
+                if channel:
+                    await channel.send(embed=embed)
+            except Exception:
+                pass
+            # Reset anyway
+            await gconf.weekly_pot.set(0)
+            await gconf.weekly_sent.set({})
+            await self._clear_active_role_all(guild)
+            return
     
-        # Payouts
+        # Sort; build payouts
+        rows.sort(key=lambda x: (-x[1], x[0]))
+    
+        # Compute pot shares (rounded); last user absorbs rounding drift
+        payouts = []  # (uid, cnt, pct, share_from_pot, min_bonus)
+        pot_paid_total = 0
+        for idx, (uid, cnt) in enumerate(rows):
+            pct = (cnt / total_sent) * 100.0
+            share = round((cnt / total_sent) * pot)
+            if idx == len(rows) - 1:
+                share = pot - pot_paid_total
+            pot_paid_total += max(0, share)
+            payouts.append((uid, cnt, pct, max(0, share), max(0, min_payout)))
+    
+        # Pay with NexusExchange
         nexus = self._get_nexus()
-        if nexus and rows and total_sent > 0:
-            # Share from pot (rounded to nearest whole WC; rounding error absorbed by last user)
-            pot_paid_total = 0
-            for idx, (uid, cnt) in enumerate(rows):
+        if nexus:
+            for uid, cnt, pct, share, bonus in payouts:
                 member = guild.get_member(uid)
-                share = round((cnt / total_sent) * pot)
-                if idx == len(rows) - 1:
-                    # fix rounding drift
-                    share = pot - pot_paid_total
-                pot_paid_total += max(0, share)
-    
-                # Pay share from pot
-                if member and share > 0:
+                if not member:
+                    continue
+                # Share from pot
+                if share > 0:
                     try:
                         await nexus.add_wellcoins(member, float(share))
                     except Exception:
                         log.exception("Pot share payout failed for %s", member)
-    
-                # Pay minimum (does NOT reduce pot)
-                if member and min_payout > 0:
+                # Minimum (not from pot)
+                if bonus > 0:
                     try:
-                        await nexus.add_wellcoins(member, float(min_payout))
+                        await nexus.add_wellcoins(member, float(bonus))
                     except Exception:
                         log.exception("Minimum payout failed for %s", member)
+    
+        # Build nice per-user lines: Name — TGs • xx.xx% → share WC (+min WC)
+        lines = []
+        for i, (uid, cnt, pct, share, bonus) in enumerate(payouts, start=1):
+            member = guild.get_member(uid)
+            name = member.display_name if member else f"<@{uid}>"
+            pct_str = f"{pct:.2f}%"
+            if bonus > 0:
+                line = f"**{i}.** {name} — **{cnt}** TGs • {pct_str} → **{share}** WC + **{bonus}** WC"
+            else:
+                line = f"**{i}.** {name} — **{cnt}** TGs • {pct_str} → **{share}** WC"
+            lines.append(line)
+    
+        # Compose embed
+        embed.description = "\n".join(lines[:50])  # safety cap
+        embed.add_field(name="Weekly Pot (distributed)", value=f"{pot} WC (paid {pot_paid_total} WC)", inline=True)
+        embed.add_field(name="Minimum per recruiter", value=f"{min_payout} WC (not from pot)", inline=True)
+        embed.set_footer(text=f"Total TGs: {total_sent} • Recruiters paid: {len(payouts)}")
     
         # Announce
         try:
@@ -895,10 +916,11 @@ class VOO(commands.Cog):
         except Exception:
             pass
     
-        # Cleanup: reset pot, counters, roles
+        # Cleanup
         await gconf.weekly_pot.set(0)
         await gconf.weekly_sent.set({})
         await self._clear_active_role_all(guild)
+
 
     @voo_group.command(name="setactiverole")
     @checks.admin_or_permissions(manage_guild=True)
