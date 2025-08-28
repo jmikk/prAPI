@@ -268,11 +268,12 @@ class VOO(commands.Cog):
         await self._persist_queue_snapshot()
         await self._refresh_all_embeds()
 
-        tgto = ",".join(batch)  # <-- you were missing this
+        tgto = ",".join(batch)
+
         # 1) Encode tgto normally (commas -> %2C)
         q1 = urlencode({"tgto": tgto})
 
-        # 2) Message: convert only the leading '%' to '%25', keep trailing '%' literal
+        # 2) Message: we only want the leading '%' escaped to '%25'
         def ns_template_for_message(raw: str) -> str:
             raw = raw.strip()
             if raw.startswith("%"):
@@ -281,11 +282,12 @@ class VOO(commands.Cog):
 
         message_exact = ns_template_for_message(template)
 
-        # 3) generated_by as its own param
+        # 3) generated_by param
         q3 = urlencode({"generated_by": GENERATED_BY})
 
-        # 4) Final link
+        # 4) Build manually so message isn’t re-encoded
         link = f"https://www.nationstates.net/page=compose_telegram?{q1}&message={message_exact}&{q3}"
+
 
         # Count stats (per-nation)
         current = await user_conf.sent_count()
