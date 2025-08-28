@@ -118,6 +118,8 @@ class VOO(commands.Cog):
         if not self.session or self.session.closed:
             self.session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None))
         self.listener_task = asyncio.create_task(self._run_listener(), name="VOO_SSE_Listener")
+        await self._maybe_refresh_control_embed()
+
 
     async def stop_listener(self):
         if self.listener_task and not self.listener_task.done():
@@ -127,6 +129,8 @@ class VOO(commands.Cog):
             except asyncio.CancelledError:
                 pass
         self.listener_task = None
+        await self._maybe_refresh_control_embed()
+
 
     async def _run_listener(self):
         """Long-running SSE reader with auto-reconnect and idle timeout (1h)."""
@@ -196,7 +200,7 @@ class VOO(commands.Cog):
             return
         self.queue.appendleft(nation)
         await self._persist_queue_snapshot()
-        await self._maybe_bump_embed_footer()
+        await self._maybe_refresh_control_embed()
 
     async def _persist_queue_snapshot(self):
         # Persist only up to, say, 300 to avoid bloating config
@@ -213,28 +217,17 @@ class VOO(commands.Cog):
                 return ua
         return "9003"
 
-    # ---------- UI / Embed ----------
-    async def _maybe_bump_embed_footer(self):
-        # Update the footer showing queue length (lightweight best-effort)
+    async def _maybe_refresh_control_embed(self):
+        # Lightweight best-effort: refresh all configured guild embeds
         for guild in self.bot.guilds:
             channel_id = await self.config.guild(guild).channel_id()
-            msg_id = await self.config.guild(guild).control_message_id()
-            if not (channel_id and msg_id):
-                continue
-            channel = guild.get_channel(channel_id)
-            if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+            if not channel_id:
                 continue
             try:
-                msg = await channel.fetch_message(msg_id)
-                if not msg.embeds:
-                    continue
-                embed = msg.embeds[0]
-                embed = discord.Embed.from_dict(embed.to_dict())  # clone
-                qlen = len(self.queue)
-                embed.set_footer(text=f"Queue: {qlen} nations")
-                await msg.edit(embed=embed, view=VOOControlView(self))
+                await self._upsert_control_message(guild)
             except Exception:
                 pass
+
 
     async def _get_status_text(self) -> str:
         if self.listener_task and not self.listener_task.done():
@@ -242,50 +235,10 @@ class VOO(commands.Cog):
         return "🔴 SSE: **OFF**"
 
     async def post_or_update_control_message(self, guild: discord.Guild, channel: discord.TextChannel | discord.Thread):
-        qlen = len(self.queue)
-        status = await self._get_status_text()
+        # Keep channel selection (and persist) if you call this manually via setchannel
+        await self.config.guild(guild).channel_id.set(channel.id)
+        await self._upsert_control_message(guild)
 
-        embed = discord.Embed(
-            title="Vigil of Origins — Founding Monitor",
-            color=discord.Color.blue(),
-        )
-
-        # Show status and queue prominently
-        embed.add_field(
-            name="Status",
-            value=status,
-            inline=False,
-        )
-        embed.add_field(
-            name="Queue",
-            value=f"**{qlen} nations**",
-            inline=False,
-        )
-
-        # Move the "how to" info further down
-        embed.add_field(
-            name="How to Recruit",
-            value=(
-                "• **Recruit**: Get a private TG link to the **newest** up to 8 queued nations (then removes them).\n"
-                "• **Register**: Save your `%TEMPLATE-...%` once so your Recruit link includes it.\n"
-                "• **Leaderboard**: See who has recruited the most nations."
-            ),
-            inline=False,
-        )
-
-        msg_id = await self.config.guild(guild).control_message_id()
-        view = VOOControlView(self)
-
-        if msg_id:
-            try:
-                msg = await channel.fetch_message(msg_id)
-                await msg.edit(embed=embed, view=view)
-                return
-            except Exception:
-                pass
-
-        msg = await channel.send(embed=embed, view=view)
-        await self.config.guild(guild).control_message_id.set(msg.id)
 
 
     # ---------- Button Handlers ----------
@@ -327,7 +280,7 @@ class VOO(commands.Cog):
             batch.append(self.queue.popleft())
 
         await self._persist_queue_snapshot()
-        await self._maybe_bump_embed_footer()
+        await self._maybe_refresh_control_embed()
 
         tgto = ",".join(batch)
 
@@ -381,12 +334,15 @@ class VOO(commands.Cog):
     async def start_cmd(self, ctx: commands.Context):
         """Start the SSE listener."""
         await self.start_listener()
+        await self._maybe_refresh_control_embed()
         await ctx.send("SSE listener started.")
 
     @voo_group.command(name="stop")
     async def stop_cmd(self, ctx: commands.Context):
         """Stop the SSE listener."""
         await self.stop_listener()
+        await self._maybe_refresh_control_embed()
+
         await ctx.send("SSE listener stopped.")
 
     @voo_group.command(name="queue")
@@ -404,7 +360,7 @@ class VOO(commands.Cog):
         """Clear the entire queue."""
         self.queue.clear()
         await self._persist_queue_snapshot()
-        await self._maybe_bump_embed_footer()
+        await self._maybe_refresh_control_embed()
         await ctx.send("Queue cleared.")
 
     @voo_group.command(name="resetstats")
@@ -414,6 +370,89 @@ class VOO(commands.Cog):
             for uid in list(allu.keys()):
                 allu[uid]["sent_count"] = 0
         await ctx.send("Leaderboard stats reset.")
+
+    async def _get_status_text(self) -> str:
+        if self.listener_task and not self.listener_task.done():
+            return "🟢 SSE: **ON**"
+        return "🔴 SSE: **OFF**"
+
+    def _build_control_embed(self, qlen: int, status_text: str) -> discord.Embed:
+        embed = discord.Embed(
+            title="Vigil of Origins — Founding Monitor",
+            color=discord.Color.blue(),
+        )
+        # Status and Queue first (Queue bolded)
+        embed.add_field(name="Status", value=status_text, inline=False)
+        embed.add_field(name="Queue", value=f"**{qlen} nations**", inline=False)
+
+        # Lower-priority how-to
+        embed.add_field(
+            name="How to Recruit",
+            value=(
+                "• **Recruit**: Private TG link to the **newest** up to 8 queued nations (then removes them).\n"
+                "• **Register**: Save your `%TEMPLATE-...%` once; your Recruit link will include it.\n"
+                "• **Leaderboard**: See who has recruited the most nations."
+            ),
+            inline=False,
+        )
+        return embed
+
+    async def _upsert_control_message(self, guild: discord.Guild):
+        """Ensure the control embed is present, updated, and is the most recent message."""
+        channel_id = await self.config.guild(guild).channel_id()
+        if not channel_id:
+            return
+        channel = guild.get_channel(channel_id)
+        if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+            return
+
+        qlen = len(self.queue)
+        status = await self._get_status_text()
+        embed = self._build_control_embed(qlen, status)
+
+        view = VOOControlView(self)
+        msg_id = await self.config.guild(guild).control_message_id()
+
+        # If we have a message stored, try to fetch it
+        message = None
+        if msg_id:
+            try:
+                message = await channel.fetch_message(msg_id)
+            except Exception:
+                message = None
+
+        # Determine if the stored message is the most recent message in the channel
+        is_latest = False
+        try:
+            # channel.last_message_id is cheap; if None, fetch last message via history
+            last_id = channel.last_message_id
+            if last_id is None:
+                async for m in channel.history(limit=1):
+                    last_id = m.id
+                    break
+            if last_id and msg_id and last_id == msg_id:
+                is_latest = True
+        except Exception:
+            pass
+
+        if message and is_latest:
+            # Just edit in place
+            try:
+                await message.edit(embed=embed, view=view)
+                return
+            except Exception:
+                pass
+
+        # If here: either no message, or it's not latest; delete old and post new at bottom
+        if message:
+            try:
+                await message.delete()
+            except Exception:
+                pass
+
+        new_msg = await channel.send(embed=embed, view=view)
+        await self.config.guild(guild).control_message_id.set(new_msg.id)
+
 
 async def setup(bot: Red):
     await bot.add_cog(VOO(bot))
