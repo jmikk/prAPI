@@ -109,7 +109,7 @@ class VOO(commands.Cog):
                 {"lt": 900,  "name": "Floodgate", "emoji": "🚨"},
                 {"lt": 1000, "name": "Deluge",    "emoji": "🛑"},
             ],
-            "default_over_reward": 4
+            "default_over_reward": 4,
             "defcon_overflow_name": "Maelstrom",
             "defcon_overflow_emoji": "🌀",
         
