@@ -121,13 +121,6 @@ class lootbox(commands.Cog):
         await self.config.nationName.set(nationname)
         await ctx.send(f"Nation Name set to {nationname}")
 
-    @cardset.command()
-    @checks.admin_or_permissions(manage_guild=True)
-    async def cooldown(self, ctx, cooldown: int):
-        """Set the cooldown period for the loot box command in seconds."""
-        await self.config.cooldown.set(cooldown)
-        await ctx.send(f"Cooldown set to {cooldown} seconds")
-
     @commands.dm_only()
     @cardset.command()
     async def password(self, ctx, *, password: str):
@@ -135,7 +128,7 @@ class lootbox(commands.Cog):
         await self.config.password.set(password)
         await ctx.send(f"Password set to {password}")
 
-    @commands.dynamic_cooldown(lambda self, ctx: self._cooldown_for_ctx_sync(ctx), BucketType.user)    
+    @commands.dynamic_cooldown(_cooldown_for_ctx_sync, BucketType.user)    
     @commands.command()    
     async def openlootbox(self, ctx, *recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
@@ -209,7 +202,7 @@ class lootbox(commands.Cog):
 
                 async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
                     if prepare_response.status != 200:
-                        if prepare_response.status == 409 or 403:
+                        if prepare_response.status in (409 or 403):
                             await ctx.send("No loot boxes ready! Give me a minute or so to wrap one up for you.")
                             return
 
