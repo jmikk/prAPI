@@ -1024,22 +1024,75 @@ class VOO(commands.Cog):
             f"(DoW={target.weekday()}, {target.hour:02d}:{target.minute:02d}).\n"
             f"It will run once when the scheduler ticks that minute."
         )
-
-    async def _schedule_reminder(self, interaction: discord.Interaction, seconds: int):
+    
+     async def _schedule_reminder(self, interaction: discord.Interaction, seconds: int):
         """
-        Sleep for `seconds`, then send an *ephemeral* reminder to the same user
-        via the interaction's followup. No public ping; nothing is deleted.
+        After `seconds`, send:
+          1) an *ephemeral* reminder to the clicker, and
+          2) a public ping in the control channel (auto-delete if configured).
         """
+        user = interaction.user
+        guild = interaction.guild
+    
+        # resolve target channel (prefer control channel; else system; else first sendable text channel)
+        async def _resolve_channel() -> Optional[discord.TextChannel]:
+            if not guild:
+                return None
+            try:
+                channel_id = await self.config.guild(guild).channel_id()
+                if channel_id:
+                    ch = guild.get_channel(channel_id)
+                    if ch and ch.permissions_for(guild.me).send_messages:
+                        return ch
+            except Exception:
+                pass
+            if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
+                return guild.system_channel
+            for c in guild.text_channels:
+                if c.permissions_for(guild.me).send_messages:
+                    return c
+            return None
+    
+        channel = await _resolve_channel()
+        delete_after = 0
+        try:
+            delete_after = int(await self.config.guild(guild).reminder_public_delete_after())
+        except Exception:
+            delete_after = 5  # fallback
+    
         async def _job():
             try:
                 await asyncio.sleep(max(1, int(seconds)))
-                await interaction.followup.send(
-                    content=f"⏰ Reminder: your **Recruit** link is ready to use.",
-                    ephemeral=True,
-                )
+    
+                # 1) ephemeral follow-up to the user
+                try:
+                    await interaction.followup.send(
+                        content=f"⏰ Reminder: {user.mention} the **Recruit** link is ready.",
+                        ephemeral=True,
+                    )
+                except Exception:
+                    pass
+    
+                # 2) public ping (optionally auto-delete)
+                if channel:
+                    try:
+                        if delete_after and delete_after > 0:
+                            await channel.send(
+                                content=f"{user.mention} ⏰ Recruit reminder!",
+                                delete_after=float(delete_after),
+                            )
+                        else:
+                            await channel.send(content=f"{user.mention} ⏰ Recruit reminder!")
+                    except Exception:
+                        pass
             except Exception:
-                log.exception("Failed to send ephemeral reminder.")
-        asyncio.create_task(_job(), name=f"VOO_EphemeralReminder_{interaction.user.id}_{seconds}")
+                log.exception("Failed to deliver reminder for %s", user)
+    
+        asyncio.create_task(
+            _job(),
+            name=f"VOO_Reminder_{guild.id if guild else 'dm'}_{user.id}_{seconds}",
+        )
+
 
 
         
