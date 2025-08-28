@@ -18,57 +18,62 @@ class lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
-              # Put policy on the GUILD scope
+
+        # guild-scoped policy
         default_guild = {
             "cooldown_policy": {
-                "default": {"rate": 1, "per": 3600},  # 1 use / hour
-                "roles": {  # role_id : {"rate": int, "per": int}
-                    # "1098646004250726420": {"rate": 2, "per": 3600},
-                    # "1098673767858843648": {"rate": 3, "per": 3600},
-                },
+                "default": {"rate": 1, "per": 3600},
+                "roles": {},
             }
         }
         default_global = {
             "season": 4,
-            "categories": ["common","uncommon", "rare", "ultra-rare","epic"],
+            "categories": ["common", "uncommon", "rare", "ultra-rare", "epic"],
             "useragent": "",
             "nationName": "",
             "password": "",
         }
-        default_user = {
-        }
         self.config.register_guild(**default_guild)
         self.config.register_global(**default_global)
-        self.config.register_user(**default_user)
+        self.config.register_user()
 
-        # Helper to compute the cooldown from policy
-    async def _cooldown_for_ctx(self, ctx: commands.Context) -> commands.Cooldown:
-        policy = (await self.config.guild(ctx.guild).cooldown_policy()) if ctx.guild else None
+        # local in-memory cache: {guild_id: policy_dict}
+        self._policy_cache = {}
+
+    async def cog_load(self):
+        # Preload policies for all guilds the bot is in
+        for guild in self.bot.guilds:
+            pol = await self.config.guild(guild).cooldown_policy()
+            self._policy_cache[guild.id] = pol
+
+    # helper: PURE SYNC function for dynamic_cooldown
+    def _cooldown_for_ctx_sync(self, ctx: commands.Context) -> commands.Cooldown:
+        # fallback if DMs or missing policy
+        if not ctx.guild:
+            return commands.Cooldown(1, 3600)
+
+        policy = self._policy_cache.get(ctx.guild.id)
         if not policy:
-            return commands.Cooldown(1, 3600)  # safe fallback
+            return commands.Cooldown(1, 3600)
 
         default_rate = policy["default"]["rate"]
         default_per = policy["default"]["per"]
         best_rate, best_per = default_rate, default_per
 
-        if ctx.guild:
-            roles_policy = policy.get("roles", {})
-            # If the member has multiple special roles, pick the most permissive (highest rate / lowest per).
-            member = ctx.guild.get_member(ctx.author.id)
-            if member:
-                for r in member.roles:
-                    rp = roles_policy.get(str(r.id))
-                    if rp:
-                        rate, per = rp.get("rate", default_rate), rp.get("per", default_per)
-                        # Choose the "most generous" cooldown. Adjust tie-break logic as you like.
-                        if rate / per > best_rate / best_per:
-                            best_rate, best_per = rate, per
+        roles_policy = policy.get("roles", {})
+        member = ctx.guild.get_member(ctx.author.id)
+        if member:
+            for r in member.roles:
+                rp = roles_policy.get(str(r.id))
+                if rp:
+                    rate, per = rp.get("rate", default_rate), rp.get("per", default_per)
+                    if rate / per > best_rate / best_per:
+                        best_rate, best_per = rate, per
 
-        # hard-cap an excessively long 'per' if you want:
         if best_per > 86400:
             best_per = 86400
-
         return commands.Cooldown(best_rate, best_per)
+
 
 
     @commands.group()
@@ -130,7 +135,7 @@ class lootbox(commands.Cog):
         await self.config.password.set(password)
         await ctx.send(f"Password set to {password}")
 
-    @commands.dynamic_cooldown(lambda self, ctx: self._cooldown_for_ctx(ctx), BucketType.user)
+    @commands.dynamic_cooldown(lambda self, ctx: self._cooldown_for_ctx_sync(ctx), BucketType.user)    
     @commands.command()    
     async def openlootbox(self, ctx, *recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
@@ -144,8 +149,6 @@ class lootbox(commands.Cog):
         #await ctx.send(nationname)
         categories = await self.config.categories()
         useragent = await self.config.useragent()
-        if cooldown > 86400:
-            cooldown = 86400
 
         headers = {"User-Agent": useragent}
         password = await self.config.password()
@@ -280,7 +283,7 @@ class lootbox(commands.Cog):
             "LEGENDARY": 0xFFFF00     # Yellow
         }
         return colors.get(category.upper(), 0xFFFFFF)  # Default to white if not found
-    
+        
     @commands.group()
     @checks.admin_or_permissions(manage_guild=True)
     async def cooldownset(self, ctx):
@@ -292,6 +295,7 @@ class lootbox(commands.Cog):
         pol = await self.config.guild(ctx.guild).cooldown_policy()
         pol["default"] = {"rate": rate, "per": per}
         await self.config.guild(ctx.guild).cooldown_policy.set(pol)
+        self._policy_cache[ctx.guild.id] = pol  # keep cache in sync
         await ctx.send(f"Default cooldown set to {rate} uses per {per}s.")
     
     @cooldownset.command()
@@ -299,7 +303,9 @@ class lootbox(commands.Cog):
         pol = await self.config.guild(ctx.guild).cooldown_policy()
         pol.setdefault("roles", {})[str(role.id)] = {"rate": rate, "per": per}
         await self.config.guild(ctx.guild).cooldown_policy.set(pol)
+        self._policy_cache[ctx.guild.id] = pol  # keep cache in sync
         await ctx.send(f"Cooldown for {role.name}: {rate} uses per {per}s.")
+
 
 
 def setup(bot):
