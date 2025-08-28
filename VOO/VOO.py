@@ -148,7 +148,7 @@ class VOO(commands.Cog):
 
     def _get_nexus(self):
     # NexusExchange must be loaded as a cog; exposes add_wellcoins(user, amount)
-    return self.bot.get_cog("NexusExchange")
+        return self.bot.get_cog("NexusExchange")
 
     async def _get_per_tg_reward(self, guild: discord.Guild, queue_len_before: int) -> int:
         tiers = await self.config.guild(guild).per_tg_tiers()
