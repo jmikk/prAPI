@@ -906,7 +906,7 @@ class VOO(commands.Cog):
         # Compose embed
         embed.description = "\n".join(lines[:50])  # safety cap
         embed.add_field(name="Weekly Pot (distributed)", value=f"{pot} WC (paid {pot_paid_total} WC)", inline=True)
-        embed.add_field(name="Minimum per recruiter", value=f"{min_payout} WC (not from pot)", inline=True)
+        embed.add_field(name="Salary", value=f"{min_payout} WC (not from pot)", inline=True)
         embed.set_footer(text=f"Total TGs: {total_sent} • Recruiters paid: {len(payouts)}")
     
         # Announce
