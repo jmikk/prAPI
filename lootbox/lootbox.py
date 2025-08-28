@@ -318,7 +318,6 @@ class lootbox(commands.Cog):
 # Add this command near your other admin commands:
 
     @commands.command(aliases=["cooldownrates", "cdrates", "showcooldowns"])
-    @checks.admin_or_permissions(manage_guild=True)
     async def cooldowninfo(self, ctx):
         """Show the lootbox cooldown policy (default + role overrides) in an embed."""
         if not ctx.guild:
@@ -352,7 +351,7 @@ class lootbox(commands.Cog):
             description="Current default and role-specific cooldowns.",
         )
         embed.add_field(
-            name="@everyone",
+            name="Freebiee",
             value=f"**{default_rate}** use(s) per **{self._fmt_seconds(default_per)}**",
             inline=False,
         )
