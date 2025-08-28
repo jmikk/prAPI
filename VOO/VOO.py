@@ -118,7 +118,7 @@ class VOO(commands.Cog):
         if not self.session or self.session.closed:
             self.session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None))
         self.listener_task = asyncio.create_task(self._run_listener(), name="VOO_SSE_Listener")
-        await self._maybe_refresh_control_embed()
+        await self._edit_control_message()
 
 
     async def stop_listener(self):
@@ -129,7 +129,7 @@ class VOO(commands.Cog):
             except asyncio.CancelledError:
                 pass
         self.listener_task = None
-        await self._maybe_refresh_control_embed()
+        await self._edit_control_message()
 
 
     async def _run_listener(self):
@@ -201,7 +201,7 @@ class VOO(commands.Cog):
             return
         self.queue.appendleft(nation)
         await self._persist_queue_snapshot()
-        await self._maybe_refresh_control_embed()
+        await self._edit_control_message()
 
     async def _persist_queue_snapshot(self):
         # Persist only up to, say, 300 to avoid bloating config
@@ -218,7 +218,7 @@ class VOO(commands.Cog):
                 return ua
         return "9003"
 
-    async def _maybe_refresh_control_embed(self):
+    async def _edit_control_message(self):
         # Lightweight best-effort: refresh all configured guild embeds
         for guild in self.bot.guilds:
             channel_id = await self.config.guild(guild).channel_id()
@@ -281,7 +281,7 @@ class VOO(commands.Cog):
             batch.append(self.queue.popleft())
 
         await self._persist_queue_snapshot()
-        await self._maybe_refresh_control_embed()
+        await self._edit_control_message()
 
         # 1) Encode tgto normally
         q1 = urlencode({"tgto": tgto})  # commas -> %2C
@@ -341,14 +341,14 @@ class VOO(commands.Cog):
     async def start_cmd(self, ctx: commands.Context):
         """Start the SSE listener."""
         await self.start_listener()
-        await self._maybe_refresh_control_embed()
+        await self._edit_control_message()
         await ctx.send("SSE listener started.")
 
     @voo_group.command(name="stop")
     async def stop_cmd(self, ctx: commands.Context):
         """Stop the SSE listener."""
         await self.stop_listener()
-        await self._maybe_refresh_control_embed()
+        await self._edit_control_message()
 
         await ctx.send("SSE listener stopped.")
 
@@ -367,7 +367,7 @@ class VOO(commands.Cog):
         """Clear the entire queue."""
         self.queue.clear()
         await self._persist_queue_snapshot()
-        await self._maybe_refresh_control_embed()
+        await self._edit_control_message()
         await ctx.send("Queue cleared.")
 
     @voo_group.command(name="resetstats")
@@ -473,6 +473,36 @@ class VOO(commands.Cog):
         on = self.listener_task and not self.listener_task.done()
         status = "🟢 SSE: **ON**" if on else "🔴 SSE: **OFF**"
         return f"{status}\n{self._last_event_markdown()}"
+
+    async def _edit_control_message(self, guild: discord.Guild):
+        """Edit the existing control embed in place (no bump). If missing, post once."""
+        channel_id = await self.config.guild(guild).channel_id()
+        if not channel_id:
+            return
+        channel = guild.get_channel(channel_id)
+        if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+            return
+
+        qlen = len(self.queue)
+        status = await self._get_status_text()
+        embed = self._build_control_embed(qlen, status)
+        view = VOOControlView(self)
+
+        msg_id = await self.config.guild(guild).control_message_id()
+
+        # Try to edit the existing message
+        if msg_id:
+            try:
+                msg = await channel.fetch_message(msg_id)
+                await msg.edit(embed=embed, view=view)
+                return
+            except Exception:
+                pass  # fall through to post
+
+        # If we don't have a message (or it was deleted), post once
+        new_msg = await channel.send(embed=embed, view=view)
+        await self.config.guild(guild).control_message_id.set(new_msg.id)
+
 
 
 
