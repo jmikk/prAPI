@@ -267,26 +267,20 @@ class VOO(commands.Cog):
 
         await self._persist_queue_snapshot()
         await self._refresh_all_embeds()
-
         tgto = ",".join(batch)
 
-        # 1) Encode tgto normally (commas -> %2C)
-        q1 = urlencode({"tgto": tgto})
+        # IMPORTANT: do NOT pre-encode message or tgto.
+        # Let the client encode once so % -> %25 and commas -> %2C (once).
+        message_raw = template.strip()  # e.g. "%TEMPLATE-35972625%"
 
-        # 2) Message: we only want the leading '%' escaped to '%25'
-        def ns_template_for_message(raw: str) -> str:
-            raw = raw.strip()
-            if raw.startswith("%"):
-                return "%25" + raw[1:]
-            return raw
+        # generated_by is safe as-is (only underscores), but encode if you ever add spaces.
+        link = (
+            "https://www.nationstates.net/page=compose_telegram"
+            f"?tgto={tgto}"
+            f"&message={message_raw}"
+            f"&generated_by={GENERATED_BY}"
+        )
 
-        message_exact = ns_template_for_message(template)
-
-        # 3) generated_by param
-        q3 = urlencode({"generated_by": GENERATED_BY})
-
-        # 4) Build manually so message isn’t re-encoded
-        link = f"https://www.nationstates.net/page=compose_telegram?{q1}&message={message_exact}&{q3}"
 
 
         # Count stats (per-nation)
