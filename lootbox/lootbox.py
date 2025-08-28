@@ -300,6 +300,88 @@ class lootbox(commands.Cog):
         self._policy_cache[ctx.guild.id] = pol  # keep cache in sync
         await ctx.send(f"Cooldown for {role.name}: {rate} uses per {per}s.")
 
+# Add this helper somewhere in your class:
+
+    def _fmt_seconds(self, seconds: int) -> str:
+        seconds = int(seconds)
+        if seconds % 86400 == 0:
+            d = seconds // 86400
+            return f"{d} day{'s' if d != 1 else ''}"
+        if seconds % 3600 == 0:
+            h = seconds // 3600
+            return f"{h} hour{'s' if h != 1 else ''}"
+        if seconds % 60 == 0:
+            m = seconds // 60
+            return f"{m} minute{'s' if m != 1 else ''}"
+        return f"{seconds} second{'s' if seconds != 1 else ''}"
+
+# Add this command near your other admin commands:
+
+    @commands.command(aliases=["cooldownrates", "cdrates", "showcooldowns"])
+    @checks.admin_or_permissions(manage_guild=True)
+    async def cooldowninfo(self, ctx):
+        """Show the lootbox cooldown policy (default + role overrides) in an embed."""
+        if not ctx.guild:
+            await ctx.send("This command must be used in a server.")
+            return
+    
+        # Pull from cache (fast) and fall back to config if missing
+        policy = self._policy_cache.get(ctx.guild.id) or await self.config.guild(ctx.guild).cooldown_policy()
+        if not policy:
+            await ctx.send("No cooldown policy found for this server.")
+            return
+    
+        default_rate = policy.get("default", {}).get("rate", 1)
+        default_per = policy.get("default", {}).get("per", 3600)
+    
+        # Build role overrides list
+        overrides = []
+        for role_id, rp in policy.get("roles", {}).items():
+            role = ctx.guild.get_role(int(role_id))
+            name = role.mention if role else f"(deleted role {role_id})"
+            rate = rp.get("rate", default_rate)
+            per = rp.get("per", default_per)
+            overrides.append(f"{name}: **{rate}** use(s) per **{self._fmt_seconds(per)}**")
+    
+        # Effective policy for the caller (using your sync helper)
+        eff = self._cooldown_for_ctx_sync(ctx)
+        eff_rate, eff_per = int(eff.rate), int(eff.per)
+    
+        embed = Embed(
+            title="Lootbox Cooldown Policy",
+            description="Current default and role-specific cooldowns.",
+        )
+        embed.add_field(
+            name="@everyone",
+            value=f"**{default_rate}** use(s) per **{self._fmt_seconds(default_per)}**",
+            inline=False,
+        )
+    
+        if overrides:
+            # Chunk if it's super long
+            chunk = []
+            total = 0
+            for line in overrides:
+                if total + len(line) > 900:  # conservative for field limit
+                    embed.add_field(name="Role Overrides", value="\n".join(chunk), inline=False)
+                    chunk, total = [], 0
+                chunk.append(line)
+                total += len(line) + 1
+            if chunk:
+                embed.add_field(name="Role Overrides", value="\n".join(chunk), inline=False)
+        else:
+            embed.add_field(name="Role Overrides", value="*(none)*", inline=False)
+    
+        embed.add_field(
+            name=f"Your Effective Limit ({ctx.author.display_name})",
+            value=f"**{eff_rate}** use(s) per **{self._fmt_seconds(eff_per)}**",
+            inline=False,
+        )
+    
+        await ctx.send(embed=embed)
+
+
+
 
 
 def setup(bot):
