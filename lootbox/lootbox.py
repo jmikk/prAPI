@@ -8,6 +8,7 @@ import time
 import csv
 import os
 from datetime import datetime
+from discord.ext.commands import BucketType
 
 tsv_file = "report.tsv"
 
@@ -16,19 +17,53 @@ class lootbox(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
         default_global = {
-            "season": 3,
+            "cooldown_policy": {
+                "default": {"rate": 1, "per": 86400},  # 1 use / hour
+                "roles": {                             # role_id : policy
+                    # "1098646004250726420": {"rate": 2, "per": 3600},
+                    # "1098673767858843648": {"rate": 3, "per": 3600},
+                },
+            },
+            "season": 4,
             "categories": ["common","uncommon", "rare", "ultra-rare","epic"],
             "useragent": "",
             "nationName": "",
-            "cooldown": 3600,  # Default cooldown is 1 hour
             "password": "",
         }
         default_user = {
-            "last_used": 0,
-            "uses": 0
         }
         self.config.register_global(**default_global)
         self.config.register_user(**default_user)
+
+        # Helper to compute the cooldown from policy
+    async def _cooldown_for_ctx(self, ctx: commands.Context) -> commands.Cooldown:
+        policy = (await self.config.guild(ctx.guild).cooldown_policy()) if ctx.guild else None
+        if not policy:
+            return commands.Cooldown(1, 3600)  # safe fallback
+
+        default_rate = policy["default"]["rate"]
+        default_per = policy["default"]["per"]
+        best_rate, best_per = default_rate, default_per
+
+        if ctx.guild:
+            roles_policy = policy.get("roles", {})
+            # If the member has multiple special roles, pick the most permissive (highest rate / lowest per).
+            member = ctx.guild.get_member(ctx.author.id)
+            if member:
+                for r in member.roles:
+                    rp = roles_policy.get(str(r.id))
+                    if rp:
+                        rate, per = rp.get("rate", default_rate), rp.get("per", default_per)
+                        # Choose the "most generous" cooldown. Adjust tie-break logic as you like.
+                        if rate / per > best_rate / best_per:
+                            best_rate, best_per = rate, per
+
+        # hard-cap an excessively long 'per' if you want:
+        if best_per > 86400:
+            best_per = 86400
+
+        return commands.Cooldown(best_rate, best_per)
+
 
     @commands.group()
     async def cardset(self, ctx):
@@ -89,9 +124,8 @@ class lootbox(commands.Cog):
         await self.config.password.set(password)
         await ctx.send(f"Password set to {password}")
 
-    @commands.command()
-    @commands.cooldown(1, 60, commands.BucketType.default)  # 1 use per 60 seconds
-    async def openlootbox(self, ctx, *recipient: str):
+    @commands.dynamic_cooldown(lambda self, ctx: self._cooldown_for_ctx(ctx), BucketType.user)
+    @commands.command()    async def openlootbox(self, ctx, *recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
         if len(recipient) < 1:
             await ctx.send("Make sure to put your nation in after openlootbox")
@@ -106,34 +140,6 @@ class lootbox(commands.Cog):
         cooldown = await self.config.cooldown()
         if cooldown > 86400:
             cooldown = 86400
-
-        now = ctx.message.created_at.timestamp()
-        user_data = await self.config.user(ctx.author).all()
-        last_used = user_data["last_used"]
-        uses = user_data["uses"]
-
-        if now - last_used < cooldown:
-            # Check role limits
-            max_uses = 1
-            if ctx.guild:
-                member = ctx.guild.get_member(ctx.author.id)
-                if member:
-                    if 1098646004250726420 in [role.id for role in member.roles]:
-                        max_uses = 2
-                    if 1098673767858843648 in [role.id for role in member.roles]:
-                        max_uses = 3
-            if uses >= max_uses:
-                remaining_time = cooldown - (now - last_used)
-                timestamp = int(time.time() + remaining_time)
-                await ctx.send(f"Please wait until <t:{timestamp}:R> before opening another loot box.")
-                return
-        else:
-            # Reset uses after cooldown
-            uses = 0
-
-        # Update user's last used time and uses
-        await self.config.user(ctx.author).last_used.set(now)
-        await self.config.user(ctx.author).uses.set(uses + 1)
 
         headers = {"User-Agent": useragent}
         password = await self.config.password()
@@ -233,15 +239,7 @@ class lootbox(commands.Cog):
                             await ctx.send(f"Successfully gifted the card to {recipient}!")
                         else:
                             await ctx.send("Failed to execute the gift.")
-
-    @commands.command()
-    @checks.admin_or_permissions(manage_guild=True)
-    async def resetrequests(self, ctx, user: commands.UserConverter):
-        """Reset a user's requests, allowing them to open more loot boxes."""
-        await self.config.user(user).last_used.set(0)
-        await self.config.user(user).uses.set(0)
-        await ctx.send(f"{user.display_name}'s requests have been reset.")
-
+                            
     def parse_cards(self, xml_data, season, categories):
         root = ET.fromstring(xml_data)
         cards = []
