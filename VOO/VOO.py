@@ -291,11 +291,26 @@ class VOO(commands.Cog):
         current = await user_conf.sent_count()
         await user_conf.sent_count.set(current + len(batch))
 
+        # Build a link button
+        class RecruitLinkView(discord.ui.View):
+            def __init__(self, url: str):
+                super().__init__(timeout=None)
+                self.add_item(
+                    discord.ui.Button(
+                        label="Open Recruit Link",
+                        url=url,
+                        style=discord.ButtonStyle.link
+                    )
+                )
+
+        view = RecruitLinkView(link)
+
         await interaction.response.send_message(
             content=(
-                f"Here’s your recruitment link for **{len(batch)}** nation(s):\n{link}\n\n"
+                f"Here’s your recruitment link for **{len(batch)}** nation(s).\n\n"
                 f"Targets: `{tgto}`"
             ),
+            view=view,
             ephemeral=True,
         )
 
