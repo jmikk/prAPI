@@ -9,6 +9,8 @@ import csv
 import os
 from datetime import datetime
 from discord.ext.commands import BucketType
+import discord
+
 
 tsv_file = "report.tsv"
 
