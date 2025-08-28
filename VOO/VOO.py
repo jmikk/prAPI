@@ -157,9 +157,9 @@ class VOO(commands.Cog):
                             continue
                         if line.startswith("data:"):
                             payload = line[5:].strip()
-                            self.last_event_at = datetime.now(timezone.utc)
                             await self._handle_sse_data(payload)
                             self.last_event_at = datetime.now(timezone.utc)
+                            await self._refresh_all_embeds()
                         # Ignore other SSE fields (event:, id:, etc.)
 
                 # Reconnect loop
@@ -201,7 +201,7 @@ class VOO(commands.Cog):
             return
         self.queue.appendleft(nation)
         await self._persist_queue_snapshot()
-        await self._edit_control_message()
+        await self._refresh_all_embeds()
 
     async def _persist_queue_snapshot(self):
         # Persist only up to, say, 300 to avoid bloating config
@@ -216,24 +216,9 @@ class VOO(commands.Cog):
             ua = await self.config.guild(guild).user_agent()
             if ua:
                 return ua
-        return "9003"
-
-    async def _edit_control_message(self):
-        # Lightweight best-effort: refresh all configured guild embeds
-        for guild in self.bot.guilds:
-            channel_id = await self.config.guild(guild).channel_id()
-            if not channel_id:
-                continue
-            try:
-                await self._upsert_control_message(guild)
-            except Exception:
-                pass
+        return 
 
 
-    async def _get_status_text(self) -> str:
-        if self.listener_task and not self.listener_task.done():
-            return "🟢 SSE: **ON**"
-        return "🔴 SSE: **OFF**"
 
     async def post_or_update_control_message(self, guild: discord.Guild, channel: discord.TextChannel | discord.Thread):
         await self.config.guild(guild).channel_id.set(channel.id)
@@ -341,14 +326,14 @@ class VOO(commands.Cog):
     async def start_cmd(self, ctx: commands.Context):
         """Start the SSE listener."""
         await self.start_listener()
-        await self._edit_control_message()
+        await self._refresh_all_embeds()
         await ctx.send("SSE listener started.")
 
     @voo_group.command(name="stop")
     async def stop_cmd(self, ctx: commands.Context):
         """Stop the SSE listener."""
         await self.stop_listener()
-        await self._edit_control_message()
+        await self._refresh_all_embeds()
 
         await ctx.send("SSE listener stopped.")
 
@@ -367,7 +352,7 @@ class VOO(commands.Cog):
         """Clear the entire queue."""
         self.queue.clear()
         await self._persist_queue_snapshot()
-        await self._edit_control_message()
+        await self._refresh_all_embeds()
         await ctx.send("Queue cleared.")
 
     @voo_group.command(name="resetstats")
@@ -382,27 +367,6 @@ class VOO(commands.Cog):
         if self.listener_task and not self.listener_task.done():
             return "🟢 SSE: **ON**"
         return "🔴 SSE: **OFF**"
-
-    def _build_control_embed(self, qlen: int, status_text: str) -> discord.Embed:
-        embed = discord.Embed(
-            title="Vigil of Origins — Founding Monitor",
-            color=discord.Color.blue(),
-        )
-        # Status (with Last event) and Queue first
-        embed.add_field(name="Status", value=status_text, inline=False)
-        embed.add_field(name="Queue", value=f"**{qlen} nations**", inline=False)
-
-        # Lower-priority how-to
-        embed.add_field(
-            name="How to Recruit",
-            value=(
-                "• **Recruit**: Private TG link to the **newest** up to 8 queued nations (then removes them).\n"
-                "• **Register**: Save your `%TEMPLATE-...%` once; your Recruit link will include it.\n"
-                "• **Leaderboard**: See who has recruited the most nations."
-            ),
-            inline=False,
-        )
-        return embed
 
 
     async def _upsert_control_message(self, guild: discord.Guild):
