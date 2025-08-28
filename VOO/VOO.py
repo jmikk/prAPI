@@ -480,22 +480,23 @@ class VOO(commands.Cog):
                         label="Open Recruit Link",
                         url=link_url,
                         style=discord.ButtonStyle.link
+                        row=0
                     )
                 )
 
-            @discord.ui.button(label="Remind in 40s", style=discord.ButtonStyle.secondary, custom_id="voo:remind:40")
+            @discord.ui.button(label="Remind in 40s", style=discord.ButtonStyle.secondary,row=1, custom_id="voo:remind:40")
             async def remind_40(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await self._schedule(interaction, 40)
 
-            @discord.ui.button(label="Remind in 50s", style=discord.ButtonStyle.secondary, custom_id="voo:remind:50")
+            @discord.ui.button(label="Remind in 50s", style=discord.ButtonStyle.secondary,row=1 custom_id="voo:remind:50")
             async def remind_50(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await self._schedule(interaction, 50)
 
-            @discord.ui.button(label="Remind in 60s", style=discord.ButtonStyle.secondary, custom_id="voo:remind:60")
+            @discord.ui.button(label="Remind in 60s", style=discord.ButtonStyle.secondary,row=1 custom_id="voo:remind:60")
             async def remind_60(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await self._schedule(interaction, 60)
 
-            @discord.ui.button(label="Remind in 120s", style=discord.ButtonStyle.secondary, custom_id="voo:remind:120")
+            @discord.ui.button(label="Remind in 120s", style=discord.ButtonStyle.secondary,row=1 custom_id="voo:remind:120")
             async def remind_120(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await self._schedule(interaction, 120)
 
