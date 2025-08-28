@@ -236,9 +236,9 @@ class VOO(commands.Cog):
         return "🔴 SSE: **OFF**"
 
     async def post_or_update_control_message(self, guild: discord.Guild, channel: discord.TextChannel | discord.Thread):
-        # Keep channel selection (and persist) if you call this manually via setchannel
         await self.config.guild(guild).channel_id.set(channel.id)
-        await self._upsert_control_message(guild)
+        await self._edit_control_message(guild)
+
 
 
 
@@ -502,6 +502,39 @@ class VOO(commands.Cog):
         # If we don't have a message (or it was deleted), post once
         new_msg = await channel.send(embed=embed, view=view)
         await self.config.guild(guild).control_message_id.set(new_msg.id)
+
+    @commands.command(name="bumpvoo")
+    @checks.admin_or_permissions(manage_guild=True)
+    async def bump_voo(self, ctx: commands.Context):
+        """Delete and repost the control embed to push it to the bottom."""
+        guild = ctx.guild
+        channel_id = await self.config.guild(guild).channel_id()
+        if not channel_id:
+            await ctx.send("No control channel set. Use `[p]voo setchannel` first.")
+            return
+        channel = guild.get_channel(channel_id)
+        if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+            await ctx.send("Configured control channel is invalid.")
+            return
+
+        msg_id = await self.config.guild(guild).control_message_id()
+        if msg_id:
+            try:
+                old = await channel.fetch_message(msg_id)
+                await old.delete()
+            except Exception:
+                pass
+
+        # Rebuild & send fresh at the bottom
+        qlen = len(self.queue)
+        status = await self._get_status_text()
+        embed = self._build_control_embed(qlen, status)
+        view = VOOControlView(self)
+
+        new_msg = await channel.send(embed=embed, view=view)
+        await self.config.guild(guild).control_message_id.set(new_msg.id)
+        await ctx.send("Control embed bumped to the bottom.")
+
 
 
 
