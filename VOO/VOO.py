@@ -236,22 +236,42 @@ class VOO(commands.Cog):
             except Exception:
                 pass
 
+    async def _get_status_text(self) -> str:
+        if self.listener_task and not self.listener_task.done():
+            return "🟢 SSE: **ON**"
+        return "🔴 SSE: **OFF**"
+
     async def post_or_update_control_message(self, guild: discord.Guild, channel: discord.TextChannel | discord.Thread):
         qlen = len(self.queue)
+        status = await self._get_status_text()
+
         embed = discord.Embed(
             title="Vigil of Origins — Founding Monitor",
-            description=(
-                "Watching the NationStates founding stream.\n"
-                "Use the buttons below to **Recruit**, **Register** your template, or view the **Leaderboard**."
-            ),
             color=discord.Color.blue(),
         )
-        embed.add_field(name="What it does", value=(
-            "• **Recruit**: Get a private TG link to the **newest** up to 8 queued nations (then removes them from the queue).\n"
-            "• **Register**: Save your `%TEMPLATE-...%` once so your Recruit link includes it.\n"
-            "• **Leaderboard**: See who has recruited the most nations."
-        ), inline=False)
-        embed.set_footer(text=f"Queue: {qlen} nations")
+
+        # Show status and queue prominently
+        embed.add_field(
+            name="Status",
+            value=status,
+            inline=False,
+        )
+        embed.add_field(
+            name="Queue",
+            value=f"**{qlen} nations**",
+            inline=False,
+        )
+
+        # Move the "how to" info further down
+        embed.add_field(
+            name="How to Recruit",
+            value=(
+                "• **Recruit**: Get a private TG link to the **newest** up to 8 queued nations (then removes them).\n"
+                "• **Register**: Save your `%TEMPLATE-...%` once so your Recruit link includes it.\n"
+                "• **Leaderboard**: See who has recruited the most nations."
+            ),
+            inline=False,
+        )
 
         msg_id = await self.config.guild(guild).control_message_id()
         view = VOOControlView(self)
@@ -266,6 +286,7 @@ class VOO(commands.Cog):
 
         msg = await channel.send(embed=embed, view=view)
         await self.config.guild(guild).control_message_id.set(msg.id)
+
 
     # ---------- Button Handlers ----------
     async def handle_register(self, interaction: discord.Interaction):
