@@ -101,16 +101,23 @@ class VOO(commands.Cog):
             "auto_weekly_tz": "America/Chicago",
             # per-TG dynamic reward tiers based on current queue length BEFORE dequeue:
             # pay = reward where queue_len < lt; else fallthrough to default_over_reward
-            "per_tg_tiers": [                        # evaluated in order of ascending 'lt'
-                {"lt": 500, "reward": 10},
-                {"lt": 600, "reward": 9},
-                {"lt": 700, "reward": 8},
-                {"lt": 800, "reward": 7},
-                {"lt": 900, "reward": 6},
-                {"lt": 1000, "reward": 5},
+            "defcon_levels": [  # evaluated by queue < lt, in ascending lt
+                {"lt": 500,  "name": "Trickle",   "emoji": "💧"},
+                {"lt": 600,  "name": "Stream",    "emoji": "🌿"},
+                {"lt": 700,  "name": "Torrent",   "emoji": "🌪️"},
+                {"lt": 800,  "name": "Geyser",    "emoji": "🧨"},
+                {"lt": 900,  "name": "Floodgate", "emoji": "🚨"},
+                {"lt": 1000, "name": "Deluge",    "emoji": "🛑"},
             ],
             "default_over_reward": 4
-        }
+            "defcon_overflow_name": "Maelstrom",
+            "defcon_overflow_emoji": "🌀",
+        
+            "panic_enabled": True,         # announce when level rises
+            "panic_cooldown_minutes": 30,  # minimum minutes between panic alerts
+            "last_defcon_index": -1,       # last announced index
+            "last_panic_at_ts": 0,         # unix timestamp of last panic
+                }
         
         default_user = {
             "template": None,
@@ -323,7 +330,8 @@ class VOO(commands.Cog):
             return
 
         self.queue.appendleft(nation)
-
+        for guild in self.bot.guilds:
+            await self._maybe_panic_on_rise(guild, len(self.queue))
         # Persist and refresh UI
         await self._persist_queue_snapshot()
         await self._refresh_all_embeds()
@@ -607,7 +615,8 @@ class VOO(commands.Cog):
 
         qlen = len(self.queue)
         status = await self._get_status_text()
-        embed = self._build_control_embed(qlen, status)
+        reward, lvl_name, lvl_emoji, idx, total = await self._current_reward_and_defcon(guild, qlen)
+        embed = self._build_control_embed(qlen, status, reward, lvl_name, lvl_emoji, idx, total)
 
         view = VOOControlView(self)
         msg_id = await self.config.guild(guild).control_message_id()
@@ -664,13 +673,22 @@ class VOO(commands.Cog):
         status = "🟢 SSE: **ON**" if on else "🔴 SSE: **OFF**"
         return f"{status}\n{self._last_event_markdown()}"
 
-    def _build_control_embed(self, qlen: int, status_text: str) -> discord.Embed:
+    def _build_control_embed(self, qlen: int, status_text: str, reward: int, level_name: str, level_emoji: str, idx: int, total: int) -> discord.Embed:
         embed = discord.Embed(
             title="Vigil of Origins — Founding Monitor",
             color=discord.Color.blue(),
         )
         embed.add_field(name="Status", value=status_text, inline=False)
         embed.add_field(name="Queue", value=f"**{qlen} nations**", inline=False)
+        embed.add_field(name="Current Reward", value=f"**{reward}** Wellcoins per TG", inline=True)
+    
+        bar = self._level_bar(idx, total)
+        embed.add_field(
+            name="Wellspring Alert",
+            value=f"{level_emoji} **{level_name}**  {bar}",
+            inline=True,
+        )
+    
         embed.add_field(
             name="How to Recruit",
             value=(
@@ -681,6 +699,7 @@ class VOO(commands.Cog):
             inline=False,
         )
         return embed
+
 
     async def _edit_control_message(self, guild: discord.Guild):
         """Edit the existing control embed in place (no bump). If missing, post once."""
@@ -693,7 +712,9 @@ class VOO(commands.Cog):
 
         qlen = len(self.queue)
         status = await self._get_status_text()
-        embed = self._build_control_embed(qlen, status)
+        reward, lvl_name, lvl_emoji, idx, total = await self._current_reward_and_defcon(guild, qlen)
+        embed = self._build_control_embed(qlen, status, reward, lvl_name, lvl_emoji, idx, total)
+        
         view = VOOControlView(self)
 
         msg_id = await self.config.guild(guild).control_message_id()
@@ -1104,6 +1125,142 @@ class VOO(commands.Cog):
             _job(),
             name=f"VOO_Reminder_{guild.id if guild else 'dm'}_{user.id}_{seconds}",
         )
+
+    async def _current_reward_and_defcon(self, guild: discord.Guild, qlen: int):
+        """Return (reward_per_tg:int, level_name:str, emoji:str, idx:int, total_levels:int)."""
+        # reward from your existing tier logic
+        reward = await self._get_per_tg_reward(guild, qlen)
+    
+        levels = await self.config.guild(guild).defcon_levels()
+        levels = sorted(levels, key=lambda x: int(x.get("lt", 0)))
+        overflow_name  = await self.config.guild(guild).defcon_overflow_name()
+        overflow_emoji = await self.config.guild(guild).defcon_overflow_emoji()
+    
+        idx = None
+        for i, lv in enumerate(levels):
+            try:
+                if qlen < int(lv["lt"]):
+                    idx = i
+                    name  = lv.get("name", f"Level {i+1}")
+                    emoji = lv.get("emoji", "✨")
+                    break
+            except Exception:
+                continue
+    
+        if idx is None:
+            # overflow
+            idx = len(levels)
+            name  = overflow_name or "Overflow"
+            emoji = overflow_emoji or "🌀"
+    
+        return int(reward), str(name), str(emoji), int(idx), int(len(levels))
+    
+    async def _maybe_panic_on_rise(self, guild: discord.Guild, qlen: int):
+        """If DEFCON index increased & cooldown passed, post a short alert."""
+        reward, name, emoji, idx, total = await self._current_reward_and_defcon(guild, qlen)
+    
+        gconf = self.config.guild(guild)
+        if not await gconf.panic_enabled():
+            await gconf.last_defcon_index.set(idx)
+            return
+    
+        last_idx = int(await gconf.last_defcon_index())
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        last_panic = int(await gconf.last_panic_at_ts())
+        cooldown = max(0, int(await gconf.panic_cooldown_minutes())) * 60
+    
+        if idx > last_idx and (now_ts - last_panic >= cooldown):
+            # choose channel
+            channel = None
+            ch_id = await gconf.channel_id()
+            if ch_id:
+                channel = guild.get_channel(ch_id)
+    
+            if channel:
+                try:
+                    bar = self._level_bar(idx, total)  # small ascii bar
+                    await channel.send(
+                        f"{emoji} **Wellspring Alert risen to {name}** ({idx+1}/{total+1})\n"
+                        f"Queue: **{qlen}** • Current reward: **{reward} WC/TG**\n{bar}"
+                    )
+                    await gconf.last_panic_at_ts.set(now_ts)
+                except Exception:
+                    pass
+    
+        await gconf.last_defcon_index.set(idx)
+    
+    def _level_bar(self, idx: int, total: int, width: int = 10) -> str:
+        """Simple bar like [██████░░░░] where idx grows from 0..total."""
+        # map idx to filled proportion
+        denom = max(1, total + 1)
+        filled = max(0, min(width, round(((idx + 1) / denom) * width)))
+        return "[" + "█" * filled + "░" * (width - filled) + "]"
+
+    @voo_group.group(name="defcon", invoke_without_command=True)
+    @checks.admin_or_permissions(manage_guild=True)
+    async def defcon_group(self, ctx: commands.Context):
+        """Show DEFCON-style Wellspring levels."""
+        levels = await self.config.guild(ctx.guild).defcon_levels()
+        levels = sorted(levels, key=lambda x: int(x.get("lt", 0)))
+        over_name  = await self.config.guild(ctx.guild).defcon_overflow_name()
+        over_emoji = await self.config.guild(ctx.guild).defcon_overflow_emoji()
+        lines = [f"• queue < {lv['lt']}: {lv.get('emoji','✨')} {lv.get('name','Level')}" for lv in levels]
+        lines.append(f"• otherwise: {over_emoji} {over_name}")
+        await ctx.send("**Wellspring Levels**\n" + "\n".join(lines))
+    
+    @defcon_group.command(name="set")
+    async def defcon_set(self, ctx: commands.Context, lt: int, name: str, emoji: str = "✨"):
+        """Add/update a level: when queue < lt, show (emoji name)."""
+        lt = int(lt)
+        async with self.config.guild(ctx.guild).defcon_levels() as levels:
+            for lv in levels:
+                if int(lv.get("lt", -1)) == lt:
+                    lv["name"] = name
+                    lv["emoji"] = emoji
+                    break
+            else:
+                levels.append({"lt": lt, "name": name, "emoji": emoji})
+        await ctx.send(f"Level set: queue < {lt} → {emoji} {name}")
+    
+    @defcon_group.command(name="remove")
+    async def defcon_remove(self, ctx: commands.Context, lt: int):
+        lt = int(lt)
+        async with self.config.guild(ctx.guild).defcon_levels() as levels:
+            new = [lv for lv in levels if int(lv.get("lt", -1)) != lt]
+            levels.clear()
+            levels.extend(new)
+        await ctx.send(f"Removed level with lt={lt}")
+    
+    @defcon_group.command(name="setoverflow")
+    async def defcon_overflow(self, ctx: commands.Context, name: str, emoji: str = "🌀"):
+        await self.config.guild(ctx.guild).defcon_overflow_name.set(name)
+        await self.config.guild(ctx.guild).defcon_overflow_emoji.set(emoji)
+        await ctx.send(f"Overflow level set to {emoji} {name}")
+    
+    @voo_group.group(name="panic", invoke_without_command=True)
+    @checks.admin_or_permissions(manage_guild=True)
+    async def panic_group(self, ctx: commands.Context):
+        enabled = await self.config.guild(ctx.guild).panic_enabled()
+        cd = await self.config.guild(ctx.guild).panic_cooldown_minutes()
+        await ctx.send(f"Panic alerts: **{'ON' if enabled else 'OFF'}** • Cooldown: **{cd} min**")
+    
+    @panic_group.command(name="enable")
+    async def panic_enable(self, ctx: commands.Context, enabled: bool):
+        await self.config.guild(ctx.guild).panic_enabled.set(bool(enabled))
+        await ctx.send(f"Panic alerts {'enabled' if enabled else 'disabled'}.")
+    
+    @panic_group.command(name="cooldown")
+    async def panic_cooldown(self, ctx: commands.Context, minutes: int):
+        await self.config.guild(ctx.guild).panic_cooldown_minutes.set(int(max(0, minutes)))
+        await ctx.send(f"Panic cooldown set to {minutes} minutes.")
+    
+    @panic_group.command(name="reset")
+    async def panic_reset(self, ctx: commands.Context):
+        await self.config.guild(ctx.guild).last_defcon_index.set(-1)
+        await self.config.guild(ctx.guild).last_panic_at_ts.set(0)
+        await ctx.send("Panic state reset.")
+    
+        
 
 
 
