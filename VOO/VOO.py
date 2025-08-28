@@ -742,33 +742,13 @@ class VOO(commands.Cog):
     @checks.admin_or_permissions(manage_guild=True)
     async def bump_voo(self, ctx: commands.Context):
         """Delete and repost the control embed to push it to the bottom."""
-        guild = ctx.guild
-        channel_id = await self.config.guild(guild).channel_id()
-        if not channel_id:
-            await ctx.send("No control channel set. Use `[p]voo setchannel` first.")
-            return
-        channel = guild.get_channel(channel_id)
-        if not isinstance(channel, (discord.TextChannel, discord.Thread)):
-            await ctx.send("Configured control channel is invalid.")
-            return
+        new_msg = await self._bump_control_message(ctx.guild)
+        if new_msg:
+            await ctx.send(f"✅ Control embed bumped to the bottom in {new_msg.channel.mention}.")
+        else:
+            await ctx.send("Failed to bump: no valid control channel set.")
 
-        msg_id = await self.config.guild(guild).control_message_id()
-        if msg_id:
-            try:
-                old = await channel.fetch_message(msg_id)
-                await old.delete()
-            except Exception:
-                pass
 
-        # Rebuild & send fresh at the bottom
-        qlen = len(self.queue)
-        status = await self._get_status_text()
-        embed = self._build_control_embed(qlen, status)
-        view = VOOControlView(self)
-
-        new_msg = await channel.send(embed=embed, view=view)
-        await self.config.guild(guild).control_message_id.set(new_msg.id)
-        await ctx.send("Control embed bumped to the bottom.")
 
     @voo_group.group(name="blacklist", invoke_without_command=True)
     @checks.admin_or_permissions(manage_guild=True)
@@ -1170,23 +1150,19 @@ class VOO(commands.Cog):
         cooldown = max(0, int(await gconf.panic_cooldown_minutes())) * 60
     
         if idx > last_idx and (now_ts - last_panic >= cooldown):
-            # choose channel
-            channel = None
-            ch_id = await gconf.channel_id()
-            if ch_id:
-                channel = guild.get_channel(ch_id)
-    
             if channel:
                 try:
-                    bar = self._level_bar(idx, total)  # small ascii bar
+                    bar = self._level_bar(idx, total)
                     await channel.send(
                         f"{emoji} **Wellspring Alert risen to {name}** ({idx+1}/{total+1})\n"
                         f"Queue: **{qlen}** • Current reward: **{reward} WC/TG**\n{bar}"
                     )
                     await gconf.last_panic_at_ts.set(now_ts)
+                    # 🔽 bump embed down after alert
+                    await self._bump_control_message(guild)
                 except Exception:
                     pass
-    
+        
         await gconf.last_defcon_index.set(idx)
     
     def _level_bar(self, idx: int, total: int, width: int = 10) -> str:
@@ -1259,7 +1235,39 @@ class VOO(commands.Cog):
         await self.config.guild(ctx.guild).last_defcon_index.set(-1)
         await self.config.guild(ctx.guild).last_panic_at_ts.set(0)
         await ctx.send("Panic state reset.")
+
+
+    async def _bump_control_message(self, guild: discord.Guild) -> Optional[discord.Message]:
+        """
+        Delete and repost the control embed to push it to the bottom.
+        Returns the new message or None.
+        """
+        channel_id = await self.config.guild(guild).channel_id()
+        if not channel_id:
+            return None
+        channel = guild.get_channel(channel_id)
+        if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+            return None
     
+        # delete old
+        msg_id = await self.config.guild(guild).control_message_id()
+        if msg_id:
+            try:
+                old = await channel.fetch_message(msg_id)
+                await old.delete()
+            except Exception:
+                pass
+    
+        qlen = len(self.queue)
+        status = await self._get_status_text()
+        reward, lvl_name, lvl_emoji, idx, total = await self._current_reward_and_defcon(guild, qlen)
+        embed = self._build_control_embed(qlen, status, reward, lvl_name, lvl_emoji, idx, total)
+        view = VOOControlView(self)
+    
+        new_msg = await channel.send(embed=embed, view=view)
+        await self.config.guild(guild).control_message_id.set(new_msg.id)
+        return new_msg
+
         
 
 
