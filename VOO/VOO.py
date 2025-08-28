@@ -1025,7 +1025,7 @@ class VOO(commands.Cog):
             f"It will run once when the scheduler ticks that minute."
         )
     
-     async def _schedule_reminder(self, interaction: discord.Interaction, seconds: int):
+    async def _schedule_reminder(self, interaction: discord.Interaction, seconds: int):
         """
         After `seconds`, send:
           1) an *ephemeral* reminder to the clicker, and
