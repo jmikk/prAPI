@@ -125,7 +125,8 @@ class lootbox(commands.Cog):
         await ctx.send(f"Password set to {password}")
 
     @commands.dynamic_cooldown(lambda self, ctx: self._cooldown_for_ctx(ctx), BucketType.user)
-    @commands.command()    async def openlootbox(self, ctx, *recipient: str):
+    @commands.command()    
+    async def openlootbox(self, ctx, *recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
         if len(recipient) < 1:
             await ctx.send("Make sure to put your nation in after openlootbox")
