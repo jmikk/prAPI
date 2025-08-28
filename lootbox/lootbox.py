@@ -132,7 +132,6 @@ class lootbox(commands.Cog):
     @commands.command()    
     async def openlootbox(self, ctx, *recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
-        await ctx.send("HERE")
         if len(recipient) < 1:
             await ctx.send("Make sure to put your nation in after openlootbox")
             return
