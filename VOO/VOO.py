@@ -283,18 +283,24 @@ class VOO(commands.Cog):
         await self._persist_queue_snapshot()
         await self._maybe_refresh_control_embed()
 
-        tgto = ",".join(batch)
+        # 1) Encode tgto normally
+        q1 = urlencode({"tgto": tgto})  # commas -> %2C
 
-        # URL-encode the template correctly so % -> %25
-        # Using urllib.parse.quote will yield %25TEMPLATE-...%25 for %TEMPLATE-...%
-        message_param = quote(template, safe="")  # encode everything incl. % symbols
+        # 2) Message: EXACT format you want: "%25TEMPLATE-35972625%"
+        #    Convert only the *first* '%' to '%25', keep trailing '%' literal
+        def ns_template_for_message(raw: str) -> str:
+            # expects something like "%TEMPLATE-35972625%"
+            if raw.startswith("%"):
+                return "%25" + raw[1:]
+            return raw  # fallback: leave as-is
 
-        params = {
-            "tgto": tgto,
-            "message": message_param,
-            "&generated_by": GENERATED_BY,
-        }
-        link = f"https://www.nationstates.net/page=compose_telegram?{urlencode(params)}"
+        message_exact = ns_template_for_message(template)
+
+        # 3) Encode generated_by *as its own param*
+        q3 = urlencode({"generated_by": GENERATED_BY})
+
+        # 4) Final link — assemble segments manually so message is not re-encoded
+        link = f"https://www.nationstates.net/page=compose_telegram?{q1}&message={message_exact}&{q3}"
 
         # Count stats (per-nation)
         current = await user_conf.sent_count()
