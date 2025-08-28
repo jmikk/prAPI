@@ -21,6 +21,8 @@ log = logging.getLogger("red.vigil_of_origins")
 FOUNDING_SSE_URL = "https://www.nationstates.net/api/founding"
 GENERATED_BY = "Vigil_of_origins___by_9005____instance_run_by_By_9005"
 MAX_TG_BATCH = 8
+REGION_RE = re.compile(r"region=([a-z0-9_]+)", re.I)
+
 
 NATION_RE = re.compile(r"nation=([a-z0-9_]+)", re.I)
 
@@ -81,9 +83,11 @@ class VOO(commands.Cog):
         default_guild = {
             "channel_id": None,
             "control_message_id": None,
-            "user_agent": "9003",  # default UA per your preference
-            "queue_snapshot": [],  # persisted queue for restarts
+            "user_agent": "9003",
+            "queue_snapshot": [],
+            "region_blacklist": [],   
         }
+        
         default_user = {
             "template": None,
             "sent_count": 0,  # nations counted
@@ -103,13 +107,17 @@ class VOO(commands.Cog):
                 for n in snap:
                     if n not in self.queue:
                         self.queue.append(n)
-        # Optionally auto-start; comment out if you prefer manual start
-        # await self.start_listener()
+        await self.start_listener()
 
     async def cog_unload(self):
         await self.stop_listener()
         if self.session:
             await self.session.close()
+
+    def _norm_region(self, r: str) -> str:
+        # "The East Pacific" -> "the_east_pacific"
+        return re.sub(r"\s+", "_", r.strip().lower())
+
 
     # ---------- SSE Listener ----------
     async def start_listener(self):
@@ -175,7 +183,13 @@ class VOO(commands.Cog):
                 backoff = min(backoff * 2, 60)
 
     async def _handle_sse_data(self, data_line: str):
-        """Parse a single SSE data line -> JSON -> extract nation -> push to queue."""
+        """
+        Parse one SSE 'data:' line, extract nation/region, and queue if allowed.
+        Rules:
+          - ignore nations whose names end with digits (e.g., 'testlandia123')
+          - ignore nations from any blacklisted region (per-guild blacklists)
+          - keep newest-first; no duplicates
+        """
         try:
             obj = json.loads(data_line)
         except json.JSONDecodeError:
@@ -183,25 +197,52 @@ class VOO(commands.Cog):
             return
 
         html = obj.get("htmlStr") or ""
-        match = NATION_RE.search(html)
-        if not match:
-            # Fallback: try from "str" like @@the_parya@@
-            s = obj.get("str") or ""
-            m2 = re.search(r"@@([a-z0-9_]+)@@", s, re.I)
-            nation = m2.group(1) if m2 else None
-        else:
-            nation = match.group(1)
+        text = obj.get("str") or ""
+
+        # Extract nation from html first:  <a href="nation=the_parya" ...>
+        m_n_html = NATION_RE.search(html)
+        # Fallback from text form: @@the_parya@@
+        m_n_text = re.search(r"@@([a-z0-9_]+)@@", text, re.I)
+        nation = (m_n_html.group(1) if m_n_html else (m_n_text.group(1) if m_n_text else None))
+
+        # Extract region similarly:
+        # from html: <a href="region=osiris" ...>
+        m_r_html = REGION_RE.search(html) if 'REGION_RE' in globals() else None
+        # from text: %%osiris%%
+        m_r_text = re.search(r"%%([a-z0-9_]+)%%", text, re.I)
+        region = (m_r_html.group(1) if m_r_html else (m_r_text.group(1) if m_r_text else None))
 
         if not nation:
             return
 
         nation = nation.lower()
-        # De-dup in-memory and keep newest-first for recruit batches
+
+        # Skip any nation whose name ends with digits
+        if re.search(r"\d+$", nation):
+            return
+
+        # Regional blacklist check (global effect across guilds)
+        if region:
+            region_norm = region.lower()
+            try:
+                for guild in self.bot.guilds:
+                    bl = await self.config.guild(guild).region_blacklist()
+                    if region_norm in bl:
+                        return
+            except Exception:
+                # If config read fails, fail open (don't queue) to be safe
+                return
+
+        # De-dup and queue (newest first)
         if nation in self.queue:
             return
+
         self.queue.appendleft(nation)
+
+        # Persist and refresh UI
         await self._persist_queue_snapshot()
         await self._refresh_all_embeds()
+
 
     async def _persist_queue_snapshot(self):
         # Persist only up to, say, 300 to avoid bloating config
@@ -532,6 +573,45 @@ class VOO(commands.Cog):
         new_msg = await channel.send(embed=embed, view=view)
         await self.config.guild(guild).control_message_id.set(new_msg.id)
         await ctx.send("Control embed bumped to the bottom.")
+
+    @voo_group.group(name="blacklist", invoke_without_command=True)
+    @checks.admin_or_permissions(manage_guild=True)
+    async def voo_blacklist(self, ctx: commands.Context):
+        """Manage the regional blacklist (queue ignores nations from these regions)."""
+        bl = await self.config.guild(ctx.guild).region_blacklist()
+        if not bl:
+            await ctx.send("Regional blacklist is currently **empty**.")
+        else:
+            await ctx.send("Blacklisted regions:\n- " + "\n- ".join(sorted(bl)))
+
+    @voo_blacklist.command(name="add")
+    async def voo_blacklist_add(self, ctx: commands.Context, *, region: str):
+        """Add a region to the blacklist (spaces ok)."""
+        r = self._norm_region(region)
+        async with self.config.guild(ctx.guild).region_blacklist() as bl:
+            if r in bl:
+                await ctx.send(f"`{r}` is already blacklisted.")
+                return
+            bl.append(r)
+        await ctx.send(f"Added `{r}` to the regional blacklist.")
+
+    @voo_blacklist.command(name="remove")
+    async def voo_blacklist_remove(self, ctx: commands.Context, *, region: str):
+        """Remove a region from the blacklist."""
+        r = self._norm_region(region)
+        async with self.config.guild(ctx.guild).region_blacklist() as bl:
+            if r not in bl:
+                await ctx.send(f"`{r}` was not on the blacklist.")
+                return
+            bl.remove(r)
+        await ctx.send(f"Removed `{r}` from the regional blacklist.")
+
+    @voo_blacklist.command(name="clear")
+    async def voo_blacklist_clear(self, ctx: commands.Context):
+        """Clear the regional blacklist."""
+        await self.config.guild(ctx.guild).region_blacklist.set([])
+        await ctx.send("Cleared the regional blacklist.")
+
 
 
 
