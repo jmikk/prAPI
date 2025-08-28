@@ -157,6 +157,7 @@ class VOO(commands.Cog):
                             continue
                         if line.startswith("data:"):
                             payload = line[5:].strip()
+                            self.last_event_at = datetime.now(timezone.utc)
                             await self._handle_sse_data(payload)
                             self.last_event_at = datetime.now(timezone.utc)
                         # Ignore other SSE fields (event:, id:, etc.)
@@ -381,7 +382,7 @@ class VOO(commands.Cog):
             title="Vigil of Origins — Founding Monitor",
             color=discord.Color.blue(),
         )
-        # Status and Queue first (Queue bolded)
+        # Status (with Last event) and Queue first
         embed.add_field(name="Status", value=status_text, inline=False)
         embed.add_field(name="Queue", value=f"**{qlen} nations**", inline=False)
 
@@ -396,6 +397,7 @@ class VOO(commands.Cog):
             inline=False,
         )
         return embed
+
 
     async def _upsert_control_message(self, guild: discord.Guild):
         """Ensure the control embed is present, updated, and is the most recent message."""
@@ -452,6 +454,20 @@ class VOO(commands.Cog):
 
         new_msg = await channel.send(embed=embed, view=view)
         await self.config.guild(guild).control_message_id.set(new_msg.id)
+
+    def _last_event_markdown(self) -> str:
+        """Return a markdown string with Discord timestamps for the last event."""
+        if not self.last_event_at:
+            return "Last event: —"
+        epoch = int(self.last_event_at.replace(tzinfo=timezone.utc).timestamp())
+        # <t:...:R> = relative (e.g., "2 minutes ago"), <t:...:F> = full date
+        return f"Last event: <t:{epoch}:R> (<t:{epoch}:F>)"
+
+    async def _get_status_text(self) -> str:
+        on = self.listener_task and not self.listener_task.done()
+        status = "🟢 SSE: **ON**" if on else "🔴 SSE: **OFF**"
+        return f"{status}\n{self._last_event_markdown()}"
+
 
 
 async def setup(bot: Red):
