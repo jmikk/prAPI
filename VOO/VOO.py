@@ -317,7 +317,7 @@ class VOO(commands.Cog):
         params = {
             "tgto": tgto,
             "message": message_param,
-            "generated_by": GENERATED_BY,
+            "&generated_by": GENERATED_BY,
         }
         link = f"https://www.nationstates.net/page=compose_telegram?{urlencode(params)}"
 
