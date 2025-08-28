@@ -273,19 +273,53 @@ class VOO(commands.Cog):
         await interaction.response.send_modal(TemplateModal(self))
 
     async def handle_leaderboard(self, interaction: discord.Interaction):
-        # Top 10 by sent_count
-        all_users = []
-        async for uid, data in self.config.all_users().items():
-            all_users.append((int(uid), data.get("sent_count", 0)))
-        all_users.sort(key=lambda x: x[1], reverse=True)
+        """Show top recruiters by total nations sent."""
+        data: dict = await self.config.all_users()  # <-- await to get dict
+        if not data:
+            await interaction.response.send_message("No stats yet. Be the first to recruit!", ephemeral=True)
+            return
+
+        # Build (user_id:int, sent_count:int) list
+        rows = []
+        for uid_str, urec in data.items():
+            try:
+                uid = int(uid_str)
+            except (TypeError, ValueError):
+                continue
+            sent = int(urec.get("sent_count", 0) or 0)
+            if sent > 0:
+                rows.append((uid, sent))
+
+        if not rows:
+            await interaction.response.send_message("No stats yet. Be the first to recruit!", ephemeral=True)
+            return
+
+        # Sort by sent_count desc, then by user id for stable order
+        rows.sort(key=lambda x: (-x[1], x[0]))
+
+        # Prepare top 10 lines
         lines = []
-        for i, (uid, cnt) in enumerate(all_users[:10], start=1):
-            member = interaction.guild.get_member(uid) if interaction.guild else None
-            name = member.display_name if member else f"User {uid}"
+        for i, (uid, cnt) in enumerate(rows[:10], start=1):
+            name = f"<@{uid}>"
+            # If we have a guild context, try to get a nicer display name
+            if interaction.guild:
+                member = interaction.guild.get_member(uid)
+                if member:
+                    name = member.display_name
             lines.append(f"**{i}.** {name} — **{cnt}** nations")
-        if not lines:
-            lines = ["No stats yet. Be the first to recruit!"]
-        await interaction.response.send_message("\n".join(lines), ephemeral=True)
+
+        # Send ephemeral embed
+        embed = discord.Embed(
+            title="Recruitment Leaderboard",
+            description="\n".join(lines),
+            color=discord.Color.green(),
+        )
+        total_unique = len({u for u, _ in rows})
+        total_sent = sum(cnt for _, cnt in rows)
+        embed.set_footer(text=f"Tracked users: {total_unique} • Total nations recruited: {total_sent}")
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
     async def handle_recruit(self, interaction: discord.Interaction):
         user_conf = self.config.user(interaction.user)
