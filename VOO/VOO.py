@@ -14,7 +14,7 @@ from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 import discord
 from discord import ui
-from urllib.parse import urlencode, quote
+from urllib.parse import urlencode
 
 log = logging.getLogger("red.vigil_of_origins")
 
@@ -118,7 +118,7 @@ class VOO(commands.Cog):
         if not self.session or self.session.closed:
             self.session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None))
         self.listener_task = asyncio.create_task(self._run_listener(), name="VOO_SSE_Listener")
-        await self._edit_control_message()
+        await self._refresh_all_embeds()
 
 
     async def stop_listener(self):
@@ -129,7 +129,7 @@ class VOO(commands.Cog):
             except asyncio.CancelledError:
                 pass
         self.listener_task = None
-        await self._edit_control_message()
+        await self._refresh_all_embeds()
 
 
     async def _run_listener(self):
@@ -271,7 +271,7 @@ class VOO(commands.Cog):
             )
             return
 
-        # Build list of up to 8 newest nations
+       # Build list of up to 8 newest nations
         if not self.queue:
             await interaction.response.send_message("The queue is empty right now.", ephemeral=True)
             return
@@ -281,25 +281,25 @@ class VOO(commands.Cog):
             batch.append(self.queue.popleft())
 
         await self._persist_queue_snapshot()
-        await self._edit_control_message()
+        await self._refresh_all_embeds()
 
-        # 1) Encode tgto normally
-        q1 = urlencode({"tgto": tgto})  # commas -> %2C
+        tgto = ",".join(batch)  # <-- you were missing this
+        # 1) Encode tgto normally (commas -> %2C)
+        q1 = urlencode({"tgto": tgto})
 
-        # 2) Message: EXACT format you want: "%25TEMPLATE-35972625%"
-        #    Convert only the *first* '%' to '%25', keep trailing '%' literal
+        # 2) Message: convert only the leading '%' to '%25', keep trailing '%' literal
         def ns_template_for_message(raw: str) -> str:
-            # expects something like "%TEMPLATE-35972625%"
+            raw = raw.strip()
             if raw.startswith("%"):
                 return "%25" + raw[1:]
-            return raw  # fallback: leave as-is
+            return raw
 
         message_exact = ns_template_for_message(template)
 
-        # 3) Encode generated_by *as its own param*
+        # 3) generated_by as its own param
         q3 = urlencode({"generated_by": GENERATED_BY})
 
-        # 4) Final link — assemble segments manually so message is not re-encoded
+        # 4) Final link
         link = f"https://www.nationstates.net/page=compose_telegram?{q1}&message={message_exact}&{q3}"
 
         # Count stats (per-nation)
@@ -460,19 +460,36 @@ class VOO(commands.Cog):
 
         new_msg = await channel.send(embed=embed, view=view)
         await self.config.guild(guild).control_message_id.set(new_msg.id)
+  
 
     def _last_event_markdown(self) -> str:
-        """Return a markdown string with Discord timestamps for the last event."""
         if not self.last_event_at:
             return "Last event: —"
         epoch = int(self.last_event_at.replace(tzinfo=timezone.utc).timestamp())
-        # <t:...:R> = relative (e.g., "2 minutes ago"), <t:...:F> = full date
         return f"Last event: <t:{epoch}:R> (<t:{epoch}:F>)"
 
     async def _get_status_text(self) -> str:
         on = self.listener_task and not self.listener_task.done()
         status = "🟢 SSE: **ON**" if on else "🔴 SSE: **OFF**"
         return f"{status}\n{self._last_event_markdown()}"
+
+    def _build_control_embed(self, qlen: int, status_text: str) -> discord.Embed:
+        embed = discord.Embed(
+            title="Vigil of Origins — Founding Monitor",
+            color=discord.Color.blue(),
+        )
+        embed.add_field(name="Status", value=status_text, inline=False)
+        embed.add_field(name="Queue", value=f"**{qlen} nations**", inline=False)
+        embed.add_field(
+            name="How to Recruit",
+            value=(
+                "• **Recruit**: Private TG link to the **newest** up to 8 queued nations (then removes them).\n"
+                "• **Register**: Save your `%TEMPLATE-...%` once; your Recruit link will include it.\n"
+                "• **Leaderboard**: See who has recruited the most nations."
+            ),
+            inline=False,
+        )
+        return embed
 
     async def _edit_control_message(self, guild: discord.Guild):
         """Edit the existing control embed in place (no bump). If missing, post once."""
@@ -489,19 +506,25 @@ class VOO(commands.Cog):
         view = VOOControlView(self)
 
         msg_id = await self.config.guild(guild).control_message_id()
-
-        # Try to edit the existing message
         if msg_id:
             try:
                 msg = await channel.fetch_message(msg_id)
                 await msg.edit(embed=embed, view=view)
                 return
             except Exception:
-                pass  # fall through to post
+                pass  # fall through to post if missing/deleted
 
-        # If we don't have a message (or it was deleted), post once
         new_msg = await channel.send(embed=embed, view=view)
         await self.config.guild(guild).control_message_id.set(new_msg.id)
+
+    async def _refresh_all_embeds(self):
+        """Refresh (edit in place) the control embed for every configured guild."""
+        for guild in self.bot.guilds:
+            try:
+                await self._edit_control_message(guild)
+            except Exception:
+                pass
+
 
     @commands.command(name="bumpvoo")
     @checks.admin_or_permissions(manage_guild=True)
