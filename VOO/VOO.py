@@ -1063,16 +1063,6 @@ class VOO(commands.Cog):
         async def _job():
             try:
                 await asyncio.sleep(max(1, int(seconds)))
-    
-                # 1) ephemeral follow-up to the user
-                try:
-                    await interaction.followup.send(
-                        content=f"⏰ Reminder: {user.mention} the **Recruit** link is ready.",
-                        ephemeral=True,
-                    )
-                except Exception:
-                    pass
-    
                 # 2) public ping (optionally auto-delete)
                 if channel:
                     try:
