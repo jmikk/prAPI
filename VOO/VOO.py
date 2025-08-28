@@ -463,7 +463,6 @@ class VOO(commands.Cog):
             except Exception:
                 log.exception("Failed paying per-TG reward to %s", member)
         
-        # --- NEW: weekly accounting & role ---
         if member:
             await self._add_weekly_sent(member, member.guild, len(batch))
             await self._ensure_active_role(member)
@@ -508,18 +507,6 @@ class VOO(commands.Cog):
 
             async def _schedule(self, interaction: discord.Interaction, seconds: int):
                 await self.cog._schedule_reminder(interaction, seconds)
-                # quick ephemeral ack
-                try:
-                    await interaction.response.send_message(
-                        f"Okay! I’ll remind you in **{seconds} seconds** (ephemeral).",
-                        ephemeral=True
-                    )
-                except discord.InteractionResponded:
-                    await interaction.followup.send(
-                        f"Okay! I’ll remind you in **{seconds} seconds** (ephemeral).",
-                        ephemeral=True
-                    )
-
         view = RecruitView(self, link)
 
 
