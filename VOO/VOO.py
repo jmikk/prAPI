@@ -15,6 +15,7 @@ from redbot.core.bot import Red
 import discord
 from discord import ui
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo  # add at top of file
 
 log = logging.getLogger("red.vigil_of_origins")
 
@@ -79,6 +80,7 @@ class VOO(commands.Cog):
         self.listener_task: Optional[asyncio.Task] = None
         self.queue: Deque[str] = deque()
         self.last_event_at: Optional[datetime] = None
+        self.weekly_task: Optional[asyncio.Task] = None
 
         default_guild = {
             "channel_id": None,
@@ -86,6 +88,27 @@ class VOO(commands.Cog):
             "user_agent": "9003",
             "queue_snapshot": [],
             "region_blacklist": [],   
+            "active_recruiter_role_id": None,
+            "weekly_pot": 0,                         # grows +pot_increment each Recruit action
+            "pot_increment_per_batch": 10,           # default: +10 per set (per Recruit button press)
+            "min_weekly_payout": 100,                # minimum each eligible user receives (not drawn from pot)
+            "weekly_sent": {},                       # {user_id: int}, resets weekly
+            "auto_weekly_enabled": True,             # run scheduled weekly payout
+            "auto_weekly_dow": 6,                    # 0=Mon ... 6=Sun
+            "auto_weekly_hour": 23,
+            "auto_weekly_minute": 59,
+            "auto_weekly_tz": "America/Chicago",
+            # per-TG dynamic reward tiers based on current queue length BEFORE dequeue:
+            # pay = reward where queue_len < lt; else fallthrough to default_over_reward
+            "per_tg_tiers": [                        # evaluated in order of ascending 'lt'
+                {"lt": 500, "reward": 10},
+                {"lt": 600, "reward": 9},
+                {"lt": 700, "reward": 8},
+                {"lt": 800, "reward": 7},
+                {"lt": 900, "reward": 6},
+                {"lt": 1000, "reward": 5},
+            ],
+            "default_over_reward": 4
         }
         
         default_user = {
@@ -108,11 +131,72 @@ class VOO(commands.Cog):
                     if n not in self.queue:
                         self.queue.append(n)
         await self.start_listener()
+        if self.weekly_task is None or self.weekly_task.done():
+            self.weekly_task = asyncio.create_task(self._weekly_scheduler(), name="VOO_WeeklyPayout")
+
 
     async def cog_unload(self):
         await self.stop_listener()
         if self.session:
             await self.session.close()
+        if self.weekly_task and not self.weekly_task.done():
+            self.weekly_task.cancel()
+            try:
+                await self.weekly_task
+            except asyncio.CancelledError:
+                pass
+
+    def _get_nexus(self):
+    # NexusExchange must be loaded as a cog; exposes add_wellcoins(user, amount)
+    return self.bot.get_cog("NexusExchange")
+
+    async def _get_per_tg_reward(self, guild: discord.Guild, queue_len_before: int) -> int:
+        tiers = await self.config.guild(guild).per_tg_tiers()
+        tiers = sorted(tiers, key=lambda x: int(x.get("lt", 0)))
+        for t in tiers:
+            try:
+                if queue_len_before < int(t["lt"]):
+                    return int(t["reward"])
+            except Exception:
+                continue
+        return int(await self.config.guild(guild).default_over_reward())
+    
+    async def _bump_weekly_pot(self, guild: discord.Guild, batches: int = 1):
+        inc = int(await self.config.guild(guild).pot_increment_per_batch())
+        current = int(await self.config.guild(guild).weekly_pot())
+        await self.config.guild(guild).weekly_pot.set(current + (inc * max(1, batches)))
+    
+    async def _add_weekly_sent(self, user: discord.abc.User, guild: discord.Guild, count: int):
+        uid = str(user.id)
+        async with self.config.guild(guild).weekly_sent() as ws:
+            ws[uid] = int(ws.get(uid, 0)) + int(count)
+    
+    async def _ensure_active_role(self, member: discord.Member):
+        role_id = await self.config.guild(member.guild).active_recruiter_role_id()
+        if not role_id:
+            return
+        role = member.guild.get_role(role_id)
+        if role and role not in member.roles:
+            try:
+                await member.add_roles(role, reason="Recruiter sent at least 1 TG this week")
+            except Exception:
+                pass
+    
+    async def _clear_active_role_all(self, guild: discord.Guild):
+        role_id = await self.config.guild(guild).active_recruiter_role_id()
+        if not role_id:
+            return
+        role = guild.get_role(role_id)
+        if not role:
+            return
+        try:
+            for m in list(role.members):
+                try:
+                    await m.remove_roles(role, reason="Weekly reset")
+                except Exception:
+                    continue
+        except Exception:
+            pass
 
     def _norm_region(self, r: str) -> str:
         # "The East Pacific" -> "the_east_pacific"
@@ -335,6 +419,8 @@ class VOO(commands.Cog):
         if not self.queue:
             await interaction.response.send_message("The queue is empty right now.", ephemeral=True)
             return
+        
+        qlen_before = len(self.queue)
 
         batch: List[str] = []
         while self.queue and len(batch) < MAX_TG_BATCH:
@@ -357,6 +443,24 @@ class VOO(commands.Cog):
         )
 
 
+        member = interaction.guild.get_member(interaction.user.id) if interaction.guild else None
+        nexus = self._get_nexus()
+        instant_coins = 0
+        if nexus and member:
+            reward_per_tg = await self._get_per_tg_reward(member.guild, qlen_before)
+            instant_coins = reward_per_tg * len(batch)
+            try:
+                await nexus.add_wellcoins(member, float(instant_coins))
+            except Exception:
+                log.exception("Failed paying per-TG reward to %s", member)
+        
+        # --- NEW: weekly accounting & role ---
+        if member:
+            await self._add_weekly_sent(member, member.guild, len(batch))
+            await self._ensure_active_role(member)
+            await self._bump_weekly_pot(member.guild, batches=1)
+
+
 
         # Count stats (per-nation)
         current = await user_conf.sent_count()
@@ -375,10 +479,11 @@ class VOO(commands.Cog):
                 )
 
         view = RecruitLinkView(link)
-
+        
         await interaction.response.send_message(
             content=(
-                f"Here’s your recruitment link for **{len(batch)}** nation(s).\n\n"
+                f"Here’s your recruitment link for **{len(batch)}** nation(s).\n"
+                f"Instant reward: **{instant_coins}** Wellcoins\n\n"
                 f"Targets: `{tgto}`"
             ),
             view=view,
@@ -645,6 +750,202 @@ class VOO(commands.Cog):
         """Clear the regional blacklist."""
         await self.config.guild(ctx.guild).region_blacklist.set([])
         await ctx.send("Cleared the regional blacklist.")
+
+    async def _weekly_scheduler(self):
+        """Runs every ~60s and triggers weekly payout at configured time."""
+        while True:
+            try:
+                for guild in self.bot.guilds:
+                    gconf = self.config.guild(guild)
+                    if not await gconf.auto_weekly_enabled():
+                        continue
+                    try:
+                        tz = ZoneInfo(await gconf.auto_weekly_tz())
+                    except Exception:
+                        tz = ZoneInfo("America/Chicago")
+                    now_local = datetime.now(tz)
+                    dow = int(await gconf.auto_weekly_dow())
+                    hh = int(await gconf.auto_weekly_hour())
+                    mm = int(await gconf.auto_weekly_minute())
+    
+                    # Fire once within the target minute; use a small marker to avoid double-run
+                    key = f"weekly_marker_{now_local.date().isoformat()}"
+                    ran_today = await self.bot.db.guild(guild).get_raw(key, default=False)
+                    if (now_local.weekday() == dow and now_local.hour == hh and now_local.minute == mm and not ran_today):
+                        await self._run_weekly_payout(guild)
+                        await self.bot.db.guild(guild).set_raw(key, value=True)
+                    elif now_local.hour == 0 and now_local.minute < 5:
+                        # clear marker near midnight local
+                        await self.bot.db.guild(guild).set_raw(key, value=False)
+                await asyncio.sleep(600)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                log.exception("Weekly scheduler error")
+                await asyncio.sleep(600)
+
+    async def _run_weekly_payout(self, guild: discord.Guild):
+        """Distribute weekly pot, post leaderboard, clear roles & counters."""
+        gconf = self.config.guild(guild)
+        ws: dict = await gconf.weekly_sent()
+        pot = int(await gconf.weekly_pot())
+        min_payout = int(await gconf.min_weekly_payout())
+        channel_id = await gconf.channel_id()
+        channel = guild.get_channel(channel_id) if channel_id else None
+    
+        # Build rows
+        rows = []
+        total_sent = 0
+        for uid_str, cnt in ws.items():
+            try:
+                cnt = int(cnt)
+                if cnt > 0:
+                    uid = int(uid_str)
+                    rows.append((uid, cnt))
+                    total_sent += cnt
+            except Exception:
+                continue
+    
+        # Compose leaderboard embed
+        embed = discord.Embed(
+            title="Weekly Recruitment Results",
+            color=discord.Color.gold(),
+            description="No recruiters this week." if not rows else None,
+        )
+    
+        if rows and total_sent > 0:
+            rows.sort(key=lambda x: (-x[1], x[0]))
+            lines = []
+            for i, (uid, cnt) in enumerate(rows[:25], start=1):
+                member = guild.get_member(uid)
+                name = member.display_name if member else f"<@{uid}>"
+                lines.append(f"**{i}.** {name} — **{cnt}** TGs")
+            embed.description = "\n".join(lines)
+            embed.add_field(name="Weekly Pot", value=f"{pot} Wellcoins", inline=True)
+            embed.add_field(name="Minimum per user", value=f"{min_payout} WC (not from pot)", inline=True)
+            embed.set_footer(text=f"Total TGs: {total_sent} • Payouts now processing")
+    
+        # Payouts
+        nexus = self._get_nexus()
+        if nexus and rows and total_sent > 0:
+            # Share from pot (rounded to nearest whole WC; rounding error absorbed by last user)
+            pot_paid_total = 0
+            for idx, (uid, cnt) in enumerate(rows):
+                member = guild.get_member(uid)
+                share = round((cnt / total_sent) * pot)
+                if idx == len(rows) - 1:
+                    # fix rounding drift
+                    share = pot - pot_paid_total
+                pot_paid_total += max(0, share)
+    
+                # Pay share from pot
+                if member and share > 0:
+                    try:
+                        await nexus.add_wellcoins(member, float(share))
+                    except Exception:
+                        log.exception("Pot share payout failed for %s", member)
+    
+                # Pay minimum (does NOT reduce pot)
+                if member and min_payout > 0:
+                    try:
+                        await nexus.add_wellcoins(member, float(min_payout))
+                    except Exception:
+                        log.exception("Minimum payout failed for %s", member)
+    
+        # Announce
+        try:
+            if channel:
+                await channel.send(embed=embed)
+        except Exception:
+            pass
+    
+        # Cleanup: reset pot, counters, roles
+        await gconf.weekly_pot.set(0)
+        await gconf.weekly_sent.set({})
+        await self._clear_active_role_all(guild)
+
+    @voo_group.command(name="setactiverole")
+    @checks.admin_or_permissions(manage_guild=True)
+    async def set_active_role(self, ctx: commands.Context, role: discord.Role):
+        """Set the 'Active Recruiter' role to assign weekly."""
+        await self.config.guild(ctx.guild).active_recruiter_role_id.set(role.id)
+        await ctx.send(f"Active Recruiter role set to {role.mention}")
+    
+    @voo_group.group(name="rewards", invoke_without_command=True)
+    @checks.admin_or_permissions(manage_guild=True)
+    async def rewards_group(self, ctx: commands.Context):
+        """Show per-TG reward tiers and defaults."""
+        tiers = await self.config.guild(ctx.guild).per_tg_tiers()
+        tiers = sorted(tiers, key=lambda x: int(x.get("lt", 0)))
+        over = await self.config.guild(ctx.guild).default_over_reward()
+        lines = [f"• queue < {t['lt']}: {t['reward']} WC" for t in tiers]
+        lines.append(f"• otherwise: {over} WC")
+        await ctx.send("Per-TG reward tiers:\n" + "\n".join(lines))
+    
+    @rewards_group.command(name="set")
+    async def rewards_set(self, ctx: commands.Context, lt: int, reward: int):
+        """Set or update a tier: pay `reward` WC per TG when queue < `lt`."""
+        lt, reward = int(lt), int(reward)
+        async with self.config.guild(ctx.guild).per_tg_tiers() as tiers:
+            # upsert
+            for t in tiers:
+                if int(t.get("lt", -1)) == lt:
+                    t["reward"] = reward
+                    break
+            else:
+                tiers.append({"lt": lt, "reward": reward})
+        await ctx.send(f"Tier updated: queue < {lt} → {reward} WC")
+    
+    @rewards_group.command(name="remove")
+    async def rewards_remove(self, ctx: commands.Context, lt: int):
+        """Remove a tier by 'lt' threshold."""
+        lt = int(lt)
+        async with self.config.guild(ctx.guild).per_tg_tiers() as tiers:
+            new = [t for t in tiers if int(t.get("lt", -1)) != lt]
+            tiers.clear()
+            tiers.extend(new)
+        await ctx.send(f"Removed tier with lt={lt}")
+    
+    @rewards_group.command(name="setdefault")
+    async def rewards_setdefault(self, ctx: commands.Context, reward: int):
+        """Set default per-TG reward when queue >= highest threshold."""
+        await self.config.guild(ctx.guild).default_over_reward.set(int(reward))
+        await ctx.send(f"Default over-threshold reward set to {reward} WC")
+    
+    @voo_group.command(name="setpotincrement")
+    async def set_pot_increment(self, ctx: commands.Context, amount: int):
+        """Set how much the weekly pot grows per Recruit action (default 10)."""
+        await self.config.guild(ctx.guild).pot_increment_per_batch.set(int(amount))
+        await ctx.send(f"Pot increment per set updated to {amount} WC")
+    
+    @voo_group.command(name="setminweekly")
+    async def set_min_weekly(self, ctx: commands.Context, amount: int):
+        """Set minimum weekly payout per eligible user (not drawn from pot)."""
+        await self.config.guild(ctx.guild).min_weekly_payout.set(int(amount))
+        await ctx.send(f"Minimum weekly payout set to {amount} WC")
+    
+    @voo_group.command(name="weeklypayout")
+    async def weekly_payout_cmd(self, ctx: commands.Context):
+        """Run weekly payout now (manual trigger)."""
+        await self._run_weekly_payout(ctx.guild)
+        await ctx.send("Weekly payout executed.")
+    
+    @voo_group.command(name="autosettlement")
+    async def auto_settlement(self, ctx: commands.Context, enabled: bool, dow: int = 6, hour: int = 23, minute: int = 59, tz: str = "America/Chicago"):
+        """
+        Enable/disable automatic weekly payout and set schedule.
+        dow: 0=Mon ... 6=Sun
+        """
+        await self.config.guild(ctx.guild).auto_weekly_enabled.set(bool(enabled))
+        await self.config.guild(ctx.guild).auto_weekly_dow.set(int(dow))
+        await self.config.guild(ctx.guild).auto_weekly_hour.set(int(hour))
+        await self.config.guild(ctx.guild).auto_weekly_minute.set(int(minute))
+        await self.config.guild(ctx.guild).auto_weekly_tz.set(str(tz))
+        state = "enabled" if enabled else "disabled"
+        await ctx.send(f"Auto weekly payout {state} — schedule set to DOW={dow} {hour:02d}:{minute:02d} {tz}")
+
+    
+    
 
 
 
