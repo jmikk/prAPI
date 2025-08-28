@@ -102,12 +102,12 @@ class VOO(commands.Cog):
             # per-TG dynamic reward tiers based on current queue length BEFORE dequeue:
             # pay = reward where queue_len < lt; else fallthrough to default_over_reward
             "defcon_levels": [  # evaluated by queue < lt, in ascending lt
-                {"lt": 200,  "name": "Trickle",   "emoji": "💧"},
-                {"lt": 300,  "name": "Stream",    "emoji": "🌿"},
-                {"lt": 400,  "name": "Torrent",   "emoji": "🌪️"},
-                {"lt": 500,  "name": "Geyser",    "emoji": "🧨"},
-                {"lt": 800,  "name": "Flood", "emoji": "🚨"},
-                {"lt": 1000, "name": "Deluge",    "emoji": "🛑"},
+                {"lt": 200,  "name": "Trickle",   "emoji": "💧","reward":10},
+                {"lt": 300,  "name": "Stream",    "emoji": "🌿","reward":9},
+                {"lt": 400,  "name": "Torrent",   "emoji": "🌪️","reward":8},
+                {"lt": 500,  "name": "Geyser",    "emoji": "🧨","reward":7},
+                {"lt": 800,  "name": "Flood", "emoji": "🚨","reward":6},
+                {"lt": 1000, "name": "Deluge",    "emoji": "🛑","reward":5},
             ],
             "default_over_reward": 4,
             "defcon_overflow_name": "Maelstrom",
