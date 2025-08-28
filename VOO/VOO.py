@@ -159,7 +159,7 @@ class VOO(commands.Cog):
         return self.bot.get_cog("NexusExchange")
 
     async def _get_per_tg_reward(self, guild: discord.Guild, queue_len_before: int) -> int:
-        tiers = await self.config.guild(guild).per_tg_tiers()
+        tiers = await self.config.guild(guild).defcon_levels()
         tiers = sorted(tiers, key=lambda x: int(x.get("lt", 0)))
         for t in tiers:
             try:
@@ -929,7 +929,7 @@ class VOO(commands.Cog):
     @checks.admin_or_permissions(manage_guild=True)
     async def rewards_group(self, ctx: commands.Context):
         """Show per-TG reward tiers and defaults."""
-        tiers = await self.config.guild(ctx.guild).per_tg_tiers()
+        tiers = await self.config.guild(ctx.guild).defcon_levels()
         tiers = sorted(tiers, key=lambda x: int(x.get("lt", 0)))
         over = await self.config.guild(ctx.guild).default_over_reward()
         lines = [f"• queue < {t['lt']}: {t['reward']} WC" for t in tiers]
@@ -940,7 +940,7 @@ class VOO(commands.Cog):
     async def rewards_set(self, ctx: commands.Context, lt: int, reward: int):
         """Set or update a tier: pay `reward` WC per TG when queue < `lt`."""
         lt, reward = int(lt), int(reward)
-        async with self.config.guild(ctx.guild).per_tg_tiers() as tiers:
+        async with self.config.guild(ctx.guild).defcon_levels() as tiers:
             # upsert
             for t in tiers:
                 if int(t.get("lt", -1)) == lt:
@@ -954,7 +954,7 @@ class VOO(commands.Cog):
     async def rewards_remove(self, ctx: commands.Context, lt: int):
         """Remove a tier by 'lt' threshold."""
         lt = int(lt)
-        async with self.config.guild(ctx.guild).per_tg_tiers() as tiers:
+        async with self.config.guild(ctx.guild).defcon_levels() as tiers:
             new = [t for t in tiers if int(t.get("lt", -1)) != lt]
             tiers.clear()
             tiers.extend(new)
