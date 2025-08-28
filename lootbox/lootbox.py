@@ -275,6 +275,27 @@ class lootbox(commands.Cog):
             "LEGENDARY": 0xFFFF00     # Yellow
         }
         return colors.get(category.upper(), 0xFFFFFF)  # Default to white if not found
+    
+    @commands.group()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def cooldownset(self, ctx):
+        """Configure lootbox cooldowns."""
+        pass
+    
+    @cooldownset.command()
+    async def default(self, ctx, rate: int, per: int):
+        pol = await self.config.guild(ctx.guild).cooldown_policy()
+        pol["default"] = {"rate": rate, "per": per}
+        await self.config.guild(ctx.guild).cooldown_policy.set(pol)
+        await ctx.send(f"Default cooldown set to {rate} uses per {per}s.")
+    
+    @cooldownset.command()
+    async def role(self, ctx, role: discord.Role, rate: int, per: int):
+        pol = await self.config.guild(ctx.guild).cooldown_policy()
+        pol.setdefault("roles", {})[str(role.id)] = {"rate": rate, "per": per}
+        await self.config.guild(ctx.guild).cooldown_policy.set(pol)
+        await ctx.send(f"Cooldown for {role.name}: {rate} uses per {per}s.")
+
 
 def setup(bot):
     bot.add_cog(Lootbox(bot))
