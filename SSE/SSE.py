@@ -19,7 +19,7 @@ log = logging.getLogger("red.elderscry")
 # ---------- Defaults ----------
 DEFAULT_COMMON_FILTERS: Dict[str, str] = {
     # Feel free to trim/add; these mirror your original list
-    "Issues Answered (Legislation)": r"\bnew legislation\b",
+    "Issues": r"\bnew legislation\b",
     "RMB Posts": r"\bregional message board\b",
     "Embassy Activity": r"\bembassy\b",
     "Ejections": r"\bejected\b",
