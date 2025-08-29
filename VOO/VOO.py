@@ -250,49 +250,54 @@ class VOO(commands.Cog):
                 async with self.session.get(FOUNDING_SSE_URL, headers=headers) as resp:
                     resp.raise_for_status()
                     self.last_event_at = datetime.now(timezone.utc)
+                    backoff = 3  # ✅ reset backoff on successful connect
     
-                    async for raw_line in resp.content:
-                        # Idle watchdog
-                        if self.last_event_at and datetime.now(timezone.utc) - self.last_event_at > idle_limit:
-                            log.warning("SSE idle > 1 hour; reconnecting.")
-                            break
+                    try:
+                        async for raw_line in resp.content:
+                            # reconnect if idle too long
+                            if self.last_event_at and datetime.now(timezone.utc) - self.last_event_at > idle_limit:
+                                log.warning("SSE idle > 1 hour; reconnecting.")
+                                break
     
-                        line = raw_line.decode("utf-8", errors="ignore").strip()
+                            line = raw_line.decode("utf-8", errors="ignore").strip()
     
-                        # Count ANY traffic as activity (including heartbeats & field lines)
-                        if line == "":
-                            # blank line that ends an SSE event; still counts as activity
-                            self.last_event_at = datetime.now(timezone.utc)
-                            continue
+                            # count activity on blanks/heartbeats/fields
+                            if line == "" or line.startswith(":") or line.startswith(("event:", "id:", "retry:")):
+                                self.last_event_at = datetime.now(timezone.utc)
+                                continue
     
-                        # Heartbeat/comment lines start with ":" per SSE spec
-                        if line.startswith(":"):
-                            self.last_event_at = datetime.now(timezone.utc)
-                            continue
+                            if line.startswith("data:"):
+                                payload = line[5:].strip()
+                                self.last_event_at = datetime.now(timezone.utc)
+                                await self._handle_sse_data(payload)
+                                continue
     
-                        # Normal data events
-                        if line.startswith("data:"):
-                            payload = line[5:].strip()
-                            self.last_event_at = datetime.now(timezone.utc)
-                            await self._handle_sse_data(payload)
-                            # (no need to refresh embeds here unless your handler doesn’t)
-                            continue
+                    except aiohttp.http_exceptions.TransferEncodingError:
+                        # ✅ benign mid-chunk close; reconnect immediately, no notifier
+                        log.debug("SSE stream TE error; fast reconnect.")
+                        continue
+                    except (aiohttp.ClientPayloadError, aiohttp.ClientOSError, ConnectionResetError) as e:
+                        # ✅ common stream read errors; fast reconnect, no notifier
+                        log.debug("SSE stream read error (%r); fast reconnect.", e)
+                        continue
     
-                        # Other SSE fields (event:, id:, retry:) also count as activity
-                        if line.startswith(("event:", "id:", "retry:")):
-                            self.last_event_at = datetime.now(timezone.utc)
-                            continue
-    
-                # Reconnect loop
+                # normal reconnect path (e.g., idle break)
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 60)
     
+            except asyncio.CancelledError:
+                log.info("SSE listener cancelled.")
+                raise
             except Exception as e:
+                # Real errors: log and notify (your notifier), then backoff
                 log.exception("SSE listener error: %r", e)
-                # NEW: notify in-channel (cooldowned)
-                await self._notify_listener_error("will attempt to reconnect shortly", e)
+                try:
+                    await self._notify_listener_error("will attempt to reconnect shortly", e)
+                except Exception:
+                    pass
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 60)
+
 
 
     async def _handle_sse_data(self, data_line: str):
