@@ -1,6 +1,6 @@
 # vigil_of_origins.py
 from __future__ import annotations
-
+import traceback, time
 import asyncio
 import json
 import logging
@@ -8,7 +8,6 @@ import re
 from collections import deque
 from datetime import datetime, timezone, timedelta
 from typing import Deque, List, Optional
-
 import aiohttp
 from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
@@ -82,6 +81,7 @@ class VOO(commands.Cog):
         self.queue: Deque[str] = deque()
         self.last_event_at: Optional[datetime] = None
         self.weekly_task: Optional[asyncio.Task] = None
+        self._err_last_notice_ts: dict[int, int] = {}  # guild_id -> unix ts
 
         default_guild = {
             "channel_id": None,
@@ -282,11 +282,10 @@ class VOO(commands.Cog):
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 60)
     
-            except asyncio.CancelledError:
-                log.info("SSE listener cancelled.")
-                raise
             except Exception as e:
                 log.exception("SSE listener error: %r", e)
+                # NEW: notify in-channel (cooldowned)
+                await self._notify_listener_error("will attempt to reconnect shortly", e)
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 60)
 
@@ -1279,6 +1278,45 @@ class VOO(commands.Cog):
         new_msg = await channel.send(embed=embed, view=view)
         await self.config.guild(guild).control_message_id.set(new_msg.id)
         return new_msg
+
+    async def _notify_listener_error(self, note: str, exc: Optional[BaseException] = None, cooldown_sec: int = 120):
+        """
+        Post a compact error notice in each configured control channel.
+        Cooldown prevents spam (default 2 min per guild).
+        """
+        # Build a short error snippet
+        snippet = ""
+        if exc:
+            try:
+                tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+                # keep it short (first ~12 lines or 800 chars)
+                lines = tb.splitlines()
+                snippet = "\n```py\n" + "\n".join(lines[:12])[:800] + "\n```"
+            except Exception:
+                # fallback to simple repr
+                snippet = f"\n```\n{repr(exc)}\n```"
+    
+        now = int(time.time())
+        for guild in self.bot.guilds:
+            try:
+                ch_id = await self.config.guild(guild).channel_id()
+                if not ch_id:
+                    continue
+                channel = guild.get_channel(ch_id)
+                if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+                    continue
+    
+                # cooldown per guild
+                last = self._err_last_notice_ts.get(guild.id, 0)
+                if now - last < cooldown_sec:
+                    continue
+                self._err_last_notice_ts[guild.id] = now
+    
+                await channel.send(f"⚠️ **VOO listener error** — {note}{snippet}")
+            except Exception:
+                # don't let error reporting crash anything
+                continue
+    
 
         
 
