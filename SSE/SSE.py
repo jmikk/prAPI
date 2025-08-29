@@ -115,6 +115,10 @@ def hyperlink_ns(text: str) -> str:
     )
     return text
 
+def _parse_regions_csv(csv_str: str) -> List[str]:
+    regions = [ns_norm(r) for r in (csv_str or "").split(",") if r.strip()]
+    return list(dict.fromkeys(regions))  # dedup, keep order
+
 class SSE(commands.Cog):
     """NationStates SSE multiplexer: one stream, many filters/webhooks/mentions."""
 
@@ -397,10 +401,6 @@ class SSE(commands.Cog):
 
 
     # ------------- Utils -------------
-
-    def _parse_regions_csv(csv_str: str) -> List[str]:
-        regions = [ns_norm(r) for r in (csv_str or "").split(",") if r.strip()]
-        return list(dict.fromkeys(regions))  # dedup, keep order
     
     def _flag_from_html(self, html: str) -> Optional[str]:
         m = MINIFLAG_RE.search(html)
