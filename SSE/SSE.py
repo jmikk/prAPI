@@ -103,7 +103,7 @@ def hyperlink_ns(text: str) -> str:
     )
     return text
 
-class Elderscry(commands.Cog):
+class SSE(commands.Cog):
     """NationStates SSE multiplexer: one stream, many filters/webhooks/mentions."""
 
     def __init__(self, bot: Red):
