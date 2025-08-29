@@ -1160,6 +1160,17 @@ class VOO(commands.Cog):
         last_panic = int(await gconf.last_panic_at_ts())
         cooldown = max(0, int(await gconf.panic_cooldown_minutes())) * 60
     
+        # 🔽 resolve control channel here
+        channel = None
+        try:
+            ch_id = await gconf.channel_id()
+            if ch_id:
+                ch = guild.get_channel(ch_id)
+                if isinstance(ch, (discord.TextChannel, discord.Thread)):
+                    channel = ch
+        except Exception:
+            pass
+    
         if idx > last_idx and (now_ts - last_panic >= cooldown):
             if channel:
                 try:
@@ -1173,8 +1184,9 @@ class VOO(commands.Cog):
                     await self._bump_control_message(guild)
                 except Exception:
                     pass
-        
+    
         await gconf.last_defcon_index.set(idx)
+
     
     def _level_bar(self, idx: int, total: int, width: int = 10) -> str:
         """Simple bar like [██████░░░░] where idx grows from 0..total."""
