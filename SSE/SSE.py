@@ -84,6 +84,18 @@ DEFAULT_COMMON_FILTERS: Dict[str, str] = {
 
 MINIFLAG_RE = re.compile(r'<img src="([^"]+?)" class="miniflag"', re.I)
 RMB_LINK_RE = re.compile(r'<a href="/region=([^"/]+)/page=display_region_rmb\?postid=(\d+)', re.I)
+REGION_RE = re.compile(r'href="region=([a-z0-9_]+)"', re.I)
+REGION_TEXT_RE = re.compile(r"%%([a-z0-9_]+)%%", re.I)
+
+def _extract_region_from_event(html: str, text: str) -> Optional[str]:
+    m = REGION_RE.search(html or "")
+    if m:
+        return m.group(1).lower()
+    m2 = REGION_TEXT_RE.search(text or "")
+    if m2:
+        return m2.group(1).lower()
+    return None
+
 
 def ns_norm(s: str) -> str:
     return re.sub(r"\s+", "_", s.strip().lower())
@@ -118,7 +130,8 @@ class SSE(commands.Cog):
             "default_webhook": "",             # fallback webhook (https://discord.com/api/webhooks/...)
             "user_agent": "",                  # NS UA string
             "enabled": False,                  # start/stop toggle
-            "filters": [],                     # list of dicts: pattern, color (int), role_id (int|None), webhook (str|None), name (str|None)
+            "filters": [],
+            "route_unmatched_to_default": True,# list of dicts: pattern, color (int), role_id (int|None), webhook (str|None), name (str|None)
         }
         self.config.register_guild(**default_guild)
 
@@ -302,46 +315,47 @@ class SSE(commands.Cog):
             log.exception("RMB parse failed")
 
     async def _process_filtered_event(self, data: dict):
-        event_str = data.get("str", "")
-        html = data.get("htmlStr", "")
-
-        # Flag
+        event_str = data.get("str", "") or ""
+        html = data.get("htmlStr", "") or ""
+        region = _extract_region_from_event(html, event_str)  # NEW
+    
+        # Build base embed material
         flag_url = self._flag_from_html(html)
-
-        # Build generic embed (we’ll adjust colour/role/webhook per-filter match)
         title, desc = self._smart_title_desc(event_str)
         title, desc = hyperlink_ns(title), hyperlink_ns(desc)
-
-        # Scan filters in every guild; send to each matched destination
+    
+        # For each guild, try filters; if none match and fallback enabled, send to default webhook.
         tasks = []
         for guild in self.bot.guilds:
             if not await self.config.guild(guild).enabled():
                 continue
-
+    
             filters = await self.config.guild(guild).filters()
             default_webhook = await self.config.guild(guild).default_webhook()
-            if not default_webhook and not any(f.get("webhook") for f in filters):
-                # No place to send; skip this guild
-                continue
-
-            matched_any = False
+            fallback = bool(await self.config.guild(guild).route_unmatched_to_default())
+    
+            matched = False
+    
             for f in filters:
                 patt = f.get("pattern") or ""
+                regions = [r.strip().lower() for r in (f.get("regions") or []) if r]
+                # region scope check (empty regions = match all)
+                if regions and (region is None or region not in regions):
+                    continue
+                # regex match
                 try:
                     if not patt or not re.search(patt, event_str, re.I):
                         continue
                 except re.error:
-                    # bad regex; skip
                     continue
-
-                matched_any = True
+    
+                matched = True
                 color = int(f.get("color") or 0x5865F2)
                 role_id = f.get("role_id")
                 webhook = f.get("webhook") or default_webhook
-
                 if not webhook:
                     continue
-
+    
                 embed = discord.Embed(
                     title=title or "NationStates Event",
                     description=desc or event_str,
@@ -353,15 +367,34 @@ class SSE(commands.Cog):
                 )
                 if flag_url:
                     embed.set_thumbnail(url=flag_url)
-                embed.set_footer(text=f"Event ID: {data.get('id','N/A')}")
-
+                eid = data.get("id", "N/A")
+                region_note = f" • Region: {region}" if region else ""
+                embed.set_footer(text=f"Event ID: {eid}{region_note}")
+    
                 content = f"<@&{role_id}>" if role_id else None
                 tasks.append(self._post_webhook(webhook, content, [embed]))
-
-            # Optional “no filter matched” path? (Disabled by default)
-
+    
+            # Fallback: if nothing matched but we want all events to at least show up
+            if not matched and fallback and default_webhook:
+                embed = discord.Embed(
+                    title=title or "NationStates Event",
+                    description=desc or event_str,
+                    colour=discord.Colour(0x2F3136),
+                    timestamp=datetime.fromtimestamp(
+                        data.get("time", int(datetime.now(timezone.utc).timestamp())),
+                        tz=timezone.utc,
+                    ),
+                )
+                if flag_url:
+                    embed.set_thumbnail(url=flag_url)
+                eid = data.get("id", "N/A")
+                region_note = f" • Region: {region}" if region else ""
+                embed.set_footer(text=f"(unmatched) Event ID: {eid}{region_note}")
+                tasks.append(self._post_webhook(default_webhook, None, [embed]))
+    
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+
 
     # ------------- Utils -------------
     def _flag_from_html(self, html: str) -> Optional[str]:
