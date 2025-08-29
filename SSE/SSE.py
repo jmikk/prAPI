@@ -28,21 +28,21 @@ REGION_RE = re.compile(r"region=([a-z0-9_]+)", re.I)
 
 NATION_RE = re.compile(r"nation=([a-z0-9_]+)", re.I)
 
-class VOOControlView(ui.View):
+class SSEControlView(ui.View):
     """Persistent control view with three buttons."""
     def __init__(self, cog: "VigilOfOrigins"):
         super().__init__(timeout=None)
         self.cog = cog
 
-    @ui.button(label="Recruit", style=discord.ButtonStyle.primary, custom_id="voo:recruit")
+    @ui.button(label="Recruit", style=discord.ButtonStyle.primary, custom_id="SSE:recruit")
     async def recruit_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cog.handle_recruit(interaction)
 
-    @ui.button(label="Register", style=discord.ButtonStyle.secondary, custom_id="voo:register")
+    @ui.button(label="Register", style=discord.ButtonStyle.secondary, custom_id="SSE:register")
     async def register_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cog.handle_register(interaction)
 
-    @ui.button(label="Leaderboard", style=discord.ButtonStyle.success, custom_id="voo:leaderboard")
+    @ui.button(label="Leaderboard", style=discord.ButtonStyle.success, custom_id="SSE:leaderboard")
     async def leaderboard_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cog.handle_leaderboard(interaction)
 
@@ -71,7 +71,7 @@ class TemplateModal(ui.Modal, title="Register TG Template"):
         await self.cog.config.user(interaction.user).template.set(t)
         await interaction.response.send_message("Saved! You can now use **Recruit**.", ephemeral=True)
 
-class VOO(commands.Cog):
+class SSE(commands.Cog):
     """Watches NationStates founding SSE and helps recruit."""
 
     def __init__(self, bot: Red):
@@ -127,7 +127,7 @@ class VOO(commands.Cog):
         self.config.register_user(**default_user)
 
         # Register persistent view on startup
-        self.bot.add_view(VOOControlView(self))
+        self.bot.add_view(SSEControlView(self))
 
     # ---------- Lifecycle ----------
     async def cog_load(self):
@@ -140,7 +140,7 @@ class VOO(commands.Cog):
                         self.queue.append(n)
         await self.start_listener()
         if self.weekly_task is None or self.weekly_task.done():
-            self.weekly_task = asyncio.create_task(self._weekly_scheduler(), name="VOO_WeeklyPayout")
+            self.weekly_task = asyncio.create_task(self._weekly_scheduler(), name="SSE_WeeklyPayout")
 
 
     async def cog_unload(self):
@@ -217,7 +217,7 @@ class VOO(commands.Cog):
             return
         if not self.session or self.session.closed:
             self.session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None))
-        self.listener_task = asyncio.create_task(self._run_listener(), name="VOO_SSE_Listener")
+        self.listener_task = asyncio.create_task(self._run_listener(), name="SSE_SSE_Listener")
         await self._refresh_all_embeds()
 
 
@@ -493,7 +493,7 @@ class VOO(commands.Cog):
 
                 # Build a link+reminder view
         class RecruitView(discord.ui.View):
-            def __init__(self, cog: "VOO", link_url: str):
+            def __init__(self, cog: "SSE", link_url: str):
                 super().__init__(timeout=1200)
                 self.cog = cog
                 # Link button on top row
@@ -506,19 +506,19 @@ class VOO(commands.Cog):
                     )
                 )
 
-            @discord.ui.button(label="Remind in 40s", style=discord.ButtonStyle.secondary, row=1, custom_id="voo:remind:40")
+            @discord.ui.button(label="Remind in 40s", style=discord.ButtonStyle.secondary, row=1, custom_id="SSE:remind:40")
             async def remind_40(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await self._schedule(interaction, 40)
 
-            @discord.ui.button(label="Remind in 50s", style=discord.ButtonStyle.secondary, row=1, custom_id="voo:remind:50")
+            @discord.ui.button(label="Remind in 50s", style=discord.ButtonStyle.secondary, row=1, custom_id="SSE:remind:50")
             async def remind_50(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await self._schedule(interaction, 50)
 
-            @discord.ui.button(label="Remind in 60s", style=discord.ButtonStyle.secondary, row=1, custom_id="voo:remind:60")
+            @discord.ui.button(label="Remind in 60s", style=discord.ButtonStyle.secondary, row=1, custom_id="SSE:remind:60")
             async def remind_60(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await self._schedule(interaction, 60)
 
-            @discord.ui.button(label="Remind in 120s", style=discord.ButtonStyle.secondary, row=1, custom_id="voo:remind:120")
+            @discord.ui.button(label="Remind in 120s", style=discord.ButtonStyle.secondary, row=1, custom_id="SSE:remind:120")
             async def remind_120(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await self._schedule(interaction, 120)
 
@@ -547,13 +547,13 @@ class VOO(commands.Cog):
 
 
     # ---------- Commands ----------
-    @commands.group(name="voo")
+    @commands.group(name="SSE")
     @checks.admin_or_permissions(manage_guild=True)
-    async def voo_group(self, ctx: commands.Context):
+    async def SSE_group(self, ctx: commands.Context):
         """Vigil of Origins controls."""
         pass
 
-    @voo_group.command(name="setchannel")
+    @SSE_group.command(name="setchannel")
     async def set_channel(self, ctx: commands.Context, channel: Optional[discord.TextChannel] = None):
         """Set the control channel and (re)post the button embed."""
         channel = channel or ctx.channel
@@ -561,7 +561,7 @@ class VOO(commands.Cog):
         await self.post_or_update_control_message(ctx.guild, channel)
         await ctx.send(f"Control embed is set in {channel.mention}.")
 
-    @voo_group.command(name="setuseragent")
+    @SSE_group.command(name="setuseragent")
     async def set_user_agent(self, ctx: commands.Context, user_agent: str):
         """Set the NationStates User-Agent header (e.g., 9003, 9005, etc.)."""
         await self.config.guild(ctx.guild).user_agent.set(user_agent.strip())
@@ -569,14 +569,14 @@ class VOO(commands.Cog):
         await self.stop_listener()
         await self.start_listener()
 
-    @voo_group.command(name="start")
+    @SSE_group.command(name="start")
     async def start_cmd(self, ctx: commands.Context):
         """Start the SSE listener."""
         await self.start_listener()
         await self._refresh_all_embeds()
         await ctx.send("SSE listener started.")
 
-    @voo_group.command(name="stop")
+    @SSE_group.command(name="stop")
     async def stop_cmd(self, ctx: commands.Context):
         """Stop the SSE listener."""
         await self.stop_listener()
@@ -584,7 +584,7 @@ class VOO(commands.Cog):
 
         await ctx.send("SSE listener stopped.")
 
-    @voo_group.command(name="queue")
+    @SSE_group.command(name="queue")
     async def show_queue(self, ctx: commands.Context, peek: int = 10):
         """Show queue length and a peek at the upcoming nations."""
         qlen = len(self.queue)
@@ -594,7 +594,7 @@ class VOO(commands.Cog):
             msg += "\nNext up: " + ", ".join(preview)
         await ctx.send(msg)
 
-    @voo_group.command(name="clearqueue")
+    @SSE_group.command(name="clearqueue")
     async def clear_queue(self, ctx: commands.Context):
         """Clear the entire queue."""
         self.queue.clear()
@@ -602,7 +602,7 @@ class VOO(commands.Cog):
         await self._refresh_all_embeds()
         await ctx.send("Queue cleared.")
 
-    @voo_group.command(name="resetstats")
+    @SSE_group.command(name="resetstats")
     async def reset_stats(self, ctx: commands.Context):
         """Reset all users' sent counts."""
         async with self.config.all_users() as allu:
@@ -630,7 +630,7 @@ class VOO(commands.Cog):
         reward, lvl_name, lvl_emoji, idx, total = await self._current_reward_and_defcon(guild, qlen)
         embed = self._build_control_embed(qlen, status, reward, lvl_name, lvl_emoji, idx, total)
 
-        view = VOOControlView(self)
+        view = SSEControlView(self)
         msg_id = await self.config.guild(guild).control_message_id()
 
         # If we have a message stored, try to fetch it
@@ -727,7 +727,7 @@ class VOO(commands.Cog):
         reward, lvl_name, lvl_emoji, idx, total = await self._current_reward_and_defcon(guild, qlen)
         embed = self._build_control_embed(qlen, status, reward, lvl_name, lvl_emoji, idx, total)
         
-        view = VOOControlView(self)
+        view = SSEControlView(self)
 
         msg_id = await self.config.guild(guild).control_message_id()
         if msg_id:
@@ -750,9 +750,9 @@ class VOO(commands.Cog):
                 pass
 
 
-    @commands.command(name="bumpvoo")
+    @commands.command(name="bumpSSE")
     @checks.admin_or_permissions(manage_guild=True)
-    async def bump_voo(self, ctx: commands.Context):
+    async def bump_SSE(self, ctx: commands.Context):
         """Delete and repost the control embed to push it to the bottom."""
         new_msg = await self._bump_control_message(ctx.guild)
         if new_msg:
@@ -762,9 +762,9 @@ class VOO(commands.Cog):
 
 
 
-    @voo_group.group(name="blacklist", invoke_without_command=True)
+    @SSE_group.group(name="blacklist", invoke_without_command=True)
     @checks.admin_or_permissions(manage_guild=True)
-    async def voo_blacklist(self, ctx: commands.Context):
+    async def SSE_blacklist(self, ctx: commands.Context):
         """Manage the regional blacklist (queue ignores nations from these regions)."""
         bl = await self.config.guild(ctx.guild).region_blacklist()
         if not bl:
@@ -772,8 +772,8 @@ class VOO(commands.Cog):
         else:
             await ctx.send("Blacklisted regions:\n- " + "\n- ".join(sorted(bl)))
 
-    @voo_blacklist.command(name="add")
-    async def voo_blacklist_add(self, ctx: commands.Context, *, region: str):
+    @SSE_blacklist.command(name="add")
+    async def SSE_blacklist_add(self, ctx: commands.Context, *, region: str):
         """Add a region to the blacklist (spaces ok)."""
         r = self._norm_region(region)
         async with self.config.guild(ctx.guild).region_blacklist() as bl:
@@ -783,8 +783,8 @@ class VOO(commands.Cog):
             bl.append(r)
         await ctx.send(f"Added `{r}` to the regional blacklist.")
 
-    @voo_blacklist.command(name="remove")
-    async def voo_blacklist_remove(self, ctx: commands.Context, *, region: str):
+    @SSE_blacklist.command(name="remove")
+    async def SSE_blacklist_remove(self, ctx: commands.Context, *, region: str):
         """Remove a region from the blacklist."""
         r = self._norm_region(region)
         async with self.config.guild(ctx.guild).region_blacklist() as bl:
@@ -794,8 +794,8 @@ class VOO(commands.Cog):
             bl.remove(r)
         await ctx.send(f"Removed `{r}` from the regional blacklist.")
 
-    @voo_blacklist.command(name="clear")
-    async def voo_blacklist_clear(self, ctx: commands.Context):
+    @SSE_blacklist.command(name="clear")
+    async def SSE_blacklist_clear(self, ctx: commands.Context):
         """Clear the regional blacklist."""
         await self.config.guild(ctx.guild).region_blacklist.set([])
         await ctx.send("Cleared the regional blacklist.")
@@ -935,14 +935,14 @@ class VOO(commands.Cog):
         await self._clear_active_role_all(guild)
 
 
-    @voo_group.command(name="setactiverole")
+    @SSE_group.command(name="setactiverole")
     @checks.admin_or_permissions(manage_guild=True)
     async def set_active_role(self, ctx: commands.Context, role: discord.Role):
         """Set the 'Active Recruiter' role to assign weekly."""
         await self.config.guild(ctx.guild).active_recruiter_role_id.set(role.id)
         await ctx.send(f"Active Recruiter role set to {role.mention}")
     
-    @voo_group.group(name="rewards", invoke_without_command=True)
+    @SSE_group.group(name="rewards", invoke_without_command=True)
     @checks.admin_or_permissions(manage_guild=True)
     async def rewards_group(self, ctx: commands.Context):
         """Show per-TG reward tiers and defaults."""
@@ -983,25 +983,25 @@ class VOO(commands.Cog):
         await self.config.guild(ctx.guild).default_over_reward.set(int(reward))
         await ctx.send(f"Default over-threshold reward set to {reward} WC")
     
-    @voo_group.command(name="setpotincrement")
+    @SSE_group.command(name="setpotincrement")
     async def set_pot_increment(self, ctx: commands.Context, amount: int):
         """Set how much the weekly pot grows per Recruit action (default 10)."""
         await self.config.guild(ctx.guild).pot_increment_per_batch.set(int(amount))
         await ctx.send(f"Pot increment per set updated to {amount} WC")
     
-    @voo_group.command(name="setminweekly")
+    @SSE_group.command(name="setminweekly")
     async def set_min_weekly(self, ctx: commands.Context, amount: int):
         """Set minimum weekly payout per eligible user (not drawn from pot)."""
         await self.config.guild(ctx.guild).min_weekly_payout.set(int(amount))
         await ctx.send(f"Minimum weekly payout set to {amount} WC")
     
-    @voo_group.command(name="weeklypayout")
+    @SSE_group.command(name="weeklypayout")
     async def weekly_payout_cmd(self, ctx: commands.Context):
         """Run weekly payout now (manual trigger)."""
         await self._run_weekly_payout(ctx.guild)
         await ctx.send("Weekly payout executed.")
     
-    @voo_group.command(name="autosettlement")
+    @SSE_group.command(name="autosettlement")
     async def auto_settlement(self, ctx: commands.Context, enabled: bool, dow: int = 6, hour: int = 23, minute: int = 59, tz: str = "America/Chicago"):
         """
         Enable/disable automatic weekly payout and set schedule.
@@ -1015,13 +1015,13 @@ class VOO(commands.Cog):
         state = "enabled" if enabled else "disabled"
         await ctx.send(f"Auto weekly payout {state} — schedule set to DOW={dow} {hour:02d}:{minute:02d} {tz}")
 
-    @voo_group.command(name="testpayout")
+    @SSE_group.command(name="testpayout")
     @checks.admin_or_permissions(manage_guild=True)
     async def test_payout(self, ctx: commands.Context, minutes: int = 5, tz: str = "America/Chicago"):
         """
         Schedule the weekly payout to run X minutes from now (default 5).
         Also enables auto-settlement and clears the run marker for that date.
-        Usage: [p]voo testpayout 5 America/Chicago
+        Usage: [p]SSE testpayout 5 America/Chicago
         """
         minutes = max(1, int(minutes))  # at least 1 minute
     
@@ -1115,7 +1115,7 @@ class VOO(commands.Cog):
     
         asyncio.create_task(
             _job(),
-            name=f"VOO_Reminder_{guild.id if guild else 'dm'}_{user.id}_{seconds}",
+            name=f"SSE_Reminder_{guild.id if guild else 'dm'}_{user.id}_{seconds}",
         )
 
     async def _current_reward_and_defcon(self, guild: discord.Guild, qlen: int):
@@ -1184,7 +1184,7 @@ class VOO(commands.Cog):
         filled = max(0, min(width, round(((idx + 1) / denom) * width)))
         return "[" + "█" * filled + "░" * (width - filled) + "]"
 
-    @voo_group.group(name="defcon", invoke_without_command=True)
+    @SSE_group.group(name="defcon", invoke_without_command=True)
     @checks.admin_or_permissions(manage_guild=True)
     async def defcon_group(self, ctx: commands.Context):
         """Show DEFCON-style Wellspring levels."""
@@ -1225,7 +1225,7 @@ class VOO(commands.Cog):
         await self.config.guild(ctx.guild).defcon_overflow_emoji.set(emoji)
         await ctx.send(f"Overflow level set to {emoji} {name}")
     
-    @voo_group.group(name="panic", invoke_without_command=True)
+    @SSE_group.group(name="panic", invoke_without_command=True)
     @checks.admin_or_permissions(manage_guild=True)
     async def panic_group(self, ctx: commands.Context):
         enabled = await self.config.guild(ctx.guild).panic_enabled()
@@ -1274,11 +1274,11 @@ class VOO(commands.Cog):
         status = await self._get_status_text()
         reward, lvl_name, lvl_emoji, idx, total = await self._current_reward_and_defcon(guild, qlen)
         embed = self._build_control_embed(qlen, status, reward, lvl_name, lvl_emoji, idx, total)
-        view = VOOControlView(self)
+        view = SSEControlView(self)
     
         new_msg = await channel.send(embed=embed, view=view)
         await self.config.guild(guild).control_message_id.set(new_msg.id)
         return new_msg
 
 async def setup(bot: Red):
-    await bot.add_cog(VOO(bot))
+    await bot.add_cog(SSE(bot))
