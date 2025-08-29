@@ -67,6 +67,10 @@ class TemplateModal(ui.Modal, title="Register TG Template"):
                 ephemeral=True,
             )
             return
+        if interaction.guild:
+            member = interaction.guild.get_member(interaction.user.id)
+            if member:
+                await self.cog._ensure_recruiter_role(member)
         await self.cog.config.user(interaction.user).template.set(t)
         await interaction.response.send_message("Saved! You can now use **Recruit**.", ephemeral=True)
 
@@ -117,6 +121,7 @@ class VOO(commands.Cog):
             "panic_cooldown_minutes": 30,  # minimum minutes between panic alerts
             "last_defcon_index": -1,       # last announced index
             "last_panic_at_ts": 0,         # unix timestamp of last panic
+            "recruiter_role_id": None,  # role to ping on alerts; given on Register
                 }
         
         default_user = {
@@ -1147,7 +1152,7 @@ class VOO(commands.Cog):
         return int(reward), str(name), str(emoji), int(idx), int(len(levels))
     
     async def _maybe_panic_on_rise(self, guild: discord.Guild, qlen: int):
-        """If DEFCON index increased & cooldown passed, post a short alert."""
+        """If DEFCON index increased & cooldown passed, post a short alert that pings the Recruiter role."""
         reward, name, emoji, idx, total = await self._current_reward_and_defcon(guild, qlen)
     
         gconf = self.config.guild(guild)
@@ -1160,7 +1165,7 @@ class VOO(commands.Cog):
         last_panic = int(await gconf.last_panic_at_ts())
         cooldown = max(0, int(await gconf.panic_cooldown_minutes())) * 60
     
-        # 🔽 resolve control channel here
+        # resolve control channel
         channel = None
         try:
             ch_id = await gconf.channel_id()
@@ -1171,21 +1176,36 @@ class VOO(commands.Cog):
         except Exception:
             pass
     
+        # resolve recruiter role mention (if configured)
+        role_mention = ""
+        try:
+            rid = await gconf.recruiter_role_id()
+            if rid:
+                role = guild.get_role(int(rid))
+                if role:
+                    role_mention = role.mention + " "
+        except Exception:
+            pass
+    
         if idx > last_idx and (now_ts - last_panic >= cooldown):
             if channel:
                 try:
                     bar = self._level_bar(idx, total)
                     await channel.send(
-                        f"{emoji} **Wellspring Alert risen to {name}** ({idx+1}/{total+1})\n"
-                        f"Queue: **{qlen}** • Current reward: **{reward} WC/TG**\n{bar}"
+                        content=(
+                            f"{role_mention}{emoji} **Wellspring Alert risen to {name}** "
+                            f"({idx+1}/{total+1})\n"
+                            f"Queue: **{qlen}** • Current reward: **{reward} WC/TG**\n{bar}"
+                        ),
+                        allowed_mentions=discord.AllowedMentions(roles=True, users=False, everyone=False),
                     )
                     await gconf.last_panic_at_ts.set(now_ts)
-                    # 🔽 bump embed down after alert
+                    # bump embed after alert
                     await self._bump_control_message(guild)
                 except Exception:
-                    pass
-    
+                    log.exception("Failed to send panic alert")
         await gconf.last_defcon_index.set(idx)
+
 
     
     def _level_bar(self, idx: int, total: int, width: int = 10) -> str:
@@ -1328,10 +1348,32 @@ class VOO(commands.Cog):
             except Exception:
                 # don't let error reporting crash anything
                 continue
+
+    async def _ensure_recruiter_role(self, member: discord.Member):
+        """Give the persistent 'Recruiter' role to anyone who registers."""
+        role_id = await self.config.guild(member.guild).recruiter_role_id()
+        if not role_id:
+            return
+        role = member.guild.get_role(role_id)
+        if role and role not in member.roles:
+            try:
+                await member.add_roles(role, reason="Registered a recruitment template")
+            except Exception:
+                log.exception("Failed to add Recruiter role to %s", member)
+
     
-
+    @voo_group.command(name="setrecruiterrole")
+    @checks.admin_or_permissions(manage_guild=True)
+    async def set_recruiter_role(self, ctx: commands.Context, role: discord.Role):
+        """Set the persistent 'Recruiter' role (pinged on alerts; granted on Register)."""
+        await self.config.guild(ctx.guild).recruiter_role_id.set(role.id)
+        await ctx.send(f"Recruiter role set to {role.mention}. I’ll grant it on Register and ping it for alerts.")
+    
         
-
+            
+        
+            
+    
 
 
         
