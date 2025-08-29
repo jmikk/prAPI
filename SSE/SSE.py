@@ -184,16 +184,16 @@ class SSE(commands.Cog):
             log.exception("Failed fetching region nations for %s", region_slug)
             return set()
 
-    try:
-        root = ET.fromstring(txt)
-        # API returns colon-separated list inside <NATIONS>...</NATIONS>
-        # (Your example had a typo </NATION>; the real tag is NATIONS)
-        payload = root.findtext(".//NATIONS") or ""
-        items = [ns_norm(x) for x in payload.split(":") if x]
-        return set(items)
-    except Exception:
-        log.exception("Failed parsing region nations for %s", region_slug)
-        return set()
+        try:
+            root = ET.fromstring(txt)
+            # API returns colon-separated list inside <NATIONS>...</NATIONS>
+            # (Your example had a typo </NATION>; the real tag is NATIONS)
+            payload = root.findtext(".//NATIONS") or ""
+            items = [ns_norm(x) for x in payload.split(":") if x]
+            return set(items)
+        except Exception:
+            log.exception("Failed parsing region nations for %s", region_slug)
+            return set()
 
     def _cache_valid(self, region_slug: str) -> bool:
         if region_slug not in self._region_nations_cache:
