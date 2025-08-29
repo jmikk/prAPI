@@ -397,6 +397,11 @@ class SSE(commands.Cog):
 
 
     # ------------- Utils -------------
+
+    def _parse_regions_csv(csv_str: str) -> List[str]:
+        regions = [ns_norm(r) for r in (csv_str or "").split(",") if r.strip()]
+        return list(dict.fromkeys(regions))  # dedup, keep order
+    
     def _flag_from_html(self, html: str) -> Optional[str]:
         m = MINIFLAG_RE.search(html)
         if not m:
@@ -557,16 +562,62 @@ class SSE(commands.Cog):
             wh  = f.get("webhook")
             lines.append(f"**{i}.** {nm or '(unnamed)'} | /{patt}/ | color {col} | role {role} | webhook {'set' if wh else 'default'}")
         await ctx.send("\n".join(lines[:50]))
-
+    
     @es_filters.command(name="add")
-    async def es_filters_add(self, ctx: commands.Context, pattern: str, color: int, role_id: Optional[int] = None, webhook: Optional[str] = None, *, name: Optional[str] = None):
-        """Add a filter. Example:
-        [p]elderscry filters add "(?i)was founded in" 3447003 123456789012345678 https://... --name Foundings
+    async def es_filters_add(
+        self,
+        ctx: commands.Context,
+        pattern: str,
+        color: int,
+        regions_csv: str,
+        role_id: Optional[int] = None,
+        webhook: Optional[str] = None,
+        *,
+        name: Optional[str] = None,
+    ):
         """
-        entry = {"pattern": pattern, "color": int(color), "role_id": role_id, "webhook": webhook, "name": name}
+        Add a filter (regions are REQUIRED).
+    
+        Usage:
+          [p]elderscry filters add "<regex>" <color> "<regions_csv>" [role_id] [webhook] [-- trailing name]
+    
+        Examples:
+          [p]elderscry filters add "(?i)was founded in" 3447003 "Osiris, The East Pacific" 123456789012345678 https://discord.com/api/webhooks/... -- Foundings
+          [p]elderscry filters add "(?i)embassy" 15105570 "10000 Islands" -- Embassies
+        """
+        regions = _parse_regions_csv(regions_csv)
+        if not regions:
+            await ctx.send("❌ You must provide at least one region (comma-separated).")
+            return
+    
+        # Optional: warn if region not in configured watch list (does not block creation)
+        configured = set(await self.config.guild(ctx.guild).regions())
+        unknown = [r for r in regions if r not in configured]
+        if unknown:
+            await ctx.send(
+                "⚠️ The following regions are not in your current watch list: "
+                + ", ".join(f"`{r}`" for r in unknown)
+                + "\nThey will still be saved, but won’t match until you add them with "
+                  "`[p]elderscry region add ...` or enable them in your config."
+            )
+    
+        entry = {
+            "pattern": pattern,
+            "color": int(color),
+            "role_id": role_id,
+            "webhook": webhook,
+            "name": name,
+            "regions": regions,
+        }
         async with self.config.guild(ctx.guild).filters() as fs:
             fs.append(entry)
-        await ctx.send("Filter added.")
+    
+        await ctx.send(
+            f"✅ Filter added for regions: {', '.join(regions)}"
+            + (f" • name: **{name}**" if name else "")
+        )
+
+
 
     @es_filters.command(name="remove")
     async def es_filters_remove(self, ctx: commands.Context, index: int):
@@ -578,16 +629,60 @@ class SSE(commands.Cog):
                 await ctx.send("Invalid index.")
 
     @es_filters.command(name="addcommon")
-    async def es_filters_addcommon(self, ctx: commands.Context, common_name: str, color: int, role_id: Optional[int] = None, webhook: Optional[str] = None):
-        """Add a predefined common filter by name (see list)."""
+    async def es_filters_addcommon(
+        self,
+        ctx: commands.Context,
+        common_name: str,
+        color: int,
+        regions_csv: str,
+        role_id: Optional[int] = None,
+        webhook: Optional[str] = None,
+    ):
+        """
+        Add a predefined common filter by name (regions are REQUIRED).
+    
+        Usage:
+          [p]elderscry filters addcommon <CommonName> <color> "<regions_csv>" [role_id] [webhook]
+    
+        Example:
+          [p]elderscry filters addcommon Foundings 3447003 "Osiris, The East Pacific"
+        """
         patt = DEFAULT_COMMON_FILTERS.get(common_name)
         if not patt:
-            await ctx.send("Unknown common filter name. Use [p]elderscry common list")
+            await ctx.send("❌ Unknown common filter name. Use `[p]elderscry common` to see options.")
             return
-        entry = {"pattern": patt, "color": int(color), "role_id": role_id, "webhook": webhook, "name": common_name}
+    
+        regions = _parse_regions_csv(regions_csv)
+        if not regions:
+            await ctx.send("❌ You must provide at least one region (comma-separated).")
+            return
+    
+        # Optional: warn if region not in configured watch list (does not block creation)
+        configured = set(await self.config.guild(ctx.guild).regions())
+        unknown = [r for r in regions if r not in configured]
+        if unknown:
+            await ctx.send(
+                "⚠️ The following regions are not in your current watch list: "
+                + ", ".join(f"`{r}`" for r in unknown)
+                + "\nThey will still be saved, but won’t match until you add them with "
+                  "`[p]elderscry region add ...` or enable them in your config."
+            )
+    
+        entry = {
+            "pattern": patt,
+            "color": int(color),
+            "role_id": role_id,
+            "webhook": webhook,
+            "name": common_name,
+            "regions": regions,
+        }
         async with self.config.guild(ctx.guild).filters() as fs:
             fs.append(entry)
-        await ctx.send(f"Common filter '{common_name}' added.")
+    
+        await ctx.send(
+            f"✅ Common filter **{common_name}** added for regions: {', '.join(regions)}"
+        )
+
 
     @es_group.group(name="common", invoke_without_command=True)
     async def es_common(self, ctx: commands.Context):
@@ -621,6 +716,47 @@ class SSE(commands.Cog):
         }
         await self._process_filtered_event(fake_data)
         await ctx.send("Test dispatched to matching filters.")
+
+    @es_filters.command(name="setregions")
+    async def es_filters_setregions(self, ctx: commands.Context, index: int, *, regions_csv: str):
+        """
+        Set a filter's region scope with a comma-separated list of region slugs/names.
+        Example: [p]elderscry filters setregions 2 Osiris, The East Pacific
+        """
+        async with self.config.guild(ctx.guild).filters() as fs:
+            if not (1 <= index <= len(fs)):
+                await ctx.send("Invalid filter index.")
+                return
+            regions = [ns_norm(r) for r in regions_csv.split(",") if r.strip()]
+            fs[index - 1]["regions"] = regions
+        await ctx.send(f"Filter {index} regions set to: {', '.join(regions) if regions else 'ALL'}")
+    
+    @es_group.command(name="fallback")
+    async def es_fallback(self, ctx: commands.Context, enabled: bool):
+        """Enable/disable routing unmatched events to the default webhook."""
+        await self.config.guild(ctx.guild).route_unmatched_to_default.set(bool(enabled))
+        await ctx.send(f"Unmatched → default webhook is now **{'ON' if enabled else 'OFF'}**.")
+
+    @es_filters.command(name="list")
+    async def es_filters_list(self, ctx: commands.Context):
+        filters = await self.config.guild(ctx.guild).filters()
+        if not filters:
+            await ctx.send("No filters set.")
+            return
+        lines = []
+        for i, f in enumerate(filters, start=1):
+            nm = f.get("name") or "(unnamed)"
+            patt = f.get("pattern") or ""
+            col = f.get("color")
+            role = f.get("role_id")
+            wh  = f.get("webhook")
+            regs = ", ".join(f.get("regions") or []) or "ALL"
+            lines.append(
+                f"**{i}.** {nm} | /{patt}/ | color {col} | role {role} | webhook {'custom' if wh else 'default'} | regions: {regs}"
+            )
+        await ctx.send("\n".join(lines[:50]))
+
+
 
 # ---- setup ----
 async def setup(bot: Red):
