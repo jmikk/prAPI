@@ -1,6 +1,6 @@
 # elderscry.py
 from __future__ import annotations
-
+import xml.etree.ElementTree as ET
 import asyncio
 import json
 import logging
@@ -13,6 +13,11 @@ import discord
 from redbot.core import commands, Config, checks
 from redbot.core.bot import Red
 import xml.etree.ElementTree as ET
+
+
+NATION_LINK_RE = re.compile(r'href="nation=([a-z0-9_]+)"', re.I)
+NATION_TEXT_RE = re.compile(r"@@([a-z0-9_]+)@@", re.I)
+
 
 log = logging.getLogger("red.elderscry")
 
@@ -87,6 +92,15 @@ RMB_LINK_RE = re.compile(r'<a href="/region=([^"/]+)/page=display_region_rmb\?po
 REGION_RE = re.compile(r'href="region=([a-z0-9_]+)"', re.I)
 REGION_TEXT_RE = re.compile(r"%%([a-z0-9_]+)%%", re.I)
 
+def _extract_nation_from_event(html: str, text: str) -> Optional[str]:
+    m = NATION_LINK_RE.search(html or "")
+    if m:
+        return m.group(1).lower()
+    m2 = NATION_TEXT_RE.search(text or "")
+    if m2:
+        return m2.group(1).lower()
+    return None
+
 def _extract_region_from_event(html: str, text: str) -> Optional[str]:
     m = REGION_RE.search(html or "")
     if m:
@@ -128,6 +142,8 @@ class SSE(commands.Cog):
         self.session: Optional[aiohttp.ClientSession] = None
         self.listener_task: Optional[asyncio.Task] = None
         self.last_event_at: Optional[datetime] = None
+        self._region_nations_cache: Dict[str, Tuple[set[str], float]] = {}
+        self._cache_ttl_seconds: int = 9000  
 
         default_guild = {
             "regions": [],                     # list of region slugs (lowercase, underscores). If empty, no listener.
@@ -156,6 +172,72 @@ class SSE(commands.Cog):
                 pass
         if self.session:
             await self.session.close()
+
+    async def _fetch_region_nations(self, region_slug: str) -> set[str]:
+        """Fetch nations in a region via q=nations and return a set of normalized nation slugs."""
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?region={region_slug}&q=nations"
+        headers = {"User-Agent": await self._pick_any_user_agent()}
+        try:
+            async with self.session.get(url, headers=headers) as resp:
+                txt = await resp.text()
+        except Exception:
+            log.exception("Failed fetching region nations for %s", region_slug)
+            return set()
+
+    try:
+        root = ET.fromstring(txt)
+        # API returns colon-separated list inside <NATIONS>...</NATIONS>
+        # (Your example had a typo </NATION>; the real tag is NATIONS)
+        payload = root.findtext(".//NATIONS") or ""
+        items = [ns_norm(x) for x in payload.split(":") if x]
+        return set(items)
+    except Exception:
+        log.exception("Failed parsing region nations for %s", region_slug)
+        return set()
+
+    def _cache_valid(self, region_slug: str) -> bool:
+        if region_slug not in self._region_nations_cache:
+            return False
+        _, ts = self._region_nations_cache[region_slug]
+        return (datetime.now(timezone.utc).timestamp() - ts) < self._cache_ttl_seconds
+    
+    async def _ensure_region_cache(self, region_slug: str, force: bool = False) -> set[str]:
+        if not force and self._cache_valid(region_slug):
+            return self._region_nations_cache[region_slug][0]
+        data = await self._fetch_region_nations(region_slug)
+        self._region_nations_cache[region_slug] = (data, datetime.now(timezone.utc).timestamp())
+        return data
+    
+    async def _region_for_nation_via_caches(self, nation_slug: str) -> Optional[str]:
+        """
+        Try to infer a region by checking caches for every enabled guild’s watched regions.
+        1) Check valid caches first.
+        2) If not found, refresh each region once and re-check.
+        """
+        # Union of watched regions across enabled guilds
+        regions: List[str] = []
+        for g in self.bot.guilds:
+            if not await self.config.guild(g).enabled():
+                continue
+            regions.extend((await self.config.guild(g).regions()) or [])
+        regions = list(dict.fromkeys(regions))  # dedup, keep order
+        if not regions:
+            return None
+    
+        # Pass 1: warm/valid caches
+        for r in regions:
+            data = await self._ensure_region_cache(r, force=False)
+            if nation_slug in data:
+                return r
+    
+        # Pass 2: force refresh and re-check
+        for r in regions:
+            data = await self._ensure_region_cache(r, force=True)
+            if nation_slug in data:
+                return r
+    
+        return None
+
 
     async def _guild_enabled_any(self) -> List[bool]:
         flags = []
@@ -322,8 +404,13 @@ class SSE(commands.Cog):
         event_str = data.get("str", "") or ""
         html = data.get("htmlStr", "") or ""
         region = _extract_region_from_event(html, event_str)  # NEW
+
+            # Fallback: infer region from nation membership if not present in event
+        if region is None:
+            nation = _extract_nation_from_event(html, event_str)
+            if nation:
+                region = await self._region_for_nation_via_caches(nation)    
     
-        # Build base embed material
         flag_url = self._flag_from_html(html)
         title, desc = self._smart_title_desc(event_str)
         title, desc = hyperlink_ns(title), hyperlink_ns(desc)
