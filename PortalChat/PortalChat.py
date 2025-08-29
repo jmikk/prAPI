@@ -19,7 +19,7 @@ class PortalChat(commands.Cog):
     - Loop safety: ignores reactions from any bot users; keeps a timestamped map; prunes regularly.
     """
 
-    __author__ = "you"
+    __author__ = "9005"
     __version__ = "2.0.0"
 
     def __init__(self, bot: Red) -> None:
