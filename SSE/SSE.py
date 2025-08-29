@@ -108,7 +108,7 @@ class SSE(commands.Cog):
 
     def __init__(self, bot: Red):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=0xE1D3_5CRY, force_registration=True)
+        self.config = Config.get_conf(self, identifier=9876543456787654, force_registration=True)
         self.session: Optional[aiohttp.ClientSession] = None
         self.listener_task: Optional[asyncio.Task] = None
         self.last_event_at: Optional[datetime] = None
