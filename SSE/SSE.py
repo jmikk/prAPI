@@ -395,8 +395,12 @@ class SSE(commands.Cog):
             embed.set_footer(text=f"Posted by {nation} — https://www.nationstates.net/nation={ns_norm(nation)}")
 
             # Route to all guilds that are watching this region and have RMB Posts filter enabled (or a general catch-all)
-            await self._broadcast_embeds([embed], event_text=data.get("str",""), prefer_filter_name="RMB Posts")
-
+            await self._broadcast_embeds(
+                [embed],
+                event_text=data.get("str", ""),
+                prefer_filter_name="RMB Posts",
+                region=region_slug.lower(),
+            )
         except Exception:
             log.exception("RMB parse failed")
 
@@ -529,7 +533,7 @@ class SSE(commands.Cog):
                 return ua
         return "Elderscry/1.0 (contact: your-discord#0000)"
 
-    async def _broadcast_embeds(self, embeds: List[discord.Embed], event_text: str, prefer_filter_name: Optional[str] = None):
+    async def _broadcast_embeds(self, embeds: List[discord.Embed], event_text: str, prefer_filter_name: Optional[str] = None,region: Optional[str] = None):
         """
         Send embeds to every guild that is enabled, to each matching filter.
         If prefer_filter_name is provided, we first try filters whose `name` equals it;
@@ -547,14 +551,34 @@ class SSE(commands.Cog):
             # Try preferred named filter first
             target_filters = []
             if prefer_filter_name:
-                target_filters = [f for f in filters if (f.get("name") == prefer_filter_name)]
+                for f in filters:
+                    if f.get("name") != prefer_filter_name:
+                        continue
+                    # Region scoping: if filter has regions, require the event's region to be in them.
+                    regs = [r.strip().lower() for r in (f.get("regions") or []) if r]
+                    if regs:
+                        if region and region.lower() in regs:
+                            target_filters.append(f)
+                        # if the filter is region-scoped but we don't know the region, skip it
+                    else:
+                        # no region restriction on this filter
+                        target_filters.append(f)
+                         
             if not target_filters:
                 # fallback: any filter whose regex matches
                 for f in filters:
                     patt = f.get("pattern") or ""
                     try:
                         if patt and re.search(patt, event_text, re.I):
-                            target_filters.append(f)
+                            # apply the same region scoping on regex-matched filters
+                            regs = [r.strip().lower() for r in (f.get("regions") or []) if r]
+                            if regs:
+                                if region and region.lower() in regs:
+                                    target_filters.append(f)
+                            else:
+                                target_filters.append(f)
+
+                    
                     except re.error:
                         continue
 
