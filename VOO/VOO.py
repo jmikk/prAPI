@@ -924,7 +924,8 @@ class VOO(commands.Cog):
             if idx == len(rows) - 1:
                 share = pot - pot_paid_total
             pot_paid_total += max(0, share)
-            payouts.append((uid, cnt, pct, max(0, share), max(0, min_payout)))
+            bonus = min_payout if cnt >= 100 else 0
+            payouts.append((uid, cnt, pct, max(0, share), max(0, bonus)))
     
         # Pay with NexusExchange
         nexus = self._get_nexus()
@@ -961,7 +962,7 @@ class VOO(commands.Cog):
         # Compose embed
         embed.description = "\n".join(lines[:50])  # safety cap
         embed.add_field(name="Weekly Pot (distributed)", value=f"{pot} WC (paid {pot_paid_total} WC)", inline=True)
-        embed.add_field(name="Salary", value=f"{min_payout} WC (not from pot)", inline=True)
+        embed.add_field(name="Salary (Must send at least 100", value=f"{min_payout} WC (not from pot)", inline=True)
         embed.set_footer(text=f"Total TGs: {total_sent} • Recruiters paid: {len(payouts)}")
     
         # Announce
