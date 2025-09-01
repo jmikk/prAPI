@@ -1407,6 +1407,76 @@ class VOO(commands.Cog):
         """Set the persistent 'Recruiter' role (pinged on alerts; granted on Register)."""
         await self.config.guild(ctx.guild).recruiter_role_id.set(role.id)
         await ctx.send(f"Recruiter role set to {role.mention}. I’ll grant it on Register and ping it for alerts.")
+
+    @voo_group.command(name="stats")
+    async def voo_stats(self, ctx: commands.Context):
+        """
+        Show your current TG count, the weekly pot size,
+        and the top recruiters this week.
+        """
+        guild = ctx.guild
+        user = ctx.author
+    
+        # --- User stats ---
+        sent_total = await self.config.user(user).sent_count()
+        weekly_sent = await self.config.guild(guild).weekly_sent()
+        weekly_user_sent = int(weekly_sent.get(str(user.id), 0))
+    
+        # --- Pot stats ---
+        pot = int(await self.config.guild(guild).weekly_pot())
+        min_payout = int(await self.config.guild(guild).min_weekly_payout())
+    
+        # --- Build leaderboard ---
+        rows = []
+        for uid_str, cnt in (weekly_sent or {}).items():
+            try:
+                cnt = int(cnt)
+                if cnt > 0:
+                    uid = int(uid_str)
+                    rows.append((uid, cnt))
+            except Exception:
+                continue
+    
+        rows.sort(key=lambda x: (-x[1], x[0]))
+        top_lines = []
+        for i, (uid, cnt) in enumerate(rows[:10], start=1):
+            member = guild.get_member(uid)
+            name = member.display_name if member else f"<@{uid}>"
+            top_lines.append(f"**{i}.** {name} — **{cnt}** TGs")
+    
+        if not top_lines:
+            top_text = "No recruiters yet this week."
+        else:
+            top_text = "\n".join(top_lines)
+    
+        # --- Build embed ---
+        embed = discord.Embed(
+            title="🌸 Wellspring Recruitment Stats 🌸",
+            color=discord.Color.blurple(),
+        )
+        embed.add_field(
+            name="Your Stats",
+            value=(
+                f"Weekly TGs sent: **{weekly_user_sent}**\n"
+                f"All-time TGs sent: **{sent_total}**\n"
+                f"Salary requires: **100 TGs/week** 🌸"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="Weekly Pot",
+            value=f"**{pot}** Wellcoins\n(Minimum salary: {min_payout} WC for ≥100 TGs)",
+            inline=False,
+        )
+        embed.add_field(
+            name="Weekly Leaderboard",
+            value=top_text,
+            inline=False,
+        )
+        embed.set_footer(text="Recruit more nations to climb the board and earn blossoms’ blessing!")
+    
+        await ctx.send(embed=embed)
+
     
         
             
