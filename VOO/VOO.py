@@ -761,7 +761,7 @@ class VOO(commands.Cog):
         """Delete and repost the control embed to push it to the bottom."""
         new_msg = await self._bump_control_message(ctx.guild)
         if new_msg:
-            await ctx.send(f"✅ Control embed bumped to the bottom in {new_msg.channel.mention}.")
+            pass
         else:
             await ctx.send("Failed to bump: no valid control channel set.")
 
