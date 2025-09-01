@@ -813,7 +813,7 @@ class VOO(commands.Cog):
         Uses a per-day idempotency marker so it won't double-run if the loop
         ticks multiple times inside the window.
         """
-        poll_seconds = 30
+        poll_seconds = 60
     
         while True:
             try:
