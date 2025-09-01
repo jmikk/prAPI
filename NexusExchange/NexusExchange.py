@@ -67,7 +67,7 @@ class VerifyNationModal(discord.ui.Modal, title="Verify your NationStates nation
                 result = (await response.text()).strip()
                 if result != "1":
                     await interaction.response.send_message(
-                        "❌ Verification failed. Double-check your nation name and code.", ephemeral=True
+                        f"❌ Verification failed. Double-check your nation name and code. {result}", ephemeral=True
                     )
                     return
 
