@@ -1408,7 +1408,7 @@ class VOO(commands.Cog):
         await self.config.guild(ctx.guild).recruiter_role_id.set(role.id)
         await ctx.send(f"Recruiter role set to {role.mention}. I’ll grant it on Register and ping it for alerts.")
 
-    @voo_group.command(name="stats")
+    @commands.command(name="voo_stats")
     async def voo_stats(self, ctx: commands.Context):
         """
         Show your current TG count, the weekly pot size,
