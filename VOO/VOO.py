@@ -806,37 +806,74 @@ class VOO(commands.Cog):
         await ctx.send("Cleared the regional blacklist.")
 
     async def _weekly_scheduler(self):
-        """Runs every ~60s and triggers weekly payout at configured time."""
+        """
+        Polls every ~30s and triggers the weekly payout once per scheduled window.
+        Window = target minute ±60s in the configured timezone.
+    
+        Uses a per-day idempotency marker so it won't double-run if the loop
+        ticks multiple times inside the window.
+        """
+        poll_seconds = 30
+    
         while True:
             try:
                 for guild in self.bot.guilds:
                     gconf = self.config.guild(guild)
                     if not await gconf.auto_weekly_enabled():
                         continue
+    
+                    # Resolve timezone safely
                     try:
-                        tz = ZoneInfo(await gconf.auto_weekly_tz())
+                        tzname = await gconf.auto_weekly_tz()
+                        tz = ZoneInfo(tzname)
                     except Exception:
                         tz = ZoneInfo("America/Chicago")
+    
                     now_local = datetime.now(tz)
                     dow = int(await gconf.auto_weekly_dow())
                     hh = int(await gconf.auto_weekly_hour())
                     mm = int(await gconf.auto_weekly_minute())
     
-                    # Fire once within the target minute; use a small marker to avoid double-run
+                    # Build today's target time in local tz
+                    target = now_local.replace(hour=hh, minute=mm, second=0, microsecond=0)
+    
+                    # Per-day idempotency key (matches your existing logic)
                     key = f"weekly_marker_{now_local.date().isoformat()}"
-                    ran_today = await self.bot.db.guild(guild).get_raw(key, default=False)
-                    if (now_local.weekday() == dow and now_local.hour == hh and now_local.minute == mm and not ran_today):
+                    try:
+                        ran_today = await self.bot.db.guild(guild).get_raw(key, default=False)
+                    except Exception:
+                        ran_today = False  # if bot.db not available, try to run
+    
+                    # Only fire on the configured weekday, within ±60s of target minute
+                    within_window = (
+                        now_local.weekday() == dow and
+                        abs((now_local - target).total_seconds()) <= 60
+                    )
+    
+                    if within_window and not ran_today:
                         await self._run_weekly_payout(guild)
-                        await self.bot.db.guild(guild).set_raw(key, value=True)
-                    elif now_local.hour == 0 and now_local.minute < 5:
-                        # clear marker near midnight local
-                        await self.bot.db.guild(guild).set_raw(key, value=False)
-                await asyncio.sleep(600)
+                        try:
+                            await self.bot.db.guild(guild).set_raw(key, value=True)
+                        except Exception:
+                            pass  # keep going even if marker write fails
+    
+                    # Clear marker shortly after midnight local so the next eligible day can run
+                    if now_local.hour == 0 and now_local.minute < 5 and ran_today:
+                        try:
+                            await self.bot.db.guild(guild).set_raw(key, value=False)
+                        except Exception:
+                            pass
+    
+                await asyncio.sleep(poll_seconds)
+    
             except asyncio.CancelledError:
+                # Task was cancelled (e.g., cog unload) — exit cleanly
                 break
             except Exception:
                 log.exception("Weekly scheduler error")
-                await asyncio.sleep(59)
+                # keep the loop alive but don't spin
+                await asyncio.sleep(poll_seconds)
+
 
     async def _run_weekly_payout(self, guild: discord.Guild):
         """Distribute weekly pot, post leaderboard with % breakdown, then reset."""
