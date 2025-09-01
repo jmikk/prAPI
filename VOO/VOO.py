@@ -1465,7 +1465,7 @@ class VOO(commands.Cog):
         )
         embed.add_field(
             name="Weekly Pot",
-            value=f"**{pot}** Wellcoins\n(Minimum salary: {min_payout} WC for ≥100 TGs)",
+            value=f"**{pot}** Wellcoins\n(salary: {min_payout} WC for ≥100 TGs)",
             inline=False,
         )
         embed.add_field(
