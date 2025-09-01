@@ -619,11 +619,6 @@ class VOO(commands.Cog):
                 allu[uid]["sent_count"] = 0
         await ctx.send("Leaderboard stats reset.")
 
-    async def _get_status_text(self) -> str:
-        if self.listener_task and not self.listener_task.done():
-            return "🟢 SSE: **ON**"
-        return "🔴 SSE: **OFF**"
-
 
     async def _upsert_control_message(self, guild: discord.Guild):
         """Ensure the control embed is present, updated, and is the most recent message."""
@@ -693,6 +688,7 @@ class VOO(commands.Cog):
         on = self.listener_task and not self.listener_task.done()
         status = "🟢 SSE: **ON**" if on else "🔴 SSE: **OFF**"
         return f"{status}\n{self._last_event_markdown()}"
+    
 
     def _build_control_embed(self, qlen: int, status_text: str, reward: int, level_name: str, level_emoji: str, idx: int, total: int) -> discord.Embed:
         embed = discord.Embed(
@@ -840,7 +836,7 @@ class VOO(commands.Cog):
                 break
             except Exception:
                 log.exception("Weekly scheduler error")
-                await asyncio.sleep(600)
+                await asyncio.sleep(59)
 
     async def _run_weekly_payout(self, guild: discord.Guild):
         """Distribute weekly pot, post leaderboard with % breakdown, then reset."""
