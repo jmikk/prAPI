@@ -32,6 +32,66 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 # Default composite: 46 + a few companions (tweak freely)
 DEFAULT_SCALES = [46, 1, 10, 39]
 
+class RecycleResourceQtyModal(discord.ui.Modal, title="♻️ Recycle Resources → Scrap"):
+    def __init__(self, cog: "CityBuilder", resource_name: str):
+        super().__init__()
+        self.cog = cog
+        self.resource_name = resource_name
+        self.qty = discord.ui.TextInput(label=f"How many **{resource_name}** to recycle?", placeholder="e.g., 10", required=True)
+        self.add_item(self.qty)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        res = self.resource_name.strip().lower()
+        if res == "ore":
+            res = "metal"
+        try:
+            qty = int(str(self.qty.value))
+            if qty <= 0:
+                raise ValueError
+        except Exception:
+            return await interaction.response.send_message("❌ Quantity must be a positive integer.", ephemeral=True)
+
+        d = await self.cog.config.user(interaction.user).all()
+        inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
+        have = int(inv.get(res, 0))
+        if have < qty:
+            return await interaction.response.send_message(
+                f"❌ You only have **{have} {res}**.", ephemeral=True
+            )
+
+        scrap_gain = self.cog._scrap_from_resource(res, qty)
+        await self.cog._adjust_resources(interaction.user, {res: -qty, "scrap": scrap_gain})
+
+        e = await self.cog.make_city_embed(
+            interaction.user,
+            header=f"♻️ Recycled **{qty} {res}** → **{scrap_gain} scrap**."
+        )
+        await interaction.response.send_message(embed=e, ephemeral=True)
+
+class ResourcesTierDetailView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, tier: int, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.tier = int(tier)
+        self.show_admin = show_admin
+
+        # Add a recycle button for every resource mapped to this tier
+        r2t = self.cog._resource_tier_map()
+        tier_resources = [r for r, t in r2t.items() if int(t) == self.tier]
+        for r in sorted(tier_resources):
+            self.add_item(ResourceRecycleBtn(r))
+
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
+
 class WorkersTiersMenuView(discord.ui.View):
     def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
         super().__init__(timeout=180)
@@ -104,9 +164,6 @@ class WorkersTierButton(ui.Button):
 
 
 class BuildingsTierActionsView(ui.View):
-    """
-    After a tier is selected, show buttons to build 1 unit of any building in that tier.
-    """
     def __init__(self, cog: "CityBuilder", author: discord.abc.User, tier: int, show_admin: bool):
         super().__init__(timeout=180)
         self.cog = cog
@@ -114,12 +171,13 @@ class BuildingsTierActionsView(ui.View):
         self.tier = int(tier)
         self.show_admin = show_admin
 
-        # Add one button per building in this tier
+        # One green Build and one red Recycle per building in this tier
         for name, meta in BUILDINGS.items():
             if int(meta.get("tier", 0)) == self.tier:
                 self.add_item(BuildInTierBtn(name))
+                if name != "house":  # usually you don't "recycle" housing; remove this if you want to allow it
+                    self.add_item(RecycleBuildingInTierBtn(name))
 
-        # Back to the tier list
         self.add_item(BackToTiersBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -127,6 +185,7 @@ class BuildingsTierActionsView(ui.View):
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
+
 
 class WorkersTierView(discord.ui.View):
     def __init__(self, cog: "CityBuilder", author: discord.abc.User, tier: int, show_admin: bool):
@@ -278,13 +337,6 @@ class BackToTiersBtn(ui.Button):
 
 
 
-class RecycleResourcesBtn(ui.Button):
-    def __init__(self):
-        super().__init__(label="Recycle Resources", style=discord.ButtonStyle.success, custom_id="city:recycle:res")
-
-    async def callback(self, interaction: discord.Interaction):
-        view: RecycleView = self.view  # type: ignore
-        await interaction.response.send_modal(RecycleResourceModal(view.cog))
 
 class RecycleResourceModal(discord.ui.Modal, title="♻️ Recycle Resources → Scrap"):
     resource = discord.ui.TextInput(label="Resource name", placeholder="food / metal / goods / scrap", required=True)
@@ -327,16 +379,7 @@ class RecycleResourceModal(discord.ui.Modal, title="♻️ Recycle Resources →
         await interaction.response.send_message(embed=e, ephemeral=True)
 
 
-class RecycleBuildingsBtn(ui.Button):
-    def __init__(self):
-        super().__init__(label="Recycle Buildings", style=discord.ButtonStyle.danger, custom_id="city:recycle:bld")
 
-    async def callback(self, interaction: discord.Interaction):
-        view: RecycleView = self.view  # type: ignore
-        await interaction.response.edit_message(
-            embed=await view.cog.buildings_overview_embed(interaction.user),
-            view=RecycleBuildingView(view.cog, view.author, show_admin=view.children[-1].show_admin),  # Back at end
-        )
 
 class RecycleBuildingView(ui.View):
     def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
@@ -413,37 +456,15 @@ class RecycleBuildingQtyModal(discord.ui.Modal, title="♻️ Recycle Buildings 
         )
         await interaction.response.send_message(embed=e, ephemeral=True)
 
-
-
-class RecycleBtn(ui.Button):
-    def __init__(self):
-        super().__init__(label="Recycle", style=discord.ButtonStyle.secondary, custom_id="city:recycle")
+class RecycleBuildingInTierBtn(ui.Button):
+    def __init__(self, bname: str):
+        super().__init__(label=f"Recycle {bname}", style=discord.ButtonStyle.danger, custom_id=f"city:recycle:tier:{bname}")
+        self.bname = bname
 
     async def callback(self, interaction: discord.Interaction):
-        view: CityMenuView = self.view  # type: ignore
-        e = discord.Embed(
-            title="♻️ Recycle",
-            description="Turn unwanted **resources** or **buildings** into **scrap** (Tier 0)."
-        )
-        await interaction.response.edit_message(
-            embed=e,
-            view=RecycleView(view.cog, view.author, show_admin=view.show_admin),
-        )
+        view: BuildingsTierActionsView = self.view  # type: ignore
+        await interaction.response.send_modal(RecycleBuildingQtyModal(view.cog, self.bname))
 
-class RecycleView(ui.View):
-    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
-        super().__init__(timeout=180)
-        self.cog = cog
-        self.author = author
-        self.add_item(RecycleResourcesBtn())
-        self.add_item(RecycleBuildingsBtn())
-        self.add_item(BackBtn(show_admin))
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id != self.author.id:
-            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
-            return False
-        return True
 
 
 class LeaderboardBtn(ui.Button):
@@ -506,7 +527,11 @@ class ResourceTierButton(ui.Button):
     async def callback(self, interaction: discord.Interaction):
         view: ResourcesTierView = self.view  # type: ignore
         e = await view.cog.resources_tier_embed(interaction.user, self.tier)
-        await interaction.response.edit_message(embed=e, view=view)
+        await interaction.response.edit_message(
+            embed=e,
+            view=ResourcesTierDetailView(view.cog, view.author, self.tier, show_admin=view.show_admin)
+        )
+
 
 
 class ViewBuildingsBtn(ui.Button):
@@ -2506,7 +2531,6 @@ class CityMenuView(ui.View):
         self.add_item(ViewBuildingsBtn())  
         self.add_item(ViewResourcesBtn())
         self.add_item(LeaderboardBtn())
-        self.add_item(RecycleBtn())
         self.add_item(HowToPlayBtn())
         if show_admin:
             self.add_item(NextDayBtn())
