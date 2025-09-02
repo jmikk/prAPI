@@ -32,6 +32,16 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 # Default composite: 46 + a few companions (tweak freely)
 DEFAULT_SCALES = [46, 1, 10, 39]
 
+class ResourceRecycleBtn(ui.Button):
+    def __init__(self, resource: str):
+        super().__init__(label=f"♻️ {resource}", style=discord.ButtonStyle.secondary)
+        self.resource = resource
+
+    async def callback(self, interaction: discord.Interaction):
+        view: ResourcesTierDetailView = self.view  # type: ignore
+        await interaction.response.send_modal(RecycleResourceQtyModal(view.cog, self.resource))
+
+
 class RecycleResourceQtyModal(discord.ui.Modal, title="♻️ Recycle Resources → Scrap"):
     def __init__(self, cog: "CityBuilder", resource_name: str):
         super().__init__()
@@ -124,14 +134,6 @@ class WorkersTiersMenuView(discord.ui.View):
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
-
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id != self.author.id:
-            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
-            return False
-        return True
-
 
 
 class WorkersBtn(ui.Button):
@@ -336,62 +338,6 @@ class BackToTiersBtn(ui.Button):
         await interaction.response.edit_message(embed=e, view=tier_view)
 
 
-
-
-class RecycleResourceModal(discord.ui.Modal, title="♻️ Recycle Resources → Scrap"):
-    resource = discord.ui.TextInput(label="Resource name", placeholder="food / metal / goods / scrap", required=True)
-    quantity = discord.ui.TextInput(label="Quantity to recycle", placeholder="e.g., 10", required=True)
-
-    def __init__(self, cog: "CityBuilder"):
-        super().__init__()
-        self.cog = cog
-
-    async def on_submit(self, interaction: discord.Interaction):
-        res = str(self.resource.value).strip().lower()
-        if res == "ore":
-            res = "metal"
-        try:
-            qty = int(str(self.quantity.value))
-            if qty <= 0:
-                raise ValueError
-        except Exception:
-            return await interaction.response.send_message("❌ Quantity must be a positive integer.", ephemeral=True)
-
-        d = await self.cog.config.user(interaction.user).all()
-        inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
-        have = int(inv.get(res, 0))
-
-        if have < qty:
-            return await interaction.response.send_message(
-                f"❌ You only have **{have} {res}**.", ephemeral=True
-            )
-
-        # Compute scrap
-        scrap_gain = self.cog._scrap_from_resource(res, qty)
-
-        # Adjust inventory: remove resource, add scrap
-        await self.cog._adjust_resources(interaction.user, {res: -qty, "scrap": scrap_gain})
-
-        e = await self.cog.make_city_embed(
-            interaction.user,
-            header=f"♻️ Recycled **{qty} {res}** → **{scrap_gain} scrap**."
-        )
-        await interaction.response.send_message(embed=e, ephemeral=True)
-
-
-
-
-class RecycleBuildingView(ui.View):
-    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
-        super().__init__(timeout=180)
-        self.cog = cog
-        self.author = author
-        self.add_item(RecycleBuildingSelect(cog))
-        self.add_item(BackBtn(show_admin))
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return interaction.user.id == self.author.id
-
 class RecycleBuildingSelect(ui.Select):
     def __init__(self, cog: "CityBuilder"):
         self.cog = cog
@@ -407,54 +353,6 @@ class RecycleBuildingSelect(ui.Select):
         bname = self.values[0]
         # Ask for quantity in a modal
         await interaction.response.send_modal(RecycleBuildingQtyModal(self.cog, bname))
-
-class RecycleBuildingQtyModal(discord.ui.Modal, title="♻️ Recycle Buildings → Scrap"):
-    def __init__(self, cog: "CityBuilder", building_name: str):
-        super().__init__()
-        self.cog = cog
-        self.building_name = building_name
-        self.qty = discord.ui.TextInput(label=f"How many **{building_name}** to recycle?", placeholder="e.g., 1", required=True)
-        self.add_item(self.qty)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        try:
-            qty = int(str(self.qty.value))
-            if qty <= 0:
-                raise ValueError
-        except Exception:
-            return await interaction.response.send_message("❌ Quantity must be a positive integer.", ephemeral=True)
-
-        d = await self.cog.config.user(interaction.user).all()
-        bld = dict(d.get("buildings") or {})
-        have = int((bld.get(self.building_name) or {}).get("count", 0))
-
-        if have < qty:
-            return await interaction.response.send_message(
-                f"❌ You only have **{have} {self.building_name}**.", ephemeral=True
-            )
-
-        # Compute scrap yield
-        scrap_gain = self.cog._scrap_from_building(self.building_name, qty)
-
-        # Deduct buildings
-        new_count = have - qty
-        if new_count > 0:
-            bld[self.building_name] = {"count": new_count}
-        else:
-            bld.pop(self.building_name, None)
-        await self.cog.config.user(interaction.user).buildings.set(bld)
-
-        # Reconcile staffing (capacity, assignments, etc.)
-        await self.cog._reconcile_staffing(interaction.user)
-
-        # Add scrap
-        await self.cog._adjust_resources(interaction.user, {"scrap": scrap_gain})
-
-        e = await self.cog.make_city_embed(
-            interaction.user,
-            header=f"♻️ Recycled **{qty} {self.building_name}** → **{scrap_gain} scrap**."
-        )
-        await interaction.response.send_message(embed=e, ephemeral=True)
 
 class RecycleBuildingInTierBtn(ui.Button):
     def __init__(self, bname: str):
