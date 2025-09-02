@@ -381,6 +381,115 @@ class SSE(commands.Cog):
         # Normal filter-based event
         await self._process_filtered_event(data)
 
+    async def _process_filtered_event(self, data: dict):
+        """
+        Route a non-RMB event to all matching filters.
+        Region scoping now considers *all* regions referenced in the event (origin + destination),
+        so filters scoped to either region will match.
+        """
+        event_str = data.get("str", "") or ""
+        html = data.get("htmlStr", "") or ""
+    
+        # NEW: collect all regions (origin + destination) and pick a primary for display
+        event_regions: set[str] = _regions_from_event(html, event_str)
+        region: Optional[str] = _primary_region_from_event(html, event_str)
+    
+        flag_url = self._flag_from_html(html)
+        title, desc = self._smart_title_desc(event_str)
+        title, desc = hyperlink_ns(title), hyperlink_ns(desc)
+    
+        # For each guild, try filters; if none match and fallback enabled, send to default webhook.
+        tasks = []
+        for guild in self.bot.guilds:
+            if not await self.config.guild(guild).enabled():
+                continue
+    
+            filters = await self.config.guild(guild).filters()
+            default_webhook = await self.config.guild(guild).default_webhook()
+            fallback = bool(await self.config.guild(guild).route_unmatched_to_default())
+    
+            matched = False
+    
+            for f in filters:
+                patt = f.get("pattern") or ""
+                regs = [r.strip().lower() for r in (f.get("regions") or []) if r]
+    
+                # Region scope: if the filter has regions, match if ANY of the event regions is in scope
+                if regs:
+                    if not event_regions or not any(er in regs for er in event_regions):
+                        continue  # none of the event's regions are in this filter's scope
+    
+                # Regex match
+                try:
+                    if patt and not re.search(patt, event_str, re.I):
+                        continue
+                except re.error:
+                    # Bad regex in config; skip quietly
+                    continue
+    
+                matched = True
+                color = int(f.get("color") or 0x5865F2)
+                role_id = f.get("role_id")
+                webhook = f.get("webhook") or default_webhook
+                if not webhook:
+                    continue
+    
+                embed = discord.Embed(
+                    title=title or "NationStates Event",
+                    description=desc or event_str,
+                    colour=discord.Colour(color),
+                    timestamp=datetime.fromtimestamp(
+                        data.get("time", int(datetime.now(timezone.utc).timestamp())),
+                        tz=timezone.utc,
+                    ),
+                )
+                if flag_url:
+                    embed.set_thumbnail(url=flag_url)
+    
+                # Footer: show all regions when we have them; otherwise show primary if present
+                eid = data.get("id", "N/A")
+                if event_regions:
+                    embed.set_footer(
+                        text=f"Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}"
+                    )
+                elif region:
+                    embed.set_footer(text=f"Event ID: {eid} • Region: {region}")
+                else:
+                    embed.set_footer(text=f"Event ID: {eid}")
+    
+                content = f"<@&{role_id}>" if role_id else None
+                tasks.append(self._post_webhook(webhook, content, [embed]))
+    
+            # Fallback: if nothing matched but we want all events to at least show up
+            if not matched and fallback and default_webhook:
+                embed = discord.Embed(
+                    title=title or "NationStates Event",
+                    description=desc or event_str,
+                    colour=discord.Colour(0x2F3136),
+                    timestamp=datetime.fromtimestamp(
+                        data.get("time", int(datetime.now(timezone.utc).timestamp())),
+                        tz=timezone.utc,
+                    ),
+                )
+                if flag_url:
+                    embed.set_thumbnail(url=flag_url)
+    
+                eid = data.get("id", "N/A")
+                if event_regions:
+                    embed.set_footer(
+                        text=f"(unmatched) Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}"
+                    )
+                elif region:
+                    embed.set_footer(text=f"(unmatched) Event ID: {eid} • Region: {region}")
+                else:
+                    embed.set_footer(text=f"(unmatched) Event ID: {eid}")
+    
+                tasks.append(self._post_webhook(default_webhook, None, [embed]))
+    
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+
     async def _process_rmb(self, region_slug: str, post_id: str, data: dict):
         # Fetch message XML
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?region={region_slug}&q=messages&fromid={post_id}"
