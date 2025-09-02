@@ -38,9 +38,33 @@ class WorkersTiersMenuView(discord.ui.View):
         self.cog = cog
         self.author = author
         self.show_admin = show_admin
+
+        # TIER BUTTONS (above)
         for t in self.cog._all_tiers():
-            self.add_item(WorkersTierButton(t))
-        self.add_item(BackBtn(show_admin))
+            btn = WorkersTierButton(t)
+            # leave rows for auto-placement so they sit above the bottom row
+            self.add_item(btn)
+
+        # ACTION ROW (bottom)
+        hire_btn = HireWorkerBtn()
+        fire_btn = FireWorkerBtn()
+        back_btn = BackBtn(show_admin)
+
+        # Pin these to the bottom row so tiers stay above them
+        hire_btn.row = 4
+        fire_btn.row = 4
+        back_btn.row = 4
+
+        self.add_item(hire_btn)
+        self.add_item(fire_btn)
+        self.add_item(back_btn)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id:
@@ -953,6 +977,48 @@ class HireWorkerBtn(ui.Button):
             embed=e,
             view=ConfirmHireView(cog, view.author, show_admin=any(isinstance(i, NextDayBtn) for i in view.children))
         )
+
+class FireWorkerBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Fire Worker", style=discord.ButtonStyle.danger, custom_id="city:workers:fire")
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view  # can be WorkersView or WorkersTiersMenuView
+        cog: CityBuilder = view.cog  # type: ignore
+
+        d = await cog.config.user(interaction.user).all()
+        hired = int(d.get("workers_hired") or 0)
+        if hired <= 0:
+            return await interaction.response.send_message("❌ You don’t have any workers to fire.", ephemeral=True)
+
+        # figure out unassigned count
+        st = await cog._get_staffing(interaction.user)
+        assigned = sum(int(v) for v in st.values())
+        unassigned = max(0, hired - assigned)
+        if unassigned <= 0:
+            return await interaction.response.send_message(
+                "❌ All workers are assigned right now. Unassign one before firing.",
+                ephemeral=True
+            )
+
+        # fire: -1 hired and -1 unassigned
+        await cog.config.user(interaction.user).workers_hired.set(hired - 1)
+        await cog.config.user(interaction.user).workers_unassigned.set(unassigned - 1)
+
+        # If we’re on the tier overview, refresh that; otherwise fall back to generic workers panel
+        if isinstance(view, WorkersTiersMenuView):
+            e = await cog.workers_overview_by_tier_embed(interaction.user)
+            await interaction.response.edit_message(
+                embed=e,
+                view=WorkersTiersMenuView(cog, view.author, show_admin=view.show_admin)  # type: ignore
+            )
+        else:
+            e = await cog.workers_embed(interaction.user)
+            await interaction.response.edit_message(
+                embed=e,
+                view=WorkersView(cog, interaction.user, show_admin=any(isinstance(i, NextDayBtn) for i in view.children))  # type: ignore
+            )
+
 
 class ConfirmHireView(ui.View):
     def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
