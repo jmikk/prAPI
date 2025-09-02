@@ -101,6 +101,44 @@ def _extract_nation_from_event(html: str, text: str) -> Optional[str]:
         return m2.group(1).lower()
     return None
 
+def _primary_region_from_event(html: str, text: str) -> Optional[str]:
+    # Prefer destination on "relocated from ... to ..." (text)
+    m_txt = re.search(r"relocated\s+from\s+%%[a-z0-9_]+%%\s+to\s+%%([a-z0-9_]+)%%", text or "", re.I)
+    if m_txt:
+        return m_txt.group(1).lower()
+
+    # Prefer destination on "relocated ... to ..." (html)
+    m_html = re.search(r"\bto\s*<a\s+href=\"region=([a-z0-9_]+)\"", html or "", re.I)
+    if m_html:
+        return m_html.group(1).lower()
+
+    # Otherwise pick the last region reference if any
+    regions_html = re.findall(r'href="region=([a-z0-9_]+)"', html or "", re.I)
+    if regions_html:
+        return regions_html[-1].lower()
+
+    regions_txt = re.findall(r"%%([a-z0-9_]+)%%", text or "", re.I)
+    if regions_txt:
+        return regions_txt[-1].lower()
+
+    return None
+
+
+def _regions_from_event(html: str, text: str) -> set[str]:
+    """Return all region slugs referenced in the event (origin + destination if present)."""
+    regions: set[str] = set()
+
+    # HTML links
+    for r in re.findall(r'href="region=([a-z0-9_]+)"', html or "", re.I):
+        regions.add(r.lower())
+
+    # Text tokens
+    for r in re.findall(r"%%([a-z0-9_]+)%%", text or "", re.I):
+        regions.add(r.lower())
+
+    return regions
+
+
 def _extract_region_from_event(html: str, text: str) -> Optional[str]:
     m = REGION_RE.search(html or "")
     if m:
@@ -403,92 +441,9 @@ class SSE(commands.Cog):
             )
         except Exception:
             log.exception("RMB parse failed")
+    s
+    
 
-    async def _process_filtered_event(self, data: dict):
-        event_str = data.get("str", "") or ""
-        html = data.get("htmlStr", "") or ""
-        region = _extract_region_from_event(html, event_str)  # NEW
-
-            # Fallback: infer region from nation membership if not present in event
-        if region is None:
-            nation = _extract_nation_from_event(html, event_str)
-            if nation:
-                region = await self._region_for_nation_via_caches(nation)    
-    
-        flag_url = self._flag_from_html(html)
-        title, desc = self._smart_title_desc(event_str)
-        title, desc = hyperlink_ns(title), hyperlink_ns(desc)
-    
-        # For each guild, try filters; if none match and fallback enabled, send to default webhook.
-        tasks = []
-        for guild in self.bot.guilds:
-            if not await self.config.guild(guild).enabled():
-                continue
-    
-            filters = await self.config.guild(guild).filters()
-            default_webhook = await self.config.guild(guild).default_webhook()
-            fallback = bool(await self.config.guild(guild).route_unmatched_to_default())
-    
-            matched = False
-    
-            for f in filters:
-                patt = f.get("pattern") or ""
-                regions = [r.strip().lower() for r in (f.get("regions") or []) if r]
-                # region scope check (empty regions = match all)
-                if regions and (region is None or region not in regions):
-                    continue
-                # regex match
-                try:
-                    if not patt or not re.search(patt, event_str, re.I):
-                        continue
-                except re.error:
-                    continue
-    
-                matched = True
-                color = int(f.get("color") or 0x5865F2)
-                role_id = f.get("role_id")
-                webhook = f.get("webhook") or default_webhook
-                if not webhook:
-                    continue
-    
-                embed = discord.Embed(
-                    title=title or "NationStates Event",
-                    description=desc or event_str,
-                    colour=discord.Colour(color),
-                    timestamp=datetime.fromtimestamp(
-                        data.get("time", int(datetime.now(timezone.utc).timestamp())),
-                        tz=timezone.utc,
-                    ),
-                )
-                if flag_url:
-                    embed.set_thumbnail(url=flag_url)
-                eid = data.get("id", "N/A")
-                region_note = f" • Region: {region}" if region else ""
-                embed.set_footer(text=f"Event ID: {eid}{region_note}")
-    
-                content = f"<@&{role_id}>" if role_id else None
-                tasks.append(self._post_webhook(webhook, content, [embed]))
-    
-            # Fallback: if nothing matched but we want all events to at least show up
-            if not matched and fallback and default_webhook:
-                embed = discord.Embed(
-                    title=title or "NationStates Event",
-                    description=desc or event_str,
-                    colour=discord.Colour(0x2F3136),
-                    timestamp=datetime.fromtimestamp(
-                        data.get("time", int(datetime.now(timezone.utc).timestamp())),
-                        tz=timezone.utc,
-                    ),
-                )
-                if flag_url:
-                    embed.set_thumbnail(url=flag_url)
-                eid = data.get("id", "N/A")
-                region_note = f" • Region: {region}" if region else ""
-                embed.set_footer(text=f"(unmatched) Event ID: {eid}{region_note}")
-                tasks.append(self._post_webhook(default_webhook, None, [embed]))
-    
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
 
 
     # ------------- Utils -------------
