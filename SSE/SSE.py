@@ -550,7 +550,7 @@ class SSE(commands.Cog):
             )
         except Exception:
             log.exception("RMB parse failed")
-    s
+    
     
 
 
