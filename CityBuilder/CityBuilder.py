@@ -2250,21 +2250,77 @@ class CityBuilder(commands.Cog):
 
     # --- Planner helpers -------------------------------------------------
 
-    def _all_tiers(self) -> list[int]:
-        """Return a sorted list of all tiers seen in BUILDINGS/RESOURCES."""
-        tiers = set()
-        for meta in getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})).values():
-            try:
-                tiers.add(int(meta.get("tier", 0)))
-            except Exception:
-                pass
-        for meta in getattr(self, "RESOURCES", globals().get("RESOURCES", {})).values():
-            try:
-                tiers.add(int(meta.get("tier", 0)))
-            except Exception:
-                pass
-        tiers = {t for t in tiers if t > 0}
-        return sorted(tiers) or [1]
+    def _choose_producer(self, res_name: str) -> Optional[Tuple[str, int, int]]:
+        """
+        Return (building_name, qty_out_per_tick, building_tier) for the chosen producer of `res_name`,
+        or None if no producer exists.
+        Strategy: prefer lowest tier; if tie, prefer higher output.
+        """
+        candidates = self._producer_index.get(res_name, [])
+        if not candidates:
+            return None
+        # candidates: list of (bname, qty_out, tier)
+        # sort by (tier asc, output desc)
+        bname, qty, tier = sorted(candidates, key=lambda x: (x[2] if x[2] is not None else 9999, -(x[1] or 0)))[0]
+        return (bname, int(qty or 1), int(tier or 0))
+
+    def _accumulate_buildings_for_resource(self,res_name: str,qty_needed: float,totals: Dict[str, float],seen: Optional[Set[Tuple[str, str]]] = None,):
+        """
+        Add required buildings into `totals` to produce `qty_needed` of `res_name` per tick.
+        Base resources (no producer) are ignored.
+        """
+        if qty_needed <= 0:
+            return
+        if seen is None:
+            seen = set()
+    
+        chosen = self._choose_producer(res_name)
+        if chosen is None:
+            # No producer → treat as base input; ignore for building counts.
+            return
+    
+        bname, out_per_tick, _tier = chosen
+        if out_per_tick <= 0:
+            # Avoid divide-by-zero; treat as impossible
+            return
+    
+        # How many buildings are needed to cover qty_needed per tick?
+        needed_buildings = math.ceil(qty_needed / float(out_per_tick))
+        totals[bname] = totals.get(bname, 0.0) + needed_buildings
+    
+        # Recurse into this building's input resources
+        b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+        meta = b_tbl.get(bname, {}) or {}
+        inputs = meta.get("inputs") or {}
+        key = ("building", bname.lower())
+        if key in seen:
+            return
+        seen.add(key)
+    
+        for in_res, in_qty_per_build in (inputs.items() if isinstance(inputs, dict) else []):
+            # total required per tick = (qty per building per tick) * (number of buildings)
+            self._accumulate_buildings_for_resource(
+                str(in_res),
+                float(in_qty_per_build) * needed_buildings,
+                totals,
+                seen,
+            )
+    
+        def _all_tiers(self) -> list[int]:
+            """Return a sorted list of all tiers seen in BUILDINGS/RESOURCES."""
+            tiers = set()
+            for meta in getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})).values():
+                try:
+                    tiers.add(int(meta.get("tier", 0)))
+                except Exception:
+                    pass
+            for meta in getattr(self, "RESOURCES", globals().get("RESOURCES", {})).values():
+                try:
+                    tiers.add(int(meta.get("tier", 0)))
+                except Exception:
+                    pass
+            tiers = {t for t in tiers if t > 0}
+            return sorted(tiers) or [1]
     
     def _items_by_tier(self, kind: str, tier: int) -> list[str]:
         """Return item names by kind ('building' or 'resource') and tier."""
@@ -2327,35 +2383,67 @@ class CityBuilder(commands.Cog):
             lines.extend(self._planner_tree_lines(ck, child, depth + 2, seen))
         return lines
     
-    async def planner_embed(self,user: discord.abc.User,kind: Optional[str] = None,tier: Optional[int] = None,item: Optional[str] = None) -> discord.Embed:
-        """
-        Build an embed for the planner depending on how far the user has gone.
-        """
+    async def planner_embed(
+        self,
+        user: discord.abc.User,
+        kind: Optional[str] = None,
+        tier: Optional[int] = None,
+        item: Optional[str] = None
+    ) -> discord.Embed:
         if kind is None:
-            return discord.Embed(
-                title="🏗️ Plan Your City",
-                description="Pick what you want to plan.",
-            )
+            return discord.Embed(title="🏗️ Plan Your City", description="Pick what you want to plan.")
         if tier is None:
-            return discord.Embed(
-                title=("🏗️ Buildings" if kind == "building" else "🧱 Resources"),
-                description="Choose a tier:",
-            )
+            return discord.Embed(title=("🏗️ Buildings" if kind == "building" else "🧱 Resources"), description="Choose a tier:")
         if item is None:
             items = self._items_by_tier(kind, tier)
             desc = "\n".join(f"• {x}" for x in items) or "—"
-            return discord.Embed(
-                title=f"{'🏗️ Buildings' if kind == 'building' else '🧱 Resources'} — Tier {tier}",
-                description=desc,
-            )
-        # Final: show the tree
+            return discord.Embed(title=f"{'🏗️ Buildings' if kind == 'building' else '🧱 Resources'} — Tier {tier}", description=desc)
+    
+        # ---- Existing tree (optional, keep if you still want to display the chain) ----
         lines = self._planner_tree_lines(kind, item)
+    
+        # ---- New: Compute per-tick building requirements for 1 unit of the END ITEM ----
+        totals: Dict[str, float] = {}
+        title = f"🗺️ Plan: {item}"
+    
+        if kind == "resource":
+            # Direct: produce 1 of this resource per tick
+            self._accumulate_buildings_for_resource(item, 1.0, totals)
+            per_tick_desc = "\n".join(f"• **{b}** ×{int(math.ceil(cnt))}" for b, cnt in sorted(totals.items(), key=lambda x: x[0].lower())) or "— (base resource only)"
+            header = f"**Per tick for 1 × {item}:**\n{per_tick_desc}"
+        else:
+            # kind == "building": choose one of its products (if any). If multiple, show all sections.
+            b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+            meta = b_tbl.get(item, {}) or {}
+            produces = meta.get("produces") or {}
+            if isinstance(produces, dict) and produces:
+                sections = []
+                for out_res, out_qty in produces.items():
+                    # Compute how many buildings needed to get 1 of out_res per tick
+                    totals = {}
+                    self._accumulate_buildings_for_resource(str(out_res), 1.0, totals)
+                    per_tick_desc = "\n".join(f"• **{b}** ×{int(math.ceil(cnt))}" for b, cnt in sorted(totals.items(), key=lambda x: x[0].lower())) or "— (base resource only)"
+                    sections.append(f"**Per tick for 1 × {out_res}:**\n{per_tick_desc}")
+                header = "\n\n".join(sections)
+            else:
+                # No produces data; fall back to tree only
+                header = "_No output mapping found for this building._"
+    
+        # Optional: show produces line near top for buildings
+        if kind == "building":
+            b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+            prod = b_tbl.get(item, {}).get("produces") or {}
+            if isinstance(prod, dict) and prod:
+                outs = ", ".join(f"{k} ×{v}" for k, v in prod.items())
+                lines.insert(1, f"  • _Produces:_ {outs}")
+    
         e = discord.Embed(
-            title=f"🗺️ Plan: {item}",
-            description="\n".join(lines)[:4000] or "—",
+            title=title,
+            description=(header + "\n\n" + "\n".join(lines))[:4000] if lines else header[:4000],
         )
         e.set_footer(text=f"{'Building' if kind=='building' else 'Resource'} · Tier {tier}")
         return e
+
 
 
     def _planner_children(self, kind: str, name: str) -> list[tuple[str, str, int]]:
