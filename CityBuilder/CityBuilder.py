@@ -2309,8 +2309,8 @@ class CityBuilder(commands.Cog):
                 children.append(("building", str(b), 1))
         return children
     
-    def _planner_tree_lines(self, kind: str, name: str, depth: int = 0, seen: set[tuple[str, str]] | None = None) -> list[str]:
-        """Recursively format the build/production tree as indented bullet lines."""
+def _planner_tree_lines(self,kind: str,name: str,depth: int = 0,seen: Optional[Set[Tuple[str, str]]] = None) -> List[str]:
+    ...
         if seen is None:
             seen = set()
         key = (kind, name.lower())
@@ -2328,7 +2328,8 @@ class CityBuilder(commands.Cog):
             lines.extend(self._planner_tree_lines(ck, child, depth + 2, seen))
         return lines
     
-    async def planner_embed(self, user: discord.abc.User, kind: str | None = None, tier: int | None = None, item: str | None = None) -> discord.Embed:
+    async def planner_embed(self,user: discord.abc.User,kind: Optional[str] = None,tier: Optional[int] = None,item: Optional[str] = None) -> discord.Embed:
+    ...
         """
         Build an embed for the planner depending on how far the user has gone.
         """
