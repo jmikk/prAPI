@@ -688,6 +688,175 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 # Default composite: 46 + a few companions (tweak freely)
 DEFAULT_SCALES = [46, 1, 10, 39]
 
+# ---------- Planner Entry Button (on the City main menu) -------------
+class PlanBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Plan", style=discord.ButtonStyle.secondary, custom_id="city:plan")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        embed = await view.cog.planner_embed(interaction.user, None, None, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanRootView(view.cog, view.author, show_admin=view.show_admin),
+        )
+
+# -------------------- Root: pick Buildings or Resources ---------------
+class PlanRootView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.show_admin = show_admin
+        self.add_item(PlanPickKindBtn("building"))
+        self.add_item(PlanPickKindBtn("resource"))
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+class PlanPickKindBtn(ui.Button):
+    def __init__(self, kind: str):
+        super().__init__(
+            label="Buildings" if kind == "building" else "Resources",
+            style=discord.ButtonStyle.primary,
+            custom_id=f"city:plan:{kind}",
+        )
+        self.kind = kind
+
+    async def callback(self, interaction: discord.Interaction):
+        root: PlanRootView = self.view  # type: ignore
+        embed = await root.cog.planner_embed(interaction.user, self.kind, None, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanTierView(root.cog, root.author, self.kind, root.show_admin),
+        )
+
+# -------------------- Tier select after kind --------------------------
+class PlanTierView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, kind: str, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.kind = kind
+        self.show_admin = show_admin
+        # Build a dropdown of all tiers (use cog._all_tiers())
+        self.add_item(PlanTierSelect(self.cog, self.kind))
+        self.add_item(BackToRootBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+class PlanTierSelect(ui.Select):
+    def __init__(self, cog: "CityBuilder", kind: str):
+        self.cog = cog
+        self.kind = kind
+        options = [discord.SelectOption(label=f"Tier {t}", value=str(t)) for t in cog._all_tiers()]
+        super().__init__(placeholder="Choose a tier", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        tier = int(self.values[0])
+        embed = await self.cog.planner_embed(interaction.user, self.kind, tier, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanItemView(self.cog, interaction.user, self.kind, tier, getattr(self.view, "show_admin", False)),  # type: ignore
+        )
+
+class BackToRootBtn(ui.Button):
+    def __init__(self, show_admin: bool):
+        super().__init__(label="Back", style=discord.ButtonStyle.secondary)
+        self.show_admin = show_admin
+
+    async def callback(self, interaction: discord.Interaction):
+        view: PlanTierView = self.view  # type: ignore
+        embed = await view.cog.planner_embed(interaction.user, None, None, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanRootView(view.cog, interaction.user, show_admin=self.show_admin),
+        )
+
+# -------------------- Item select after tier --------------------------
+class PlanItemView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, kind: str, tier: int, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.kind = kind
+        self.tier = int(tier)
+        self.show_admin = show_admin
+        self.add_item(PlanItemSelect(cog, kind, tier))
+        self.add_item(BackToTierBtn(kind, show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+class PlanItemSelect(ui.Select):
+    def __init__(self, cog: "CityBuilder", kind: str, tier: int):
+        self.cog = cog
+        self.kind = kind
+        self.tier = int(tier)
+        items = self.cog._items_by_tier(kind, tier)
+        options = [discord.SelectOption(label=name, value=name) for name in items] or [discord.SelectOption(label="—", value="-", default=True)]
+        super().__init__(placeholder="Choose what to plan", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        name = self.values[0]
+        if name == "-":
+            return await interaction.response.send_message("Nothing in this tier.", ephemeral=True)
+        embed = await self.cog.planner_embed(interaction.user, self.kind, self.tier, name)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanTreeView(self.cog, interaction.user, self.kind, self.tier, name, getattr(self.view, "show_admin", False)),  # type: ignore
+        )
+
+class BackToTierBtn(ui.Button):
+    def __init__(self, kind: str, show_admin: bool):
+        super().__init__(label="Back", style=discord.ButtonStyle.secondary)
+        self.kind = kind
+        self.show_admin = show_admin
+
+    async def callback(self, interaction: discord.Interaction):
+        view: PlanItemView = self.view  # type: ignore
+        embed = await view.cog.planner_embed(interaction.user, self.kind, None, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanTierView(view.cog, interaction.user, self.kind, self.show_admin),
+        )
+
+# -------------------- Final tree + back buttons -----------------------
+class PlanTreeView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, kind: str, tier: int, name: str, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.kind = kind
+        self.tier = int(tier)
+        self.name = name
+        self.show_admin = show_admin
+        self.add_item(BackToItemsBtn(kind, tier, show_admin))
+        self.add_item(BackBtn(show_admin))  # back to main city
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+class BackToItemsBtn(ui.Button):
+    def __init__(self, kind: str, tier: int, show_admin: bool):
+        super().__init__(label="Back to Items", style=discord.ButtonStyle.secondary)
+        self.kind = kind
+        self.tier = int(tier)
+        self.show_admin = show_admin
+
+    async def callback(self, interaction: discord.Interaction):
+        view: PlanTreeView = self.view  # type: ignore
+        embed = await view.cog.planner_embed(interaction.user, self.kind, self.tier, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanItemView(view.cog, interaction.user, self.kind, self.tier, self.show_admin),
+        )
+
 
 class SellAllScrapBtn(discord.ui.Button):
     def __init__(self, cog: "CityBuilder"):
@@ -2004,10 +2173,11 @@ class CityBuilder(commands.Cog):
             team=None,              # "Team Celestial Nexus" / "Team Drowned World" / "Team Iron Empire"
         )
         self.next_tick_at: Optional[int] = None
+        self._producer_index = self._build_producer_index()
 
     async def cog_load(self):
-    # Start background tick after the bot is ready to load cogs
-    # (safer than doing it in __init__)
+        # Start background tick after the bot is ready to load cogs
+        # (safer than doing it in __init__)
         self.task = asyncio.create_task(self.resource_tick())
 
     def cog_unload(self):
@@ -2015,6 +2185,199 @@ class CityBuilder(commands.Cog):
         task = getattr(self, "task", None)
         if task:
             task.cancel()
+
+    def _build_producer_index(self):
+        """
+        Map resource -> list of (building_name, qty_out, building_tier).
+        Uses BUILDINGS[*]['produces'].
+        """
+        index = {}
+        buildings = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+        for bname, meta in buildings.items():
+            produces = meta.get("produces") or {}
+            tier = int(meta.get("tier", 0) or 0)
+            for res_name, qty in (produces.items() if isinstance(produces, dict) else []):
+                index.setdefault(str(res_name), []).append((bname, int(qty or 1), tier))
+        return index
+
+    def _resource_tier(self, res_name: str) -> int:
+    # Prefer explicit tier if present on RESOURCES
+    res_tbl = getattr(self, "RESOURCES", globals().get("RESOURCES", {})) or {}
+    meta = res_tbl.get(res_name, {}) or {}
+    if "tier" in meta and str(meta["tier"]).isdigit():
+        return int(meta["tier"])
+    # Otherwise infer from producers
+    best = None
+    for _, _, btier in self._producer_index.get(res_name, []):
+        if btier and (best is None or btier < best):
+            best = btier
+    return best if best is not None else 1
+
+def _all_tiers(self) -> list[int]:
+    tiers = set()
+    b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+    for meta in b_tbl.values():
+        if "tier" in meta:
+            try:
+                t = int(meta["tier"])
+                if t > 0:
+                    tiers.add(t)
+            except Exception:
+                pass
+    # include inferred resource tiers (optional but helpful)
+    for res in getattr(self, "RESOURCES", globals().get("RESOURCES", {})) or {}:
+        t = self._resource_tier(res)
+        if t > 0:
+            tiers.add(t)
+    return sorted(tiers) or [1]
+
+    def _items_by_tier(self, kind: str, tier: int) -> list[str]:
+        tier = int(tier)
+        if kind == "building":
+            table = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+            names = [n for n, m in table.items() if str(m.get("tier", "")) == str(tier)]
+        else:
+            # resources: use explicit tier or inferred producer tier
+            table = getattr(self, "RESOURCES", globals().get("RESOURCES", {})) or {}
+            names = []
+            for n in table.keys():
+                if self._resource_tier(n) == tier:
+                    names.append(n)
+            # also include resources that exist only as outputs (not listed in RESOURCES)
+            for r in self._producer_index.keys():
+                if r not in table and self._resource_tier(r) == tier:
+                    names.append(r)
+        return sorted(set(names), key=str.lower)
+
+    # --- Planner helpers -------------------------------------------------
+
+    def _all_tiers(self) -> list[int]:
+        """Return a sorted list of all tiers seen in BUILDINGS/RESOURCES."""
+        tiers = set()
+        for meta in getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})).values():
+            try:
+                tiers.add(int(meta.get("tier", 0)))
+            except Exception:
+                pass
+        for meta in getattr(self, "RESOURCES", globals().get("RESOURCES", {})).values():
+            try:
+                tiers.add(int(meta.get("tier", 0)))
+            except Exception:
+                pass
+        tiers = {t for t in tiers if t > 0}
+        return sorted(tiers) or [1]
+    
+    def _items_by_tier(self, kind: str, tier: int) -> list[str]:
+        """Return item names by kind ('building' or 'resource') and tier."""
+        if kind == "building":
+            table = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {}))
+        else:
+            table = getattr(self, "RESOURCES", globals().get("RESOURCES", {}))
+        out = []
+        for name, meta in (table or {}).items():
+            try:
+                if int(meta.get("tier", 0)) == int(tier):
+                    out.append(name)
+            except Exception:
+                continue
+        return sorted(out, key=str.lower)
+    
+    def _planner_children(self, kind: str, name: str) -> list[tuple[str, str, int]]:
+        """
+        Return a list of (child_kind, child_name, qty) that this item requires.
+        For buildings, look for meta['requires'] = {'resource or building name': qty}.
+        For resources, try 'inputs' (dict) or 'produced_by' (list of buildings).
+        """
+        children = []
+        if kind == "building":
+            table = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {}))
+            meta = (table or {}).get(name, {}) or {}
+            reqs = meta.get("requires") or {}
+            for child_name, qty in (reqs.items() if isinstance(reqs, dict) else []):
+                # Guess: if it's a building name, treat as building; else resource
+                if child_name in (globals().get("BUILDINGS", {})):
+                    children.append(("building", child_name, int(qty)))
+                else:
+                    children.append(("resource", child_name, int(qty)))
+        else:
+            table = getattr(self, "RESOURCES", globals().get("RESOURCES", {}))
+            meta = (table or {}).get(name, {}) or {}
+            inputs = meta.get("inputs") or {}
+            for res_name, qty in (inputs.items() if isinstance(inputs, dict) else []):
+                children.append(("resource", res_name, int(qty)))
+            produced_by = meta.get("produced_by") or []
+            for b in (produced_by if isinstance(produced_by, list) else []):
+                children.append(("building", str(b), 1))
+        return children
+    
+    def _planner_tree_lines(self, kind: str, name: str, depth: int = 0, seen: set[tuple[str, str]] | None = None) -> list[str]:
+        """Recursively format the build/production tree as indented bullet lines."""
+        if seen is None:
+            seen = set()
+        key = (kind, name.lower())
+        prefix = "  " * depth + ("• " if depth > 0 else "")
+        lines = [f"{prefix}**{name}** ({'building' if kind=='building' else 'resource'})"]
+        if key in seen:
+            lines[-1] += " ↻"
+            return lines
+        seen.add(key)
+        for ck, child, qty in self._planner_children(kind, name):
+            qty_txt = f" ×{qty}" if qty and qty != 1 else ""
+            child_prefix = "  " * (depth + 1) + "• "
+            lines.append(f"{child_prefix}**{child}** ({'building' if ck=='building' else 'resource'}){qty_txt}")
+            # Recurse
+            lines.extend(self._planner_tree_lines(ck, child, depth + 2, seen))
+        return lines
+    
+    async def planner_embed(self, user: discord.abc.User, kind: str | None = None, tier: int | None = None, item: str | None = None) -> discord.Embed:
+        """
+        Build an embed for the planner depending on how far the user has gone.
+        """
+        if kind is None:
+            return discord.Embed(
+                title="🏗️ Plan Your City",
+                description="Pick what you want to plan.",
+            )
+        if tier is None:
+            return discord.Embed(
+                title=("🏗️ Buildings" if kind == "building" else "🧱 Resources"),
+                description="Choose a tier:",
+            )
+        if item is None:
+            items = self._items_by_tier(kind, tier)
+            desc = "\n".join(f"• {x}" for x in items) or "—"
+            return discord.Embed(
+                title=f"{'🏗️ Buildings' if kind == 'building' else '🧱 Resources'} — Tier {tier}",
+                description=desc,
+            )
+        # Final: show the tree
+        lines = self._planner_tree_lines(kind, item)
+        e = discord.Embed(
+            title=f"🗺️ Plan: {item}",
+            description="\n".join(lines)[:4000] or "—",
+        )
+        e.set_footer(text=f"{'Building' if kind=='building' else 'Resource'} · Tier {tier}")
+        return e
+
+
+    def _planner_children(self, kind: str, name: str) -> list[tuple[str, str, int]]:
+        children = []
+        if kind == "building":
+            b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+            meta = b_tbl.get(name, {}) or {}
+            inputs = meta.get("inputs") or {}
+            for res_name, qty in (inputs.items() if isinstance(inputs, dict) else []):
+                children.append(("resource", str(res_name), int(qty or 1)))
+            # If you ever add building dependencies, also handle meta.get("requires") here.
+        else:  # resource
+            # Show buildings that can produce this resource
+            for bname, qty_out, _tier in self._producer_index.get(name, []):
+                # qty_out is output per cycle; for tree display it's enough to show the link
+                children.append(("building", bname, 1))
+        return children
+    
+
+
 
     async def _get_scrap_qty(self, user: discord.abc.User) -> int:
         res = await self.config.user(user).resources()
@@ -3336,6 +3699,7 @@ class CityMenuView(ui.View):
         self.add_item(LeaderboardBtn())
         self.add_item(TeamScoresBtn())   
         self.add_item(HowToPlayBtn())
+        self.add_item(PlanBtn())
         if show_admin:
             self.add_item(NextDayBtn())
             self.add_item(RateBtn()) 
