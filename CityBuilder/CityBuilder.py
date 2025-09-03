@@ -15,6 +15,13 @@ TEAM_DROWNED   = "Team Drowned World"
 TEAM_IRON      = "Team Iron Empire"
 TEAM_LIST      = [TEAM_CELESTIAL, TEAM_DROWNED, TEAM_IRON]
 
+TEAM_CRESTS = {
+    "Team Celestial Nexus": "https://i.imgur.com/Bg3F8uh.png",
+    "Team Iron Empire":     "https://i.imgur.com/JcCH03K.png",
+    "Team Drowned World":   "https://i.imgur.com/3wXxLSI.png",
+}
+
+
 
 
 # ====== Balance knobs ======
@@ -3040,6 +3047,9 @@ class CityBuilder(commands.Cog):
         )
         my_team = await self.config.user(user).team()
         if my_team:
+          team = data.get("team")
+          if team in TEAM_CRESTS:
+          embed.set_thumbnail(url=TEAM_CRESTS[team])  
           e.add_field(name="Team", value=my_team, inline=True)
 
     
