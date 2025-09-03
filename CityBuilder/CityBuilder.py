@@ -10,6 +10,8 @@ from redbot.core import commands, Config
 import random
 import time
 
+SCRAP_PRICE_LOCAL = 5.0  # how much local currency per scrap
+
 TEAM_CELESTIAL = "Team Celestial Nexus"
 TEAM_DROWNED   = "Team Drowned World"
 TEAM_IRON      = "Team Iron Empire"
@@ -687,6 +689,44 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 
 # Default composite: 46 + a few companions (tweak freely)
 DEFAULT_SCALES = [46, 1, 10, 39]
+
+
+class SellAllScrapBtn(discord.ui.Button):
+    def __init__(self, cog: "CityBuilder"):
+        super().__init__(label="Sell Scrap", emoji="♻️", style=discord.ButtonStyle.green)
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        # quick acknowledge so we don't hit the 3s limit
+        try:
+            await interaction.response.defer(ephemeral=True, thinking=True)
+        except Exception:
+            pass
+
+        sold, revenue = await self.cog.sell_scrap(interaction.user, None)
+        rate, cur = await self.cog._get_rate_currency(interaction.user)
+
+        if sold <= 0:
+            return await interaction.followup.send("You don’t have any scrap to sell.", ephemeral=True)
+
+        # Refresh the main city panel message
+        try:
+            new_embed = await self.cog.make_city_embed(
+                interaction.user,
+                header=f"♻️ Sold {sold} scrap for **{revenue:,.2f} {cur}**"
+            )
+            # Update the same message that contains the buttons
+            await interaction.message.edit(embed=new_embed, view=self.view)
+        except Exception:
+            # If editing fails (e.g., message not the main city panel), just ignore
+            pass
+
+        # Ephemeral confirmation
+        await interaction.followup.send(
+            f"✅ Sold **{sold}** scrap for **{revenue:,.2f} {cur}** (price {SCRAP_PRICE_LOCAL:,.2f} {cur}/scrap).",
+            ephemeral=True,
+        )
+
 
 class TeamScoresBtn(ui.Button):
     def __init__(self):
@@ -1940,6 +1980,53 @@ class CityBuilder(commands.Cog):
         task = getattr(self, "task", None)
         if task:
             task.cancel()
+
+    async def _get_scrap_qty(self, user: discord.abc.User) -> int:
+        res = await self.config.user(user).resources()
+        for key in SCRAP_RESOURCE_KEYS:
+            if key in res:
+                try:
+                    return int(res.get(key, 0))
+                except Exception:
+                    return int(float(res.get(key, 0)) or 0)
+        return 0
+
+    async def _set_scrap_qty(self, user: discord.abc.User, new_qty: int) -> None:
+        async with self.config.user(user).resources() as res:
+            # normalize to the first existing key or default to lower "scrap"
+            key = None
+            for k in SCRAP_RESOURCE_KEYS:
+                if k in res:
+                    key = k
+                    break
+            if key is None:
+                key = "scrap"
+            res[key] = max(0, int(new_qty))
+    
+    async def sell_scrap(self, user: discord.abc.User, qty: int | None = None) -> tuple[int, float]:
+        """
+        Sells 'qty' scrap for local currency; if qty is None, sell all.
+        Returns (sold_qty, revenue_local).
+        """
+        have = await self._get_scrap_qty(user)
+        if have <= 0:
+            return 0, 0.0
+    
+        if qty is None or qty > have:
+            qty = have
+    
+        revenue = round(qty * float(SCRAP_PRICE_LOCAL), 2)
+    
+        # deduct scrap
+        await self._set_scrap_qty(user, have - qty)
+    
+        # credit treasury (bank is local currency in your embed)
+        bank = float(await self.config.user(user).bank())
+        bank += revenue
+        await self.config.user(user).bank.set(bank)
+    
+        return qty, revenue
+
 
     def _staffing_totals_by_tier(self, user_data: dict) -> dict[int, tuple[int, int]]:
         """
@@ -3203,6 +3290,7 @@ class CityMenuView(ui.View):
 #menu buttons
         self.add_item(ViewBtn())
         #self.add_item(BuildBtn())
+        self.add_item(SellAllScrapBtn(self.cog))  # << add here
         self.add_item(BankBtn())
         self.add_item(WorkersBtn())
         self.add_item(StoreBtn())
