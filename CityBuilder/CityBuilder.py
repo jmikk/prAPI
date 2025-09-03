@@ -2677,8 +2677,7 @@ class CityBuilder(commands.Cog):
         e.add_field(name="Runway", value=runway_txt, inline=True)
         e.add_field(
             name="Tips",
-            value="• Deposit: wallet **WC → local** bank\n"
-                  "• Withdraw: bank **local → WC** wallet\n",
+            value="• Deposit: wallet **WC → local** bank\n",
             inline=False,
         )
         return e
