@@ -1,7 +1,7 @@
 # citybuilder_buttons.py
 import asyncio
 import math
-from typing import Dict, Optional, Tuple, Callable
+from typing import Dict, Optional, Tuple, Callable, List, Set
 import io
 import aiohttp
 import discord
@@ -9,6 +9,7 @@ from discord import ui
 from redbot.core import commands, Config
 import random
 import time
+from __future__ import annotations
 
 SCRAP_PRICE_LOCAL = 5.0  # how much local currency per scrap
 
@@ -466,84 +467,84 @@ BUILDINGS: Dict[str, Dict] = {
   "Empire of the Deep": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Abyssal Throne": 1, "Abyssal Monastery": 1 },
+    "inputs": { "Kraken Dominion": 1, "Heralds of the Deep": 1 },
     "produces": { "Kraken Imperium": 1 },
     "tier": 6
   },
   "Council of Chains": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Blood Market": 1, "Abyssal Throne": 1 },
+    "inputs": { "Mercenary Legion": 1, "Kraken Dominion": 1 },
     "produces": { "Slaver Dynasties": 1 },
     "tier": 6
   },
   "Iron Dominion": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Grand Fortress": 1, "Blood Market": 1 },
+    "inputs": { "Conqueror Host": 1, "Mercenary Legion": 1 },
     "produces": { "Warlord Kingdoms": 1 },
     "tier": 6
   },
   "Mage Conclave": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Arcane War College": 1, "Grand Fortress": 1 },
+    "inputs": { "Spellbound Battalion": 1, "Conqueror Host": 1 },
     "produces": { "Arcane Dominion": 1 },
     "tier": 6
   },
   "High Theocracy": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Sanctified Citadel": 1, "Arcane War College": 1 },
+    "inputs": { "Holy Inquisition": 1, "Spellbound Battalion": 1 },
     "produces": { "Eternal Church": 1 },
     "tier": 6
   },
   "Order of Twilight": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Twilight Abbey": 1, "Sanctified Citadel": 1 },
+    "inputs": { "Oathbreakers": 1, "Holy Inquisition": 1 },
     "produces": { "Dusk Crusaders": 1 },
     "tier": 6
   },
   "Night Court": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Obsidian Pyramid": 1, "Twilight Abbey": 1 },
+    "inputs": { "Shadow Hierarchy": 1, "Oathbreakers": 1 },
     "produces": { "Shadow Empire": 1 },
     "tier": 6
   },
   "Council of Prophets": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Temple of Oracles": 1, "Obsidian Pyramid": 1 },
+    "inputs": { "Fateweavers": 1, "Shadow Hierarchy": 1 },
     "produces": { "Fate Dominion": 1 },
     "tier": 6
   },
   "Engineer's Guildhall": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Siege Foundry": 1, "Temple of Oracles": 1 },
+    "inputs": { "War Machines": 1, "Fateweavers": 1 },
     "produces": { "Colossus Engines": 1 },
     "tier": 6
   },
   "Order of Mercy": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Sanctum of Mercy": 1, "Siege Foundry": 1 },
+    "inputs": { "Battle Chaplains": 1, "War Machines": 1 },
     "produces": { "Holy Hospitallers": 1 },
     "tier": 6
   },
   "Pantheon’s Vault": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Hall of Eternity": 1, "Sanctum of Mercy": 1 },
+    "inputs": { "Eternal Vanguard": 1, "Battle Chaplains": 1 },
     "produces": { "Demi-Gods": 1 },
     "tier": 6
   },
   "Rite of Abyss": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Abyssal Monastery": 1, "Hall of Eternity": 1 },
+    "inputs": { "Heralds of the Deep": 1, "Eternal Vanguard": 1 },
     "produces": { "Deep Ascendants": 1 },
     "tier": 6
   },
