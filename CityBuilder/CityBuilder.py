@@ -3378,7 +3378,7 @@ class BankView(ui.View):
         self.cog = cog
         self.author = author
         self.add_item(BankDepositBtn())
-        self.add_item(BankWithdrawBtn())
+        #self.add_item(BankWithdrawBtn())
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
