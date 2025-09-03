@@ -3006,13 +3006,12 @@ class CityBuilder(commands.Cog):
         bld = d.get("buildings", {})
         bank_local = trunc2(float(d.get("bank", 0.0)))
         rate, cur = await self._get_rate_currency(user)
-        data = await self.config.user(user).all()
     
         # upkeep (WC→local)
         wc_upkeep = 0.0
         for b, info in bld.items():
             if b in BUILDINGS:
-                wc_upkeep += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
+                wc_upkeep += BUILDINGS[b].get("upkeep", 0) * int(info.get("count", 0))
         wc_upkeep = trunc2(wc_upkeep)
         local_upkeep = await self._wc_to_local(user, wc_upkeep)
     
@@ -3023,12 +3022,10 @@ class CityBuilder(commands.Cog):
         assigned = sum(st.values())
         unassigned = max(0, hired - assigned)
         cap = await self._worker_capacity(user)
-        cap = await self._worker_capacity(user)
         wages_wc = self._compute_wages_wc_from_numbers(hired, cap)
         wages_local = await self._wc_to_local(user, wages_wc)
         per_tick_local = trunc2(local_upkeep + wages_local)
-
-       
+    
         if per_tick_local > 0:
             ticks_left = int(bank_local // per_tick_local)
             seconds_left = ticks_left * TICK_SECONDS
@@ -3036,42 +3033,45 @@ class CityBuilder(commands.Cog):
             runway_txt = f"About {ticks_left} ticks — runs out <t:{end_ts}:R> (<t:{end_ts}:T>)"
         else:
             runway_txt = "∞ (no upkeep/wages)"
-
+    
         desc = "Use the buttons below to manage your city."
         if header:
             desc = f"{header}\n\n{desc}"
     
-        # ✅ CREATE THE EMBED BEFORE ADDING FIELDS
         e = discord.Embed(
             title=f"🌆 {getattr(user, 'display_name', 'Your')} City",
             description=desc
         )
-        my_team = await self.config.user(user).team()
+    
+        # Team crest + Team field (make it non-inline so it doesn't interfere with the 2-column row)
+        my_team = d.get("team")
         if my_team:
-          team = data.get("team")
-          if team in TEAM_CRESTS:
-              e.set_thumbnail(url=TEAM_CRESTS[team])  
-          e.add_field(name="Team", value=my_team, inline=True)
-
+            if my_team in TEAM_CRESTS:
+                e.set_thumbnail(url=TEAM_CRESTS[my_team])
+            e.add_field(name="Team", value=my_team, inline=False)
     
-        grouped_owned = self._group_owned_by_tier(d)  # {tier: [(name, count), ...]} (only >0)
-        tier_lines = []
-        for t in self._all_tiers():  # tiers derived from BUILDINGS, so includes empty tiers
+        # ---- Buildings text (sum by tier) ----
+        grouped_owned = self._group_owned_by_tier(d)
+        b_lines = []
+        for t in self._all_tiers():
             total = sum(cnt for _, cnt in grouped_owned.get(t, []))
-            tier_lines.append(f"**Tier {t}** — {total}")
-        btxt = "\n".join(tier_lines) or "None"
+            b_lines.append(f"**Tier {t}** — {total}")
+        btxt = "\n".join(b_lines) or "None"
     
-        # 📦 Resources: counts by tier (always show every tier)
-        grouped_res = self._group_resources_by_tier(d)  # {tier: [(res, qty), ...]}
-        res_tier_lines = []
+        # ---- Resources text (sum by tier) ----
+        grouped_res = self._group_resources_by_tier(d)
+        r_lines = []
         for t in self._all_tiers():
             total = sum(q for _, q in grouped_res.get(t, []))
-            res_tier_lines.append(f"**Tier {t}** — {total}")
-        rtxt = "\n".join(res_tier_lines) or "None"
+            r_lines.append(f"**Tier {t}** — {total}")
+        rtxt = "\n".join(r_lines) or "None"
     
-        # Add fields after embed is defined
+        # 👉 Side-by-side columns:
         e.add_field(name="🏗️ Buildings", value=btxt, inline=True)
         e.add_field(name="📦 Resources", value=rtxt, inline=True)
+        # spacer to lock the 2-column layout (Discord likes rows of 3 inline fields)
+        e.add_field(name="\u200b", value="\u200b", inline=True)
+    
         e.add_field(
             name="👷 Workers",
             value=(
@@ -3086,13 +3086,10 @@ class CityBuilder(commands.Cog):
         e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:,.2f} {cur}**", inline=False)
     
         next_ts = self._next_tick_ts()
-        e.add_field(
-            name="🕒 Next Tick",
-            value=f"<t:{next_ts}:R>  —  <t:{next_ts}:T>",
-            inline=False
-        )
+        e.add_field(name="🕒 Next Tick", value=f"<t:{next_ts}:R>  —  <t:{next_ts}:T>", inline=False)
     
         return e
+
 
 
 # ====== UI: Main Menu ======
