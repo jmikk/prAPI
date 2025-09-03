@@ -2309,7 +2309,7 @@ class CityBuilder(commands.Cog):
                 children.append(("building", str(b), 1))
         return children
     
-def _planner_tree_lines(self,kind: str,name: str,depth: int = 0,seen: Optional[Set[Tuple[str, str]]] = None) -> List[str]:
+    def _planner_tree_lines(self,kind: str,name: str,depth: int = 0,seen: Optional[Set[Tuple[str, str]]] = None) -> List[str]:
         if seen is None:
             seen = set()
         key = (kind, name.lower())
