@@ -23,9 +23,6 @@ TEAM_CRESTS = {
     "Team Drowned World":   "https://i.imgur.com/3wXxLSI.png",
 }
 
-
-
-
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
   "house": {
@@ -693,39 +690,25 @@ DEFAULT_SCALES = [46, 1, 10, 39]
 
 class SellAllScrapBtn(discord.ui.Button):
     def __init__(self, cog: "CityBuilder"):
-        super().__init__(label="Sell Scrap", emoji="♻️", style=discord.ButtonStyle.green)
+        super().__init__(label="Sell Scrap", emoji="♻️", style=discord.ButtonStyle.green, custom_id="city:sell_scrap")
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
-        # quick acknowledge so we don't hit the 3s limit
-        try:
-            await interaction.response.defer(ephemeral=True, thinking=True)
-        except Exception:
-            pass
-
         sold, revenue = await self.cog.sell_scrap(interaction.user, None)
         rate, cur = await self.cog._get_rate_currency(interaction.user)
 
-        if sold <= 0:
-            return await interaction.followup.send("You don’t have any scrap to sell.", ephemeral=True)
+        header = f"♻️ Sold {sold} scrap for **{revenue:,.2f} {cur}**" if sold else "No scrap to sell."
+        new_embed = await self.cog.make_city_embed(interaction.user, header=header)
 
-        # Refresh the main city panel message
-        try:
-            new_embed = await self.cog.make_city_embed(
-                interaction.user,
-                header=f"♻️ Sold {sold} scrap for **{revenue:,.2f} {cur}**"
-            )
-            # Update the same message that contains the buttons
-            await interaction.message.edit(embed=new_embed, view=self.view)
-        except Exception:
-            # If editing fails (e.g., message not the main city panel), just ignore
-            pass
+        # ✅ This acknowledges and updates in one go (no infinite “thinking”)
+        await interaction.response.edit_message(embed=new_embed, view=self.view)
 
-        # Ephemeral confirmation
-        await interaction.followup.send(
-            f"✅ Sold **{sold}** scrap for **{revenue:,.2f} {cur}** (price {SCRAP_PRICE_LOCAL:,.2f} {cur}/scrap).",
-            ephemeral=True,
-        )
+        # Optional ephemeral message
+        if sold:
+            await interaction.followup.send(f"✅ Sold **{sold}** scrap for **{revenue:,.2f} {cur}**.", ephemeral=True)
+        else:
+            await interaction.followup.send("You don’t have any scrap to sell.", ephemeral=True)
+
 
 
 class TeamScoresBtn(ui.Button):
@@ -2003,12 +1986,13 @@ class CityBuilder(commands.Cog):
                 key = "scrap"
             res[key] = max(0, int(new_qty))
     
-    async def sell_scrap(self, user: discord.abc.User, qty: Optional[int] = None) -> Tuple[int, float]:       
+    async def sell_scrap(self, user: discord.abc.User, qty: Optional[int] = None) -> Tuple[int, float]:
         """
-        Sells 'qty' scrap for local currency; if qty is None, sell all.
+        Sell 'qty' scrap for local currency; if qty is None, sell all.
         Returns (sold_qty, revenue_local).
         """
-        have = await self._get_scrap_qty(user)
+        res = await self.config.user(user).resources()
+        have = int(res.get("scrap", 0))
         if have <= 0:
             return 0, 0.0
     
@@ -2017,10 +2001,11 @@ class CityBuilder(commands.Cog):
     
         revenue = round(qty * float(SCRAP_PRICE_LOCAL), 2)
     
-        # deduct scrap
-        await self._set_scrap_qty(user, have - qty)
+        # Deduct scrap
+        async with self.config.user(user).resources() as res:
+            res["scrap"] = have - qty
     
-        # credit treasury (bank is local currency in your embed)
+        # Credit treasury
         bank = float(await self.config.user(user).bank())
         bank += revenue
         await self.config.user(user).bank.set(bank)
