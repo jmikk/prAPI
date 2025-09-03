@@ -708,7 +708,6 @@ class PlanRootView(ui.View):
         self.author = author
         self.show_admin = show_admin
         self.add_item(PlanPickKindBtn("building"))
-        self.add_item(PlanPickKindBtn("resource"))
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
