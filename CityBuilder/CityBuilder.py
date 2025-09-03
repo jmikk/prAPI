@@ -1070,7 +1070,6 @@ class RecycleBuildingSelect(ui.Select):
         await interaction.response.send_modal(RecycleBuildingQtyModal(self.cog, bname))
 
 # --- Recycle building button (3.9-safe, robust) ---
-
 class RecycleBuildingInTierBtn(discord.ui.Button):
     def __init__(self, building_name: str):
         super().__init__(
@@ -1081,14 +1080,13 @@ class RecycleBuildingInTierBtn(discord.ui.Button):
         self.building_name = building_name
 
     async def callback(self, interaction: discord.Interaction):
-        # Access parent view/cog
         view = self.view  # BuildingsTierActionsView
         cog = view.cog     # type: ignore
         user = interaction.user
         bname = self.building_name
 
         try:
-            # Load and decrement count safely
+            # Decrement building count
             async with cog.config.user(user).buildings() as b:
                 meta = b.get(bname, {"count": 0})
                 if isinstance(meta, int):
@@ -1096,7 +1094,6 @@ class RecycleBuildingInTierBtn(discord.ui.Button):
                 count = int(meta.get("count", 0))
 
                 if count <= 0:
-                    # Nothing to recycle -> ACK by editing original message with a note
                     new_embed = await cog.make_city_embed(
                         user, header=f"⚠️ You don’t own any **{bname}** to recycle."
                     )
@@ -1105,23 +1102,31 @@ class RecycleBuildingInTierBtn(discord.ui.Button):
                 meta["count"] = count - 1
                 b[bname] = meta
 
-            # (Optional) refund logic could go here (resources/partial cost/etc.)
+            # --- Scrap reward ---
+            tier = int(BUILDINGS.get(bname, {}).get("tier", 0))
+            scrap_gain = tier * 10
+            if scrap_gain > 0:
+                async with cog.config.user(user).resources() as res:
+                    res["scrap"] = res.get("scrap", 0) + scrap_gain
 
-            # Rebuild city panel and ACK in one go
-            new_embed = await cog.make_city_embed(
-                user, header=f"🗑️ Recycled **{bname}** (now {count - 1})."
-            )
+            # Rebuild city panel
+            header = f"🗑️ Recycled **{bname}** (now {count - 1})."
+            if scrap_gain > 0:
+                header += f" Gained **{scrap_gain} scrap**."
+            new_embed = await cog.make_city_embed(user, header=header)
+
             await interaction.response.edit_message(embed=new_embed, view=view)
 
-            # Small ephemeral confirmation (not required but nice)
-            await interaction.followup.send(f"Recycled **{bname}**.", ephemeral=True)
+            # Ephemeral confirmation
+            msg = f"Recycled **{bname}** → gained **{scrap_gain} scrap**." if scrap_gain > 0 else f"Recycled **{bname}**."
+            await interaction.followup.send(msg, ephemeral=True)
 
         except Exception as e:
-            # Always complete the interaction path, even on error
             if interaction.response.is_done():
                 await interaction.followup.send(f"❌ Recycle failed: `{e}`", ephemeral=True)
             else:
                 await interaction.response.send_message(f"❌ Recycle failed: `{e}`", ephemeral=True)
+
 
 
 
