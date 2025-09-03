@@ -2003,7 +2003,7 @@ class CityBuilder(commands.Cog):
                 key = "scrap"
             res[key] = max(0, int(new_qty))
     
-    async def sell_scrap(self, user: discord.abc.User, qty: int | None = None) -> tuple[int, float]:
+    async def sell_scrap(self, user: discord.abc.User, qty: Optional[int] = None) -> Tuple[int, float]:       
         """
         Sells 'qty' scrap for local currency; if qty is None, sell all.
         Returns (sold_qty, revenue_local).
