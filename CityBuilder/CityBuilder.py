@@ -2201,35 +2201,35 @@ class CityBuilder(commands.Cog):
         return index
 
     def _resource_tier(self, res_name: str) -> int:
-    # Prefer explicit tier if present on RESOURCES
-    res_tbl = getattr(self, "RESOURCES", globals().get("RESOURCES", {})) or {}
-    meta = res_tbl.get(res_name, {}) or {}
-    if "tier" in meta and str(meta["tier"]).isdigit():
-        return int(meta["tier"])
-    # Otherwise infer from producers
-    best = None
-    for _, _, btier in self._producer_index.get(res_name, []):
-        if btier and (best is None or btier < best):
-            best = btier
-    return best if best is not None else 1
+        # Prefer explicit tier if present on RESOURCES
+        res_tbl = getattr(self, "RESOURCES", globals().get("RESOURCES", {})) or {}
+        meta = res_tbl.get(res_name, {}) or {}
+        if "tier" in meta and str(meta["tier"]).isdigit():
+            return int(meta["tier"])
+        # Otherwise infer from producers
+        best = None
+        for _, _, btier in self._producer_index.get(res_name, []):
+            if btier and (best is None or btier < best):
+                best = btier
+        return best if best is not None else 1
 
-def _all_tiers(self) -> list[int]:
-    tiers = set()
-    b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
-    for meta in b_tbl.values():
-        if "tier" in meta:
-            try:
-                t = int(meta["tier"])
-                if t > 0:
-                    tiers.add(t)
-            except Exception:
-                pass
-    # include inferred resource tiers (optional but helpful)
-    for res in getattr(self, "RESOURCES", globals().get("RESOURCES", {})) or {}:
-        t = self._resource_tier(res)
-        if t > 0:
-            tiers.add(t)
-    return sorted(tiers) or [1]
+    def _all_tiers(self) -> list[int]:
+        tiers = set()
+        b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+        for meta in b_tbl.values():
+            if "tier" in meta:
+                try:
+                    t = int(meta["tier"])
+                    if t > 0:
+                        tiers.add(t)
+                except Exception:
+                    pass
+        # include inferred resource tiers (optional but helpful)
+        for res in getattr(self, "RESOURCES", globals().get("RESOURCES", {})) or {}:
+            t = self._resource_tier(res)
+            if t > 0:
+                tiers.add(t)
+        return sorted(tiers) or [1]
 
     def _items_by_tier(self, kind: str, tier: int) -> list[str]:
         tier = int(tier)
