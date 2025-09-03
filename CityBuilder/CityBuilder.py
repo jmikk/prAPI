@@ -10,6 +10,12 @@ from redbot.core import commands, Config
 import random
 import time
 
+TEAM_CELESTIAL = "Team Celestial Nexus"
+TEAM_DROWNED   = "Team Drowned World"
+TEAM_IRON      = "Team Iron Empire"
+TEAM_LIST      = [TEAM_CELESTIAL, TEAM_DROWNED, TEAM_IRON]
+
+
 
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
@@ -674,6 +680,27 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 
 # Default composite: 46 + a few companions (tweak freely)
 DEFAULT_SCALES = [46, 1, 10, 39]
+
+class TeamScoresBtn(ui.Button):
+    def __init__(self):
+        super().__init__(
+            label="Team Scores",
+            style=discord.ButtonStyle.blurple,
+            custom_id="city:teamscores",
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        # Make sure the user has a team (assign if needed)
+        await view.cog.assign_team_if_needed(interaction.user)
+
+        e = await view.cog.team_scores_embed(interaction.user)
+        # Reuse your existing LeaderboardView (nav/back) or just keep current view
+        await interaction.response.edit_message(
+            embed=e,
+            view=LeaderboardView(view.cog, view.author, show_admin=view.show_admin),
+        )
+
 
 class ResourceRecycleBtn(ui.Button):
     def __init__(self, resource: str):
@@ -1503,7 +1530,8 @@ class SetupNationModal(discord.ui.Modal, title="🌍 Link Your NationStates Nati
         await self.cog.config.user(interaction.user).wc_to_local_rate.set(rate)
         await self.cog.config.user(interaction.user).set_raw("rate_debug", value=details)
         await self.cog.config.user(interaction.user).set_raw("ns_last_xml", value=xml_text)  # keep for debugging
-
+        
+        team = await self.assign_team_if_needed(interaction.user)
         # Show main panel
         embed = await self.cog.make_city_embed(interaction.user, header=f"✅ Linked to **{nation_input}**.")
         view = CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
@@ -1877,6 +1905,7 @@ class CityBuilder(commands.Cog):
 
             store_sell_listings=[],  # [{id:str, name:str, bundle:{res:int}, price_wc: float, stock:int}]
             store_buy_orders=[],     # [{id:str, resource:str, qty:int, price_wc:float}]
+            team=None,              # "Team Celestial Nexus" / "Team Drowned World" / "Team Iron Empire"
         )
         self.next_tick_at: Optional[int] = None
 
@@ -2057,6 +2086,74 @@ class CityBuilder(commands.Cog):
         for t, qty in r_totals.items():
             score += p["r_base"] * (p["r_growth"] ** int(t)) * float(qty)
         return float(int(score))  # keep it neat (integer points)
+
+  def _fmt_int(self, n) -> str:
+      try:
+          return f"{n:,.0f}"
+      except Exception:
+          return str(int(n))
+  
+  async def team_scores_embed(self, requester: discord.abc.User) -> discord.Embed:
+      """
+      Sums per-user scores (same score calc as the leaderboard) per team.
+      """
+      params = self._score_params()
+      all_users = await self.config.all_users()
+  
+      # Precompute user scores using the same function you use for leaderboard
+      team_totals = {t: 0.0 for t in TEAM_LIST}
+      team_counts = {t: 0 for t in TEAM_LIST}
+  
+      for uid, data in all_users.items():
+          team = data.get("team")
+          if team not in TEAM_LIST:
+              continue
+          score = self._compute_user_score_from_data(data)
+          team_totals[team] += score
+          team_counts[team] += 1
+  
+      # Sort by total score desc
+      rows = sorted(team_totals.items(), key=lambda kv: kv[1], reverse=True)
+  
+      # Build lines
+      lines = []
+      for team, total in rows:
+          players = team_counts.get(team, 0)
+          avg = (total / players) if players else 0.0
+          lines.append(
+              f"**{team}** — {self._fmt_int(total)} pts  ·  {players} players  ·  avg {self._fmt_int(avg)}"
+          )
+  
+      # Identify requester's team
+      my_team = await self.config.user(requester).team()
+      footer = f"Your team: {my_team or '—'}"
+  
+      e = discord.Embed(title="📊 Team Scores", description="\n".join(lines))
+      e.set_footer(text=footer)
+      return e
+
+  
+  async def assign_team_if_needed(self, user: discord.abc.User) -> str:
+      """Assign user to the smallest team if they don't already have one."""
+      cur = await self.config.user(user).team()
+      if cur in TEAM_LIST:
+          return cur
+  
+      all_users = await self.config.all_users()
+      counts = {t: 0 for t in TEAM_LIST}
+      for _, data in all_users.items():
+          t = data.get("team")
+          if t in counts:
+              counts[t] += 1
+  
+      smallest = min(counts.values())
+      candidates = [t for t, c in counts.items() if c == smallest]
+      # deterministic tie-break using user id
+      team = candidates[(hash(str(user.id)) % len(candidates))]
+  
+      await self.config.user(user).team.set(team)
+      return team
+
     
     
     async def leaderboard_embed(self, requester: discord.abc.User) -> discord.Embed:
@@ -2927,6 +3024,10 @@ class CityBuilder(commands.Cog):
             title=f"🌆 {getattr(user, 'display_name', 'Your')} City",
             description=desc
         )
+      my_team = await self.config.user(user).team()
+      if my_team:
+        e.add_field(name="Team", value=my_team, inline=True)
+
     
         grouped_owned = self._group_owned_by_tier(d)  # {tier: [(name, count), ...]} (only >0)
         tier_lines = []
@@ -3087,6 +3188,7 @@ class CityMenuView(ui.View):
         self.add_item(ViewBuildingsBtn())  
         self.add_item(ViewResourcesBtn())
         self.add_item(LeaderboardBtn())
+        self.add_item(TeamScoresBtn())   
         self.add_item(HowToPlayBtn())
         if show_admin:
             self.add_item(NextDayBtn())
