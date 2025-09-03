@@ -3006,6 +3006,7 @@ class CityBuilder(commands.Cog):
         bld = d.get("buildings", {})
         bank_local = trunc2(float(d.get("bank", 0.0)))
         rate, cur = await self._get_rate_currency(user)
+        data = await self.config.user(user).all()
     
         # upkeep (WC→local)
         wc_upkeep = 0.0
