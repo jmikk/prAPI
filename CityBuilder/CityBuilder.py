@@ -1502,40 +1502,54 @@ class SetupNationModal(discord.ui.Modal, title="🌍 Link Your NationStates Nati
         self.cog = cog
 
     async def on_submit(self, interaction: discord.Interaction):
-        nation_input = str(self.nation.value).strip()
+      # 1) Acknowledge immediately
+      try:
+          await interaction.response.defer(ephemeral=True, thinking=True)
+      except Exception:
+          pass  # ok if already deferred/acknowledged elsewhere
+  
+      nation_input = str(self.nation.value).strip()
+  
+      # 2) Do your slow work in try/except
+      try:
+          # Fetch currency + census (add a timeout on the HTTP layer if you can)
+          currency, scores, xml_text = await ns_fetch_currency_and_scales(nation_input, DEFAULT_SCALES)
+  
+          # Existence check
+          if not _xml_has_nation_block(xml_text):
+              return await interaction.followup.send(
+                  "❌ I couldn’t find that nation. Double-check the spelling (use the **main** name).",
+                  ephemeral=True,
+              )
+  
+          # Compute & save
+          rate, details = compute_currency_rate(scores)
+          await self.cog.config.user(interaction.user).ns_nation.set(normalize_nation(nation_input))
+          await self.cog.config.user(interaction.user).ns_currency.set(currency)
+          await self.cog.config.user(interaction.user).set_raw(
+              "ns_scores", value={str(k): float(v) for k, v in scores.items()}
+          )
+          await self.cog.config.user(interaction.user).wc_to_local_rate.set(rate)
+          await self.cog.config.user(interaction.user).set_raw("rate_debug", value=details)
+          await self.cog.config.user(interaction.user).set_raw("ns_last_xml", value=xml_text)
+  
+          # Optional: assign team AFTER deferring (this can be slow if it scans all users)
+          team = await self.cog.assign_team_if_needed(interaction.user)
+  
+          # Build UI and respond
+          embed = await self.cog.make_city_embed(
+              interaction.user,
+              header=f"✅ Linked to **{nation_input}** · Assigned to **{team}**"
+          )
+          view = CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
+  
+          # 3) Finish by editing the deferred response or sending a followup
+          await interaction.edit_original_response(embed=embed, view=view)
+  
+      except Exception as e:
+          # 4) Error path – you already deferred, so followup
+          await interaction.followup.send(f"❌ Linking failed: `{e}`", ephemeral=True)
 
-        # Fetch currency + census (returns raw XML as 3rd value)
-        try:
-            currency, scores, xml_text = await ns_fetch_currency_and_scales(nation_input, DEFAULT_SCALES)
-        except Exception as e:
-            return await interaction.response.send_message(
-                f"❌ Failed to reach NationStates API.\n`{e}`", ephemeral=True
-            )
-
-        # ===== NEW: existence check =====
-        if not _xml_has_nation_block(xml_text):
-            return await interaction.response.send_message(
-                "❌ I couldn’t find that nation. Double-check the spelling (use your nation’s **main** name, "
-                "no BBCode/links) and try again.",
-                ephemeral=True,
-            )
-        # =================================
-
-        # Compute & save
-        rate, details = compute_currency_rate(scores)
-
-        await self.cog.config.user(interaction.user).ns_nation.set(normalize_nation(nation_input))
-        await self.cog.config.user(interaction.user).ns_currency.set(currency)
-        await self.cog.config.user(interaction.user).set_raw("ns_scores", value={str(k): float(v) for k, v in scores.items()})
-        await self.cog.config.user(interaction.user).wc_to_local_rate.set(rate)
-        await self.cog.config.user(interaction.user).set_raw("rate_debug", value=details)
-        await self.cog.config.user(interaction.user).set_raw("ns_last_xml", value=xml_text)  # keep for debugging
-        
-        team = await self.assign_team_if_needed(interaction.user)
-        # Show main panel
-        embed = await self.cog.make_city_embed(interaction.user, header=f"✅ Linked to **{nation_input}**.")
-        view = CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
-        await interaction.response.send_message(embed=embed, view=view)
 
 class WorkersView(ui.View):
     def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
