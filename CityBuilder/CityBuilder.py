@@ -13,7 +13,7 @@ import time
 
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
-  "House": {
+  "house": {
     "cost": 100.0,
     "inputs": {},
     "upkeep": 0,
