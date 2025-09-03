@@ -947,7 +947,7 @@ class BuildInTierBtn(ui.Button):
         bank_local = trunc2(float(await cog.config.user(user).bank()))
         if bank_local + 1e-9 < local_cost:
             return await interaction.response.send_message(
-                f"❌ Not enough in bank for **{self.bname}**. Need **{local_cost:.2f} {cur}**.",
+                f"❌ Not enough in bank for **{self.bname}**. Need **{local_cost:,.2f} {cur}**.",
                 ephemeral=True
             )
 
@@ -959,7 +959,7 @@ class BuildInTierBtn(ui.Button):
         await cog.config.user(user).buildings.set(bld)
 
         # Refresh the tier details (so the new owned count shows), keep the action buttons
-        header = f"🏗️ Built **{self.bname}** for **{local_cost:.2f} {cur}**."
+        header = f"🏗️ Built **{self.bname}** for **{local_cost:,.2f} {cur}**."
         e = await cog.buildings_tier_embed(user, view.tier)
         if e.description:
             e.description = f"{header}\n\n{e.description}"
@@ -1324,8 +1324,8 @@ class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
         self.max_wc = trunc2(max_wc or 0.0)
 
         # Build the input dynamically so we can customize label/placeholder
-        label = f"Amount to deposit (max {self.max_wc:.2f} WC)" if max_wc is not None else "Amount to deposit (in WC)"
-        placeholder = f"{self.max_wc:.2f}" if max_wc is not None else "e.g. 100.50"
+        label = f"Amount to deposit (max {self.max_wc:,.2f} WC)" if max_wc is not None else "Amount to deposit (in WC)"
+        placeholder = f"{self.max_wc:,.2f}" if max_wc is not None else "e.g. 100.50"
 
         self.amount = discord.ui.TextInput(
             label=label,
@@ -1359,7 +1359,7 @@ class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
 
         _, cur = await self.cog._get_rate_currency(interaction.user)
         await interaction.response.send_message(
-            f"✅ Deposited {amt_wc:.2f} WC → **{local_credit:.2f} {cur}**. New treasury: **{bank_local:.2f} {cur}**",
+            f"✅ Deposited {amt_wc:,.2f} WC → **{local_credit:,.2f} {cur}**. New treasury: **{bank_local:,.2f} {cur}**",
             ephemeral=True
         )
 
@@ -1372,8 +1372,8 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
         self.max_local = trunc2(max_local or 0.0)
         self.currency = currency or "Local"
 
-        label = f"Amount to withdraw (max {self.max_local:.2f} {self.currency})"
-        placeholder = f"{self.max_local:.2f}" if max_local is not None else "e.g. 50.00"
+        label = f"Amount to withdraw (max {self.max_local:,.2f} {self.currency})"
+        placeholder = f"{self.max_local:,.2f}" if max_local is not None else "e.g. 50.00"
 
         self.amount = discord.ui.TextInput(
             label=label,
@@ -1395,7 +1395,7 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
         bank_local = trunc2(float(await self.cog.config.user(interaction.user).bank()))
         if bank_local + 1e-9 < amt_local:
             return await interaction.response.send_message(
-                f"❌ Not enough in the treasury. You have **{bank_local:.2f} {self.currency}**.",
+                f"❌ Not enough in the treasury. You have **{bank_local:,.2f} {self.currency}**.",
                 ephemeral=True
             )
 
@@ -1423,8 +1423,8 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
         # Confirm
         _, cur = await self.cog._get_rate_currency(interaction.user)
         await interaction.response.send_message(
-            f"✅ Withdrew **{amt_local:.2f} {cur}** → **{amt_wc:.2f} WC**.\n"
-            f"New treasury balance: **{new_bank:.2f} {cur}**",
+            f"✅ Withdrew **{amt_local:,.2f} {cur}** → **{amt_wc:,.2f} WC**.\n"
+            f"New treasury balance: **{new_bank:,.2f} {cur}**",
             ephemeral=True
         )
 
@@ -1534,7 +1534,7 @@ class HireWorkerBtn(ui.Button):
                 f"• Reliability: {Reliability}\n"
                 f"• Safety: {Safety}\n"
                 "• Salary: "
-                f"**{wage_local:.2f} {cur}** per tick"
+                f"**{wage_local:,.2f} {cur}** per tick"
             )
         )
         e.set_image(url=img)
@@ -1790,7 +1790,7 @@ class ConfirmPurchaseBtn(ui.Button):
         ok = await cog._charge_bank_local(view.buyer, trunc2(view.buyer_price_local))
         if not ok:
             return await interaction.response.send_message(
-                f"❌ Not enough funds. Need **{view.buyer_price_local:.2f}** (incl. 10% fee).",
+                f"❌ Not enough funds. Need **{view.buyer_price_local:,.2f}** (incl. 10% fee).",
                 ephemeral=True
             )
 
@@ -1821,7 +1821,7 @@ class ConfirmPurchaseBtn(ui.Button):
         # Feedback + return to main menu
         e = await cog.make_city_embed(
             view.buyer,
-            header=f"🛒 Purchased **{view.listing_name}** for **{view.buyer_price_local:.2f}** (incl. fee)."
+            header=f"🛒 Purchased **{view.listing_name}** for **{view.buyer_price_local:,.2f}** (incl. fee)."
         )
         await interaction.response.edit_message(
             embed=e,
@@ -2285,7 +2285,7 @@ class CityBuilder(commands.Cog):
             # Build the block for this building
             lines.append(
                 f"• **{name}** (owned {cnt})\n"
-                f"  Cost **{cost_local:.2f} {cur}** · Upkeep **{upkeep_local:.2f} {cur}/t**{cap_note}\n"
+                f"  Cost **{cost_local:,.2f} {cur}** · Upkeep **{upkeep_local:,.2f} {cur}/t**{cap_note}\n"
                 f"  **Inputs:**  {fmt_io(inputs)}\n"
                 f"  **Outputs:** {fmt_io(outputs)}"
             )
@@ -2324,11 +2324,11 @@ class CityBuilder(commands.Cog):
         for it in lst:
             p_local = trunc2(float(it.get("price_wc") or 0.0) * rate)
             sell_lines.append(f"• **{it.get('id')}** — {it.get('name')} | {fmt_bundle(it.get('bundle') or {})} | "
-                              f"Price **{p_local:.2f} {cur}** | Stock {int(it.get('stock') or 0)}")
+                              f"Price **{p_local:,.2f} {cur}** | Stock {int(it.get('stock') or 0)}")
         buy_lines = []
         for o in orders:
             p_local = trunc2(float(o.get("price_wc") or 0.0) * rate)
-            buy_lines.append(f"• **{o.get('id')}** — {o.get('resource')} ×{int(o.get('qty') or 0)} @ **{p_local:.2f} {cur}** /u")
+            buy_lines.append(f"• **{o.get('id')}** — {o.get('resource')} ×{int(o.get('qty') or 0)} @ **{p_local:,.2f} {cur}** /u")
         desc = (header + "\n\n" if header else "") + "**Your Sell Listings**\n" + ("\n".join(sell_lines) or "—")
         e = discord.Embed(title="🧾 My Store", description=desc)
         return e
@@ -2358,7 +2358,7 @@ class CityBuilder(commands.Cog):
     
                 lines.append(
                     f"• **{it.get('id')}** — {it.get('name')} by *{owner_name}* · {bundle} · "
-                    f"**{price_local:.2f} {cur}** (incl. fee) · Stock {effective_stock}"
+                    f"**{price_local:,.2f} {cur}** (incl. fee) · Stock {effective_stock}"
                 )
     
         e = discord.Embed(
@@ -2417,7 +2417,7 @@ class CityBuilder(commands.Cog):
                     value=(f"Hired **{hired}** · Capacity **{cap}** · Assigned **{assigned}** · Unassigned **{unassigned}**"),
                     inline=False)
         e.add_field(name="Wage",
-                    value=f"**{wage_local:.2f} {cur}** per worker per tick",
+                    value=f"**{wage_local:,.2f} {cur}** per worker per tick",
                     inline=False)
         e.add_field(name="Staffing by Building", value=staffed_txt, inline=False)
         return e
@@ -2539,8 +2539,8 @@ class CityBuilder(commands.Cog):
             description="Your **Bank** pays wages/upkeep each tick in your **local currency**. "
                         "If the bank can’t cover upkeep, **production halts**."
         )
-        e.add_field(name="Current Balance", value=f"**{bank_local:.2f} {cur}**", inline=False)
-        e.add_field(name="Per-Tick Need", value=f"**{per_tick_local:.2f} {cur}/t**", inline=True)
+        e.add_field(name="Current Balance", value=f"**{bank_local:,.2f} {cur}**", inline=False)
+        e.add_field(name="Per-Tick Need", value=f"**{per_tick_local:,.2f} {cur}/t**", inline=True)
         e.add_field(name="Runway", value=runway_txt, inline=True)
         e.add_field(
             name="Tips",
@@ -2595,7 +2595,7 @@ class CityBuilder(commands.Cog):
         filebuf = io.BytesIO(xml_text.encode("utf-8"))
         file = discord.File(filebuf, filename=filename)
         await ctx.send(
-            content=f"📄 XML for **{target_nation}** · recalculated: `1 WC = {float(rate):.2f} {currency}`",
+            content=f"📄 XML for **{target_nation}** · recalculated: `1 WC = {float(rate):,.2f} {currency}`",
             file=file
         )
 
@@ -2670,7 +2670,7 @@ class CityBuilder(commands.Cog):
             w = weights[sid]
             raw = scores.get(sid)
             if raw is None:
-                lines.append(f"• Scale {sid}: **missing** → norm `—` × w `{w:.2f}` = contrib `0.00`")
+                lines.append(f"• Scale {sid}: **missing** → norm `—` × w `{w:,.2f}` = contrib `0.00`")
                 continue
             norm = transforms[sid](raw)
             contrib = w * norm
@@ -2678,7 +2678,7 @@ class CityBuilder(commands.Cog):
             den += abs(w)
             # format raw compactly (handles scientific)
             raw_str = f"{raw:.4g}"
-            lines.append(f"• Scale {sid}: raw `{raw_str}` → norm `{norm:.2f}` × w `{w:.2f}` = contrib `{contrib:.2f}`")
+            lines.append(f"• Scale {sid}: raw `{raw_str}` → norm `{norm:,.2f}` × w `{w:,.2f}` = contrib `{contrib:,.2f}`")
     
         idx = (num / den) if den else 0.5
         mapped = _map_index_to_rate(idx)
@@ -2692,12 +2692,12 @@ class CityBuilder(commands.Cog):
     
         e = discord.Embed(title="💱 FX Rate Details", description=desc)
         if rate is not None:
-            e.add_field(name="Current Rate", value=f"1 WC = **{float(rate):.2f} {currency}**", inline=False)
+            e.add_field(name="Current Rate", value=f"1 WC = **{float(rate):,.2f} {currency}**", inline=False)
         else:
             e.add_field(name="Current Rate", value="(not set)", inline=False)
     
         e.add_field(name="Per-Scale Contributions", value="\n".join(lines) or "—", inline=False)
-        e.add_field(name="Composite Index → Rate", value=f"Index `{idx:.3f}` → Mapped Rate `{mapped:.2f}`", inline=False)
+        e.add_field(name="Composite Index → Rate", value=f"Index `{idx:.3f}` → Mapped Rate `{mapped:,.2f}`", inline=False)
         e.add_field(
             name="Weights & Transforms",
             value=(
@@ -2935,14 +2935,14 @@ class CityBuilder(commands.Cog):
             name="👷 Workers",
             value=(
                 f"Hired **{hired}** · Capacity **{cap}** · Assigned **{assigned}** · Unassigned **{unassigned}**\n"
-                f"Wages per tick: **{wages_local:.2f} {cur}** "
+                f"Wages per tick: **{wages_local:,.2f} {cur}** "
             ),
             inline=False,
         )
-        e.add_field(name="🏦 Treasury", value=f"**{bank_local:.2f} {cur}**", inline=True)
-        e.add_field(name="⏳ Total Upkeep per Tick", value=f"**{per_tick_local:.2f} {cur}/t**", inline=True)
+        e.add_field(name="🏦 Treasury", value=f"**{bank_local:,.2f} {cur}**", inline=True)
+        e.add_field(name="⏳ Total Upkeep per Tick", value=f"**{per_tick_local:,.2f} {cur}/t**", inline=True)
         e.add_field(name="📉 Runway", value=runway_txt, inline=False)
-        e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
+        e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:,.2f} {cur}**", inline=False)
     
         next_ts = self._next_tick_ts()
         e.add_field(
@@ -3012,9 +3012,9 @@ class StoreBtn(ui.Button):
         e.add_field(
             name="💰 Your Balance",
             value=(
-                f"Treasury: **{bank_local:.2f} {cur}**\n"
-                f"Wallet: **{wallet_wc:.2f} WC** (≈ **{wallet_local:.2f} {cur}**)\n"
-                f"Total: **{total_local:.2f} {cur}**"
+                f"Treasury: **{bank_local:,.2f} {cur}**\n"
+                f"Wallet: **{wallet_wc:,.2f} WC** (≈ **{wallet_local:,.2f} {cur}**)\n"
+                f"Total: **{total_local:,.2f} {cur}**"
             ),
             inline=False
         )
@@ -3168,9 +3168,9 @@ class BuildSelect(ui.Select):
             wc_upkeep = trunc2(BUILDINGS[name]["upkeep"])
             local_cost = trunc2(wc_cost * self.rate)
             local_upkeep = trunc2(wc_upkeep * self.rate)
-            desc = f"Cost {local_cost:.2f} {self.currency} · Upkeep {local_upkeep:.2f} {self.currency}/t"
+            desc = f"Cost {local_cost:,.2f} {self.currency} · Upkeep {local_upkeep:,.2f} {self.currency}/t"
             if len(desc) > 96:
-                desc = f"Cost {local_cost:.2f} · Upkeep {local_upkeep:.2f}/t"
+                desc = f"Cost {local_cost:,.2f} · Upkeep {local_upkeep:,.2f}/t"
             options.append(discord.SelectOption(label=name, description=desc))
 
 
@@ -3192,7 +3192,7 @@ class BuildSelect(ui.Select):
         if bank_local + 1e-9 < local_cost:
             return await interaction.response.send_message(
                 f"❌ Not enough in bank for **{building}**. "
-                f"Need **{local_cost:.2f} {self.currency}**.",
+                f"Need **{local_cost:,.2f} {self.currency}**.",
                 ephemeral=True
             )
 
@@ -3206,7 +3206,7 @@ class BuildSelect(ui.Select):
         bld[building] = {"count": curcnt + 1}
         await self.cog.config.user(interaction.user).buildings.set(bld)
 
-        header = f"🏗️ Built **{building}** for **{local_cost:.2f} {self.currency}**."
+        header = f"🏗️ Built **{building}** for **{local_cost:,.2f} {self.currency}**."
         embed = await self.cog.make_city_embed(interaction.user, header=header)
         await interaction.response.edit_message(
             embed=embed,
@@ -3439,7 +3439,7 @@ class AddSellListingModal(discord.ui.Modal, title="➕ New Sell Listing"):
     
         e = await self.cog.store_my_listings_embed(
             interaction.user,
-            header=f"✅ Added listing **{self.name.value}** at {price_local:.2f} (your currency). "
+            header=f"✅ Added listing **{self.name.value}** at {price_local:,.2f} (your currency). "
                    f"Escrowed stock: {final_stock}."
         )
         await interaction.response.send_message(embed=e, ephemeral=True)
@@ -3545,7 +3545,7 @@ class PurchaseListingSelect(ui.Select):
                 continue
     
             label = f'{item.get("name")} [Stock {effective_stock}]'
-            desc = f'Price {price_local_fee:.2f} in your currency (incl. fee)'
+            desc = f'Price {price_local_fee:,.2f} in your currency (incl. fee)'
             value = f'{owner_id}|{item.get("id")}'
             opts.append(discord.SelectOption(label=label[:100], description=desc[:100], value=value))
     
@@ -3601,7 +3601,7 @@ class PurchaseListingSelect(ui.Select):
             description=(
                 f"**{listing.get('name')}**\n"
                 f"Bundle: {bundle_txt}\n"
-                f"Price: **{buyer_price_local:.2f} {buyer_cur}** (incl. 10% fee)\n\n"
+                f"Price: **{buyer_price_local:,.2f} {buyer_cur}** (incl. 10% fee)\n\n"
                 "Do you want to proceed?"
             )
         )
