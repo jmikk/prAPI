@@ -2264,6 +2264,23 @@ class CityBuilder(commands.Cog):
         bname, qty, tier = sorted(candidates, key=lambda x: (x[2] if x[2] is not None else 9999, -(x[1] or 0)))[0]
         return (bname, int(qty or 1), int(tier or 0))
 
+    def _compute_per_tick_buildings(self, res_name: str, qty_per_tick: float = 1.0) -> Dict[str, float]:
+        """
+        Return {building_name: count_needed} to produce `qty_per_tick` of `res_name` each tick.
+        """
+        totals: Dict[str, float] = {}
+        self._accumulate_buildings_for_resource(res_name, float(qty_per_tick), totals)
+        return totals
+
+    def _sum_upkeep(self, building_counts: Dict[str, float]) -> float:
+        """Sum upkeep across all buildings given their counts."""
+        b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+        total = 0.0
+        for bname, cnt in building_counts.items():
+            upkeep = float(b_tbl.get(bname, {}).get("upkeep", 0) or 0)
+            total += upkeep * float(cnt)
+        return total
+
     def _accumulate_buildings_for_resource(self,res_name: str,qty_needed: float,totals: Dict[str, float],seen: Optional[Set[Tuple[str, str]]] = None,):
         """
         Add required buildings into `totals` to produce `qty_needed` of `res_name` per tick.
@@ -2393,56 +2410,56 @@ class CityBuilder(commands.Cog):
         if kind is None:
             return discord.Embed(title="🏗️ Plan Your City", description="Pick what you want to plan.")
         if tier is None:
-            return discord.Embed(title=("🏗️ Buildings" if kind == "building" else "🧱 Resources"), description="Choose a tier:")
+            return discord.Embed(
+                title=("🏗️ Buildings" if kind == "building" else "🧱 Resources"),
+                description="Choose a tier:"
+            )
         if item is None:
             items = self._items_by_tier(kind, tier)
             desc = "\n".join(f"• {x}" for x in items) or "—"
-            return discord.Embed(title=f"{'🏗️ Buildings' if kind == 'building' else '🧱 Resources'} — Tier {tier}", description=desc)
+            return discord.Embed(
+                title=f"{'🏗️ Buildings' if kind == 'building' else '🧱 Resources'} — Tier {tier}",
+                description=desc
+            )
     
-        # ---- Existing tree (optional, keep if you still want to display the chain) ----
-        lines = self._planner_tree_lines(kind, item)
-    
-        # ---- New: Compute per-tick building requirements for 1 unit of the END ITEM ----
-        totals: Dict[str, float] = {}
+        # --------- COMPACT OUTPUT ONLY: buildings + total upkeep ----------
         title = f"🗺️ Plan: {item}"
     
         if kind == "resource":
-            # Direct: produce 1 of this resource per tick
-            self._accumulate_buildings_for_resource(item, 1.0, totals)
-            per_tick_desc = "\n".join(f"• **{b}** ×{int(math.ceil(cnt))}" for b, cnt in sorted(totals.items(), key=lambda x: x[0].lower())) or "— (base resource only)"
-            header = f"**Per tick for 1 × {item}:**\n{per_tick_desc}"
-        else:
-            # kind == "building": choose one of its products (if any). If multiple, show all sections.
-            b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
-            meta = b_tbl.get(item, {}) or {}
-            produces = meta.get("produces") or {}
-            if isinstance(produces, dict) and produces:
-                sections = []
-                for out_res, out_qty in produces.items():
-                    # Compute how many buildings needed to get 1 of out_res per tick
-                    totals = {}
-                    self._accumulate_buildings_for_resource(str(out_res), 1.0, totals)
-                    per_tick_desc = "\n".join(f"• **{b}** ×{int(math.ceil(cnt))}" for b, cnt in sorted(totals.items(), key=lambda x: x[0].lower())) or "— (base resource only)"
-                    sections.append(f"**Per tick for 1 × {out_res}:**\n{per_tick_desc}")
-                header = "\n\n".join(sections)
+            counts = self._compute_per_tick_buildings(item, 1.0)
+            total_upkeep = self._sum_upkeep(counts)
+            if counts:
+                lines = "\n".join(f"• **{b}** ×{int(math.ceil(c))}" for b, c in sorted(counts.items(), key=lambda x: x[0].lower()))
             else:
-                # No produces data; fall back to tree only
-                header = "_No output mapping found for this building._"
+                lines = "— (No buildings required; base resource)"
+            desc = f"**Buildings needed to produce 1 × {item} per tick**\n{lines}\n\n**Total upkeep:** {total_upkeep:.0f}"
+            e = discord.Embed(title=title, description=desc)
+            e.set_footer(text=f"Resource · Tier {tier}")
+            return e
     
-        # Optional: show produces line near top for buildings
-        if kind == "building":
-            b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
-            prod = b_tbl.get(item, {}).get("produces") or {}
-            if isinstance(prod, dict) and prod:
-                outs = ", ".join(f"{k} ×{v}" for k, v in prod.items())
-                lines.insert(1, f"  • _Produces:_ {outs}")
+        # kind == "building"
+        b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+        meta = b_tbl.get(item, {}) or {}
+        produces = meta.get("produces") or {}
+        if isinstance(produces, dict) and produces:
+            sections: List[str] = []
+            # Show a compact section for **each** output, normalized to 1 per tick
+            for out_res in sorted(produces.keys(), key=str.lower):
+                counts = self._compute_per_tick_buildings(str(out_res), 1.0)
+                total_upkeep = self._sum_upkeep(counts)
+                if counts:
+                    lines = "\n".join(f"• **{b}** ×{int(math.ceil(c))}" for b, c in sorted(counts.items(), key=lambda x: x[0].lower()))
+                else:
+                    lines = "— (No buildings required; base resource)"
+                sections.append(f"**1 × {out_res} per tick**\n{lines}\n**Total upkeep:** {total_upkeep:.0f}")
+            desc = "\n\n".join(sections)
+        else:
+            desc = "_No output mapping found for this building._"
     
-        e = discord.Embed(
-            title=title,
-            description=(header + "\n\n" + "\n".join(lines))[:4000] if lines else header[:4000],
-        )
-        e.set_footer(text=f"{'Building' if kind=='building' else 'Resource'} · Tier {tier}")
+        e = discord.Embed(title=title, description=desc)
+        e.set_footer(text=f"Building · Tier {tier}")
         return e
+
 
 
 
