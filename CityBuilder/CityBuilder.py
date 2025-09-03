@@ -816,20 +816,35 @@ class BuildingsTierActionsView(ui.View):
         self.tier = int(tier)
         self.show_admin = show_admin
 
-        # One green Build and one red Recycle per building in this tier
+        # Collect names for this tier
+        build_names = []
+        recycle_names = []
+
         for name, meta in BUILDINGS.items():
             if int(meta.get("tier", 0)) == self.tier:
-                self.add_item(BuildInTierBtn(name))
-                if name != "house":  # usually you don't "recycle" housing; remove this if you want to allow it
-                    self.add_item(RecycleBuildingInTierBtn(name))
+                build_names.append(name)
+                if name.lower() != "house":  # usually you don't "recycle" housing
+                    recycle_names.append(name)
 
+        # Add Build buttons first
+        for name in build_names:
+            self.add_item(BuildInTierBtn(name))
+
+        # Then add Recycle buttons
+        for name in recycle_names:
+            self.add_item(RecycleBuildingInTierBtn(name))
+
+        # Finally, add the back button
         self.add_item(BackToTiersBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            await interaction.response.send_message(
+                "This panel isn’t yours. Use `$city` to open your own.", ephemeral=True
+            )
             return False
         return True
+
 
 
 class WorkersTierView(discord.ui.View):
