@@ -3070,8 +3070,8 @@ class CityBuilder(commands.Cog):
         rtxt = "\n".join(res_tier_lines) or "None"
     
         # Add fields after embed is defined
-        e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
-        e.add_field(name="📦 Resources", value=rtxt, inline=False)
+        e.add_field(name="🏗️ Buildings", value=btxt, inline=True)
+        e.add_field(name="📦 Resources", value=rtxt, inline=True)
         e.add_field(
             name="👷 Workers",
             value=(
