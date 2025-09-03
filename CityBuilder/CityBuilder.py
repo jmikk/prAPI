@@ -3024,9 +3024,9 @@ class CityBuilder(commands.Cog):
             title=f"🌆 {getattr(user, 'display_name', 'Your')} City",
             description=desc
         )
-      my_team = await self.config.user(user).team()
-      if my_team:
-        e.add_field(name="Team", value=my_team, inline=True)
+        my_team = await self.config.user(user).team()
+        if my_team:
+          e.add_field(name="Team", value=my_team, inline=True)
 
     
         grouped_owned = self._group_owned_by_tier(d)  # {tier: [(name, count), ...]} (only >0)
