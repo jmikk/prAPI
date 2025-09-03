@@ -1069,14 +1069,60 @@ class RecycleBuildingSelect(ui.Select):
         # Ask for quantity in a modal
         await interaction.response.send_modal(RecycleBuildingQtyModal(self.cog, bname))
 
-class RecycleBuildingInTierBtn(ui.Button):
-    def __init__(self, bname: str):
-        super().__init__(label=f"Recycle {bname}", style=discord.ButtonStyle.danger, custom_id=f"city:recycle:tier:{bname}")
-        self.bname = bname
+# --- Recycle building button (3.9-safe, robust) ---
+
+class RecycleBuildingInTierBtn(discord.ui.Button):
+    def __init__(self, building_name: str):
+        super().__init__(
+            label=f"Recycle {building_name}",
+            style=discord.ButtonStyle.red,
+            custom_id=f"city:recycle:{building_name}",  # unique per building
+        )
+        self.building_name = building_name
 
     async def callback(self, interaction: discord.Interaction):
-        view: BuildingsTierActionsView = self.view  # type: ignore
-        await interaction.response.send_modal(RecycleBuildingQtyModal(view.cog, self.bname))
+        # Access parent view/cog
+        view = self.view  # BuildingsTierActionsView
+        cog = view.cog     # type: ignore
+        user = interaction.user
+        bname = self.building_name
+
+        try:
+            # Load and decrement count safely
+            async with cog.config.user(user).buildings() as b:
+                meta = b.get(bname, {"count": 0})
+                if isinstance(meta, int):
+                    meta = {"count": int(meta)}
+                count = int(meta.get("count", 0))
+
+                if count <= 0:
+                    # Nothing to recycle -> ACK by editing original message with a note
+                    new_embed = await cog.make_city_embed(
+                        user, header=f"⚠️ You don’t own any **{bname}** to recycle."
+                    )
+                    return await interaction.response.edit_message(embed=new_embed, view=view)
+
+                meta["count"] = count - 1
+                b[bname] = meta
+
+            # (Optional) refund logic could go here (resources/partial cost/etc.)
+
+            # Rebuild city panel and ACK in one go
+            new_embed = await cog.make_city_embed(
+                user, header=f"🗑️ Recycled **{bname}** (now {count - 1})."
+            )
+            await interaction.response.edit_message(embed=new_embed, view=view)
+
+            # Small ephemeral confirmation (not required but nice)
+            await interaction.followup.send(f"Recycled **{bname}**.", ephemeral=True)
+
+        except Exception as e:
+            # Always complete the interaction path, even on error
+            if interaction.response.is_done():
+                await interaction.followup.send(f"❌ Recycle failed: `{e}`", ephemeral=True)
+            else:
+                await interaction.response.send_message(f"❌ Recycle failed: `{e}`", ephemeral=True)
+
 
 
 
