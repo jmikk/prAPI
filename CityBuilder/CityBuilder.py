@@ -122,84 +122,84 @@ BUILDINGS: Dict[str, Dict] = {
   "smokehouse": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "food": 1, "fish": 1 },
+    "inputs": { "food": 2, "fish": 2 },
     "produces": { "dried meat": 1 },
     "tier": 2
   },
   "forge kitchen": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "ore": 1, "food": 1 },
+    "inputs": { "ore": 2, "food": 2 },
     "produces": { "iron rations": 1 },
     "tier": 2
   },
   "blacksmiths forge": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "wood": 1, "ore": 1 },
+    "inputs": { "wood": 2, "ore": 2 },
     "produces": { "weapons": 1 },
     "tier": 2
   },
   "Enchanter’s Workshop": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "Mana": 1, "wood": 1 },
+    "inputs": { "Mana": 2, "wood": 2 },
     "produces": { "magic staff": 1 },
     "tier": 2
   },
   "Altar of Purity": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "milk": 1, "Mana": 1 },
+    "inputs": { "milk": 2, "Mana": 2 },
     "produces": { "Blessed cheese": 1 },
     "tier": 2
   },
   "Witch’s Cauldron": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "Goblin teeth": 1, "milk": 1 },
+    "inputs": { "Goblin teeth": 2, "milk": 2 },
     "produces": { "cursed brew": 1 },
     "tier": 2
   },
   "Fey Altar": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "Fairy dust": 1, "Goblin teeth": 1 },
+    "inputs": { "Fairy dust": 2, "Goblin teeth": 2 },
     "produces": { "Charm Amulet": 1 },
     "tier": 2
   },
   "Arcane Lampworks": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "oil": 1, "Fairy dust": 1 },
+    "inputs": { "oil": 2, "Fairy dust": 2 },
     "produces": { "Enchanted Lantern": 1 },
     "tier": 2
   },
   "Oil Weaver’s Hall": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "wool": 1, "oil": 1 },
+    "inputs": { "wool": 2, "oil": 2 },
     "produces": { "Oily Rags": 1 },
     "tier": 2
   },
   "Druid’s Hut": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "herb": 1, "wool": 1 },
+    "inputs": { "herb": 2, "wool": 2 },
     "produces": { "Healing Poultice": 1 },
     "tier": 2
   },
   "Apothecary": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "salt": 1, "herb": 1 },
+    "inputs": { "salt": 2, "herb": 2 },
     "produces": { "Preservation Tonic": 1 },
     "tier": 2
   },
   "Sea Shrine": {
     "cost": 300.0,
     "upkeep": 10,
-    "inputs": { "fish": 1, "salt": 1 },
+    "inputs": { "fish": 2, "salt": 2 },
     "produces": { "Dreid Kraken Jerky": 1 },
     "tier": 2
   },
@@ -208,84 +208,84 @@ BUILDINGS: Dict[str, Dict] = {
   "Hunter’s Lodge": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "dried meat": 1, "Dreid Kraken Jerky": 1 },
+    "inputs": { "dried meat": 2, "Dreid Kraken Jerky": 2 },
     "produces": { "Beast Provisions": 1 },
     "tier": 3
   },
   "War Camp": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "iron rations": 1, "dried meat": 1 },
+    "inputs": { "iron rations": 2, "dried meat": 2 },
     "produces": { "Soldier Supplies": 1 },
     "tier": 3
   },
   "Armory Barracks": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "weapons": 1, "iron rations": 1 },
+    "inputs": { "weapons": 2, "iron rations": 2 },
     "produces": { "Armed Troops": 1 },
     "tier": 3
   },
   "Wizard Forge": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "magic staff": 1, "weapons": 1 },
+    "inputs": { "magic staff": 2, "weapons": 2 },
     "produces": { "Arcane Weaponry": 1 },
     "tier": 3
   },
   "Cathedral Armory": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "Blessed cheese": 1, "magic staff": 1 },
+    "inputs": { "Blessed cheese": 2, "magic staff": 2 },
     "produces": { "Holy Relic": 1 },
     "tier": 3
   },
   "Blighted Chapel": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "cursed brew": 1, "Blessed cheese": 1 },
+    "inputs": { "cursed brew": 2, "Blessed cheese": 2 },
     "produces": { "Corrupted Icon": 1 },
     "tier": 3
   },
   "Dark Shrine": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "Charm Amulet": 1, "cursed brew": 1 },
+    "inputs": { "Charm Amulet": 2, "cursed brew": 2 },
     "produces": { "Hexed Relic": 1 },
     "tier": 3
   },
   "Oracle’s Tower": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "Enchanted Lantern": 1, "Charm Amulet": 1 },
+    "inputs": { "Enchanted Lantern": 2, "Charm Amulet": 2 },
     "produces": { "Vision Crystal": 1 },
     "tier": 3
   },
   "Pyromancer’s Lab": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "Oily Rags": 1, "Enchanted Lantern": 1 },
+    "inputs": { "Oily Rags": 2, "Enchanted Lantern": 2 },
     "produces": { "Firebomb": 1 },
     "tier": 3
   },
   "Battlefield Tent": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "Healing Poultice": 1, "Oily Rags": 1 },
+    "inputs": { "Healing Poultice": 2, "Oily Rags": 2 },
     "produces": { "First Aid Pack": 1 },
     "tier": 3
   },
   "Alchemical Lab": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "Preservation Tonic": 1, "Healing Poultice": 1 },
+    "inputs": { "Preservation Tonic": 2, "Healing Poultice": 2 },
     "produces": { "Elixir of Life": 1 },
     "tier": 3
   },
   "Temple of the Deep": {
     "cost": 400.0,
     "upkeep": 15,
-    "inputs": { "Dreid Kraken Jerky": 1, "Preservation Tonic": 1 },
+    "inputs": { "Dreid Kraken Jerky": 2, "Preservation Tonic": 2 },
     "produces": { "Tear of the Kraken": 1 },
     "tier": 3
   },
@@ -294,84 +294,84 @@ BUILDINGS: Dict[str, Dict] = {
   "Grand Market": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "Beast Provisions": 1, "Tear of the Kraken": 1 },
+    "inputs": { "Beast Provisions": 2, "Tear of the Kraken": 2 },
     "produces": { "Wealth": 1 },
     "tier": 4
   },
   "Bloodforge": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "Soldier Supplies": 1, "Beast Provisions": 1 },
+    "inputs": { "Soldier Supplies": 2, "Beast Provisions": 2 },
     "produces": { "Warspawn": 1 },
     "tier": 4
   },
   "War Academy": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "Armed Troops": 1, "Soldier Supplies": 1 },
+    "inputs": { "Armed Troops": 2, "Soldier Supplies": 2 },
     "produces": { "Elite Army": 1 },
     "tier": 4
   },
   "Battle Mage Citadel": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "Arcane Weaponry": 1, "Armed Troops": 1 },
+    "inputs": { "Arcane Weaponry": 2, "Armed Troops": 2 },
     "produces": { "War Mages": 1 },
     "tier": 4
   },
   "Sacred Armory": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "Holy Relic": 1, "Arcane Weaponry": 1 },
+    "inputs": { "Holy Relic": 2, "Arcane Weaponry": 2 },
     "produces": { "Divine Crusaders": 1 },
     "tier": 4
   },
   "Desecrated Cathedral": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "Corrupted Icon": 1, "Holy Relic": 1 },
+    "inputs": { "Corrupted Icon": 2, "Holy Relic": 2 },
     "produces": { "Fallen Paladins": 1 },
     "tier": 4
   },
   "Cabal Sanctum": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "Hexed Relic": 1, "Corrupted Icon": 1 },
+    "inputs": { "Hexed Relic": 2, "Corrupted Icon": 2 },
     "produces": { "Dark Cultists": 1 },
     "tier": 4
   },
   "Oracle Spire": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "Vision Crystal": 1, "Hexed Relic": 1 },
+    "inputs": { "Vision Crystal": 2, "Hexed Relic": 2 },
     "produces": { "Prophecy Scrolls": 1 },
     "tier": 4
   },
   "Siege Workshop": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "Firebomb": 1, "Vision Crystal": 1 },
+    "inputs": { "Firebomb": 2, "Vision Crystal": 2 },
     "produces": { "Demolition Squad": 1 },
     "tier": 4
   },
   "Field Hospital": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "First Aid Pack": 1, "Firebomb": 1 },
+    "inputs": { "First Aid Pack": 2, "Firebomb": 2 },
     "produces": { "War Medics": 1 },
     "tier": 4
   },
   "Alchemical Sanctuary": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "Elixir of Life": 1, "First Aid Pack": 1 },
+    "inputs": { "Elixir of Life": 2, "First Aid Pack": 2 },
     "produces": { "Immortal Guard": 1 },
     "tier": 4
   },
   "Temple of the Abyss": {
     "cost": 1000.0,
     "upkeep": 40,
-    "inputs": { "Tear of the Kraken": 1, "Elixir of Life": 1 },
+    "inputs": { "Tear of the Kraken": 2, "Elixir of Life": 2 },
     "produces": { "Kraken-Blessed Chosen": 1 },
     "tier": 4
   },
@@ -380,84 +380,84 @@ BUILDINGS: Dict[str, Dict] = {
   "Abyssal Throne": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "Wealth": 1, "Kraken-Blessed Chosen": 1 },
+    "inputs": { "Wealth": 2, "Kraken-Blessed Chosen": 2 },
     "produces": { "Kraken Dominion": 1 },
     "tier": 5
   },
   "Blood Market": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "Warspawn": 1, "Wealth": 1 },
+    "inputs": { "Warspawn": 2, "Wealth": 2 },
     "produces": { "Mercenary Legion": 1 },
     "tier": 5
   },
   "Grand Fortress": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "Elite Army": 1, "Warspawn": 1 },
+    "inputs": { "Elite Army": 2, "Warspawn": 2 },
     "produces": { "Conqueror Host": 1 },
     "tier": 5
   },
   "Arcane War College": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "War Mages": 1, "Elite Army": 1 },
+    "inputs": { "War Mages": 2, "Elite Army": 2 },
     "produces": { "Spellbound Battalion": 1 },
     "tier": 5
   },
   "Sanctified Citadel": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "Divine Crusaders": 1, "War Mages": 1 },
+    "inputs": { "Divine Crusaders": 2, "War Mages": 2 },
     "produces": { "Holy Inquisition": 1 },
     "tier": 5
   },
   "Twilight Abbey": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "Fallen Paladins": 1, "Divine Crusaders": 1 },
+    "inputs": { "Fallen Paladins": 2, "Divine Crusaders": 2 },
     "produces": { "Oathbreakers": 1 },
     "tier": 5
   },
   "Obsidian Pyramid": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "Dark Cultists": 1, "Fallen Paladins": 1 },
+    "inputs": { "Dark Cultists": 2, "Fallen Paladins": 2 },
     "produces": { "Shadow Hierarchy": 1 },
     "tier": 5
   },
   "Temple of Oracles": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "Prophecy Scrolls": 1, "Dark Cultists": 1 },
+    "inputs": { "Prophecy Scrolls": 2, "Dark Cultists": 2 },
     "produces": { "Fateweavers": 1 },
     "tier": 5
   },
   "Siege Foundry": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "Demolition Squad": 1, "Prophecy Scrolls": 1 },
+    "inputs": { "Demolition Squad": 2, "Prophecy Scrolls": 2 },
     "produces": { "War Machines": 1 },
     "tier": 5
   },
   "Sanctum of Mercy": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "War Medics": 1, "Demolition Squad": 1 },
+    "inputs": { "War Medics": 2, "Demolition Squad": 2 },
     "produces": { "Battle Chaplains": 1 },
     "tier": 5
   },
   "Hall of Eternity": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "Immortal Guard": 1, "War Medics": 1 },
+    "inputs": { "Immortal Guard": 2, "War Medics": 2 },
     "produces": { "Eternal Vanguard": 1 },
     "tier": 5
   },
   "Abyssal Monastery": {
     "cost": 1200.0,
     "upkeep": 50,
-    "inputs": { "Kraken-Blessed Chosen": 1, "Immortal Guard": 1 },
+    "inputs": { "Kraken-Blessed Chosen": 2, "Immortal Guard": 2 },
     "produces": { "Heralds of the Deep": 1 },
     "tier": 5
   },
@@ -466,84 +466,84 @@ BUILDINGS: Dict[str, Dict] = {
   "Empire of the Deep": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Kraken Dominion": 1, "Heralds of the Deep": 1 },
+    "inputs": { "Kraken Dominion": 2, "Heralds of the Deep": 2 },
     "produces": { "Kraken Imperium": 1 },
     "tier": 6
   },
   "Council of Chains": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Mercenary Legion": 1, "Kraken Dominion": 1 },
+    "inputs": { "Mercenary Legion": 2, "Kraken Dominion": 2 },
     "produces": { "Slaver Dynasties": 1 },
     "tier": 6
   },
   "Iron Dominion": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Conqueror Host": 1, "Mercenary Legion": 1 },
+    "inputs": { "Conqueror Host": 2, "Mercenary Legion": 2 },
     "produces": { "Warlord Kingdoms": 1 },
     "tier": 6
   },
   "Mage Conclave": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Spellbound Battalion": 1, "Conqueror Host": 1 },
+    "inputs": { "Spellbound Battalion": 2, "Conqueror Host": 2 },
     "produces": { "Arcane Dominion": 1 },
     "tier": 6
   },
   "High Theocracy": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Holy Inquisition": 1, "Spellbound Battalion": 1 },
+    "inputs": { "Holy Inquisition": 2, "Spellbound Battalion": 2 },
     "produces": { "Eternal Church": 1 },
     "tier": 6
   },
   "Order of Twilight": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Oathbreakers": 1, "Holy Inquisition": 1 },
+    "inputs": { "Oathbreakers": 2, "Holy Inquisition": 2 },
     "produces": { "Dusk Crusaders": 1 },
     "tier": 6
   },
   "Night Court": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Shadow Hierarchy": 1, "Oathbreakers": 1 },
+    "inputs": { "Shadow Hierarchy": 2, "Oathbreakers": 2 },
     "produces": { "Shadow Empire": 1 },
     "tier": 6
   },
   "Council of Prophets": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Fateweavers": 1, "Shadow Hierarchy": 1 },
+    "inputs": { "Fateweavers": 2, "Shadow Hierarchy": 2 },
     "produces": { "Fate Dominion": 1 },
     "tier": 6
   },
   "Engineer's Guildhall": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "War Machines": 1, "Fateweavers": 1 },
+    "inputs": { "War Machines": 2, "Fateweavers": 2 },
     "produces": { "Colossus Engines": 1 },
     "tier": 6
   },
   "Order of Mercy": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Battle Chaplains": 1, "War Machines": 1 },
+    "inputs": { "Battle Chaplains": 2, "War Machines": 2 },
     "produces": { "Holy Hospitallers": 1 },
     "tier": 6
   },
   "Pantheon’s Vault": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Eternal Vanguard": 1, "Battle Chaplains": 1 },
+    "inputs": { "Eternal Vanguard": 2, "Battle Chaplains": 2 },
     "produces": { "Demi-Gods": 1 },
     "tier": 6
   },
   "Rite of Abyss": {
     "cost": 18000.0,
     "upkeep": 90,
-    "inputs": { "Heralds of the Deep": 1, "Eternal Vanguard": 1 },
+    "inputs": { "Heralds of the Deep": 2, "Eternal Vanguard": 2},
     "produces": { "Deep Ascendants": 1 },
     "tier": 6
   },
@@ -552,84 +552,84 @@ BUILDINGS: Dict[str, Dict] = {
   "Abyssal Convergence": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Kraken Imperium": 1, "Deep Ascendants": 1 },
+    "inputs": { "Kraken Imperium": 2, "Deep Ascendants": 2 },
     "produces": { "World-Eater Cult": 1 },
     "tier": 7
   },
   "Throne of Chains": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Slaver Dynasties": 1, "Kraken Imperium": 1 },
+    "inputs": { "Slaver Dynasties": 2, "Kraken Imperium": 2 },
     "produces": { "Tyrant Overlords": 1 },
     "tier": 7
   },
   "Bloodforged Empire": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Warlord Kingdoms": 1, "Slaver Dynasties": 1 },
+    "inputs": { "Warlord Kingdoms": 2, "Slaver Dynasties": 2 },
     "produces": { "Eternal Conquerors": 1 },
     "tier": 7
   },
   "Grand Arcanum": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Arcane Dominion": 1, "Warlord Kingdoms": 1 },
+    "inputs": { "Arcane Dominion": 2, "Warlord Kingdoms": 2 },
     "produces": { "Spellforged Empire": 1 },
     "tier": 7
   },
   "Celestial Synod": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Eternal Church": 1, "Arcane Dominion": 1 },
+    "inputs": { "Eternal Church": 2, "Arcane Dominion": 2 },
     "produces": { "Divine Hierarchs": 1 },
     "tier": 7
   },
   "Crimson Cathedral": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Dusk Crusaders": 1, "Eternal Church": 1 },
+    "inputs": { "Dusk Crusaders": 2, "Eternal Church": 2 },
     "produces": { "Twilight Zealots": 1 },
     "tier": 7
   },
   "Crown of Midnight": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Shadow Empire": 1, "Dusk Crusaders": 1 },
+    "inputs": { "Shadow Empire": 2, "Dusk Crusaders": 2 },
     "produces": { "Umbral Sovereigns": 1 },
     "tier": 7
   },
   "Prophet-King’s Court": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Fate Dominion": 1, "Shadow Empire": 1 },
+    "inputs": { "Fate Dominion": 2, "Shadow Empire": 2 },
     "produces": { "Destiny Weavers": 1 },
     "tier": 7
   },
   "Titan Forge": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Colossus Engines": 1, "Fate Dominion": 1 },
+    "inputs": { "Colossus Engines": 2, "Fate Dominion": 2 },
     "produces": { "Living War Machines": 1 },
     "tier": 7
   },
   "Sanctum of Steel": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Holy Hospitallers": 1, "Colossus Engines": 1 },
+    "inputs": { "Holy Hospitallers": 2, "Colossus Engines": 2 },
     "produces": { "Paladins of Iron": 1 },
     "tier": 7
   },
   "Celestial Ascent": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Demi-Gods": 1, "Holy Hospitallers": 1 },
+    "inputs": { "Demi-Gods": 2, "Holy Hospitallers": 2 },
     "produces": { "Minor Deities": 1 },
     "tier": 7
   },
   "Abyssal Apotheosis": {
     "cost": 24500.0,
     "upkeep": 105,
-    "inputs": { "Deep Ascendants": 1, "Demi-Gods": 1 },
+    "inputs": { "Deep Ascendants": 2, "Demi-Gods": 2 },
     "produces": { "Eldritch Gods": 1 },
     "tier": 7
   },
@@ -639,10 +639,10 @@ BUILDINGS: Dict[str, Dict] = {
     "cost": 65000.0,
     "upkeep": 160,
     "inputs": {
-      "World-Eater Cult": 1,
-      "Eldritch Gods": 1,
-      "Umbral Sovereigns": 1,
-      "Twilight Zealots": 1
+      "World-Eater Cult": 2,
+      "Eldritch Gods": 2,
+      "Umbral Sovereigns": 2,
+      "Twilight Zealots": 2
     },
     "produces": { "Team Drowned World tokens": 1 },
     "tier": 8
@@ -651,10 +651,10 @@ BUILDINGS: Dict[str, Dict] = {
     "cost": 65000.0,
     "upkeep": 160,
     "inputs": {
-      "Tyrant Overlords": 1,
-      "Eternal Conquerors": 1,
-      "Spellforged Empire": 1,
-      "Living War Machines": 1
+      "Tyrant Overlords": 2,
+      "Eternal Conquerors": 2,
+      "Spellforged Empire": 2,
+      "Living War Machines": 2
     },
     "produces": { "Team Iron Empire tokens": 1 },
     "tier": 8
@@ -663,10 +663,10 @@ BUILDINGS: Dict[str, Dict] = {
     "cost": 65000.0,
     "upkeep": 160,
     "inputs": {
-      "Divine Hierarchs": 1,
-      "Destiny Weavers": 1,
-      "Paladins of Iron": 1,
-      "Minor Deities": 1
+      "Divine Hierarchs": 2,
+      "Destiny Weavers": 2,
+      "Paladins of Iron": 2,
+      "Minor Deities": 2
     },
     "produces": { "Team Celestial Nexus tokens": 1 },
     "tier": 8
