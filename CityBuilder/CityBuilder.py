@@ -3050,7 +3050,7 @@ class CityBuilder(commands.Cog):
         if my_team:
           team = data.get("team")
           if team in TEAM_CRESTS:
-              embed.set_thumbnail(url=TEAM_CRESTS[team])  
+              e.set_thumbnail(url=TEAM_CRESTS[team])  
           e.add_field(name="Team", value=my_team, inline=True)
 
     
