@@ -2087,72 +2087,72 @@ class CityBuilder(commands.Cog):
             score += p["r_base"] * (p["r_growth"] ** int(t)) * float(qty)
         return float(int(score))  # keep it neat (integer points)
 
-  def _fmt_int(self, n) -> str:
-      try:
-          return f"{n:,.0f}"
-      except Exception:
-          return str(int(n))
+    def _fmt_int(self, n) -> str:
+        try:
+            return f"{n:,.0f}"
+        except Exception:
+            return str(int(n))
+    
+    async def team_scores_embed(self, requester: discord.abc.User) -> discord.Embed:
+        """
+        Sums per-user scores (same score calc as the leaderboard) per team.
+        """
+        params = self._score_params()
+        all_users = await self.config.all_users()
+    
+        # Precompute user scores using the same function you use for leaderboard
+        team_totals = {t: 0.0 for t in TEAM_LIST}
+        team_counts = {t: 0 for t in TEAM_LIST}
+    
+        for uid, data in all_users.items():
+            team = data.get("team")
+            if team not in TEAM_LIST:
+                continue
+            score = self._compute_user_score_from_data(data)
+            team_totals[team] += score
+            team_counts[team] += 1
+    
+        # Sort by total score desc
+        rows = sorted(team_totals.items(), key=lambda kv: kv[1], reverse=True)
+    
+        # Build lines
+        lines = []
+        for team, total in rows:
+            players = team_counts.get(team, 0)
+            avg = (total / players) if players else 0.0
+            lines.append(
+                f"**{team}** — {self._fmt_int(total)} pts  ·  {players} players  ·  avg {self._fmt_int(avg)}"
+            )
+    
+        # Identify requester's team
+        my_team = await self.config.user(requester).team()
+        footer = f"Your team: {my_team or '—'}"
+    
+        e = discord.Embed(title="📊 Team Scores", description="\n".join(lines))
+        e.set_footer(text=footer)
+        return e
   
-  async def team_scores_embed(self, requester: discord.abc.User) -> discord.Embed:
-      """
-      Sums per-user scores (same score calc as the leaderboard) per team.
-      """
-      params = self._score_params()
-      all_users = await self.config.all_users()
-  
-      # Precompute user scores using the same function you use for leaderboard
-      team_totals = {t: 0.0 for t in TEAM_LIST}
-      team_counts = {t: 0 for t in TEAM_LIST}
-  
-      for uid, data in all_users.items():
-          team = data.get("team")
-          if team not in TEAM_LIST:
-              continue
-          score = self._compute_user_score_from_data(data)
-          team_totals[team] += score
-          team_counts[team] += 1
-  
-      # Sort by total score desc
-      rows = sorted(team_totals.items(), key=lambda kv: kv[1], reverse=True)
-  
-      # Build lines
-      lines = []
-      for team, total in rows:
-          players = team_counts.get(team, 0)
-          avg = (total / players) if players else 0.0
-          lines.append(
-              f"**{team}** — {self._fmt_int(total)} pts  ·  {players} players  ·  avg {self._fmt_int(avg)}"
-          )
-  
-      # Identify requester's team
-      my_team = await self.config.user(requester).team()
-      footer = f"Your team: {my_team or '—'}"
-  
-      e = discord.Embed(title="📊 Team Scores", description="\n".join(lines))
-      e.set_footer(text=footer)
-      return e
-
-  
-  async def assign_team_if_needed(self, user: discord.abc.User) -> str:
-      """Assign user to the smallest team if they don't already have one."""
-      cur = await self.config.user(user).team()
-      if cur in TEAM_LIST:
-          return cur
-  
-      all_users = await self.config.all_users()
-      counts = {t: 0 for t in TEAM_LIST}
-      for _, data in all_users.items():
-          t = data.get("team")
-          if t in counts:
-              counts[t] += 1
-  
-      smallest = min(counts.values())
-      candidates = [t for t, c in counts.items() if c == smallest]
-      # deterministic tie-break using user id
-      team = candidates[(hash(str(user.id)) % len(candidates))]
-  
-      await self.config.user(user).team.set(team)
-      return team
+    
+    async def assign_team_if_needed(self, user: discord.abc.User) -> str:
+        """Assign user to the smallest team if they don't already have one."""
+        cur = await self.config.user(user).team()
+        if cur in TEAM_LIST:
+            return cur
+    
+        all_users = await self.config.all_users()
+        counts = {t: 0 for t in TEAM_LIST}
+        for _, data in all_users.items():
+            t = data.get("team")
+            if t in counts:
+                counts[t] += 1
+    
+        smallest = min(counts.values())
+        candidates = [t for t, c in counts.items() if c == smallest]
+        # deterministic tie-break using user id
+        team = candidates[(hash(str(user.id)) % len(candidates))]
+    
+        await self.config.user(user).team.set(team)
+        return team
 
     
     
