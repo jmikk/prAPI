@@ -1080,12 +1080,23 @@ class WorkersTierView(discord.ui.View):
         self.tier = tier
         self.show_admin = show_admin
 
-        # Dynamically add one assign + one unassign button per building in this tier
-        for name, meta in sorted(BUILDINGS.items()):
-            if int(meta.get("tier", 0)) == int(tier) and name != "house":
-                self.add_item(AssignWorkerToBuildingBtn(name))
-                self.add_item(UnassignWorkerFromBuildingBtn(name))
+        # Collect eligible building names for this tier (skip "house")
+        eligible = [
+            name for name, meta in BUILDINGS.items()
+            if int(meta.get("tier", 0)) == int(tier) and name != "house"
+        ]
+        # Sort case-insensitively for stable ordering
+        eligible.sort(key=str.casefold)
 
+        # Add ALL assign buttons first
+        for name in eligible:
+            self.add_item(AssignWorkerToBuildingBtn(name))
+
+        # Then add ALL unassign buttons
+        for name in eligible:
+            self.add_item(UnassignWorkerFromBuildingBtn(name))
+
+        # Back button
         self.add_item(BackToWorkersTiersBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -1093,6 +1104,7 @@ class WorkersTierView(discord.ui.View):
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
+
 
 class AssignWorkerToBuildingBtn(discord.ui.Button):
     def __init__(self, building: str):
@@ -3848,7 +3860,7 @@ class HowToPlayView(ui.View):
 
 class BankBtn(ui.Button):
     def __init__(self):
-        super().__init__(label="Bank", style=discord.ButtonStyle.success, custom_id="city:bank")
+        super().__init__(label="Treasury", style=discord.ButtonStyle.success, custom_id="city:bank")
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
