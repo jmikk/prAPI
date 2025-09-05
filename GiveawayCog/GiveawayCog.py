@@ -5,6 +5,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 import random
 from discord.ext import tasks
+import random
+import asyncio
 
 class GiveawayCog(commands.Cog):
     def __init__(self, bot):
