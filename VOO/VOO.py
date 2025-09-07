@@ -1383,7 +1383,8 @@ class VOO(commands.Cog):
                     continue
                 self._err_last_notice_ts[guild.id] = now
     
-                await channel.send(f"⚠️ **VOO listener error** — {note}{snippet}")
+                owner = (await bot.application_info()).owner
+                await owner.send(f"⚠️ **VOO listener error** — {note}{snippet}")
             except Exception:
                 # don't let error reporting crash anything
                 continue
