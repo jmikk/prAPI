@@ -95,7 +95,7 @@ class Casino(commands.Cog):
             result_text += "You lost! 😢"
         
         new_balance = await self.update_balance(ctx.author, winnings)
-        await message.edit(content=f"{final_flip}\n{result_text} New balance: {new_balance:.2f} WellCoins.")
+        await message.edit(content=f"{final_flip}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         self.total_bets["coinflip"] += bet
         self.total_payouts["coinflip"] += max(0, winnings)
         user = ctx.author
@@ -140,7 +140,7 @@ class Casino(commands.Cog):
             result_text = "You lost! 😢"
         
         new_balance = await self.update_balance(ctx.author, winnings)
-        await message.edit(content=f"Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: {new_balance:.2f} WellCoins.")
+        await message.edit(content=f"Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         self.total_bets["dice"] += bet
         self.total_payouts["dice"] += max(0, winnings)
         user = ctx.author
@@ -196,7 +196,7 @@ class Casino(commands.Cog):
             payout = -bet  # House edge ensured
         
         new_balance = await self.update_balance(ctx.author, payout)
-        await message.edit(content=f"{display}\n{result_text} New balance: {new_balance:.2f} WellCoins.")
+        await message.edit(content=f"{display}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
        
         self.total_bets["slots"] += bet
         self.total_payouts["slots"] += max(0, payout)
@@ -293,7 +293,7 @@ class Casino(commands.Cog):
             result_text += " You lost! 😢"
         
         new_balance = await self.update_balance(ctx.author, payout)
-        await message.edit(content=f"🎡 {color2} {number}\n{result_text} New balance: {new_balance:.2f} WellCoins.")
+        await message.edit(content=f"🎡 {color2} {number}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         
         self.total_bets["roulette"] += bet
         self.total_payouts["roulette"] += max(0, payout)
@@ -368,15 +368,15 @@ class Casino(commands.Cog):
             embed.add_field(
                 name=f"{game.capitalize()} {status}",
                 value=(
-                    f"💰 **Total Bet**: {total_bet:.2f}\n"
-                    f"🏆 **Total Payout**: {total_payout:.2f}\n"
+                    f"💰 **Total Bet**: {total_bet:,.2f}\n"
+                    f"🏆 **Total Payout**: {total_payout:,.2f}\n"
                     f"📊 **Actual Payout %**: {actual_er:.2%}\n"
-                    f"📉 **House Net**: {net:.2f}"
+                    f"📉 **House Net**: {net:,.2f}"
                 ),
                 inline=False
             )
     
-        embed.set_footer(text=f"🧮 Total House Profit: {total_net:.2f} WellCoins")
+        embed.set_footer(text=f"🧮 Total House Profit: {total_net:,.2f} WellCoins")
         await ctx.send(embed=embed)
 
     @commands.command()
