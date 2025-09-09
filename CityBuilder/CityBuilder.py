@@ -10,7 +10,7 @@ from redbot.core import commands, Config
 import random
 import time
 
-SCRAP_PRICE_LOCAL = 3.0  # how much local currency per scrap
+SCRAP_PRICE_LOCAL = 5.0  # how much local currency per scrap
 
 TEAM_CELESTIAL = "Team Celestial Nexus"
 TEAM_DROWNED   = "Team Drowned World"
@@ -931,7 +931,7 @@ class RecycleResourceQtyModal(discord.ui.Modal, title="♻️ Recycle Resources 
 
         d = await self.cog.config.user(interaction.user).all()
         inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
-        have = int(inv.get(res, 0))
+        have = int(inv.get(res.lower(), 0))
         if have < qty:
             return await interaction.response.send_message(
                 f"❌ You only have **{have} {res}**.", ephemeral=True
