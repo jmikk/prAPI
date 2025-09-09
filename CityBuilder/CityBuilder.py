@@ -10,7 +10,7 @@ from redbot.core import commands, Config
 import random
 import time
 
-SCRAP_PRICE_LOCAL = 5.0  # how much local currency per scrap
+SCRAP_PRICE_LOCAL = 10.0  # how much local currency per scrap
 
 TEAM_CELESTIAL = "Team Celestial Nexus"
 TEAM_DROWNED   = "Team Drowned World"
