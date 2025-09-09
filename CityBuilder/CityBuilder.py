@@ -919,7 +919,7 @@ class RecycleResourceQtyModal(discord.ui.Modal, title="♻️ Recycle Resources 
         self.add_item(self.qty)
 
     async def on_submit(self, interaction: discord.Interaction):
-        res = self.resource_name.strip().lower()
+        res = self.resource_name.strip()
         if res == "ore":
             res = "metal"
         try:
@@ -931,7 +931,7 @@ class RecycleResourceQtyModal(discord.ui.Modal, title="♻️ Recycle Resources 
 
         d = await self.cog.config.user(interaction.user).all()
         inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
-        have = int(inv.get(res.lower(), 0))
+        have = int(inv.get(res, 0))
         if have < qty:
             return await interaction.response.send_message(
                 f"❌ You only have **{have} {res}**.", ephemeral=True
