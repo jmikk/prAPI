@@ -2658,8 +2658,8 @@ class CityBuilder(commands.Cog):
         return {
             "b_base": 100.0,  # base points per T0 building
             "b_growth": 3.0,  # exponential growth per tier for buildings
-            "r_base": 1.0,    # base points per unit of T0 resource
-            "r_growth": 2.0,  # exponential growth per tier for resources
+            "r_base": 10.0,    # base points per unit of T0 resource
+            "r_growth": 3.0,  # exponential growth per tier for resources
             "top_n": 10,      # leaderboard size
         }
     
