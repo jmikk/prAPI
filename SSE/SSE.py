@@ -89,8 +89,32 @@ DEFAULT_COMMON_FILTERS: Dict[str, str] = {
 
 MINIFLAG_RE = re.compile(r'<img src="([^"]+?)" class="miniflag"', re.I)
 RMB_LINK_RE = re.compile(r'<a href="/region=([^"/]+)/page=display_region_rmb\?postid=(\d+)', re.I)
-REGION_RE = re.compile(r'href="region=([a-z0-9_]+)"', re.I)
-REGION_TEXT_RE = re.compile(r"%%([a-z0-9_]+)%%", re.I)
+
+
+def _regions_from_buckets(buckets: Optional[List[str]]) -> set[str]:
+    """
+    From buckets like ["nation:feuvian","change","region:the_frontier_sea","all"]
+    collect all region slugs. Normalized to ns_norm.
+    """
+    regions: set[str] = set()
+    if not buckets:
+        return regions
+    for b in buckets:
+        if isinstance(b, str) and b.lower().startswith("region:"):
+            regions.add(ns_norm(b.split(":", 1)[1]))
+    return regions
+
+def _primary_region_from_buckets(buckets: Optional[List[str]]) -> Optional[str]:
+    """
+    Prefer the first 'region:<slug>' entry as the primary region.
+    """
+    if not buckets:
+        return None
+    for b in buckets:
+        if isinstance(b, str) and b.lower().startswith("region:"):
+            return ns_norm(b.split(":", 1)[1])
+    return None
+
 
 def _extract_nation_from_event(html: str, text: str) -> Optional[str]:
     m = NATION_LINK_RE.search(html or "")
@@ -100,54 +124,6 @@ def _extract_nation_from_event(html: str, text: str) -> Optional[str]:
     if m2:
         return m2.group(1).lower()
     return None
-
-def _primary_region_from_event(html: str, text: str) -> Optional[str]:
-    # Prefer destination on "relocated from ... to ..." (text)
-    m_txt = re.search(r"relocated\s+from\s+%%[a-z0-9_]+%%\s+to\s+%%([a-z0-9_]+)%%", text or "", re.I)
-    if m_txt:
-        return m_txt.group(1).lower()
-
-    # Prefer destination on "relocated ... to ..." (html)
-    m_html = re.search(r"\bto\s*<a\s+href=\"region=([a-z0-9_]+)\"", html or "", re.I)
-    if m_html:
-        return m_html.group(1).lower()
-
-    # Otherwise pick the last region reference if any
-    regions_html = re.findall(r'href="region=([a-z0-9_]+)"', html or "", re.I)
-    if regions_html:
-        return regions_html[-1].lower()
-
-    regions_txt = re.findall(r"%%([a-z0-9_]+)%%", text or "", re.I)
-    if regions_txt:
-        return regions_txt[-1].lower()
-
-    return None
-
-
-def _regions_from_event(html: str, text: str) -> set[str]:
-    """Return all region slugs referenced in the event (origin + destination if present)."""
-    regions: set[str] = set()
-
-    # HTML links
-    for r in re.findall(r'href="region=([a-z0-9_]+)"', html or "", re.I):
-        regions.add(r.lower())
-
-    # Text tokens
-    for r in re.findall(r"%%([a-z0-9_]+)%%", text or "", re.I):
-        regions.add(r.lower())
-
-    return regions
-
-
-def _extract_region_from_event(html: str, text: str) -> Optional[str]:
-    m = REGION_RE.search(html or "")
-    if m:
-        return m.group(1).lower()
-    m2 = REGION_TEXT_RE.search(text or "")
-    if m2:
-        return m2.group(1).lower()
-    return None
-
 
 def ns_norm(s: str) -> str:
     return re.sub(r"\s+", "_", s.strip().lower())
@@ -384,21 +360,21 @@ class SSE(commands.Cog):
     async def _process_filtered_event(self, data: dict):
         """
         Route a non-RMB event to all matching filters.
-        Region scoping now considers *all* regions referenced in the event (origin + destination),
-        so filters scoped to either region will match.
+        Region scoping now uses ONLY SSE buckets. If buckets are missing region info,
+        we optionally fall back to inferring via nation→region cache.
         """
         event_str = data.get("str", "") or ""
         html = data.get("htmlStr", "") or ""
+        buckets = data.get("buckets") or []
     
-        # NEW: collect all regions (origin + destination) and pick a primary for display
-        event_regions: set[str] = _regions_from_event(html, event_str)
-        region: Optional[str] = _primary_region_from_event(html, event_str)
-    
+        # --- Region set & primary from buckets only ---
+        event_regions: set[str] = _regions_from_buckets(buckets)
+        region: Optional[str] = _primary_region_from_buckets(buckets)
+        
         flag_url = self._flag_from_html(html)
         title, desc = self._smart_title_desc(event_str)
         title, desc = hyperlink_ns(title), hyperlink_ns(desc)
     
-        # For each guild, try filters; if none match and fallback enabled, send to default webhook.
         tasks = []
         for guild in self.bot.guilds:
             if not await self.config.guild(guild).enabled():
@@ -414,17 +390,16 @@ class SSE(commands.Cog):
                 patt = f.get("pattern") or ""
                 regs = [r.strip().lower() for r in (f.get("regions") or []) if r]
     
-                # Region scope: if the filter has regions, match if ANY of the event regions is in scope
+                # Region scope: event must reference ANY of the filter regions (via buckets)
                 if regs:
                     if not event_regions or not any(er in regs for er in event_regions):
-                        continue  # none of the event's regions are in this filter's scope
+                        continue
     
-                # Regex match
+                # Regex match on text
                 try:
                     if patt and not re.search(patt, event_str, re.I):
                         continue
                 except re.error:
-                    # Bad regex in config; skip quietly
                     continue
     
                 matched = True
@@ -446,12 +421,9 @@ class SSE(commands.Cog):
                 if flag_url:
                     embed.set_thumbnail(url=flag_url)
     
-                # Footer: show all regions when we have them; otherwise show primary if present
                 eid = data.get("id", "N/A")
                 if event_regions:
-                    embed.set_footer(
-                        text=f"Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}"
-                    )
+                    embed.set_footer(text=f"Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}")
                 elif region:
                     embed.set_footer(text=f"Event ID: {eid} • Region: {region}")
                 else:
@@ -460,7 +432,7 @@ class SSE(commands.Cog):
                 content = f"<@&{role_id}>" if role_id else None
                 tasks.append(self._post_webhook(webhook, content, [embed]))
     
-            # Fallback: if nothing matched but we want all events to at least show up
+            # Fallback routing if no filters matched
             if not matched and fallback and default_webhook:
                 embed = discord.Embed(
                     title=title or "NationStates Event",
@@ -476,9 +448,7 @@ class SSE(commands.Cog):
     
                 eid = data.get("id", "N/A")
                 if event_regions:
-                    embed.set_footer(
-                        text=f"(unmatched) Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}"
-                    )
+                    embed.set_footer(text=f"(unmatched) Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}")
                 elif region:
                     embed.set_footer(text=f"(unmatched) Event ID: {eid} • Region: {region}")
                 else:
@@ -488,6 +458,7 @@ class SSE(commands.Cog):
     
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+
 
 
     async def _process_rmb(self, region_slug: str, post_id: str, data: dict):
