@@ -13,9 +13,6 @@ import json
 from datetime import datetime, timezone
 from discord import ui, ButtonStyle, Interaction
 
-
-
-
 log = logging.getLogger("red.cards_auction_watcher")
 
 NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
@@ -599,25 +596,26 @@ class CardsAuctionWatcher(commands.Cog):
             file=discord.File(fp, filename=f"caw_dumpdry_{stamp}.json"),
         )
         
-        @caw_group.command(name="webhooks")
-        @commands.has_guild_permissions(manage_guild=True)
-        async def caw_webhooks(self, ctx: commands.Context, state: str):
-            """Turn webhook posting/editing on or off globally. Usage: [p]caw webhooks on|off"""
-            state = state.lower()
-            if state not in {"on", "off"}:
-                return await ctx.send("Use `on` or `off`.")
-            await self.config.webhooks_enabled.set(state == "on")
-            await ctx.send(f"Webhooks are now **{'ENABLED' if state == 'on' else 'DISABLED'}**.")
+    @caw_group.command(name="webhooks")
+    @commands.has_guild_permissions(manage_guild=True)
+    async def caw_webhooks(self, ctx: commands.Context, state: str):
+        """Turn webhook posting/editing on or off globally. Usage: [p]caw webhooks on|off"""
+        state = state.lower()
+        if state not in {"on", "off"}:
+            return await ctx.send("Use `on` or `off`.")
+        await self.config.webhooks_enabled.set(state == "on")
+        await ctx.send(f"Webhooks are now **{'ENABLED' if state == 'on' else 'DISABLED'}**.")
         
-        @caw_group.command(name="mapping")
-        @commands.has_guild_permissions(manage_guild=True)
-        async def caw_mapping(self, ctx: commands.Context, state: str):
-            """Turn message mapping/edits/cleanup on or off globally. Usage: [p]caw mapping on|off"""
-            state = state.lower()
-            if state not in {"on", "off"}:
-                return await ctx.send("Use `on` or `off`.")
-            await self.config.mapping_enabled.set(state == "on")
-            await ctx.send(f"Mapping is now **{'ENABLED' if state == 'on' else 'DISABLED'}**.")
+    @caw_group.command(name="mapping")
+    @commands.has_guild_permissions(manage_guild=True)
+    async def caw_mapping(self, ctx: commands.Context, state: str):
+        """Turn message mapping/edits/cleanup on or off globally. Usage: [p]caw mapping on|off"""
+        state = state.lower()
+        if state not in {"on", "off"}:
+            return await ctx.send("Use `on` or `off`.")
+        await self.config.mapping_enabled.set(state == "on")
+        await ctx.send(f"Mapping is now **{'ENABLED' if state == 'on' else 'DISABLED'}**.")
+            
 
 
     @caw_group.command(name="watch")
@@ -673,6 +671,33 @@ class CardsAuctionWatcher(commands.Cog):
         """Cookie dashboard 🥠"""
         total = await self.config.gob_cookies()
         await ctx.send(f"🍪 **Gob's cookie jar:** `{total}` cookies")
+
+    @caw_group.command(name="forcerun")
+    @commands.is_owner()
+    async def caw_forcerun(self, ctx: commands.Context):
+        """
+        Force the auction watcher loop to run immediately (ignores interval).
+        Useful for testing watchlist DMs or webhook posting.
+        """
+        await ctx.send("⏱ Forcing an immediate run...")
+        try:
+            # Gather all webhooks
+            all_webhooks: List[str] = []
+            for g in self.bot.guilds:
+                try:
+                    hooks = await self.config.guild(g).webhooks()
+                    all_webhooks.extend([h for h in hooks if h])
+                except Exception:
+                    continue
+            all_webhooks = list(dict.fromkeys(all_webhooks))
+    
+            # Run once with whatever mode flags are currently set
+            await self._run_once(all_webhooks)
+            await ctx.send("✅ Forced run complete.")
+        except Exception as e:
+            log.exception("Forced run failed")
+            await ctx.send(f"❌ Forced run failed: `{e}`")
+
     
 
 
