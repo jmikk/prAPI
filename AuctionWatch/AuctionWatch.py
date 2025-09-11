@@ -180,7 +180,7 @@ class AuctionWatch(commands.Cog):
 
     # ===== Background Task =====
 
-    @tasks.loop(minutes=1.0)
+    @tasks.loop(minutes=30.0)
     async def poll_auctions(self):
         try:
             processed, matches, dm_attempts, dm_successes = await self._poll_once()
