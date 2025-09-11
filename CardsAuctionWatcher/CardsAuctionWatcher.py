@@ -364,7 +364,7 @@ class CardsAuctionWatcher(commands.Cog):
         def fmt_book(side):
             if not side:
                 return "_none_"
-            return "\n".join(f"• **{p:,.2f}** by `{n}` (t={ts})" for p, n, ts in side)
+            return "\n".join(f"• **{p:,.2f}** by `{n}` (t={_discord_rel_ts(ts)})" for p, n, ts in side)
 
         embed.add_field(name="Top Bids (best first)", value=fmt_book(d.get("top_bids", [])), inline=False)
         embed.add_field(name="Top Asks (cheapest first)", value=fmt_book(d.get("top_asks", [])), inline=False)
