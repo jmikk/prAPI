@@ -96,8 +96,7 @@ class AuctionWatch(commands.Cog):
         self.config.register_user(**DEFAULT_USER)
 
         # Cache of (cardid, season) pairs recently notified to reduce duplicate pings
-        self._recent_notified: Dict[Tuple[int, int], float] = {}
-
+        self._recent_notified: Dict[Tuple[int, int, int], float] = {}
         # Start background task
         self.poll_auctions.start()
 
@@ -266,31 +265,22 @@ class AuctionWatch(commands.Cog):
         matches = 0
         dm_attempts = 0
         dm_successes = 0
-
+        
         for a in auctions:
             try:
                 cardid = int((a.findtext("CARDID") or "0").strip())
                 season = int((a.findtext("SEASON") or "0").strip())
             except Exception:
                 continue
-
-            key = (cardid, season)
+        
             processed += 1
-
-            # Deduplicate notifications for a short window (3 hours)
-            last = self._recent_notified.get(key)
-            if last and (now - last) < (3 * 60 * 60):
-                continue
-
-            watchers = all_watchers.get(key, [])
+            watchers = all_watchers.get((cardid, season), [])
             if not watchers:
                 continue
-
-            # Record we notified
-            self._recent_notified[key] = now
+        
+            # We count a “match” once per auctioned card that has any watchers.
             matches += 1
-
-            # Prepare DM content
+        
             card_url = f"https://www.nationstates.net/page=deck/card={cardid}/season={season}"
             embed = discord.Embed(
                 title=f"Watched Card Found: ID {cardid} (S{season})",
@@ -298,39 +288,45 @@ class AuctionWatch(commands.Cog):
                 color=discord.Color.blurple(),
             )
             view = GobCookieView(self)
-
-            # DM each watcher
+        
             for uid in watchers:
+                # Per-user, per-card dedupe (3 hours)
+                k = (uid, cardid, season)
+                last = self._recent_notified.get(k)
+                if last and (now - last) < (3 * 60 * 60):
+                    # Skip this user; they were notified about this card recently
+                    continue
+        
                 user = self.bot.get_user(uid) or await self.bot.fetch_user(uid)
                 if not user:
+                    # Still record the timestamp so we don't hammer the API on missing users
+                    self._recent_notified[k] = now
                     continue
+        
                 try:
                     dm_attempts += 1
                     await user.send(embed=embed, view=view)
                     dm_successes += 1
-                    # Per-user success log (scoped to a mutual guild's log channel if available)
-                    await self._log_for_user(
-                        user,
-                        f"📨 **AuctionWatch**: DM sent to <@{uid}> for card **{cardid} (S{season})**."
-                    )
+                    await self._log_for_user(user, f"📨 **AuctionWatch**: DM sent to <@{uid}> for card **{cardid} (S{season})**.")
                 except discord.Forbidden:
                     msg = f"📵 **AuctionWatch**: Could not DM <@{uid}> for card **{cardid} (S{season})** (DMs disabled?)."
                     log.info(msg)
                     await self._log_for_user(user, msg)
                 except Exception as e:
                     log.exception("Error DMing user %s", uid)
-                    await self._log_for_user(
-                        user,
-                        f"❗ **AuctionWatch**: Error DMing <@{uid}> for card **{cardid} (S{season})**: `{e!r}`"
-                    )
-
+                    await self._log_for_user(user, f"❗ **AuctionWatch**: Error DMing <@{uid}> for card **{cardid} (S{season})**: `{e!r}`")
+                finally:
+                    # Mark as notified (even on failure) to avoid retry spam for 3 hours
+                    self._recent_notified[k] = now
+        
         # Clean old entries from recent cache (older than 6 hours)
         cutoff = now - (6 * 60 * 60)
         for k, t in list(self._recent_notified.items()):
             if t < cutoff:
                 self._recent_notified.pop(k, None)
-
+        
         return processed, matches, dm_attempts, dm_successes
+
 
     @checks.admin()
     @commands.command(name="startauctions")
