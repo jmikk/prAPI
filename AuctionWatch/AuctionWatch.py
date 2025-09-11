@@ -146,7 +146,7 @@ class AuctionWatch(commands.Cog):
 
     # ===== Background Task =====
 
-    @tasks.loop(minutes=30.0)
+    @tasks.loop(minutes=1.0)
     async def poll_auctions(self):
         try:
             await self._poll_once()
