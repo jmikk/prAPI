@@ -78,8 +78,7 @@ class AuctionWatch(commands.Cog):
 
     def cog_unload(self):
         self.poll_auctions.cancel()
-    def cog_load(self):
-        self.poll_auctions.start()
+
 
     # ===== Commands =====
 
