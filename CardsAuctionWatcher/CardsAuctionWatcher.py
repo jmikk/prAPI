@@ -41,10 +41,7 @@ class GobCookieView(ui.View):
         # If a specific card URL is provided, add a link button dynamically
         if card_url:
             self.add_item(ui.Button(label="Open card", style=ButtonStyle.link, url=card_url))
-
-        # Add the cookie button (custom_id must be stable for persistent views)
-        self.add_item(ui.Button(label="Give Gob a Cookie", style=ButtonStyle.primary, custom_id="caw_give_gob_cookie"))
-
+            
     @ui.button(label="Give Gob a Cookie", style=ButtonStyle.primary, custom_id="caw_give_gob_cookie")  # noqa
     async def give_cookie(self, interaction: Interaction, button: ui.Button):
         # Increment global cookie count
