@@ -116,67 +116,73 @@ class CardsAuctionWatcher(commands.Cog):
     async def _run_once(self, webhooks: List[str]):
         ua = await self.config.user_agent()
         delay = await self.config.detail_delay_sec()
-
+    
         # 1) Fetch auctions ONCE
         auctions = await self._fetch_current_auctions(user_agent=ua)
         current_keys = {self._key(a["cardid"], a["season"]) for a in auctions}
-
+    
         # 2) Load prior message map and CLEAN UP ENDED auctions
         message_map: Dict[str, Dict[str, int]] = await self.config.message_map()
         prior_keys = set(message_map.keys())
         ended_keys = prior_keys - current_keys
         if ended_keys:
             await self._cleanup_ended(ended_keys, message_map)
-
+    
+        # >>> ADD THIS: base time for ETA math
+        now_unix = int(time.time())
+        per_card_delay = max(1, delay)
+    
         # 3) Post placeholders for NEW auctions and for NEW webhooks added since last cycle
-        for a in auctions:
+        #    (with ETA footers based on queue index)
+        for idx, a in enumerate(auctions):  # <<< use enumerate
             key = self._key(a["cardid"], a["season"])
             message_map.setdefault(key, {})
+            eta_unix = now_unix + idx * per_card_delay
             for url in webhooks:
                 if url not in message_map[key]:
-                    # New auction or newly added webhook; post placeholder
-                    embed = self._build_initial_embed(a["cardid"], a["season"], a.get("name"), a.get("category"))
+                    # New auction or newly added webhook; post placeholder WITH ETA
+                    embed = self._build_initial_embed(
+                        a["cardid"], a["season"], a.get("name"), a.get("category"), eta_unix
+                    )
                     try:
                         msg = await self._send_webhook_message(url, embed)
                         message_map[key][url] = msg.id
                     except Exception:
                         log.exception("Failed sending placeholder to webhook: %s", url)
-
+    
         # Persist any changes so far (after cleanup & placeholders)
         await self.config.message_map.set(message_map)
-
-        # 3.5) **ETA refresh** on continuing auctions:
-        # For auctions that already had messages, refresh the footer with the *new* cycle ETA
+    
+        # 3.5) ETA refresh on continuing auctions (recompute ETA each cycle)
         for idx, a in enumerate(auctions):
             key = self._key(a["cardid"], a["season"])
             per_hooks = message_map.get(key, {})
             if not per_hooks:
                 continue
-            eta_unix = now_unix + idx * max(1, delay)
-            # Build a lightweight initial embed with updated ETA
-            eta_embed = self._build_initial_embed(a["cardid"], a["season"], a.get("name"), a.get("category"), eta_unix)
+            eta_unix = now_unix + idx * per_card_delay
+            eta_embed = self._build_initial_embed(
+                a["cardid"], a["season"], a.get("name"), a.get("category"), eta_unix
+            )
             for url, msg_id in list(per_hooks.items()):
                 try:
                     await self._edit_webhook_message(url, msg_id, eta_embed)
                 except discord.NotFound:
-                    # message removed externally; clean mapping
                     message_map[key].pop(url, None)
                 except Exception:
                     log.exception("ETA refresh edit failed (%s, %s)", url, msg_id)
-        # Persist any mapping trims
         await self.config.message_map.set(message_map)
-
+    
         # 4) Detail loop: one-by-one, every N seconds, get details and EDIT existing messages
         for a in auctions:
             cardid, season = a["cardid"], a["season"]
             key = self._key(cardid, season)
-
-            # Double-check map still present
+    
             per_hooks = (await self.config.message_map()).get(key, {})
             if not per_hooks:
-                # if somehow missing (e.g., deleted while we ran), create placeholders now
+                # Late placeholders: include a near-immediate ETA
+                eta_unix = int(time.time())
+                embed = self._build_initial_embed(cardid, season, a.get("name"), a.get("category"), eta_unix)
                 per_hooks = {}
-                embed = self._build_initial_embed(cardid, season, a.get("name"), a.get("category"))
                 for url in webhooks:
                     try:
                         msg = await self._send_webhook_message(url, embed)
@@ -186,35 +192,32 @@ class CardsAuctionWatcher(commands.Cog):
                 message_map = await self.config.message_map()
                 message_map[key] = per_hooks
                 await self.config.message_map.set(message_map)
-
+    
             # Fetch details & edit
             try:
                 details = await self._fetch_card_details(cardid, season, user_agent=ua)
-                embed = self._build_detailed_embed(details)
+                embed = self._build_detailed_embed(details)  # this removes ETA footer
             except Exception:
                 log.exception("Detail fetch failed for card %s S%s", cardid, season)
                 embed = self._build_initial_embed(cardid, season, a.get("name"), a.get("category"))
-
-            # Edit every stored message for this card
+    
             stale_urls = []
             for url, msg_id in per_hooks.items():
                 try:
                     await self._edit_webhook_message(url, msg_id, embed)
                 except discord.NotFound:
-                    # Message was deleted manually; mark stale
                     stale_urls.append(url)
                 except Exception:
                     log.exception("Editing webhook message failed (%s, %s)", url, msg_id)
-
-            # Remove stale entries from map
+    
             if stale_urls:
                 message_map = await self.config.message_map()
                 for u in stale_urls:
                     message_map.get(key, {}).pop(u, None)
                 await self.config.message_map.set(message_map)
+    
+            await asyncio.sleep(per_card_delay)
 
-            # wait N seconds between detail requests
-            await asyncio.sleep(max(1, delay))
 
     # ----------------- Cleanup helpers -----------------
 
