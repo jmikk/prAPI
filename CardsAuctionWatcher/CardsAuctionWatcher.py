@@ -140,6 +140,27 @@ class CardsAuctionWatcher(commands.Cog):
         # Persist any changes so far (after cleanup & placeholders)
         await self.config.message_map.set(message_map)
 
+        # 3.5) **ETA refresh** on continuing auctions:
+        # For auctions that already had messages, refresh the footer with the *new* cycle ETA
+        for idx, a in enumerate(auctions):
+            key = self._key(a["cardid"], a["season"])
+            per_hooks = message_map.get(key, {})
+            if not per_hooks:
+                continue
+            eta_unix = now_unix + idx * max(1, delay)
+            # Build a lightweight initial embed with updated ETA
+            eta_embed = self._build_initial_embed(a["cardid"], a["season"], a.get("name"), a.get("category"), eta_unix)
+            for url, msg_id in list(per_hooks.items()):
+                try:
+                    await self._edit_webhook_message(url, msg_id, eta_embed)
+                except discord.NotFound:
+                    # message removed externally; clean mapping
+                    message_map[key].pop(url, None)
+                except Exception:
+                    log.exception("ETA refresh edit failed (%s, %s)", url, msg_id)
+        # Persist any mapping trims
+        await self.config.message_map.set(message_map)
+
         # 4) Detail loop: one-by-one, every N seconds, get details and EDIT existing messages
         for a in auctions:
             cardid, season = a["cardid"], a["season"]
