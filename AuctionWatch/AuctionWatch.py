@@ -270,6 +270,7 @@ class AuctionWatch(commands.Cog):
             try:
                 cardid = int((a.findtext("CARDID") or "0").strip())
                 season = int((a.findtext("SEASON") or "0").strip())
+                cardname = (a.findtext("NAME") or "Unknown Card").strip()
             except Exception:
                 continue
         
@@ -283,7 +284,7 @@ class AuctionWatch(commands.Cog):
         
             card_url = f"https://www.nationstates.net/page=deck/card={cardid}/season={season}"
             embed = discord.Embed(
-                title=f"Watched Card Found: ID {cardid} (S{season})",
+                title=f"Watched Card Found: {cardname} Season {season}",
                 description=f"I spotted a watched card in the auctions feed!\n\n**Card Link:** {card_url}",
                 color=discord.Color.blurple(),
             )
