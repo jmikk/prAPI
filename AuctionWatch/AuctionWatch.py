@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple, Set, Optional
 
 import aiohttp
 import discord
@@ -13,7 +13,7 @@ log = logging.getLogger("red.wellspring.auctionwatch")
 
 DEFAULT_GUILD = {
     "cookies": 0,               # total "Gob" cookies given
-    "user_agent": "",      # NationStates UA header (override with [p]setnsua)
+    "user_agent": "9003",      # NationStates UA header (override with [p]setnsua)
 }
 
 DEFAULT_USER = {
@@ -23,19 +23,15 @@ DEFAULT_USER = {
 
 
 class GobCookieView(discord.ui.View):
-    def __init__(self, cog: "AuctionWatch", *, timeout: float | None = 180):
+    def __init__(self, cog: "AuctionWatch", *, timeout: Optional[float] = 180):
         super().__init__(timeout=timeout)
         self.cog = cog
 
     @discord.ui.button(label="Give Gob a cookie", style=discord.ButtonStyle.primary)
     async def give_cookie(self, interaction: discord.Interaction, button: discord.ui.Button):  # type: ignore[override]
-        # Increment the guild cookie counter
         try:
             guild = interaction.guild
-            # If the message is in a DM, we can't resolve a guild. Use author mutual guilds' first, or a global bucket.
-            # Prefer: if invoked from DM, attach to the first mutual guild with this cog loaded.
             if guild is None:
-                # Fallback: use the first mutual guild the bot shares with the user
                 mutuals = [g for g in self.cog.bot.guilds if g.get_member(interaction.user.id)]
                 guild = mutuals[0] if mutuals else None
 
@@ -43,15 +39,14 @@ class GobCookieView(discord.ui.View):
                 await interaction.response.send_message("I couldn't figure out which server to credit this cookie to, but Gob appreciates it anyway!", ephemeral=True)
                 return
 
-            async with self.cog.config.guild(guild).cookies() as cookies:
-                cookies += 1
-                await self.cog.config.guild(guild).cookies.set(cookies)
+            current = await self.cog.config.guild(guild).cookies()
+            await self.cog.config.guild(guild).cookies.set(current + 1)
             await interaction.response.send_message("🍪 Gob says thanks! (+1 cookie)")
         except Exception:
             log.exception("Failed to record cookie")
             if not interaction.response.is_done():
                 await interaction.response.send_message("Sorry, I couldn't record that cookie right now.", ephemeral=True)
-
+        return
 
 class AuctionWatch(commands.Cog):
     """
@@ -71,7 +66,7 @@ class AuctionWatch(commands.Cog):
 
     def __init__(self, bot: Red):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier="wefwefwefwef", force_registration=True)
+        self.config = Config.get_conf(self, identifier=1234567890123456, force_registration=True)
         self.config.register_guild(**DEFAULT_GUILD)
         self.config.register_user(**DEFAULT_USER)
 
