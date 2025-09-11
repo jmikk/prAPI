@@ -85,8 +85,7 @@ class AuctionWatch(commands.Cog):
     @commands.group(name="watchlist")
     async def watchlist(self, ctx: commands.Context):
         """Manage your card watch list."""
-        if ctx.invoked_subcommand is None:
-            await ctx.send_help(ctx.command)
+        pass
 
     @watchlist.command(name="add")
     async def watchlist_add(self, ctx: commands.Context, cardid: int, season: int):
