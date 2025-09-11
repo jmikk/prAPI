@@ -330,7 +330,7 @@ class CardsAuctionWatcher(commands.Cog):
         }
 
     # ----------------- Embeds -----------------
-    
+
     def _build_initial_embed(
         self,
         cardid: int,
@@ -345,11 +345,18 @@ class CardsAuctionWatcher(commands.Cog):
         embed.add_field(name="Name", value=name or "Unknown", inline=True)
         embed.add_field(name="Category", value=category or "Unknown", inline=True)
     
-        if eta_unix:
-            embed.set_footer(text=f"ETA for details: {_discord_rel_ts(eta_unix)} • NationStates Cards • Auctions")
+        # ✅ Use the embed's timestamp for the ETA display in the footer area
+        if eta_unix is not None:
+            embed.timestamp = datetime.fromtimestamp(int(eta_unix), tz=timezone.utc)
+            # Footer label (Discord shows the timestamp on the right)
+            embed.set_footer(text="ETA for details • NationStates Cards • Auctions")
+    
+            # Optional (uncomment if you also want a relative ETA inside the body)
+            # embed.add_field(name="ETA", value=_discord_rel_ts(eta_unix), inline=True)
         else:
             embed.set_footer(text="NationStates Cards • Auctions")
         return embed
+
 
     def _build_detailed_embed(self, d: Dict) -> discord.Embed:
         title = f"Card {d['cardid']} (S{d['season']}) — {d['name']}"
