@@ -612,62 +612,7 @@ class CardsAuctionWatcher(commands.Cog):
             return await ctx.send("Use `on` or `off`.")
         await self.config.mapping_enabled.set(state == "on")
         await ctx.send(f"Mapping is now **{'ENABLED' if state == 'on' else 'DISABLED'}**.")
-            
-
-
-    @caw_group.command(name="watch")
-    async def caw_watch(self, ctx: commands.Context, cardid: int, season: int):
-        """Add a card to *your* watchlist. You'll get a DM when it's seen in a cycle."""
-        key = self._key(cardid, season)
-        lst = await self.config.user(ctx.author).watchlist()
-        if key in lst:
-            return await ctx.send(f"You're already watching **{cardid} (S{season})**.")
-        lst.append(key)
-        await self.config.user(ctx.author).watchlist.set(lst)
-    
-        # update global index
-        idx = await self.config.watch_index()
-        idx.setdefault(key, [])
-        if ctx.author.id not in idx[key]:
-            idx[key].append(ctx.author.id)
-        await self.config.watch_index.set(idx)
-    
-        await ctx.send(f"Added **{cardid} (S{season})** to your watchlist. I'll DM you when I see it.")
-    
-    @caw_group.command(name="unwatch")
-    async def caw_unwatch(self, ctx: commands.Context, cardid: int, season: int):
-        """Remove a card from your watchlist."""
-        key = self._key(cardid, season)
-        lst = await self.config.user(ctx.author).watchlist()
-        if key not in lst:
-            return await ctx.send(f"**{cardid} (S{season})** is not in your watchlist.")
-        lst.remove(key)
-        await self.config.user(ctx.author).watchlist.set(lst)
-    
-        # update global index
-        idx = await self.config.watch_index()
-        if key in idx and ctx.author.id in idx[key]:
-            idx[key].remove(ctx.author.id)
-            if not idx[key]:
-                idx.pop(key, None)
-        await self.config.watch_index.set(idx)
-    
-        await ctx.send(f"Removed **{cardid} (S{season})** from your watchlist.")
-    
-    @caw_group.command(name="mywatchlist")
-    async def caw_mywatchlist(self, ctx: commands.Context):
-        """Show your watchlist."""
-        lst = await self.config.user(ctx.author).watchlist()
-        if not lst:
-            return await ctx.send("Your watchlist is empty. Add one with: `caw watch <cardid> <season>`")
-        nicely = "\n".join(f"• {k.replace(':', ' (S')} )" for k in lst)
-        await ctx.send(f"**Your watchlist:**\n{nicely}")
-    
-    @caw_group.command(name="cookies")
-    async def caw_cookies(self, ctx: commands.Context):
-        """Cookie dashboard 🥠"""
-        total = await self.config.gob_cookies()
-        await ctx.send(f"🍪 **Gob's cookie jar:** `{total}` cookies")
+        
 
     @caw_group.command(name="forcerun")
     @commands.is_owner()
