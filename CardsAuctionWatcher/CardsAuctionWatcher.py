@@ -8,6 +8,10 @@ import aiohttp
 import discord
 from redbot.core import commands, Config
 from redbot.core.bot import Red
+import io
+import json
+from datetime import datetime, timezone
+
 
 log = logging.getLogger("red.cards_auction_watcher")
 
@@ -34,7 +38,7 @@ class CardsAuctionWatcher(commands.Cog):
     """
 
     __author__ = "you"
-    __version__ = "1.3.0"
+    __version__ = "1.4.0"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -477,11 +481,135 @@ class CardsAuctionWatcher(commands.Cog):
         await self.config.message_map.set({})
         await ctx.send("Cleared the saved auction message map.")
 
+    @caw_group.command(name="dump")
+    @commands.has_guild_permissions(manage_guild=True)
+    async def caw_dump(self, ctx: commands.Context):
+        """
+        Delete ALL known webhook messages and export a JSON dump.
+        Keeps webhook lists and settings; clears only the message map.
+        """
+        await ctx.typing()
+        # Pause the loop briefly by toggling enabled off then back on when done
+        was_enabled = await self.config.enabled()
+        if was_enabled:
+            await self.config.enabled.set(False)
+    
+        try:
+            data = await self._dump_and_optionally_delete(perform_delete=True)
+            # Now that we've deleted everything, also clear the message map (extra safety)
+            await self.config.message_map.set({})
+            # Send file
+            stamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            fp = io.BytesIO(data)
+            fp.seek(0)
+            await ctx.send(
+                content="Dump complete. All known webhook messages removed and state reset.",
+                file=discord.File(fp, filename=f"caw_dump_{stamp}.json"),
+            )
+        finally:
+            # restore enabled flag
+            if was_enabled:
+                await self.config.enabled.set(True)
+                await self._ensure_task()
+        
+    @caw_group.command(name="dumpdry")
+    @commands.has_guild_permissions(manage_guild=True)
+    async def caw_dumpdry(self, ctx: commands.Context):
+        """
+        Export a JSON dump of all known webhook messages WITHOUT deleting anything.
+        """
+        await ctx.typing()
+        data = await self._dump_and_optionally_delete(perform_delete=False)
+        stamp = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        fp = io.BytesIO(data)
+        fp.seek(0)
+        await ctx.send(
+            content="Dry dump complete. No messages were deleted.",
+            file=discord.File(fp, filename=f"caw_dumpdry_{stamp}.json"),
+        )
+
+
     # ----------------- Utils -----------------
 
     @staticmethod
     def _key(cardid: int, season: int) -> str:
         return f"{cardid}:{season}"
+
+    async def _dump_and_optionally_delete(self, perform_delete: bool) -> bytes:
+        """
+        Build a JSON dump of all tracked webhook messages.
+        If perform_delete=True, also delete each message and record the outcome.
+        Returns a bytes buffer containing the JSON.
+        """
+        # Snapshot config data
+        message_map = await self.config.message_map()
+        # We also include non-sensitive config info for context
+        enabled = await self.config.enabled()
+        interval = await self.config.interval_minutes()
+        delay = await self.config.detail_delay_sec()
+        ua = await self.config.user_agent()
+    
+        # Gather guild webhooks
+        all_guild_hooks = {}
+        for g in self.bot.guilds:
+            try:
+                hooks = await self.config.guild(g).webhooks()
+                all_guild_hooks[str(g.id)] = hooks
+            except Exception:
+                all_guild_hooks[str(g.id)] = []
+    
+        report = {
+            "meta": {
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+                "perform_delete": perform_delete,
+                "global_enabled": enabled,
+                "global_interval_minutes": interval,
+                "global_detail_delay_sec": delay,
+                "global_user_agent": ua,
+            },
+            "guild_webhooks": all_guild_hooks,
+            "messages": [],
+        }
+    
+        # Delete / collect
+        for key, per_hooks in list(message_map.items()):
+            for url, msg_id in list(per_hooks.items()):
+                entry = {
+                    "card_key": key,
+                    "webhook_url": url,
+                    "message_id": msg_id,
+                    "action": "none",
+                    "error": None,
+                }
+                if perform_delete:
+                    try:
+                        await self._delete_webhook_message(url, msg_id)
+                        entry["action"] = "deleted"
+                        # remove from map as we go to minimize retries if interrupted
+                        per_hooks.pop(url, None)
+                    except discord.NotFound:
+                        entry["action"] = "not_found"
+                        per_hooks.pop(url, None)
+                    except Exception as e:
+                        entry["action"] = "error"
+                        entry["error"] = repr(e)
+                else:
+                    entry["action"] = "listed"
+                report["messages"].append(entry)
+    
+            # if we deleted everything under this key, drop the key too
+            if perform_delete and not per_hooks:
+                message_map.pop(key, None)
+    
+        # persist map updates if we were deleting
+        if perform_delete:
+            await self.config.message_map.set(message_map)
+    
+        # Serialize to bytes
+        buf = io.BytesIO()
+        buf.write(json.dumps(report, ensure_ascii=False, indent=2).encode("utf-8"))
+        return buf.getvalue()
+
 
 def setup(bot: Red):
     bot.add_cog(CardsAuctionWatcher(bot))
