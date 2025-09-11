@@ -81,6 +81,8 @@ class CardsAuctionWatcher(commands.Cog):
             # key = "cardid:season" -> { webhook_url: message_id }
             "message_map": {},  # Dict[str, Dict[str, int]]
             "gob_cookies": 0,  
+            "webhooks_enabled": False,   # <<< NEW
+            "mapping_enabled": False,    # <<< NEW
         }
         self.config.register_global(**default_global)
         self.config.register_user(watchlist=[])  # List[str] of "cardid:season"
@@ -147,107 +149,127 @@ class CardsAuctionWatcher(commands.Cog):
     async def _run_once(self, webhooks: List[str]):
         ua = await self.config.user_agent()
         delay = await self.config.detail_delay_sec()
+        webhooks_enabled = await self.config.webhooks_enabled()
+        mapping_enabled = await self.config.mapping_enabled()
     
-        # 1) Fetch auctions ONCE
+        # 1) Fetch auctions once
         auctions = await self._fetch_current_auctions(user_agent=ua)
+    
+        # 1.5) Always notify watchers (DMs) even if webhooks/mapping are off
+        for a in auctions:
+            # if you already added the notifier helper earlier:
+            await self._notify_watchers_for(a["cardid"], a["season"], a.get("name"))
+    
+        # If webhooks are disabled, we stop here (watchlist-only mode)
+        if not webhooks_enabled:
+            return
+    
+        # From here on, webhooks are enabled. Decide mapping behavior.
         current_keys = {self._key(a["cardid"], a["season"]) for a in auctions}
-    
-        # 2) Load prior message map and CLEAN UP ENDED auctions
         message_map: Dict[str, Dict[str, int]] = await self.config.message_map()
-        prior_keys = set(message_map.keys())
-        ended_keys = prior_keys - current_keys
-        if ended_keys:
-            await self._cleanup_ended(ended_keys, message_map)
     
-        # >>> ADD THIS: base time for ETA math
         now_unix = int(time.time())
         per_card_delay = max(1, delay)
     
-        # 3) Post placeholders for NEW auctions and for NEW webhooks added since last cycle
-        #    (with ETA footers based on queue index)
-        for idx, a in enumerate(auctions):  # <<< use enumerate
-            key = self._key(a["cardid"], a["season"])
-            message_map.setdefault(key, {})
-            eta_unix = now_unix + idx * per_card_delay
-            for url in webhooks:
-                if url not in message_map[key]:
-                    # New auction or newly added webhook; post placeholder WITH ETA
-                    embed = self._build_initial_embed(
-                        a["cardid"], a["season"], a.get("name"), a.get("category"), eta_unix
-                    )
+        if mapping_enabled:
+            # ---------- FULL mapping/edit/cleanup mode (your current behavior) ----------
+            prior_keys = set(message_map.keys())
+            ended_keys = prior_keys - current_keys
+            if ended_keys:
+                await self._cleanup_ended(ended_keys, message_map)
+    
+            # Post placeholders with ETA where missing
+            for idx, a in enumerate(auctions):
+                key = self._key(a["cardid"], a["season"])
+                message_map.setdefault(key, {})
+                eta_unix = now_unix + idx * per_card_delay
+                for url in webhooks:
+                    if url not in message_map[key]:
+                        embed = self._build_initial_embed(a["cardid"], a["season"], a.get("name"), a.get("category"), eta_unix)
+                        try:
+                            msg = await self._send_webhook_message(url, embed)
+                            message_map[key][url] = msg.id
+                        except Exception:
+                            log.exception("Failed sending placeholder to webhook: %s", url)
+    
+            await self.config.message_map.set(message_map)
+    
+            # ETA refresh
+            for idx, a in enumerate(auctions):
+                key = self._key(a["cardid"], a["season"])
+                per_hooks = message_map.get(key, {})
+                if not per_hooks:
+                    continue
+                eta_unix = now_unix + idx * per_card_delay
+                eta_embed = self._build_initial_embed(a["cardid"], a["season"], a.get("name"), a.get("category"), eta_unix)
+                for url, msg_id in list(per_hooks.items()):
                     try:
-                        msg = await self._send_webhook_message(url, embed)
-                        message_map[key][url] = msg.id
+                        await self._edit_webhook_message(url, msg_id, eta_embed)
+                    except discord.NotFound:
+                        message_map[key].pop(url, None)
                     except Exception:
-                        log.exception("Failed sending placeholder to webhook: %s", url)
+                        log.exception("ETA refresh edit failed (%s, %s)", url, msg_id)
+            await self.config.message_map.set(message_map)
     
-        # Persist any changes so far (after cleanup & placeholders)
-        await self.config.message_map.set(message_map)
+            # Detail loop with edits
+            for a in auctions:
+                cardid, season = a["cardid"], a["season"]
+                key = self._key(cardid, season)
+                per_hooks = (await self.config.message_map()).get(key, {})
+                if not per_hooks:
+                    # late placeholders with immediate-ish ETA
+                    eta_unix = int(time.time())
+                    embed = self._build_initial_embed(cardid, season, a.get("name"), a.get("category"), eta_unix)
+                    per_hooks = {}
+                    for url in webhooks:
+                        try:
+                            msg = await self._send_webhook_message(url, embed)
+                            per_hooks[url] = msg.id
+                        except Exception:
+                            log.exception("Late placeholder send failed: %s", url)
+                    message_map = await self.config.message_map()
+                    message_map[key] = per_hooks
+                    await self.config.message_map.set(message_map)
     
-        # 3.5) ETA refresh on continuing auctions (recompute ETA each cycle)
-        for idx, a in enumerate(auctions):
-            key = self._key(a["cardid"], a["season"])
-            per_hooks = message_map.get(key, {})
-            if not per_hooks:
-                continue
-            eta_unix = now_unix + idx * per_card_delay
-            eta_embed = self._build_initial_embed(
-                a["cardid"], a["season"], a.get("name"), a.get("category"), eta_unix
-            )
-            for url, msg_id in list(per_hooks.items()):
                 try:
-                    await self._edit_webhook_message(url, msg_id, eta_embed)
-                except discord.NotFound:
-                    message_map[key].pop(url, None)
+                    details = await self._fetch_card_details(cardid, season, user_agent=ua)
+                    embed = self._build_detailed_embed(details)
                 except Exception:
-                    log.exception("ETA refresh edit failed (%s, %s)", url, msg_id)
-        await self.config.message_map.set(message_map)
+                    log.exception("Detail fetch failed for card %s S%s", cardid, season)
+                    embed = self._build_initial_embed(cardid, season, a.get("name"), a.get("category"))
     
-        # 4) Detail loop: one-by-one, every N seconds, get details and EDIT existing messages
-        for a in auctions:
-            cardid, season = a["cardid"], a["season"]
-            key = self._key(cardid, season)
+                stale_urls = []
+                for url, msg_id in per_hooks.items():
+                    try:
+                        await self._edit_webhook_message(url, msg_id, embed)
+                    except discord.NotFound:
+                        stale_urls.append(url)
+                    except Exception:
+                        log.exception("Editing webhook message failed (%s, %s)", url, msg_id)
     
-            per_hooks = (await self.config.message_map()).get(key, {})
-            if not per_hooks:
-                # Late placeholders: include a near-immediate ETA
-                eta_unix = int(time.time())
-                embed = self._build_initial_embed(cardid, season, a.get("name"), a.get("category"), eta_unix)
-                per_hooks = {}
+                if stale_urls:
+                    message_map = await self.config.message_map()
+                    for u in stale_urls:
+                        message_map.get(key, {}).pop(u, None)
+                    await self.config.message_map.set(message_map)
+    
+                await asyncio.sleep(per_card_delay)
+    
+        else:
+            # ---------- LIGHTWEIGHT mode (no mapping): post fresh placeholders with ETA each cycle, then stop ----------
+            # No cleanup, no editing, no state changes to message_map
+            if not webhooks:
+                return
+            for idx, a in enumerate(auctions):
+                eta_unix = now_unix + idx * per_card_delay
+                embed = self._build_initial_embed(a["cardid"], a["season"], a.get("name"), a.get("category"), eta_unix)
                 for url in webhooks:
                     try:
-                        msg = await self._send_webhook_message(url, embed)
-                        per_hooks[url] = msg.id
+                        await self._send_webhook_message(url, embed)
                     except Exception:
-                        log.exception("Late placeholder send failed: %s", url)
-                message_map = await self.config.message_map()
-                message_map[key] = per_hooks
-                await self.config.message_map.set(message_map)
-    
-            # Fetch details & edit
-            try:
-                details = await self._fetch_card_details(cardid, season, user_agent=ua)
-                embed = self._build_detailed_embed(details)  # this removes ETA footer
-            except Exception:
-                log.exception("Detail fetch failed for card %s S%s", cardid, season)
-                embed = self._build_initial_embed(cardid, season, a.get("name"), a.get("category"))
-    
-            stale_urls = []
-            for url, msg_id in per_hooks.items():
-                try:
-                    await self._edit_webhook_message(url, msg_id, embed)
-                except discord.NotFound:
-                    stale_urls.append(url)
-                except Exception:
-                    log.exception("Editing webhook message failed (%s, %s)", url, msg_id)
-    
-            if stale_urls:
-                message_map = await self.config.message_map()
-                for u in stale_urls:
-                    message_map.get(key, {}).pop(u, None)
-                await self.config.message_map.set(message_map)
-    
-            await asyncio.sleep(per_card_delay)
+                        log.exception("Send placeholder (no-mapping) failed: %s", url)
+            # (intentionally no detail fetches or sleeps here)
+
 
 
     # ----------------- Cleanup helpers -----------------
@@ -445,6 +467,9 @@ class CardsAuctionWatcher(commands.Cog):
         delay = await self.config.detail_delay_sec()
         ua = await self.config.user_agent()
         hooks = await self.config.guild(ctx.guild).webhooks()
+        webhooks_enabled = await self.config.webhooks_enabled()
+        mapping_enabled = await self.config.mapping_enabled()
+
         await ctx.send(
             "**Cards Auction Watcher**\n"
             f"Global Enabled: `{enabled}`\n"
@@ -452,6 +477,8 @@ class CardsAuctionWatcher(commands.Cog):
             f"Global Per-card delay: `{delay}` seconds\n"
             f"Global User-Agent: `{ua}`\n"
             f"Webhooks in this guild: `{len(hooks)}`"
+            f"Webhooks Enabled: `{webhooks_enabled}`\n"
+            f"Mapping Enabled: `{mapping_enabled}`\n"
         )
 
     @caw_group.command(name="start")
@@ -569,6 +596,27 @@ class CardsAuctionWatcher(commands.Cog):
             content="Dry dump complete. No messages were deleted.",
             file=discord.File(fp, filename=f"caw_dumpdry_{stamp}.json"),
         )
+        
+        @caw_group.command(name="webhooks")
+        @commands.has_guild_permissions(manage_guild=True)
+        async def caw_webhooks(self, ctx: commands.Context, state: str):
+            """Turn webhook posting/editing on or off globally. Usage: [p]caw webhooks on|off"""
+            state = state.lower()
+            if state not in {"on", "off"}:
+                return await ctx.send("Use `on` or `off`.")
+            await self.config.webhooks_enabled.set(state == "on")
+            await ctx.send(f"Webhooks are now **{'ENABLED' if state == 'on' else 'DISABLED'}**.")
+        
+        @caw_group.command(name="mapping")
+        @commands.has_guild_permissions(manage_guild=True)
+        async def caw_mapping(self, ctx: commands.Context, state: str):
+            """Turn message mapping/edits/cleanup on or off globally. Usage: [p]caw mapping on|off"""
+            state = state.lower()
+            if state not in {"on", "off"}:
+                return await ctx.send("Use `on` or `off`.")
+            await self.config.mapping_enabled.set(state == "on")
+            await ctx.send(f"Mapping is now **{'ENABLED' if state == 'on' else 'DISABLED'}**.")
+
 
     @caw_group.command(name="watch")
     async def caw_watch(self, ctx: commands.Context, cardid: int, season: int):
@@ -706,6 +754,38 @@ class CardsAuctionWatcher(commands.Cog):
         buf = io.BytesIO()
         buf.write(json.dumps(report, ensure_ascii=False, indent=2).encode("utf-8"))
         return buf.getvalue()
+        def _card_url(self, cardid: int, season: int) -> str:
+    return f"https://www.nationstates.net/page=deck/card={cardid}/season={season}"
+
+    async def _notify_watchers_for(self, cardid: int, season: int, name: str):
+        """DM everyone watching this (cardid, season)."""
+        key = self._key(cardid, season)
+        idx = await self.config.watch_index()
+        user_ids = idx.get(key, [])
+        if not user_ids:
+            return
+    
+        url = self._card_url(cardid, season)
+        view = GobCookieView(self, card_url=url)  # includes link + cookie button
+    
+        for uid in user_ids:
+            user = self.bot.get_user(uid) or await self.bot.fetch_user(uid)
+            if not user:
+                continue
+            # Build a small embed DM
+            embed = discord.Embed(
+                title=f"Found on auction: Card {cardid} (S{season})",
+                description=f"**{name or 'Unknown'}** is on the auction list this cycle.",
+            )
+            embed.url = url
+            try:
+                await user.send(embed=embed, view=view)
+            except Exception:
+                # can't DM this user (privacy settings); ignore
+                pass
+
+
+
 
 
 def setup(bot: Red):
