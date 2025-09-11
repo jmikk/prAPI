@@ -13,6 +13,7 @@ import json
 from datetime import datetime, timezone
 
 
+
 log = logging.getLogger("red.cards_auction_watcher")
 
 NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
