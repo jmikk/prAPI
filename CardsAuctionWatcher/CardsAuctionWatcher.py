@@ -15,6 +15,7 @@ from discord import ui, ButtonStyle, Interaction
 
 
 
+
 log = logging.getLogger("red.cards_auction_watcher")
 
 NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
