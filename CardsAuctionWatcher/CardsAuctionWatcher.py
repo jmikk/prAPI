@@ -754,8 +754,9 @@ class CardsAuctionWatcher(commands.Cog):
         buf = io.BytesIO()
         buf.write(json.dumps(report, ensure_ascii=False, indent=2).encode("utf-8"))
         return buf.getvalue()
-        def _card_url(self, cardid: int, season: int) -> str:
-    return f"https://www.nationstates.net/page=deck/card={cardid}/season={season}"
+    
+    def _card_url(self, cardid: int, season: int) -> str:
+        return f"https://www.nationstates.net/page=deck/card={cardid}/season={season}"
 
     async def _notify_watchers_for(self, cardid: int, season: int, name: str):
         """DM everyone watching this (cardid, season)."""
