@@ -42,7 +42,7 @@ class CardsAuctionWatcher(commands.Cog):
             "enabled": False,
             "interval_minutes": 30,
             "detail_delay_sec": 5,
-            "user_agent": "9003",
+            "user_agent": "",
             # key = "cardid:season" -> { webhook_url: message_id }
             "message_map": {},  # Dict[str, Dict[str, int]]
         }
