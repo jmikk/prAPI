@@ -13,7 +13,7 @@ log = logging.getLogger("red.wellspring.auctionwatch")
 
 DEFAULT_GUILD = {
     "cookies": 0,               # total "Gob" cookies given
-    "user_agent": "9003",      # NationStates UA header (override with [p]setnsua)
+    "user_agent": "",      # NationStates UA header (override with [p]setnsua)
 }
 
 DEFAULT_USER = {
@@ -71,7 +71,7 @@ class AuctionWatch(commands.Cog):
 
     def __init__(self, bot: Red):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=0xAUC710N5, force_registration=True)
+        self.config = Config.get_conf(self, identifier="wefwefwefwef", force_registration=True)
         self.config.register_guild(**DEFAULT_GUILD)
         self.config.register_user(**DEFAULT_USER)
 
