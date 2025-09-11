@@ -35,7 +35,7 @@ class CardsAuctionWatcher(commands.Cog):
 
     def __init__(self, bot: Red):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=0xC0A4D5AUC, force_registration=True)
+        self.config = Config.get_conf(self, identifier="sdxfcgvhbjnk", force_registration=True)
 
         # GLOBAL config: single loop, single delay/interval/UA + persistent message map
         default_global = {
