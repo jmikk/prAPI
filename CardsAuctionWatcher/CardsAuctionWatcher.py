@@ -79,6 +79,7 @@ class CardsAuctionWatcher(commands.Cog):
             "detail_delay_sec": 5,
             "user_agent": "",
             # key = "cardid:season" -> { webhook_url: message_id }
+              "watch_index": {}, 
             "message_map": {},  # Dict[str, Dict[str, int]]
             "gob_cookies": 0,  
             "webhooks_enabled": False,   # <<< NEW
