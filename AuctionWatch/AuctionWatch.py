@@ -14,7 +14,8 @@ log = logging.getLogger("red.wellspring.auctionwatch")
 
 DEFAULT_GUILD = {
     "cookies": 0,               # total "Gob" cookies given
-    "user_agent": "9003",      # NationStates UA header (override with [p]setnsua)
+    "user_agent": "9003",
+    "log_channel_id": 0# NationStates UA header (override with [p]setnsua)
 }
 
 DEFAULT_USER = {
@@ -152,6 +153,8 @@ class AuctionWatch(commands.Cog):
             await self._poll_once()
         except Exception:
             log.exception("Error in poll_auctions loop")
+            await self._broadcast_log("❗ **AuctionWatch**: An unexpected error occurred in the polling loop. Check logs.")
+
 
     @poll_auctions.before_loop
     async def before_poll(self):
@@ -255,9 +258,14 @@ class AuctionWatch(commands.Cog):
                 try:
                     await user.send(embed=embed, view=view)
                 except discord.Forbidden:
-                    log.info("Could not DM user %s (for watched card %s)", uid, key)
-                except Exception:
+                    msg = f"📵 **AuctionWatch**: Could not DM <@{uid}> for card **{cardid} (S{season})** (DMs disabled?)."
+                    log.info(msg)
+                    await self._log_for_user(user, msg)
+                except Exception as e:
                     log.exception("Error DMing user %s", uid)
+        
+                    await self._log_for_user(user, f"❗ **AuctionWatch**: Error DMing <@{uid}> for card **{cardid} (S{season})**: `{e!r}`")
+
 
         # Clean old entries from recent cache (older than 6 hours)
         cutoff = now - (6 * 60 * 60)
@@ -286,6 +294,75 @@ class AuctionWatch(commands.Cog):
             await ctx.send("🛑 Auction polling has been stopped.")
         else:
             await ctx.send("⚠️ Auction polling is not currently running.")
+
+    # ---------- Logging helpers ----------
+    def _get_log_channel_for_guild(self, guild: Optional[discord.Guild]) -> Optional[discord.TextChannel]:
+        if not guild:
+            return None
+        chan_id = getattr(self.config.guild(guild), "log_channel_id", None)
+        # config attrs are awaitable; fetch the value
+        # so wrap into a small coroutine accessor:
+        return None  # placeholder; see async version below
+    
+    async def _aget_log_channel_for_guild(self, guild: Optional[discord.Guild]) -> Optional[discord.TextChannel]:
+        if not guild:
+            return None
+        chan_id = await self.config.guild(guild).log_channel_id()
+        if not chan_id:
+            return None
+        ch = guild.get_channel(chan_id)
+        if isinstance(ch, discord.TextChannel):
+            return ch
+        return None
+    
+    async def _broadcast_log(self, message: str):
+        """Send a message to every guild's configured log channel (dedupes by channel)."""
+        seen: Set[int] = set()
+        for g in self.bot.guilds:
+            chan = await self._aget_log_channel_for_guild(g)
+            if chan and chan.id not in seen:
+                seen.add(chan.id)
+                try:
+                    await chan.send(message)
+                except Exception:
+                    log.exception("Failed to send log message to #%s in %s", chan, g)
+    
+    async def _log_for_user(self, user: discord.abc.User, message: str):
+        """Find a guild the user shares that has a log channel configured; send there."""
+        for g in self.bot.guilds:
+            if g.get_member(user.id):
+                chan = await self._aget_log_channel_for_guild(g)
+                if chan:
+                    try:
+                        await chan.send(message)
+                    except Exception:
+                        log.exception("Failed to send user-scoped log to %s in %s", chan, g)
+                    return
+        # Fallback: broadcast once if we couldn't find a mutual with a log channel
+        await self._broadcast_log(message)
+
+    @checks.admin()
+    @commands.command(name="awsetlog")
+    async def aw_set_log(self, ctx: commands.Context, channel: Optional[discord.TextChannel] = None):
+        """Set the channel for AuctionWatch logs (errors/DM failures). Defaults to current channel."""
+        channel = channel or ctx.channel
+        await self.config.guild(ctx.guild).log_channel_id.set(channel.id)
+        await ctx.tick()
+        await ctx.send(f"✅ Log channel set to {channel.mention}")
+    
+    @checks.admin()
+    @commands.command(name="awlogstatus")
+    async def aw_log_status(self, ctx: commands.Context):
+        """Show the current AuctionWatch log channel for this server."""
+        chan_id = await self.config.guild(ctx.guild).log_channel_id()
+        if chan_id:
+            ch = ctx.guild.get_channel(chan_id)
+            if isinstance(ch, discord.TextChannel):
+                return await ctx.send(f"📝 Current log channel: {ch.mention}")
+        await ctx.send("ℹ️ No log channel set. Use `[p]awsetlog` here or with a channel mention.")
+
+    # ---------- /helpers ----------
+
 
 
 async def setup(bot: Red):
