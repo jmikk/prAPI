@@ -269,6 +269,26 @@ class AuctionWatch(commands.Cog):
 
         return processed
 
+    @checks.admin()
+    @commands.command(name="startauctions")
+    async def start_auctions(self, ctx: commands.Context):
+        """Start the auction polling task (admin only)."""
+        if self.poll_auctions.is_running():
+            await ctx.send("⏳ Auction polling is already running.")
+        else:
+            self.poll_auctions.start()
+            await ctx.send("✅ Auction polling has been started.")
+
+    @checks.admin()
+    @commands.command(name="stopauctions")
+    async def stop_auctions(self, ctx: commands.Context):
+        """Stop the auction polling task (admin only)."""
+        if self.poll_auctions.is_running():
+            self.poll_auctions.cancel()
+            await ctx.send("🛑 Auction polling has been stopped.")
+        else:
+            await ctx.send("⚠️ Auction polling is not currently running.")
+
 
 async def setup(bot: Red):
     await bot.add_cog(AuctionWatch(bot))
