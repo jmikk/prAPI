@@ -11,6 +11,7 @@ from redbot.core.bot import Red
 import io
 import json
 from datetime import datetime, timezone
+from discord import ui, ButtonStyle, Interaction
 
 
 
@@ -33,6 +34,32 @@ def parse_float(s: Optional[str], default: float = 0.0) -> float:
     except Exception:
         return default
 
+class GobCookieView(ui.View):
+    """Persistent view with a link to the card + a 'Give Gob a Cookie' button."""
+    def __init__(self, cog: "CardsAuctionWatcher", card_url: Optional[str] = None):
+        # timeout=None makes it persistent across restarts (since we register it in cog_load)
+        super().__init__(timeout=None)
+        self.cog = cog
+        # If a specific card URL is provided, add a link button dynamically
+        if card_url:
+            self.add_item(ui.Button(label="Open card", style=ButtonStyle.link, url=card_url))
+
+        # Add the cookie button (custom_id must be stable for persistent views)
+        self.add_item(ui.Button(label="Give Gob a Cookie", style=ButtonStyle.primary, custom_id="caw_give_gob_cookie"))
+
+    @ui.button(label="Give Gob a Cookie", style=ButtonStyle.primary, custom_id="caw_give_gob_cookie")  # noqa
+    async def give_cookie(self, interaction: Interaction, button: ui.Button):
+        # Increment global cookie count
+        current = await self.cog.config.gob_cookies()
+        await self.cog.config.gob_cookies.set(current + 1)
+        try:
+            await interaction.response.send_message("🍪 Thanks! Gob appreciates your cookie.", ephemeral=True)
+        except Exception:
+            # In DMs ephemeral isn't supported; fall back to normal followup
+            if interaction.channel:
+                await interaction.channel.send("🍪 Thanks! Gob appreciates your cookie.")
+
+
 class CardsAuctionWatcher(commands.Cog):
     """Fetch NS auctions once per cycle, fan out placeholders to all webhooks, then enrich each card every 5s.
     Cleans up ended auctions and keeps ongoing ones updated across cycles.
@@ -53,9 +80,10 @@ class CardsAuctionWatcher(commands.Cog):
             "user_agent": "",
             # key = "cardid:season" -> { webhook_url: message_id }
             "message_map": {},  # Dict[str, Dict[str, int]]
+            "gob_cookies": 0,  
         }
         self.config.register_global(**default_global)
-
+        self.config.register_user(watchlist=[])  # List[str] of "cardid:season"
         # PER-GUILD config: just the webhook URLs
         self.config.register_guild(webhooks=[])
 
@@ -65,8 +93,11 @@ class CardsAuctionWatcher(commands.Cog):
 
     async def cog_load(self):
         self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60))
+        # persistent view for the cookie button
+        self.bot.add_view(GobCookieView(self))
         if await self.config.enabled():
             await self._ensure_task()
+
 
     async def cog_unload(self):
         if self._task and not self._task.done():
@@ -538,6 +569,61 @@ class CardsAuctionWatcher(commands.Cog):
             content="Dry dump complete. No messages were deleted.",
             file=discord.File(fp, filename=f"caw_dumpdry_{stamp}.json"),
         )
+
+    @caw_group.command(name="watch")
+    async def caw_watch(self, ctx: commands.Context, cardid: int, season: int):
+        """Add a card to *your* watchlist. You'll get a DM when it's seen in a cycle."""
+        key = self._key(cardid, season)
+        lst = await self.config.user(ctx.author).watchlist()
+        if key in lst:
+            return await ctx.send(f"You're already watching **{cardid} (S{season})**.")
+        lst.append(key)
+        await self.config.user(ctx.author).watchlist.set(lst)
+    
+        # update global index
+        idx = await self.config.watch_index()
+        idx.setdefault(key, [])
+        if ctx.author.id not in idx[key]:
+            idx[key].append(ctx.author.id)
+        await self.config.watch_index.set(idx)
+    
+        await ctx.send(f"Added **{cardid} (S{season})** to your watchlist. I'll DM you when I see it.")
+    
+    @caw_group.command(name="unwatch")
+    async def caw_unwatch(self, ctx: commands.Context, cardid: int, season: int):
+        """Remove a card from your watchlist."""
+        key = self._key(cardid, season)
+        lst = await self.config.user(ctx.author).watchlist()
+        if key not in lst:
+            return await ctx.send(f"**{cardid} (S{season})** is not in your watchlist.")
+        lst.remove(key)
+        await self.config.user(ctx.author).watchlist.set(lst)
+    
+        # update global index
+        idx = await self.config.watch_index()
+        if key in idx and ctx.author.id in idx[key]:
+            idx[key].remove(ctx.author.id)
+            if not idx[key]:
+                idx.pop(key, None)
+        await self.config.watch_index.set(idx)
+    
+        await ctx.send(f"Removed **{cardid} (S{season})** from your watchlist.")
+    
+    @caw_group.command(name="mywatchlist")
+    async def caw_mywatchlist(self, ctx: commands.Context):
+        """Show your watchlist."""
+        lst = await self.config.user(ctx.author).watchlist()
+        if not lst:
+            return await ctx.send("Your watchlist is empty. Add one with: `caw watch <cardid> <season>`")
+        nicely = "\n".join(f"• {k.replace(':', ' (S')} )" for k in lst)
+        await ctx.send(f"**Your watchlist:**\n{nicely}")
+    
+    @caw_group.command(name="cookies")
+    async def caw_cookies(self, ctx: commands.Context):
+        """Cookie dashboard 🥠"""
+        total = await self.config.gob_cookies()
+        await ctx.send(f"🍪 **Gob's cookie jar:** `{total}` cookies")
+    
 
 
     # ----------------- Utils -----------------
