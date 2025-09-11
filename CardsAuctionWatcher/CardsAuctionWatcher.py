@@ -3,7 +3,7 @@ import asyncio
 import logging
 from typing import Dict, List, Tuple, Optional
 import xml.etree.ElementTree as ET
-
+import time
 import aiohttp
 import discord
 from redbot.core import commands, Config
@@ -12,6 +12,9 @@ from redbot.core.bot import Red
 log = logging.getLogger("red.cards_auction_watcher")
 
 NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
+
+def _discord_rel_ts(unix_seconds: int) -> str:
+    return f"<t:{int(unix_seconds)}:R>"
 
 def parse_int(s: Optional[str], default: int = 0) -> int:
     try:
@@ -31,7 +34,7 @@ class CardsAuctionWatcher(commands.Cog):
     """
 
     __author__ = "you"
-    __version__ = "1.2.0"
+    __version__ = "1.3.0"
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -298,14 +301,25 @@ class CardsAuctionWatcher(commands.Cog):
         }
 
     # ----------------- Embeds -----------------
-
-    def _build_initial_embed(self, cardid: int, season: int, name: Optional[str], category: Optional[str]) -> discord.Embed:
+    
+    def _build_initial_embed(
+        self,
+        cardid: int,
+        season: int,
+        name: Optional[str],
+        category: Optional[str],
+        eta_unix: Optional[int] = None,
+    ) -> discord.Embed:
         title = f"Auction: Card {cardid} (S{season})"
         desc = "Fetching market details… this message will update."
         embed = discord.Embed(title=title, description=desc)
         embed.add_field(name="Name", value=name or "Unknown", inline=True)
         embed.add_field(name="Category", value=category or "Unknown", inline=True)
-        embed.set_footer(text="NationStates Cards • Auctions")
+    
+        if eta_unix:
+            embed.set_footer(text=f"ETA for details: {_discord_rel_ts(eta_unix)} • NationStates Cards • Auctions")
+        else:
+            embed.set_footer(text="NationStates Cards • Auctions")
         return embed
 
     def _build_detailed_embed(self, d: Dict) -> discord.Embed:
@@ -314,7 +328,7 @@ class CardsAuctionWatcher(commands.Cog):
         if d.get("flag"):
             flag_url = d["flag"]
             if flag_url.startswith("uploads/"):
-                flag_url = "https://www.nationstates.net/" + flag_url
+                flag_url = "https://www.nationstates.net/images/flags/" + flag_url
             embed.set_thumbnail(url=flag_url)
 
         embed.add_field(name="Category", value=d.get("category", "Unknown") or "Unknown", inline=True)
