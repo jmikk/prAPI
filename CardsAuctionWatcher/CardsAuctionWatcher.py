@@ -349,7 +349,7 @@ class CardsAuctionWatcher(commands.Cog):
         if d.get("flag"):
             flag_url = d["flag"]
             if flag_url.startswith("uploads/"):
-                flag_url = "https://www.nationstates.net/images/flags/" + flag_url
+                flag_url = f"https://www.nationstates.net/images/cards/s{d['season']}/uploads/" + flag_url
             embed.set_thumbnail(url=flag_url)
 
         embed.add_field(name="Category", value=d.get("category", "Unknown") or "Unknown", inline=True)
