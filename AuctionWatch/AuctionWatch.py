@@ -17,6 +17,15 @@ DEFAULT_GUILD = {
     "log_channel_id": 0,        # Channel to send errors/success summaries
 }
 
+RARITY_COLORS = {
+    "common": discord.Color.light_grey(),   # grey
+    "uncommon": discord.Color.green(),      # green
+    "rare": discord.Color.blue(),           # blue
+    "ultra-rare": discord.Color.purple(),   # purple
+    "epic": discord.Color.orange(),         # orange
+    "legendary": discord.Color.gold(),      # yellow/gold
+}
+
 DEFAULT_USER = {
     # list of tuples [[cardid, season], ...]
     "watchlist": []
@@ -271,6 +280,7 @@ class AuctionWatch(commands.Cog):
                 cardid = int((a.findtext("CARDID") or "0").strip())
                 season = int((a.findtext("SEASON") or "0").strip())
                 cardname = (a.findtext("NAME") or "Unknown Card").strip()
+                rarity = (a.findtext("CATEGORY") or "Unknown Card").strip()
             except Exception:
                 continue
         
@@ -281,13 +291,20 @@ class AuctionWatch(commands.Cog):
         
             # We count a “match” once per auctioned card that has any watchers.
             matches += 1
+            color = RARITY_COLORS.get(rarity, discord.Color.default())
         
             card_url = f"https://www.nationstates.net/page=deck/card={cardid}/season={season}"
             embed = discord.Embed(
-                title=f"Watched Card Found: {cardname} Season {season}",
-                description=f"I spotted a watched card in the auctions feed!\n\n**Card Link:** {card_url}",
-                color=discord.Color.blurple(),
-            )
+            title=f"Watched Card Found: {cardname}",
+            description=(
+                f"**ID:** {cardid}\n"
+                f"**Season:** {season}\n"
+                f"**Rarity:** {rarity.title()}\n\n"
+                f"I spotted this card in the auctions feed!\n"
+                f"🔗 [View Card]({card_url})"
+            ),
+            color=color,
+        )
             view = GobCookieView(self)
         
             for uid in watchers:
