@@ -352,7 +352,7 @@ class CardsAuctionWatcher(commands.Cog):
             embed.set_footer(text="ETA for details • NationStates Cards • Auctions")
     
             # Optional (uncomment if you also want a relative ETA inside the body)
-            # embed.add_field(name="ETA", value=_discord_rel_ts(eta_unix), inline=True)
+            embed.add_field(name="ETA", value=_discord_rel_ts(eta_unix), inline=True)
         else:
             embed.set_footer(text="NationStates Cards • Auctions")
         return embed
