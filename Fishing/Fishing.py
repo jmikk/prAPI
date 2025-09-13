@@ -1,6 +1,3 @@
-# File: fishing/__init__.py
-from .cog import setup  # redbot entrypoint
-
 # File: fishing/models.py
 from dataclasses import dataclass
 from typing import Dict, List, Optional
