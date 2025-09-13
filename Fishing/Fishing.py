@@ -573,9 +573,10 @@ class MainMenu(ui.View):
     async def fishdex_btn(self, interaction: discord.Interaction, button: ui.Button):
         data = await self.cog.config.user(interaction.user).all()
         view = FishdexView(self.cog, interaction.user.id, start_zone_index=0)
-        embed = view._current_embed(data["fishdex"])
-        # Normal (non-ephemeral) message with pagination
+        # Start on the global Summary page instead of a zone page:
+        embed = _fishdex_summary_embed(data["fishdex"])
         await interaction.response.send_message(embed=embed, view=view)
+
     
 
 
