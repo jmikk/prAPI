@@ -22,7 +22,7 @@ class lootbox(commands.Cog):
         # guild-scoped policy
         default_guild = {
             "cooldown_policy": {
-                "default": {"rate": 1, "per": 3600},
+                "default": {"rate": 1, "per": 86400},
                 "roles": {},
             }
         }
@@ -50,11 +50,11 @@ class lootbox(commands.Cog):
     def _cooldown_for_ctx_sync(self, ctx: commands.Context) -> commands.Cooldown:
         # fallback if DMs or missing policy
         if not ctx.guild:
-            return commands.Cooldown(1, 3600)
+            return commands.Cooldown(1, 86400)
 
         policy = self._policy_cache.get(ctx.guild.id)
         if not policy:
-            return commands.Cooldown(1, 3600)
+            return commands.Cooldown(1, 86400)
 
         default_rate = policy["default"]["rate"]
         default_per = policy["default"]["per"]
@@ -103,8 +103,6 @@ class lootbox(commands.Cog):
         """Set the categories to filter cards."""
         
         await ctx.send(await self.config.categories())
-
-
 
     @cardset.command()
     @checks.admin_or_permissions(manage_guild=True)
@@ -369,12 +367,6 @@ class lootbox(commands.Cog):
                 embed.add_field(name="Role Overrides", value="\n".join(chunk), inline=False)
         else:
             embed.add_field(name="Role Overrides", value="*(none)*", inline=False)
-    
-        embed.add_field(
-            name=f"Your Effective Limit ({ctx.author.display_name})",
-            value=f"**{eff_rate}** use(s) per **{self._fmt_seconds(eff_per)}**",
-            inline=False,
-        )
     
         await ctx.send(embed=embed)
 
