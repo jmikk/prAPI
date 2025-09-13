@@ -371,9 +371,21 @@ class MainMenu(ui.View):
         last = float(data.get("last_fished_ts", 0.0))
         remaining = COOLDOWN_SECONDS - (now - last)
         if remaining > 0:
-            return await interaction.response.send_message(
-                f"⏳ On cooldown: {remaining:.0f}s remaining.", ephemeral=True
+            # When the user can fish again
+            next_ts = int(last + COOLDOWN_SECONDS)
+            # Use Discord's timestamp formatting:
+            # <t:UNIX:R> = relative, <t:UNIX:t> = short time
+            msg = (
+                f"⏳ **On cooldown** — try again <t:{next_ts}:R> "
+                f"(at <t:{next_ts}:t>)."
             )
+            # Make it a normal message and auto-delete when the timer ends
+            # Note: delete_after uses seconds; clamp to at least 1s
+            return await interaction.response.send_message(
+                msg,
+                delete_after=max(1.0, remaining)
+            )
+
 
         rod: Rod = RODS.get(data["rod"], RODS["twig"])
         if data["rod_durability"] <= 0:
