@@ -101,12 +101,74 @@ ZONE_IMAGES = {
     "abyss": "https://i.imgur.com/AnBi2vR.png",
 }
 
-# Optional: fish images
-# 1) Per SPECIES (exact match on Catch.species)
 FISH_IMAGES_BY_SPECIES: Dict[str, str] = {
-    # "Bluegill": "https://example.com/bluegill.png",
-    # "Pond Guardian": "https://example.com/pond_guardian.png",
-    # ...
+    "Bluegill": "https://i.etsystatic.com/49528872/r/il/e5e842/6121364885/il_570xN.6121364885_p01x.jpg",
+    "Muddy Carp": "https://www.shutterstock.com/image-vector/side-view-example-vector-art-600nw-2359648865.jpg",
+    "Lilypad Perch": "https://i.imgur.com/9xO4rZM.png",
+    "Speckled Sunfish": "https://ih1.redbubble.net/image.1222662294.2458/flat,750x,075,f-pad,750x1000,f8f8f8.u3.jpg",
+    "Dusk Minnow": "https://img.freepik.com/premium-vector/cartoon-vector-illustration-white-cloud-mountain-minnow-fish-icon-isolated-white-background_760559-2494.jpg",
+    "Moonlit Koi": "https://thumbs.dreamstime.com/b/elegant-blue-koi-fish-swimming-under-moonlight-dreamy-fantasy-night-sky-scene-high-quality-photo-396767528.jpg",
+    "Verdant Arowana": "https://thumbs.dreamstime.com/b/cartoon-illustration-green-teal-arowana-fish-cartoon-style-illustration-green-teal-arowana-fish-orange-392599416.jpg",
+    "Pond Guardian": "https://i.imgur.com/qFLusNn.png",
+
+    # Swift River
+    "River Perch": "https://www.shutterstock.com/image-vector/perch-fish-isolated-on-white-260nw-2157228141.jpg",
+    "Stone Shiner": "https://thumbs.dreamstime.com/b/cartoon-stonefish-illustration-vector-textured-brown-patterns-bold-fins-set-against-blue-background-perfect-394794606.jpg",
+    "Silver Chub": "https://www.shutterstock.com/image-vector/silver-carp-color-icon-vector-260nw-2612774453.jpg",
+    "Swift Darter": "https://www.shutterstock.com/image-vector/darter-fish-etheosomatidae-north-america-600nw-2127404258.jpg",
+    "Bronze Trout": "https://static.wixstatic.com/media/ad2f54_3d6a80a453f6447a85a071a6b70fd69b~mv2.png/v1/fill/w_520,h_237,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/ad2f54_3d6a80a453f6447a85a071a6b70fd69b~mv2.png",
+    "Runebrook Salmon": "https://i.imgur.com/9F65Vk0.png",
+    "King of Currents": "https://i.imgur.com/Ngk4Vsn.png",
+
+    # Rocky Coast
+    "Tide Sardine": "https://us.bordallopinheiro.com/on/demandware.static/-/Sites-bordallo-master-catalog/default/dw9b09adc6/images/large/65018846.jpg",
+    "Pebble Mackerel": "https://static.vecteezy.com/system/resources/previews/055/111/980/non_2x/cartoon-mackerel-fish-icon-illustration-vector.jpg",
+    "Sea Bream": "https://thumbs.dreamstime.com/b/cartoon-twobar-seabream-cute-isolated-white-background-76503113.jpg",
+    "Glimmer Hake": "https://static.wikia.nocookie.net/characters/images/2/21/Glimmer_the_Anglerfish.jpg",
+    "Opal Snapper": "https://img.freepik.com/premium-vector/vector-cute-snapper-cartoon-style_846317-918.jpg",
+    "Storm Marlin": "https://media.istockphoto.com/id/165695537/vector/capn-marlin.jpg",
+    "Leviathan Fry": "https://i.imgur.com/sq6ZZ45.png",
+
+    # Midnight Abyss
+    "Gloom Smelt": "https://thumbs.dreamstime.com/b/dynamic-smelt-fish-illustration-colorful-design-featuring-369690331.jpg",
+    "Twilight Cod": "https://static.wikia.nocookie.net/fisch/images/5/51/Twilight_Tentaclefish.png",
+    "Nightfang Eel": "https://i.imgur.com/JPXa10g.png",
+    "Phantom Angler": "https://i.imgur.com/mOJgImO.png",
+    "Abyssal Sovereign": "https://i.imgur.com/Qo9HmZz.png",
+}
+
+    
+
+
+FISH_IMAGES_BY_ZONE_RARITY: Dict[str, Dict[str, str]] = {
+    "pond": {
+        "common": "https://thumbs.dreamstime.com/b/cartoon-gray-fish-illustration-digital-art-cartoon-gray-fish-illustration-digital-art-380198597.jpg",
+        "uncommon": "https://i.pinimg.com/736x/82/0e/82/820e828e963939f2a91e940e55d61ad3.jpg",
+        "rare": "https://ih1.redbubble.net/image.1197727643.6143/raf,360x360,075,t,fafafa:ca443f4786.jpg",
+        "epic": "https://i.etsystatic.com/16060308/r/il/be76d1/6538996724/il_fullxfull.6538996724_7vek.jpg",
+        "legendary": "https://ih1.redbubble.net/image.4938759497.5127/flat,750x,075,f-pad,750x1000,f8f8f8.jpg",
+    },
+    "river": {
+        "common": "https://thumbs.dreamstime.com/b/cartoon-gray-fish-illustration-digital-art-cartoon-gray-fish-illustration-digital-art-380198597.jpg",
+        "uncommon": "https://i.pinimg.com/736x/82/0e/82/820e828e963939f2a91e940e55d61ad3.jpg",
+        "rare": "https://ih1.redbubble.net/image.1197727643.6143/raf,360x360,075,t,fafafa:ca443f4786.jpg",
+        "epic": "https://i.etsystatic.com/16060308/r/il/be76d1/6538996724/il_fullxfull.6538996724_7vek.jpg",
+        "legendary": "https://ih1.redbubble.net/image.4938759497.5127/flat,750x,075,f-pad,750x1000,f8f8f8.jpg",
+    },
+    "coast": {
+        "common": "https://thumbs.dreamstime.com/b/cartoon-gray-fish-illustration-digital-art-cartoon-gray-fish-illustration-digital-art-380198597.jpg",
+        "uncommon": "https://i.pinimg.com/736x/82/0e/82/820e828e963939f2a91e940e55d61ad3.jpg",
+        "rare": "https://ih1.redbubble.net/image.1197727643.6143/raf,360x360,075,t,fafafa:ca443f4786.jpg",
+        "epic": "https://i.etsystatic.com/16060308/r/il/be76d1/6538996724/il_fullxfull.6538996724_7vek.jpg",
+        "legendary": "https://ih1.redbubble.net/image.4938759497.5127/flat,750x,075,f-pad,750x1000,f8f8f8.jpg",
+    },
+    "abyss": {
+        "common": "https://thumbs.dreamstime.com/b/cartoon-gray-fish-illustration-digital-art-cartoon-gray-fish-illustration-digital-art-380198597.jpg",
+        "uncommon": "https://i.pinimg.com/736x/82/0e/82/820e828e963939f2a91e940e55d61ad3.jpg",
+        "rare": "https://ih1.redbubble.net/image.1197727643.6143/raf,360x360,075,t,fafafa:ca443f4786.jpg",
+        "epic": "https://i.etsystatic.com/16060308/r/il/be76d1/6538996724/il_fullxfull.6538996724_7vek.jpg",
+        "legendary": "https://ih1.redbubble.net/image.4938759497.5127/flat,750x,075,f-pad,750x1000,f8f8f8.jpg",
+    },
 }
 
 
