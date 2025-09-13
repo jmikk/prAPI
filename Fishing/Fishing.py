@@ -489,55 +489,61 @@ class MainMenu(ui.View):
 
     @ui.button(label="Fish", style=discord.ButtonStyle.primary, emoji="🎣")
     async def fish_btn(self, interaction: discord.Interaction, button: ui.Button):
-        # cooldown + fish
-        user_conf = self.cog.config.user(interaction.user)
-        data = await user_conf.all()
-        now = time.time()
-        last = float(data.get("last_fished_ts", 0.0))
-        remaining = COOLDOWN_SECONDS - (now - last)
-        if remaining > 0:
-            # When the user can fish again
-            next_ts = int(last + COOLDOWN_SECONDS)
-            # Use Discord's timestamp formatting:
-            # <t:UNIX:R> = relative, <t:UNIX:t> = short time
-            msg = (
-                f"⏳ **On cooldown** — try again <t:{next_ts}:R> "
-                f"(at <t:{next_ts}:t>)."
-            )
-            # Make it a normal message and auto-delete when the timer ends
-            # Note: delete_after uses seconds; clamp to at least 1s
-            return await interaction.response.send_message(
-                msg,
-                delete_after=max(1.0, remaining)
-            )
+        async with self.cog._lock_for(interaction.user.id):
+            user_conf = self.cog.config.user(interaction.user)
+            data = await user_conf.all()
+    
+            # Cooldown
+            now = time.time()
+            last = float(data.get("last_fished_ts", 0.0))
+            remaining = COOLDOWN_SECONDS - (now - last)
+            if remaining > 0:
+                next_ts = int(last + COOLDOWN_SECONDS)
+                msg = f"⏳ **On cooldown** — try again <t:{next_ts}:R> (at <t:{next_ts}:t>)."
+                return await interaction.response.send_message(msg, delete_after=max(1.0, remaining))
+    
+            # Ensure fishdex exists
+            fishdex = await self.cog._ensure_fishdex(interaction.user)
+    
+            # Validate rod
+            rod: Rod = RODS.get(data["rod"], RODS["twig"])
+            if int(data.get("rod_durability", 0)) <= 0:
+                return await interaction.response.send_message(
+                    f"⛔ Your **{rod.name}** is broken. Use Repair.", ephemeral=True
+                )
+    
+            # Auto-consume best bait
+            bait: Optional[Bait] = None
+            if any(qty > 0 for qty in data["bait"].values()):
+                owned = [(BAITS[k], q) for k, q in data["bait"].items() if q > 0 and k in BAITS]
+                owned.sort(key=lambda t: BAITS[t[0].key].rarity_boost, reverse=True)
+                bait = owned[0][0]
+                data["bait"][bait.key] -= 1
+    
+            # Roll catch
+            zone: Zone = ZONES.get(data["zone"], ZONES["pond"])
+            catch: Catch = roll_catch(rod=rod, bait=bait, zone=zone)
+    
+            # Update inventory, durability, cooldown
+            data["inventory"][catch.rarity] = int(data["inventory"].get(catch.rarity, 0)) + 1
+            data["rod_durability"] = max(0, int(data["rod_durability"]) - 1)
+            data["last_fished_ts"] = now
+    
+            # 🔑 Update fishdex BEFORE saving
+            zkey = zone.key
+            lst = fishdex.get(zkey) or []
+            if catch.species not in lst:
+                lst.append(catch.species)
+                fishdex[zkey] = lst
+            data["fishdex"] = fishdex
+    
+            # Save once with all changes
+            await user_conf.set(data)
+    
+            # Send result
+            emb = _catch_embed(zone=zone, rod=rod, bait=bait, catch=catch, durability_now=data["rod_durability"])
+            await interaction.response.send_message(embed=emb)
 
-
-        rod: Rod = RODS.get(data["rod"], RODS["twig"])
-        if data["rod_durability"] <= 0:
-            return await interaction.response.send_message(
-                f"⛔ Your **{rod.name}** is broken. Use Repair.", ephemeral=True
-            )
-
-        # auto bait
-        bait: Optional[Bait] = None
-        if any(qty > 0 for qty in data["bait"].values()):
-            owned = [(BAITS[k], q) for k, q in data["bait"].items() if q > 0 and k in BAITS]
-            owned.sort(key=lambda t: BAITS[t[0].key].rarity_boost, reverse=True)
-            bait = owned[0][0]
-            data["bait"][bait.key] -= 1
-
-        zone: Zone = ZONES.get(data["zone"], ZONES["pond"])
-        catch: Catch = roll_catch(rod=rod, bait=bait, zone=zone)
-
-        data["inventory"][catch.rarity] = int(data["inventory"].get(catch.rarity, 0)) + 1
-        data["rod_durability"] = max(0, int(data["rod_durability"]) - 1)
-        data["last_fished_ts"] = now
-        await user_conf.set(data)
-        if catch.species not in data["fishdex"].get(zone.key, []):
-            data["fishdex"][zone.key].append(catch.species)
-
-        emb = _catch_embed(zone=zone, rod=rod, bait=bait, catch=catch, durability_now=data["rod_durability"])
-        await interaction.response.send_message(embed=emb)
 
     @ui.button(label="Sell", style=discord.ButtonStyle.success, emoji="💰")
     async def sell_btn(self, interaction: discord.Interaction, button: ui.Button):
@@ -889,6 +895,24 @@ class Fishing(commands.Cog):
 
             emb = _inventory_embed(rod=rod, zone=zone, inv=inv, bait_inv=bait_inv, dur=data["rod_durability"])
             await ctx.reply(embed=emb, view=MainMenu(self, ctx.author.id))
+
+    async def _ensure_fishdex(self, user) -> Dict[str, List[str]]:
+        data = await self.config.user(user).all()
+        fishdex = data.get("fishdex")
+        if not isinstance(fishdex, dict):
+            fishdex = {zone: [] for zone in SPECIES.keys()}
+            await self.config.user(user).fishdex.set(fishdex)
+        else:
+            # Backfill any new zones that might be added later
+            changed = False
+            for zone in SPECIES.keys():
+                if zone not in fishdex:
+                    fishdex[zone] = []
+                    changed = True
+            if changed:
+                await self.config.user(user).fishdex.set(fishdex)
+        return fishdex
+
 
 
 async def setup(bot: Red):
