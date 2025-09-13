@@ -31,7 +31,6 @@ class Catch:
     species: str
 
 # File: fishing/data.py
-from __future__ import annotations
 from typing import Dict, List
 from .models import Rod, Bait, Zone
 
