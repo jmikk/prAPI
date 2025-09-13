@@ -1,18 +1,10 @@
-# fishing/fishing.py
+# File: fishing/__init__.py
+from .cog import setup  # redbot entrypoint
+
+# File: fishing/models.py
 from __future__ import annotations
-
-import asyncio
-import random
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
-
-import discord
-from redbot.core import commands, Config
-from redbot.core.bot import Red
-
-__all__ = ["Fishing"]
-
-# ---------- Data Models ----------
+from typing import Dict, List, Optional
 
 @dataclass(frozen=True)
 class Rod:
@@ -37,8 +29,17 @@ class Zone:
     sell_multiplier: float  # improves sell price of fish
     base_table: Dict[str, float]  # rarity -> weight override/boost
 
-# Rarity sell base prices (before zone multiplier)
-RARITY_PRICES = {
+@dataclass(frozen=True)
+class Catch:
+    rarity: str
+    species: str
+
+# File: fishing/data.py
+from __future__ import annotations
+from typing import Dict, List
+from .models import Rod, Bait, Zone
+
+RARITY_PRICES: Dict[str, float] = {
     "common": 1.00,
     "uncommon": 2.50,
     "rare": 6.00,
@@ -46,8 +47,7 @@ RARITY_PRICES = {
     "legendary": 40.00,
 }
 
-# Default rarity table weights; modified by rod/zone/bait
-BASE_RARITY_TABLE = {
+BASE_RARITY_TABLE: Dict[str, float] = {
     "common": 70.0,
     "uncommon": 22.0,
     "rare": 6.0,
@@ -63,10 +63,10 @@ RODS: Dict[str, Rod] = {
 }
 
 BAITS: Dict[str, Bait] = {
-    "worm":    Bait("worm",    "Worm Bait",     rarity_boost=0.01, price=1.0),
-    "minnow":  Bait("minnow",  "Minnow Bait",   rarity_boost=0.02, price=2.5),
+    "worm":    Bait("worm",    "Worm Bait",     rarity_boost=0.01,  price=1.0),
+    "minnow":  Bait("minnow",  "Minnow Bait",   rarity_boost=0.02,  price=2.5),
     "shrimp":  Bait("shrimp",  "Shrimp Bait",   rarity_boost=0.035, price=5.0),
-    "goldfly": Bait("goldfly", "Goldfly Bait",  rarity_boost=0.06, price=10.0),
+    "goldfly": Bait("goldfly", "Goldfly Bait",  rarity_boost=0.06,  price=10.0),
 }
 
 ZONES: Dict[str, Zone] = {
@@ -88,10 +88,198 @@ ZONES: Dict[str, Zone] = {
     ),
 }
 
-# ---------- Cog ----------
+# Zone-specific species names per rarity (flavor-only; does not affect pricing)
+SPECIES: Dict[str, Dict[str, List[str]]] = {
+    "pond": {
+        "common":    ["Bluegill", "Muddy Carp", "Lilypad Perch"],
+        "uncommon":  ["Speckled Sunfish", "Dusk Minnow"],
+        "rare":      ["Moonlit Koi"],
+        "epic":      ["Verdant Arowana"],
+        "legendary": ["Pond Guardian"]
+    },
+    "river": {
+        "common":    ["River Perch", "Stone Shiner"],
+        "uncommon":  ["Silver Chub", "Swift Darter"],
+        "rare":      ["Bronze Trout"],
+        "epic":      ["Runebrook Salmon"],
+        "legendary": ["King of Currents"]
+    },
+    "coast": {
+        "common":    ["Tide Sardine", "Pebble Mackerel"],
+        "uncommon":  ["Sea Bream", "Glimmer Hake"],
+        "rare":      ["Opal Snapper"],
+        "epic":      ["Storm Marlin"],
+        "legendary": ["Leviathan Fry"]
+    },
+    "abyss": {
+        "common":    ["Gloom Smelt"],
+        "uncommon":  ["Twilight Cod"],
+        "rare":      ["Nightfang Eel"],
+        "epic":      ["Phantom Angler"],
+        "legendary": ["Abyssal Sovereign"]
+    },
+}
+
+# File: fishing/loot.py
+from __future__ import annotations
+import random
+from typing import Dict, Optional
+from .data import BASE_RARITY_TABLE, SPECIES
+from .models import Rod, Bait, Zone, Catch
+
+__all__ = ["compose_table", "weighted_choice", "roll_catch"]
+
+def weighted_choice(table: Dict[str, float]) -> str:
+    items = list(table.items())
+    pick = random.random() * sum(w for _, w in items)
+    upto = 0.0
+    for rarity, w in items:
+        if upto + w >= pick:
+            return rarity
+        upto += w
+    return items[-1][0]
+
+def compose_table(*, rod: Rod, bait: Optional[Bait], zone: Zone) -> Dict[str, float]:
+    table = dict(BASE_RARITY_TABLE)
+    for r, delta in zone.base_table.items():
+        table[r] = max(0.0, table.get(r, 0.0) + delta)
+
+    for _ in range(rod.power):
+        for (src, dst, frac) in [
+            ("common", "uncommon", 0.02),
+            ("uncommon", "rare", 0.01),
+            ("rare", "epic", 0.005),
+        ]:
+            amt = table[src] * frac
+            table[src] -= amt
+            table[dst] += amt
+
+    if bait:
+        boost = bait.rarity_boost
+        for r in ("uncommon", "rare", "epic", "legendary"):
+            table[r] *= (1.0 + boost)
+        scale = sum(BASE_RARITY_TABLE.values()) / max(sum(table.values()), 1e-9)
+        for k in table:
+            table[k] *= scale
+
+    for k in list(table.keys()):
+        table[k] = max(0.0, table[k])
+    return table
+
+def roll_catch(*, rod: Rod, bait: Optional[Bait], zone: Zone) -> Catch:
+    table = compose_table(rod=rod, bait=bait, zone=zone)
+    rarity = weighted_choice(table)
+    species_pool = SPECIES.get(zone.key, {}).get(rarity, [rarity.title()])
+    species = random.choice(species_pool)
+    return Catch(rarity=rarity, species=species)
+
+# File: fishing/economy.py
+from __future__ import annotations
+from typing import Protocol
+
+class Economy(Protocol):
+    async def get_balance(self, user): ...
+    async def add_wellcoins(self, user, amount: float): ...
+    async def take_wellcoins(self, user, amount: float, force: bool = False): ...
+
+async def get_economy(bot) -> Economy:
+    econ = bot.get_cog("NexusExchange")
+    if not econ:
+        raise RuntimeError("NexusExchange cog not found. Please load it so Fishing can use Wellcoins.")
+    for fn in ("get_balance", "add_wellcoins", "take_wellcoins"):
+        if not hasattr(econ, fn):
+            raise RuntimeError(f"NexusExchange is missing required method `{fn}`.")
+    return econ  # type: ignore[return-value]
+
+# File: fishing/embeds.py
+from __future__ import annotations
+import discord
+from typing import Dict, Iterable, Tuple
+from .models import Rod, Bait, Zone, Catch
+from .data import RARITY_PRICES
+
+RARITY_COLOR = {
+    "common": discord.Colour.light_grey(),
+    "uncommon": discord.Colour.green(),
+    "rare": discord.Colour.blue(),
+    "epic": discord.Colour.purple(),
+    "legendary": discord.Colour.gold(),
+}
+
+def catch_embed(*, zone: Zone, rod: Rod, bait: Bait | None, catch: Catch, durability_now: int) -> discord.Embed:
+    e = discord.Embed(
+        title=f"You fished in {zone.name}!",
+        description=f"**{catch.species}** (*{catch.rarity.title()}*)",
+        colour=RARITY_COLOR.get(catch.rarity, discord.Colour.blurple()),
+    )
+    e.add_field(name="Rod", value=f"{rod.name} ({durability_now}/{rod.durability})", inline=True)
+    e.add_field(name="Zone", value=zone.name, inline=True)
+    e.add_field(name="Bait", value=bait.name if bait else "None", inline=True)
+    return e
+
+def inventory_embed(*, rod: Rod, zone: Zone, inv: Dict[str, int], bait_inv: Dict[str, int]) -> discord.Embed:
+    e = discord.Embed(
+        title="Tackle Box",
+        description=f"Rod: **{rod.name}** ({inv.get('_dur', 0)}/{rod.durability})\nZone: **{zone.name}**",
+        colour=discord.Colour.teal(),
+    )
+    fish_lines = "\n".join(f"{r.title()}: **{inv.get(r,0)}**" for r in RARITY_PRICES)
+    bait_lines = "\n".join(f"{k.title()}: **{v}**" for k, v in bait_inv.items()) or "None"
+    e.add_field(name="Fish", value=fish_lines, inline=False)
+    e.add_field(name="Bait", value=bait_lines, inline=False)
+    return e
+
+def prices_embed(*, zone: Zone) -> discord.Embed:
+    e = discord.Embed(title=f"Prices • {zone.name}", colour=discord.Colour.orange())
+    for r, p in RARITY_PRICES.items():
+        e.add_field(name=r.title(), value=f"{p:.2f} → {(p*zone.sell_multiplier):.2f} WC", inline=True)
+    e.set_footer(text=f"Zone Multiplier ×{zone.sell_multiplier:.2f}")
+    return e
+
+def sell_embed(*, zone: Zone, sold: Iterable[Tuple[str, int, float]], total: float) -> discord.Embed:
+    e = discord.Embed(title=f"Sold at {zone.name}", colour=discord.Colour.dark_gold())
+    for rarity, qty, amt in sold:
+        e.add_field(name=rarity.title(), value=f"× {qty} → {amt:.2f} WC", inline=False)
+    e.add_field(name="Total", value=f"**{total:.2f} WC**", inline=False)
+    e.set_footer(text=f"Zone Multiplier ×{zone.sell_multiplier:.2f}")
+    return e
+
+def shop_embed_rods(rods: Dict[str, Rod]) -> discord.Embed:
+    e = discord.Embed(title="Shop • Rods", colour=discord.Colour.blue())
+    for r in rods.values():
+        e.add_field(name=f"{r.name} (`{r.key}`)", value=f"{r.price:.2f} WC • Power {r.power} • Durability {r.durability}", inline=False)
+    return e
+
+def shop_embed_bait(baits: Dict[str, Bait]) -> discord.Embed:
+    e = discord.Embed(title="Shop • Bait", colour=discord.Colour.green())
+    for b in baits.values():
+        e.add_field(name=f"{b.name} (`{b.key}`)", value=f"{b.price:.2f} WC • Rarity boost {b.rarity_boost:.3f}", inline=False)
+    return e
+
+def shop_embed_zones(zones: Dict[str, Zone]) -> discord.Embed:
+    e = discord.Embed(title="Shop • Zones", colour=discord.Colour.dark_teal())
+    for z in zones.values():
+        e.add_field(name=f"{z.name} (`{z.key}`)", value=f"Unlock {z.unlock_price:.2f} WC • Sell ×{z.sell_multiplier:.2f}", inline=False)
+    return e
+
+# File: fishing/cog.py
+from __future__ import annotations
+import asyncio
+from typing import Dict, List, Optional, Tuple
+import discord
+from redbot.core import commands, Config
+from redbot.core.bot import Red
+
+from .models import Rod, Bait, Zone, Catch
+from .data import RODS, BAITS, ZONES, RARITY_PRICES
+from .loot import roll_catch
+from .economy import get_economy
+from . import embeds as V
+
+__all__ = ["Fishing"]
 
 class Fishing(commands.Cog):
-    """Catch fish, buy rods/bait/zones, and sell for Wellcoins."""
+    """Catch fish, buy rods/bait/zones, and sell for Wellcoins (embed edition)."""
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -100,187 +288,83 @@ class Fishing(commands.Cog):
         default_user = {
             "rod": "twig",
             "rod_durability": RODS["twig"].durability,
-            "bait": {"worm": 0, "minnow": 0, "shrimp": 0, "goldfly": 0},
+            "bait": {k: 0 for k in BAITS.keys()},
             "zone": "pond",
             "unlocked_zones": ["pond"],
-            "inventory": {  # rarity buckets
-                "common": 0,
-                "uncommon": 0,
-                "rare": 0,
-                "epic": 0,
-                "legendary": 0,
-            },
-            "last_fished_ts": 0.0,  # reserved if you want per-second throttling later
+            "inventory": {r: 0 for r in RARITY_PRICES.keys()},
         }
         self.config.register_user(**default_user)
-
         self._locks: Dict[int, asyncio.Lock] = {}
 
     # ---------- Helpers ----------
-
     def _lock_for(self, user_id: int) -> asyncio.Lock:
-        lock = self._locks.get(user_id)
+        lock = getattr(self, "_locks").get(user_id)
         if lock is None:
             lock = asyncio.Lock()
             self._locks[user_id] = lock
         return lock
 
-    def _get_economy(self):
-        econ = self.bot.get_cog("NexusExchange")
-        if not econ:
-            raise RuntimeError(
-                "NexusExchange cog not found. Please load it so Fishing can use Wellcoins."
-            )
-        # Must provide: get_balance(user), add_wellcoins(user, amount), take_wellcoins(user, amount, force=False)
-        for fn in ("get_balance", "add_wellcoins", "take_wellcoins"):
-            if not hasattr(econ, fn):
-                raise RuntimeError(f"NexusExchange is missing required method `{fn}`.")
-        return econ
-
-    def _weighted_choice(self, table: Dict[str, float]) -> str:
-        items = list(table.items())
-        rarities, weights = zip(*items)
-        pick = random.random() * sum(weights)
-        upto = 0.0
-        for rarity, w in items:
-            if upto + w >= pick:
-                return rarity
-            upto += w
-        return rarities[-1]  # fallback
-
-    def _compose_table(
-        self, *, rod: Rod, bait: Optional[Bait], zone: Zone
-    ) -> Dict[str, float]:
-        # Start with base table
-        table = dict(BASE_RARITY_TABLE)
-
-        # Zone tweaks (additive to weights)
-        for r, delta in zone.base_table.items():
-            table[r] = max(0.0, table.get(r, 0.0) + delta)
-
-        # Rod "power" shifts weight from lower rarities to higher ones
-        # Simple approach: each power point nudges a bit
-        for _ in range(rod.power):
-            # shift 2% of common -> uncommon, 1% of uncommon -> rare, 0.5% rare -> epic
-            for (src, dst, frac) in [
-                ("common", "uncommon", 0.02),
-                ("uncommon", "rare", 0.01),
-                ("rare", "epic", 0.005),
-            ]:
-                amt = table[src] * frac
-                table[src] -= amt
-                table[dst] += amt
-
-        # Bait rarity boost (as a small multiplicative on non-common buckets)
-        if bait:
-            boost = bait.rarity_boost
-            for r in ("uncommon", "rare", "epic", "legendary"):
-                table[r] *= (1.0 + boost)
-            # renormalize to keep overall magnitude similar
-            scale = sum(BASE_RARITY_TABLE.values()) / max(sum(table.values()), 1e-9)
-            for k in table:
-                table[k] *= scale
-
-        # Ensure no negatives
-        for k, v in list(table.items()):
-            table[k] = max(0.0, v)
-
-        return table
-
-    def _rarity_to_price(self, rarity: str) -> float:
-        return RARITY_PRICES.get(rarity, 0.5)
-
     # ---------- Commands ----------
-
     @commands.hybrid_group(name="fish", invoke_without_command=True)
-    @commands.cooldown(1, 30.0, commands.BucketType.user)  # 30s cooldown per user
+    @commands.cooldown(1, 30.0, commands.BucketType.user)
     async def fish_cmd(self, ctx: commands.Context):
         """Go fishing! Cooldown: 30s."""
         async with self._lock_for(ctx.author.id):
-            data = await self.config.user(ctx.author).all()
+            user = self.config.user(ctx.author)
+            data = await user.all()
 
-            # Validate rod durability
-            rod_key = data["rod"]
-            rod = RODS.get(rod_key, RODS["twig"])
+            # Validate rod
+            rod: Rod = RODS.get(data["rod"], RODS["twig"])
             if data["rod_durability"] <= 0:
-                return await ctx.reply(
-                    f"⛔ Your **{rod.name}** is broken. Repair by rebuying it or purchase a new rod."
-                )
+                return await ctx.reply(embed=discord.Embed(
+                    description=f"⛔ Your **{rod.name}** is broken. Repair or buy a new rod.",
+                    colour=discord.Colour.red(),
+                ))
 
-            # Use bait if available (auto-consume strongest bait you have)
-            bait_key = None
+            # Auto-consume best bait if available
             bait: Optional[Bait] = None
             if any(qty > 0 for qty in data["bait"].values()):
-                # choose the best you own
                 owned = [(BAITS[k], q) for k, q in data["bait"].items() if q > 0 and k in BAITS]
                 owned.sort(key=lambda t: BAITS[t[0].key].rarity_boost, reverse=True)
                 bait = owned[0][0]
-                bait_key = bait.key
-                data["bait"][bait_key] -= 1
+                data["bait"][bait.key] -= 1
 
-            # Zone
-            zone_key = data["zone"]
-            zone = ZONES.get(zone_key, ZONES["pond"])
+            zone: Zone = ZONES.get(data["zone"], ZONES["pond"])
 
-            # Compose rarity table and roll
-            table = self._compose_table(rod=rod, bait=bait, zone=zone)
-            rarity = self._weighted_choice(table)
+            catch: Catch = roll_catch(rod=rod, bait=bait, zone=zone)
 
-            # Update inventory & durability
-            data["inventory"][rarity] = int(data["inventory"].get(rarity, 0)) + 1
+            # Update inv & durability
+            data["inventory"][catch.rarity] = int(data["inventory"].get(catch.rarity, 0)) + 1
             data["rod_durability"] = max(0, int(data["rod_durability"]) - 1)
-            await self.config.user(ctx.author).set(data)
+            await user.set(data)
 
-            bait_text = f" using **{bait.name}**" if bait else ""
-            await ctx.reply(
-                f"🎣 You fish in **{zone.name}** with your **{rod.name}**{bait_text}…\n"
-                f"✨ You caught a **{rarity.title()}** fish!\n"
-                f"🪵 Rod Durability: {data['rod_durability']}/{rod.durability}"
-            )
+            emb = V.catch_embed(zone=zone, rod=rod, bait=bait, catch=catch, durability_now=data["rod_durability"])
+            await ctx.reply(embed=emb)
 
     @fish_cmd.command(name="inventory")
     async def fish_inventory(self, ctx: commands.Context):
-        """Show your fish inventory, rod, bait, and zone."""
         data = await self.config.user(ctx.author).all()
         rod = RODS.get(data["rod"], RODS["twig"])
         zone = ZONES.get(data["zone"], ZONES["pond"])
-        inv = data["inventory"]
+        inv = dict(data["inventory"]) | {"_dur": data["rod_durability"]}
         bait_inv = data["bait"]
-
-        rarity_lines = " • ".join(f"{r.title()}: **{inv.get(r,0)}**" for r in RARITY_PRICES.keys())
-        bait_lines = " • ".join(
-            f"{BAITS[k].name}: **{qty}**" for k, qty in bait_inv.items() if k in BAITS
-        ) or "None"
-
-        await ctx.reply(
-            f"**Rod:** {rod.name} ({data['rod_durability']}/{rod.durability})\n"
-            f"**Zone:** {zone.name}\n"
-            f"**Fish:** {rarity_lines}\n"
-            f"**Bait:** {bait_lines}"
-        )
+        await ctx.reply(embed=V.inventory_embed(rod=rod, zone=zone, inv=inv, bait_inv=bait_inv))
 
     @fish_cmd.command(name="sell")
     async def fish_sell(self, ctx: commands.Context, rarity: Optional[str] = None, amount: Optional[int] = None):
-        """
-        Sell fish for Wellcoins.
-        - No args: sell all.
-        - With `rarity`: sell that rarity. Optionally specify `amount`.
-        """
-        econ = self._get_economy()
-
+        econ = await get_economy(self.bot)
         async with self._lock_for(ctx.author.id):
             data = await self.config.user(ctx.author).all()
             zone = ZONES.get(data["zone"], ZONES["pond"])
             inv = data["inventory"]
 
             def price_for(r: str, qty: int) -> float:
-                return self._rarity_to_price(r) * zone.sell_multiplier * qty
+                return RARITY_PRICES.get(r, 0.0) * zone.sell_multiplier * qty
 
             total = 0.0
             sold_detail: List[Tuple[str, int, float]] = []
 
             if rarity is None:
-                # sell everything
                 for r, qty in list(inv.items()):
                     qty = int(qty)
                     if qty <= 0:
@@ -292,71 +376,48 @@ class Fishing(commands.Cog):
             else:
                 r = rarity.lower()
                 if r not in inv:
-                    return await ctx.reply("Unknown rarity. Use: common, uncommon, rare, epic, legendary.")
+                    return await ctx.reply(embed=discord.Embed(description="Unknown rarity.", colour=discord.Colour.red()))
                 have = int(inv[r])
                 if have <= 0:
-                    return await ctx.reply(f"You have no **{r}** fish to sell.")
+                    return await ctx.reply(embed=discord.Embed(description=f"You have no **{r}** fish to sell.", colour=discord.Colour.red()))
                 qty = have if amount is None else max(0, min(have, int(amount)))
                 if qty == 0:
-                    return await ctx.reply("Nothing to sell.")
+                    return await ctx.reply(embed=discord.Embed(description="Nothing to sell.", colour=discord.Colour.red()))
                 p = price_for(r, qty)
                 total += p
                 sold_detail.append((r, qty, p))
                 inv[r] = have - qty
 
-            # Save updated inventory
             data["inventory"] = inv
             await self.config.user(ctx.author).set(data)
 
-            # Pay user (truncate via Nexus logic)
             if total > 0:
                 await econ.add_wellcoins(ctx.author, float(total))
-
             if total <= 0:
-                return await ctx.reply("No fish sold.")
+                return await ctx.reply(embed=discord.Embed(description="No fish sold.", colour=discord.Colour.red()))
 
-            lines = "\n".join(
-                f"- {r.title()} × {qty}: {p:.2f} WC" for (r, qty, p) in sold_detail
-            )
-            await ctx.reply(
-                f"💰 Sold fish in **{zone.name}** (multiplier ×{zone.sell_multiplier:.2f}):\n{lines}\n"
-                f"**Total:** {total:.2f} WC"
-            )
+            await ctx.reply(embed=V.sell_embed(zone=zone, sold=sold_detail, total=total))
 
     # ---------- Shop & Loadout ----------
-
     @fish_cmd.group(name="shop", invoke_without_command=True)
     async def fish_shop(self, ctx: commands.Context):
-        """Browse shop categories."""
-        await ctx.reply(
-            "**Shop Categories**\n"
-            "- `[p]fish shop rods`\n"
-            "- `[p]fish shop bait`\n"
-            "- `[p]fish shop zones`"
-        )
+        e = discord.Embed(title="Shop", description="Choose a category", colour=discord.Colour.blurple())
+        e.add_field(name="Rods", value="`[p]fish shop rods`", inline=True)
+        e.add_field(name="Bait", value="`[p]fish shop bait`", inline=True)
+        e.add_field(name="Zones", value="`[p]fish shop zones`", inline=True)
+        await ctx.reply(embed=e)
 
     @fish_shop.command(name="rods")
     async def shop_rods(self, ctx: commands.Context):
-        lines = []
-        for r in RODS.values():
-            lines.append(f"- **{r.name}** (`{r.key}`): {r.price:.2f} WC | Power {r.power} | Durability {r.durability}")
-        await ctx.reply("\n".join(lines))
+        await ctx.reply(embed=V.shop_embed_rods(RODS))
 
     @fish_shop.command(name="bait")
     async def shop_bait(self, ctx: commands.Context):
-        lines = []
-        for b in BAITS.values():
-            lines.append(f"- **{b.name}** (`{b.key}`): {b.price:.2f} WC each | Rarity boost {b.rarity_boost:.3f}")
-        await ctx.reply("\n".join(lines))
+        await ctx.reply(embed=V.shop_embed_bait(BAITS))
 
     @fish_shop.command(name="zones")
     async def shop_zones(self, ctx: commands.Context):
-        lines = []
-        for z in ZONES.values():
-            lines.append(
-                f"- **{z.name}** (`{z.key}`): Unlock {z.unlock_price:.2f} WC | Sell ×{z.sell_multiplier:.2f}"
-            )
-        await ctx.reply("\n".join(lines))
+        await ctx.reply(embed=V.shop_embed_zones(ZONES))
 
     @fish_cmd.group(name="buy")
     async def fish_buy(self, ctx: commands.Context):
@@ -365,106 +426,86 @@ class Fishing(commands.Cog):
 
     @fish_buy.command(name="rod")
     async def buy_rod(self, ctx: commands.Context, rod_key: str):
-        econ = self._get_economy()
+        econ = await get_economy(self.bot)
         rod_key = rod_key.lower()
         if rod_key not in RODS:
-            return await ctx.reply("Unknown rod. Use `[p]fish shop rods` to see options.")
+            return await ctx.reply(embed=discord.Embed(description="Unknown rod.", colour=discord.Colour.red()))
         rod = RODS[rod_key]
-
         async with self._lock_for(ctx.author.id):
             data = await self.config.user(ctx.author).all()
-
-            # charge
             if rod.price > 0:
                 try:
                     await econ.take_wellcoins(ctx.author, rod.price, force=False)
                 except ValueError:
-                    return await ctx.reply(f"Insufficient funds. Need {rod.price:.2f} WC.")
-
-            # equip and set fresh durability
+                    return await ctx.reply(embed=discord.Embed(description=f"Insufficient funds. Need {rod.price:.2f} WC.", colour=discord.Colour.red()))
             data["rod"] = rod.key
             data["rod_durability"] = rod.durability
             await self.config.user(ctx.author).set(data)
-
-        await ctx.reply(f"🪝 You bought and equipped **{rod.name}** (Durability {rod.durability}).")
+        e = discord.Embed(description=f"🪝 You bought and equipped **{rod.name}** (Durability {rod.durability}).", colour=discord.Colour.blue())
+        await ctx.reply(embed=e)
 
     @fish_buy.command(name="bait")
     async def buy_bait(self, ctx: commands.Context, bait_key: str, amount: int = 1):
-        econ = self._get_economy()
+        econ = await get_economy(self.bot)
         bait_key = bait_key.lower()
         if bait_key not in BAITS:
-            return await ctx.reply("Unknown bait. Use `[p]fish shop bait` to see options.")
+            return await ctx.reply(embed=discord.Embed(description="Unknown bait.", colour=discord.Colour.red()))
         if amount <= 0:
-            return await ctx.reply("Amount must be positive.")
+            return await ctx.reply(embed=discord.Embed(description="Amount must be positive.", colour=discord.Colour.red()))
         bait = BAITS[bait_key]
         cost = bait.price * amount
-
         try:
             await econ.take_wellcoins(ctx.author, cost, force=False)
         except ValueError:
-            return await ctx.reply(f"Insufficient funds. Need {cost:.2f} WC.")
-
+            return await ctx.reply(embed=discord.Embed(description=f"Insufficient funds. Need {cost:.2f} WC.", colour=discord.Colour.red()))
         async with self._lock_for(ctx.author.id):
             have = await self.config.user(ctx.author).bait()
             have[bait_key] = int(have.get(bait_key, 0)) + amount
             await self.config.user(ctx.author).bait.set(have)
-
-        await ctx.reply(f"🪱 Purchased **{amount}× {bait.name}** for {cost:.2f} WC.")
+        await ctx.reply(embed=discord.Embed(description=f"🪱 Purchased **{amount}× {bait.name}** for {cost:.2f} WC.", colour=discord.Colour.green()))
 
     @fish_buy.command(name="zone")
     async def buy_zone(self, ctx: commands.Context, zone_key: str):
-        econ = self._get_economy()
+        econ = await get_economy(self.bot)
         zone_key = zone_key.lower()
         if zone_key not in ZONES:
-            return await ctx.reply("Unknown zone. Use `[p]fish shop zones` to see options.")
+            return await ctx.reply(embed=discord.Embed(description="Unknown zone.", colour=discord.Colour.red()))
         zone = ZONES[zone_key]
-
         async with self._lock_for(ctx.author.id):
             data = await self.config.user(ctx.author).all()
             if zone_key in set(data["unlocked_zones"]):
-                return await ctx.reply("You already unlocked this zone.")
+                return await ctx.reply(embed=discord.Embed(description="You already unlocked this zone.", colour=discord.Colour.orange()))
             price = zone.unlock_price
             if price > 0:
                 try:
                     await econ.take_wellcoins(ctx.author, price, force=False)
                 except ValueError:
-                    return await ctx.reply(f"Insufficient funds. Need {price:.2f} WC.")
+                    return await ctx.reply(embed=discord.Embed(description=f"Insufficient funds. Need {price:.2f} WC.", colour=discord.Colour.red()))
             data["unlocked_zones"].append(zone_key)
             await self.config.user(ctx.author).set(data)
-
-        await ctx.reply(f"🗺️ Unlocked **{zone.name}** for {zone.unlock_price:.2f} WC!")
+        await ctx.reply(embed=discord.Embed(description=f"🗺️ Unlocked **{zone.name}** for {zone.unlock_price:.2f} WC!", colour=discord.Colour.dark_teal()))
 
     @fish_cmd.command(name="zone")
     async def fish_zone(self, ctx: commands.Context, zone_key: Optional[str] = None):
-        """
-        View or set your active fishing zone.
-        - No args: shows your unlocked zones and current.
-        - With `zone_key`: switches to that zone (must be unlocked).
-        """
         if zone_key is None:
             data = await self.config.user(ctx.author).all()
             unlocked = data["unlocked_zones"]
             current = data["zone"]
             names = ", ".join(ZONES[z].name for z in unlocked if z in ZONES)
-            return await ctx.reply(
-                f"Current zone: **{ZONES[current].name}**\nUnlocked: {names or 'None'}"
-            )
-
+            e = discord.Embed(title="Zones", description=f"Current: **{ZONES[current].name}**\nUnlocked: {names or 'None'}")
+            return await ctx.reply(embed=e)
         zone_key = zone_key.lower()
         if zone_key not in ZONES:
-            return await ctx.reply("Unknown zone.")
+            return await ctx.reply(embed=discord.Embed(description="Unknown zone.", colour=discord.Colour.red()))
         data = await self.config.user(ctx.author).all()
         if zone_key not in data["unlocked_zones"]:
-            return await ctx.reply("You haven't unlocked that zone yet.")
+            return await ctx.reply(embed=discord.Embed(description="You haven't unlocked that zone yet.", colour=discord.Colour.red()))
         await self.config.user(ctx.author).zone.set(zone_key)
-        await ctx.reply(f"✅ Active zone set to **{ZONES[zone_key].name}**.")
+        await ctx.reply(embed=discord.Embed(description=f"✅ Active zone set to **{ZONES[zone_key].name}**.", colour=discord.Colour.green()))
 
     @fish_cmd.command(name="repair")
     async def fish_repair(self, ctx: commands.Context):
-        """
-        Quick repair: re-buy your current rod to restore durability (cost = rod price).
-        """
-        econ = self._get_economy()
+        econ = await get_economy(self.bot)
         data = await self.config.user(ctx.author).all()
         rod = RODS.get(data["rod"], RODS["twig"])
         price = rod.price
@@ -472,20 +513,15 @@ class Fishing(commands.Cog):
             try:
                 await econ.take_wellcoins(ctx.author, price, force=False)
             except ValueError:
-                return await ctx.reply(f"Insufficient funds. Need {price:.2f} WC.")
+                return await ctx.reply(embed=discord.Embed(description=f"Insufficient funds. Need {price:.2f} WC.", colour=discord.Colour.red()))
         await self.config.user(ctx.author).rod_durability.set(rod.durability)
-        await ctx.reply(f"🔧 Repaired **{rod.name}** to full durability ({rod.durability}).")
+        await ctx.reply(embed=discord.Embed(description=f"🔧 Repaired **{rod.name}** to full durability ({rod.durability}).", colour=discord.Colour.blue()))
 
     @fish_cmd.command(name="prices")
     async def fish_prices(self, ctx: commands.Context):
-        """Show base prices by rarity and your zone multiplier."""
         data = await self.config.user(ctx.author).all()
         zone = ZONES.get(data["zone"], ZONES["pond"])
-        lines = [f"**Zone Multiplier:** ×{zone.sell_multiplier:.2f} ({zone.name})"]
-        for r, p in RARITY_PRICES.items():
-            lines.append(f"- {r.title()}: {p:.2f} base → {(p*zone.sell_multiplier):.2f} in {zone.name}")
-        await ctx.reply("\n".join(lines))
-
+        await ctx.reply(embed=V.prices_embed(zone=zone))
 
 async def setup(bot: Red):
     await bot.add_cog(Fishing(bot))
