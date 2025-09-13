@@ -11,6 +11,26 @@ from datetime import datetime
 from discord.ext.commands import BucketType
 import discord
 
+def global_cooldown_check():
+    """Blocks the command if a global 60s window is active.
+    Implemented as a check so it runs before per-user cooldowns."""
+    async def predicate(ctx):
+        cog = ctx.cog
+        # Safety: if somehow used elsewhere, just pass
+        if not hasattr(cog, "_next_global_ok"):
+            return True
+        now = time.monotonic()
+        next_ok = getattr(cog, "_next_global_ok", 0.0)
+        if now < next_ok:
+            retry = int(next_ok - now) + 1
+            # Raise CheckFailure so user cooldown isn't touched
+            raise commands.CheckFailure(
+                f"Global lootbox cooldown is active. Try again in {retry} second{'s' if retry != 1 else ''}."
+            )
+        return True
+    return commands.check(predicate)
+
+
 
 tsv_file = "report.tsv"
 
@@ -39,6 +59,8 @@ class lootbox(commands.Cog):
 
         # local in-memory cache: {guild_id: policy_dict}
         self._policy_cache = {}
+        self._next_global_ok = 0.0  # monotonic timestamp for next allowed run
+
 
     async def cog_load(self):
         # Preload policies for all guilds the bot is in
@@ -125,7 +147,8 @@ class lootbox(commands.Cog):
         """Set the password for the loot box prizes in DM."""
         await self.config.password.set(password)
         await ctx.send(f"Password set to {password}")
-
+        
+    @global_cooldown_check()
     @commands.dynamic_cooldown(lambda ctx: ctx.cog._cooldown_for_ctx_sync(ctx), BucketType.user)
     @commands.command()    
     async def openlootbox(self, ctx, *recipient: str):
@@ -134,6 +157,7 @@ class lootbox(commands.Cog):
             await ctx.send("Make sure to put your nation in after openlootbox")
             return
         recipient =  "_".join(recipient)
+        self._next_global_ok = time.monotonic() + 60
         #await ctx.send(recipient)
         season = await self.config.season()
         nationname = await self.config.nationName()
