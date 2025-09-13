@@ -13,21 +13,32 @@ import discord
 
 def global_cooldown_check():
     """Blocks the command if a global 60s window is active.
-    Implemented as a check so it runs before per-user cooldowns."""
+    Sends a self-cleaning message with a Discord timestamp before raising."""
     async def predicate(ctx):
         cog = ctx.cog
-        # Safety: if somehow used elsewhere, just pass
         if not hasattr(cog, "_next_global_ok"):
             return True
-        now = time.monotonic()
-        next_ok = getattr(cog, "_next_global_ok", 0.0)
-        if now < next_ok:
-            retry = int(next_ok - now) + 1
-            # Raise CheckFailure so user cooldown isn't touched
-            await ctx.send(f"Global lootbox cooldown is active. Try again in {retry} second{'s' if retry != 1 else ''}.")
-            raise commands.CheckFailure("")
+
+        now_mono = time.monotonic()
+        next_ok_mono = getattr(cog, "_next_global_ok", 0.0)
+
+        if now_mono < next_ok_mono:
+            remaining = max(0.0, next_ok_mono - now_mono)
+            # Compute an absolute epoch for Discord's timestamp (<t:EPOCH:R>)
+            ends_at_epoch = int(time.time() + remaining)
+
+            # Example: "try again in 53 seconds" + the exact local time
+            msg = await ctx.send(
+                f"🕒 Global lootbox cooldown is active — try again "
+                f"<t:{ends_at_epoch}:R> (at <t:{ends_at_epoch}:T>).",
+                delete_after=remaining + 1  # self-clean when timer is up
+            )
+
+            # Raise *after* sending so per-user cooldown isn't consumed
+            raise commands.CheckFailure("Global lootbox cooldown active.")
         return True
     return commands.check(predicate)
+
 
 
 
