@@ -101,6 +101,16 @@ ZONE_IMAGES = {
     "abyss": "https://i.imgur.com/AnBi2vR.png",
 }
 
+# Optional: fish images
+# 1) Per SPECIES (exact match on Catch.species)
+FISH_IMAGES_BY_SPECIES: Dict[str, str] = {
+    # "Bluegill": "https://example.com/bluegill.png",
+    # "Pond Guardian": "https://example.com/pond_guardian.png",
+    # ...
+}
+
+
+
 
 # Zone-specific species names per rarity (flavor-only; does not affect pricing)
 SPECIES: Dict[str, Dict[str, List[str]]] = {
@@ -133,6 +143,15 @@ SPECIES: Dict[str, Dict[str, List[str]]] = {
         "legendary": ["Abyssal Sovereign"],
     },
 }
+
+def _fish_image_for(zone_key: str, species: str, rarity: str) -> Optional[str]:
+    # Try exact species first
+    url = FISH_IMAGES_BY_SPECIES.get(species)
+    if url:
+        return url
+    # Then (zone, rarity)
+    return FISH_IMAGES_BY_ZONE_RARITY.get(zone_key, {}).get(rarity)
+
 
 
 # ---------- Loot Table Logic ----------
@@ -227,11 +246,17 @@ def _catch_embed(*, zone: Zone, rod: Rod, bait: Bait | None, catch: Catch, durab
     e.add_field(name="Zone", value=zone.name, inline=True)
     e.add_field(name="Bait", value=bait.name if bait else "None", inline=True)
 
-    # add zone image (no import needed in single-file cog)
+    # Thumbnail = zone image
     if zone.key in ZONE_IMAGES:
-        e.set_image(url=ZONE_IMAGES[zone.key])
+        e.set_thumbnail(url=ZONE_IMAGES[zone.key])
+
+    # Main image = fish image (species first, then (zone, rarity) fallback)
+    fish_url = _fish_image_for(zone.key, catch.species, catch.rarity)
+    if fish_url:
+        e.set_image(url=fish_url)
 
     return e
+
 
 
 
