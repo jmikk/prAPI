@@ -24,9 +24,8 @@ def global_cooldown_check():
         if now < next_ok:
             retry = int(next_ok - now) + 1
             # Raise CheckFailure so user cooldown isn't touched
-            raise commands.CheckFailure(
-                f"Global lootbox cooldown is active. Try again in {retry} second{'s' if retry != 1 else ''}."
-            )
+            await ctx.send(f"Global lootbox cooldown is active. Try again in {retry} second{'s' if retry != 1 else ''}.")
+            raise commands.CheckFailure("")
         return True
     return commands.check(predicate)
 
