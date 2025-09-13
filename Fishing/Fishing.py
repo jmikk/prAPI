@@ -228,6 +228,20 @@ def _weighted_choice(table: Dict[str, float]) -> str:
         upto += w
     return items[-1][0] if items else "common"
 
+def _fishdex_embed(fishdex: Dict[str, List[str]]) -> discord.Embed:
+    e = discord.Embed(title="🎣 Fishdex", colour=discord.Colour.blue())
+    for zone_key, zone_species in SPECIES.items():
+        caught = set(fishdex.get(zone_key, []))
+        lines = []
+        for rarity, species_list in zone_species.items():
+            for s in species_list:
+                mark = "✅" if s in caught else "❌"
+                lines.append(f"{mark} {s} (*{rarity.title()}*)")
+        zone = ZONES[zone_key]
+        e.add_field(name=zone.name, value="\n".join(lines), inline=False)
+    return e
+
+
 
 def _compose_table(*, rod: Rod, bait: Optional[Bait], zone: Zone) -> Dict[str, float]:
     # Start with base table
@@ -408,6 +422,8 @@ class MainMenu(ui.View):
         data["rod_durability"] = max(0, int(data["rod_durability"]) - 1)
         data["last_fished_ts"] = now
         await user_conf.set(data)
+        if catch.species not in data["fishdex"].get(zone.key, []):
+            data["fishdex"][zone.key].append(catch.species)
 
         emb = _catch_embed(zone=zone, rod=rod, bait=bait, catch=catch, durability_now=data["rod_durability"])
         await interaction.response.send_message(embed=emb)
@@ -441,6 +457,12 @@ class MainMenu(ui.View):
         await interaction.response.send_message(
             f"🔧 Repaired **{rod.name}** to full durability ({rod.durability}).", ephemeral=True
         )
+    @ui.button(label="Fishdex", style=discord.ButtonStyle.secondary, emoji="📖")
+    async def fishdex_btn(self, interaction: discord.Interaction, button: ui.Button):
+        data = await self.cog.config.user(interaction.user).all()
+        emb = _fishdex_embed(data["fishdex"])
+        await interaction.response.send_message(embed=emb, ephemeral=True)
+
 
 
 class SellMenu(ui.View):
@@ -724,6 +746,7 @@ class Fishing(commands.Cog):
             "unlocked_zones": ["pond"],
             "inventory": {r: 0 for r in RARITY_PRICES.keys()},
             "last_fished_ts": 0.0,
+            "fishdex": {zone: [] for zone in SPECIES.keys()},  # per-zone caught species
         }
         self.config.register_user(**default_user)
         self._locks: Dict[int, asyncio.Lock] = {}
