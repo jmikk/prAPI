@@ -215,6 +215,8 @@ RARITY_COLOR = {
     "legendary": discord.Colour.gold(),
 }
 
+# replace your current _catch_embed with this:
+
 def _catch_embed(*, zone: Zone, rod: Rod, bait: Bait | None, catch: Catch, durability_now: int) -> discord.Embed:
     e = discord.Embed(
         title=f"You fished in {zone.name}!",
@@ -225,12 +227,12 @@ def _catch_embed(*, zone: Zone, rod: Rod, bait: Bait | None, catch: Catch, durab
     e.add_field(name="Zone", value=zone.name, inline=True)
     e.add_field(name="Bait", value=bait.name if bait else "None", inline=True)
 
-    # add zone image
-    from .cog import ZONE_IMAGES  # or import where appropriate
+    # add zone image (no import needed in single-file cog)
     if zone.key in ZONE_IMAGES:
         e.set_image(url=ZONE_IMAGES[zone.key])
 
     return e
+
 
 
 def _inventory_embed(*, rod: Rod, zone: Zone, inv: Dict[str, int], bait_inv: Dict[str, int], dur: int) -> discord.Embed:
