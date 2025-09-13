@@ -95,7 +95,7 @@ class Fishing(commands.Cog):
 
     def __init__(self, bot: Red):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=0xF15H1NG, force_registration=True)
+        self.config = Config.get_conf(self, identifier="324234324234", force_registration=True)
 
         default_user = {
             "rod": "twig",
