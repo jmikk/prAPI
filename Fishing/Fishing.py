@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import asyncio
 import random
+import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Protocol
 
 import discord
+from discord import ui
 from redbot.core import commands, Config
 from redbot.core.bot import Red
 
@@ -146,7 +148,7 @@ def _compose_table(*, rod: Rod, bait: Optional[Bait], zone: Zone) -> Dict[str, f
     for r, delta in zone.base_table.items():
         table[r] = max(0.0, table.get(r, 0.0) + delta)
 
-    # Rod power shifts weight upward in small percentages
+    # Rod power shifts weight upward
     for _ in range(rod.power):
         for (src, dst, frac) in [
             ("common", "uncommon", 0.02),
@@ -157,7 +159,7 @@ def _compose_table(*, rod: Rod, bait: Optional[Bait], zone: Zone) -> Dict[str, f
             table[src] -= amt
             table[dst] += amt
 
-    # Bait slightly boosts non-common rarities, then renormalize to original magnitude
+    # Bait boosts non-common, then renormalize to original magnitude
     if bait:
         boost = bait.rarity_boost
         for r in ("uncommon", "rare", "epic", "legendary"):
@@ -166,7 +168,6 @@ def _compose_table(*, rod: Rod, bait: Optional[Bait], zone: Zone) -> Dict[str, f
         for k in table:
             table[k] *= scale
 
-    # No negatives
     for k in list(table.keys()):
         table[k] = max(0.0, table[k])
     return table
@@ -245,9 +246,355 @@ def _sell_embed(*, zone: Zone, sold: List[Tuple[str, int, float]], total: float)
     return e
 
 
+# ---------- Views (Buttons & Selects) ----------
+COOLDOWN_SECONDS = 30.0
+
+class MainMenu(ui.View):
+    def __init__(self, cog: "Fishing", user_id: int):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user and interaction.user.id == self.user_id
+
+    @ui.button(label="Fish", style=discord.ButtonStyle.primary, emoji="🎣")
+    async def fish_btn(self, interaction: discord.Interaction, button: ui.Button):
+        # cooldown + fish
+        user_conf = self.cog.config.user(interaction.user)
+        data = await user_conf.all()
+        now = time.time()
+        last = float(data.get("last_fished_ts", 0.0))
+        remaining = COOLDOWN_SECONDS - (now - last)
+        if remaining > 0:
+            return await interaction.response.send_message(
+                f"⏳ On cooldown: {remaining:.0f}s remaining.", ephemeral=True
+            )
+
+        rod: Rod = RODS.get(data["rod"], RODS["twig"])
+        if data["rod_durability"] <= 0:
+            return await interaction.response.send_message(
+                f"⛔ Your **{rod.name}** is broken. Use Repair.", ephemeral=True
+            )
+
+        # auto bait
+        bait: Optional[Bait] = None
+        if any(qty > 0 for qty in data["bait"].values()):
+            owned = [(BAITS[k], q) for k, q in data["bait"].items() if q > 0 and k in BAITS]
+            owned.sort(key=lambda t: BAITS[t[0].key].rarity_boost, reverse=True)
+            bait = owned[0][0]
+            data["bait"][bait.key] -= 1
+
+        zone: Zone = ZONES.get(data["zone"], ZONES["pond"])
+        catch: Catch = roll_catch(rod=rod, bait=bait, zone=zone)
+
+        data["inventory"][catch.rarity] = int(data["inventory"].get(catch.rarity, 0)) + 1
+        data["rod_durability"] = max(0, int(data["rod_durability"]) - 1)
+        data["last_fished_ts"] = now
+        await user_conf.set(data)
+
+        emb = _catch_embed(zone=zone, rod=rod, bait=bait, catch=catch, durability_now=data["rod_durability"])
+        await interaction.response.send_message(embed=emb, ephemeral=True)
+
+    @ui.button(label="Sell", style=discord.ButtonStyle.success, emoji="💰")
+    async def sell_btn(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message(view=SellMenu(self.cog, interaction.user.id), ephemeral=True)
+
+    @ui.button(label="Zone", style=discord.ButtonStyle.secondary, emoji="🗺️")
+    async def zone_btn(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message(view=ZoneMenu(self.cog, interaction.user.id), ephemeral=True)
+
+    @ui.button(label="Shop", style=discord.ButtonStyle.secondary, emoji="🛒")
+    async def shop_btn(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_message(view=ShopMenu(self.cog, interaction.user.id), ephemeral=True)
+
+    @ui.button(label="Repair", style=discord.ButtonStyle.danger, emoji="🔧")
+    async def repair_btn(self, interaction: discord.Interaction, button: ui.Button):
+        econ = _get_economy(self.cog.bot)
+        data = await self.cog.config.user(interaction.user).all()
+        rod = RODS.get(data["rod"], RODS["twig"])
+        price = rod.price
+        if price > 0:
+            try:
+                await econ.take_wellcoins(interaction.user, price, force=False)
+            except ValueError:
+                return await interaction.response.send_message(
+                    f"Insufficient funds. Need {price:.2f} WC.", ephemeral=True
+                )
+        await self.cog.config.user(interaction.user).rod_durability.set(rod.durability)
+        await interaction.response.send_message(
+            f"🔧 Repaired **{rod.name}** to full durability ({rod.durability}).", ephemeral=True
+        )
+
+
+class SellMenu(ui.View):
+    def __init__(self, cog: "Fishing", user_id: int):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.user_id = user_id
+
+        self.add_item(SellAllButton(cog, user_id))
+        self.add_item(SellSelect(cog, user_id))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user and interaction.user.id == self.user_id
+
+
+class SellAllButton(ui.Button):
+    def __init__(self, cog: "Fishing", user_id: int):
+        super().__init__(label="Sell All", style=discord.ButtonStyle.success, emoji="🧺")
+        self.cog = cog
+        self.user_id = user_id
+
+    async def callback(self, interaction: discord.Interaction):
+        econ = _get_economy(self.cog.bot)
+        data = await self.cog.config.user(interaction.user).all()
+        zone = ZONES.get(data["zone"], ZONES["pond"])
+        inv = data["inventory"]
+
+        def price_for(r: str, qty: int) -> float:
+            return RARITY_PRICES.get(r, 0.0) * zone.sell_multiplier * qty
+
+        total = 0.0
+        sold_detail: List[Tuple[str, int, float]] = []
+        for r, qty in list(inv.items()):
+            qty = int(qty)
+            if qty <= 0:
+                continue
+            p = price_for(r, qty)
+            total += p
+            sold_detail.append((r, qty, p))
+            inv[r] = 0
+
+        data["inventory"] = inv
+        await self.cog.config.user(interaction.user).set(data)
+
+        if total <= 0:
+            return await interaction.response.send_message("No fish to sell.", ephemeral=True)
+        await econ.add_wellcoins(interaction.user, float(total))
+        await interaction.response.send_message(embed=_sell_embed(zone=zone, sold=sold_detail, total=total), ephemeral=True)
+
+
+class SellSelect(ui.Select):
+    def __init__(self, cog: "Fishing", user_id: int):
+        options = [discord.SelectOption(label=r.title(), value=r) for r in RARITY_PRICES.keys()]
+        super().__init__(placeholder="Sell by rarity (sell all of selected)", min_values=1, max_values=1, options=options)
+        self.cog = cog
+        self.user_id = user_id
+
+    async def callback(self, interaction: discord.Interaction):
+        econ = _get_economy(self.cog.bot)
+        choice = self.values[0]
+        data = await self.cog.config.user(interaction.user).all()
+        zone = ZONES.get(data["zone"], ZONES["pond"])
+        inv = data["inventory"]
+
+        have = int(inv.get(choice, 0))
+        if have <= 0:
+            return await interaction.response.send_message(f"You have no **{choice}** fish.", ephemeral=True)
+
+        total = RARITY_PRICES.get(choice, 0.0) * zone.sell_multiplier * have
+        inv[choice] = 0
+        data["inventory"] = inv
+        await self.cog.config.user(interaction.user).set(data)
+        await econ.add_wellcoins(interaction.user, float(total))
+        await interaction.response.send_message(
+            embed=_sell_embed(zone=zone, sold=[(choice, have, total)], total=total),
+            ephemeral=True
+        )
+
+
+class ZoneMenu(ui.View):
+    def __init__(self, cog: "Fishing", user_id: int):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.user_id = user_id
+        self.add_item(ZoneSelect(cog, user_id))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user and interaction.user.id == self.user_id
+
+
+class ZoneSelect(ui.Select):
+    def __init__(self, cog: "Fishing", user_id: int):
+        options = []
+        for z in ZONES.values():
+            options.append(
+                discord.SelectOption(
+                    label=z.name,
+                    description=f"Sell ×{z.sell_multiplier:.2f} • Unlock {z.unlock_price:.2f} WC",
+                    value=z.key,
+                )
+            )
+        super().__init__(placeholder="Choose or unlock a zone", min_values=1, max_values=1, options=options)
+        self.cog = cog
+        self.user_id = user_id
+
+    async def callback(self, interaction: discord.Interaction):
+        econ = _get_economy(self.cog.bot)
+        zone_key = self.values[0]
+        data = await self.cog.config.user(interaction.user).all()
+        unlocked = set(data["unlocked_zones"])
+
+        if zone_key not in ZONES:
+            return await interaction.response.send_message("Unknown zone.", ephemeral=True)
+
+        zone = ZONES[zone_key]
+        if zone_key not in unlocked:
+            price = zone.unlock_price
+            if price > 0:
+                try:
+                    await econ.take_wellcoins(interaction.user, price, force=False)
+                except ValueError:
+                    return await interaction.response.send_message(
+                        f"Insufficient funds to unlock **{zone.name}** (need {price:.2f} WC).",
+                        ephemeral=True
+                    )
+            data["unlocked_zones"].append(zone_key)
+
+        data["zone"] = zone_key
+        await self.cog.config.user(interaction.user).set(data)
+        await interaction.response.send_message(f"✅ Active zone set to **{zone.name}**.", ephemeral=True)
+
+
+class ShopMenu(ui.View):
+    def __init__(self, cog: "Fishing", user_id: int):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.user_id = user_id
+        self.add_item(BaitShopButton(cog, user_id))
+        self.add_item(RodShopButton(cog, user_id))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user and interaction.user.id == self.user_id
+
+
+class BaitShopButton(ui.Button):
+    def __init__(self, cog: "Fishing", user_id: int):
+        super().__init__(label="Bait Shop", style=discord.ButtonStyle.secondary, emoji="🪱")
+        self.cog = cog
+        self.user_id = user_id
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message(view=BaitShopView(self.cog, interaction.user.id), ephemeral=True)
+
+
+class RodShopButton(ui.Button):
+    def __init__(self, cog: "Fishing", user_id: int):
+        super().__init__(label="Rod Shop", style=discord.ButtonStyle.secondary, emoji="🪝")
+        self.cog = cog
+        self.user_id = user_id
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message(view=RodShopView(self.cog, interaction.user.id), ephemeral=True)
+
+
+class BaitShopView(ui.View):
+    def __init__(self, cog: "Fishing", user_id: int):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.user_id = user_id
+        self.add_item(BaitSelect(cog, user_id))
+        self.add_item(BaitQtySelect(cog, user_id))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user and interaction.user.id == self.user_id
+
+
+class BaitSelect(ui.Select):
+    def __init__(self, cog: "Fishing", user_id: int):
+        options = [
+            discord.SelectOption(label=f"{b.name}", description=f"{b.price:.2f} WC • +{int(b.rarity_boost*1000)/10}% rare boost", value=key)
+            for key, b in BAITS.items()
+        ]
+        super().__init__(placeholder="Choose bait", min_values=1, max_values=1, options=options)
+        self.cog = cog
+        self.user_id = user_id
+
+    async def callback(self, interaction: discord.Interaction):
+        # stash the choice in view state using custom_id on the parent
+        self.view.selected_bait_key = self.values[0]  # type: ignore[attr-defined]
+        await interaction.response.send_message(f"Selected **{BAITS[self.values[0]].name}**. Now choose quantity.", ephemeral=True)
+
+
+class BaitQtySelect(ui.Select):
+    def __init__(self, cog: "Fishing", user_id: int):
+        options = [discord.SelectOption(label=str(n), value=str(n)) for n in (1, 5, 10, 25)]
+        super().__init__(placeholder="Quantity", min_values=1, max_values=1, options=options)
+        self.cog = cog
+        self.user_id = user_id
+
+    async def callback(self, interaction: discord.Interaction):
+        bait_key = getattr(self.view, "selected_bait_key", None)  # type: ignore[attr-defined]
+        if not bait_key:
+            return await interaction.response.send_message("Pick a bait first.", ephemeral=True)
+        qty = int(self.values[0])
+        bait = BAITS[bait_key]
+        total_cost = bait.price * qty
+        econ = _get_economy(self.cog.bot)
+        try:
+            await econ.take_wellcoins(interaction.user, total_cost, force=False)
+        except ValueError:
+            return await interaction.response.send_message(
+                f"Insufficient funds. Need {total_cost:.2f} WC.", ephemeral=True
+            )
+        have = await self.cog.config.user(interaction.user).bait()
+        have[bait_key] = int(have.get(bait_key, 0)) + qty
+        await self.cog.config.user(interaction.user).bait.set(have)
+        await interaction.response.send_message(
+            f"🪱 Purchased **{qty}× {bait.name}** for {total_cost:.2f} WC.",
+            ephemeral=True
+        )
+
+
+class RodShopView(ui.View):
+    def __init__(self, cog: "Fishing", user_id: int):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.user_id = user_id
+        self.add_item(RodSelect(cog, user_id))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user and interaction.user.id == self.user_id
+
+
+class RodSelect(ui.Select):
+    def __init__(self, cog: "Fishing", user_id: int):
+        options = []
+        for key, r in RODS.items():
+            options.append(discord.SelectOption(
+                label=f"{r.name}",
+                description=f"{r.price:.2f} WC • P{r.power} • Dur {r.durability}",
+                value=key
+            ))
+        super().__init__(placeholder="Choose a rod to buy & equip", min_values=1, max_values=1, options=options)
+        self.cog = cog
+        self.user_id = user_id
+
+    async def callback(self, interaction: discord.Interaction):
+        rod_key = self.values[0]
+        rod = RODS[rod_key]
+        econ = _get_economy(self.cog.bot)
+        if rod.price > 0:
+            try:
+                await econ.take_wellcoins(interaction.user, rod.price, force=False)
+            except ValueError:
+                return await interaction.response.send_message(
+                    f"Insufficient funds. Need {rod.price:.2f} WC.", ephemeral=True
+                )
+        data = await self.cog.config.user(interaction.user).all()
+        data["rod"] = rod.key
+        data["rod_durability"] = rod.durability
+        await self.cog.config.user(interaction.user).set(data)
+        await interaction.response.send_message(
+            f"🪝 You bought and equipped **{rod.name}** (Durability {rod.durability}).",
+            ephemeral=True
+        )
+
+
 # ---------- The Cog ----------
 class Fishing(commands.Cog):
-    """Catch fish, buy rods/bait/zones, and sell for Wellcoins (single-file embed edition)."""
+    """Catch fish, sell, shop, switch/unlock zones, and repair — via a button menu."""
 
     def __init__(self, bot: Red):
         self.bot = bot
@@ -260,11 +607,11 @@ class Fishing(commands.Cog):
             "zone": "pond",
             "unlocked_zones": ["pond"],
             "inventory": {r: 0 for r in RARITY_PRICES.keys()},
+            "last_fished_ts": 0.0,
         }
         self.config.register_user(**default_user)
         self._locks: Dict[int, asyncio.Lock] = {}
 
-    # ---------- Helpers ----------
     def _lock_for(self, user_id: int) -> asyncio.Lock:
         lock = self._locks.get(user_id)
         if lock is None:
@@ -272,235 +619,21 @@ class Fishing(commands.Cog):
             self._locks[user_id] = lock
         return lock
 
-    # ---------- Commands ----------
-    @commands.hybrid_group(name="fish", invoke_without_command=True)
-    @commands.cooldown(1, 30.0, commands.BucketType.user)
-    async def fish_cmd(self, ctx: commands.Context):
-        """Go fishing! Cooldown: 30s."""
-        async with self._lock_for(ctx.author.id):
-            user = self.config.user(ctx.author)
-            data = await user.all()
-
-            # Validate rod
-            rod: Rod = RODS.get(data["rod"], RODS["twig"])
-            if data["rod_durability"] <= 0:
-                return await ctx.reply(
-                    embed=discord.Embed(
-                        description=f"⛔ Your **{rod.name}** is broken. Repair or buy a new rod.",
-                        colour=discord.Colour.red(),
-                    )
-                )
-
-            # Auto-consume best bait if available
-            bait: Optional[Bait] = None
-            if any(qty > 0 for qty in data["bait"].values()):
-                owned = [(BAITS[k], q) for k, q in data["bait"].items() if q > 0 and k in BAITS]
-                owned.sort(key=lambda t: BAITS[t[0].key].rarity_boost, reverse=True)
-                bait = owned[0][0]
-                data["bait"][bait.key] -= 1
-
-            zone: Zone = ZONES.get(data["zone"], ZONES["pond"])
-
-            catch: Catch = roll_catch(rod=rod, bait=bait, zone=zone)
-
-            # Update inv & durability
-            data["inventory"][catch.rarity] = int(data["inventory"].get(catch.rarity, 0)) + 1
-            data["rod_durability"] = max(0, int(data["rod_durability"]) - 1)
-            await user.set(data)
-
-            emb = _catch_embed(zone=zone, rod=rod, bait=bait, catch=catch, durability_now=data["rod_durability"])
-            await ctx.reply(embed=emb)
-
-    @fish_cmd.command(name="inventory")
-    async def fish_inventory(self, ctx: commands.Context):
-        data = await self.config.user(ctx.author).all()
-        rod = RODS.get(data["rod"], RODS["twig"])
-        zone = ZONES.get(data["zone"], ZONES["pond"])
-        inv = dict(data["inventory"])
-        bait_inv = data["bait"]
-        await ctx.reply(embed=_inventory_embed(rod=rod, zone=zone, inv=inv, bait_inv=bait_inv, dur=data["rod_durability"]))
-
-    @fish_cmd.command(name="sell")
-    async def fish_sell(self, ctx: commands.Context, rarity: Optional[str] = None, amount: Optional[int] = None):
-        econ = _get_economy(self.bot)
+    @commands.hybrid_command(name="fish")
+    async def fish_root(self, ctx: commands.Context):
+        """
+        Open the Fishing menu with buttons:
+        🎣 Fish • 💰 Sell • 🗺️ Zone • 🛒 Shop • 🔧 Repair
+        """
         async with self._lock_for(ctx.author.id):
             data = await self.config.user(ctx.author).all()
+            rod = RODS.get(data["rod"], RODS["twig"])
             zone = ZONES.get(data["zone"], ZONES["pond"])
-            inv = data["inventory"]
+            inv = dict(data["inventory"])
+            bait_inv = data["bait"]
 
-            def price_for(r: str, qty: int) -> float:
-                return RARITY_PRICES.get(r, 0.0) * zone.sell_multiplier * qty
-
-            total = 0.0
-            sold_detail: List[Tuple[str, int, float]] = []
-
-            if rarity is None:
-                for r, qty in list(inv.items()):
-                    qty = int(qty)
-                    if qty <= 0:
-                        continue
-                    p = price_for(r, qty)
-                    total += p
-                    sold_detail.append((r, qty, p))
-                    inv[r] = 0
-            else:
-                r = rarity.lower()
-                if r not in inv:
-                    return await ctx.reply(embed=discord.Embed(description="Unknown rarity. Use common/uncommon/rare/epic/legendary.", colour=discord.Colour.red()))
-                have = int(inv[r])
-                if have <= 0:
-                    return await ctx.reply(embed=discord.Embed(description=f"You have no **{r}** fish to sell.", colour=discord.Colour.red()))
-                qty = have if amount is None else max(0, min(have, int(amount)))
-                if qty == 0:
-                    return await ctx.reply(embed=discord.Embed(description="Nothing to sell.", colour=discord.Colour.red()))
-                p = price_for(r, qty)
-                total += p
-                sold_detail.append((r, qty, p))
-                inv[r] = have - qty
-
-            data["inventory"] = inv
-            await self.config.user(ctx.author).set(data)
-
-            if total > 0:
-                await econ.add_wellcoins(ctx.author, float(total))
-            if total <= 0:
-                return await ctx.reply(embed=discord.Embed(description="No fish sold.", colour=discord.Colour.red()))
-
-            await ctx.reply(embed=_sell_embed(zone=zone, sold=sold_detail, total=total))
-
-    # ---------- Shop & Loadout ----------
-    @fish_cmd.group(name="shop", invoke_without_command=True)
-    async def fish_shop(self, ctx: commands.Context):
-        e = discord.Embed(title="Shop", description="Choose a category", colour=discord.Colour.blurple())
-        e.add_field(name="Rods", value="`[p]fish shop rods`", inline=True)
-        e.add_field(name="Bait", value="`[p]fish shop bait`", inline=True)
-        e.add_field(name="Zones", value="`[p]fish shop zones`", inline=True)
-        await ctx.reply(embed=e)
-
-    @fish_shop.command(name="rods")
-    async def shop_rods(self, ctx: commands.Context):
-        e = discord.Embed(title="Shop • Rods", colour=discord.Colour.blue())
-        for r in RODS.values():
-            e.add_field(name=f"{r.name} (`{r.key}`)", value=f"{r.price:.2f} WC • Power {r.power} • Durability {r.durability}", inline=False)
-        await ctx.reply(embed=e)
-
-    @fish_shop.command(name="bait")
-    async def shop_bait(self, ctx: commands.Context):
-        e = discord.Embed(title="Shop • Bait", colour=discord.Colour.green())
-        for b in BAITS.values():
-            e.add_field(name=f"{b.name} (`{b.key}`)", value=f"{b.price:.2f} WC • Rarity boost {b.rarity_boost:.3f}", inline=False)
-        await ctx.reply(embed=e)
-
-    @fish_shop.command(name="zones")
-    async def shop_zones(self, ctx: commands.Context):
-        e = discord.Embed(title="Shop • Zones", colour=discord.Colour.dark_teal())
-        for z in ZONES.values():
-            e.add_field(name=f"{z.name} (`{z.key}`)", value=f"Unlock {z.unlock_price:.2f} WC • Sell ×{z.sell_multiplier:.2f}", inline=False)
-        await ctx.reply(embed=e)
-
-    @fish_cmd.group(name="buy")
-    async def fish_buy(self, ctx: commands.Context):
-        """Buy rods, bait, or zones."""
-        pass
-
-    @fish_buy.command(name="rod")
-    async def buy_rod(self, ctx: commands.Context, rod_key: str):
-        econ = _get_economy(self.bot)
-        rod_key = rod_key.lower()
-        if rod_key not in RODS:
-            return await ctx.reply(embed=discord.Embed(description="Unknown rod.", colour=discord.Colour.red()))
-        rod = RODS[rod_key]
-        async with self._lock_for(ctx.author.id):
-            data = await self.config.user(ctx.author).all()
-            if rod.price > 0:
-                try:
-                    await econ.take_wellcoins(ctx.author, rod.price, force=False)
-                except ValueError:
-                    return await ctx.reply(embed=discord.Embed(description=f"Insufficient funds. Need {rod.price:.2f} WC.", colour=discord.Colour.red()))
-            data["rod"] = rod.key
-            data["rod_durability"] = rod.durability
-            await self.config.user(ctx.author).set(data)
-        e = discord.Embed(description=f"🪝 You bought and equipped **{rod.name}** (Durability {rod.durability}).", colour=discord.Colour.blue())
-        await ctx.reply(embed=e)
-
-    @fish_buy.command(name="bait")
-    async def buy_bait(self, ctx: commands.Context, bait_key: str, amount: int = 1):
-        econ = _get_economy(self.bot)
-        bait_key = bait_key.lower()
-        if bait_key not in BAITS:
-            return await ctx.reply(embed=discord.Embed(description="Unknown bait.", colour=discord.Colour.red()))
-        if amount <= 0:
-            return await ctx.reply(embed=discord.Embed(description="Amount must be positive.", colour=discord.Colour.red()))
-        bait = BAITS[bait_key]
-        cost = bait.price * amount
-        try:
-            await econ.take_wellcoins(ctx.author, cost, force=False)
-        except ValueError:
-            return await ctx.reply(embed=discord.Embed(description=f"Insufficient funds. Need {cost:.2f} WC.", colour=discord.Colour.red()))
-        async with self._lock_for(ctx.author.id):
-            have = await self.config.user(ctx.author).bait()
-            have[bait_key] = int(have.get(bait_key, 0)) + amount
-            await self.config.user(ctx.author).bait.set(have)
-        await ctx.reply(embed=discord.Embed(description=f"🪱 Purchased **{amount}× {bait.name}** for {cost:.2f} WC.", colour=discord.Colour.green()))
-
-    @fish_buy.command(name="zone")
-    async def buy_zone(self, ctx: commands.Context, zone_key: str):
-        econ = _get_economy(self.bot)
-        zone_key = zone_key.lower()
-        if zone_key not in ZONES:
-            return await ctx.reply(embed=discord.Embed(description="Unknown zone.", colour=discord.Colour.red()))
-        zone = ZONES[zone_key]
-        async with self._lock_for(ctx.author.id):
-            data = await self.config.user(ctx.author).all()
-            if zone_key in set(data["unlocked_zones"]):
-                return await ctx.reply(embed=discord.Embed(description="You already unlocked this zone.", colour=discord.Colour.orange()))
-            price = zone.unlock_price
-            if price > 0:
-                try:
-                    await econ.take_wellcoins(ctx.author, price, force=False)
-                except ValueError:
-                    return await ctx.reply(embed=discord.Embed(description=f"Insufficient funds. Need {price:.2f} WC.", colour=discord.Colour.red()))
-            data["unlocked_zones"].append(zone_key)
-            await self.config.user(ctx.author).set(data)
-        await ctx.reply(embed=discord.Embed(description=f"🗺️ Unlocked **{zone.name}** for {zone.unlock_price:.2f} WC!", colour=discord.Colour.dark_teal()))
-
-    @fish_cmd.command(name="zone")
-    async def fish_zone(self, ctx: commands.Context, zone_key: Optional[str] = None):
-        if zone_key is None:
-            data = await self.config.user(ctx.author).all()
-            unlocked = data["unlocked_zones"]
-            current = data["zone"]
-            names = ", ".join(ZONES[z].name for z in unlocked if z in ZONES)
-            e = discord.Embed(title="Zones", description=f"Current: **{ZONES[current].name}**\nUnlocked: {names or 'None'}")
-            return await ctx.reply(embed=e)
-        zone_key = zone_key.lower()
-        if zone_key not in ZONES:
-            return await ctx.reply(embed=discord.Embed(description="Unknown zone.", colour=discord.Colour.red()))
-        data = await self.config.user(ctx.author).all()
-        if zone_key not in data["unlocked_zones"]:
-            return await ctx.reply(embed=discord.Embed(description="You haven't unlocked that zone yet.", colour=discord.Colour.red()))
-        await self.config.user(ctx.author).zone.set(zone_key)
-        await ctx.reply(embed=discord.Embed(description=f"✅ Active zone set to **{ZONES[zone_key].name}**.", colour=discord.Colour.green()))
-
-    @fish_cmd.command(name="repair")
-    async def fish_repair(self, ctx: commands.Context):
-        econ = _get_economy(self.bot)
-        data = await self.config.user(ctx.author).all()
-        rod = RODS.get(data["rod"], RODS["twig"])
-        price = rod.price
-        if price > 0:
-            try:
-                await econ.take_wellcoins(ctx.author, price, force=False)
-            except ValueError:
-                return await ctx.reply(embed=discord.Embed(description=f"Insufficient funds. Need {price:.2f} WC.", colour=discord.Colour.red()))
-        await self.config.user(ctx.author).rod_durability.set(rod.durability)
-        await ctx.reply(embed=discord.Embed(description=f"🔧 Repaired **{rod.name}** to full durability ({rod.durability}).", colour=discord.Colour.blue()))
-
-    @fish_cmd.command(name="prices")
-    async def fish_prices(self, ctx: commands.Context):
-        data = await self.config.user(ctx.author).all()
-        zone = ZONES.get(data["zone"], ZONES["pond"])
-        await ctx.reply(embed=_prices_embed(zone=zone))
+            emb = _inventory_embed(rod=rod, zone=zone, inv=inv, bait_inv=bait_inv, dur=data["rod_durability"])
+            await ctx.reply(embed=emb, view=MainMenu(self, ctx.author.id))
 
 
 async def setup(bot: Red):
