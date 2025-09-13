@@ -214,6 +214,62 @@ def _fish_image_for(zone_key: str, species: str, rarity: str) -> Optional[str]:
     # Then (zone, rarity)
     return FISH_IMAGES_BY_ZONE_RARITY.get(zone_key, {}).get(rarity)
 
+def _compute_zone_completion(zone_key: str, fishdex: Dict[str, List[str]]) -> tuple[int, int]:
+    """Return (have, total) for a zone."""
+    caught = set(fishdex.get(zone_key, []))
+    total = sum(len(v) for v in SPECIES[zone_key].values())
+    have = len(caught)
+    return have, total
+
+def _compute_global_completion(fishdex: Dict[str, List[str]]) -> tuple[int, int, float]:
+    """Return (have, total, percent) across all zones."""
+    have_sum = 0
+    total_sum = 0
+    for zk in SPECIES.keys():
+        have, total = _compute_zone_completion(zk, fishdex)
+        have_sum += have
+        total_sum += total
+    pct = (have_sum / total_sum * 100.0) if total_sum else 0.0
+    return have_sum, total_sum, pct
+
+
+class FishdexView(ui.View):
+    def __init__(self, cog: "Fishing", user_id: int, start_zone_index: int = 0):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.user_id = user_id
+        self.zone_keys = list(SPECIES.keys())  # order of pages
+        self.index = start_zone_index
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user and interaction.user.id == self.user_id
+
+    def _current_embed(self, fishdex: Dict[str, List[str]]) -> discord.Embed:
+        zone_key = self.zone_keys[self.index]
+        return _fishdex_zone_embed(zone_key, fishdex)
+
+    @ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, interaction: discord.Interaction, button: ui.Button):
+        data = await self.cog.config.user(interaction.user).all()
+        self.index = (self.index - 1) % len(self.zone_keys)
+        await interaction.response.edit_message(embed=self._current_embed(data["fishdex"]), view=self)
+
+    @ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
+    async def next_btn(self, interaction: discord.Interaction, button: ui.Button):
+        data = await self.cog.config.user(interaction.user).all()
+        self.index = (self.index + 1) % len(self.zone_keys)
+        await interaction.response.edit_message(embed=self._current_embed(data["fishdex"]), view=self)
+
+    @ui.button(label="Close", style=discord.ButtonStyle.danger)
+    async def close_btn(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.edit_message(content="📖 Fishdex closed.", embed=None, view=None)
+    
+    @ui.button(label="Summary", style=discord.ButtonStyle.secondary, emoji="📊")
+    async def summary_btn(self, interaction: discord.Interaction, button: ui.Button):
+        data = await self.cog.config.user(interaction.user).all()
+        embed = _fishdex_summary_embed(data["fishdex"])
+        await interaction.response.edit_message(embed=embed, view=self)
+
 
 
 # ---------- Loot Table Logic ----------
@@ -290,6 +346,29 @@ class Economy(Protocol):
     async def add_wellcoins(self, user, amount: float): ...
     async def take_wellcoins(self, user, amount: float, force: bool = False): ...
 
+def _fishdex_summary_embed(fishdex: Dict[str, List[str]]) -> discord.Embed:
+    e = discord.Embed(
+        title="📖 Fishdex — Summary",
+        description="Per-zone completion and total progress",
+        colour=discord.Colour.blurple(),
+    )
+
+    for zk in SPECIES.keys():
+        zone = ZONES[zk]
+        have, total = _compute_zone_completion(zk, fishdex)
+        pct = (have / total * 100.0) if total else 0.0
+        e.add_field(
+            name=zone.name,
+            value=f"**{have}/{total}** ({pct:.0f}%)",
+            inline=True
+        )
+
+    g_have, g_total, g_pct = _compute_global_completion(fishdex)
+    e.add_field(name="—", value="‎", inline=False)  # thin spacer
+    e.add_field(name="TOTAL", value=f"**{g_have}/{g_total}** ({g_pct:.0f}%)", inline=False)
+    return e
+
+
 
 def _get_economy(bot: Red) -> Economy:
     econ = bot.get_cog("NexusExchange")
@@ -311,6 +390,38 @@ RARITY_COLOR = {
 }
 
 # replace your current _catch_embed with this:
+
+def _fishdex_zone_embed(zone_key: str, fishdex: Dict[str, List[str]]) -> discord.Embed:
+    zone = ZONES[zone_key]
+    caught = set(fishdex.get(zone_key, []))
+    total = sum(len(v) for v in SPECIES[zone_key].values())
+    have = len(caught)
+    pct = (have / total * 100.0) if total else 0.0
+
+    e = discord.Embed(
+        title=f"📖 Fishdex — {zone.name}",
+        description=f"Completion: **{have}/{total}** ({pct:.0f}%)",
+        colour=discord.Colour.blue(),
+    )
+    if zone.key in ZONE_IMAGES:
+        e.set_thumbnail(url=ZONE_IMAGES[zone.key])
+
+    for rarity in ("common", "uncommon", "rare", "epic", "legendary"):
+        species_list = SPECIES[zone_key].get(rarity, [])
+        if not species_list:
+            continue
+        lines = []
+        for s in species_list:
+            mark = "✅" if s in caught else "❌"
+            lines.append(f"{mark} {s}")
+        e.add_field(name=rarity.title(), value="\n".join(lines), inline=False)
+
+    # Global completion footer
+    g_have, g_total, g_pct = _compute_global_completion(fishdex)
+    e.set_footer(text=f"Total completion: {g_have}/{g_total} ({g_pct:.0f}%)")
+    return e
+
+
 
 def _catch_embed(*, zone: Zone, rod: Rod, bait: Bait | None, catch: Catch, durability_now: int) -> discord.Embed:
     e = discord.Embed(
@@ -457,11 +568,15 @@ class MainMenu(ui.View):
         await interaction.response.send_message(
             f"🔧 Repaired **{rod.name}** to full durability ({rod.durability}).", ephemeral=True
         )
+    
     @ui.button(label="Fishdex", style=discord.ButtonStyle.secondary, emoji="📖")
     async def fishdex_btn(self, interaction: discord.Interaction, button: ui.Button):
         data = await self.cog.config.user(interaction.user).all()
-        emb = _fishdex_embed(data["fishdex"])
-        await interaction.response.send_message(embed=emb, ephemeral=True)
+        view = FishdexView(self.cog, interaction.user.id, start_zone_index=0)
+        embed = view._current_embed(data["fishdex"])
+        # Normal (non-ephemeral) message with pagination
+        await interaction.response.send_message(embed=embed, view=view)
+    
 
 
 
