@@ -94,6 +94,14 @@ ZONES: Dict[str, Zone] = {
     ),
 }
 
+ZONE_IMAGES = {
+    "pond": "https://i.imgur.com/RSOcl06.png",
+    "river": "https://i.imgur.com/yntvP05.png",
+    "coast": "https://i.imgur.com/PX4Nosp.png",
+    "abyss": "https://i.imgur.com/AnBi2vR.png",
+}
+
+
 # Zone-specific species names per rarity (flavor-only; does not affect pricing)
 SPECIES: Dict[str, Dict[str, List[str]]] = {
     "pond": {
@@ -216,7 +224,14 @@ def _catch_embed(*, zone: Zone, rod: Rod, bait: Bait | None, catch: Catch, durab
     e.add_field(name="Rod", value=f"{rod.name} ({durability_now}/{rod.durability})", inline=True)
     e.add_field(name="Zone", value=zone.name, inline=True)
     e.add_field(name="Bait", value=bait.name if bait else "None", inline=True)
+
+    # add zone image
+    from .cog import ZONE_IMAGES  # or import where appropriate
+    if zone.key in ZONE_IMAGES:
+        e.set_image(url=ZONE_IMAGES[zone.key])
+
     return e
+
 
 def _inventory_embed(*, rod: Rod, zone: Zone, inv: Dict[str, int], bait_inv: Dict[str, int], dur: int) -> discord.Embed:
     e = discord.Embed(
@@ -294,7 +309,7 @@ class MainMenu(ui.View):
         await user_conf.set(data)
 
         emb = _catch_embed(zone=zone, rod=rod, bait=bait, catch=catch, durability_now=data["rod_durability"])
-        await interaction.response.send_message(embed=emb, ephemeral=True)
+        await interaction.response.send_message(embed=emb)
 
     @ui.button(label="Sell", style=discord.ButtonStyle.success, emoji="💰")
     async def sell_btn(self, interaction: discord.Interaction, button: ui.Button):
