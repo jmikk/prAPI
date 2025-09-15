@@ -440,10 +440,20 @@ class CatchView(ui.View):
 
     @ui.button(label="Fish Again", style=discord.ButtonStyle.primary, emoji="🎣")
     async def fish_again_btn(self, interaction: discord.Interaction, button: ui.Button):
-        # Re-run a single fishing attempt and post a fresh result message
         async with self.cog._lock_for(interaction.user.id):
-            embed = await self.cog._attempt_fish(interaction)
-            await interaction.response.send_message(embed=embed, view=CatchView(self.cog, interaction.user.id))
+            embed, delete_after = await self.cog._attempt_fish(interaction)
+            if delete_after:
+                await interaction.response.send_message(
+                    embed=embed,
+                    view=CatchView(self.cog, interaction.user.id),
+                    delete_after=delete_after
+                )
+            else:
+                await interaction.response.send_message(
+                    embed=embed,
+                    view=CatchView(self.cog, interaction.user.id)
+                )
+
 
 
 
@@ -514,9 +524,19 @@ class MainMenu(ui.View):
     @ui.button(label="Fish", style=discord.ButtonStyle.primary, emoji="🎣")
     async def fish_btn(self, interaction: discord.Interaction, button: ui.Button):
         async with self.cog._lock_for(interaction.user.id):
-            embed = await self.cog._attempt_fish(interaction)
-            # Post the catch (or cooldown/broken rod) with a Fish Again button
-            await interaction.response.send_message(embed=embed, view=CatchView(self.cog, interaction.user.id))
+            embed, delete_after = await self.cog._attempt_fish(interaction)
+            if delete_after:
+                await interaction.response.send_message(
+                    embed=embed,
+                    view=CatchView(self.cog, interaction.user.id),
+                    delete_after=delete_after
+                )
+            else:
+                await interaction.response.send_message(
+                    embed=embed,
+                    view=CatchView(self.cog, interaction.user.id)
+                )
+
 
 
 
