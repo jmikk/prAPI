@@ -501,7 +501,6 @@ def _sell_embed(*, zone: Zone, sold: List[Tuple[str, int, float]], total: float)
 
 
 # ---------- Views (Buttons & Selects) ----------
-COOLDOWN_SECONDS = 30.0
 
 class MainMenu(ui.View):
     def __init__(self, cog: "Fishing", user_id: int):
