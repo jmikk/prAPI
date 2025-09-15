@@ -14,6 +14,8 @@ from redbot.core.bot import Red
 
 __all__ = ["Fishing"]
 
+COOLDOWN_SECONDS = 5.0
+
 # ---------- Data Models ----------
 @dataclass(frozen=True)
 class Rod:
@@ -205,6 +207,12 @@ SPECIES: Dict[str, Dict[str, List[str]]] = {
         "legendary": ["Abyssal Sovereign"],
     },
 }
+
+# Snapshot of the original, built-in species (so we know what's override-only)
+BASE_SPECIES_SNAPSHOT: Dict[str, Dict[str, List[str]]] = {
+    zk: {rk: list(lst) for rk, lst in rmap.items()} for zk, rmap in SPECIES.items()
+}
+
 
 def _fish_image_for(zone_key: str, species: str, rarity: str) -> Optional[str]:
     # Try exact species first
@@ -421,6 +429,23 @@ def _fishdex_zone_embed(zone_key: str, fishdex: Dict[str, List[str]]) -> discord
     e.set_footer(text=f"Total completion: {g_have}/{g_total} ({g_pct:.0f}%)")
     return e
 
+class CatchView(ui.View):
+    def __init__(self, cog: "Fishing", user_id: int):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user and interaction.user.id == self.user_id
+
+    @ui.button(label="Fish Again", style=discord.ButtonStyle.primary, emoji="🎣")
+    async def fish_again_btn(self, interaction: discord.Interaction, button: ui.Button):
+        # Re-run a single fishing attempt and post a fresh result message
+        async with self.cog._lock_for(interaction.user.id):
+            embed = await self.cog._attempt_fish(interaction)
+            await interaction.response.send_message(embed=embed, view=CatchView(self.cog, interaction.user.id))
+
+
 
 
 def _catch_embed(*, zone: Zone, rod: Rod, bait: Bait | None, catch: Catch, durability_now: int) -> discord.Embed:
@@ -490,59 +515,10 @@ class MainMenu(ui.View):
     @ui.button(label="Fish", style=discord.ButtonStyle.primary, emoji="🎣")
     async def fish_btn(self, interaction: discord.Interaction, button: ui.Button):
         async with self.cog._lock_for(interaction.user.id):
-            user_conf = self.cog.config.user(interaction.user)
-            data = await user_conf.all()
-    
-            # Cooldown
-            now = time.time()
-            last = float(data.get("last_fished_ts", 0.0))
-            remaining = COOLDOWN_SECONDS - (now - last)
-            if remaining > 0:
-                next_ts = int(last + COOLDOWN_SECONDS)
-                msg = f"⏳ **On cooldown** — try again <t:{next_ts}:R> (at <t:{next_ts}:t>)."
-                return await interaction.response.send_message(msg, delete_after=max(1.0, remaining))
-    
-            # Ensure fishdex exists
-            fishdex = await self.cog._ensure_fishdex(interaction.user)
-    
-            # Validate rod
-            rod: Rod = RODS.get(data["rod"], RODS["twig"])
-            if int(data.get("rod_durability", 0)) <= 0:
-                return await interaction.response.send_message(
-                    f"⛔ Your **{rod.name}** is broken. Use Repair.", ephemeral=True
-                )
-    
-            # Auto-consume best bait
-            bait: Optional[Bait] = None
-            if any(qty > 0 for qty in data["bait"].values()):
-                owned = [(BAITS[k], q) for k, q in data["bait"].items() if q > 0 and k in BAITS]
-                owned.sort(key=lambda t: BAITS[t[0].key].rarity_boost, reverse=True)
-                bait = owned[0][0]
-                data["bait"][bait.key] -= 1
-    
-            # Roll catch
-            zone: Zone = ZONES.get(data["zone"], ZONES["pond"])
-            catch: Catch = roll_catch(rod=rod, bait=bait, zone=zone)
-    
-            # Update inventory, durability, cooldown
-            data["inventory"][catch.rarity] = int(data["inventory"].get(catch.rarity, 0)) + 1
-            data["rod_durability"] = max(0, int(data["rod_durability"]) - 1)
-            data["last_fished_ts"] = now
-    
-            # 🔑 Update fishdex BEFORE saving
-            zkey = zone.key
-            lst = fishdex.get(zkey) or []
-            if catch.species not in lst:
-                lst.append(catch.species)
-                fishdex[zkey] = lst
-            data["fishdex"] = fishdex
-    
-            # Save once with all changes
-            await user_conf.set(data)
-    
-            # Send result
-            emb = _catch_embed(zone=zone, rod=rod, bait=bait, catch=catch, durability_now=data["rod_durability"])
-            await interaction.response.send_message(embed=emb)
+            embed = await self.cog._attempt_fish(interaction)
+            # Post the catch (or cooldown/broken rod) with a Fish Again button
+            await interaction.response.send_message(embed=embed, view=CatchView(self.cog, interaction.user.id))
+
 
 
     @ui.button(label="Sell", style=discord.ButtonStyle.success, emoji="💰")
@@ -873,12 +849,147 @@ class Fishing(commands.Cog):
         self.config.register_user(**default_user)
         self._locks: Dict[int, asyncio.Lock] = {}
 
+        default_global = {
+            "species_overrides": {},   # { zone_key: { rarity: [species, ...], ... }, ... }
+            "species_images": {},      # { species_name: image_url }
+        }
+        self.config.register_global(**default_global)
+
+    async def cog_load(self):
+        """Called by Red when the cog is loaded (or reloaded)."""
+        await self._hydrate_runtime_tables()
+
+    async def _hydrate_runtime_tables(self):
+        """Merge saved overrides/images into in-memory SPECIES and FISH_IMAGES_BY_SPECIES."""
+        data = await self.config.all_global()
+        overrides = data.get("species_overrides", {}) or {}
+        images = data.get("species_images", {}) or {}
+
+        # Merge species overrides into SPECIES
+        for zone_key, rarities in overrides.items():
+            if zone_key not in SPECIES:
+                # Unknown zones are ignored to avoid accidental typos breaking things
+                continue
+            for rarity, species_list in (rarities or {}).items():
+                if rarity not in SPECIES[zone_key]:
+                    SPECIES[zone_key][rarity] = []
+                for s in species_list or []:
+                    if s not in SPECIES[zone_key][rarity]:
+                        SPECIES[zone_key][rarity].append(s)
+
+        # Merge images into FISH_IMAGES_BY_SPECIES
+        for species_name, url in images.items():
+            if isinstance(species_name, str) and isinstance(url, str) and url.lower().startswith(("http://", "https://")):
+                FISH_IMAGES_BY_SPECIES[species_name] = url
+
+
     def _lock_for(self, user_id: int) -> asyncio.Lock:
         lock = self._locks.get(user_id)
         if lock is None:
             lock = asyncio.Lock()
             self._locks[user_id] = lock
         return lock
+    
+    async def _attempt_fish(self, interaction: discord.Interaction) -> discord.Embed:
+        """
+        Performs one fishing attempt, respecting cooldown/durability/bait,
+        applying junk/nothing chances, updating inventory/fishdex, and returning an embed.
+        """
+        econ = _get_economy(self.bot)
+        user_conf = self.config.user(interaction.user)
+        data = await user_conf.all()
+    
+        # Cooldown
+        now = time.time()
+        last = float(data.get("last_fished_ts", 0.0))
+        remaining = COOLDOWN_SECONDS - (now - last)
+        if remaining > 0:
+            next_ts = int(last + COOLDOWN_SECONDS)
+            # raise a user-facing exception via embed so caller just sends this
+            e = discord.Embed(
+                title="⏳ On cooldown",
+                description=f"Try again <t:{next_ts}:R> (at <t:{next_ts}:t>).",
+                colour=discord.Colour.orange(),
+            )
+            return e
+    
+        # Ensure fishdex exists
+        fishdex = await self._ensure_fishdex(interaction.user)
+    
+        # Validate rod
+        rod: Rod = RODS.get(data["rod"], RODS["twig"])
+        if int(data.get("rod_durability", 0)) <= 0:
+            return discord.Embed(
+                title="⛔ Broken Rod",
+                description=f"Your **{rod.name}** is broken. Use **Repair**.",
+                colour=discord.Colour.red(),
+            )
+    
+        # Auto-consume best bait (if any)
+        bait: Optional[Bait] = None
+        if any(qty > 0 for qty in data["bait"].values()):
+            owned = [(BAITS[k], q) for k, q in data["bait"].items() if q > 0 and k in BAITS]
+            owned.sort(key=lambda t: BAITS[t[0].key].rarity_boost, reverse=True)
+            bait = owned[0][0]
+            data["bait"][bait.key] -= 1
+    
+        zone: Zone = ZONES.get(data["zone"], ZONES["pond"])
+    
+        # --- New junk/nothing logic (25% junk, 25% nothing, 50% normal) ---
+        roll = random.random()
+        caught_junk = roll < 0.25
+        caught_nothing = (0.25 <= roll < 0.50)
+    
+        # Always consume durability and set cooldown on an attempt
+        data["rod_durability"] = max(0, int(data["rod_durability"]) - 1)
+        data["last_fished_ts"] = now
+    
+        # Build result embed paths
+        if caught_junk:
+            # Credit flat 1 WC (not affected by zone multiplier)
+            await econ.add_wellcoins(interaction.user, 1.0)
+            e = discord.Embed(
+                title=f"You fished in {zone.name}!",
+                description=f"🗑️ You reeled in **junk** and found **1 WC**.",
+                colour=discord.Colour.dark_grey(),
+            )
+            if zone.key in ZONE_IMAGES:
+                e.set_thumbnail(url=ZONE_IMAGES[zone.key])
+            e.add_field(name="Rod", value=f"{rod.name} ({data['rod_durability']}/{rod.durability})", inline=True)
+            e.add_field(name="Zone", value=zone.name, inline=True)
+            e.add_field(name="Bait", value=bait.name if bait else "None", inline=True)
+        elif caught_nothing:
+            e = discord.Embed(
+                title=f"You fished in {zone.name}!",
+                description="…and **caught nothing**.",
+                colour=discord.Colour.light_grey(),
+            )
+            if zone.key in ZONE_IMAGES:
+                e.set_thumbnail(url=ZONE_IMAGES[zone.key])
+            e.add_field(name="Rod", value=f"{rod.name} ({data['rod_durability']}/{rod.durability})", inline=True)
+            e.add_field(name="Zone", value=zone.name, inline=True)
+            e.add_field(name="Bait", value=bait.name if bait else "None", inline=True)
+        else:
+            # Normal catch path (your original logic)
+            catch: Catch = roll_catch(rod=rod, bait=bait, zone=zone)
+    
+            # Update inventory
+            data["inventory"][catch.rarity] = int(data["inventory"].get(catch.rarity, 0)) + 1
+    
+            # Update fishdex (before saving)
+            zkey = zone.key
+            lst = fishdex.get(zkey) or []
+            if catch.species not in lst:
+                lst.append(catch.species)
+                fishdex[zkey] = lst
+            data["fishdex"] = fishdex
+    
+            e = _catch_embed(zone=zone, rod=rod, bait=bait, catch=catch, durability_now=data["rod_durability"])
+    
+        # Save all changes once
+        await user_conf.set(data)
+        return e
+
 
     @commands.hybrid_command(name="fish")
     async def fish_root(self, ctx: commands.Context):
@@ -912,6 +1023,167 @@ class Fishing(commands.Cog):
             if changed:
                 await self.config.user(user).fishdex.set(fishdex)
         return fishdex
+
+    @commands.hybrid_command(name="fish_addspecies")
+    @commands.admin_or_permissions(administrator=True)
+    async def fish_addspecies(self, ctx: commands.Context, zone_key: str, rarity: str, *, species_and_img: str):
+        """
+        Admin: Add a new fish species to a given zone/rarity, with optional image URL (persisted).
+        Usage (prefix):
+          [p]fish_addspecies river epic Runeblade Pike
+          [p]fish_addspecies river epic "Runeblade Pike" https://example.com/pike.png
+          [p]fish_addspecies river epic Runeblade Pike | https://example.com/pike.png
+          [p]fish_addspecies river epic Runeblade Pike ; https://example.com/pike.png
+
+        Usage (slash):
+          /fish_addspecies zone_key:river rarity:epic species_and_img:"Runeblade Pike https://example.com/pike.png"
+          (You can also use a pipe: "Runeblade Pike | https://example.com/pike.png")
+        """
+        zone_key = zone_key.lower().strip()
+        rarity = rarity.lower().strip()
+
+        if zone_key not in SPECIES:
+            return await ctx.reply(f"Unknown zone key. Valid: {', '.join(SPECIES.keys())}")
+        if rarity not in ("common", "uncommon", "rare", "epic", "legendary"):
+            return await ctx.reply("Rarity must be one of: common, uncommon, rare, epic, legendary.")
+
+        text = species_and_img.strip()
+        img_url = None
+        species_name = None
+
+        # Accept separators like "|" or ";" for clarity
+        for sep in ("|", "||", ";"):
+            if sep in text:
+                name_part, url_part = text.split(sep, 1)
+                species_name = name_part.strip()
+                candidate = url_part.strip().strip("<>")  # allow <https://...>
+                if candidate.lower().startswith(("http://", "https://")):
+                    img_url = candidate
+                break
+
+        # If no explicit separator, treat a trailing URL as the image
+        if species_name is None:
+            parts = text.split()
+            if parts and parts[-1].lower().startswith(("http://", "https://")):
+                img_url = parts[-1].strip("<>")
+                species_name = " ".join(parts[:-1]).strip()
+            else:
+                species_name = text
+
+        if not species_name:
+            return await ctx.reply("Please provide a species name (and optional image URL).")
+
+        # ---- Update in-memory SPECIES table (for immediate use) ----
+        existing = SPECIES[zone_key].setdefault(rarity, [])
+        already_present = species_name in existing
+        if not already_present:
+            existing.append(species_name)
+
+        # ---- Persist species override ----
+        overrides = await self.config.species_overrides()
+        zmap = overrides.get(zone_key) or {}
+        rlist = zmap.get(rarity) or []
+        if species_name not in rlist:
+            rlist.append(species_name)
+            zmap[rarity] = rlist
+            overrides[zone_key] = zmap
+            await self.config.species_overrides.set(overrides)
+
+        # ---- Optional: store/update image (in memory + persistent) ----
+        if img_url:
+            if len(img_url) > 512 or not img_url.lower().startswith(("http://", "https://")):
+                return await ctx.reply("Image URL looks invalid. Please provide a valid http(s) URL.")
+            FISH_IMAGES_BY_SPECIES[species_name] = img_url
+
+            images = await self.config.species_images()
+            images[species_name] = img_url
+            await self.config.species_images.set(images)
+
+        zone_name = ZONES[zone_key].name
+        if already_present and img_url:
+            await ctx.reply(f"🔁 **{species_name}** already existed in **{zone_name}** ({rarity}). Image saved/updated.")
+        elif already_present:
+            await ctx.reply(f"ℹ️ **{species_name}** already exists in **{zone_name}** ({rarity}). Saved to overrides.")
+        elif img_url:
+            await ctx.reply(f"✅ Added **{species_name}** to **{zone_name}** as **{rarity.title()}**, with image (persisted).")
+        else:
+            await ctx.reply(f"✅ Added **{species_name}** to **{zone_name}** as **{rarity.title()}** (persisted).")
+
+    @commands.hybrid_command(name="fish_removespecies")
+    @commands.admin_or_permissions(administrator=True)
+    async def fish_removespecies(self, ctx: commands.Context, zone_key: str, rarity: str, *, species_name: str):
+        """
+        Admin: Remove a species from overrides and purge it from every user's Fishdex.
+        This does NOT delete built-in species; only those added via overrides.
+        
+        Usage:
+          [p]fish_removespecies river epic Runeblade Pike
+          /fish_removespecies zone_key:river rarity:epic species_name:"Runeblade Pike"
+        """
+        zone_key = zone_key.lower().strip()
+        rarity = rarity.lower().strip()
+        species_name = species_name.strip()
+    
+        # Validate
+        if zone_key not in SPECIES:
+            return await ctx.reply(f"Unknown zone key. Valid: {', '.join(SPECIES.keys())}")
+        if rarity not in ("common", "uncommon", "rare", "epic", "legendary"):
+            return await ctx.reply("Rarity must be one of: common, uncommon, rare, epic, legendary.")
+    
+        # --- Remove from persistent overrides ---
+        overrides = await self.config.species_overrides()
+        zmap = overrides.get(zone_key) or {}
+        rlist = list(zmap.get(rarity) or [])
+    
+        override_removed = False
+        if species_name in rlist:
+            rlist = [s for s in rlist if s != species_name]
+            override_removed = True
+            if rlist:
+                zmap[rarity] = rlist
+            else:
+                zmap.pop(rarity, None)
+    
+            if zmap:
+                overrides[zone_key] = zmap
+            else:
+                overrides.pop(zone_key, None)
+    
+            await self.config.species_overrides.set(overrides)
+    
+        # --- Update in-memory SPECIES immediately if this was override-only ---
+        base_list = BASE_SPECIES_SNAPSHOT.get(zone_key, {}).get(rarity, [])
+        if species_name not in base_list:
+            current_list = SPECIES[zone_key].get(rarity, [])
+            if species_name in current_list:
+                SPECIES[zone_key][rarity] = [s for s in current_list if s != species_name]
+    
+        # --- Purge from all users' Fishdex ---
+        users = await self.config.all_users()
+        purged_users = 0
+        for uid_str, udata in users.items():
+            fishdex = udata.get("fishdex")
+            if not isinstance(fishdex, dict):
+                continue
+            if zone_key not in fishdex:
+                continue
+            zlist = list(fishdex.get(zone_key) or [])
+            if species_name in zlist:
+                zlist = [s for s in zlist if s != species_name]
+                fishdex[zone_key] = zlist
+                await self.config.user_from_id(int(uid_str)).fishdex.set(fishdex)
+                purged_users += 1
+    
+        # --- Reply summary ---
+        if override_removed:
+            await ctx.reply(f"🗑️ Removed **{species_name}** from overrides in **{ZONES[zone_key].name}** ({rarity}). "
+                            f"Purged from **{purged_users}** Fishdex(es).")
+        else:
+            await ctx.reply(f"ℹ️ **{species_name}** was not in overrides for **{ZONES[zone_key].name}** ({rarity}). "
+                            f"Still purged from **{purged_users}** Fishdex(es).")
+
+
+
 
 
 
