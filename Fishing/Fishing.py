@@ -887,10 +887,11 @@ class Fishing(commands.Cog):
             self._locks[user_id] = lock
         return lock
     
-    async def _attempt_fish(self, interaction: discord.Interaction) -> discord.Embed:
+    async def _attempt_fish(self, interaction: discord.Interaction) -> Tuple[discord.Embed, Optional[float]]:
         """
         Performs one fishing attempt, respecting cooldown/durability/bait,
-        applying junk/nothing chances, updating inventory/fishdex, and returning an embed.
+        applying junk/nothing chances, updating inventory/fishdex, and returning:
+          (embed, delete_after_seconds | None)
         """
         econ = _get_economy(self.bot)
         user_conf = self.config.user(interaction.user)
@@ -902,13 +903,13 @@ class Fishing(commands.Cog):
         remaining = COOLDOWN_SECONDS - (now - last)
         if remaining > 0:
             next_ts = int(last + COOLDOWN_SECONDS)
-            # raise a user-facing exception via embed so caller just sends this
             e = discord.Embed(
                 title="⏳ On cooldown",
                 description=f"Try again <t:{next_ts}:R> (at <t:{next_ts}:t>).",
                 colour=discord.Colour.orange(),
             )
-            return e
+            # auto-delete when cooldown is up (at least 1s so it doesn't insta-vanish)
+            return e, max(1.0, remaining)
     
         # Ensure fishdex exists
         fishdex = await self._ensure_fishdex(interaction.user)
@@ -916,11 +917,12 @@ class Fishing(commands.Cog):
         # Validate rod
         rod: Rod = RODS.get(data["rod"], RODS["twig"])
         if int(data.get("rod_durability", 0)) <= 0:
-            return discord.Embed(
+            e = discord.Embed(
                 title="⛔ Broken Rod",
                 description=f"Your **{rod.name}** is broken. Use **Repair**.",
                 colour=discord.Colour.red(),
             )
+            return e, None
     
         # Auto-consume best bait (if any)
         bait: Optional[Bait] = None
@@ -932,7 +934,7 @@ class Fishing(commands.Cog):
     
         zone: Zone = ZONES.get(data["zone"], ZONES["pond"])
     
-        # --- New junk/nothing logic (25% junk, 25% nothing, 50% normal) ---
+        # 25% junk, 25% nothing, 50% normal
         roll = random.random()
         caught_junk = roll < 0.25
         caught_nothing = (0.25 <= roll < 0.50)
@@ -941,9 +943,7 @@ class Fishing(commands.Cog):
         data["rod_durability"] = max(0, int(data["rod_durability"]) - 1)
         data["last_fished_ts"] = now
     
-        # Build result embed paths
         if caught_junk:
-            # Credit flat 1 WC (not affected by zone multiplier)
             await econ.add_wellcoins(interaction.user, 1.0)
             e = discord.Embed(
                 title=f"You fished in {zone.name}!",
@@ -955,6 +955,7 @@ class Fishing(commands.Cog):
             e.add_field(name="Rod", value=f"{rod.name} ({data['rod_durability']}/{rod.durability})", inline=True)
             e.add_field(name="Zone", value=zone.name, inline=True)
             e.add_field(name="Bait", value=bait.name if bait else "None", inline=True)
+    
         elif caught_nothing:
             e = discord.Embed(
                 title=f"You fished in {zone.name}!",
@@ -966,14 +967,11 @@ class Fishing(commands.Cog):
             e.add_field(name="Rod", value=f"{rod.name} ({data['rod_durability']}/{rod.durability})", inline=True)
             e.add_field(name="Zone", value=zone.name, inline=True)
             e.add_field(name="Bait", value=bait.name if bait else "None", inline=True)
-        else:
-            # Normal catch path (your original logic)
-            catch: Catch = roll_catch(rod=rod, bait=bait, zone=zone)
     
-            # Update inventory
+        else:
+            catch: Catch = roll_catch(rod=rod, bait=bait, zone=zone)
             data["inventory"][catch.rarity] = int(data["inventory"].get(catch.rarity, 0)) + 1
     
-            # Update fishdex (before saving)
             zkey = zone.key
             lst = fishdex.get(zkey) or []
             if catch.species not in lst:
@@ -983,9 +981,9 @@ class Fishing(commands.Cog):
     
             e = _catch_embed(zone=zone, rod=rod, bait=bait, catch=catch, durability_now=data["rod_durability"])
     
-        # Save all changes once
         await user_conf.set(data)
-        return e
+        return e, None
+
 
 
     @commands.hybrid_command(name="fish")
