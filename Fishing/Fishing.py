@@ -858,17 +858,14 @@ class Fishing(commands.Cog):
     async def cog_load(self):
         """Called by Red when the cog is loaded (or reloaded)."""
         await self._hydrate_runtime_tables()
-
+    
     async def _hydrate_runtime_tables(self):
-        """Merge saved overrides/images into in-memory SPECIES and FISH_IMAGES_BY_SPECIES."""
-        data = await self.config.all_global()
-        overrides = data.get("species_overrides", {}) or {}
-        images = data.get("species_images", {}) or {}
-
+        overrides = await self.config.species_overrides() or {}
+        images = await self.config.species_images() or {}
+    
         # Merge species overrides into SPECIES
         for zone_key, rarities in overrides.items():
             if zone_key not in SPECIES:
-                # Unknown zones are ignored to avoid accidental typos breaking things
                 continue
             for rarity, species_list in (rarities or {}).items():
                 if rarity not in SPECIES[zone_key]:
@@ -876,11 +873,12 @@ class Fishing(commands.Cog):
                 for s in species_list or []:
                     if s not in SPECIES[zone_key][rarity]:
                         SPECIES[zone_key][rarity].append(s)
-
-        # Merge images into FISH_IMAGES_BY_SPECIES
+    
+        # Merge images
         for species_name, url in images.items():
             if isinstance(species_name, str) and isinstance(url, str) and url.lower().startswith(("http://", "https://")):
                 FISH_IMAGES_BY_SPECIES[species_name] = url
+
 
 
     def _lock_for(self, user_id: int) -> asyncio.Lock:
