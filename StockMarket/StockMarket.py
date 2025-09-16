@@ -86,6 +86,24 @@ class StockMarket(commands.Cog):
     async def cog_unload(self):
         self.bot.tree.remove_command(self.buystock.name)
         self.bot.tree.remove_command(self.sellstock.name)
+
+    async def _decay_tag_multipliers(self):
+    """Move each tag multiplier halfway back toward 0 and subtract 0.1pp."""
+    async with self.config.tags() as tag_multipliers:
+        for tag, val in list(tag_multipliers.items()):
+            if not val:  # already zero or None
+                tag_multipliers[tag] = 0.0
+                continue
+            sign = 1 if val > 0 else -1
+            mag = abs(val)
+            # Half the magnitude, then subtract 0.1 percentage points
+            new_mag = (mag / 2) - 0.1
+            if new_mag <= 0:
+                tag_multipliers[tag] = 0.0
+            else:
+                # Keep a tidy precision; adjust as you like
+                tag_multipliers[tag] = round(sign * new_mag, 4)
+
     
     async def stock_name_autocomplete(self, interaction: discord.Interaction, current: str):
         stocks = await self.config.stocks()
@@ -480,6 +498,8 @@ class StockMarket(commands.Cog):
                     stocks[stock_name]["price"] = 0.0
     
             self.last_day_trades = 0
+            await self._decay_tag_multipliers()
+
             
     # Helper announcement methods
     async def _announce_surge(self, stock_name, percent_change):
