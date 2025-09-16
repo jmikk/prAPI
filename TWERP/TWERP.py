@@ -3,9 +3,10 @@ from discord import ChannelType
 from redbot.core import commands, Config
 from redbot.core.bot import Red
 import aiohttp
+from typing import Optional, Union, Tuple
 
 
-def _append_thread_query(webhook_url: str, thread_id: int | None) -> str:
+def _append_thread_query(webhook_url: str, thread_id: Optional[int]) -> str:
     """Return webhook execute URL with ?wait=true and optional thread_id."""
     sep = "&" if "?" in webhook_url else "?"
     url = f"{webhook_url}{sep}wait=true"
@@ -112,7 +113,7 @@ class CharacterSelect(discord.ui.Select):
 
 
 class TWERPModal(discord.ui.Modal, title="Enter your message here"):
-    def __init__(self, cog, character_name, webhook, interaction, character_info, thread_id=None):
+    def __init__(self, cog, character_name, webhook, interaction, character_info, thread_id: Optional[int] = None):
         super().__init__(title="Enter your message here")
         self.cog = cog
         self.character_name = character_name
@@ -151,7 +152,7 @@ class TWERPModal(discord.ui.Modal, title="Enter your message here"):
 
 
 class OneShotModal(discord.ui.Modal, title="Speak once as a custom character"):
-    def __init__(self, cog, webhook, interaction, display_name: str, pfp_url: str, thread_id=None):
+    def __init__(self, cog, webhook, interaction, display_name: str, pfp_url: str, thread_id: Optional[int] = None):
         super().__init__(title="Enter your message here")
         self.cog = cog
         self.webhook = webhook
@@ -307,7 +308,7 @@ class TWERP(commands.Cog):
     # ---------- Speak as saved character / NPC ----------
     @discord.app_commands.command(name="speak", description="Speak as one of your characters.")
     @discord.app_commands.autocomplete(character=character_name_autocomplete)
-    async def select_character(self, interaction: discord.Interaction, character: str, message: str | None = None):
+    async def select_character(self, interaction: discord.Interaction, character: str, message: Optional[str] = None):
         try:
             characters = await self.config.user(interaction.user).characters() or {}
 
@@ -333,7 +334,7 @@ class TWERP(commands.Cog):
 
     @discord.app_commands.command(name="speak_npc", description="Speak as a server NPC.")
     @discord.app_commands.autocomplete(character=NPC_name_autocomplete)
-    async def select_npc(self, interaction: discord.Interaction, character: str, message: str | None = None):
+    async def select_npc(self, interaction: discord.Interaction, character: str, message: Optional[str] = None):
         try:
             npcs = await self.config.guild(interaction.guild).NPCS() or {}
 
@@ -357,7 +358,15 @@ class TWERP(commands.Cog):
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
-    async def send_as_character(self, interaction, character_name, character_info, message, webhook, thread_id=None):
+    async def send_as_character(
+        self,
+        interaction: discord.Interaction,
+        character_name: str,
+        character_info: dict,
+        message: str,
+        webhook: discord.Webhook,
+        thread_id: Optional[int] = None,
+    ):
         """Helper to send a message as a character using the webhook (works in text channels and forum threads)."""
         try:
             async with aiohttp.ClientSession() as session:
@@ -376,7 +385,7 @@ class TWERP(commands.Cog):
 
     # ---------- One-shot speak ----------
     @discord.app_commands.command(name="oneshot", description="Speak once as a custom name + avatar (no save).")
-    async def oneshot(self, interaction: discord.Interaction, name: str, pfp_url: str, message: str | None = None):
+    async def oneshot(self, interaction: discord.Interaction, name: str, pfp_url: str, message: Optional[str] = None):
         """
         One-off 'speak': uses a supplied display name + pfp URL for a single message.
         If message is omitted, opens a modal like /speak.
@@ -490,14 +499,17 @@ class TWERP(commands.Cog):
         )
 
     # ---------- Webhook helpers (forum-aware) ----------
-    async def _get_webhook_and_thread(self, channel: discord.abc.GuildChannel | discord.Thread):
+    async def _get_webhook_and_thread(
+        self,
+        channel: Union[discord.abc.GuildChannel, discord.Thread]
+    ) -> Tuple[Optional[discord.Webhook], Optional[int]]:
         """
         Get or create a webhook usable for posting in `channel`.
         - Text channel: create/use webhook in that channel.
         - Forum thread: create/use webhook on parent forum channel, return thread_id for execution.
         """
         try:
-            thread_id = None
+            thread_id: Optional[int] = None
             target_channel = channel
 
             if isinstance(channel, discord.Thread):
