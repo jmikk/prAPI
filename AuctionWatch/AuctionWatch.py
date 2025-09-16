@@ -325,6 +325,8 @@ class AuctionWatch(commands.Cog):
                     dm_attempts += 1
                     await user.send(embed=embed, view=view)
                     dm_successes += 1
+                    self._recent_notified[k] = now
+                    continue
                     await self._log_for_user(user, f"📨 **AuctionWatch**: DM sent to <@{uid}> for card **{cardid} (S{season})**.")
                 except discord.Forbidden:
                     msg = f"📵 **AuctionWatch**: Could not DM <@{uid}> for card **{cardid} (S{season})** (DMs disabled?)."
