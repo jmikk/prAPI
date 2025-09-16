@@ -206,7 +206,7 @@ class TWERP(commands.Cog):
             if characters is None:
                 characters = {}
 
-            if len(characters) >= 2:
+            if len(characters) >= 20:
                 await interaction.response.send_message("You already have 2 characters! Delete one before creating a new one.", ephemeral=True)
                 return
 
