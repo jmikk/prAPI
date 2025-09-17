@@ -1,4 +1,3 @@
-# cards_auction_pinger.py
 import asyncio
 import logging
 from typing import Dict, List, Optional
@@ -297,6 +296,3 @@ class CardsAuctionWatcher(commands.Cog):
 
     def _card_url(self, cardid: int, season: int) -> str:
         return f"https://www.nationstates.net/page=deck/card={cardid}/season={season}"
-
-def setup(bot: Red):
-    bot.add_cog(CardsAuctionPinger(bot))
