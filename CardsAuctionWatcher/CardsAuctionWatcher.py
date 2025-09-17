@@ -20,7 +20,7 @@ def parse_int(s: Optional[str], default: int = 0) -> int:
     except Exception:
         return default
 
-class CardsAuctionPinger(commands.Cog):
+class CardsAuctionWatcher(commands.Cog):
     """
     Minimal watcher: fetch auctions once per cycle.
     If a watched card (cardid:season) is present, DM watchers with a single embed.
