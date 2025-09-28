@@ -46,7 +46,7 @@ class Casino(commands.Cog):
         await self.config.user(user).master_balance.set(new_balance)
         return new_balance
 
-        async def _apply_debt_rule(self, net_user_delta: float, game: str):
+    async def _apply_debt_rule(self, net_user_delta: float, game: str):
         """
         State-run casino rule:
           - If player net is +X (they won X), INCREASE regional debt by +X
