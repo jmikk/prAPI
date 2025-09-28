@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 import datetime
 import csv
 import json
+from typing import Optional
 
 
 class StockListView(View):
@@ -958,6 +959,60 @@ class StockMarket(commands.Cog):
         RB = await self.config.spent_tax()
         tax = await self.config.tax()
         await ctx.send(f"The current Wellspring debt is {RB-tax:,.2f}")
+
+    async def get_spent_tax(self) -> float:
+        return float(await self.config.spent_tax())
+
+    async def get_tax_collected(self) -> float:
+        return float(await self.config.tax())
+
+    async def get_regional_debt(self) -> float:
+        """
+        By your current formula, 'debt' is spent_tax - tax.
+        """
+        spent = await self.get_spent_tax()
+        tax = await self.get_tax_collected()
+        return spent - tax
+
+    async def increase_regional_debt(self, amount: float) -> float:
+        """
+        Public API for other cogs to increase spending (thus increasing 'debt').
+        Returns the new debt.
+        """
+        if amount <= 0:
+            return await self.get_regional_debt()
+
+        current_spent = await self.get_spent_tax()
+        await self.config.spent_tax.set(current_spent + float(amount))
+        return await self.get_regional_debt()
+
+    async def decrease_regional_debt(self, amount: float, *, clamp_to_zero: bool = True) -> float:
+        """
+        Public API for other cogs to decrease spending (thus lowering 'debt').
+        Returns the new debt.
+
+        The way your numbers are set up, reducing debt means reducing 'spent_tax'.
+        If clamp_to_zero is True, we won't reduce below the point where debt < 0 (optional).
+        """
+        if amount <= 0:
+            return await self.get_regional_debt()
+
+        # Current values
+        current_spent = await self.get_spent_tax()
+        tax = await self.get_tax_collected()
+
+        # Target spent after reduction
+        target_spent = current_spent - float(amount)
+
+        if clamp_to_zero:
+            # Minimum spent such that debt (spent - tax) doesn't go below 0
+            min_spent_allowed = max(tax, 0.0)
+            if target_spent < min_spent_allowed:
+                target_spent = min_spent_allowed
+
+        await self.config.spent_tax.set(target_spent)
+        return await self.get_regional_debt()
+
 
 
         
