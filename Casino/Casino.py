@@ -46,6 +46,26 @@ class Casino(commands.Cog):
         await self.config.user(user).master_balance.set(new_balance)
         return new_balance
 
+        async def _apply_debt_rule(self, net_user_delta: float, game: str):
+        """
+        State-run casino rule:
+          - If player net is +X (they won X), INCREASE regional debt by +X
+          - If player net is -Y (they lost Y), DECREASE regional debt by 25% of Y
+        Uses StockMarket cog's public API. Silently no-ops if StockMarket isn't loaded.
+        """
+        sm = self.bot.get_cog("StockMarket")
+        if not sm:
+            return
+        try:
+            if net_user_delta > 0:
+                await sm.increase_regional_debt(net_user_delta)
+            elif net_user_delta < 0:
+                await sm.decrease_regional_debt(0.25 * (-net_user_delta), clamp_to_zero=False)
+        except Exception:
+            # optionally log with your logger; we keep it quiet here
+            pass
+
+
     @commands.command()
     @cooldown(1, 3, BucketType.guild)
     async def coinflip(self, ctx, bet: float, call: str = None):
@@ -94,6 +114,7 @@ class Casino(commands.Cog):
             winnings = -bet
             result_text += "You lost! 😢"
         
+        await self._apply_debt_rule(winnings, "coinflip")
         new_balance = await self.update_balance(ctx.author, winnings)
         await message.edit(content=f"{final_flip}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         self.total_bets["coinflip"] += bet
@@ -138,7 +159,8 @@ class Casino(commands.Cog):
         else:
             winnings = -bet
             result_text = "You lost! 😢"
-        
+
+        await self._apply_debt_rule(winnings, "dice")
         new_balance = await self.update_balance(ctx.author, winnings)
         await message.edit(content=f"Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         self.total_bets["dice"] += bet
@@ -194,7 +216,8 @@ class Casino(commands.Cog):
         
         if payout == 0:
             payout = -bet  # House edge ensured
-        
+
+        await self._apply_debt_rule(payout, "slots")
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"{display}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
        
@@ -291,7 +314,8 @@ class Casino(commands.Cog):
         else:
             payout = -bet
             result_text += " You lost! 😢"
-        
+
+        await self._apply_debt_rule(payout, "wheel")
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"🎡 {color2} {number}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         
