@@ -60,7 +60,7 @@ class Casino(commands.Cog):
             if net_user_delta > 0:
                 await sm.increase_regional_debt(net_user_delta)
             elif net_user_delta < 0:
-                await sm.decrease_regional_debt(0.25 * (-net_user_delta), clamp_to_zero=False)
+                await sm.decrease_regional_debt(0.50 * (-net_user_delta), clamp_to_zero=False)
         except Exception:
             # optionally log with your logger; we keep it quiet here
             pass
