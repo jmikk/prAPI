@@ -50,7 +50,7 @@ class Casino(commands.Cog):
         """
         State-run casino rule:
           - If player net is +X (they won X), INCREASE regional debt by +X
-          - If player net is -Y (they lost Y), DECREASE regional debt by 25% of Y
+          - If player net is -Y (they lost Y), DECREASE regional debt by 50% of Y
         Uses StockMarket cog's public API. Silently no-ops if StockMarket isn't loaded.
         """
         sm = self.bot.get_cog("StockMarket")
@@ -70,6 +70,7 @@ class Casino(commands.Cog):
     @cooldown(1, 3, BucketType.guild)
     async def coinflip(self, ctx, bet: float, call: str = None):
         """Flip a coin with animated message updates. You can call Heads or Tails, but it does not affect the odds."""
+        bet2 = bet
         balance = await self.get_balance(ctx.author)
         if not call:
             call = random.choices(["heads", "tails"], weights=[48, 52])[0]
@@ -156,11 +157,13 @@ class Casino(commands.Cog):
         if player_roll > house_roll:
             winnings = bet * 2
             result_text = "You win! 🎉"
+            await self._apply_debt_rule(bet, "dice")
         else:
             winnings = -bet
             result_text = "You lost! 😢"
+            await self._apply_debt_rule(-bet, "dice")
 
-        await self._apply_debt_rule(winnings, "dice")
+        
         new_balance = await self.update_balance(ctx.author, winnings)
         await message.edit(content=f"Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         self.total_bets["dice"] += bet
@@ -207,17 +210,21 @@ class Casino(commands.Cog):
         if flat_grid.count("🍒") >= 2:
             payout = bet * 1.5
             result_text = "Two or more cherries! 🍒 You win 1.5x your bet!"
-        if any(row.count(row[0]) == 3 for row in grid) or any(col.count(col[0]) == 3 for col in zip(*grid)):
+            await self._apply_debt_rule(bet * 0.5, "slots")
+            
+        elif any(row.count(row[0]) == 3 for row in grid) or any(col.count(col[0]) == 3 for col in zip(*grid)):
             payout = max(payout, bet * 4)
             result_text = "Three of a kind in a row or column! 🎉 You win 4x your bet!"
-        if flat_grid.count("🌸") == 3:
+            await self._apply_debt_rule(bet * 3, "slots")
+        
+        elif flat_grid.count("🌸") == 3:
             payout = bet * 20
             result_text = "JACKPOT! 🌸🌸🌸 You hit the cherry blossoms jackpot!"
+            await self._apply_debt_rule(bet * 19, "slots")
         
         if payout == 0:
             payout = -bet  # House edge ensured
 
-        await self._apply_debt_rule(payout, "slots")
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"{display}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
        
@@ -295,18 +302,31 @@ class Casino(commands.Cog):
         if call.isdigit() and 0 <= int(call) <= 36:
             if int(call) == number:
                 payout = bet * 17.5
+                await self._apply_debt_rule(bet * 16.5, "wheel")
+
         elif call.lower() in ["red", "black"] and call.lower() == color:
             payout = bet
+            await self._apply_debt_rule(bet, "wheel")
         elif call.lower() in ["even", "odd"] and call.lower() == even_or_odd:
             payout = bet
+            await self._apply_debt_rule(bet, "wheel")
+
         elif call.lower() in ["green"] and call.lower() == color:
             payout = bet * 17.5
+            await self._apply_debt_rule(bet * 16.5, "wheel")
+
         elif call in ["low"] and 1 <= number <= 12:
             payout = bet * 1.5
+            await self._apply_debt_rule(bet * 0.5, "wheel")
+
         elif call in ["mid"] and 13 <= number <= 24:
             payout = bet * 1.5
+            await self._apply_debt_rule(bet * 0.5, "wheel")
+
         elif call in ["high"] and 25 <= number <= 36:
             payout = bet * 1.5
+            await self._apply_debt_rule(bet * 0.5, "wheel")
+
         
         result_text = f"Roulette landed on {color2} {number}."
         if payout > 0:
@@ -314,8 +334,9 @@ class Casino(commands.Cog):
         else:
             payout = -bet
             result_text += " You lost! 😢"
+            await self._apply_debt_rule(-bet, "wheel")
 
-        await self._apply_debt_rule(payout, "wheel")
+
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"🎡 {color2} {number}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         
