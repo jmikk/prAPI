@@ -77,7 +77,7 @@ class CheckGoldButton(Button):
         try:
             user_id = interaction.user
             gold = await self.cog.config_gold.user(user_id).master_balance()
-            await interaction.response.send_message(f"You have {gold:.2f} Wellcoins.", ephemeral=True)
+            await interaction.response.send_message(f"You have {gold:,.2f} Wellcoins.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
@@ -1133,7 +1133,7 @@ class Hungar(commands.Cog):
 
         await self.config.user(user).bets.set(user_bets)
         await interaction.response.send_message(
-            f"💰 {user.mention} bet **{bet_amount} Wellcoins** on **{tribute_data['name']}**!")
+            f"💰 {user.mention} bet **{bet_amount:,.2f} Wellcoins** on **{tribute_data['name']}**!")
 
     @place_bet.autocomplete("tribute")
     async def tribute_autocomplete(self, interaction: Interaction, current: str):
