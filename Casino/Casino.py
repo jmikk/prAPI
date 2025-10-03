@@ -224,6 +224,8 @@ class Casino(commands.Cog):
         
         if payout == 0:
             payout = -bet  # House edge ensured
+            await self._apply_debt_rule(-bet, "slots")
+
 
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"{display}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
