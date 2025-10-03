@@ -880,7 +880,7 @@ class NexusExchange(commands.Cog):
         bank_balance = await user_data.bank_total()
     
         if amount > bank_balance:
-            return await ctx.send(f"❌ You only have `{bank_balance:.2f}` WellCoins in your bank account.")
+            return await ctx.send(f"❌ You only have `{bank_balance:,.2f}` WellCoins in your bank account.")
     
         new_bank_balance = bank_balance - amount
         new_wallet_balance = await user_data.master_balance() + amount
@@ -889,7 +889,7 @@ class NexusExchange(commands.Cog):
         await user_data.master_balance.set(new_wallet_balance)
     
         currency = await guild_data.master_currency_name()
-        await ctx.send(f"🏧 You withdrew `{amount}` {currency} from your bank account.\n💰 New on-hand balance: `{new_wallet_balance:.2f}` {currency}.")
+        await ctx.send(f"🏧 You withdrew `{amount}` {currency} from your bank account.\n💰 New on-hand balance: `{new_wallet_balance:,.2f}` {currency}.")
 
 
     @commands.command()
@@ -1979,10 +1979,10 @@ Helpful Resources:
         
             msg = (
                 f"**Balance for {member.display_name}:**\n"
-                f"💰 On hand: `{balance:.2f}` {currency}\n"
+                f"💰 On hand: `{balance:,.2f}` {currency}\n"
             )
             if bank > 0:
-                msg += f"🏦 In bank: `{bank:.2f}` {currency}\n"
+                msg += f"🏦 In bank: `{bank:,.2f}` {currency}\n"
             msg += f"⭐ XP: `{xp}`"
         
             await ctx.author.send(msg) if secret else await ctx.send(msg)
@@ -1999,7 +1999,7 @@ Helpful Resources:
             mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
             user_balance = await mini_currency_config.user(member).get_raw(currency_name, default=0)
         
-            result_msg = f"💱 {member.display_name} has `{user_balance:.2f}` `{currency_name}`."
+            result_msg = f"💱 {member.display_name} has `{user_balance:,.2f}` `{currency_name}`."
             await ctx.author.send(result_msg) if secret else await ctx.send(result_msg)
 
     def parse_cards(self, xml_data, season, categories):
