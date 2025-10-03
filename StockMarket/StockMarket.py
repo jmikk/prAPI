@@ -43,7 +43,7 @@ class StockListView(View):
             embed.add_field(
                 name=f"{emoji}{name}",
                 value=(
-                    f"Price: {data['price']:.2f} Wellcoins\n"
+                    f"Price: {data['price']:,.2f} Wellcoins\n"
                     f"🟢 {buy_remaining} shares until next price **increase**\n"
                     f"🔴 {sell_remaining} shares until next price **decrease**"
                 ),
@@ -115,7 +115,7 @@ class StockMarket(commands.Cog):
                 continue  # ✅ Skip delisted stocks
             if current.lower() not in name.lower():
                 continue
-            label = f"{name} - {data['price']:.2f} WC"
+            label = f"{name} - {data['price']:,.2f} WC"
             if data.get("commodity"):
                 label += " [Commodity]"
             choices.append(app_commands.Choice(name=label, value=name.upper()))
@@ -173,7 +173,7 @@ class StockMarket(commands.Cog):
         if gainers:
             top_3 = sorted(gainers, key=lambda x: x[1], reverse=True)[:3]
             message = "**📈 Top 3 Gainers This Hour:**\n" + "\n".join(
-                f"**{name}**: + {change:.2f}%" for name, change in top_3
+                f"**{name}**: + {change:,.2f}%" for name, change in top_3
             )
             channel_id = await self.config.announcement_channel()
             if channel_id:
@@ -508,7 +508,7 @@ class StockMarket(commands.Cog):
         if channel_id:
             channel = self.bot.get_channel(channel_id)
             if channel:
-                await channel.send(f"🚀 **{stock_name}** surged by **{percent_change:.2f}%** this hour!")
+                await channel.send(f"🚀 **{stock_name}** surged by **{percent_change:,.2f}%** this hour!")
     
     async def _announce_recovery(self, stock_name):
         channel_id = await self.config.announcement_channel()
@@ -544,7 +544,7 @@ class StockMarket(commands.Cog):
             }
             if min_volatility is not None and max_volatility is not None:
                 stocks[name]["volatility"] = [min_volatility, max_volatility]
-        await ctx.send(f"Stock {name} created with starting price {starting_price:.2f} Wellcoins.")
+        await ctx.send(f"Stock {name} created with starting price {starting_price:,.2f} Wellcoins.")
 
     @app_commands.command(name="viewstock", description="View details about a specific stock.")
     @app_commands.autocomplete(name=stock_name_autocomplete)
@@ -563,7 +563,7 @@ class StockMarket(commands.Cog):
         sell_remaining = 100 - (sells % 100)
     
         embed = discord.Embed(title=f"📄 Stock Info: {name}", color=discord.Color.blue())
-        embed.add_field(name="💰 Price", value=f"{price:.2f} Wellcoins", inline=True)
+        embed.add_field(name="💰 Price", value=f"{price:,.2f} Wellcoins", inline=True)
         embed.add_field(name="📈 Shares to Next Increase", value=f"{buy_remaining}", inline=True)
         embed.add_field(name="📉 Shares to Next Decrease", value=f"{sell_remaining}", inline=True)
         # Display tags if any
@@ -575,7 +575,7 @@ class StockMarket(commands.Cog):
         history = stock.get("history", [])
         if history and len(history) > 1 and history[-2] > 0:
             change = ((history[-1] - history[-2]) / history[-2]) * 100
-            embed.add_field(name="Last Hour Change", value=f"{change:+.2f}%", inline=True)
+            embed.add_field(name="Last Hour Change", value=f"{change:+,.2f}%", inline=True)
     
         # Gather stock ownership data
         owners_data = await self.config.all_users()
@@ -665,7 +665,7 @@ class StockMarket(commands.Cog):
             embed.add_field(
                 name=f"{emoji}{name}",
                 value=(
-                    f"Price: {data['price']:.2f} Wellcoins\n"
+                    f"Price: {data['price']:,.2f} Wellcoins\n"
                     f"🟢 {buy_remaining} shares until next price **increase**\n"
                     f"🔴 {sell_remaining} shares until next price **decrease**"
                 ),
@@ -752,7 +752,7 @@ class StockMarket(commands.Cog):
         
             if simulated_total_cost > balance:
                 return await interaction.response.send_message(
-                    f"💸 You need {simulated_total_cost:.2f} WC but only have {balance:.2f} WC.",
+                    f"💸 You need {simulated_total_cost:,.2f} WC but only have {balance:,.2f} WC.",
                     ephemeral=True
                 )
         
@@ -763,7 +763,7 @@ class StockMarket(commands.Cog):
             return await interaction.response.send_message("❗ Please provide either `shares` or `wc_spend`.", ephemeral=True)
     
         if total_cost > balance:
-            return await interaction.response.send_message(f"💸 You need {total_cost:.2f} WC but only have {balance:.2f} WC.", ephemeral=True)
+            return await interaction.response.send_message(f"💸 You need {total_cost:,.2f} WC but only have {balance:,.2f} WC.", ephemeral=True)
     
         # Update user balance and portfolio
         await self.economy_config.user(user).master_balance.set(balance - total_cost)
@@ -782,7 +782,7 @@ class StockMarket(commands.Cog):
     
         self.last_day_trades += total_cost
         await interaction.response.send_message(
-            f"✅ Bought {shares_bought} shares of **{name}** for **{total_cost:.2f} WC**."
+            f"✅ Bought {shares_bought} shares of **{name}** for **{total_cost:,.2f} WC**."
         )
 
 
@@ -860,7 +860,7 @@ class StockMarket(commands.Cog):
     
         self.last_day_trades -= earnings
         await interaction.response.send_message(
-            f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC, and paid {tax:.2f} in taxes**."
+            f"💰 Sold {amount} shares of **{name}** for **{earnings:,.2f} WC, and paid {tax:,.2f} in taxes**."
         )
 
     
@@ -878,12 +878,12 @@ class StockMarket(commands.Cog):
         embed.add_field(name="📊 Tax Rate", value="All stock sells are taxed at **5%**", inline=False)
         embed.add_field(
             name="💸 Your Tax Credit",
-            value=f"You currently have **{tax_credit:.2f} WC** in tax credit.\nEarn more by donating to community projects or scholarships!",
+            value=f"You currently have **{tax_credit:,.2f} WC** in tax credit.\nEarn more by donating to community projects or scholarships!",
             inline=False
         )
         embed.add_field(
             name="🏦 Total Tax Collected",
-            value=f"**{total_tax:.2f} WC** has been collected from all traders.",
+            value=f"**{total_tax:,.2f} WC** has been collected from all traders.",
             inline=False
         )
         embed.set_footer(text="Tax credits automatically reduce your owed tax until depleted.")
@@ -916,18 +916,18 @@ class StockMarket(commands.Cog):
     
                 embed.add_field(
                     name="✅ Payment Received",
-                    value=f"Thank you for your donation of **{payment:.2f} WC** to the Wellspring fund!",
+                    value=f"Thank you for your donation of **{payment:,.2f} WC** to the Wellspring fund!",
                     inline=False
                 )
                 embed.add_field(
                     name="🎟️ Your Tax Credit",
-                    value=f"You now have **{await self.economy_config.user(user).tax_credit():.2f} WC** in tax credit.",
+                    value=f"You now have **{await self.economy_config.user(user).tax_credit():,.2f} WC** in tax credit.",
                     inline=False
                 )
             else:
                 embed.add_field(
                     name="❌ Insufficient Funds",
-                    value=f"You tried to donate **{payment:.2f} WC**, but you only have **{balance:.2f} WC**.",
+                    value=f"You tried to donate **{payment:,.2f} WC**, but you only have **{balance:,.2f} WC**.",
                     inline=False
                 )
     
@@ -936,7 +936,7 @@ class StockMarket(commands.Cog):
         if net_balance >= 0:
             embed.add_field(
                 name="💰 Regional Surplus",
-                value=f"The Wellspring currently has a **surplus of {net_balance:.2f} WC**.",
+                value=f"The Wellspring currently has a **surplus of {net_balance:,.2f} WC**.",
                 inline=False
             )
         else:
@@ -1048,7 +1048,7 @@ class StockMarket(commands.Cog):
             
             # Construct value
             value = (
-                f"{amount} shares @ {current_price:.2f} Wellcoins (Δ {percent_change:+.2f}%)\n"
+                f"{amount} shares @ {current_price:,.2f} Wellcoins (Δ {percent_change:+,.2f}%)\n"
                 f"🟢 {buy_remaining} shares until next price **increase**\n"
                 f"🔴 {sell_remaining} shares until next price **decrease**"
             )
@@ -1063,7 +1063,7 @@ class StockMarket(commands.Cog):
             total_cost += avg_price * amount
     
         net_change = total_value - total_cost
-        embed.set_footer(text=f"Net Portfolio Change: {net_change:+.2f} Wellcoins\n Portfolio Value: {total_value:+.2f} Wellcoins")
+        embed.set_footer(text=f"Net Portfolio Change: {net_change:+,.2f} Wellcoins\n Portfolio Value: {total_value:+,.2f} Wellcoins")
         await ctx.send(embed=embed)
 
 
@@ -1167,7 +1167,7 @@ class StockMarket(commands.Cog):
         if affected == 0:
             await ctx.send(f"No stocks found with tag `{tag}`.")
         else:
-            await ctx.send(f"📈 Adjusted {affected} stock(s) with tag `{tag}` by {percent:+.2f}% and updated tag multiplier.")
+            await ctx.send(f"📈 Adjusted {affected} stock(s) with tag `{tag}` by {percent:+,.2f}% and updated tag multiplier.")
 
 
 
@@ -1411,7 +1411,7 @@ class TagValueView(View):
         current_page = self.entries[start:end]
         embed = discord.Embed(
             title="🔍 Active Tag Multipliers",
-            description="\n".join([f"`{tag}` → {value:+.2f}%" for tag, value in current_page]),
+            description="\n".join([f"`{tag}` → {value:+,.2f}%" for tag, value in current_page]),
             color=discord.Color.orange()
         )
         embed.set_footer(text=f"Page {self.page + 1}/{(len(self.entries) - 1) // self.per_page + 1}")
