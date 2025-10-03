@@ -952,7 +952,7 @@ class VOO(commands.Cog):
         for i, (uid, cnt, pct, share, bonus) in enumerate(payouts, start=1):
             member = guild.get_member(uid)
             name = member.display_name if member else f"<@{uid}>"
-            pct_str = f"{pct:.2f}%"
+            pct_str = f"{pct:,.2f}%"
             if bonus > 0:
                 line = f"**{i}.** {name} — **{cnt}** TGs • {pct_str} → **{share}** WC + **{bonus}** WC"
             else:
