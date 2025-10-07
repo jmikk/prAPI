@@ -1443,7 +1443,7 @@ class VOO(commands.Cog):
         for i, (uid, cnt) in enumerate(rows[:10], start=1):
             member = guild.get_member(uid)
             name = member.display_name if member else f"<@{uid}>"
-            top_lines.append(f"**{i}.** {name} — **{cnt:,.2f}** TGs")
+            top_lines.append(f"**{i}.** {name} — **{cnt:,.0f}** TGs")
     
         if not top_lines:
             top_text = "No recruiters yet this week."
@@ -1458,15 +1458,15 @@ class VOO(commands.Cog):
         embed.add_field(
             name="Your Stats",
             value=(
-                f"Weekly TGs sent: **{weekly_user_sent:,f}**\n"
-                f"All-time TGs sent: **{sent_total:,f}**\n"
+                f"Weekly TGs sent: **{weekly_user_sent:,.0f}**\n"
+                f"All-time TGs sent: **{sent_total:,.0f}**\n"
                 f"Salary requires: **100 TGs/week** 🌸"
             ),
             inline=False,
         )
         embed.add_field(
             name="Weekly Pot",
-            value=f"**{pot:,f}** Wellcoins\n(salary: {min_payout} WC for ≥100 TGs)",
+            value=f"**{pot:,.0f}** Wellcoins\n(salary: {min_payout} WC for ≥100 TGs)",
             inline=False,
         )
         embed.add_field(
