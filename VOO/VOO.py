@@ -1458,15 +1458,15 @@ class VOO(commands.Cog):
         embed.add_field(
             name="Your Stats",
             value=(
-                f"Weekly TGs sent: **{weekly_user_sent:,.2f}**\n"
-                f"All-time TGs sent: **{sent_total:,.2f}**\n"
+                f"Weekly TGs sent: **{weekly_user_sent:,f}**\n"
+                f"All-time TGs sent: **{sent_total:,f}**\n"
                 f"Salary requires: **100 TGs/week** 🌸"
             ),
             inline=False,
         )
         embed.add_field(
             name="Weekly Pot",
-            value=f"**{pot:,.2f}** Wellcoins\n(salary: {min_payout} WC for ≥100 TGs)",
+            value=f"**{pot:,f}** Wellcoins\n(salary: {min_payout} WC for ≥100 TGs)",
             inline=False,
         )
         embed.add_field(
