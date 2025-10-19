@@ -129,6 +129,7 @@ class NationStatesLinker(commands.Cog):
             if nations_text:
                 raw_parts = nations_text.replace("
 ", " ").replace(",", ":").split(":")
+", " ").replace(",", ":").split(":")
                 for part in raw_parts:
                     p = part.strip()
                     if not p:
@@ -138,6 +139,7 @@ class NationStatesLinker(commands.Cog):
             if un_text:
                 # UNNATIONS frequently comma-separated
                 raw_parts = un_text.replace("
+", " ").replace(":", ",").split(",")
 ", " ").replace(":", ",").split(",")
                 for part in raw_parts:
                     p = part.strip()
