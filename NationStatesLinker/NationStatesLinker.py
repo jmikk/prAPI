@@ -390,7 +390,7 @@ class NationStatesLinker(commands.Cog):
         """
         region_norm = self.normalize_nation(region)
         await self.config.guild(ctx.guild).region_name.set(region_norm)
-        await ctx.send(f"✅ Region set to `{region_norm}`. Use `[p]nslaudit` to sync roles.")}`")
+        await ctx.send(f"✅ Region set to `{region_norm}`. Use `[p]nslaudit` to sync roles.")
 
     # --------------- UI: Button & Modal ---------------
     class VerifyButton(discord.ui.View):
