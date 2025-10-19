@@ -26,13 +26,14 @@ import asyncio
 from typing import List, Optional
 
 import aiohttp
+import xml.etree.ElementTree as ET
 import discord
 from redbot.core import commands, Config
 
 # Constants
 VERIFY_URL = "https://www.nationstates.net/page=verify"
 API_VERIFY_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
-DEFAULT_UA = ""  # You can change this or via command
+DEFAULT_UA = "RedbotNSLinker/1.0 (contact: 9003)"  # You can change this or via command
 NATION_MAX_LEN = 40
 
 
@@ -41,9 +42,16 @@ class NationStatesLinker(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier="765435676", force_registration=True)
+        self.config = Config.get_conf(self, identifier=0xA1C3BEEF, force_registration=True)
         self.config.register_user(linked_nations=[])
         self.config.register_global(user_agent=DEFAULT_UA)
+        # Guild-level settings for assignable roles and target region
+        self.config.register_guild(
+            visitor_role=None,
+            resident_role=None,
+            wa_resident_role=None,
+            region_name=None,  # e.g., "vibonia"
+        )
 
     # --------------- Utility ---------------
     @staticmethod
@@ -56,17 +64,20 @@ class NationStatesLinker(commands.Cog):
 
     async def _respect_rate_limit(self, headers: aiohttp.typedefs.LooseHeaders) -> None:
         """Respect NationStates API rate limits if headers are present.
+        Mirrors the user's preferred strategy (slightly defensive).
         """
         try:
             remaining = headers.get("Ratelimit-Remaining")
             reset_time = headers.get("Ratelimit-Reset")
             if remaining is not None and reset_time is not None:
                 remaining = int(remaining)
+                # safety margin like user's snippet
                 remaining = max(1, remaining - 10)
                 reset_time = int(reset_time)
                 wait_time = (reset_time / remaining) if remaining > 0 else reset_time
                 await asyncio.sleep(max(0.0, wait_time))
         except Exception:
+            # If headers are absent or malformed, just proceed.
             pass
 
     async def verify_with_ns(self, nation: str, checksum: str) -> bool:
@@ -84,6 +95,132 @@ class NationStatesLinker(commands.Cog):
                 text = (await resp.text()).strip()
                 await self._respect_rate_limit(resp.headers)
                 return text == "1"
+
+    async def fetch_region_members(self, region: str) -> tuple[set[str], set[str]]:
+        """Fetch region member lists (residents and WA residents) from NS API.
+        Returns (residents_set, wa_residents_set) of normalized nation names.
+        - Residents are from <NATIONS> which are often colon-separated.
+        - WA residents are from <UNNATIONS> which are often comma-separated.
+        We handle both ':' and ',' and whitespace as separators defensively.
+        """
+        region_norm = region.strip().lower().replace(" ", "_")
+        params = {"region": region_norm, "q": "nations+wanations"}
+        ua = await self.config.user_agent()
+        headers = {"User-Agent": ua}
+        timeout = aiohttp.ClientTimeout(total=20)
+        residents: set[str] = set()
+        wa_residents: set[str] = set()
+        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+            async with session.get(API_VERIFY_URL, params=params) as resp:
+                xml_text = await resp.text()
+                await self._respect_rate_limit(resp.headers)
+        try:
+            root = ET.fromstring(xml_text)
+            nations_text = ""
+            un_text = ""
+            n_el = root.find("NATIONS")
+            if n_el is not None and n_el.text:
+                nations_text = n_el.text.strip()
+            # UNNATIONS (some dumps use UNNATIONS, others UNNATIONS alias as UNNATIONS)
+            un_el = root.find("UNNATIONS")
+            if un_el is not None and un_el.text:
+                un_text = un_el.text.strip()
+            # Parse residents
+            if nations_text:
+                raw_parts = nations_text.replace("
+", " ").replace(",", ":").split(":")
+                for part in raw_parts:
+                    p = part.strip()
+                    if not p:
+                        continue
+                    residents.add(self.normalize_nation(p))
+            # Parse WA residents
+            if un_text:
+                # UNNATIONS frequently comma-separated
+                raw_parts = un_text.replace("
+", " ").replace(":", ",").split(",")
+                for part in raw_parts:
+                    p = part.strip()
+                    if not p:
+                        continue
+                    wa_residents.add(self.normalize_nation(p))
+        except ET.ParseError:
+            # If parsing fails, return empty sets
+            pass
+        return residents, wa_residents
+
+    # Utility helpers for role assignment
+    async def get_role(self, guild: discord.Guild, role_id: Optional[int]) -> Optional[discord.Role]:
+        if not role_id:
+            return None
+        return guild.get_role(role_id)
+
+    async def apply_roles(self, guild: discord.Guild, member: discord.Member, *, residents: Optional[set[str]] = None, wa_residents: Optional[set[str]] = None) -> None:
+        """Apply Visitor/Resident/WA Resident roles based on NS API membership.
+        - Resident if any linked nation is in region's NATIONS list.
+        - WA Resident if any linked nation is in region's UNNATIONS list.
+        Visitor if neither.
+        """
+        if member.bot:
+            return
+        gconf = self.config.guild(guild)
+        visitor_id = await gconf.visitor_role()
+        resident_id = await gconf.resident_role()
+        wa_resident_id = await gconf.wa_resident_role()
+        region = await gconf.region_name()
+
+        visitor_role = await self.get_role(guild, visitor_id)
+        resident_role = await self.get_role(guild, resident_id)
+        wa_resident_role = await self.get_role(guild, wa_resident_id)
+
+        nations = await self.config.user(member).linked_nations()
+        nations_set = {self.normalize_nation(n) for n in nations}
+
+        # If region is configured, compute membership
+        is_resident = False
+        is_wa_resident = False
+        if region:
+            if residents is None or wa_residents is None:
+                residents, wa_residents = await self.fetch_region_members(region)
+            is_resident = any(n in residents for n in nations_set)
+            is_wa_resident = any(n in wa_residents for n in nations_set)
+        else:
+            # If no region set, fall back to old behavior: verified == has any nation
+            is_resident = bool(nations)
+            is_wa_resident = False
+
+        try:
+            # WA Resident supersedes Resident
+            if is_wa_resident:
+                if wa_resident_role and wa_resident_role not in member.roles:
+                    await member.add_roles(wa_resident_role, reason="NS WA resident")
+                if resident_role and resident_role in member.roles:
+                    await member.remove_roles(resident_role, reason="Superseded by WA resident")
+                if visitor_role and visitor_role in member.roles:
+                    await member.remove_roles(visitor_role, reason="Verified (WA)")
+                return
+
+            # Regular Resident
+            if is_resident:
+                if resident_role and resident_role not in member.roles:
+                    await member.add_roles(resident_role, reason="NS resident")
+                if wa_resident_role and wa_resident_role in member.roles:
+                    await member.remove_roles(wa_resident_role, reason="Not WA resident")
+                if visitor_role and visitor_role in member.roles:
+                    await member.remove_roles(visitor_role, reason="Verified (Resident)")
+                return
+
+            # Visitor (unverified/non-resident)
+            if visitor_role and visitor_role not in member.roles:
+                await member.add_roles(visitor_role, reason="NS visitor")
+            if resident_role and resident_role in member.roles:
+                await member.remove_roles(resident_role, reason="No longer resident")
+            if wa_resident_role and wa_resident_role in member.roles:
+                await member.remove_roles(wa_resident_role, reason="No longer WA resident")
+        except discord.Forbidden:
+            pass
+        except discord.HTTPException:
+            pass
 
     # --------------- Commands ---------------
     @commands.command()
@@ -121,8 +258,40 @@ class NationStatesLinker(commands.Cog):
             if nation_name in nations:
                 nations.remove(nation_name)
                 await ctx.send(f"✅ Successfully unlinked the NationStates nation: **{self.display_nation(nation_name)}**")
+                # Re-apply roles after unlink
+                if ctx.guild:
+                    await self.apply_roles(ctx.guild, ctx.author)
             else:
                 await ctx.send(f"❌ You do not have **{self.display_nation(nation_name)}** linked to your account.")
+
+    @commands.command(name="nslaudit")
+    @commands.guild_only()
+    @commands.has_permissions(manage_roles=True)
+    async def nslaudit(self, ctx: commands.Context):
+        """Audit everyone in this server and update Visitor/Resident/WA roles.
+        Uses NS API against the configured region.
+        """
+        guild = ctx.guild
+        region = await self.config.guild(guild).region_name()
+        if not region:
+            return await ctx.send("❌ No region configured. Set one with `[p]nslset region <region>`.")
+        await ctx.send("🔎 Fetching region membership from NationStates...")
+        residents, wa_residents = await self.fetch_region_members(region)
+        members = [m for m in guild.members if not m.bot]
+        await ctx.send(f"🔁 Auditing {len(members)} members for region `{region}`...")
+        updated = 0
+        failed = 0
+        for idx, member in enumerate(members, start=1):
+            try:
+                before = set(member.roles)
+                await self.apply_roles(guild, member, residents=residents, wa_residents=wa_residents)
+                after = set(member.roles)
+                if before != after:
+                    updated += 1
+            except Exception:
+                failed += 1
+            await asyncio.sleep(0.2)
+        await ctx.send(f"✅ Audit complete. Updated: {updated} | Failed: {failed}.")
 
     # --------------- Role Settings ---------------
     @commands.group(name="nslroles")
@@ -167,6 +336,17 @@ class NationStatesLinker(commands.Cog):
         """Show the current User-Agent header."""
         ua = await self.config.user_agent()
         await ctx.send(f"📎 Current User-Agent: `{discord.utils.escape_markdown(ua)}`")
+
+    @nslset.command(name="region")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def nslset_region(self, ctx: commands.Context, *, region: str):
+        """Set the target region used to determine Resident/WA Resident.
+        Example: `[p]nslset region vibonia`
+        """
+        region_norm = self.normalize_nation(region)
+        await self.config.guild(ctx.guild).region_name.set(region_norm)
+        await ctx.send(f"✅ Region set to `{region_norm}`. Use `[p]nslaudit` to sync roles.")}`")
 
     # --------------- UI: Button & Modal ---------------
     class VerifyButton(discord.ui.View):
@@ -240,6 +420,10 @@ class NationStatesLinker(commands.Cog):
                 f"✅ Successfully verified and linked **[{self.cog.display_nation(nation_norm)}]({url})**!",
                 ephemeral=True,
             )
+
+            # Try to apply roles upon successful verification
+            if interaction.guild and isinstance(interaction.user, discord.Member):
+                await self.cog.apply_roles(interaction.guild, interaction.user)
 
 
 async def setup(bot: commands.Bot):
