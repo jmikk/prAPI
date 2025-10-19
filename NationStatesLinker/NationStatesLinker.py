@@ -240,10 +240,7 @@ class NationStatesLinker(commands.Cog):
         user = user or ctx.author
         nations: List[str] = await self.config.user(user).linked_nations()
         if nations:
-            nation_list = "
-".join(
-                f"[{self.display_nation(n)}](https://www.nationstates.net/nation={n})" for n in nations
-            )
+            nation_list = "".join(f"[{self.display_nation(n)}](https://www.nationstates.net/nation={n})" for n in nations)
             await ctx.send(f"🌍 {user.display_name}'s linked NationStates nation(s):
 {nation_list}")
         else:
