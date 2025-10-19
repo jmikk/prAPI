@@ -31,7 +31,7 @@ import discord
 from redbot.core import commands, Config
 
 # Constants
-VERIFY_URL = "https://www.nationstates.net/page=verify"
+VERIFY_URL = "https://www.nationstates.net/page=verify_login"
 API_VERIFY_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 DEFAULT_UA = "RedbotNSLinker/1.0 (contact: 9003)"  # You can change this or via command
 NATION_MAX_LEN = 40
