@@ -31,7 +31,7 @@ import discord
 from redbot.core import commands, Config
 
 # Constants
-VERIFY_URL = "https://www.nationstates.net/page=verify_login"
+VERIFY_URL = "https://www.nationstates.net/page=verify"
 API_VERIFY_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 DEFAULT_UA = "RedbotNSLinker/1.0 (contact: 9003)"  # You can change this or via command
 NATION_MAX_LEN = 40
@@ -127,7 +127,9 @@ class NationStatesLinker(commands.Cog):
                 un_text = un_el.text.strip()
             # Parse residents
             if nations_text:
-                raw_parts = nations_text.replace(",", ":").split(":")
+                raw_parts = nations_text.replace("
+", " ").replace(",", ":").split(":")
+", " ").replace(",", ":").split(":")
                 for part in raw_parts:
                     p = part.strip()
                     if not p:
@@ -136,7 +138,9 @@ class NationStatesLinker(commands.Cog):
             # Parse WA residents
             if un_text:
                 # UNNATIONS frequently comma-separated
-                raw_parts = un_text.replace(":", ",").split(",")
+                raw_parts = un_text.replace("
+", " ").replace(":", ",").split(",")
+", " ").replace(":", ",").split(",")
                 for part in raw_parts:
                     p = part.strip()
                     if not p:
@@ -153,14 +157,16 @@ class NationStatesLinker(commands.Cog):
             return None
         return guild.get_role(role_id)
 
-    async def apply_roles(self, guild: discord.Guild, member: discord.Member, *, residents: Optional[set[str]] = None, wa_residents: Optional[set[str]] = None) -> None:
+    async def apply_roles(self, guild: discord.Guild, member: discord.Member, *, residents: Optional[set[str]] = None, wa_residents: Optional[set[str]] = None) -> bool:
         """Apply Visitor/Resident/WA Resident roles based on NS API membership.
-        - Resident if any linked nation is in region's NATIONS list.
-        - WA Resident if any linked nation is in region's UNNATIONS list.
-        Visitor if neither.
+        Stacking rules:
+        - Give Resident if any linked nation is in region NATIONS.
+        - Give WA Resident if any linked nation is in region UNNATIONS.
+        - Remove Visitor if either Resident or WA Resident is assigned.
+        Returns True if any roles were added/removed, else False.
         """
         if member.bot:
-            return
+            return False
         gconf = self.config.guild(guild)
         visitor_id = await gconf.visitor_role()
         resident_id = await gconf.resident_role()
@@ -174,7 +180,6 @@ class NationStatesLinker(commands.Cog):
         nations = await self.config.user(member).linked_nations()
         nations_set = {self.normalize_nation(n) for n in nations}
 
-        # If region is configured, compute membership
         is_resident = False
         is_wa_resident = False
         if region:
@@ -183,42 +188,40 @@ class NationStatesLinker(commands.Cog):
             is_resident = any(n in residents for n in nations_set)
             is_wa_resident = any(n in wa_residents for n in nations_set)
         else:
-            # If no region set, fall back to old behavior: verified == has any nation
             is_resident = bool(nations)
             is_wa_resident = False
 
-        try:
-            # WA Resident supersedes Resident
-            if is_wa_resident:
-                if wa_resident_role and wa_resident_role not in member.roles:
-                    await member.add_roles(wa_resident_role, reason="NS WA resident")
-                if resident_role and resident_role in member.roles:
-                    await member.remove_roles(resident_role, reason="Superseded by WA resident")
-                if visitor_role and visitor_role in member.roles:
-                    await member.remove_roles(visitor_role, reason="Verified (WA)")
-                return
+        to_add = []
+        to_remove = []
 
-            # Regular Resident
-            if is_resident:
-                if resident_role and resident_role not in member.roles:
-                    await member.add_roles(resident_role, reason="NS resident")
-                if wa_resident_role and wa_resident_role in member.roles:
-                    await member.remove_roles(wa_resident_role, reason="Not WA resident")
-                if visitor_role and visitor_role in member.roles:
-                    await member.remove_roles(visitor_role, reason="Verified (Resident)")
-                return
+        if is_resident and resident_role and resident_role not in member.roles:
+            to_add.append(resident_role)
+        if is_wa_resident and wa_resident_role and wa_resident_role not in member.roles:
+            to_add.append(wa_resident_role)
 
-            # Visitor (unverified/non-resident)
+        if (is_resident or is_wa_resident) and visitor_role and visitor_role in member.roles:
+            to_remove.append(visitor_role)
+
+        if not is_resident and not is_wa_resident:
             if visitor_role and visitor_role not in member.roles:
-                await member.add_roles(visitor_role, reason="NS visitor")
+                to_add.append(visitor_role)
             if resident_role and resident_role in member.roles:
-                await member.remove_roles(resident_role, reason="No longer resident")
+                to_remove.append(resident_role)
             if wa_resident_role and wa_resident_role in member.roles:
-                await member.remove_roles(wa_resident_role, reason="No longer WA resident")
-        except discord.Forbidden:
+                to_remove.append(wa_resident_role)
+
+        changed = False
+        try:
+            if to_add:
+                await member.add_roles(*to_add, reason="NS role sync")
+                changed = True
+            if to_remove:
+                await member.remove_roles(*to_remove, reason="NS role sync")
+                changed = True
+        except (discord.Forbidden, discord.HTTPException):
             pass
-        except discord.HTTPException:
-            pass
+
+        return changed
 
     # --------------- Commands ---------------
     @commands.command()
@@ -241,12 +244,59 @@ class NationStatesLinker(commands.Cog):
         user = user or ctx.author
         nations: List[str] = await self.config.user(user).linked_nations()
         if nations:
-            nation_list = "\n".join(
+            nation_list = "
+".join(
                 f"[{self.display_nation(n)}](https://www.nationstates.net/nation={n})" for n in nations
             )
-            await ctx.send(f"🌍 {user.display_name}'s linked NationStates nation(s):\n{nation_list}")
+            await ctx.send(f"🌍 {user.display_name}'s linked NationStates nation(s):
+{nation_list}")
         else:
             await ctx.send(f"❌ {user.display_name} has not linked a NationStates nation yet.")
+
+    @commands.command(name="nslstatus")
+    @commands.guild_only()
+    async def nslstatus(self, ctx: commands.Context, user: Optional[discord.Member] = None):
+        """Show a user's NS Resident / WA Resident status and which linked nations qualify them."""
+        member = user or ctx.author
+        region = await self.config.guild(ctx.guild).region_name()
+        nations: List[str] = await self.config.user(member).linked_nations()
+        if not nations:
+            return await ctx.send(f"❌ {member.display_name} has no linked nations.")
+        if not region:
+            pretty = ", ".join(self.display_nation(n) for n in nations)
+            return await ctx.send(
+                f"ℹ️ Region not set. Linked nations for {member.display_name}: {pretty}
+"
+                f"Set one with `[p]nslset region <region>` and run `[p]nslaudit`."
+            )
+        # Fetch region membership once
+        residents, wa_residents = await self.fetch_region_members(region)
+        in_res = [n for n in nations if self.normalize_nation(n) in residents]
+        in_wa = [n for n in nations if self.normalize_nation(n) in wa_residents]
+        is_res = bool(in_res)
+        is_wa = bool(in_wa)
+        # Build a human-friendly report
+        lines = [f"📍 Region: `{region}`", f"👤 User: {member.mention}"]
+        lines.append("🔗 Linked nations: " + ", ".join(self.display_nation(n) for n in nations))
+        if is_res:
+            lines.append("🏠 Resident via: " + ", ".join(self.display_nation(n) for n in in_res))
+        else:
+            lines.append("🏠 Resident: no (none of the linked nations are in NATIONS)")
+        if is_wa:
+            lines.append("🟦 WA Resident via: " + ", ".join(self.display_nation(n) for n in in_wa))
+        else:
+            lines.append("🟦 WA Resident: no (none of the linked nations are in UNNATIONS)")
+        # Summarize role expectation
+        if is_res and is_wa:
+            lines.append("✅ Expected roles: Resident + WA Resident")
+        elif is_res:
+            lines.append("✅ Expected role: Resident")
+        elif is_wa:
+            lines.append("✅ Expected role: WA Resident (no Resident if nation not in NATIONS)")
+        else:
+            lines.append("✅ Expected role: Visitor")
+        await ctx.send("
+".join(lines))
 
     @commands.command()
     async def unlinknation(self, ctx: commands.Context, *, nation_name: str):
@@ -281,10 +331,8 @@ class NationStatesLinker(commands.Cog):
         failed = 0
         for idx, member in enumerate(members, start=1):
             try:
-                before = set(member.roles)
-                await self.apply_roles(guild, member, residents=residents, wa_residents=wa_residents)
-                after = set(member.roles)
-                if before != after:
+                changed = await self.apply_roles(guild, member, residents=residents, wa_residents=wa_residents)
+                if changed:
                     updated += 1
             except Exception:
                 failed += 1
@@ -335,6 +383,14 @@ class NationStatesLinker(commands.Cog):
         ua = await self.config.user_agent()
         await ctx.send(f"📎 Current User-Agent: `{discord.utils.escape_markdown(ua)}`")
 
+    @nslset.command(name="logchannel")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def nslset_logchannel(self, ctx: commands.Context, channel: discord.TextChannel):
+        """Set a log channel for role change messages."""
+        await self.config.guild(ctx.guild).log_channel_id.set(channel.id)
+        await ctx.send(f"✅ Log channel set to {channel.mention}")
+
     @nslset.command(name="region")
     @commands.guild_only()
     @commands.has_permissions(manage_guild=True)
@@ -344,7 +400,7 @@ class NationStatesLinker(commands.Cog):
         """
         region_norm = self.normalize_nation(region)
         await self.config.guild(ctx.guild).region_name.set(region_norm)
-        await ctx.send(f"✅ Region set to `{region_norm}`. Use `[p]nslaudit` to sync roles.")
+        await ctx.send(f"✅ Region set to `{region_norm}`. Use `[p]nslaudit` to sync roles.")}`")
 
     # --------------- UI: Button & Modal ---------------
     class VerifyButton(discord.ui.View):
