@@ -241,8 +241,7 @@ class NationStatesLinker(commands.Cog):
         nations: List[str] = await self.config.user(user).linked_nations()
         if nations:
             nation_list = "".join(f"[{self.display_nation(n)}](https://www.nationstates.net/nation={n})" for n in nations)
-            await ctx.send(f"🌍 {user.display_name}'s linked NationStates nation(s):
-{nation_list}")
+            await ctx.send(f"🌍 {user.display_name}'s linked NationStates nation(s):{nation_list}")
         else:
             await ctx.send(f"❌ {user.display_name} has not linked a NationStates nation yet.")
 
@@ -258,8 +257,7 @@ class NationStatesLinker(commands.Cog):
         if not region:
             pretty = ", ".join(self.display_nation(n) for n in nations)
             return await ctx.send(
-                f"ℹ️ Region not set. Linked nations for {member.display_name}: {pretty}
-"
+                f"ℹ️ Region not set. Linked nations for {member.display_name}: {pretty}"
                 f"Set one with `[p]nslset region <region>` and run `[p]nslaudit`."
             )
         # Fetch region membership once
@@ -288,8 +286,7 @@ class NationStatesLinker(commands.Cog):
             lines.append("✅ Expected role: WA Resident (no Resident if nation not in NATIONS)")
         else:
             lines.append("✅ Expected role: Visitor")
-        await ctx.send("
-".join(lines))
+        await ctx.send("".join(lines))
 
     @commands.command()
     async def unlinknation(self, ctx: commands.Context, *, nation_name: str):
