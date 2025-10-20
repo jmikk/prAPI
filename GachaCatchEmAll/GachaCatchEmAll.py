@@ -100,7 +100,7 @@ class OwnedMon:
         return int(base * (1 + (self.level - 1) * 0.07))
 
 
-class NexusMon(commands.Cog):
+class GachaCatchEmAll(commands.Cog):
     """Gacha-style monster collection using Wellcoins and NexusExchange."""
 
     __author__ = "chatgpt"
