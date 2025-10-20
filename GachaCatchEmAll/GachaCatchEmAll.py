@@ -345,7 +345,7 @@ class GachaCatchEmAll(commands.Cog):
                 embed = self.cog._encounter_embed(interaction.user, enc, costs)
                 embed.title = f"❌ It broke free! Wild {enc['name']} is still here!"
                 bal = await self.cog._get_balance(interaction.user)
-                embed.set_footer(text=f"Catch chance now ~ {int(self.cog._compute_catch_chance(ball_key, bst)*100)}% • Balance: {bal:.2f} WC")
+                embed.set_footer(text=f"Catch chance ~ {int(self.cog._compute_catch_chance(ball_key, bst)*100)}% • Balance: {bal:,.2f} WC")
                 if loading_msg:
                     await loading_msg.edit(content=None, embed=embed, view=self)
                 else:
