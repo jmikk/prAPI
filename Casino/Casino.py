@@ -101,7 +101,7 @@ class Casino(commands.Cog):
             winnings = -bet
             result_text += "You lost! 😢"
             
-        await self._record_house_net(bet, max(0, winnings))
+        await self._record_house_net_delta(winnings)
         new_balance = await self.update_balance(ctx.author, winnings)
         await message.edit(content=f"{final_flip}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         self.total_bets["coinflip"] += bet
@@ -147,7 +147,7 @@ class Casino(commands.Cog):
             winnings = -bet
             result_text = "You lost! 😢"
 
-        await self._record_house_net(bet, max(0, winnings))
+        await self._record_house_net_delta(winnings)
         new_balance = await self.update_balance(ctx.author, winnings)
         await message.edit(content=f"Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         self.total_bets["dice"] += bet
@@ -206,7 +206,7 @@ class Casino(commands.Cog):
         if payout == 0:
             payout = -bet  # House edge ensured
 
-        await self._record_house_net(bet, max(0, payout))
+        await self._record_house_net_delta(payout)
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"{display}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
        
@@ -310,7 +310,8 @@ class Casino(commands.Cog):
             payout = -bet
             result_text += " You lost! 😢"
 
-        await self._record_house_net(bet, max(0, payout))
+
+        await self._record_house_net_delta(payout)
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"🎡 {color2} {number}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         
@@ -488,17 +489,17 @@ class Casino(commands.Cog):
         prev = today - timedelta(days=1)
         return prev.strftime("%Y-%m")
     
-    async def _record_house_net(self, bet: float, payout_pos_only: float, when: datetime = None):
+    async def _record_house_net_record_house_net_delta(self, net_user_delta: float, when: datetime = None):
         """
-        Record house net for the month:
-        - bet is the wagered amount
-        - payout_pos_only is your stored, wins-only positive credit to user (0 on losses)
-        House net = bet - payout_pos_only
+        Record house net for the month as the opposite of the user's balance change.
+        - net_user_delta: the exact amount you add to (or subtract from) the user's balance for this play
+          (e.g., +bet on even-money win; -bet on loss; +2*bet if your game pays that, etc.)
+        House net change = -net_user_delta
         """
         mk = self._month_key(when)
         monthly = await self.config.monthly_net()
-        house_net = bet - max(0.0, float(payout_pos_only))
-        monthly[mk] = monthly.get(mk, 0.0) + house_net
+        house_net_change = -float(net_user_delta)
+        monthly[mk] = monthly.get(mk, 0.0) + house_net_change
         await self.config.monthly_net.set(monthly)
     
     async def _get_regional_debt(self) -> float:
