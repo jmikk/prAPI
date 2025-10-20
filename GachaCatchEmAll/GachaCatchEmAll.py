@@ -208,6 +208,35 @@ class GachaCatchEmAll(commands.Cog):
         """Admin controls for GachaCatchEmAll."""
         pass
 
+    @admin_group.command(name="upload")
+    @commands.admin_or_permissions(manage_guild=True)
+    async def upload_mons(self, ctx: commands.Context):
+        """
+        Upload a new mons.json file directly from Discord.
+        Attach mons.json to this command.
+        """
+        if not ctx.message.attachments:
+            return await ctx.send("❌ Please attach a `mons.json` file to upload.")
+    
+        attachment = ctx.message.attachments[0]
+        if not attachment.filename.lower().endswith(".json"):
+            return await ctx.send("❌ File must be a `.json` file.")
+    
+        try:
+            data = await attachment.read()
+            # Validate json before saving
+            json_data = json.loads(data.decode("utf-8"))
+        except Exception as e:
+            return await ctx.send(f"❌ Failed to read JSON: `{e}`")
+    
+        # Save file
+        save_path = cog_data_path(self) / "mons.json"
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(json_data, f, indent=4)
+    
+        await ctx.send(f"✅ Successfully uploaded `{attachment.filename}` to `{save_path}`.\n"
+                       f"Run `nexusmon loadmons` to reload species into memory.")
+
     @admin_group.command(name="loadmons")
     async def loadmons(self, ctx: commands.Context):
         """Reload species from data folder's mons.json.
@@ -516,74 +545,6 @@ class GachaCatchEmAll(commands.Cog):
         if levels:
             await u.pending_points.set(int(data.get("pending_points", 0)) + levels * STAT_POINTS_PER_LEVEL)
         await ctx.send(f"Combined! {levels} level(s) gained; +{levels * STAT_POINTS_PER_LEVEL} pending points.")
-
-    # BATTLE
-    @mon_group.command(name="battle")
-    async def battle(self, ctx: commands.Context):
-        """Battle an NPC team of 6 with your active team. Gain XP either way."""
-        await self._ensure_specs(ctx)
-        u = self.config.user(ctx.author)
-        data = await u.all()
-        team_ids: List[str] = data.get("team", [])
-        mons: Dict[str, dict] = data.get("mons", {})
-        if not team_ids:
-            await ctx.send("You need an active team. Use `mon team add <oid>`." )
-            return
-        team = [OwnedMon(**mons[i]) for i in team_ids if i in mons]
-        if not team:
-            await ctx.send("Your team data seems empty. Add mons again.")
-            return
-        # Generate NPC team roughly matched to user's average power
-        avg_lvl = max(1, round(sum(m.level for m in team) / len(team)))
-        npc_team: List[OwnedMon] = []
-        for _ in range(6):
-            spec = random.choice(list(self._specs.values()))
-            base_stats = self._base_stats_for(spec)
-            # give slight variance
-            for k in base_stats:
-                base_stats[k] = max(1, int(base_stats[k] * random.uniform(0.9, 1.1)))
-            npc_team.append(OwnedMon(oid="NPC", species=spec.name, level=max(1, int(avg_lvl + random.choice([-1,0,0,1]))), xp=0, stats=base_stats, origin_net="npc"))
-
-        your_power = sum(m.power() for m in team)
-        npc_power = sum(m.power() for m in npc_team)
-        # Add variance
-        your_roll = int(your_power * random.uniform(0.9, 1.1))
-        npc_roll = int(npc_power * random.uniform(0.9, 1.1))
-        win = your_roll >= npc_roll
-
-        # Distribute XP
-        mons_changed = False
-        msg_lines = [f"Your roll: {your_roll} vs NPC: {npc_roll}"]
-        for m in team:
-            xp_gain = XP_PER_BATTLE_WIN if win else XP_PER_BATTLE_LOSS
-            m.xp += xp_gain
-            levels = self._apply_level_ups(m)
-            mons[m.oid] = asdict(m)
-            if levels:
-                mons_changed = True
-                msg_lines.append(f"{m.species} +{xp_gain} XP, +{levels} level(s)!")
-            else:
-                msg_lines.append(f"{m.species} +{xp_gain} XP.")
-        await u.mons.set(mons)
-        if mons_changed:
-            cur = int(data.get("pending_points", 0))
-            gained = sum(
-                max(0, (m.xp // 1) * 0)  # placeholder (unused)
-                for m in team
-            )
-            # We actually grant points right from levels above
-            # Count fresh levels gained in this battle
-            # For simplicity, re-check: compare levels now vs before; we already appended lines
-            # We'll sum levels by reading lines (already computed). Instead, recompute quickly:
-            levels_total = 0
-            # We stored messages; parse digits? That's messy. Let's recompute from fresh objects stored.
-            # Not worth it; we already accounted per-mon in loop; add STAT_POINTS_PER_LEVEL per level there.
-            # Let's track sum directly.
-        
-        # Let's recompute pending_points by checking previous value and adding per-mon gains we tracked inline
-        # Easiest: compute again by comparing XP thresholds? To keep simple: add STAT_POINTS_PER_LEVEL for each " +level(s)!" occurrence detected.
-        # But we avoided tracking. Let's track properly above.
-        # We'll redo battle loop with tracking.
         
     @mon_group.command(name="battle2")
     async def battle2(self, ctx: commands.Context):
@@ -645,35 +606,6 @@ class GachaCatchEmAll(commands.Cog):
             return
         bal = await ne.get_balance(ctx.author)
         await ctx.send(f"You have {bal} Wellcoins.")
-
-    @admin_group.command(name="upload")
-    @commands.admin_or_permissions(manage_guild=True)
-    async def upload_mons(self, ctx: commands.Context):
-        """
-        Upload a new mons.json file directly from Discord.
-        Attach mons.json to this command.
-        """
-        if not ctx.message.attachments:
-            return await ctx.send("❌ Please attach a `mons.json` file to upload.")
-    
-        attachment = ctx.message.attachments[0]
-        if not attachment.filename.lower().endswith(".json"):
-            return await ctx.send("❌ File must be a `.json` file.")
-    
-        try:
-            data = await attachment.read()
-            # Validate json before saving
-            json_data = json.loads(data.decode("utf-8"))
-        except Exception as e:
-            return await ctx.send(f"❌ Failed to read JSON: `{e}`")
-    
-        # Save file
-        save_path = cog_data_path(self) / "mons.json"
-        with open(save_path, "w", encoding="utf-8") as f:
-            json.dump(json_data, f, indent=4)
-    
-        await ctx.send(f"✅ Successfully uploaded `{attachment.filename}` to `{save_path}`.\n"
-                       f"Run `nexusmon loadmons` to reload species into memory.")
     
 
 
