@@ -99,9 +99,7 @@ class EconomyAdapter:
             if w < amt:
                 return False
             w -= amt
-            return True
-            except Exception:
-                return False
+                return True
         async with self.config.user(user).wallet() as w:
             if w < amt:
                 return False
