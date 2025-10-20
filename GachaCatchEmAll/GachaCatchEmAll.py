@@ -249,13 +249,24 @@ class GachaCatchEmAll(commands.Cog):
                 chance = self.cog._compute_catch_chance(ball_key, bst)
                 caught = (ball_key == "masterball") or (random.random() <= chance)
 
-                embed = discord.Embed(
-                    title=f"{interaction.user.display_name} threw a {label}!",
-                    description=(
-                        f'You encountered **{name}** (ID #{pid})! Base Stat Total: **{bst}** "**Caught!** 🎉" if caught else "It fled... 😢"'
-                    ),
-                    color=discord.Color.green() if caught else discord.Color.red(),
+                if caught:
+                    embed = discord.Embed(
+                        title=f"{interaction.user.display_name} threw a {label}!",
+                        description=(
+                        f'You encountered **{name}** (ID #{pid})! Base Stat Total: **{bst}** "**Caught!** 🎉" 
+                        if caught else "It fled... 😢"'
+                        ),
+                        color=discord.Color.green() 
                 )
+                else:
+                     embed = discord.Embed(
+                        title=f"{interaction.user.display_name} threw a {label}!",
+                        description=(
+                        f'You encountered **{name}** (ID #{pid})! Base Stat Total: **{bst}** "It fled... 😢"'
+                        ),
+                        color=discord.Color.red() 
+                )
+                    
                 if sprite:
                     embed.set_thumbnail(url=sprite)
 
