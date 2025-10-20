@@ -419,8 +419,7 @@ class GachaCatchEmAll(commands.Cog):
         try:
             _ = await self._get_balance(ctx.author)
         except Exception as e:
-            await ctx.reply(f"Economy unavailable: {e}
-Make sure the NexusExchange cog is loaded.")
+            await ctx.reply(f"Economy unavailable: {e} Make sure the NexusExchange cog is loaded.")
             return
 
         uconf = self.config.user(ctx.author)
