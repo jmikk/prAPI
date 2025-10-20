@@ -35,7 +35,7 @@ BALL_TUNING = {
 }
 
 
-class PokeGacha(commands.Cog):
+class GachaCatchEmAll(commands.Cog):
     """Pokémon gacha using Wellcoins + PokéAPI"""
 
     def __init__(self, bot: commands.Bot):
