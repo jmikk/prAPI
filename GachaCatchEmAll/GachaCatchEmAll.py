@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import asyncio
 import random
+import re
+import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import discord
@@ -11,12 +14,13 @@ import aiohttp
 
 
 __red_end_user_data_statement__ = (
-    "This cog stores a list of Pokémon you've caught (name, count) and your last rolls."
+    "This cog stores Pokémon you catch (per-catch entries with UID, species id/name, types, stats, "
+    "sprite, optional nickname) and your last roll and active encounter."
 )
 
 POKEAPI_BASE = "https://pokeapi.co/api/v2"
 
-# Reasonable defaults; you can adjust with [p]gachaadmin setcosts
+# Reasonable defaults; adjust with [p]gachaadmin setcosts
 DEFAULT_COSTS = {
     "pokeball": 5.0,
     "greatball": 15.0,
@@ -34,6 +38,7 @@ BALL_TUNING = {
     "masterball": {"weight_bias": 2, "bonus_catch": 999.0},  # auto-catch
 }
 
+NICKNAME_RE = re.compile(r"^[A-Za-z]{1,20}$")  # “letters only, max 20”
 
 class GachaCatchEmAll(commands.Cog):
     """Pokémon encounter & multi-throw gacha using Wellcoins + PokéAPI."""
@@ -41,7 +46,8 @@ class GachaCatchEmAll(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.config: Config = Config.get_conf(self, identifier=0xC0FFEE55, force_registration=True)
-        self.config.register_user(pokebox={}, last_roll=None, active_encounter=None)
+        # pokebox now stores a LIST of individual entries (each with uid)
+        self.config.register_user(pokebox=[], last_roll=None, active_encounter=None)
         self.config.register_global(costs=DEFAULT_COSTS)
 
         self._session: Optional[aiohttp.ClientSession] = None
@@ -306,21 +312,36 @@ class GachaCatchEmAll(commands.Cog):
                 caught = (ball_key == "masterball") or (random.random() <= chance)
 
                 if caught:
-                    # save and end encounter
-                    name = enc["name"]
-                    sprite = enc.get("sprite")
+                    # save per-catch entry and end encounter
+                    pdata = await self.cog._get_pokemon(enc["id"])
+                    types = [t["type"]["name"] for t in pdata.get("types", [])]
+                    stats_map = {s["stat"]["name"]: int(s["base_stat"]) for s in pdata.get("stats", [])}
+                    uid = uuid.uuid4().hex[:12]  # short UID
+                    entry = {
+                        "uid": uid,
+                        "pokedex_id": int(enc["id"]),
+                        "name": enc["name"],
+                        "types": types,
+                        "stats": stats_map,
+                        "bst": int(enc["bst"]),
+                        "sprite": enc.get("sprite"),
+                        "nickname": None,
+                        "caught_at": datetime.now(timezone.utc).isoformat(),
+                    }
                     box = await uconf.pokebox()
-                    box[name] = int(box.get(name, 0)) + 1
+                    if not isinstance(box, list):
+                        box = []
+                    box.append(entry)
                     await uconf.pokebox.set(box)
                     await uconf.active_encounter.clear()
 
                     embed = discord.Embed(
-                        title=f"🎉 Caught {name}!",
-                        description="Added to your PokéBox.",
+                        title=f"🎉 Caught {enc['name']}!",
+                        description=f"UID: `{uid}` — use `/nickname {uid} <Name>` to nickname it.",
                         color=discord.Color.gold(),
                     )
-                    if sprite:
-                        embed.set_thumbnail(url=sprite)
+                    if enc.get("sprite"):
+                        embed.set_thumbnail(url=enc["sprite"])
                     bal = await self.cog._get_balance(interaction.user)
                     embed.set_footer(text=f"New balance: {bal:.2f} WC")
 
@@ -463,21 +484,26 @@ class GachaCatchEmAll(commands.Cog):
 
     @commands.hybrid_command(name="pokebox")
     async def pokebox(self, ctx: commands.Context, member: Optional[discord.Member] = None):
-        """Show your (or another member's) caught Pokémon."""
+        """Show your (or another member's) caught Pokémon summary by species."""
         member = member or ctx.author
         box = await self.config.user(member).pokebox()
         if not box:
             await ctx.reply(f"{member.display_name} has no Pokémon yet. Go roll the gacha!")
             return
 
-        # Sort by count desc, then name
-        entries = sorted(box.items(), key=lambda kv: (-int(kv[1]), kv[0]))
+        # Summarize by species
+        counts: Dict[str, int] = {}
+        for entry in box:
+            key = entry.get("name", "Unknown")
+            counts[key] = counts.get(key, 0) + 1
+
+        entries = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
         chunks: List[str] = []
         line = []
         total = 0
         for name, count in entries:
-            total += int(count)
-            line.append(f"**{name}** ×{int(count)}")
+            total += count
+            line.append(f"**{name}** ×{count}")
             if sum(len(x) for x in line) > 800:
                 chunks.append(" • ".join(line))
                 line = []
@@ -494,13 +520,101 @@ class GachaCatchEmAll(commands.Cog):
                 embed.set_footer(text=f"Total caught: {total}")
             await ctx.send(embed=embed)
 
+    @commands.hybrid_command(name="pokeinv")
+    async def pokeinv(self, ctx: commands.Context, member: Optional[discord.Member] = None):
+        """List your (or another member's) individual Pokémon with UID & nickname."""
+        member = member or ctx.author
+        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
+        if not box:
+            await ctx.reply(f"{member.display_name} has no Pokémon yet.")
+            return
+
+        # sort newest first
+        box_sorted = sorted(box, key=lambda e: e.get("caught_at", ""), reverse=True)
+        page_size = 8
+        pages = [box_sorted[i : i + page_size] for i in range(0, len(box_sorted), page_size)]
+        for i, page in enumerate(pages, start=1):
+            lines = []
+            for e in page:
+                nick = e.get("nickname")
+                label = f"{e['name']} (#{e['pokedex_id']})"
+                if nick:
+                    label += f" — **{nick}**"
+                lines.append(f"`{e['uid']}` • {label}")
+            embed = discord.Embed(
+                title=f"{member.display_name}'s Pokémon (page {i}/{len(pages)})",
+                description="\n".join(lines),
+                color=discord.Color.blue(),
+            )
+            await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name="nickname")
+    async def nickname(self, ctx: commands.Context, uid: str, nickname: Optional[str] = None):
+        """Set or clear a nickname for a caught Pokémon by UID.
+        Nicknames must be LETTERS ONLY (A-Z) and at most 20 characters.
+        Omit the nickname to CLEAR it.
+        """
+        box: List[Dict[str, Any]] = await self.config.user(ctx.author).pokebox()
+        if not box:
+            await ctx.reply("You have no Pokémon.")
+            return
+
+        # find entry
+        target = None
+        for e in box:
+            if e.get("uid") == uid:
+                target = e
+                break
+        if not target:
+            await ctx.reply("UID not found in your PokéBox.")
+            return
+
+        if nickname is None:
+            target["nickname"] = None
+            await self.config.user(ctx.author).pokebox.set(box)
+            await ctx.reply(f"Cleared nickname for `{uid}` ({target['name']}).")
+            return
+
+        if not NICKNAME_RE.match(nickname):
+            await ctx.reply("Nickname must be LETTERS ONLY (A–Z/a–z), 1–20 chars.")
+            return
+
+        target["nickname"] = nickname
+        await self.config.user(ctx.author).pokebox.set(box)
+        await ctx.reply(f"Set nickname for `{uid}` to **{nickname}**.")
+
     @checks.admin()
     @commands.hybrid_group(name="gachaadmin")
     async def gachaadmin(self, ctx: commands.Context):
         """Admin settings for PokéGacha."""
         pass
 
+    @gachaadmin.command(name="resetpokedata")
+    @checks.admin()
+    async def gacha_resetpokedata(self, ctx: commands.Context, confirm: Optional[bool] = False):
+        """WIPE ALL users' PokéBoxes and active encounters. Use with care!
+        Example: `[p]gachaadmin resetpokedata true`
+        """
+        if not confirm:
+            await ctx.reply("⚠️ This will wipe ALL users' PokéBoxes and encounters. Re-run with `true` to confirm.")
+            return
+
+        # Get all user data and wipe the fields we own
+        all_users = await self.config.all_users()
+        wiped = 0
+        for user_id, data in all_users.items():
+            # reset to defaults we registered
+            data["pokebox"] = []
+            data["active_encounter"] = None
+            # keep last_roll if you like, or clear:
+            data["last_roll"] = None
+            await self.config.user_from_id(int(user_id)).set(data)
+            wiped += 1
+
+        await ctx.reply(f"🧹 Reset Poké data for {wiped} users.")
+
     @gachaadmin.command(name="setcosts")
+    @checks.admin()
     async def gacha_setcosts(
         self,
         ctx: commands.Context,
