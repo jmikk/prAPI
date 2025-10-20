@@ -1,614 +1,414 @@
-# -*- coding: utf-8 -*-
-"""
-GachaCatchEmAll — a lightweight gacha/monster-collector cog for Redbot v3.
+# PokéGacha — a Redbot v3 cog that lets users spend Wellcoins to "throw" Poké Balls
+# and attempt to catch random Pokémon using data from the public PokéAPI.
+#
+# Economy integration: expects another cog named "NexusExchange" that implements:
+#   async def get_balance(self, user: discord.abc.User) -> int
+#   async def add_wellcoins(self, user: discord.abc.User, amount: float) -> int
+#   async def take_wellcoins(self, user: discord.abc.User, amount: float, force: bool = False) -> int
+# (These are exactly the functions the user provided.)
+#
+# Commands
+#   [p]gacha          -> open an embed with buttons for Poké Ball / Great / Ultra / Master
+#   [p]pokebox        -> view your caught Pokémon (with counts)
+#   [p]gacha setcosts -> admin: set custom ball costs
+#
+# Notes
+# - Master Ball always catches.
+# - Higher-tier balls bias the roll toward stronger Pokémon (by base-stat total) and raise catch chance.
+# - All PokéAPI results are cached in-memory per bot session to reduce API calls.
+# - This file is self-contained as a Redbot cog (save as pokegacha/pokegacha.py and load).
 
-Features
-- Reads a mons.json file (array of objects) with fields:
-  Name, Type, Total, HP, Attack, Defense, Sp. Atk, Sp. Def, Speed, rarity
-- Catch command with nets (normal/great/ultra/master) that cost Wellcoins via NexusExchange.
-- Collection (dex) tracking and team of up to 6.
-- Level/XP system with per-level stat allocation (points to assign by the player).
-- Simple NPC battle (team of 6 vs generated NPC team) with XP rewards.
-- Combine duplicates of the same species to merge XP and blend stats.
-
-Notes
-- Place your species file as data/{cog_name}/mons.json (see admin command [p]GachaCatchEmAll loadmons).
-- Rarity is expected as one of: "common", "uncommon", "rare", "epic", "legendary" (case-insensitive).
-- You can customize net costs and rarity weights with admin commands.
-
-"""
 from __future__ import annotations
 
 import asyncio
-import json
-import math
-import os
 import random
-import uuid
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import discord
-from redbot.core import commands, Config
-from redbot.core.data_manager import cog_data_path
-from redbot.core.bot import Red
-from redbot.core.utils.chat_formatting import box, humanize_list, humanize_number
+from redbot.core import commands, Config, checks
+import aiohttp
 
 
-DEFAULT_NETS = {
-    # cost in Wellcoins; weights multiply base rarity odds (higher favors rarer mons)
-    "normal": {"cost": 10.0, "rarity_boost": {"common": 1.0, "uncommon": 1.0, "rare": 0.8, "epic": 0.6, "legendary": 0.4}},
-    "great": {"cost": 50.0, "rarity_boost": {"common": 0.9, "uncommon": 1.0, "rare": 1.1, "epic": 1.2, "legendary": 1.3}},
-    "ultra": {"cost": 200.0, "rarity_boost": {"common": 0.7, "uncommon": 0.9, "rare": 1.3, "epic": 1.5, "legendary": 1.8}},
-    "master": {"cost": 1000.0, "rarity_boost": {"common": 0.5, "uncommon": 0.7, "rare": 1.5, "epic": 2.0, "legendary": 3.0}},
+__red_end_user_data_statement__ = (
+    "This cog stores a list of Pokémon you've caught (name, count) and your last rolls."
+)
+
+
+POKEAPI_BASE = "https://pokeapi.co/api/v2"
+
+# Reasonable defaults; you can adjust with [p]gacha setcosts
+DEFAULT_COSTS = {
+    "pokeball": 5.0,
+    "greatball": 15.0,
+    "ultraball": 50.0,
+    "masterball": 200.0,
 }
 
-# Baseline appearance weights by rarity; multiplied by net's rarity_boost
-BASE_RARITY_POOL = {"common": 60, "uncommon": 25, "rare": 10, "epic": 4, "legendary": 1}
-
-# XP and leveling
-XP_PER_BATTLE_WIN = 120
-XP_PER_BATTLE_LOSS = 60
-XP_CURVE_A = 80  # base xp per level
-XP_CURVE_B = 1.25  # growth
-STAT_POINTS_PER_LEVEL = 3
-
-
-@dataclass
-class MonSpec:
-    name: str
-    type: str
-    total: int
-    hp: int
-    attack: int
-    defense: int
-    sp_atk: int
-    sp_def: int
-    speed: int
-    rarity: str  # common | uncommon | rare | epic | legendary
-
-    @staticmethod
-    def from_json(obj: dict) -> "MonSpec":
-        # Accept a few possible keys (case/spacing variants)
-        key = lambda *opts: next((obj[k] for k in opts if k in obj), None)
-        rarity = str(key("rarity", "Rarity")).lower()
-        return MonSpec(
-            name=str(key("Name", "name")),
-            type=str(key("Type", "type")),
-            total=int(key("Total", "total")),
-            hp=int(key("HP", "hp")),
-            attack=int(key("Attack", "attack")),
-            defense=int(key("Defense", "defense")),
-            sp_atk=int(key("Sp. Atk", "SpAtk", "sp_atk", "sp.atk", "sp_atk")),
-            sp_def=int(key("Sp. Def", "SpDef", "sp_def", "sp.def", "sp_def")),
-            speed=int(key("Speed", "speed")),
-            rarity=rarity,
-        )
-
-
-@dataclass
-class OwnedMon:
-    oid: str  # unique per owner
-    species: str
-    level: int
-    xp: int
-    stats: Dict[str, int]  # hp/attack/defense/sp_atk/sp_def/speed
-    origin_net: str
-
-    def power(self) -> int:
-        base = self.stats["hp"] + self.stats["attack"] + self.stats["defense"] + self.stats["sp_atk"] + self.stats["sp_def"] + self.stats["speed"]
-        # Mild level scaling
-        return int(base * (1 + (self.level - 1) * 0.07))
+# Catch tuning parameters per ball
+BALL_TUNING = {
+    # weight_bias: how we bias encounter weights (higher favors strong mons)
+    # bonus_catch: added to base catch chance
+    "pokeball": {"weight_bias": -1, "bonus_catch": 0.00},
+    "greatball": {"weight_bias": 0, "bonus_catch": 0.15},
+    "ultraball": {"weight_bias": 1, "bonus_catch": 0.30},
+    "masterball": {"weight_bias": 2, "bonus_catch": 999.0},  # auto-catch
+}
 
 
 class GachaCatchEmAll(commands.Cog):
-    """Gacha-style monster collection using Wellcoins and NexusExchange."""
+    """Pokémon gacha using Wellcoins + PokéAPI"""
 
-    __author__ = "chatgpt"
-    __version__ = "0.1.0"
-
-    def __init__(self, bot: Red):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=0xBEEFCAFE1234, force_registration=True)
-        self.config.register_global(
-            nets=DEFAULT_NETS,
-            base_rarity_pool=BASE_RARITY_POOL,
-        )
-        self.config.register_user(
-            mons={},  # oid -> OwnedMon as dict
-            team=[],  # list of oids (max 6)
-            dex={},   # species name -> count caught
-            pending_points=0,  # stat points awaiting allocation (spend via allocate)
-        )
-        self._specs: Dict[str, MonSpec] = {}
-        self._load_lock = asyncio.Lock()
+        self.config: Config = Config.get_conf(self, identifier=0xC0FFEE55, force_registration=True)
+        self.config.register_user(pokebox={}, last_roll=None)
+        self.config.register_global(costs=DEFAULT_COSTS)
 
-    # ---------- DATA PATHS ----------
-    # Using Red's official data manager helper (cog_data_path). No private attrs used.
+        self._session: Optional[aiohttp.ClientSession] = None
+        self._pokemon_list: Optional[List[Dict[str, Any]]] = None  # list of {name, url}
+        self._pokemon_cache: Dict[int, Dict[str, Any]] = {}  # id -> pokemon data
+        self._list_lock = asyncio.Lock()
 
-    async def red_delete_data_for_user(self, **kwargs):
-        """GDPR compliance: wipe a user's data."""
-        uid = kwargs.get("user_id")
-        if uid is None:
-            return
-        await self.config.user_from_id(uid).clear()
+    # --------- Red utilities ---------
 
-    # ---------- SPEC LOADING ----------
-    async def load_specs(self) -> None:
-        """Load species from mons.json located in this cog's data folder."""
-        async with self._load_lock:
-            datapath = cog_data_path(self)
-            datapath.mkdir(parents=True, exist_ok=True)
-            file_path = datapath / "mons.json"
-            if not file_path.exists():
-                self._specs = {}
-                return
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    raw = json.load(f)
-            except Exception as e:
-                self._specs = {}
-                raise e
+    async def red_delete_data_for_user(self, **kwargs):  # GDPR
+        user = kwargs.get("user")
+        if user:
+            await self.config.user(user).clear()
 
-            specs: Dict[str, MonSpec] = {}
-            for obj in raw:
-                try:
-                    spec = MonSpec.from_json(obj)
-                    if spec.rarity not in BASE_RARITY_POOL:
-                        # default to common if unknown
-                        spec.rarity = "common"
-                    specs[spec.name] = spec
-                except Exception:
-                    continue
-            self._specs = specs
+    def cog_unload(self):
+        if self._session and not self._session.closed:
+            asyncio.create_task(self._session.close())
 
-    # ---------- HELPER: NEXUS EXCHANGE ----------
+    async def _get_session(self) -> aiohttp.ClientSession:
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession()
+        return self._session
+
+    # --------- Economy helpers (NexusExchange) ---------
+
     def _nexus(self):
-        return self.bot.get_cog("NexusExchange")
+        cog = self.bot.get_cog("NexusExchange")
+        if not cog:
+            raise RuntimeError(
+                "NexusExchange cog not found. Please load it so PokéGacha can charge Wellcoins."
+            )
+        return cog
+
+    async def _get_balance(self, user: discord.abc.User) -> float:
+        return float(await self._nexus().get_balance(user))
 
     async def _charge(self, user: discord.abc.User, amount: float):
-        ne = self._nexus()
-        if ne is None:
-            raise RuntimeError("NexusExchange cog not found. Install/Load it first.")
-        # Raises ValueError if insufficient funds when force=False
-        await ne.take_wellcoins(user, amount, force=False)
+        # Raises ValueError if insufficient (as per NexusExchange API)
+        await self._nexus().take_wellcoins(user, amount, force=False)
 
-    # ---------- HELPER: XP / LEVELS ----------
-    def _xp_needed(self, level: int) -> int:
-        return int(XP_CURVE_A * (XP_CURVE_B ** (level - 1)))
+    async def _refund(self, user: discord.abc.User, amount: float):
+        await self._nexus().add_wellcoins(user, amount)
 
-    def _apply_level_ups(self, mon: OwnedMon) -> int:
-        """Increase levels if XP exceeds thresholds. Returns number of levels gained; adds pending points to user's balance in calling context."""
-        levels = 0
-        while True:
-            need = self._xp_needed(mon.level)
-            if mon.xp >= need:
-                mon.xp -= need
-                mon.level += 1
-                levels += 1
-            else:
-                break
-        return levels
+    # --------- PokéAPI helpers ---------
 
-    # ---------- HELPER: STATS ----------
-    def _base_stats_for(self, spec: MonSpec) -> Dict[str, int]:
-        return {
-            "hp": spec.hp,
-            "attack": spec.attack,
-            "defense": spec.defense,
-            "sp_atk": spec.sp_atk,
-            "sp_def": spec.sp_def,
-            "speed": spec.speed,
-        }
+    async def _fetch_json(self, url: str) -> Any:
+        session = await self._get_session()
+        async with session.get(url, timeout=20) as resp:
+            resp.raise_for_status()
+            return await resp.json()
 
-    # ---------- ADMIN COMMANDS ----------
-    @commands.group(name="GachaCatchEmAll")
-    @commands.admin_or_permissions(manage_guild=True)
-    async def admin_group(self, ctx: commands.Context):
-        """Admin controls for GachaCatchEmAll."""
-        pass
+    async def _ensure_pokemon_list(self):
+        async with self._list_lock:
+            if self._pokemon_list is not None:
+                return
+            data = await self._fetch_json(f"{POKEAPI_BASE}/pokemon?limit=20000")
+            # keep only Pokémon that have an id (by parsing from URL) and a default sprite later
+            self._pokemon_list = data.get("results", [])
 
-    @admin_group.command(name="upload")
-    @commands.admin_or_permissions(manage_guild=True)
-    async def upload_mons(self, ctx: commands.Context):
-        """
-        Upload a new mons.json file directly from Discord.
-        Attach mons.json to this command.
-        """
-        if not ctx.message.attachments:
-            return await ctx.send("❌ Please attach a `mons.json` file to upload.")
-    
-        attachment = ctx.message.attachments[0]
-        if not attachment.filename.lower().endswith(".json"):
-            return await ctx.send("❌ File must be a `.json` file.")
-    
+    @staticmethod
+    def _extract_id_from_url(url: str) -> Optional[int]:
+        # URLs look like https://pokeapi.co/api/v2/pokemon/25/
         try:
-            data = await attachment.read()
-            # Validate json before saving
-            json_data = json.loads(data.decode("utf-8"))
-        except Exception as e:
-            return await ctx.send(f"❌ Failed to read JSON: `{e}`")
-    
-        # Save file
-        save_path = cog_data_path(self) / "mons.json"
-        with open(save_path, "w", encoding="utf-8") as f:
-            json.dump(json_data, f, indent=4)
-    
-        await ctx.send(f"✅ Successfully uploaded `{attachment.filename}` to `{save_path}`.\n"
-                       f"Run `nexusmon loadmons` to reload species into memory.")
+            parts = url.rstrip("/").split("/")
+            return int(parts[-1])
+        except Exception:
+            return None
 
-    @admin_group.command(name="loadmons")
-    async def loadmons(self, ctx: commands.Context):
-        """Reload species from data folder's mons.json.
+    async def _get_pokemon(self, poke_id: int) -> Dict[str, Any]:
+        if poke_id in self._pokemon_cache:
+            return self._pokemon_cache[poke_id]
+        data = await self._fetch_json(f"{POKEAPI_BASE}/pokemon/{poke_id}")
+        self._pokemon_cache[poke_id] = data
+        return data
 
-        Path: {data_path}/mons.json  (use `[p]GachaCatchEmAll whereis` to see your exact path)
+    async def _random_encounter(self, ball_key: str) -> Tuple[Dict[str, Any], int, int]:
+        """Roll a random Pokémon, biased by base stat totals depending on ball.
+        Returns (pokemon_data, poke_id, bst)
         """
-        await self.load_specs()
-        if not self._specs:
-            await ctx.send("No mons loaded. Ensure mons.json exists and is valid.")
-            return
-        await ctx.send(f"Loaded {len(self._specs)} species.")
+        await self._ensure_pokemon_list()
+        assert self._pokemon_list is not None
 
-    @admin_group.command(name="setnetcost")
-    async def set_net_cost(self, ctx: commands.Context, net: str, cost: float):
-        """Set the Wellcoin cost for a net (normal/great/ultra/master)."""
-        net = net.lower()
-        nets = await self.config.nets()
-        if net not in nets:
-            await ctx.send("Unknown net. Choose: normal, great, ultra, master")
-            return
-        nets[net]["cost"] = max(0.0, float(cost))
-        await self.config.nets.set(nets)
-        await ctx.send(f"{net.title()} Net now costs {cost} WC.")
-
-    @admin_group.command(name="setrarityweight")
-    async def set_rarity_weight(self, ctx: commands.Context, rarity: str, weight: int):
-        """Set base appearance weight for a rarity (affects catch odds)."""
-        rarity = rarity.lower()
-        brp = await self.config.base_rarity_pool()
-        if rarity not in brp:
-            await ctx.send("Unknown rarity. Use: common, uncommon, rare, epic, legendary")
-            return
-        brp[rarity] = max(0, int(weight))
-        await self.config.base_rarity_pool.set(brp)
-        await ctx.send(f"Base weight for {rarity} set to {weight}.")
-
-    @admin_group.command(name="whereis")
-    async def whereis(self, ctx: commands.Context):
-        """Show the exact folder path for mons.json."""
-        path = cog_data_path(self)
-        await ctx.send(f"Place your file at: `{path / 'mons.json'}`")
-
-    # ---------- PUBLIC COMMANDS ----------
-    @commands.hybrid_group(name="mon")
-    async def mon_group(self, ctx: commands.Context):
-        """Collect, manage, and battle your GachaCatchEmAll!"""
-        pass
-
-    # CATCH
-    @mon_group.command(name="catch")
-    async def catch(self, ctx: commands.Context, net: str):
-        """Spend Wellcoins to catch a random mon.
-
-        Nets: normal, great, ultra, master
-        """
-        await self._ensure_specs(ctx)
-        net = net.lower()
-        nets = await self.config.nets()
-        if net not in nets:
-            await ctx.send("Unknown net. Choose: normal, great, ultra, master")
-            return
-        cost = float(nets[net]["cost"])
-        try:
-            await self._charge(ctx.author, cost)
-        except ValueError as e:
-            await ctx.send(f"❌ {e}")
-            return
-        except RuntimeError as e:
-            await ctx.send(f"❌ {e}")
-            return
-
-        species = self._roll_species(net, nets)
-        spec = self._specs[species]
-        mon = OwnedMon(
-            oid=str(uuid.uuid4())[:8],
-            species=spec.name,
-            level=1,
-            xp=0,
-            stats=self._base_stats_for(spec),
-            origin_net=net,
-        )
-        uconf = self.config.user(ctx.author)
-        data = await uconf.all()
-        mons: Dict[str, dict] = data.get("mons", {})
-        mons[mon.oid] = asdict(mon)
-        # Update dex
-        dex: Dict[str, int] = data.get("dex", {})
-        dex[spec.name] = dex.get(spec.name, 0) + 1
-        # Autofill team if space
-        team: List[str] = data.get("team", [])
-        if len(team) < 6:
-            team.append(mon.oid)
-        await uconf.mons.set(mons)
-        await uconf.dex.set(dex)
-        await uconf.team.set(team)
-
-        await ctx.send(
-            f"🕸️ You cast a **{net.title()} Net** and caught **{spec.name}** (Lv.1)!\n"
-            f"Type: {spec.type} | Rarity: {spec.rarity.title()} | OID: `{mon.oid}`"
-        )
-
-    def _roll_species(self, net_name: str, nets: dict) -> str:
-        # Build a rarity weighted pool first
-        brp = BASE_RARITY_POOL.copy()
-        brp.update(nets.get("base_rarity_pool", {}))  # just in case
-        # Use config global value for base rarity pool
-        # (pull sync since this is a helper called within catch; we cached defaults)
-        # We'll rely on class constant here; admin cmd updates config for future runtime
-
-        # Count species by rarity and build weighted list per rarity, then overall
-        rar_to_species: Dict[str, List[str]] = {r: [] for r in BASE_RARITY_POOL}
-        for spec in self._specs.values():
-            rar_to_species.setdefault(spec.rarity, []).append(spec.name)
-
-        # Rarity selection weights boosted by net settings
-        net_boost = nets[net_name]["rarity_boost"]
-        rarities = []
+        # Build a candidate pool with weights
         weights = []
-        for r, base_w in BASE_RARITY_POOL.items():
-            boost = net_boost.get(r, 1.0)
-            rarities.append(r)
-            weights.append(base_w * boost)
-        chosen_rarity = random.choices(rarities, weights=weights, k=1)[0]
-        pool = rar_to_species.get(chosen_rarity) or [s.name for s in self._specs.values()]
-        return random.choice(pool)
+        ids = []
+        bias = BALL_TUNING[ball_key]["weight_bias"]
 
-    async def _ensure_specs(self, ctx: commands.Context):
-        if not self._specs:
-            await self.load_specs()
-            if not self._specs:
-                raise commands.UserFeedbackCheckFailure("No mons loaded. Ask an admin to run `[p]GachaCatchEmAll loadmons`.")
+        # Sample a subset to keep it snappy (e.g., 1200 random entries) then weight inside it
+        population = random.sample(self._pokemon_list, k=min(1200, len(self._pokemon_list)))
+        for entry in population:
+            pid = self._extract_id_from_url(entry["url"])  # type: ignore
+            if not pid:
+                continue
+            try:
+                pdata = await self._get_pokemon(pid)
+            except Exception:
+                continue
 
-    # LIST OWNED
-    @mon_group.command(name="mons")
-    async def list_mons(self, ctx: commands.Context):
-        """List your owned mons."""
-        data = await self.config.user(ctx.author).all()
-        mons: Dict[str, dict] = data.get("mons", {})
-        if not mons:
-            await ctx.send("You don't own any mons yet. Try `mon catch normal`. 🪤")
+            # base stat total
+            try:
+                bst = sum(s["base_stat"] for s in pdata.get("stats", []))
+            except Exception:
+                continue
+
+            # Weighting scheme:
+            #  bias < 0  -> prefer lower BST
+            #  bias == 0 -> balanced
+            #  bias > 0  -> prefer higher BST (stronger)
+            if bias < 0:
+                w = max(1, 800 - bst)  # weak preference
+            elif bias == 0:
+                w = max(1, 100 + abs(500 - bst) // 5)  # fairly flat
+            elif bias == 1:
+                w = max(1, bst)
+            else:  # bias >= 2 (Master): strongly prefer very high BST
+                w = max(1, bst * bst // 50)
+
+            # Ignore totally missing sprites (no visual reveal is less fun)
+            sprite = (
+                pdata.get("sprites", {}).get("other", {}).get("official-artwork", {}).get("front_default")
+                or pdata.get("sprites", {}).get("front_default")
+            )
+            if not sprite:
+                continue
+
+            ids.append(pid)
+            weights.append(w)
+
+        if not ids:
+            # fallback to Bulbasaur
+            pdata = await self._get_pokemon(1)
+            return pdata, 1, sum(s["base_stat"] for s in pdata.get("stats", []))
+
+        chosen = random.choices(ids, weights=weights, k=1)[0]
+        pdata = await self._get_pokemon(chosen)
+        bst = sum(s["base_stat"] for s in pdata.get("stats", []))
+        return pdata, chosen, bst
+
+    @staticmethod
+    def _compute_catch_chance(ball_key: str, bst: int) -> float:
+        if ball_key == "masterball":
+            return 1.0
+        # Stronger Pokémon => harder: scale down with BST
+        # Normalized difficulty ~ bst/700 in [~0.3, 1.0+]
+        difficulty = min(1.2, bst / 700.0)
+        base = 0.40  # Poké Ball baseline
+        bonus = BALL_TUNING[ball_key]["bonus_catch"]
+        chance = base + bonus - (0.50 * difficulty)
+        return max(0.05, min(0.95, chance))
+
+    # --------- Views / Buttons ---------
+
+    class ThrowView(discord.ui.View):
+        def __init__(self, cog: "PokeGacha", author: discord.abc.User, timeout: int = 60):
+            super().__init__(timeout=timeout)
+            self.cog = cog
+            self.author = author
+
+        async def interaction_check(self, interaction: discord.Interaction) -> bool:
+            if interaction.user.id != self.author.id:
+                await interaction.response.send_message(
+                    "This gacha panel isn't yours — run the command to get your own!", ephemeral=True
+                )
+                return False
+            return True
+
+        async def _throw(self, interaction: discord.Interaction, ball_key: str, label: str):
+            costs = await self.cog.config.costs()
+            cost = float(costs[ball_key])
+
+            # Charge first (so insufficient funds errors show immediately)
+            try:
+                await self.cog._charge(interaction.user, cost)
+            except ValueError as e:
+                await interaction.response.send_message(f"❌ {e}", ephemeral=True)
+                return
+            except RuntimeError as e:
+                await interaction.response.send_message(f"❌ {e}", ephemeral=True)
+                return
+
+            # Roll encounter + catch
+            try:
+                pdata, pid, bst = await self.cog._random_encounter(ball_key)
+                name = pdata.get("name", "unknown").title()
+                sprite = (
+                    pdata.get("sprites", {}).get("other", {}).get("official-artwork", {}).get("front_default")
+                    or pdata.get("sprites", {}).get("front_default")
+                )
+
+                chance = self.cog._compute_catch_chance(ball_key, bst)
+                caught = (ball_key == "masterball") or (random.random() <= chance)
+
+                embed = discord.Embed(
+                    title=f"{interaction.user.display_name} threw a {label}!",
+                    description=(
+                        f"You encountered **{name}** (ID #{pid})!\n"
+                        f"Base Stat Total: **{bst}**\n"
+                        + ("**Caught!** 🎉" if caught else "It fled... 😢")
+                    ),
+                    color=discord.Color.green() if caught else discord.Color.red(),
+                )
+                if sprite:
+                    embed.set_thumbnail(url=sprite)
+
+                if not caught:
+                    # offer a tiny consolation refund? (optional) — disabled by default
+                    pass
+                else:
+                    # Save to pokebox
+                    userconf = self.cog.config.user(interaction.user)
+                    box = await userconf.pokebox()
+                    box[name] = int(box.get(name, 0)) + 1
+                    await userconf.pokebox.set(box)
+
+                bal = await self.cog._get_balance(interaction.user)
+                embed.set_footer(text=f"Catch chance ~ {int(chance*100)}% • New balance: {bal:.2f} WC")
+
+                # Save last roll (for fun/telemetry)
+                await self.cog.config.user(interaction.user).last_roll.set({
+                    "pokemon": name,
+                    "id": pid,
+                    "bst": bst,
+                    "ball": ball_key,
+                    "caught": caught,
+                })
+
+                await interaction.response.edit_message(embed=embed, view=self)
+
+            except Exception as e:
+                # Refund on error
+                try:
+                    await self.cog._refund(interaction.user, cost)
+                except Exception:
+                    pass
+                await interaction.response.send_message(
+                    f"Something went wrong while rolling the gacha: {e}", ephemeral=True
+                )
+
+        @discord.ui.button(label="Poké Ball", style=discord.ButtonStyle.secondary, emoji="⚪")
+        async def pokeball(self, interaction: discord.Interaction, button: discord.ui.Button):
+            await self._throw(interaction, "pokeball", "Poké Ball")
+
+        @discord.ui.button(label="Great Ball", style=discord.ButtonStyle.primary, emoji="🔵")
+        async def greatball(self, interaction: discord.Interaction, button: discord.ui.Button):
+            await self._throw(interaction, "greatball", "Great Ball")
+
+        @discord.ui.button(label="Ultra Ball", style=discord.ButtonStyle.success, emoji="🟡")
+        async def ultraball(self, interaction: discord.Interaction, button: discord.ui.Button):
+            await self._throw(interaction, "ultraball", "Ultra Ball")
+
+        @discord.ui.button(label="Master Ball", style=discord.ButtonStyle.danger, emoji="🟣")
+        async def masterball(self, interaction: discord.Interaction, button: discord.ui.Button):
+            await self._throw(interaction, "masterball", "Master Ball")
+
+    # --------- Commands ---------
+
+    @commands.hybrid_command(name="gacha")
+    async def gacha(self, ctx: commands.Context):
+        """Open the PokéGacha panel and throw balls with buttons."""
+        try:
+            # pre-flight: ensure economy exists & we can read balance
+            bal = await self._get_balance(ctx.author)
+        except Exception as e:
+            await ctx.reply(f"Economy unavailable: {e}\nMake sure the NexusExchange cog is loaded.")
             return
-        lines = []
-        for oid, m in mons.items():
-            lines.append(f"`{oid}` — {m['species']} Lv.{m['level']} (PWR {OwnedMon(**m).power()})")
-        await ctx.send(box("\n".join(lines), "ini"))
 
-    # INFO
-    @mon_group.command(name="info")
-    async def mon_info(self, ctx: commands.Context, oid: str):
-        """View detailed info for a mon by OID."""
-        u = self.config.user(ctx.author)
-        mons = await u.mons()
-        m = mons.get(oid)
-        if not m:
-            await ctx.send("No mon with that OID.")
+        costs = await self.config.costs()
+        embed = discord.Embed(
+            title="PokéGacha — Catch 'em with Wellcoins!",
+            description=(
+                "Choose a ball below. Higher tiers bias toward stronger Pokémon and raise catch chance.\n\n"
+                f"Costs: ⚪ Poké Ball **{costs['pokeball']:.2f}** • 🔵 Great Ball **{costs['greatball']:.2f}** "
+                f"• 🟡 Ultra Ball **{costs['ultraball']:.2f}** • 🟣 Master Ball **{costs['masterball']:.2f}**"
+            ),
+            color=discord.Color.blurple(),
+        )
+        embed.set_footer(text=f"Your balance: {bal:.2f} WC")
+
+        view = self.ThrowView(self, ctx.author)
+        await ctx.reply(embed=embed, view=view)
+
+    @commands.hybrid_command(name="pokebox")
+    async def pokebox(self, ctx: commands.Context, member: Optional[discord.Member] = None):
+        """Show your (or another member's) caught Pokémon."""
+        member = member or ctx.author
+        box = await self.config.user(member).pokebox()
+        if not box:
+            await ctx.reply(f"{member.display_name} has no Pokémon yet. Go roll the gacha!")
             return
-        mon = OwnedMon(**m)
-        embed = discord.Embed(title=f"{mon.species} — OID {mon.oid}")
-        embed.add_field(name="Level", value=str(mon.level))
-        embed.add_field(name="XP", value=str(mon.xp))
-        embed.add_field(name="Origin", value=mon.origin_net.title())
-        stats = mon.stats
-        s = "\n".join([
-            f"HP {stats['hp']}",
-            f"Atk {stats['attack']} | Def {stats['defense']}",
-            f"SpA {stats['sp_atk']} | SpD {stats['sp_def']}",
-            f"Spe {stats['speed']}",
-            f"Power {mon.power()}"
-        ])
-        embed.add_field(name="Stats", value=box(s, "ini"), inline=False)
-        await ctx.send(embed=embed)
 
-    # TEAM MANAGEMENT
-    @mon_group.group(name="team")
-    async def team_group(self, ctx: commands.Context):
-        """Manage your active team (max 6)."""
+        # Sort by count desc, then name
+        entries = sorted(box.items(), key=lambda kv: (-int(kv[1]), kv[0]))
+        chunks: List[str] = []
+        line = []
+        total = 0
+        for name, count in entries:
+            total += int(count)
+            line.append(f"**{name}** ×{int(count)}")
+            if sum(len(x) for x in line) > 800:
+                chunks.append(" • ".join(line))
+                line = []
+        if line:
+            chunks.append(" • ".join(line))
+
+        for i, chunk in enumerate(chunks, start=1):
+            embed = discord.Embed(
+                title=(f"{member.display_name}'s PokéBox (page {i}/{len(chunks)})"),
+                description=chunk,
+                color=discord.Color.teal(),
+            )
+            if i == 1:
+                embed.set_footer(text=f"Total caught: {total}")
+            await ctx.send(embed=embed)
+
+    @checks.admin()
+    @commands.hybrid_group(name="gachaadmin")
+    async def gachaadmin(self, ctx: commands.Context):
+        """Admin settings for PokéGacha."""
         pass
 
-    @team_group.command(name="view")
-    async def team_view(self, ctx: commands.Context):
-        u = self.config.user(ctx.author)
-        data = await u.all()
-        team: List[str] = data.get("team", [])
-        mons: Dict[str, dict] = data.get("mons", {})
-        if not team:
-            await ctx.send("No active team. Add with `mon team add <oid>`.")
-            return
-        lines = []
-        for oid in team:
-            m = mons.get(oid)
-            if not m:
-                continue
-            mon = OwnedMon(**m)
-            lines.append(f"`{oid}` — {mon.species} Lv.{mon.level} (PWR {mon.power()})")
-        await ctx.send(box("\n".join(lines), "ini"))
-
-    @team_group.command(name="add")
-    async def team_add(self, ctx: commands.Context, oid: str):
-        u = self.config.user(ctx.author)
-        data = await u.all()
-        team: List[str] = data.get("team", [])
-        mons: Dict[str, dict] = data.get("mons", {})
-        if oid not in mons:
-            await ctx.send("You don't own that OID.")
-            return
-        if oid in team:
-            await ctx.send("That mon is already in your team.")
-            return
-        if len(team) >= 6:
-            await ctx.send("Team is full (max 6). Remove one first.")
-            return
-        team.append(oid)
-        await u.team.set(team)
-        await ctx.send("Added to team.")
-
-    @team_group.command(name="remove")
-    async def team_remove(self, ctx: commands.Context, oid: str):
-        u = self.config.user(ctx.author)
-        team = await u.team()
-        if oid not in team:
-            await ctx.send("That OID isn't on your team.")
-            return
-        team.remove(oid)
-        await u.team.set(team)
-        await ctx.send("Removed from team.")
-
-    # DEX / COLLECTION
-    @mon_group.command(name="dex")
-    async def dex(self, ctx: commands.Context):
-        await self._ensure_specs(ctx)
-        u = self.config.user(ctx.author)
-        dex: Dict[str, int] = await u.dex()
-        caught = len([s for s in self._specs if dex.get(s)])
-        total = len(self._specs)
-        pct = (caught / total * 100) if total else 0
-        await ctx.send(f"📘 Dex: {caught}/{total} species ({pct:.1f}%).")
-
-    # ALLOCATE STAT POINTS
-    @mon_group.command(name="allocate")
-    async def allocate(self, ctx: commands.Context, oid: str, stat: str, points: int = 1):
-        """Allocate pending stat points to one of: hp, attack, defense, sp_atk, sp_def, speed."""
-        stat = stat.lower()
-        if stat not in {"hp", "attack", "defense", "sp_atk", "sp_def", "speed"}:
-            await ctx.send("Invalid stat.")
-            return
-        u = self.config.user(ctx.author)
-        data = await u.all()
-        mons: Dict[str, dict] = data.get("mons", {})
-        m = mons.get(oid)
-        if not m:
-            await ctx.send("No mon with that OID.")
-            return
-        pending = int(data.get("pending_points", 0))
-        if pending <= 0:
-            await ctx.send("You have no pending stat points. Battle to level up!")
-            return
-        to_spend = min(points, pending)
-        m.setdefault("stats", {})
-        m["stats"][stat] = int(m["stats"].get(stat, 0)) + to_spend
-        pending -= to_spend
-        mons[oid] = m
-        await u.mons.set(mons)
-        await u.pending_points.set(pending)
-        await ctx.send(f"Allocated {to_spend} point(s) to {stat}. Remaining points: {pending}.")
-
-    # COMBINE DUPLICATES
-    @mon_group.command(name="combine")
-    async def combine(self, ctx: commands.Context, target_oid: str, source_oid: str):
-        """Combine two mons of the same species. Source is consumed.
-
-        - XP is summed.
-        - Stats are averaged (rounded), then +1 to the highest stat.
-        """
-        u = self.config.user(ctx.author)
-        data = await u.all()
-        mons: Dict[str, dict] = data.get("mons", {})
-        t = mons.get(target_oid)
-        s = mons.get(source_oid)
-        if not t or not s:
-            await ctx.send("Invalid OIDs.")
-            return
-        if t["species"] != s["species"]:
-            await ctx.send("Species must match to combine.")
-            return
-        # Merge xp and stats
-        t["xp"] = int(t.get("xp", 0)) + int(s.get("xp", 0))
-        for key in ["hp", "attack", "defense", "sp_atk", "sp_def", "speed"]:
-            avg = round((t["stats"][key] + s["stats"][key]) / 2)
-            t["stats"][key] = avg
-        # small bonus to highest stat
-        highest = max(t["stats"], key=lambda k: t["stats"][k])
-        t["stats"][highest] += 1
-        # Delete source
-        mons.pop(source_oid, None)
-        # Remove from team if present
-        team: List[str] = data.get("team", [])
-        if source_oid in team:
-            team.remove(source_oid)
-        # Apply potential level ups and pending points
-        mon = OwnedMon(**t)
-        levels = self._apply_level_ups(mon)
-        t = asdict(mon)
-        mons[target_oid] = t
-        await u.mons.set(mons)
-        await u.team.set(team)
-        if levels:
-            await u.pending_points.set(int(data.get("pending_points", 0)) + levels * STAT_POINTS_PER_LEVEL)
-        await ctx.send(f"Combined! {levels} level(s) gained; +{levels * STAT_POINTS_PER_LEVEL} pending points.")
-        
-    @mon_group.command(name="battle2")
-    async def battle2(self, ctx: commands.Context):
-        """(Stable) Battle an NPC team of 6 with level/XP and pending-points accounting."""
-        await self._ensure_specs(ctx)
-        u = self.config.user(ctx.author)
-        data = await u.all()
-        team_ids: List[str] = data.get("team", [])
-        mons: Dict[str, dict] = data.get("mons", {})
-        if not team_ids:
-            await ctx.send("You need an active team. Use `mon team add <oid>`." )
-            return
-        team = [OwnedMon(**mons[i]) for i in team_ids if i in mons]
-        if not team:
-            await ctx.send("Your team data seems empty. Add mons again.")
-            return
-        avg_lvl = max(1, round(sum(m.level for m in team) / len(team)))
-        npc_team: List[OwnedMon] = []
-        for _ in range(6):
-            spec = random.choice(list(self._specs.values()))
-            base_stats = self._base_stats_for(spec)
-            for k in base_stats:
-                base_stats[k] = max(1, int(base_stats[k] * random.uniform(0.9, 1.1)))
-            npc_team.append(OwnedMon(oid="NPC", species=spec.name, level=max(1, int(avg_lvl + random.choice([-1,0,0,1]))), xp=0, stats=base_stats, origin_net="npc"))
-
-        your_power = sum(m.power() for m in team)
-        npc_power = sum(m.power() for m in npc_team)
-        your_roll = int(your_power * random.uniform(0.9, 1.1))
-        npc_roll = int(npc_power * random.uniform(0.9, 1.1))
-        win = your_roll >= npc_roll
-
-        # Distribute XP with reliable point tracking
-        pending_add = 0
-        lines = [f"Your roll: {your_roll} vs NPC: {npc_roll}"]
-        for m in team:
-            xp_gain = XP_PER_BATTLE_WIN if win else XP_PER_BATTLE_LOSS
-            m.xp += xp_gain
-            before = m.level
-            levels = self._apply_level_ups(m)
-            mons[m.oid] = asdict(m)
-            pending_add += levels * STAT_POINTS_PER_LEVEL
-            if levels:
-                lines.append(f"{m.species} +{xp_gain} XP, +{levels} level(s)!")
-            else:
-                lines.append(f"{m.species} +{xp_gain} XP.")
-        await u.mons.set(mons)
-        if pending_add:
-            await u.pending_points.set(int(data.get("pending_points", 0)) + pending_add)
-        result = "🏆 Victory!" if win else "⚔️ Defeat (good effort)"
-        lines.insert(0, result)
-        await ctx.send("\n".join(lines))
-
-    # ECONOMY HELPERS
-    @mon_group.command(name="balance")
-    async def balance(self, ctx: commands.Context):
-        ne = self._nexus()
-        if not ne:
-            await ctx.send("NexusExchange cog not enabled.")
-            return
-        bal = await ne.get_balance(ctx.author)
-        await ctx.send(f"You have {bal} Wellcoins.")
-    
+    @gachaadmin.command(name="setcosts")
+    async def gacha_setcosts(
+        self,
+        ctx: commands.Context,
+        pokeball: Optional[float] = None,
+        greatball: Optional[float] = None,
+        ultraball: Optional[float] = None,
+        masterball: Optional[float] = None,
+    ):
+        """Set custom Wellcoin costs for balls. Omit a value to leave it unchanged.
+        Example: `[p]gachaadmin setcosts 10 25 60 250`"""
+        costs = await self.config.costs()
+        if pokeball is not None:
+            costs["pokeball"] = float(pokeball)
+        if greatball is not None:
+            costs["greatball"] = float(greatball)
+        if ultraball is not None:
+            costs["ultraball"] = float(ultraball)
+        if masterball is not None:
+            costs["masterball"] = float(masterball)
+        await self.config.costs.set(costs)
+        await ctx.reply(
+            "Updated costs: "
+            f"Poké {costs['pokeball']:.2f}, Great {costs['greatball']:.2f}, "
+            f"Ultra {costs['ultraball']:.2f}, Master {costs['masterball']:.2f}"
+        )
 
 
-async def setup(bot: Red):
-    cog = GachaCatchEmAll(bot)
-    await bot.add_cog(cog)
+async def setup(bot: commands.Bot):
+    await bot.add_cog(PokeGacha(bot))
