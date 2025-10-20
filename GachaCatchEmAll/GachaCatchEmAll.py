@@ -55,6 +55,99 @@ class GachaCatchEmAll(commands.Cog):
         self._pokemon_cache: Dict[int, Dict[str, Any]] = {}  # id -> pokemon data
         self._list_lock = asyncio.Lock()
 
+
+    class InvPaginator(discord.ui.View):
+        def __init__(self, author: discord.abc.User, member: discord.Member, pages: List[List[Dict[str, Any]]], timeout: int = 180):
+            super().__init__(timeout=timeout)
+            self.author = author              # who can press the buttons
+            self.member = member              # whose inventory we're viewing
+            self.pages = pages                # List[List[entry dict]]
+            self.index = 0
+            self.message: Optional[discord.Message] = None
+    
+        async def interaction_check(self, interaction: discord.Interaction) -> bool:
+            if interaction.user.id != self.author.id:
+                await interaction.response.send_message("These controls aren't yours. Run the command to get your own.", ephemeral=True)
+                return False
+            return True
+    
+        def _disable_all(self):
+            for child in self.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = True
+    
+        async def on_timeout(self) -> None:
+            self._disable_all()
+            try:
+                if self.message:
+                    await self.message.edit(view=self)
+            except Exception:
+                pass
+    
+        def _render_embed(self) -> discord.Embed:
+            page = self.pages[self.index]
+            lines = []
+            for e in page:
+                nick = e.get("nickname")
+                label = f"{e.get('name','Unknown')} (#{e.get('pokedex_id','?')})"
+                if nick:
+                    label += f" — **{nick}**"
+                lines.append(f"`{e.get('uid','?')}` • {label}")
+            desc = "\n".join(lines) if lines else "_No entries on this page._"
+    
+            embed = discord.Embed(
+                title=f"{self.member.display_name}'s Pokémon (page {self.index + 1}/{len(self.pages)})",
+                description=desc,
+                color=discord.Color.blue(),
+            )
+            return embed
+    
+        async def _update(self, interaction: discord.Interaction):
+            # Ack quickly and edit same message
+            if not interaction.response.is_done():
+                try:
+                    await interaction.response.defer()
+                except Exception:
+                    pass
+            if self.message:
+                await self.message.edit(embed=self._render_embed(), view=self)
+    
+        @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
+        async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
+            self.index = 0
+            await self._update(interaction)
+    
+        @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+        async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.index > 0:
+                self.index -= 1
+            await self._update(interaction)
+    
+        @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
+        async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.index < len(self.pages) - 1:
+                self.index += 1
+            await self._update(interaction)
+    
+        @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
+        async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
+            self.index = len(self.pages) - 1
+            await self._update(interaction)
+    
+        @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
+        async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+            # Disable buttons and stop
+            self._disable_all()
+            if not interaction.response.is_done():
+                try:
+                    await interaction.response.defer()
+                except Exception:
+                    pass
+            if self.message:
+                await self.message.edit(view=self)
+            self.stop()
+
+
     # --------- Red utilities ---------
 
     async def red_delete_data_for_user(self, **kwargs):  # GDPR
@@ -482,43 +575,165 @@ class GachaCatchEmAll(commands.Cog):
         msg = await ctx.reply(embed=embed, view=view)
         view.message = msg
 
-    @commands.hybrid_command(name="pokebox")
-    async def pokebox(self, ctx: commands.Context, member: Optional[discord.Member] = None):
-        """Show your (or another member's) caught Pokémon summary by species."""
-        member = member or ctx.author
-        box = await self.config.user(member).pokebox()
-        if not box:
-            await ctx.reply(f"{member.display_name} has no Pokémon yet. Go roll the gacha!")
-            return
+# ===== PokéBox Pagination =====
 
-        # Summarize by species
-        counts: Dict[str, int] = {}
-        for entry in box:
-            key = entry.get("name", "Unknown")
-            counts[key] = counts.get(key, 0) + 1
+class PokeBoxView(discord.ui.View):
+    def __init__(self, cog: "GachaCatchEmAll", author: discord.abc.User, pages: List[discord.Embed], timeout: int = 180):
+        super().__init__(timeout=timeout)
+        self.cog = cog
+        self.author = author
+        self.pages = pages
+        self.index = 0
+        self.message: Optional[discord.Message] = None
 
-        entries = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
-        chunks: List[str] = []
-        line = []
-        total = 0
-        for name, count in entries:
-            total += count
-            line.append(f"**{name}** ×{count}")
-            if sum(len(x) for x in line) > 800:
-                chunks.append(" • ".join(line))
-                line = []
-        if line:
-            chunks.append(" • ".join(line))
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message(
+                "This PokéBox isn’t yours — run the command to open your own.",
+                ephemeral=True,
+            )
+            return False
+        return True
 
-        for i, chunk in enumerate(chunks, start=1):
+    def _disable_all(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+
+    async def on_timeout(self):
+        self._disable_all()
+        try:
+            if self.message:
+                await self.message.edit(view=self)
+        except Exception:
+            pass
+
+    async def _show(self, interaction: discord.Interaction):
+        # Keep editing the same message
+        target = self.message or interaction.message
+        embed = self.pages[self.index]
+        # Update footer page counter (keep existing footer text if present)
+        footer_text = embed.footer.text or ""
+        counter = f"Page {self.index+1}/{len(self.pages)}"
+        embed.set_footer(text=f"{footer_text} • {counter}" if footer_text else counter)
+
+        if interaction.response.is_done():
+            await target.edit(embed=embed, view=self)
+        else:
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="⏮", style=discord.ButtonStyle.secondary)
+    async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.index = 0
+        await self._show(interaction)
+
+    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+    async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.index = (self.index - 1) % len(self.pages)
+        await self._show(interaction)
+
+    @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.index = (self.index + 1) % len(self.pages)
+        await self._show(interaction)
+
+    @discord.ui.button(label="⏭", style=discord.ButtonStyle.secondary)
+    async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.index = len(self.pages) - 1
+        await self._show(interaction)
+
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.danger)
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self._disable_all()
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+        target = self.message or interaction.message
+        await target.edit(view=self)
+        self.stop()
+
+
+def _nickname_or_dash(self, entry: Dict[str, Any]) -> str:
+    nick = entry.get("nickname")
+    return nick if nick else "—"
+
+def _format_types(self, entry: Dict[str, Any]) -> str:
+    types = entry.get("types") or []
+    return " / ".join(t.title() for t in types) if types else "Unknown"
+
+def _format_stats_block(self, entry: Dict[str, Any]) -> str:
+    stats = entry.get("stats") or {}
+    if not stats:
+        return "No stats"
+    # Order common stat names if present
+    order = ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]
+    parts = []
+    for key in order:
+        if key in stats:
+            parts.append(f"{key.replace('-', ' ').title()}: **{stats[key]}**")
+    # Add any extra keys
+    for k, v in stats.items():
+        if k not in order:
+            parts.append(f"{k.replace('-', ' ').title()}: **{v}**")
+    return "\n".join(parts)
+
+def _build_pokebox_pages(self, member: discord.abc.User, box: List[Dict[str, Any]]) -> List[discord.Embed]:
+    """Create pages: list pages first (Nickname – Real Name – UID), then one detail page per mon."""
+    # Sort newest first
+    entries = sorted(box, key=lambda e: e.get("caught_at", ""), reverse=True)
+
+    # ---- List pages ----
+    list_lines = []
+    for e in entries:
+        line = f"{self._nickname_or_dash(e)} – {e.get('name', 'Unknown')} – `{e.get('uid','??')}`"
+        list_lines.append(line)
+
+    pages: List[discord.Embed] = []
+    if list_lines:
+        page_size = 12
+        for i in range(0, len(list_lines), page_size):
+            chunk = list_lines[i:i + page_size]
             embed = discord.Embed(
-                title=(f"{member.display_name}'s PokéBox (page {i}/{len(chunks)})"),
-                description=chunk,
+                title=f"{member.display_name}'s PokéBox — Overview",
+                description="\n".join(chunk),
                 color=discord.Color.teal(),
             )
-            if i == 1:
-                embed.set_footer(text=f"Total caught: {total}")
-            await ctx.send(embed=embed)
+            embed.set_footer(text=f"Total Pokémon: {len(entries)}")
+            pages.append(embed)
+    else:
+        pages.append(discord.Embed(
+            title=f"{member.display_name}'s PokéBox — Overview",
+            description="No Pokémon yet.",
+            color=discord.Color.teal()
+        ))
+
+    # ---- Detail pages (one per mon) ----
+    for e in entries:
+        title = e.get("name", "Unknown")
+        nick = e.get("nickname")
+        if nick:
+            title = f"{nick} ({e.get('name','Unknown')})"
+        desc = (
+            f"**UID:** `{e.get('uid','??')}`\n"
+            f"**ID:** {e.get('pokedex_id','?')}\n"
+            f"**Types:** {self._format_types(e)}\n"
+            f"**BST:** {e.get('bst','?')}\n\n"
+            f"**Stats:**\n{self._format_stats_block(e)}"
+        )
+        embed = discord.Embed(
+            title=title,
+            description=desc,
+            color=discord.Color.blue(),
+        )
+        sprite = e.get("sprite")
+        if sprite:
+            embed.set_thumbnail(url=sprite)
+        pages.append(embed)
+
+    return pages
+
 
     @commands.hybrid_command(name="pokeinv")
     async def pokeinv(self, ctx: commands.Context, member: Optional[discord.Member] = None):
