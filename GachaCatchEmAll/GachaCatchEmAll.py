@@ -13,8 +13,8 @@ from discord import app_commands
 from redbot.core import commands, Config
 from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import pagify
-from redbot.core.utils.chat_formatting import humanize_timedeltafrom redbot.core.utils 
-import chat_formatting as cf
+from redbot.core.utils.chat_formatting import humanize_timedelta
+from redbot.core.utils import chat_formatting as cf
 from redbot.core.utils._internal_task import create_task
 from redbot.core.data_manager import cog_data_path
 
