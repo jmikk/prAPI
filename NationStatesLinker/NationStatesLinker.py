@@ -51,6 +51,7 @@ class NationStatesLinker(commands.Cog):
             resident_role=None,
             wa_resident_role=None,
             region_name=None,  # e.g., "vibonia"
+            log_channel_id = None,
         )
 
     # --------------- Utility ---------------
