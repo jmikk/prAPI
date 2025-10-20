@@ -436,8 +436,8 @@ class GachaCatchEmAll(commands.Cog):
             embed.add_field(name=k.title(), value=f"Price: {v['price']} WC Levels: {v['level_range'][0]}–{v['level_range'][1]} Rates: {rates}", inline=False)
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="roll", description="Roll the gacha to obtain a monster.")
     @app_commands.describe(ball="pokeball/greatball/ultraball/masterball", count="1-10")
+    @app_commands.autocomplete(ball=ac_ball)
     async def roll(self, interaction: discord.Interaction, ball: str, count: app_commands.Range[int,1,10]=1):
         ball = ball.lower()
         if ball not in GachaCatchEmAll.BALLS:
@@ -663,6 +663,14 @@ class GachaCatchEmAll(commands.Cog):
         self.content.balls_path.write_text(json.dumps(balls, indent=2))
         self._load_content()
         await interaction.response.send_message(f"Ball '{key}' saved to JSON and reloaded.")
+    
+    async def ac_ball(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        keys = list(PokeAutoBattler.BALLS.keys())
+        if current:
+            keys = [k for k in keys if current.lower() in k.lower()]
+        keys = keys[:25]
+        return [app_commands.Choice(name=k.title(), value=k) for k in keys]
+
 
 # ---------------------------
 # Setup
