@@ -744,6 +744,38 @@ class NationStatesLinker(commands.Cog):
             return await ctx.send("❌ No region configured or provided.", allowed_mentions=discord.AllowedMentions.none())
         await ctx.send(f"🔬 Probing region `{region}`…", allowed_mentions=discord.AllowedMentions.none())
         await self.fetch_region_members(region, ctx=ctx, verbose=True)
+    
+    @commands.command(name="nsladminlink")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def nsladminlink(self, ctx: commands.Context, member: discord.Member, nation: str, *, flag: Optional[str] = None):
+        """Admin command to link a nation to a user. Use --force to skip verify."""
+        nation_norm = self.normalize_nation(nation)
+    
+        if flag != "--force":
+            return await ctx.send(
+                "⚠️ To prevent abuse, verification requires the NS checksum.\n"
+                "If you're sure, use:\n"
+                f"`{ctx.clean_prefix}nsladminlink {member.id} {nation} --force` to override."
+            )
+    
+        async with self.config.user(member).linked_nations() as nations:
+            if nation_norm in nations:
+                return await ctx.send(f"ℹ️ {self.display_nation(nation_norm)} is already linked to {member.display_name}.")
+            nations.append(nation_norm)
+    
+        await ctx.send(f"✅ Force-linked **{self.display_nation(nation_norm)}** to **{member.display_name}**.")
+    
+        if ctx.guild:
+            await self.apply_roles(ctx.guild, member, ctx=ctx)
+    
+        log_channel_id = await self.config.guild(ctx.guild).log_channel_id()
+        if log_channel_id:
+            log_channel = ctx.guild.get_channel(log_channel_id)
+            if log_channel:
+                await log_channel.send(f"🛡️ Admin {ctx.author} force-linked {nation_norm} to {member}.")
+    
+
 
 
 
