@@ -377,7 +377,7 @@ class NationStatesLinker(commands.Cog):
             else:
                 await ctx.send(f"❌ You do not have **{self.display_nation(nation_name)}** linked to your account.")
    
-  @commands.command(name="nslaudit")
+    @commands.command(name="nslaudit")
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     async def nslaudit(self, ctx: commands.Context):
