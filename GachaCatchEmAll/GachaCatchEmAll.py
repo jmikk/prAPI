@@ -216,7 +216,17 @@ class GachaCatchEmAll(commands.Cog):
             # Defer immediately to avoid the dreaded "This interaction failed" on slower API calls
             if not interaction.response.is_done():
                 try:
-                    await interaction.response.defer(thinking=True)
+                    # Replace defer(thinking=True) with a custom loading message
+                    if not interaction.response.is_done():
+                        try:
+                            loading_msg = await interaction.response.send_message(
+                                "🔎 Searching the tall grass..."
+                            )
+                        except Exception:
+                            # Fallback if first send fails
+                            loading_msg = None
+                    else:
+                        loading_msg = None
                 except Exception:
                     pass
 
@@ -278,7 +288,11 @@ class GachaCatchEmAll(commands.Cog):
                 bal = await self.cog._get_balance(interaction.user)
                 embed.set_footer(text=f"Catch chance ~ {int(chance*100)}% • New balance: {bal:.2f} WC")
 
-                await interaction.edit_original_response(embed=embed, view=self)
+                # Edit the loading message instead of the original deferred message
+                if loading_msg:
+                    await loading_msg.edit(content=None, embed=embed, view=self)
+                else:
+                    await interaction.edit_original_response(embed=embed, view=self)
 
                 # Save last roll
                 await self.cog.config.user(interaction.user).last_roll.set({
