@@ -514,37 +514,50 @@ class Casino(commands.Cog):
                 pass
         return float(await self.config.regional_debt_shadow())
     
+    
     async def _set_regional_debt(self, value: float):
-        """
-        Try to set via StockMarket. If not possible, store in shadow.
-        """
+        value = max(0.0, float(value))
         sm = self.bot.get_cog("StockMarket")
-        if sm and hasattr(sm, "set_regional_debt"):
+        if sm and hasattr(sm, "increase_regional_debt") and hasattr(sm, "decrease_regional_debt"):
             try:
-                await sm.set_regional_debt(max(0.0, float(value)))
+                current = float(await sm.increase_regional_debt(0))
+                delta = value - current
+                if delta > 0:
+                    await sm.increase_regional_debt(delta)
+                elif delta < 0:
+                    await sm.decrease_regional_debt(-delta, clamp_to_zero=True)
                 return
             except Exception:
                 pass
-        await self.config.regional_debt_shadow.set(max(0.0, float(value)))
+        await self.config.regional_debt_shadow.set(value)
     
     async def _increase_regional_debt(self, amount: float):
-        """
-        Increase total regional debt by amount.
-        """
         if amount <= 0:
             return
+        sm = self.bot.get_cog("StockMarket")
+        if sm and hasattr(sm, "increase_regional_debt"):
+            try:
+                await sm.increase_regional_debt(float(amount))
+                return
+            except Exception:
+                pass
+        # shadow fallback
         current = await self._get_regional_debt()
-        await self._set_regional_debt(current + amount)
+        await self._set_regional_debt(current + float(amount))
     
     async def _decrease_regional_debt(self, amount: float):
-        """ 
-        Pay down regional debt by amount (clamped to zero).
-        """
         if amount <= 0:
             return
+        sm = self.bot.get_cog("StockMarket")
+        if sm and hasattr(sm, "decrease_regional_debt"):
+            try:
+                await sm.decrease_regional_debt(float(amount), clamp_to_zero=True)
+                return
+            except Exception:
+                pass
+        # shadow fallback
         current = await self._get_regional_debt()
-        new_val = max(0.0, current - amount)
-        await self._set_regional_debt(new_val)
+        await self._set_regional_debt(max(0.0, current - float(amount)))
 
     @commands.command()
     @checks.admin_or_permissions(manage_guild=True)
