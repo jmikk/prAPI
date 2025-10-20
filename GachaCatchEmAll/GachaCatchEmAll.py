@@ -55,7 +55,7 @@ BALL_TUNING = {
 }
 
 
-class GachaCatchEmAll(commands.Cog):
+class PokeGacha(commands.Cog):
     """Pokémon gacha using Wellcoins + PokéAPI"""
 
     def __init__(self, bot: commands.Bot):
@@ -167,19 +167,15 @@ class GachaCatchEmAll(commands.Cog):
                 continue
 
             # Weighting scheme:
-            #  bias < 0  -> prefer lower BST
-            #  bias == 0 -> balanced
-            #  bias > 0  -> prefer higher BST (stronger)
             if bias < 0:
-                w = max(1, 800 - bst)  # weak preference
+                w = max(1, 800 - bst)
             elif bias == 0:
-                w = max(1, 100 + abs(500 - bst) // 5)  # fairly flat
+                w = max(1, 100 + abs(500 - bst) // 5)
             elif bias == 1:
                 w = max(1, bst)
-            else:  # bias >= 2 (Master): strongly prefer very high BST
+            else:
                 w = max(1, bst * bst // 50)
 
-            # Ignore totally missing sprites (no visual reveal is less fun)
             sprite = (
                 pdata.get("sprites", {}).get("other", {}).get("official-artwork", {}).get("front_default")
                 or pdata.get("sprites", {}).get("front_default")
@@ -191,7 +187,6 @@ class GachaCatchEmAll(commands.Cog):
             weights.append(w)
 
         if not ids:
-            # fallback to Bulbasaur
             pdata = await self._get_pokemon(1)
             return pdata, 1, sum(s["base_stat"] for s in pdata.get("stats", []))
 
@@ -204,10 +199,8 @@ class GachaCatchEmAll(commands.Cog):
     def _compute_catch_chance(ball_key: str, bst: int) -> float:
         if ball_key == "masterball":
             return 1.0
-        # Stronger Pokémon => harder: scale down with BST
-        # Normalized difficulty ~ bst/700 in [~0.3, 1.0+]
         difficulty = min(1.2, bst / 700.0)
-        base = 0.40  # Poké Ball baseline
+        base = 0.40
         bonus = BALL_TUNING[ball_key]["bonus_catch"]
         chance = base + bonus - (0.50 * difficulty)
         return max(0.05, min(0.95, chance))
@@ -228,18 +221,40 @@ class GachaCatchEmAll(commands.Cog):
                 return False
             return True
 
+        async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item) -> None:
+            # Fallback error reporter so users don't see "This interaction failed"
+            try:
+                msg = f"⚠️ Error: {type(error).__name__}: {error}"
+                if interaction.response.is_done():
+                    await interaction.followup.send(msg)
+                else:
+                    await interaction.response.send_message(msg)
+            except Exception:
+                pass
+
         async def _throw(self, interaction: discord.Interaction, ball_key: str, label: str):
+            # Defer immediately to avoid the dreaded "This interaction failed" on slower API calls
+            if not interaction.response.is_done():
+                try:
+                    await interaction.response.defer(thinking=True)
+                except Exception:
+                    pass
+
             costs = await self.cog.config.costs()
             cost = float(costs[ball_key])
 
             # Charge first (so insufficient funds errors show immediately)
             try:
                 await self.cog._charge(interaction.user, cost)
-            except ValueError as e:
-                await interaction.response.send_message(f"❌ {e}", ephemeral=True)
-                return
-            except RuntimeError as e:
-                await interaction.response.send_message(f"❌ {e}", ephemeral=True)
+            except Exception as e:
+                text = f"❌ {e}"
+                try:
+                    if interaction.response.is_done():
+                        await interaction.followup.send(text)
+                    else:
+                        await interaction.response.send_message(text)
+                except Exception:
+                    pass
                 return
 
             # Roll encounter + catch
@@ -257,8 +272,10 @@ class GachaCatchEmAll(commands.Cog):
                 embed = discord.Embed(
                     title=f"{interaction.user.display_name} threw a {label}!",
                     description=(
-                        f"You encountered **{name}** (ID #{pid})!\n"
-                        f"Base Stat Total: **{bst}**\n"
+                        f"You encountered **{name}** (ID #{pid})!
+"
+                        f"Base Stat Total: **{bst}**
+"
                         + ("**Caught!** 🎉" if caught else "It fled... 😢")
                     ),
                     color=discord.Color.green() if caught else discord.Color.red(),
@@ -266,11 +283,7 @@ class GachaCatchEmAll(commands.Cog):
                 if sprite:
                     embed.set_thumbnail(url=sprite)
 
-                if not caught:
-                    # offer a tiny consolation refund? (optional) — disabled by default
-                    pass
-                else:
-                    # Save to pokebox
+                if caught:
                     userconf = self.cog.config.user(interaction.user)
                     box = await userconf.pokebox()
                     box[name] = int(box.get(name, 0)) + 1
@@ -279,7 +292,9 @@ class GachaCatchEmAll(commands.Cog):
                 bal = await self.cog._get_balance(interaction.user)
                 embed.set_footer(text=f"Catch chance ~ {int(chance*100)}% • New balance: {bal:.2f} WC")
 
-                # Save last roll (for fun/telemetry)
+                await interaction.edit_original_response(embed=embed, view=self)
+
+                # Save last roll
                 await self.cog.config.user(interaction.user).last_roll.set({
                     "pokemon": name,
                     "id": pid,
@@ -288,17 +303,20 @@ class GachaCatchEmAll(commands.Cog):
                     "caught": caught,
                 })
 
-                await interaction.response.edit_message(embed=embed, view=self)
-
             except Exception as e:
-                # Refund on error
+                # Refund on error, then post the error in chat
                 try:
                     await self.cog._refund(interaction.user, cost)
                 except Exception:
                     pass
-                await interaction.response.send_message(
-                    f"Something went wrong while rolling the gacha: {e}", ephemeral=True
-                )
+                try:
+                    msg = f"⚠️ Something went wrong while rolling the gacha: {e}"
+                    if interaction.response.is_done():
+                        await interaction.followup.send(msg)
+                    else:
+                        await interaction.response.send_message(msg)
+                except Exception:
+                    pass
 
         @discord.ui.button(label="Poké Ball", style=discord.ButtonStyle.secondary, emoji="⚪")
         async def pokeball(self, interaction: discord.Interaction, button: discord.ui.Button):
