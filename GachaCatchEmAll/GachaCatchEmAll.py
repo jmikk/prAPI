@@ -56,98 +56,6 @@ class GachaCatchEmAll(commands.Cog):
         self._list_lock = asyncio.Lock()
 
 
-    class InvPaginator(discord.ui.View):
-        def __init__(self, author: discord.abc.User, member: discord.Member, pages: List[List[Dict[str, Any]]], timeout: int = 180):
-            super().__init__(timeout=timeout)
-            self.author = author              # who can press the buttons
-            self.member = member              # whose inventory we're viewing
-            self.pages = pages                # List[List[entry dict]]
-            self.index = 0
-            self.message: Optional[discord.Message] = None
-    
-        async def interaction_check(self, interaction: discord.Interaction) -> bool:
-            if interaction.user.id != self.author.id:
-                await interaction.response.send_message("These controls aren't yours. Run the command to get your own.", ephemeral=True)
-                return False
-            return True
-    
-        def _disable_all(self):
-            for child in self.children:
-                if isinstance(child, discord.ui.Button):
-                    child.disabled = True
-    
-        async def on_timeout(self) -> None:
-            self._disable_all()
-            try:
-                if self.message:
-                    await self.message.edit(view=self)
-            except Exception:
-                pass
-    
-        def _render_embed(self) -> discord.Embed:
-            page = self.pages[self.index]
-            lines = []
-            for e in page:
-                nick = e.get("nickname")
-                label = f"{e.get('name','Unknown')} (#{e.get('pokedex_id','?')})"
-                if nick:
-                    label += f" — **{nick}**"
-                lines.append(f"`{e.get('uid','?')}` • {label}")
-            desc = "\n".join(lines) if lines else "_No entries on this page._"
-    
-            embed = discord.Embed(
-                title=f"{self.member.display_name}'s Pokémon (page {self.index + 1}/{len(self.pages)})",
-                description=desc,
-                color=discord.Color.blue(),
-            )
-            return embed
-    
-        async def _update(self, interaction: discord.Interaction):
-            # Ack quickly and edit same message
-            if not interaction.response.is_done():
-                try:
-                    await interaction.response.defer()
-                except Exception:
-                    pass
-            if self.message:
-                await self.message.edit(embed=self._render_embed(), view=self)
-    
-        @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
-        async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
-            self.index = 0
-            await self._update(interaction)
-    
-        @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
-        async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
-            if self.index > 0:
-                self.index -= 1
-            await self._update(interaction)
-    
-        @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
-        async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
-            if self.index < len(self.pages) - 1:
-                self.index += 1
-            await self._update(interaction)
-    
-        @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
-        async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
-            self.index = len(self.pages) - 1
-            await self._update(interaction)
-    
-        @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
-        async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
-            # Disable buttons and stop
-            self._disable_all()
-            if not interaction.response.is_done():
-                try:
-                    await interaction.response.defer()
-                except Exception:
-                    pass
-            if self.message:
-                await self.message.edit(view=self)
-            self.stop()
-
-
     # --------- Red utilities ---------
 
     async def red_delete_data_for_user(self, **kwargs):  # GDPR
@@ -848,6 +756,100 @@ def _build_pokebox_pages(self, member: discord.abc.User, box: List[Dict[str, Any
             f"Poké {costs['pokeball']:.2f}, Great {costs['greatball']:.2f}, "
             f"Ultra {costs['ultraball']:.2f}, Master {costs['masterball']:.2f}"
         )
+
+
+# --- Add this inside class GachaCatchEmAll(commands.Cog): ---
+
+class InvPaginator(discord.ui.View):
+    def __init__(self, author: discord.abc.User, member: discord.Member, pages: List[List[Dict[str, Any]]], timeout: int = 180):
+        super().__init__(timeout=timeout)
+        self.author = author              # who can press the buttons
+        self.member = member              # whose inventory we're viewing
+        self.pages = pages                # List[List[entry dict]]
+        self.index = 0
+        self.message: Optional[discord.Message] = None
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("These controls aren't yours. Run the command to get your own.", ephemeral=True)
+            return False
+        return True
+
+    def _disable_all(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+
+    async def on_timeout(self) -> None:
+        self._disable_all()
+        try:
+            if self.message:
+                await self.message.edit(view=self)
+        except Exception:
+            pass
+
+    def _render_embed(self) -> discord.Embed:
+        page = self.pages[self.index]
+        lines = []
+        for e in page:
+            nick = e.get("nickname")
+            label = f"{e.get('name','Unknown')} (#{e.get('pokedex_id','?')})"
+            if nick:
+                label += f" — **{nick}**"
+            lines.append(f"`{e.get('uid','?')}` • {label}")
+        desc = "\n".join(lines) if lines else "_No entries on this page._"
+
+        embed = discord.Embed(
+            title=f"{self.member.display_name}'s Pokémon (page {self.index + 1}/{len(self.pages)})",
+            description=desc,
+            color=discord.Color.blue(),
+        )
+        return embed
+
+    async def _update(self, interaction: discord.Interaction):
+        # Ack quickly and edit same message
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+        if self.message:
+            await self.message.edit(embed=self._render_embed(), view=self)
+
+    @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
+    async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.index = 0
+        await self._update(interaction)
+
+    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+    async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.index > 0:
+            self.index -= 1
+        await self._update(interaction)
+
+    @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.index < len(self.pages) - 1:
+            self.index += 1
+        await self._update(interaction)
+
+    @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
+    async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.index = len(self.pages) - 1
+        await self._update(interaction)
+
+    @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Disable buttons and stop
+        self._disable_all()
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+        if self.message:
+            await self.message.edit(view=self)
+        self.stop()
 
 
 async def setup(bot: commands.Bot):
