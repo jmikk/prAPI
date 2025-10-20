@@ -13,8 +13,8 @@ from discord import app_commands
 from redbot.core import commands, Config
 from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import pagify
-from redbot.core.utils.time import humanize_timedelta
-from redbot.core.utils import chat_formatting as cf
+from redbot.core.utils.chat_formatting import humanize_timedeltafrom redbot.core.utils 
+import chat_formatting as cf
 from redbot.core.utils._internal_task import create_task
 from redbot.core.data_manager import cog_data_path
 
@@ -295,7 +295,7 @@ async def simulate_match(team_a: List[Mon], team_b: List[Mon]) -> Tuple[bool, Li
 # Cog
 # ---------------------------
 
-class PokeAutoBattler(commands.Cog):
+class GachaCatchEmAll(commands.Cog):
     MOVES: Dict[str, Move] = {}
     SPECIES: Dict[str, Species] = {}
     BALLS: Dict[str, dict] = {}
