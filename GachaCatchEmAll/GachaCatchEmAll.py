@@ -646,35 +646,35 @@ class GachaCatchEmAll(commands.Cog):
         bal = await ne.get_balance(ctx.author)
         await ctx.send(f"You have {bal} Wellcoins.")
 
-  @admin_group.command(name="upload")
-  @commands.admin_or_permissions(manage_guild=True)
-  async def upload_mons(self, ctx: commands.Context):
-      """
-      Upload a new mons.json file directly from Discord.
-      Attach mons.json to this command.
-      """
-      if not ctx.message.attachments:
-          return await ctx.send("❌ Please attach a `mons.json` file to upload.")
-  
-      attachment = ctx.message.attachments[0]
-      if not attachment.filename.lower().endswith(".json"):
-          return await ctx.send("❌ File must be a `.json` file.")
-  
-      try:
-          data = await attachment.read()
-          # Validate json before saving
-          json_data = json.loads(data.decode("utf-8"))
-      except Exception as e:
-          return await ctx.send(f"❌ Failed to read JSON: `{e}`")
-  
-      # Save file
-      save_path = cog_data_path(self) / "mons.json"
-      with open(save_path, "w", encoding="utf-8") as f:
-          json.dump(json_data, f, indent=4)
-  
-      await ctx.send(f"✅ Successfully uploaded `{attachment.filename}` to `{save_path}`.\n"
-                     f"Run `nexusmon loadmons` to reload species into memory.")
-  
+    @admin_group.command(name="upload")
+    @commands.admin_or_permissions(manage_guild=True)
+    async def upload_mons(self, ctx: commands.Context):
+        """
+        Upload a new mons.json file directly from Discord.
+        Attach mons.json to this command.
+        """
+        if not ctx.message.attachments:
+            return await ctx.send("❌ Please attach a `mons.json` file to upload.")
+    
+        attachment = ctx.message.attachments[0]
+        if not attachment.filename.lower().endswith(".json"):
+            return await ctx.send("❌ File must be a `.json` file.")
+    
+        try:
+            data = await attachment.read()
+            # Validate json before saving
+            json_data = json.loads(data.decode("utf-8"))
+        except Exception as e:
+            return await ctx.send(f"❌ Failed to read JSON: `{e}`")
+    
+        # Save file
+        save_path = cog_data_path(self) / "mons.json"
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(json_data, f, indent=4)
+    
+        await ctx.send(f"✅ Successfully uploaded `{attachment.filename}` to `{save_path}`.\n"
+                       f"Run `nexusmon loadmons` to reload species into memory.")
+    
 
 
 async def setup(bot: Red):
