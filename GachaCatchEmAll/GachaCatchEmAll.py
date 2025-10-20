@@ -580,44 +580,6 @@ class GachaCatchEmAll(commands.Cog):
         msg = await ctx.reply(embed=embed, view=view)
         view.message = msg
 
-    @commands.hybrid_command(name="pokebox")
-    async def pokebox(self, ctx: commands.Context, member: Optional[discord.Member] = None):
-        """Show your (or another member's) caught Pokémon summary by species."""
-        member = member or ctx.author
-        box = await self.config.user(member).pokebox()
-        if not box:
-            await ctx.reply(f"{member.display_name} has no Pokémon yet. Go roll the gacha!")
-            return
-
-        # Summarize by species
-        counts: Dict[str, int] = {}
-        for entry in box:
-            key = entry.get("name", "Unknown")
-            counts[key] = counts.get(key, 0) + 1
-
-        entries = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
-        chunks: List[str] = []
-        line = []
-        total = 0
-        for name, count in entries:
-            total += count
-            line.append(f"**{name}** ×{count}")
-            if sum(len(x) for x in line) > 800:
-                chunks.append(" • ".join(line))
-                line = []
-        if line:
-            chunks.append(" • ".join(line))
-
-        for i, chunk in enumerate(chunks, start=1):
-            embed = discord.Embed(
-                title=(f"{member.display_name}'s PokéBox (page {i}/{len(chunks)})"),
-                description=chunk,
-                color=discord.Color.teal(),
-            )
-            if i == 1:
-                embed.set_footer(text=f"Total caught: {total}")
-            await ctx.send(embed=embed)
-
     @commands.hybrid_command(name="pokeinv")
     async def pokeinv(self, ctx: commands.Context, member: Optional[discord.Member] = None):
         """List your (or another member's) individual Pokémon with UID & nickname (paginates)."""
