@@ -35,6 +35,10 @@ class Casino(commands.Cog):
         self.config.register_user(**default_user)
         
         self.config.register_global(spent_tax=0)
+        self.config.register_global(
+            monthly_net={},        # {"YYYY-MM": float house_net}
+            regional_debt_shadow=0.0
+        )
 
 
     async def get_balance(self, user: discord.Member):
@@ -46,24 +50,6 @@ class Casino(commands.Cog):
         await self.config.user(user).master_balance.set(new_balance)
         return new_balance
 
-    async def _apply_debt_rule(self, net_user_delta: float, game: str):
-        """
-        State-run casino rule:
-          - If player net is +X (they won X), INCREASE regional debt by +X
-          - If player net is -Y (they lost Y), DECREASE regional debt by 50% of Y
-        Uses StockMarket cog's public API. Silently no-ops if StockMarket isn't loaded.
-        """
-        sm = self.bot.get_cog("StockMarket")
-        if not sm:
-            return
-        try:
-            if net_user_delta > 0:
-                await sm.increase_regional_debt(net_user_delta)
-            elif net_user_delta < 0:
-                await sm.decrease_regional_debt(0.50 * (-net_user_delta), clamp_to_zero=False)
-        except Exception:
-            # optionally log with your logger; we keep it quiet here
-            pass
 
 
     @commands.command()
@@ -115,7 +101,6 @@ class Casino(commands.Cog):
             winnings = -bet
             result_text += "You lost! 😢"
         
-        await self._apply_debt_rule(winnings, "coinflip")
         new_balance = await self.update_balance(ctx.author, winnings)
         await message.edit(content=f"{final_flip}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         self.total_bets["coinflip"] += bet
@@ -157,11 +142,9 @@ class Casino(commands.Cog):
         if player_roll > house_roll:
             winnings = bet * 2
             result_text = "You win! 🎉"
-            await self._apply_debt_rule(bet, "dice")
         else:
             winnings = -bet
             result_text = "You lost! 😢"
-            await self._apply_debt_rule(-bet, "dice")
 
         
         new_balance = await self.update_balance(ctx.author, winnings)
@@ -210,21 +193,17 @@ class Casino(commands.Cog):
         if flat_grid.count("🍒") >= 2:
             payout = bet * 1.5
             result_text = "Two or more cherries! 🍒 You win 1.5x your bet!"
-            await self._apply_debt_rule(bet * 0.5, "slots")
             
         elif any(row.count(row[0]) == 3 for row in grid) or any(col.count(col[0]) == 3 for col in zip(*grid)):
             payout = max(payout, bet * 4)
             result_text = "Three of a kind in a row or column! 🎉 You win 4x your bet!"
-            await self._apply_debt_rule(bet * 3, "slots")
         
         elif flat_grid.count("🌸") == 3:
             payout = bet * 20
             result_text = "JACKPOT! 🌸🌸🌸 You hit the cherry blossoms jackpot!"
-            await self._apply_debt_rule(bet * 19, "slots")
         
         if payout == 0:
             payout = -bet  # House edge ensured
-            await self._apply_debt_rule(-bet, "slots")
 
 
         new_balance = await self.update_balance(ctx.author, payout)
@@ -304,30 +283,23 @@ class Casino(commands.Cog):
         if call.isdigit() and 0 <= int(call) <= 36:
             if int(call) == number:
                 payout = bet * 17.5
-                await self._apply_debt_rule(bet * 16.5, "wheel")
 
         elif call.lower() in ["red", "black"] and call.lower() == color:
             payout = bet
-            await self._apply_debt_rule(bet, "wheel")
         elif call.lower() in ["even", "odd"] and call.lower() == even_or_odd:
             payout = bet
-            await self._apply_debt_rule(bet, "wheel")
 
         elif call.lower() in ["green"] and call.lower() == color:
             payout = bet * 17.5
-            await self._apply_debt_rule(bet * 16.5, "wheel")
 
         elif call in ["low"] and 1 <= number <= 12:
             payout = bet * 1.5
-            await self._apply_debt_rule(bet * 0.5, "wheel")
 
         elif call in ["mid"] and 13 <= number <= 24:
             payout = bet * 1.5
-            await self._apply_debt_rule(bet * 0.5, "wheel")
 
         elif call in ["high"] and 25 <= number <= 36:
             payout = bet * 1.5
-            await self._apply_debt_rule(bet * 0.5, "wheel")
 
         
         result_text = f"Roulette landed on {color2} {number}."
@@ -336,7 +308,6 @@ class Casino(commands.Cog):
         else:
             payout = -bet
             result_text += " You lost! 😢"
-            await self._apply_debt_rule(-bet, "wheel")
 
 
         new_balance = await self.update_balance(ctx.author, payout)
@@ -425,7 +396,7 @@ class Casino(commands.Cog):
     
         embed.set_footer(text=f"🧮 Total House Profit: {total_net:,.2f} WellCoins")
         await ctx.send(embed=embed)
-
+    
     @commands.command()
     async def gamblingreport(self, ctx, timeframe: str = "all"):
         """DM you your gambling report: daily, weekly, monthly, or all."""
@@ -433,15 +404,13 @@ class Casino(commands.Cog):
         now = datetime.utcnow()
         timeframe = timeframe.lower()
     
-        # Clean up history and filter by timeframe
+        # Load & prune to 30 days
         history = await self.config.user(user).history()
-    
-        # Remove anything older than 30 days
         cutoff_date = now - timedelta(days=30)
-        history = [entry for entry in history if datetime.fromisoformat(entry["timestamp"]) >= cutoff_date]
+        history = [e for e in history if datetime.fromisoformat(e["timestamp"]) >= cutoff_date]
         await self.config.user(user).history.set(history)
     
-        # Determine timeframe filter
+        # Time window
         if timeframe == "daily":
             time_limit = now - timedelta(days=1)
         elif timeframe == "weekly":
@@ -449,53 +418,223 @@ class Casino(commands.Cog):
         elif timeframe == "monthly":
             time_limit = now - timedelta(days=30)
         else:
-            time_limit = None  # "all"
+            time_limit = None
     
-        # Aggregate bets and payouts by game type
-        stats = {"coinflip": {"bet": 0, "payout": 0},
-                 "dice": {"bet": 0, "payout": 0},
-                 "slots": {"bet": 0, "payout": 0},
-                 "roulette": {"bet": 0, "payout": 0}}
+        # Aggregate: bet (all bets), payout (sum of positive credits), lost (sum of losing bets),
+        # and net = payout - lost.
+        games = ["coinflip", "dice", "slots", "roulette"]
+        stats = {g: {"bet": 0.0, "payout": 0.0, "lost": 0.0, "net": 0.0} for g in games}
     
         for entry in history:
             ts = datetime.fromisoformat(entry["timestamp"])
             if time_limit and ts < time_limit:
-                continue  # Skip older than timeframe
+                continue
     
             game = entry["game"]
-            stats[game]["bet"] += entry["bet"]
-            stats[game]["payout"] += entry["payout"]
+            bet = float(entry.get("bet", 0.0))
+            payout = float(entry.get("payout", 0.0))  # this is your net-positive credit only
     
-        # Add 5 WellCoins to regional debt
+            # Always record the wagered amount so "Total Bet" remains intuitive.
+            stats[game]["bet"] += bet
+    
+            if payout > 0:
+                # Win: your code credits balance directly by 'payout' (already net positive change)
+                stats[game]["payout"] += payout
+                stats[game]["net"] += payout
+            else:
+                # Loss: your code debits balance by 'bet'
+                stats[game]["lost"] += bet
+                stats[game]["net"] -= bet
+    
+        # Optional: add the 5 WC regional debt side-effect (unchanged)
         regional_debt = await self.config.spent_tax()
         await self.config.spent_tax.set(regional_debt + 5)
     
-        # Build Embed Report
-        embed = discord.Embed(title=f"📊 Your Gambling Report ({timeframe.capitalize()})", color=discord.Color.green())
-        net_total = 0
+        # Build the embed
+        title_scope = timeframe.capitalize() if timeframe in {"daily","weekly","monthly"} else "All"
+        embed = discord.Embed(title=f"📊 Your Gambling Report ({title_scope})", color=discord.Color.green())
+        net_total = 0.0
     
-        for game, data in stats.items():
-            total_bet = data["bet"]
-            total_payout = data["payout"]
-            net = total_payout - total_bet
-            net_total += net
+        for game in games:
+            g = stats[game]
+            net_total += g["net"]
             embed.add_field(
                 name=f"{game.capitalize()}",
                 value=(
-                    f"💰 **Total Bet**: {total_bet:,.2f}\n"
-                    f"🏆 **Total Payout**: {total_payout:,.2f}\n"
-                    f"📉 **Net Gain/Loss**: {net:,.2f}"
+                    f"💰 **Total Bet**: {g['bet']:,.2f}\n"
+                    f"🏆 **Total Payouts (wins only)**: {g['payout']:,.2f}\n"
+                    f"💥 **Total Lost (losing bets)**: {g['lost']:,.2f}\n"
+                    f"📉 **Net Gain/Loss**: {g['net']:,.2f}"
                 ),
                 inline=False
             )
     
         embed.set_footer(text=f"Total Net: {net_total:,.2f} WellCoins | 5 WC Debt Added to Region")
     
-        # DM the user privately
+        # DM it
         try:
             await user.send(embed=embed)
             await ctx.send(f"{user.mention} Your report has been DM'd to you.")
         except discord.Forbidden:
             await ctx.send("Unable to DM you your report. Please enable DMs.")
+    
+    def _month_key(self, dt: datetime = None) -> str:
+        dt = dt or datetime.utcnow()
+        return dt.strftime("%Y-%m")
+    
+    def _prev_month_key(self) -> str:
+        today = datetime.utcnow().replace(day=1)
+        prev = today - timedelta(days=1)
+        return prev.strftime("%Y-%m")
+    
+    async def _record_house_net(self, bet: float, payout_pos_only: float, when: datetime = None):
+        """
+        Record house net for the month:
+        - bet is the wagered amount
+        - payout_pos_only is your stored, wins-only positive credit to user (0 on losses)
+        House net = bet - payout_pos_only
+        """
+        mk = self._month_key(when)
+        monthly = await self.config.monthly_net()
+        house_net = bet - max(0.0, float(payout_pos_only))
+        monthly[mk] = monthly.get(mk, 0.0) + house_net
+        await self.config.monthly_net.set(monthly)
+    
+    async def _get_regional_debt(self) -> float:
+        """
+        Prefer StockMarket cog's debt (if available). Fallback to our shadow.
+        """
+        sm = self.bot.get_cog("StockMarket")
+        if sm and hasattr(sm, "get_regional_debt"):
+            try:
+                return float(await sm.get_regional_debt())
+            except Exception:
+                pass
+        return float(await self.config.regional_debt_shadow())
+    
+    async def _set_regional_debt(self, value: float):
+        """
+        Try to set via StockMarket. If not possible, store in shadow.
+        """
+        sm = self.bot.get_cog("StockMarket")
+        if sm and hasattr(sm, "set_regional_debt"):
+            try:
+                await sm.set_regional_debt(max(0.0, float(value)))
+                return
+            except Exception:
+                pass
+        await self.config.regional_debt_shadow.set(max(0.0, float(value)))
+    
+    async def _increase_regional_debt(self, amount: float):
+        """
+        Increase total regional debt by amount.
+        """
+        if amount <= 0:
+            return
+        current = await self._get_regional_debt()
+        await self._set_regional_debt(current + amount)
+    
+    async def _decrease_regional_debt(self, amount: float):
+        """ 
+        Pay down regional debt by amount (clamped to zero).
+        """
+        if amount <= 0:
+            return
+        current = await self._get_regional_debt()
+        new_val = max(0.0, current - amount)
+        await self._set_regional_debt(new_val)
+
+    @commands.command()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def casino_monthly_report(self, ctx, month: str = None):
+        """
+        Close and post the monthly casino report and settle finances.
+        Usage:
+          [p]casino_monthly_report           -> closes previous month
+          [p]casino_monthly_report 2025-09  -> closes that specific month (YYYY-MM)
+        """
+        # Determine which month to close
+        target_month = month or self._prev_month_key()
+    
+        monthly = await self.config.monthly_net()
+        house_net = float(monthly.get(target_month, 0.0))  # positive = profit for casino, negative = loss
+        starting_debt = await self._get_regional_debt()
+    
+        actions = []
+        distribution_total = 0.0
+        distributed_each = 0.0
+        eligible_count = 0
+    
+        if house_net < 0:
+            # Casino lost money => add to regional debt
+            loss = -house_net
+            await self._increase_regional_debt(loss)
+            actions.append(f"📈 Increased regional debt by **{loss:,.2f}** WC.")
+        elif house_net > 0:
+            # Casino profited: pay down debt first
+            profit = house_net
+            if starting_debt > 0:
+                paydown = min(profit, starting_debt)
+                await self._decrease_regional_debt(paydown)
+                actions.append(f"💳 Paid down regional debt by **{paydown:,.2f}** WC.")
+                profit -= paydown
+    
+            if profit > 0:
+                # No debt left => pay 50% to role 1098673767858843648 evenly
+                role = ctx.guild.get_role(1098673767858843648)
+                if role:
+                    recipients = [m for m in role.members if not m.bot]
+                    eligible_count = len(recipients)
+                    pool = profit * 0.50
+                    distribution_total = pool
+                    if eligible_count > 0 and pool > 0:
+                        distributed_each = pool / eligible_count
+                        # Credit each eligible member
+                        for m in recipients:
+                            await self.update_balance(m, distributed_each)
+                        actions.append(
+                            f"🎁 Distributed **{pool:,.2f}** WC (50% of profit) "
+                            f"evenly to **{eligible_count}** members ({distributed_each:,.2f} each)."
+                        )
+                    else:
+                        actions.append("ℹ️ No eligible members found for distribution.")
+                else:
+                    actions.append("⚠️ Role 1098673767858843648 not found; skipped profit distribution.")
+        else:
+            actions.append("ℹ️ House net was exactly 0. No changes applied.")
+    
+        # Snapshot debts after action
+        ending_debt = await self._get_regional_debt()
+    
+        # Zero-out that month so it won't be applied twice
+        monthly[target_month] = 0.0
+        await self.config.monthly_net.set(monthly)
+    
+        # Build and post the report
+        embed = discord.Embed(
+            title=f"🏦 Casino Monthly Report — {target_month}",
+            color=discord.Color.gold()
+        )
+        embed.add_field(name="House Net (month)", value=f"{house_net:,.2f} WC", inline=True)
+        embed.add_field(name="Debt (start → end)", value=f"{starting_debt:,.2f} → {ending_debt:,.2f} WC", inline=True)
+    
+        if distribution_total > 0:
+            embed.add_field(
+                name="Profit Distribution",
+                value=f"Total: {distribution_total:,.2f} WC\nRecipients: {eligible_count}\nEach: {distributed_each:,.2f} WC",
+                inline=False
+            )
+    
+        embed.add_field(
+            name="Applied Actions",
+            value="\n".join(actions) if actions else "None",
+            inline=False
+        )
+    
+        embed.set_footer(text="Monthly ledger has been settled and reset for this period.")
+        await ctx.send(embed=embed)
+    
+
+    
 
     
