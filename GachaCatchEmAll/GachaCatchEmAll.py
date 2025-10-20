@@ -15,7 +15,6 @@ from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import pagify
 from redbot.core.utils.chat_formatting import humanize_timedelta
 from redbot.core.utils import chat_formatting as cf
-from redbot.core.utils._internal_task import create_task
 from redbot.core.data_manager import cog_data_path
 
 __all__ = ["setup"]
@@ -309,7 +308,7 @@ class GachaCatchEmAll(commands.Cog):
         self.content.ensure_defaults()
         self._load_content()
         self.econ = EconomyAdapter(bot, self.config)
-        self._task = create_task(self._battle_loop())
+        self._task = asyncio.create_task(self._battle_loop())
 
     # ---- content loading ----
     def _load_content(self):
