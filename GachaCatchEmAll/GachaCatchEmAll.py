@@ -155,6 +155,7 @@ class ContentStore:
         self.species_path = self.base / "species.json"
         self.balls_path = self.base / "balls.json"
         self.base.mkdir(parents=True, exist_ok=True)
+        
 
     def _ensure_file(self, path, default_dict):
         if not path.exists():
@@ -309,6 +310,7 @@ class GachaCatchEmAll(commands.Cog):
         self._load_content()
         self.econ = EconomyAdapter(bot, self.config)
         self._task = asyncio.create_task(self._battle_loop())
+        self.dev_guild_id: int | None = None  # set a guild for instant dev sync
 
     # ---- content loading ----
     def _load_content(self):
@@ -320,6 +322,30 @@ class GachaCatchEmAll(commands.Cog):
     def cog_unload(self):
         if self._task:
             self._task.cancel()
+    
+    async def cog_load(self):
+        # Add your slash commands to the tree
+        cmds = [
+            self.roll, self.balls, self.mons, self.inspect, self.team,
+            self.heal, self.healsync, self.balance, self.ladder,
+            self.toggleautobattle, self.pokeadmin_reload, self.pokeadmin_export,
+            self.pokeadmin_seteconomy, self.pokeadmin_setball,
+        ]
+        for cmd in cmds:
+            try:
+                self.bot.tree.add_command(cmd)
+            except Exception:
+                pass
+
+        # Sync: guild-specific = instant; global can take a while
+        try:
+            if self.dev_guild_id:
+                guild = discord.Object(id=self.dev_guild_id)
+                await self.bot.tree.sync(guild=guild)
+            else:
+                await self.bot.tree.sync()
+        except Exception as e:
+            print(f"[GachaCatchEmAll] tree sync failed: {e}")
 
     # -------------------
     # Helpers
