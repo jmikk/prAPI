@@ -253,8 +253,7 @@ class GachaCatchEmAll(commands.Cog):
                     embed = discord.Embed(
                         title=f"{interaction.user.display_name} threw a {label}!",
                         description=(
-                        f'You encountered **{name}** (ID #{pid})! Base Stat Total: **{bst}** "**Caught!** 🎉" 
-                        if caught else "It fled... 😢"'
+                        f'You Caught **{name}** (ID #{pid})! Base Stat Total: **{bst}**' 
                         ),
                         color=discord.Color.green() 
                 )
