@@ -325,6 +325,13 @@ class GachaCatchEmAll(commands.Cog):
     # Helpers
     # -------------------
 
+    async def ac_ball(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        keys = list(PokeAutoBattler.BALLS.keys())
+        if current:
+            keys = [k for k in keys if current.lower() in k.lower()]
+        keys = keys[:25]
+        return [app_commands.Choice(name=k.title(), value=k) for k in keys]
+
     async def _get_user_mons(self, user: discord.User) -> Dict[str, dict]:
         return await self.config.user(user).mons()
 
@@ -664,12 +671,7 @@ class GachaCatchEmAll(commands.Cog):
         self._load_content()
         await interaction.response.send_message(f"Ball '{key}' saved to JSON and reloaded.")
     
-    async def ac_ball(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
-        keys = list(PokeAutoBattler.BALLS.keys())
-        if current:
-            keys = [k for k in keys if current.lower() in k.lower()]
-        keys = keys[:25]
-        return [app_commands.Choice(name=k.title(), value=k) for k in keys]
+
 
 
 # ---------------------------
