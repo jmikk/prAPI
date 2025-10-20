@@ -214,8 +214,14 @@ class NationStatesLinker(commands.Cog):
             if to_remove:
                 await member.remove_roles(*to_remove, reason="NS role sync")
                 changed = True
-        except (discord.Forbidden, discord.HTTPException):
-            pass
+        except (discord.Forbidden, discord.HTTPException) as e:
+          # Send the error to the channel safely without pinging anyone
+          await ctx.send(
+              f"⚠️ Failed to change roles for **{member.display_name}**: `{type(e).__name__}: {e}`\n"
+              f"Make sure I have permission to manage roles and that my role is above the NS roles.",
+              allowed_mentions=discord.AllowedMentions.none()
+          )  
+
 
         return changed
 
