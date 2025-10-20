@@ -148,7 +148,7 @@ DAMAGE_VARIANCE = 0.12
 # ---------------------------
 
 class ContentStore:
-    def __init__(self, cog: "PokeAutoBattler"):
+    def __init__(self, cog: "GachaCatchEmAll"):
         self.cog = cog
         self.base = cog_data_path(raw_name=cog.__class__.__name__)
         self.moves_path = self.base / "moves.json"
@@ -271,7 +271,7 @@ async def simulate_match(team_a: List[Mon], team_b: List[Mon]) -> Tuple[bool, Li
             if attacker.hp <= 0 or defender.hp <= 0:
                 continue
             move_name = random.choice(attacker.moves)
-            mv = PokeAutoBattler.MOVES.get(move_name, Move("Tackle", 40))
+            mv = GachaCatchEmAll.MOVES.get(move_name, Move("Tackle", 40))
             dmg, hit, crit = _hit(mv, attacker, defender)
             if hit:
                 defender.hp = max(0, defender.hp - dmg)
@@ -312,9 +312,9 @@ class GachaCatchEmAll(commands.Cog):
 
     # ---- content loading ----
     def _load_content(self):
-        PokeAutoBattler.MOVES = self.content.load_moves()
-        PokeAutoBattler.SPECIES = self.content.load_species()
-        PokeAutoBattler.BALLS = self.content.load_balls()
+        GachaCatchEmAll.MOVES = self.content.load_moves()
+        GachaCatchEmAll.SPECIES = self.content.load_species()
+        GachaCatchEmAll.BALLS = self.content.load_balls()
 
     # ---- Red lifecycle ----
     def cog_unload(self):
@@ -349,13 +349,13 @@ class GachaCatchEmAll(commands.Cog):
         return "COMMON"
 
     async def _roll_one(self, ball_key: str) -> Optional[Mon]:
-        ball = PokeAutoBattler.BALLS.get(ball_key)
+        ball = GachaCatchEmAll.BALLS.get(ball_key)
         if not ball:
             return None
         rarity = self._choose_rarity(ball["rates"])
-        candidates = [sp for sp in PokeAutoBattler.SPECIES.values() if sp.rarity == rarity]
+        candidates = [sp for sp in GachaCatchEmAll.SPECIES.values() if sp.rarity == rarity]
         if not candidates:
-            candidates = list(PokeAutoBattler.SPECIES.values())
+            candidates = list(GachaCatchEmAll.SPECIES.values())
         sp = random.choice(candidates)
         lvl = random.randint(ball["level_range"][0], ball["level_range"][1])
         return Mon.from_species(sp, lvl)
@@ -431,7 +431,7 @@ class GachaCatchEmAll(commands.Cog):
     @app_commands.command(name="balls", description="View ball prices and rates.")
     async def balls(self, interaction: discord.Interaction):
         embed = discord.Embed(title="Gacha Balls", color=discord.Color.blurple())
-        for k, v in PokeAutoBattler.BALLS.items():
+        for k, v in GachaCatchEmAll.BALLS.items():
             rates = ", ".join(f"{r}: {int(p*100)}%" for r, p in v["rates"].items())
             embed.add_field(name=k.title(), value=f"Price: {v['price']} WC Levels: {v['level_range'][0]}–{v['level_range'][1]} Rates: {rates}", inline=False)
         await interaction.response.send_message(embed=embed)
@@ -440,10 +440,10 @@ class GachaCatchEmAll(commands.Cog):
     @app_commands.describe(ball="pokeball/greatball/ultraball/masterball", count="1-10")
     async def roll(self, interaction: discord.Interaction, ball: str, count: app_commands.Range[int,1,10]=1):
         ball = ball.lower()
-        if ball not in PokeAutoBattler.BALLS:
+        if ball not in GachaCatchEmAll.BALLS:
             await interaction.response.send_message("Unknown ball.", ephemeral=True)
             return
-        total_cost = PokeAutoBattler.BALLS[ball]["price"] * count
+        total_cost = GachaCatchEmAll.BALLS[ball]["price"] * count
         ok, bal = await self.econ.wc_take(interaction.user, total_cost, force=False)
         if not ok:
             cur = await self.econ.wc_get(interaction.user)
@@ -669,4 +669,4 @@ class GachaCatchEmAll(commands.Cog):
 # ---------------------------
 
 async def setup(bot: Red) -> None:
-    await bot.add_cog(PokeAutoBattler(bot))
+    await bot.add_cog(GachaCatchEmAll(bot))
