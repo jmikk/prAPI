@@ -100,7 +100,8 @@ class Casino(commands.Cog):
         else:
             winnings = -bet
             result_text += "You lost! 😢"
-        
+            
+        await self._record_house_net(bet, max(0, winnings))
         new_balance = await self.update_balance(ctx.author, winnings)
         await message.edit(content=f"{final_flip}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         self.total_bets["coinflip"] += bet
@@ -146,7 +147,7 @@ class Casino(commands.Cog):
             winnings = -bet
             result_text = "You lost! 😢"
 
-        
+        await self._record_house_net(bet, max(0, winnings))
         new_balance = await self.update_balance(ctx.author, winnings)
         await message.edit(content=f"Player: {player_emoji} | House: {house_emoji}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         self.total_bets["dice"] += bet
@@ -205,7 +206,7 @@ class Casino(commands.Cog):
         if payout == 0:
             payout = -bet  # House edge ensured
 
-
+        await self._record_house_net(bet, max(0, payout))
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"{display}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
        
@@ -309,7 +310,7 @@ class Casino(commands.Cog):
             payout = -bet
             result_text += " You lost! 😢"
 
-
+        await self._record_house_net(bet, max(0, payout))
         new_balance = await self.update_balance(ctx.author, payout)
         await message.edit(content=f"🎡 {color2} {number}\n{result_text} New balance: {new_balance:,.2f} WellCoins.")
         
