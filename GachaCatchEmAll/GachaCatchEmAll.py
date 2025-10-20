@@ -55,7 +55,7 @@ BALL_TUNING = {
 }
 
 
-class GachaCatchEmAll(commands.Cog):
+class PokeGacha(commands.Cog):
     """Pokémon gacha using Wellcoins + PokéAPI"""
 
     def __init__(self, bot: commands.Bot):
@@ -227,13 +227,21 @@ class GachaCatchEmAll(commands.Cog):
     def _encounter_embed(self, user: discord.abc.User, enc: Dict[str, Any], costs: Dict[str, float]) -> discord.Embed:
         title = f"🌿 A wild {enc['name']} appeared!"
         desc = (
-            f"""Base Stat Total: **{enc['bst']}
-            ** Misses so far: **{enc.get('fails', 0)}**
-            **Choose a ball:**
-            ⚪ Poké Ball — **{costs['pokeball']:.2f}** WC
-            🔵 Great Ball — **{costs['greatball']:.2f}** WC
-            🟡 Ultra Ball — **{costs['ultraball']:.2f}** WC
-            🟣 Master Ball — **{costs['masterball']:.2f}** WC"""
+            f"Base Stat Total: **{enc['bst']}**
+"
+            f"Misses so far: **{enc.get('fails', 0)}**
+
+"
+            f"**Choose a ball:**
+"
+            f"⚪ Poké Ball — **{costs['pokeball']:.2f}** WC
+"
+            f"🔵 Great Ball — **{costs['greatball']:.2f}** WC
+"
+            f"🟡 Ultra Ball — **{costs['ultraball']:.2f}** WC
+"
+            f"🟣 Master Ball — **{costs['masterball']:.2f}** WC
+"
         )
         embed = discord.Embed(title=title, description=desc, color=discord.Color.green())
         if enc.get('sprite'):
@@ -241,7 +249,7 @@ class GachaCatchEmAll(commands.Cog):
         return embed
 
     class EncounterView(discord.ui.View):
-        def __init__(self, cog: "PokeGacha", author: discord.abc.User, timeout: int = 120):
+        def __init__(self, cog: "GachaCatchEmAll", author: discord.abc.User, timeout: int = 120):
             super().__init__(timeout=timeout)
             self.cog = cog
             self.author = author
@@ -276,15 +284,17 @@ class GachaCatchEmAll(commands.Cog):
             costs = await self.cog.config.costs()
             cost = float(costs[ball_key])
 
-            # Custom loading message
+            # Always defer first to avoid timeouts, then send a visible loading message
             if not interaction.response.is_done():
                 try:
-                    loading_msg = await interaction.response.send_message(
-                        f"{interaction.user.display_name} threw a {label}..."
-                    )
+                    await interaction.response.defer()
                 except Exception:
-                    loading_msg = None
-            else:
+                    pass
+            try:
+                loading_msg = await interaction.followup.send(
+                    f"{interaction.user.display_name} threw a {label}..."
+                )
+            except Exception:
                 loading_msg = None
 
             # Charge
@@ -438,7 +448,8 @@ class GachaCatchEmAll(commands.Cog):
         try:
             _ = await self._get_balance(ctx.author)
         except Exception as e:
-            await ctx.reply(f"Economy unavailable: {e} Make sure the NexusExchange cog is loaded.")
+            await ctx.reply(f"Economy unavailable: {e}
+Make sure the NexusExchange cog is loaded.")
             return
 
         uconf = self.config.user(ctx.author)
@@ -530,4 +541,4 @@ class GachaCatchEmAll(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(PokeGacha(bot))
+    await bot.add_cog(GachaCatchEmAll(bot))
