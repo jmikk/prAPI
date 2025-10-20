@@ -216,13 +216,13 @@ class GachaCatchEmAll(commands.Cog):
     ) -> discord.Embed:
         title = f"🌿 A wild {enc['name']} appeared!"
         desc = (
-            f"Base Stat Total: **{enc['bst']}**\n"
-            f"Misses so far: **{enc.get('fails', 0)}**\n\n"
-            f"**Choose a ball:**\n"
-            f"⚪ Poké Ball — **{costs['pokeball']:.2f}** WC\n"
-            f"🔵 Great Ball — **{costs['greatball']:.2f}** WC\n"
-            f"🟡 Ultra Ball — **{costs['ultraball']:.2f}** WC\n"
-            f"🟣 Master Ball — **{costs['masterball']:.2f}** WC"
+            f"""Base Stat Total: **{enc['bst']}**\n
+            Misses so far: **{enc.get('fails', 0)}**\n\n
+            **Choose a ball:**\n
+            ⚪ Poké Ball — **{costs['pokeball']:.2f}** WC\n
+            🔵 Great Ball — **{costs['greatball']:.2f}** WC\n
+            🟡 Ultra Ball — **{costs['ultraball']:.2f}** WC\n
+            🟣 Master Ball — **{costs['masterball']:.2f}** WC"""
         )
         embed = discord.Embed(title=title, description=desc, color=discord.Color.green())
         if enc.get("sprite"):
