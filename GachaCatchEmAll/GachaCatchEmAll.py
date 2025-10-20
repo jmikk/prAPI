@@ -342,7 +342,7 @@ class GachaCatchEmAll(commands.Cog):
             ),
             color=discord.Color.blurple(),
         )
-        embed.set_footer(text=f"Your balance: {bal:.2f} WC")
+        embed.set_footer(text=f"Your balance: {bal:,.2f} WC")
 
         view = self.ThrowView(self, ctx.author)
         await ctx.reply(embed=embed, view=view)
