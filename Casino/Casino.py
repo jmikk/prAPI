@@ -489,7 +489,7 @@ class Casino(commands.Cog):
         prev = today - timedelta(days=1)
         return prev.strftime("%Y-%m")
     
-    async def _record_house_net_record_house_net_delta(self, net_user_delta: float, when: datetime = None):
+    async def _record_house_net_delta(self, net_user_delta: float, when: datetime = None):
         """
         Record house net for the month as the opposite of the user's balance change.
         - net_user_delta: the exact amount you add to (or subtract from) the user's balance for this play
