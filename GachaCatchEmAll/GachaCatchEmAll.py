@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-NexusMon — a lightweight gacha/monster-collector cog for Redbot v3.
+GachaCatchEmAll — a lightweight gacha/monster-collector cog for Redbot v3.
 
 Features
 - Reads a mons.json file (array of objects) with fields:
@@ -12,7 +12,7 @@ Features
 - Combine duplicates of the same species to merge XP and blend stats.
 
 Notes
-- Place your species file as data/{cog_name}/mons.json (see admin command [p]nexusmon loadmons).
+- Place your species file as data/{cog_name}/mons.json (see admin command [p]GachaCatchEmAll loadmons).
 - Rarity is expected as one of: "common", "uncommon", "rare", "epic", "legendary" (case-insensitive).
 - You can customize net costs and rarity weights with admin commands.
 
@@ -101,7 +101,7 @@ class OwnedMon:
         return int(base * (1 + (self.level - 1) * 0.07))
 
 
-class NexusMon(commands.Cog):
+class GachaCatchEmAll(commands.Cog):
     """Gacha-style monster collection using Wellcoins and NexusExchange."""
 
     __author__ = "chatgpt"
@@ -202,17 +202,17 @@ class NexusMon(commands.Cog):
         }
 
     # ---------- ADMIN COMMANDS ----------
-    @commands.group(name="nexusmon")
+    @commands.group(name="GachaCatchEmAll")
     @commands.admin_or_permissions(manage_guild=True)
     async def admin_group(self, ctx: commands.Context):
-        """Admin controls for NexusMon."""
+        """Admin controls for GachaCatchEmAll."""
         pass
 
     @admin_group.command(name="loadmons")
     async def loadmons(self, ctx: commands.Context):
         """Reload species from data folder's mons.json.
 
-        Path: {data_path}/mons.json  (use `[p]nexusmon whereis` to see your exact path)
+        Path: {data_path}/mons.json  (use `[p]GachaCatchEmAll whereis` to see your exact path)
         """
         await self.load_specs()
         if not self._specs:
@@ -253,7 +253,7 @@ class NexusMon(commands.Cog):
     # ---------- PUBLIC COMMANDS ----------
     @commands.hybrid_group(name="mon")
     async def mon_group(self, ctx: commands.Context):
-        """Collect, manage, and battle your NexusMon!"""
+        """Collect, manage, and battle your GachaCatchEmAll!"""
         pass
 
     # CATCH
@@ -338,7 +338,7 @@ class NexusMon(commands.Cog):
         if not self._specs:
             await self.load_specs()
             if not self._specs:
-                raise commands.UserFeedbackCheckFailure("No mons loaded. Ask an admin to run `[p]nexusmon loadmons`.")
+                raise commands.UserFeedbackCheckFailure("No mons loaded. Ask an admin to run `[p]GachaCatchEmAll loadmons`.")
 
     # LIST OWNED
     @mon_group.command(name="mons")
@@ -648,5 +648,5 @@ class NexusMon(commands.Cog):
 
 
 async def setup(bot: Red):
-    cog = NexusMon(bot)
+    cog = GachaCatchEmAll(bot)
     await bot.add_cog(cog)
