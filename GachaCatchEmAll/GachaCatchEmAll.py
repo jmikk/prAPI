@@ -1,3 +1,4 @@
+# gachacatchemall/gachacatchemall.py
 from __future__ import annotations
 
 import asyncio
@@ -13,10 +14,9 @@ __red_end_user_data_statement__ = (
     "This cog stores a list of Pokémon you've caught (name, count) and your last rolls."
 )
 
-
 POKEAPI_BASE = "https://pokeapi.co/api/v2"
 
-# Reasonable defaults; you can adjust with [p]gacha setcosts
+# Reasonable defaults; you can adjust with [p]gachaadmin setcosts
 DEFAULT_COSTS = {
     "pokeball": 5.0,
     "greatball": 15.0,
@@ -36,7 +36,7 @@ BALL_TUNING = {
 
 
 class GachaCatchEmAll(commands.Cog):
-    """Pokémon gacha using Wellcoins + PokéAPI"""
+    """Pokémon encounter & multi-throw gacha using Wellcoins + PokéAPI."""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -98,7 +98,6 @@ class GachaCatchEmAll(commands.Cog):
             if self._pokemon_list is not None:
                 return
             data = await self._fetch_json(f"{POKEAPI_BASE}/pokemon?limit=20000")
-            # keep only Pokémon that have an id (by parsing from URL) and a default sprite later
             self._pokemon_list = data.get("results", [])
 
     @staticmethod
@@ -119,7 +118,7 @@ class GachaCatchEmAll(commands.Cog):
 
     async def _random_encounter(self, ball_key: str) -> Tuple[Dict[str, Any], int, int]:
         """Roll a random Pokémon, biased by base stat totals depending on ball.
-        Designed to be **fast** — fetches only a small concurrent batch and uses cache.
+        Designed to be fast: small concurrent batch + cache.
         Returns (pokemon_data, poke_id, bst)
         """
         await self._ensure_pokemon_list()
@@ -145,7 +144,10 @@ class GachaCatchEmAll(commands.Cog):
                 pdata = await self._get_pokemon(pid)
                 bst = sum(s["base_stat"] for s in pdata.get("stats", []))
                 sprite = (
-                    pdata.get("sprites", {}).get("other", {}).get("official-artwork", {}).get("front_default")
+                    pdata.get("sprites", {})
+                    .get("other", {})
+                    .get("official-artwork", {})
+                    .get("front_default")
                     or pdata.get("sprites", {}).get("front_default")
                 )
                 if not sprite:
@@ -154,16 +156,15 @@ class GachaCatchEmAll(commands.Cog):
             except Exception:
                 return None
 
-        # Fetch concurrently (bounded by aiohttp connector limit implicitly). Time-box to 5s.
+        # Fetch concurrently; time-box to 5s.
         tasks = [fetch(pid) for pid in ids]
         try:
             results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=5)
         except asyncio.TimeoutError:
-            # Try any finished tasks; if none, fallback
             results = []
         triples: List[Tuple[int, Dict[str, Any], int]] = [t for t in results if t]
         if not triples:
-            # Fallback to a quick single fetch of a popular mon
+            # Fallback to popular starters + Pikachu, then Bulbasaur
             for pid in (1, 4, 7, 25):
                 try:
                     pdata = await self._get_pokemon(pid)
@@ -174,7 +175,7 @@ class GachaCatchEmAll(commands.Cog):
             pdata = await self._get_pokemon(1)
             return pdata, 1, sum(s["base_stat"] for s in pdata.get("stats", []))
 
-        # Weighting
+        # Weighting by ball
         bias = BALL_TUNING[ball_key]["weight_bias"]
         weights: List[int] = []
         for _, pdata, bst in triples:
@@ -202,98 +203,112 @@ class GachaCatchEmAll(commands.Cog):
         chance = base + bonus - (0.50 * difficulty)
         return max(0.05, min(0.95, chance))
 
-    # --------- Views / Buttons ---------
+    # --------- UI helpers ---------
 
-    def _encounter_embed(self, user: discord.abc.User, enc: Dict[str, Any], costs: Dict[str, float]) -> discord.Embed:
+    def _encounter_embed(
+        self, user: discord.abc.User, enc: Dict[str, Any], costs: Dict[str, float]
+    ) -> discord.Embed:
         title = f"🌿 A wild {enc['name']} appeared!"
         desc = (
-            f"""Base Stat Total: **{enc['bst']}** Misses so far: **{enc.get('fails', 0)}** 
-            **Choose a ball:**
-            ⚪ Poké Ball — **{costs['pokeball']:.2f}** WC
-            🔵 Great Ball — **{costs['greatball']:.2f}** WC
-            🟡 Ultra Ball — **{costs['ultraball']:.2f}** WC
-            🟣 Master Ball — **{costs['masterball']:.2f}** WC"""
+            f"Base Stat Total: **{enc['bst']}**\n"
+            f"Misses so far: **{enc.get('fails', 0)}**\n\n"
+            f"**Choose a ball:**\n"
+            f"⚪ Poké Ball — **{costs['pokeball']:.2f}** WC\n"
+            f"🔵 Great Ball — **{costs['greatball']:.2f}** WC\n"
+            f"🟡 Ultra Ball — **{costs['ultraball']:.2f}** WC\n"
+            f"🟣 Master Ball — **{costs['masterball']:.2f}** WC"
         )
         embed = discord.Embed(title=title, description=desc, color=discord.Color.green())
-        if enc.get('sprite'):
-            embed.set_thumbnail(url=enc['sprite'])
+        if enc.get("sprite"):
+            embed.set_thumbnail(url=enc["sprite"])
         return embed
+
+    # --------- View / Buttons ---------
 
     class EncounterView(discord.ui.View):
         def __init__(self, cog: "GachaCatchEmAll", author: discord.abc.User, timeout: int = 120):
             super().__init__(timeout=timeout)
             self.cog = cog
             self.author = author
+            self.message: Optional[discord.Message] = None
+
+        # --- utilities ---
+        def _disable_all(self):
+            for child in self.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = True
+
+        async def on_timeout(self):
+            # Lock buttons when time runs out
+            self._disable_all()
+            try:
+                if self.message:
+                    await self.message.edit(view=self)
+            except Exception:
+                pass
 
         async def interaction_check(self, interaction: discord.Interaction) -> bool:
             if interaction.user.id != self.author.id:
-                await interaction.response.send_message("This encounter isn't yours — run /gacha to start your own.", ephemeral=True)
+                await interaction.response.send_message(
+                    "This encounter isn't yours — run /gacha to start your own.", ephemeral=True
+                )
                 return False
             return True
 
         async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item) -> None:
             try:
-                msg = f"⚠️ Error: {type(error).__name__}: {error}"
-                if interaction.response.is_done():
-                    await interaction.followup.send(msg)
-                else:
-                    await interaction.response.send_message(msg)
+                if not interaction.response.is_done():
+                    await interaction.response.defer()
+            except Exception:
+                pass
+            target_msg = self.message or interaction.message
+            try:
+                await target_msg.edit(content=f"⚠️ Error: {type(error).__name__}: {error}", view=self)
             except Exception:
                 pass
 
+        # --- throw logic ---
         async def _throw(self, interaction: discord.Interaction, ball_key: str, label: str):
-            # Try to load the current encounter
-            uconf = self.cog.config.user(interaction.user)
-            enc = await uconf.active_encounter()
-            if not enc:
-                if not interaction.response.is_done():
-                    await interaction.response.send_message("There is no active encounter. Use /gacha again.")
-                else:
-                    await interaction.followup.send("There is no active encounter. Use /gacha again.")
-                return
-
-            costs = await self.cog.config.costs()
-            cost = float(costs[ball_key])
-
-            # Always defer first to avoid timeouts, then send a visible loading message
+            # ACK quickly (no new message)
             if not interaction.response.is_done():
                 try:
                     await interaction.response.defer()
                 except Exception:
                     pass
-            try:
-                loading_msg = await interaction.followup.send(
-                    f"{interaction.user.display_name} threw a {label}..."
-                )
-            except Exception:
-                loading_msg = None
+
+            # Load active encounter
+            uconf = self.cog.config.user(interaction.user)
+            enc = await uconf.active_encounter()
+            target_msg = self.message or interaction.message
+            if not enc:
+                try:
+                    await target_msg.edit(content="There is no active encounter. Use /gacha again.", embed=None, view=None)
+                except Exception:
+                    pass
+                return
 
             # Charge
+            costs = await self.cog.config.costs()
+            cost = float(costs[ball_key])
             try:
                 await self.cog._charge(interaction.user, cost)
             except Exception as e:
-                text = f"❌ {e}"
                 try:
-                    if interaction.response.is_done():
-                        await interaction.followup.send(text)
-                    elif loading_msg:
-                        await loading_msg.edit(content=text)
-                    else:
-                        await interaction.channel.send(text)
+                    await target_msg.edit(content=f"❌ {e}", view=self)
                 except Exception:
                     pass
                 return
 
             try:
                 # compute catch chance
-                bst = int(enc['bst'])
+                bst = int(enc["bst"])
                 chance = self.cog._compute_catch_chance(ball_key, bst)
-                caught = (ball_key == 'masterball') or (random.random() <= chance)
+                caught = (ball_key == "masterball") or (random.random() <= chance)
 
                 if caught:
                     # save and end encounter
-                    name = enc['name']
-                    sprite = enc.get('sprite')
+                    name = enc["name"]
+                    sprite = enc.get("sprite")
                     box = await uconf.pokebox()
                     box[name] = int(box.get(name, 0)) + 1
                     await uconf.pokebox.set(box)
@@ -301,24 +316,23 @@ class GachaCatchEmAll(commands.Cog):
 
                     embed = discord.Embed(
                         title=f"🎉 Caught {name}!",
-                        description=f"Added to your PokéBox.",
-                        color=discord.Color.gold()
+                        description="Added to your PokéBox.",
+                        color=discord.Color.gold(),
                     )
                     if sprite:
                         embed.set_thumbnail(url=sprite)
                     bal = await self.cog._get_balance(interaction.user)
                     embed.set_footer(text=f"New balance: {bal:.2f} WC")
 
-                    if loading_msg:
-                        await loading_msg.edit(content=None, embed=embed, view=None)
-                    else:
-                        await interaction.edit_original_response(embed=embed, view=None)
+                    self._disable_all()
+                    await target_msg.edit(content=None, embed=embed, view=self)
+                    self.stop()
                     return
 
                 # not caught — roll flee chance
-                fails = int(enc.get('fails', 0)) + 1
-                enc['fails'] = fails
-                flee_base = float(enc.get('flee_base', 0.08))
+                fails = int(enc.get("fails", 0)) + 1
+                enc["fails"] = fails
+                flee_base = float(enc.get("flee_base", 0.08))
                 flee_chance = min(0.85, flee_base + 0.12 * fails)
                 fled = random.random() < flee_chance
 
@@ -327,38 +341,32 @@ class GachaCatchEmAll(commands.Cog):
                     embed = discord.Embed(
                         title=f"💨 {enc['name']} fled!",
                         description="Better luck next time.",
-                        color=discord.Color.red()
+                        color=discord.Color.red(),
                     )
-                    if enc.get('sprite'):
-                        embed.set_thumbnail(url=enc['sprite'])
+                    if enc.get("sprite"):
+                        embed.set_thumbnail(url=enc["sprite"])
                     bal = await self.cog._get_balance(interaction.user)
                     embed.set_footer(text=f"New balance: {bal:.2f} WC")
-                    if loading_msg:
-                        await loading_msg.edit(content=None, embed=embed, view=None)
-                    else:
-                        await interaction.edit_original_response(embed=embed, view=None)
+
+                    self._disable_all()
+                    await target_msg.edit(content=None, embed=embed, view=self)
+                    self.stop()
                     return
 
                 # still here — update encounter UI with incremented fails
                 await uconf.active_encounter.set(enc)
-                costs = await self.cog.config.costs()
                 embed = self.cog._encounter_embed(interaction.user, enc, costs)
                 embed.title = f"❌ It broke free! Wild {enc['name']} is still here!"
                 bal = await self.cog._get_balance(interaction.user)
-                embed.set_footer(text=f"Catch chance ~ {int(self.cog._compute_catch_chance(ball_key, bst)*100)}% • Balance: {bal:,.2f} WC")
-                if loading_msg:
-                    await loading_msg.edit(content=None, embed=embed, view=self)
-                else:
-                    await interaction.edit_original_response(embed=embed, view=self)
+                embed.set_footer(
+                    text=f"Catch chance now ~ {int(self.cog._compute_catch_chance(ball_key, bst)*100)}% • Balance: {bal:.2f} WC"
+                )
+                await target_msg.edit(content=None, embed=embed, view=self)
 
                 # save last roll
-                await uconf.last_roll.set({
-                    "pokemon": enc['name'],
-                    "id": enc['id'],
-                    "bst": enc['bst'],
-                    "ball": ball_key,
-                    "caught": False,
-                })
+                await uconf.last_roll.set(
+                    {"pokemon": enc["name"], "id": enc["id"], "bst": enc["bst"], "ball": ball_key, "caught": False}
+                )
 
             except Exception as e:
                 # refund on error
@@ -366,20 +374,10 @@ class GachaCatchEmAll(commands.Cog):
                     await self.cog._refund(interaction.user, cost)
                 except Exception:
                     pass
-                msg = f"⚠️ Something went wrong: {e}"
-                if loading_msg:
-                    try:
-                        await loading_msg.edit(content=msg)
-                    except Exception:
-                        pass
-                else:
-                    try:
-                        if interaction.response.is_done():
-                            await interaction.followup.send(msg)
-                        else:
-                            await interaction.response.send_message(msg)
-                    except Exception:
-                        pass
+                try:
+                    await target_msg.edit(content=f"⚠️ Something went wrong: {e}", view=self)
+                except Exception:
+                    pass
 
         @discord.ui.button(label="Poké Ball", style=discord.ButtonStyle.secondary, emoji="⚪")
         async def pokeball(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -399,19 +397,28 @@ class GachaCatchEmAll(commands.Cog):
 
         @discord.ui.button(label="Run", style=discord.ButtonStyle.secondary, emoji="🏃")
         async def run(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if not interaction.response.is_done():
+                try:
+                    await interaction.response.defer()
+                except Exception:
+                    pass
+
             uconf = self.cog.config.user(interaction.user)
             enc = await uconf.active_encounter()
             await uconf.active_encounter.clear()
+            target_msg = self.message or interaction.message
+
+            self._disable_all()
             if enc:
                 embed = discord.Embed(title=f"You ran away from {enc['name']}.", color=discord.Color.dark_grey())
-                if enc.get('sprite'):
-                    embed.set_thumbnail(url=enc['sprite'])
-                await interaction.response.edit_message(embed=embed, view=None)
+                if enc.get("sprite"):
+                    embed.set_thumbnail(url=enc["sprite"])
+                await target_msg.edit(embed=embed, view=self)
             else:
-                await interaction.response.send_message("No active encounter.")
+                await target_msg.edit(content="No active encounter.", embed=None, view=self)
+            self.stop()
 
     # --------- Commands ---------
-
 
     @commands.hybrid_command(name="gacha")
     async def gacha(self, ctx: commands.Context):
@@ -419,29 +426,40 @@ class GachaCatchEmAll(commands.Cog):
         try:
             _ = await self._get_balance(ctx.author)
         except Exception as e:
-            await ctx.reply(f"Economy unavailable: {e} Make sure the NexusExchange cog is loaded.")
+            await ctx.reply(f"Economy unavailable: {e}\nMake sure the NexusExchange cog is loaded.")
             return
 
         uconf = self.config.user(ctx.author)
         enc = await uconf.active_encounter()
 
-        # If no active encounter, roll a new one
+        # If no active encounter, roll a new one (neutral bias for encounter only)
         if not enc:
-            pdata, pid, bst = await self._random_encounter("greatball")  # neutral bias for encounter only
+            pdata, pid, bst = await self._random_encounter("greatball")
             name = pdata.get("name", "unknown").title()
             sprite = (
-                pdata.get("sprites", {}).get("other", {}).get("official-artwork", {}).get("front_default")
+                pdata.get("sprites", {})
+                .get("other", {})
+                .get("official-artwork", {})
+                .get("front_default")
                 or pdata.get("sprites", {}).get("front_default")
             )
             # compute a base flee rate from BST (stronger mons slightly braver)
             flee_base = max(0.05, min(0.25, 0.10 + (bst - 400) / 800.0))
-            enc = {"id": int(pid), "name": name, "bst": int(bst), "sprite": sprite, "fails": 0, "flee_base": float(flee_base)}
+            enc = {
+                "id": int(pid),
+                "name": name,
+                "bst": int(bst),
+                "sprite": sprite,
+                "fails": 0,
+                "flee_base": float(flee_base),
+            }
             await uconf.active_encounter.set(enc)
 
         costs = await self.config.costs()
         embed = self._encounter_embed(ctx.author, enc, costs)
         view = self.EncounterView(self, ctx.author)
-        await ctx.reply(embed=embed, view=view)
+        msg = await ctx.reply(embed=embed, view=view)
+        view.message = msg
 
     @commands.hybrid_command(name="pokebox")
     async def pokebox(self, ctx: commands.Context, member: Optional[discord.Member] = None):
