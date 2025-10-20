@@ -1,23 +1,3 @@
-# PokéGacha — a Redbot v3 cog that lets users spend Wellcoins to "throw" Poké Balls
-# and attempt to catch random Pokémon using data from the public PokéAPI.
-#
-# Economy integration: expects another cog named "NexusExchange" that implements:
-#   async def get_balance(self, user: discord.abc.User) -> int
-#   async def add_wellcoins(self, user: discord.abc.User, amount: float) -> int
-#   async def take_wellcoins(self, user: discord.abc.User, amount: float, force: bool = False) -> int
-# (These are exactly the functions the user provided.)
-#
-# Commands
-#   [p]gacha          -> open an embed with buttons for Poké Ball / Great / Ultra / Master
-#   [p]pokebox        -> view your caught Pokémon (with counts)
-#   [p]gacha setcosts -> admin: set custom ball costs
-#
-# Notes
-# - Master Ball always catches.
-# - Higher-tier balls bias the roll toward stronger Pokémon (by base-stat total) and raise catch chance.
-# - All PokéAPI results are cached in-memory per bot session to reduce API calls.
-# - This file is self-contained as a Redbot cog (save as pokegacha/pokegacha.py and load).
-
 from __future__ import annotations
 
 import asyncio
@@ -55,7 +35,7 @@ BALL_TUNING = {
 }
 
 
-class PokeGacha(commands.Cog):
+class GachaCatchEmAll(commands.Cog):
     """Pokémon gacha using Wellcoins + PokéAPI"""
 
     def __init__(self, bot: commands.Bot):
