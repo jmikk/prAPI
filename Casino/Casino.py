@@ -552,14 +552,20 @@ class Casino(commands.Cog):
         """
         Close and post the monthly casino report and settle finances.
         Usage:
-          [p]casino_monthly_report           -> closes previous month
-          [p]casino_monthly_report 2025-09  -> closes that specific month (YYYY-MM)
+          [p]casino_monthly_report            -> closes current month if nonzero, else previous
+          [p]casino_monthly_report 2025-10    -> closes that specific month (YYYY-MM)
         """
-        # Determine which month to close
-        target_month = month or self._prev_month_key()
-    
         monthly = await self.config.monthly_net()
-        house_net = float(monthly.get(target_month, 0.0))  # positive = profit for casino, negative = loss
+    
+        if month:
+            target_month = month
+        else:
+            current_key = self._month_key()
+            prev_key = self._prev_month_key()
+            # Prefer current month if it has activity; otherwise fall back to previous month.
+            target_month = current_key if abs(float(monthly.get(current_key, 0.0))) > 0 else prev_key
+    
+        house_net = float(monthly.get(target_month, 0.0))
         starting_debt = await self._get_regional_debt()
     
         actions = []
@@ -582,7 +588,6 @@ class Casino(commands.Cog):
                 profit -= paydown
     
             if profit > 0:
-                # No debt left => pay 50% to role 1098673767858843648 evenly
                 role = ctx.guild.get_role(1098673767858843648)
                 if role:
                     recipients = [m for m in role.members if not m.bot]
@@ -591,7 +596,6 @@ class Casino(commands.Cog):
                     distribution_total = pool
                     if eligible_count > 0 and pool > 0:
                         distributed_each = pool / eligible_count
-                        # Credit each eligible member
                         for m in recipients:
                             await self.update_balance(m, distributed_each)
                         actions.append(
@@ -605,14 +609,12 @@ class Casino(commands.Cog):
         else:
             actions.append("ℹ️ House net was exactly 0. No changes applied.")
     
-        # Snapshot debts after action
         ending_debt = await self._get_regional_debt()
     
-        # Zero-out that month so it won't be applied twice
+        # Zero this month so it can't be applied twice
         monthly[target_month] = 0.0
         await self.config.monthly_net.set(monthly)
     
-        # Build and post the report
         embed = discord.Embed(
             title=f"🏦 Casino Monthly Report — {target_month}",
             color=discord.Color.gold()
@@ -632,10 +634,9 @@ class Casino(commands.Cog):
             value="\n".join(actions) if actions else "None",
             inline=False
         )
-    
         embed.set_footer(text="Monthly ledger has been settled and reset for this period.")
         await ctx.send(embed=embed)
-    
+
 
     
 
