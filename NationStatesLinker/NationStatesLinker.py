@@ -21,7 +21,7 @@ Tested with discord.py 2.x and Red v3.
 """
 
 from __future__ import annotations
-
+from typing import Optional
 import asyncio
 from typing import List, Optional
 
@@ -153,14 +153,15 @@ class NationStatesLinker(commands.Cog):
             return None
         return guild.get_role(role_id)
 
-    async def apply_roles(self, guild: discord.Guild, member: discord.Member, *, residents: Optional[set[str]] = None, wa_residents: Optional[set[str]] = None) -> bool:
-        """Apply Visitor/Resident/WA Resident roles based on NS API membership.
-        Stacking rules:
-        - Give Resident if any linked nation is in region NATIONS.
-        - Give WA Resident if any linked nation is in region UNNATIONS.
-        - Remove Visitor if either Resident or WA Resident is assigned.
-        Returns True if any roles were added/removed, else False.
-        """
+    async def apply_roles(
+        self,
+        guild: discord.Guild,
+        member: discord.Member,
+        *,
+        residents: Optional[set[str]] = None,
+        wa_residents: Optional[set[str]] = None,
+        ctx: Optional[commands.Context] = None,  # NEW
+    ) -> bool:
         if member.bot:
             return False
         gconf = self.config.guild(guild)
@@ -168,14 +169,15 @@ class NationStatesLinker(commands.Cog):
         resident_id = await gconf.resident_role()
         wa_resident_id = await gconf.wa_resident_role()
         region = await gconf.region_name()
-
+        log_channel_id = await gconf.log_channel_id()  # <- we'll use this for fallback
+    
         visitor_role = await self.get_role(guild, visitor_id)
         resident_role = await self.get_role(guild, resident_id)
         wa_resident_role = await self.get_role(guild, wa_resident_id)
-
+    
         nations = await self.config.user(member).linked_nations()
         nations_set = {self.normalize_nation(n) for n in nations}
-
+    
         is_resident = False
         is_wa_resident = False
         if region:
@@ -184,20 +186,18 @@ class NationStatesLinker(commands.Cog):
             is_resident = any(n in residents for n in nations_set)
             is_wa_resident = any(n in wa_residents for n in nations_set)
         else:
-            is_resident = bool(nations)
+            # Default to Visitor if no region configured
+            is_resident = False
             is_wa_resident = False
-
-        to_add = []
-        to_remove = []
-
+    
+        to_add, to_remove = [], []
         if is_resident and resident_role and resident_role not in member.roles:
             to_add.append(resident_role)
         if is_wa_resident and wa_resident_role and wa_resident_role not in member.roles:
             to_add.append(wa_resident_role)
-
         if (is_resident or is_wa_resident) and visitor_role and visitor_role in member.roles:
             to_remove.append(visitor_role)
-
+    
         if not is_resident and not is_wa_resident:
             if visitor_role and visitor_role not in member.roles:
                 to_add.append(visitor_role)
@@ -205,7 +205,7 @@ class NationStatesLinker(commands.Cog):
                 to_remove.append(resident_role)
             if wa_resident_role and wa_resident_role in member.roles:
                 to_remove.append(wa_resident_role)
-
+    
         changed = False
         try:
             if to_add:
@@ -215,14 +215,28 @@ class NationStatesLinker(commands.Cog):
                 await member.remove_roles(*to_remove, reason="NS role sync")
                 changed = True
         except (discord.Forbidden, discord.HTTPException) as e:
-          # Send the error to the channel safely without pinging anyone
-          await ctx.send(
-              f"⚠️ Failed to change roles for **{member.display_name}**: `{type(e).__name__}: {e}`\n"
-              f"Make sure I have permission to manage roles and that my role is above the NS roles.",
-              allowed_mentions=discord.AllowedMentions.none()
-          )  
-
-
+            # Prefer the invoking context if present
+            if ctx:
+                await ctx.send(
+                    f"⚠️ Failed to change roles for **{member.display_name}**: "
+                    f"`{type(e).__name__}: {e}`\n"
+                    f"Tips: Bot needs **Manage Roles**, and its role must be **above** the target roles.",
+                    allowed_mentions=discord.AllowedMentions.none(),
+                )
+            else:
+                # Fallback to configured log channel if available
+                if log_channel_id:
+                    chan = guild.get_channel(log_channel_id)
+                    if chan:
+                        try:
+                            await chan.send(
+                                f"⚠️ Failed to change roles for **{member}**: "
+                                f"`{type(e).__name__}: {e}` (guild: {guild.name})",
+                                allowed_mentions=discord.AllowedMentions.none(),
+                            )
+                        except Exception:
+                            pass
+            # Do not re-raise; just report and continue
         return changed
 
     # --------------- Commands ---------------
