@@ -45,7 +45,7 @@ class GachaCatchEmAll(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.config: Config = Config.get_conf(self, identifier=0xC0FFEE55, force_registration=True)
+        self.config: Config = Config.get_conf(self, identifier="pokemon", force_registration=True)
         # pokebox now stores a LIST of individual entries (each with uid)
         self.config.register_user(pokebox=[], last_roll=None, active_encounter=None)
         self.config.register_global(costs=DEFAULT_COSTS)
