@@ -735,33 +735,26 @@ def _build_pokebox_pages(self, member: discord.abc.User, box: List[Dict[str, Any
     return pages
 
 
+
     @commands.hybrid_command(name="pokeinv")
     async def pokeinv(self, ctx: commands.Context, member: Optional[discord.Member] = None):
-        """List your (or another member's) individual Pokémon with UID & nickname."""
+        """List your (or another member's) individual Pokémon with UID & nickname (paginates)."""
         member = member or ctx.author
         box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
         if not box:
             await ctx.reply(f"{member.display_name} has no Pokémon yet.")
             return
-
+    
         # sort newest first
         box_sorted = sorted(box, key=lambda e: e.get("caught_at", ""), reverse=True)
-        page_size = 8
-        pages = [box_sorted[i : i + page_size] for i in range(0, len(box_sorted), page_size)]
-        for i, page in enumerate(pages, start=1):
-            lines = []
-            for e in page:
-                nick = e.get("nickname")
-                label = f"{e['name']} (#{e['pokedex_id']})"
-                if nick:
-                    label += f" — **{nick}**"
-                lines.append(f"`{e['uid']}` • {label}")
-            embed = discord.Embed(
-                title=f"{member.display_name}'s Pokémon (page {i}/{len(pages)})",
-                description="\n".join(lines),
-                color=discord.Color.blue(),
-            )
-            await ctx.send(embed=embed)
+        page_size = 10  # tweak as you like
+        pages: List[List[Dict[str, Any]]] = [box_sorted[i:i + page_size] for i in range(0, len(box_sorted), page_size)]
+    
+        view = self.InvPaginator(author=ctx.author, member=member, pages=pages)
+        embed = view._render_embed()
+        msg = await ctx.reply(embed=embed, view=view)
+        view.message = msg
+
 
     @commands.hybrid_command(name="nickname")
     async def nickname(self, ctx: commands.Context, uid: str, nickname: Optional[str] = None):
