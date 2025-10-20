@@ -337,7 +337,7 @@ class GachaCatchEmAll(commands.Cog):
 
                     embed = discord.Embed(
                         title=f"🎉 Caught {enc['name']}!",
-                        description=f"UID: `{uid}` — use `/nickname {uid} <Name>` to nickname it.",
+                        description=f"UID: `{uid}` — use `$nickname {uid} <Name>` to nickname it.",
                         color=discord.Color.gold(),
                     )
                     if enc.get("sprite"):
