@@ -52,6 +52,9 @@ class NationStatesLinker(commands.Cog):
             wa_resident_role=None,
             region_name=None,  # e.g., "vibonia"
             log_channel_id = None,
+            welcome_channel_id=None,      # NEW
+            welcome_message=None,         # NEW
+            welcome_enabled=False,        # NEW
         )
 
     # --------------- Utility ---------------
@@ -62,6 +65,22 @@ class NationStatesLinker(commands.Cog):
     @staticmethod
     def display_nation(n: str) -> str:
         return n.replace("_", " ").title()
+
+    def _render_welcome(self, guild: discord.Guild, member: discord.Member, template: str) -> str:
+      """Render {user}, {server}, {region} macros."""
+      if not template:
+          return ""
+      # Pull region or show a friendly placeholder
+      # (we do a light sync get since this is not async-safe here; call sites await in advance)
+      region = None
+      try:
+          # best-effort; call sites should pass in a pre-fetched region if needed
+          region = None
+      except Exception:
+          pass
+      # We'll just fill region at call site (below) to avoid sync config access here.
+      return template  # will be replaced at call site
+  
 
     async def _respect_rate_limit(self, headers: aiohttp.typedefs.LooseHeaders) -> None:
         """Respect NationStates API rate limits if headers are present.
@@ -549,6 +568,95 @@ class NationStatesLinker(commands.Cog):
         await self.config.guild(ctx.guild).region_name.set(region_norm)
         await ctx.send(f"✅ Region set to `{region_norm}`. Use `[p]nslaudit` to sync roles.")
 
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+          guild = member.guild
+          gconf = self.config.guild(guild)
+          enabled = await gconf.welcome_enabled()
+          if not enabled:
+              return
+      
+          channel_id = await gconf.welcome_channel_id()
+          message = await gconf.welcome_message()
+          if not channel_id or not message:
+              return  # nothing configured
+      
+          channel = guild.get_channel(channel_id)
+          if not channel or not isinstance(channel, discord.TextChannel):
+              return
+      
+          region = await gconf.region_name() or "your region"
+          # Render macros
+          text = (
+              message
+              .replace("{user}", member.mention)
+              .replace("{server}", guild.name)
+              .replace("{region}", region)
+          )
+      
+          # Only allow the user mention we inserted; no roles/everyone
+          allowed = discord.AllowedMentions(users=True, roles=False, everyone=False)
+          try:
+              await channel.send(text, allowed_mentions=allowed)
+          except discord.Forbidden:
+              # silently ignore if we can't send there
+              pass
+          except discord.HTTPException:
+              pass
+
+    @nslset.command(name="welcome")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def nslset_welcome_toggle(self, ctx: commands.Context, state: str):
+        """Enable or disable the welcome message. Usage: [p]nslset welcome on|off"""
+        state_l = state.lower()
+        if state_l not in {"on", "off"}:
+            return await ctx.send("Usage: `[p]nslset welcome on|off`")
+        enabled = state_l == "on"
+        await self.config.guild(ctx.guild).welcome_enabled.set(enabled)
+        await ctx.send(f"✅ Welcome messages {'enabled' if enabled else 'disabled'}.")
+    
+    @nslset.command(name="welcomechannel")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def nslset_welcome_channel(self, ctx: commands.Context, channel: discord.TextChannel):
+        """Set the channel where welcome messages are sent."""
+        await self.config.guild(ctx.guild).welcome_channel_id.set(channel.id)
+        await ctx.send(f"✅ Welcome channel set to {channel.mention}")
+    
+    @nslset.command(name="welcomemsg")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def nslset_welcome_msg(self, ctx: commands.Context, *, message: str):
+        """Set the welcome message. Macros: {user}, {server}, {region}."""
+        await self.config.guild(ctx.guild).welcome_message.set(message)
+        await ctx.send("✅ Welcome message updated.\n"
+                       "Macros available: `{user}`, `{server}`, `{region}`")
+
+    @nslset.command(name="welcomepreview")
+    @commands.guild_only()
+    @commands.has_permissions(manage_guild=True)
+    async def nslset_welcome_preview(self, ctx: commands.Context):
+        """Preview the current welcome message using you as the new member."""
+        gconf = self.config.guild(ctx.guild)
+        channel_id = await gconf.welcome_channel_id()
+        message = await gconf.welcome_message()
+        if not message:
+            return await ctx.send("❌ No welcome message set. Use `[p]nslset welcomemsg <text>`.")
+        region = await gconf.region_name() or "your region"
+    
+        # Render preview as if the author joined
+        rendered = (
+            message
+            .replace("{user}", ctx.author.mention)
+            .replace("{server}", ctx.guild.name)
+            .replace("{region}", region)
+        )
+    
+        # Send preview here (don’t ping roles/everyone)
+        await ctx.send(f"**Preview:**\n{rendered}", allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False))
+    
+
     # --------------- UI: Button & Modal ---------------
     class VerifyButton(discord.ui.View):
         def __init__(self, cog: "NationStatesLinker", timeout: Optional[float] = 600):
@@ -636,6 +744,7 @@ class NationStatesLinker(commands.Cog):
             return await ctx.send("❌ No region configured or provided.", allowed_mentions=discord.AllowedMentions.none())
         await ctx.send(f"🔬 Probing region `{region}`…", allowed_mentions=discord.AllowedMentions.none())
         await self.fetch_region_members(region, ctx=ctx, verbose=True)
+
 
 
 
