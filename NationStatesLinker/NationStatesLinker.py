@@ -96,57 +96,111 @@ class NationStatesLinker(commands.Cog):
                 text = (await resp.text()).strip()
                 await self._respect_rate_limit(resp.headers)
                 return text == "1"
+  
+    def _safe_debug_send(self, ctx_or_chan, msg: str):
+      if not ctx_or_chan:
+          return
+      try:
+          # avoid accidental pings
+          return ctx_or_chan.send(msg, allowed_mentions=discord.AllowedMentions.none())
+      except Exception:
+          pass
 
-    async def fetch_region_members(self, region: str) -> tuple[set[str], set[str]]:
-        """Fetch region member lists (residents and WA residents) from NS API.
-        Returns (residents_set, wa_residents_set) of normalized nation names.
-        - Residents are from <NATIONS> which are often colon-separated.
-        - WA residents are from <UNNATIONS> which are often comma-separated.
-        We handle both ':' and ',' and whitespace as separators defensively.
-        """
-        region_norm = region.strip().lower().replace(" ", "_")
-        params = {"region": region_norm, "q": "nations+wanations"}
-        ua = await self.config.user_agent()
-        headers = {"User-Agent": ua}
-        timeout = aiohttp.ClientTimeout(total=20)
-        residents: set[str] = set()
-        wa_residents: set[str] = set()
-        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
-            async with session.get(API_VERIFY_URL, params=params) as resp:
-                xml_text = await resp.text()
-                await self._respect_rate_limit(resp.headers)
-        try:
-            root = ET.fromstring(xml_text)
-            nations_text = ""
-            un_text = ""
-            n_el = root.find("NATIONS")
-            if n_el is not None and n_el.text:
-                nations_text = n_el.text.strip()
-            # UNNATIONS (some dumps use UNNATIONS, others UNNATIONS alias as UNNATIONS)
-            un_el = root.find("UNNATIONS")
-            if un_el is not None and un_el.text:
-                un_text = un_el.text.strip()
-            # Parse residents
-            if nations_text:
-                raw_parts = nations_text.replace(",", ":").split(":")
-                for part in raw_parts:
-                    p = part.strip()
-                    if not p:
-                        continue
-                    residents.add(self.normalize_nation(p))
-            # Parse WA residents
-            if un_text:
-                # UNNATIONS frequently comma-separated
-                raw_parts = un_text.replace(",", ":").split(":")
-                for part in raw_parts:
-                    p = part.strip()
-                    if not p:
-                        continue
-                    wa_residents.add(self.normalize_nation(p))
-        except ET.ParseError:
-            # If parsing fails, return empty sets
-            pass
-        return residents, wa_residents
+
+    async def fetch_region_members(
+      self,
+      region: str,
+      *,
+      ctx: Optional[commands.Context] = None,
+      verbose: bool = False,
+  ) -> tuple[set[str], set[str]]:
+      """Fetch region member lists (residents and WA residents) from NS API.
+      Returns (residents_set, wa_residents_set) of normalized nation names.
+      """
+      region_norm = region.strip().lower().replace(" ", "_")
+      params = {"region": region_norm, "q": "nations+wanations"}
+      ua = await self.config.user_agent()
+      headers = {"User-Agent": ua}
+      timeout = aiohttp.ClientTimeout(total=20)
+      residents: set[str] = set()
+      wa_residents: set[str] = set()
+  
+      if verbose:
+          await self._safe_debug_send(ctx, f"🌐 GET /api.cgi params={params} UA=`{ua}`")
+  
+      async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+          async with session.get(API_VERIFY_URL, params=params) as resp:
+              status = resp.status
+              rlh = resp.headers.get("Ratelimit-Remaining")
+              rlr = resp.headers.get("Ratelimit-Reset")
+              ctype = resp.headers.get("Content-Type")
+              xml_text = await resp.text()
+              await self._respect_rate_limit(resp.headers)
+  
+      if verbose:
+          await self._safe_debug_send(
+              ctx,
+              f"📥 Status: {status} | Content-Type: {ctype} | Len: {len(xml_text)} | "
+              f"Rate: remaining={rlh} reset={rlr}"
+          )
+          # show a short preview (avoid flooding)
+          preview = (xml_text[:500] + "…") if len(xml_text) > 500 else xml_text
+          await self._safe_debug_send(ctx, f"🧾 XML preview:\n```xml\n{preview}\n```")
+  
+      try:
+          root = ET.fromstring(xml_text)
+          # --- residents from <NATIONS>
+          nations_text = ""
+          n_el = root.find("NATIONS")
+          if n_el is not None and n_el.text:
+              nations_text = n_el.text.strip()
+  
+          # --- WA residents from <WANATIONS> (correct shard name)
+          wa_text = ""
+          wa_el = root.find("WANATIONS")
+          if wa_el is None:
+              # legacy fallback if NS ever shipped alias (rare)
+              wa_el = root.find("UNNATIONS")
+          if wa_el is not None and wa_el.text:
+              wa_text = wa_el.text.strip()
+  
+          if verbose:
+              await self._safe_debug_send(
+                  ctx,
+                  f"🔎 Found tags -> NATIONS: {bool(nations_text)} | WANATIONS/UNNATIONS: {bool(wa_text)}"
+              )
+  
+          # Parse residents (NATIONS is typically colon-separated, sometimes commas)
+          if nations_text:
+              raw_parts = nations_text.replace(",", ":").split(":")
+              for part in raw_parts:
+                  p = part.strip()
+                  if p:
+                      residents.add(self.normalize_nation(p))
+  
+          # Parse WA residents (WANATIONS often comma-separated)
+          if wa_text:
+              raw_parts = wa_text.replace(",", ":").split(":")
+              for part in raw_parts:
+                  p = part.strip()
+                  if p:
+                      wa_residents.add(self.normalize_nation(p))
+  
+          if verbose:
+              # Show counts and a few samples
+              res_samp = ", ".join(sorted(list(residents))[:10])
+              wa_samp = ", ".join(sorted(list(wa_residents))[:10])
+              await self._safe_debug_send(ctx, f"📊 Residents count: {len(residents)}; sample: {res_samp or '—'}")
+              await self._safe_debug_send(ctx, f"📊 WA Residents count: {len(wa_residents)}; sample: {wa_samp or '—'}")
+  
+      except ET.ParseError as e:
+          if verbose:
+              await self._safe_debug_send(ctx, f"❌ XML ParseError: `{e}`")
+          # return empty sets on error
+          return set(), set()
+  
+      return residents, wa_residents
+
 
     # Utility helpers for role assignment
     async def get_role(self, guild: discord.Guild, role_id: Optional[int]) -> Optional[discord.Role]:
@@ -322,7 +376,8 @@ class NationStatesLinker(commands.Cog):
                     await self.apply_roles(ctx.guild, ctx.author)
             else:
                 await ctx.send(f"❌ You do not have **{self.display_nation(nation_name)}** linked to your account.")
-    @commands.command(name="nslaudit")
+   
+  @commands.command(name="nslaudit")
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     async def nslaudit(self, ctx: commands.Context):
@@ -570,6 +625,18 @@ class NationStatesLinker(commands.Cog):
             # Try to apply roles upon successful verification
             if interaction.guild and isinstance(interaction.user, discord.Member):
                 await self.cog.apply_roles(interaction.guild, interaction.user)
+
+    @commands.command(name="nslprobe")
+    @commands.guild_only()
+    @commands.has_permissions(manage_roles=True)
+    async def nslprobe(self, ctx: commands.Context, *, region: Optional[str] = None):
+        """Debug the NS API read for a region (prints parsing details)."""
+        region = region or await self.config.guild(ctx.guild).region_name()
+        if not region:
+            return await ctx.send("❌ No region configured or provided.", allowed_mentions=discord.AllowedMentions.none())
+        await ctx.send(f"🔬 Probing region `{region}`…", allowed_mentions=discord.AllowedMentions.none())
+        await self.fetch_region_members(region, ctx=ctx, verbose=True)
+
 
 
 async def setup(bot: commands.Bot):
