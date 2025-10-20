@@ -30,6 +30,7 @@ from typing import Dict, List, Optional, Tuple
 
 import discord
 from redbot.core import commands, Config
+from redbot.core.data_manager import cog_data_path
 from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import box, humanize_list, humanize_number
 
@@ -100,7 +101,7 @@ class OwnedMon:
         return int(base * (1 + (self.level - 1) * 0.07))
 
 
-class GachaCatchEmAll(commands.Cog):
+class NexusMon(commands.Cog):
     """Gacha-style monster collection using Wellcoins and NexusExchange."""
 
     __author__ = "chatgpt"
@@ -122,15 +123,8 @@ class GachaCatchEmAll(commands.Cog):
         self._specs: Dict[str, MonSpec] = {}
         self._load_lock = asyncio.Lock()
 
-    # ---------- UTIL: DATA PATHS ----------
-    def cog_data_path(self) -> str:
-        base = os.path.join(self.bot._config_cache["SERVER_SETTINGS"]["DATA_PATHS"]["CORE"], "data")  # type: ignore
-        # The above is a bit hacky; prefer Red's cog_data_path helper when available
-        return str(self._get_cog_data_path())
-
-    def _get_cog_data_path(self):
-        # Official helper
-        return self.bot._config_cache.get("COG_PATHS", {}).get(self.__class__.__name__, self.bot._data_path / self.__class__.__name__.lower())  # type: ignore
+    # ---------- DATA PATHS ----------
+    # Using Red's official data manager helper (cog_data_path). No private attrs used.
 
     async def red_delete_data_for_user(self, **kwargs):
         """GDPR compliance: wipe a user's data."""
@@ -143,13 +137,10 @@ class GachaCatchEmAll(commands.Cog):
     async def load_specs(self) -> None:
         """Load species from mons.json located in this cog's data folder."""
         async with self._load_lock:
-            datapath = self._get_cog_data_path()
-            try:
-                os.makedirs(datapath, exist_ok=True)
-            except Exception:
-                pass
-            file_path = os.path.join(datapath, "mons.json")
-            if not os.path.exists(file_path):
+            datapath = cog_data_path(self)
+            datapath.mkdir(parents=True, exist_ok=True)
+            file_path = datapath / "mons.json"
+            if not file_path.exists():
                 self._specs = {}
                 return
             try:
@@ -221,7 +212,7 @@ class GachaCatchEmAll(commands.Cog):
     async def loadmons(self, ctx: commands.Context):
         """Reload species from data folder's mons.json.
 
-        Path: [bot data]/NexusMon/mons.json
+        Path: {data_path}/mons.json  (use `[p]nexusmon whereis` to see your exact path)
         """
         await self.load_specs()
         if not self._specs:
@@ -252,6 +243,12 @@ class GachaCatchEmAll(commands.Cog):
         brp[rarity] = max(0, int(weight))
         await self.config.base_rarity_pool.set(brp)
         await ctx.send(f"Base weight for {rarity} set to {weight}.")
+
+    @admin_group.command(name="whereis")
+    async def whereis(self, ctx: commands.Context):
+        """Show the exact folder path for mons.json."""
+        path = cog_data_path(self)
+        await ctx.send(f"Place your file at: `{path / 'mons.json'}`")
 
     # ---------- PUBLIC COMMANDS ----------
     @commands.hybrid_group(name="mon")
