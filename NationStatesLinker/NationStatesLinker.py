@@ -321,7 +321,6 @@ class NationStatesLinker(commands.Cog):
                     await self.apply_roles(ctx.guild, ctx.author)
             else:
                 await ctx.send(f"❌ You do not have **{self.display_nation(nation_name)}** linked to your account.")
-
     @commands.command(name="nslaudit")
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
@@ -329,25 +328,107 @@ class NationStatesLinker(commands.Cog):
         """Audit everyone in this server and update Visitor/Resident/WA roles.
         Uses NS API against the configured region.
         """
+        allowed_none = discord.AllowedMentions.none()
         guild = ctx.guild
-        region = await self.config.guild(guild).region_name()
+    
+        # ---- preflight checks
+        gconf = self.config.guild(guild)
+        region = await gconf.region_name()
+        visitor_id = await gconf.visitor_role()
+        resident_id = await gconf.resident_role()
+        wa_resident_id = await gconf.wa_resident_role()
+    
+        # bot perms & hierarchy checks
+        me = guild.me
+        if not me.guild_permissions.manage_roles:
+            return await ctx.send("❌ I’m missing the **Manage Roles** permission.", allowed_mentions=allowed_none)
+    
+        missing = []
+        def _get(role_id):
+            return guild.get_role(role_id) if role_id else None
+    
+        visitor_role = _get(visitor_id)
+        resident_role = _get(resident_id)
+        wa_resident_role = _get(wa_resident_id)
+    
+        if not visitor_role: missing.append("Visitor")
+        if not resident_role: missing.append("Resident")
+        if not wa_resident_role: missing.append("WA Resident")
+    
+        if missing:
+            await ctx.send(
+                f"⚠️ Missing configured roles: {', '.join(missing)}. "
+                f"Set them with `[p]nslroles visitor|resident|wa_resident <role>`.",
+                allowed_mentions=allowed_none
+            )
+    
+        # check role position (hierarchy)
+        too_high = []
+        for r, name in [(visitor_role, "Visitor"), (resident_role, "Resident"), (wa_resident_role, "WA Resident")]:
+            if r and r >= me.top_role:
+                too_high.append(name)
+        if too_high:
+            return await ctx.send(
+                f"❌ My highest role must be **above**: {', '.join(too_high)}.",
+                allowed_mentions=allowed_none
+            )
+    
         if not region:
-            return await ctx.send("❌ No region configured. Set one with `[p]nslset region <region>`.")
-        await ctx.send("🔎 Fetching region membership from NationStates...")
-        residents, wa_residents = await self.fetch_region_members(region)
+            return await ctx.send("❌ No region configured. Set one with `[p]nslset region <region>`.", allowed_mentions=allowed_none)
+    
+        await ctx.send("🔎 Fetching region membership from NationStates…", allowed_mentions=allowed_none)
+    
+        # ---- fetch region data with error surfacing
+        try:
+            residents, wa_residents = await self.fetch_region_members(region)
+        except Exception as e:
+            return await ctx.send(
+                f"❌ Failed to fetch region data for `{region}`: `{type(e).__name__}: {e}`",
+                allowed_mentions=allowed_none
+            )
+    
         members = [m for m in guild.members if not m.bot]
-        await ctx.send(f"🔁 Auditing {len(members)} members for region `{region}`...")
+        await ctx.send(f"🔁 Auditing {len(members)} members for region `{region}`…", allowed_mentions=allowed_none)
+    
         updated = 0
         failed = 0
+        failed_lines = []
+    
+        # ---- audit loop with per-member error reporting
         for idx, member in enumerate(members, start=1):
             try:
-                changed = await self.apply_roles(guild, member, residents=residents, wa_residents=wa_residents)
+                changed = await self.apply_roles(
+                    guild,
+                    member,
+                    residents=residents,
+                    wa_residents=wa_residents,
+                    ctx=ctx,  # <-- lets apply_roles send detailed errors here
+                )
                 if changed:
                     updated += 1
-            except Exception:
+            except Exception as e:
                 failed += 1
+                # collect + also surface immediately
+                msg = f"⚠️ `{idx}/{len(members)}` failed for **{member.display_name}**: `{type(e).__name__}: {e}`"
+                failed_lines.append(msg)
+                await ctx.send(msg, allowed_mentions=allowed_none)
+    
+            # tiny pause to be gentle with rate limits
             await asyncio.sleep(0.2)
-        await ctx.send(f"✅ Audit complete. Updated: {updated} | Failed: {failed}.")
+    
+        # ---- final summary (and compact error recap if any)
+        summary = f"✅ Audit complete. Updated: {updated} | Failed: {failed}."
+        await ctx.send(summary, allowed_mentions=allowed_none)
+    
+        if failed_lines:
+            # avoid flooding: send a compact block (discord 2000 char limit)
+            header = "🧾 Error recap (first 20):"
+            recap = "\n".join(failed_lines[:20])
+            block = f"{header}\n{recap}"
+            if len(block) > 1900:
+                block = block[:1900] + "…"
+            await ctx.send(block, allowed_mentions=allowed_none)
+
 
     # --------------- Role Settings ---------------
     @commands.group(name="nslroles")
