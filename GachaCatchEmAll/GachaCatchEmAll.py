@@ -55,7 +55,7 @@ BALL_TUNING = {
 }
 
 
-class PokeGacha(commands.Cog):
+class GachaCatchEmAll(commands.Cog):
     """Pokémon gacha using Wellcoins + PokéAPI"""
 
     def __init__(self, bot: commands.Bot):
@@ -227,21 +227,13 @@ class PokeGacha(commands.Cog):
     def _encounter_embed(self, user: discord.abc.User, enc: Dict[str, Any], costs: Dict[str, float]) -> discord.Embed:
         title = f"🌿 A wild {enc['name']} appeared!"
         desc = (
-            f"Base Stat Total: **{enc['bst']}**
-"
-            f"Misses so far: **{enc.get('fails', 0)}**
-
-"
-            f"**Choose a ball:**
-"
-            f"⚪ Poké Ball — **{costs['pokeball']:.2f}** WC
-"
-            f"🔵 Great Ball — **{costs['greatball']:.2f}** WC
-"
-            f"🟡 Ultra Ball — **{costs['ultraball']:.2f}** WC
-"
-            f"🟣 Master Ball — **{costs['masterball']:.2f}** WC
-"
+            f"""Base Stat Total: **{enc['bst']}
+            ** Misses so far: **{enc.get('fails', 0)}**
+            **Choose a ball:**
+            ⚪ Poké Ball — **{costs['pokeball']:.2f}** WC
+            🔵 Great Ball — **{costs['greatball']:.2f}** WC
+            🟡 Ultra Ball — **{costs['ultraball']:.2f}** WC
+            🟣 Master Ball — **{costs['masterball']:.2f}** WC"""
         )
         embed = discord.Embed(title=title, description=desc, color=discord.Color.green())
         if enc.get('sprite'):
