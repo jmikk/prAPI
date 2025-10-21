@@ -243,8 +243,10 @@ class NationStatesLinker(commands.Cog):
         visitor_id = await gconf.visitor_role()
         resident_id = await gconf.resident_role()
         wa_resident_id = await gconf.wa_resident_role()
+        verified_role = await self.get_role(guild, gconf.verified_id)  
         region = await gconf.region_name()
         log_channel_id = await gconf.log_channel_id()  # <- we'll use this for fallback
+        has_any_linked = bool(nations_set)  # NEW**
     
         visitor_role = await self.get_role(guild, visitor_id)
         resident_role = await self.get_role(guild, resident_id)
@@ -266,6 +268,13 @@ class NationStatesLinker(commands.Cog):
             is_wa_resident = False
     
         to_add, to_remove = [], []
+
+        if verified_role:
+            if has_any_linked and verified_role not in member.roles:
+                to_add.append(verified_role)
+            elif not has_any_linked and verified_role in member.roles:
+                to_remove.append(verified_role)
+      
         if is_resident and resident_role and resident_role not in member.roles:
             to_add.append(resident_role)
         if is_wa_resident and wa_resident_role and wa_resident_role not in member.roles:
@@ -781,6 +790,48 @@ class NationStatesLinker(commands.Cog):
             log_channel = ctx.guild.get_channel(log_channel_id)
             if log_channel:
                 await log_channel.send(f"🛡️ Admin {ctx.author} force-linked {nation_norm} to {member}.")
+
+    @commands.command(name="nslgrantverified")
+    @commands.guild_only()
+    @commands.has_permissions(manage_roles=True)
+    async def nslgrantverified(self, ctx: commands.Context):
+        """
+        Give the configured Verified role to every non-bot member who has at least one linked nation.
+        (Does not remove the role from anyone.)
+        """
+        gconf = self.config.guild(ctx.guild)
+        verified_id = await gconf.verified_role()
+        if not verified_id:
+            return await ctx.send("❌ No Verified role configured. Set it with `[p]nslroles verified <role>`.")
+        verified_role = ctx.guild.get_role(verified_id)
+        if not verified_role:
+            return await ctx.send("❌ The configured Verified role no longer exists. Please set it again.")
+
+        me = ctx.guild.me
+        if not me.guild_permissions.manage_roles:
+            return await ctx.send("❌ I’m missing the **Manage Roles** permission.")
+
+        if verified_role >= me.top_role:
+            return await ctx.send("❌ My highest role must be **above** the Verified role to assign it.")
+
+        members = [m for m in ctx.guild.members if not m.bot]
+        await ctx.send(f"🔎 Scanning {len(members)} members for linked nations…")
+
+        updated = 0
+        checked = 0
+        for m in members:
+            try:
+                nations = await self.config.user(m).linked_nations()
+                if nations and verified_role not in m.roles:
+                    await m.add_roles(verified_role, reason="NS verified grant (has linked nation)")
+                    updated += 1
+            except (discord.Forbidden, discord.HTTPException):
+                # Skip silently but continue
+                pass
+            checked += 1
+
+        await ctx.send(f"✅ Done. Checked: {checked} | Newly given Verified: {updated}.")
+
     
 
 
