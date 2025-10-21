@@ -1461,6 +1461,7 @@ class GachaCatchEmAll(commands.Cog):
         Battle with teams of up to 6. If opponent is omitted, you'll fight an NPC team
         near your team's average level. Everyone gains XP, scaled by level difference.
         """
+        await ctx.send("searching for oppenent this can take a moment or two...")
         caller = ctx.author
         opp = opponent
     
