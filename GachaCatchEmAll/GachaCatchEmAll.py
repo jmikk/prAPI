@@ -42,8 +42,34 @@ POKEMON_TYPES = [
     "psychic","bug","rock","ghost","dragon","dark","steel","fairy"
 ]
 
+# Difficulty profiles for NPCs
+DIFFICULTY_PROFILES = {
+    "easy":   {"level_delta": -1, "stat_mult": 0.95, "damage_mult": 1.00, "extra_moves": 0, "counterpick": False},
+    "normal": {"level_delta": 0,  "stat_mult": 1.00, "damage_mult": 1.00, "extra_moves": 0, "counterpick": False},
+    "hard":   {"level_delta": +2, "stat_mult": 1.10, "damage_mult": 1.05, "extra_moves": 1, "counterpick": True},
+    "boss":   {"level_delta": +4, "stat_mult": 1.20, "damage_mult": 1.10, "extra_moves": 2, "counterpick": True},
+}
 
-
+# minimal weakness mapping (attacking type -> is super-effective against these)
+TYPE_BEATS = {
+    "fire": ["grass","ice","bug","steel"],
+    "water": ["fire","ground","rock"],
+    "grass": ["water","ground","rock"],
+    "electric": ["water","flying"],
+    "ice": ["grass","ground","flying","dragon"],
+    "fighting": ["normal","ice","rock","dark","steel"],
+    "poison": ["grass","fairy"],
+    "ground": ["fire","electric","poison","rock","steel"],
+    "flying": ["grass","fighting","bug"],
+    "psychic": ["fighting","poison"],
+    "bug": ["grass","psychic","dark"],
+    "rock": ["fire","ice","flying","bug"],
+    "ghost": ["psychic","ghost"],
+    "dragon": ["dragon"],
+    "dark": ["psychic","ghost"],
+    "steel": ["ice","rock","fairy"],
+    "fairy": ["fighting","dragon","dark"],
+}
 
 
 NICKNAME_RE = re.compile(r"^[A-Za-z]{1,20}$")  # “letters only, max 20”
@@ -70,6 +96,51 @@ class GachaCatchEmAll(commands.Cog):
 
     def _chunk_lines(self, lines: List[str], size: int) -> List[List[str]]:
         return [lines[i:i+size] for i in range(0, len(lines), size)]
+
+    def _pick_counter_types(self, your_team: List[Dict[str, Any]]) -> List[str]:
+        # collect your visible types
+        yours = set()
+        for e in your_team:
+            for t in (e.get("types") or []):
+                yours.add(t.lower())
+        # score attacker types by how many of your types they beat
+        best = []
+        best_score = 0
+        for atk, beats in TYPE_BEATS.items():
+            score = len(yours.intersection(set(beats)))
+            if score > best_score:
+                best, best_score = [atk], score
+            elif score == best_score and score > 0:
+                best.append(atk)
+        return best or []
+
+
+    async def _apply_difficulty_to_npc_team(self, team: List[Dict[str, Any]], profile: Dict[str, Any]) -> None:
+        """Mutate team in-place based on the difficulty profile."""
+        for e in team:
+            # level bump
+            e["level"] = max(1, int(e.get("level", 1)) + int(profile.get("level_delta", 0)))
+            # stat mult
+            stats = self._safe_stats(e)
+            mult = float(profile.get("stat_mult", 1.0))
+            for k in stats.keys():
+                stats[k] = max(1, int(round(stats[k] * mult)))
+            e["stats"] = stats
+            e["bst"] = sum(stats.values())
+            # extra moves (same-type move grabbing, avoid duplicates)
+            extra = int(profile.get("extra_moves", 0))
+            if extra > 0:
+                e.setdefault("moves", [])
+                types = [t for t in (e.get("types") or [])]
+                for _ in range(extra):
+                    m = await self._random_starting_move(types)
+                    if m and m not in e["moves"]:
+                        e["moves"].append(m)
+            # small damage multiplier “tag” so _calc_move_damage can read it
+            e["_dmg_mult"] = float(profile.get("damage_mult", 1.0))
+    
+
+    
 
 
     # --------- Red utilities ---------
@@ -327,7 +398,6 @@ class GachaCatchEmAll(commands.Cog):
         atk = a_stats["attack"] if dmg_class == "physical" else a_stats["special-attack"]
         deff = d_stats["defense"] if dmg_class == "physical" else d_stats["special-defense"]
     
-        # Base damage
         dmg = (power * max(1, atk)) / max(1, deff)
     
         # STAB
@@ -335,10 +405,14 @@ class GachaCatchEmAll(commands.Cog):
         if mtype in atk_types:
             dmg *= 1.2
     
-        # Random variance 0.85–1.0
+        # small variance
         dmg *= random.uniform(0.85, 1.0)
     
+        # difficulty tag (e.g., NPC “boss”)
+        dmg *= float(attacker.get("_dmg_mult", 1.0))
+    
         return max(1, int(round(dmg)))
+
     
     def _initial_hp(self, e: Dict[str, Any]) -> int:
         # Simple HP pool using 'hp' stat * level scaling
@@ -1476,7 +1550,15 @@ class GachaCatchEmAll(commands.Cog):
                 return
         for e in caller_team:
             await self._ensure_moves_on_entry(e)
-    
+
+        mode = "normal"
+        r = random.random()
+        if r < 0.10:
+            mode = "boss"
+        elif r < 0.35:
+            mode = "hard"
+        profile = DIFFICULTY_PROFILES.get(mode, DIFFICULTY_PROFILES["normal"])
+        
         # ----- Load opponent team or generate NPC team
         if opp:
             opp_uids = await self._get_team(opp)
@@ -1492,6 +1574,7 @@ class GachaCatchEmAll(commands.Cog):
         else:
             avg_lvl = self._avg_level(caller_team)
             opp_team = await self._generate_npc_team(target_avg_level=avg_lvl, size=min(6, len(caller_team) or 6))
+            await self._apply_difficulty_to_npc_team(opp_team, profile)
     
         # ----- Team vs Team (frontline KO → next)
         ci = oi = 0
