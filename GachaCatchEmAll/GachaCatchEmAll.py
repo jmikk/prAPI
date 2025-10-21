@@ -365,8 +365,9 @@ class GachaCatchEmAll(commands.Cog):
                     pdata = await self.cog._get_pokemon(enc["id"])
                     types = [t["type"]["name"] for t in pdata.get("types", [])]
                     stats_map = {s["stat"]["name"]: int(s["base_stat"]) for s in pdata.get("stats", [])}
-                    uid = uuid.uuid4().hex[:12]  # short UID
+                    uid = uuid.uuid4().hex[:12]
                     now = datetime.now(timezone.utc)
+                    unix = int(now.timestamp())
                     entry = {
                         "uid": uid,
                         "pokedex_id": int(enc["id"]),
@@ -501,14 +502,11 @@ class GachaCatchEmAll(commands.Cog):
             entries: List[Dict[str, Any]],
             start_index: int = 0,
             timeout: int = 180,
-            cog: "GachaCatchEmAll",                
         ):
             super().__init__(timeout=timeout)
-
-            self.cog = cog                        
             self.author = author
             self.member = member
-            self.entries = entries               # one entry per page
+            self.entries = entries
             self.index = max(0, min(start_index, len(entries) - 1))
             self.message: Optional[discord.Message] = None
     
@@ -534,13 +532,23 @@ class GachaCatchEmAll(commands.Cog):
             except Exception:
                 pass
     
+        def _xp_needed(self, level: int) -> int:
+            level = max(1, int(level))
+            return 100 * level
+    
+        def _xp_bar(self, level: int, xp: int) -> str:
+            need = self._xp_needed(level)
+            filled = int(round(10 * (xp / need))) if need else 0
+            filled = max(0, min(10, filled))
+            return "▰" * filled + "▱" * (10 - filled) + f"  {xp}/{need}"
+    
         def _render_embed(self) -> discord.Embed:
             e = self.entries[self.index]
             title = e.get("name", "Unknown")
             nick = e.get("nickname")
             if nick:
                 title = f"{nick} ({e.get('name','Unknown')})"
-        
+    
             # Stats block
             stats = e.get("stats") or {}
             order = ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]
@@ -549,21 +557,24 @@ class GachaCatchEmAll(commands.Cog):
                 if k not in order:
                     parts.append(f"{k.replace('-',' ').title()}: **{v}**")
             stats_text = "\n".join(parts) if parts else "No stats"
-        
+    
             # Types
             types = e.get("types") or []
             types_text = " / ".join(t.title() for t in types) if types else "Unknown"
-        
-            # Level / XP (ensure defaults + bar)
-            self.cog._ensure_mon_defaults(e)
-            lvl = int(e["level"])
-            xp = int(e["xp"])
-            xpbar = self.cog._xp_bar(lvl, xp)
-        
-            # Fancy caught time
+    
+            # Level / XP with safe defaults
+            lvl = int(e.get("level", 1))
+            xp = int(e.get("xp", 0))
+            xpbar = self._xp_bar(lvl, xp)
+    
+            # Fancy caught time: prefer caught_at_unix; fallback if caught_at is int; else show ISO
             unix = e.get("caught_at_unix")
-            caught_text = f"<t:{unix}:F> — <t:{unix}:R>" if unix else e.get("caught_at", "?")
-        
+            if unix is None:
+                ca = e.get("caught_at")
+                if isinstance(ca, int):
+                    unix = ca
+            caught_text = f"<t:{unix}:F> — <t:{unix}:R>" if unix is not None else (e.get("caught_at", "?") or "?")
+    
             desc = (
                 f"**UID:** `{e.get('uid','??')}`\n"
                 f"**Pokédex ID:** {e.get('pokedex_id','?')}\n"
@@ -574,14 +585,13 @@ class GachaCatchEmAll(commands.Cog):
                 f"**Caught:** {caught_text}\n\n"
                 f"**Stats:**\n{stats_text}"
             )
-        
+    
             embed = discord.Embed(title=title, description=desc, color=discord.Color.purple())
             sprite = e.get("sprite")
             if sprite:
                 embed.set_thumbnail(url=sprite)
             embed.set_footer(text=f"{self.member.display_name} — {self.index + 1}/{len(self.entries)}")
             return embed
-
     
         async def _update(self, interaction: discord.Interaction):
             if not interaction.response.is_done():
@@ -625,6 +635,7 @@ class GachaCatchEmAll(commands.Cog):
             if self.message:
                 await self.message.edit(view=self)
             self.stop()
+
 
 
     class InvPaginator(discord.ui.View):
@@ -924,7 +935,7 @@ class GachaCatchEmAll(commands.Cog):
                             start_index = i
                             break
     
-        view = self.MonPaginator(cog=self, author=ctx.author, member=member, entries=entries, start_index=start_index)
+        view = self.MonPaginator(author=ctx.author, member=member, entries=entries, start_index=start_index)
         embed = view._render_embed()
         msg = await ctx.reply(embed=embed, view=view)
         view.message = msg
