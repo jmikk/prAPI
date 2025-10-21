@@ -1748,8 +1748,8 @@ class GachaCatchEmAll(commands.Cog):
         Paginated play-by-play with a Skip to Results button.
         pages: list[discord.Embed] (play-by-play pages)
         results_embed: final results embed
-         """
-         def __init__(
+        """
+        def __init__(
              self,
              author: discord.abc.User,
              pages: List[discord.Embed],
@@ -1757,7 +1757,7 @@ class GachaCatchEmAll(commands.Cog):
              opponent: Optional[discord.abc.User] = None,
              timeout: int = 300
           ):
-             super().__init__(timeout=timeout)
+            super().__init__(timeout=timeout)
             self.author = author
             self.opponent = opponent
             self.pages = pages
