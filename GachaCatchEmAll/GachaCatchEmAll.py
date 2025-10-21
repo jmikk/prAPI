@@ -1728,38 +1728,38 @@ class GachaCatchEmAll(commands.Cog):
         # Fallback: at least one generic page
             pages = [(discord.Embed(title="Battle", description="Battle begins!", color=discord.Color.teal()), None)]
 
-        async def _simulate_duel(
-            self,
-            A: Dict[str, Any],
-            B: Dict[str, Any],
-            A_start: Optional[int] = None,
-            B_start: Optional[int] = None
-        ) -> Tuple[str, List[Dict[str, Any]], int, int]:
-            a = dict(A); b = dict(B)
-            A_max = self._initial_hp(a)
-            B_max = self._initial_hp(b)
+    async def _simulate_duel(
+        self,
+        A: Dict[str, Any],
+        B: Dict[str, Any],
+        A_start: Optional[int] = None,
+        B_start: Optional[int] = None
+    ) -> Tuple[str, List[Dict[str, Any]], int, int]:
+        a = dict(A); b = dict(B)
+        A_max = self._initial_hp(a)
+        B_max = self._initial_hp(b)
         
-            A_hp = A_max if A_start is None else max(0, min(A_start, A_max))
-            B_hp = B_max if B_start is None else max(0, min(B_start, B_max))
+        A_hp = A_max if A_start is None else max(0, min(A_start, A_max))
+        B_hp = B_max if B_start is None else max(0, min(B_start, B_max))
         
-            A_spd = self._safe_stats(a)["speed"]
-            B_spd = self._safe_stats(b)["speed"]
-            first_is_A = True if A_spd >= B_spd else False
+        A_spd = self._safe_stats(a)["speed"]
+        B_spd = self._safe_stats(b)["speed"]
+        first_is_A = True if A_spd >= B_spd else False
         
-            actions: List[Dict[str, Any]] = []
-            turn = 1
-            while A_hp > 0 and B_hp > 0 and turn <= 100:
-                order = [("A", a, b), ("B", b, a)] if first_is_A else [("B", b, a), ("A", a, b)]
-                for who, atk, dfn in order:
-                    if A_hp <= 0 or B_hp <= 0:
-                        break
-                    move = await self._pick_move(atk)
-                    dmg = self._calc_move_damage(atk, dfn, move)
-                    if who == "A":
-                        B_hp -= dmg
-                    else:
-                        A_hp -= dmg
-                    actions.append({
+        actions: List[Dict[str, Any]] = []
+        turn = 1
+        while A_hp > 0 and B_hp > 0 and turn <= 100:
+            order = [("A", a, b), ("B", b, a)] if first_is_A else [("B", b, a), ("A", a, b)]
+            for who, atk, dfn in order:
+                if A_hp <= 0 or B_hp <= 0:
+                    break
+                move = await self._pick_move(atk)
+                dmg = self._calc_move_damage(atk, dfn, move)
+                if who == "A":
+                    B_hp -= dmg
+                else:
+                    A_hp -= dmg
+                actions.append({
                         "attacker": who,
                         "move_name": str(move.get("name","")).title() or "Move",
                         "damage": int(dmg),
@@ -1772,11 +1772,11 @@ class GachaCatchEmAll(commands.Cog):
                         "A_sprite": a.get("sprite"),
                         "B_sprite": b.get("sprite"),
                         "turn": turn,
-                    })
-                turn += 1
+                })
+            turn += 1
         
-            winner = "A" if A_hp > 0 else ("B" if B_hp > 0 else random.choice(["A","B"]))
-            return winner, actions, max(0, A_hp), max(0, B_hp)
+        winner = "A" if A_hp > 0 else ("B" if B_hp > 0 else random.choice(["A","B"]))
+        return winner, actions, max(0, A_hp), max(0, B_hp)
 
 
 
