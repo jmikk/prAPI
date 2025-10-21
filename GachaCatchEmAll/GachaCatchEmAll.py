@@ -1691,23 +1691,41 @@ class GachaCatchEmAll(commands.Cog):
             await self.config.user(opp).pokebox.set(new_opp_box)
     
         # ----- Results page
-        title = "🏆 You win!" if match_winner == "caller" else ("🏆 " + (opp.display_name if opp else "NPC") + " wins!")
-        results = discord.Embed(title=title, color=discord.Color.dark_gold())
-        results.description = "\n".join(brief_recap[:3]) if brief_recap else "_Battle complete_"
-    
-        if caller_progress:
-            results.add_field(
-                name=f"{caller.display_name} Progress",
-                value="\n".join(caller_progress),
-                inline=False
-            )
-        if opp_progress:
-            who = opp.display_name if opp else "Opponent"
-            results.add_field(
-                name=f"{who} Progress",
-                value="\n".join(opp_progress),
-                inline=False
-            )
+        # ----- Results page (REPLACE OLD BLOCK WITH THIS) -----
+        caller_won = (ci < len(caller_team))
+        title = "🏆 Victory!" if caller_won else f"💥 Defeat vs {(opp.display_name if opp else 'NPC')}"
+        color = discord.Color.green() if caller_won else discord.Color.red()
+        results = discord.Embed(title=title, color=color)
+        
+        def _fmt_team_block(team: List[Dict[str, Any]]) -> str:
+            lines: List[str] = []
+            for e in team:
+                lvl = int(e.get("level", 1))
+                xp  = int(e.get("xp", 0))
+                bar = self._xp_bar(lvl, xp)  # uses your existing helper
+                name = e.get("nickname") or e.get("name", "?")
+                uid = e.get("uid", "?")
+                # each mon: name + level on one line, XP bar on next
+                lines.append(f"`{uid}` **{name}** — Lv **{lvl}**\n{bar}")
+            return "\n".join(lines) if lines else "_No Pokémon_"
+        
+        # Caller team block
+        results.add_field(
+            name=f"{caller.display_name}",
+            value=_fmt_team_block(caller_team),
+            inline=False
+        )
+        
+        # Opponent team block (hide NPC UIDs if you prefer; keeping as-is for consistency)
+        opp_list = [e for e in opp_team if not e.get("_npc")] if not opp else opp_team
+        results.add_field(
+            name=(opp.display_name if opp else "Opponent"),
+            value=_fmt_team_block(opp_list) or "_No Pokémon_",
+            inline=False
+        )
+        
+        # (Optional) keep your thumbnails/author icons after this, unchanged.
+
     
         # ----- Build one page per action (HP bars + BOTH sprites composited side-by-side)
         def hpbar(cur: int, mx: int) -> str:
