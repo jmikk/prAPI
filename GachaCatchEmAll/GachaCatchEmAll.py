@@ -1702,11 +1702,12 @@ class GachaCatchEmAll(commands.Cog):
             for e in team:
                 lvl = int(e.get("level", 1))
                 xp  = int(e.get("xp", 0))
+                gained = int(awards.get(e.get("uid", ""), 0))
                 bar = self._xp_bar(lvl, xp)  # uses your existing helper
                 name = e.get("nickname") or e.get("name", "?")
                 uid = e.get("uid", "?")
                 # each mon: name + level on one line, XP bar on next
-                lines.append(f"`{uid}` **{name}** — Lv **{lvl}**\n{bar}")
+                lines.append(f"`{uid}` **{name}** — Lv **{lvl}** (+{gained} XP)\n{bar}")   
             return "\n".join(lines) if lines else "_No Pokémon_"
         
         # Caller team block
