@@ -88,6 +88,62 @@ class GachaCatchEmAll(commands.Cog):
             self._session = aiohttp.ClientSession()
         return self._session
 
+    def _hp_bar(self, cur: int, maxhp: int, width: int = 20) -> str:
+        cur = max(0, min(cur, maxhp))
+        filled = int(round(width * (cur / maxhp))) if maxhp else 0
+        return "▰" * filled + "▱" * (width - filled)    
+    
+    async def _download_image_bytes(self, url: str) -> Optional[bytes]:
+        if not url:
+            return None
+        try:
+            session = await self._get_session()
+            async with session.get(url, timeout=8) as resp:
+                resp.raise_for_status()
+                return await resp.read()
+        except Exception:
+            return None
+    
+    async def _compose_vs_image(self, left_url: Optional[str], right_url: Optional[str]) -> Optional[discord.File]:
+        """
+        Try to compose two sprite URLs into a single image file attachment.
+        Returns a discord.File or None on failure/unavailable Pillow.
+        """
+        try:
+            from PIL import Image
+            import io
+        except Exception:
+            return None
+    
+        lb = await self._download_image_bytes(left_url or "")
+        rb = await self._download_image_bytes(right_url or "")
+        if not lb or not rb:
+            return None
+    
+        try:
+            li = Image.open(io.BytesIO(lb)).convert("RGBA")
+            ri = Image.open(io.BytesIO(rb)).convert("RGBA")
+    
+            # scale to a common height
+            target_h = 256
+            def scale(img):
+                ratio = target_h / max(1, img.height)
+                return img.resize((max(1, int(img.width*ratio)), target_h), Image.LANCZOS)
+    
+            li = scale(li); ri = scale(ri)
+            pad = 24
+            canvas = Image.new("RGBA", (li.width + ri.width + pad, target_h), (0,0,0,0))
+            canvas.paste(li, (0, 0))
+            canvas.paste(ri, (li.width + pad, 0))
+    
+            out = io.BytesIO()
+            canvas.save(out, format="PNG")
+            out.seek(0)
+            return discord.File(fp=out, filename="vs.png")
+        except Exception:
+            return None
+
+
     # ---------- TEAM HELPERS ----------
 
     async def _get_team(self, member: discord.abc.User) -> List[str]:
@@ -1584,30 +1640,40 @@ class GachaCatchEmAll(commands.Cog):
         
         # Safety: at least one page
         if not pages:
-            pages.append(_mk_page(["Battle begins!"], f"Battle — {header_base}", caller_thumb, opp_thumb))
-        
-        # ----- Send paginator -----
-        view = self.BattlePaginator(
+        # Fallback: at least one generic page
+            pages = [(discord.Embed(title="Battle", description="Battle begins!", color=discord.Color.teal()), None)]
+    
+        pview = self.BattlePaginator(
             author=caller,
-            pages=pages,
+            pages_with_files=pages,   # note: using updated ctor
             results_embed=results,
             opponent=opp
         )
-        msg = await ctx.reply(embed=pages[0], view=view)
-        view.message = msg
+        
+        first_emb, first_file = pview._current() if hasattr(pview, "_current") else (pages[0][0], pages[0][1])
+        if first_file:
+            msg = await ctx.reply(embed=first_emb, file=first_file, view=pview)
+        else:
+            msg = await ctx.reply(embed=first_emb, view=pview)
+        pview.message = msg
 
-
-    async def _simulate_duel(self, A: Dict[str, Any], B: Dict[str, Any]) -> Tuple[str, List[str]]:
-        """Returns ('A' or 'B', battle_log). Does not mutate original entries."""
-        # working copies
+    async def _simulate_duel(self, A: Dict[str, Any], B: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]]]:
+        """
+        Returns (winner: 'A'|'B', actions: List[dict]).
+        Each action dict contains:
+          attacker ('A'|'B'), move_name, damage, A_hp, B_hp,
+          A_max, B_max, A_name, B_name, A_sprite, B_sprite
+        """
         a = dict(A); b = dict(B)
-        A_hp = self._initial_hp(a)
-        B_hp = self._initial_hp(b)
+        A_max = self._initial_hp(a)
+        B_max = self._initial_hp(b)
+        A_hp = A_max
+        B_hp = B_max
         A_spd = self._safe_stats(a)["speed"]
         B_spd = self._safe_stats(b)["speed"]
         first_is_A = True if A_spd >= B_spd else False
     
-        log = []
+        actions: List[Dict[str, Any]] = []
         turn = 1
         while A_hp > 0 and B_hp > 0 and turn <= 100:
             order = [("A", a, b), ("B", b, a)] if first_is_A else [("B", b, a), ("A", a, b)]
@@ -1620,11 +1686,25 @@ class GachaCatchEmAll(commands.Cog):
                     B_hp -= dmg
                 else:
                     A_hp -= dmg
-                log.append(f"Turn {turn}: {atk.get('nickname') or atk['name']} used **{move['name'].title()}** for **{dmg}**")
+                actions.append({
+                    "attacker": who,
+                    "move_name": str(move.get("name","")).title() or "Move",
+                    "damage": int(dmg),
+                    "A_hp": max(0, A_hp),
+                    "B_hp": max(0, B_hp),
+                    "A_max": int(A_max),
+                    "B_max": int(B_max),
+                    "A_name": a.get("nickname") or a.get("name", "?"),
+                    "B_name": b.get("nickname") or b.get("name", "?"),
+                    "A_sprite": a.get("sprite"),
+                    "B_sprite": b.get("sprite"),
+                    "turn": turn,
+                })
             turn += 1
     
-        winner = "A" if A_hp > 0 else "B"
-        return winner, log
+        winner = "A" if A_hp > 0 else ("B" if B_hp > 0 else random.choice(["A","B"]))
+        return winner, actions
+
 
 
 
@@ -1744,70 +1824,44 @@ class GachaCatchEmAll(commands.Cog):
             self._disable_all()
             
     class BattlePaginator(discord.ui.View):
-        """
-        Paginated play-by-play with a Skip to Results button.
-        pages: list[discord.Embed] (play-by-play pages)
-        results_embed: final results embed
-        """
-        def __init__(
-             self,
-             author: discord.abc.User,
-             pages: List[discord.Embed],
-             results_embed: discord.Embed,
-             opponent: Optional[discord.abc.User] = None,
-             timeout: int = 300
-          ):
-            super().__init__(timeout=timeout)
-            self.author = author
-            self.opponent = opponent
-            self.pages = pages
-            self.results_embed = results_embed
-            self.index = 0
-            self.message: Optional[discord.Message] = None
-            self._showing_results = False
-        
-        async def interaction_check(self, interaction: discord.Interaction) -> bool:
-            # let caller and opponent (if any) use the controls
-            allowed = {self.author.id}
-            if self.opponent:
-                allowed.add(self.opponent.id)
-            if interaction.user.id not in allowed:
-                await interaction.response.send_message(
-                    "These controls aren't yours.",
-                    ephemeral=True
-                )
-                return False
-            return True
-        
-        def _current_embed(self) -> discord.Embed:
-            if self._showing_results:
-                return self.results_embed
-            embed = self.pages[self.index]
-            total = len(self.pages)
-            embed.set_footer(text=f"Page {self.index + 1}/{total} • Use ⏭ to skip to results")
-            return embed
-        
-        def _disable_all(self):
-            for child in self.children:
-                if isinstance(child, discord.ui.Button):
-                    child.disabled = True
-        
-        async def on_timeout(self):
-            self._disable_all()
+    # (Use the BattlePaginator you already moved out earlier.)
+    # We’ll just add a tiny change: store files alongside pages.
+    def __init__(self, author, pages_with_files, results_embed, opponent=None, timeout=300):
+        super().__init__(timeout=timeout)
+        self.author = author
+        self.opponent = opponent
+        self.pages_with_files = pages_with_files  # List[Tuple[Embed, Optional[File]]]
+        self.results_embed = results_embed
+        self.index = 0
+        self.message = None
+        self._showing_results = False
+
+    def _current(self):
+        if self._showing_results:
+            return (self.results_embed, None)
+        emb, f = self.pages_with_files[self.index]
+        total = len(self.pages_with_files)
+        emb.set_footer(text=f"Page {self.index + 1}/{total} • Use ⏭ to skip to results")
+        return (emb, f)
+
+    # modify _update to re-send with/without file
+    async def _update(self, interaction: discord.Interaction):
+        if not interaction.response.is_done():
             try:
-                if self.message:
-                    await self.message.edit(view=self)
+                await interaction.response.defer()
             except Exception:
                 pass
-        
-        async def _update(self, interaction: discord.Interaction):
-            if not interaction.response.is_done():
-                try:
-                    await interaction.response.defer()
-                except Exception:
-                    pass
-            if self.message:
-                await self.message.edit(embed=self._current_embed(), view=self)
+        if not self.message:
+            return
+        emb, f = self._current()
+        try:
+            if f:
+                await self.message.edit(embed=emb, attachments=[f], view=self)
+            else:
+                # clear attachments if previously present
+                await self.message.edit(embed=emb, attachments=[], view=self)
+        except Exception:
+            pass
         
         # Controls
         @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
