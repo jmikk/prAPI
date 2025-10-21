@@ -42,6 +42,11 @@ POKEMON_TYPES = [
     "psychic","bug","rock","ghost","dragon","dark","steel","fairy"
 ]
 
+# Caches
+self._type_moves_cache: Dict[str, List[str]] = {}   # type -> move names
+self._move_cache: Dict[str, Dict[str, Any]] = {}    # move name -> move json (power/type/etc)
+
+
 
 NICKNAME_RE = re.compile(r"^[A-Za-z]{1,20}$")  # “letters only, max 20”
 
@@ -106,6 +111,116 @@ class GachaCatchEmAll(commands.Cog):
             e["level"] = 1
         if "xp" not in e or not isinstance(e["xp"], int):
             e["xp"] = 0
+
+    async def _get_moves_for_type(self, type_name: str) -> List[str]:
+        """
+        PokeAPI /type/{type} has 'moves'. We cache the list of move names by type.
+        """
+        t = type_name.lower().strip()
+        if t in self._type_moves_cache:
+            return self._type_moves_cache[t]
+        data = await self._fetch_json(f"{POKEAPI_BASE}/type/{t}")
+        moves = [m["name"] for m in data.get("moves", []) if isinstance(m, dict) and "name" in m]
+        self._type_moves_cache[t] = moves
+        return moves
+    
+    async def _get_move_details(self, move_name: str) -> Dict[str, Any]:
+        """
+        Returns cached move data. Important fields: power (may be None), type.name, damage_class.name
+        """
+        key = move_name.lower()
+        if key in self._move_cache:
+            return self._move_cache[key]
+        data = await self._fetch_json(f"{POKEAPI_BASE}/move/{key}")
+        self._move_cache[key] = data
+        return data
+    
+    async def _random_starting_move(self, types: List[str]) -> Optional[str]:
+        """
+        From all moves matching any of the Pokémon's types, pick one at random.
+        """
+        pool: List[str] = []
+        for t in types:
+            try:
+                pool.extend(await self._get_moves_for_type(t))
+            except Exception:
+                pass
+        pool = sorted(set(pool))
+        if not pool:
+            return None
+        return random.choice(pool)
+    
+    def _give_stat_points_for_levels(self, before_level: int, after_level: int) -> int:
+        """
+        1 stat point per level gained.
+        """
+        return max(0, int(after_level) - int(before_level))
+    
+    def _find_entry_by_uid(self, box: List[Dict[str, Any]], uid: str) -> Optional[Dict[str, Any]]:
+        for e in box:
+            if str(e.get("uid")) == str(uid):
+                return e
+        return None
+    
+    def _safe_stats(self, e: Dict[str, Any]) -> Dict[str, int]:
+        s = {k: int(v) for k, v in (e.get("stats") or {}).items()}
+        # ensure standard keys exist
+        for k in ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]:
+            s.setdefault(k, 10)
+        return s
+
+    def _calc_move_damage(self, attacker: Dict[str, Any], defender: Dict[str, Any], move_info: Dict[str, Any]) -> int:
+        a_stats = self._safe_stats(attacker)
+        d_stats = self._safe_stats(defender)
+    
+        power = move_info.get("power") or 50
+        dmg_class = ((move_info.get("damage_class") or {}).get("name") or "physical").lower()
+        mtype = ((move_info.get("type") or {}).get("name") or "").lower()
+    
+        atk = a_stats["attack"] if dmg_class == "physical" else a_stats["special-attack"]
+        deff = d_stats["defense"] if dmg_class == "physical" else d_stats["special-defense"]
+    
+        # Base damage
+        dmg = (power * max(1, atk)) / max(1, deff)
+    
+        # STAB
+        atk_types = [t.lower() for t in (attacker.get("types") or [])]
+        if mtype in atk_types:
+            dmg *= 1.2
+    
+        # Random variance 0.85–1.0
+        dmg *= random.uniform(0.85, 1.0)
+    
+        return max(1, int(round(dmg)))
+    
+    def _initial_hp(self, e: Dict[str, Any]) -> int:
+        # Simple HP pool using 'hp' stat * level scaling
+        stats = self._safe_stats(e)
+        lvl = int(e.get("level", 1))
+        return max(10, int(stats["hp"] * (5 + lvl/5)))
+    
+    async def _pick_move(self, e: Dict[str, Any]) -> Dict[str, Any]:
+        moves: List[str] = [m for m in (e.get("moves") or []) if isinstance(m, str)]
+        if not moves:
+            # try a random legal starter
+            types = [t for t in (e.get("types") or [])]
+            rm = await self._random_starting_move(types)
+            if rm:
+                moves = [rm]
+        if not moves:
+            # fallback to a dummy neutral hit
+            return {"name": "tackle", "power": 40, "damage_class": {"name": "physical"}, "type": {"name": "normal"}}
+        name = random.choice(moves)
+        try:
+            mi = await self._get_move_details(name)
+            # keep only fields we need to avoid giant blobs
+            return {"name": name, "power": mi.get("power") or 50,
+                    "damage_class": mi.get("damage_class") or {"name":"physical"},
+                    "type": mi.get("type") or {"name":"normal"}}
+        except Exception:
+            return {"name": name, "power": 50, "damage_class": {"name":"physical"}, "type":{"name":"normal"}}
+    
+
 
     async def _get_type_ids(self, type_name: str) -> List[int]:
         """
@@ -412,6 +527,8 @@ class GachaCatchEmAll(commands.Cog):
                     uid = uuid.uuid4().hex[:12]
                     now = datetime.now(timezone.utc)
                     unix = int(now.timestamp())
+                    types = [t["type"]["name"] for t in pdata.get("types", [])]
+                    start_move = await self.cog._random_starting_move(types)
                     entry = {
                         "uid": uid,
                         "pokedex_id": int(enc["id"]),
@@ -424,7 +541,10 @@ class GachaCatchEmAll(commands.Cog):
                         "caught_at": int(now.timestamp()),
                         "level": 1,
                         "xp": 0,
+                        "moves": [start_move] if start_move else [],   # NEW
+                        "pending_points": 0,                           # NEW
                     }
+
                     box = await uconf.pokebox()
                     if not isinstance(box, list):
                         box = []
@@ -988,6 +1108,134 @@ class GachaCatchEmAll(commands.Cog):
         msg = await ctx.reply(embed=embed, view=view)
         view.message = msg
 
+    @commands.hybrid_command(name="spendstat")
+    async def spendstat(self, ctx: commands.Context, uid: str, stat: str, points: Optional[int] = 1):
+        """Spend pending stat points on one of: hp, attack, defense, special-attack, special-defense, speed."""
+        points = max(1, int(points or 1))
+        box: List[Dict[str, Any]] = await self.config.user(ctx.author).pokebox()
+        if not box:
+            await ctx.reply("You have no Pokémon.")
+            return
+        e = self._find_entry_by_uid(box, uid)
+        if not e:
+            await ctx.reply("UID not found in your PokéBox.")
+            return
+    
+        e.setdefault("pending_points", 0)
+        if e["pending_points"] < points:
+            await ctx.reply(f"Not enough points. You have **{e['pending_points']}** pending.")
+            return
+    
+        stat = stat.lower()
+        valid = ["hp","attack","defense","special-attack","special-defense","speed"]
+        if stat not in valid:
+            await ctx.reply(f"Invalid stat. Choose from: {', '.join(valid)}")
+            return
+    
+        stats = self._safe_stats(e)
+        stats[stat] = int(stats.get(stat, 10)) + points
+        e["stats"] = stats
+        e["bst"] = sum(stats.values())
+        e["pending_points"] = int(e["pending_points"]) - points
+    
+        await self.config.user(ctx.author).pokebox.set(box)
+        await ctx.reply(f"Added **{points}** point(s) to **{stat}** for `{uid}`. Pending left: **{e['pending_points']}**.")
+
+    @commands.hybrid_command(name="battle")
+    async def battle(self, ctx: commands.Context, uid1: str, uid2: str, opponent: Optional[discord.Member] = None):
+        """
+        Battle two Pokémon by UID.
+        - If opponent is omitted, both UIDs must be yours.
+        - If opponent is provided, the second UID is taken from their box.
+        XP: winner +50, loser +30. Level-ups give pending stat points to spend with /spendstat.
+        """
+        you = ctx.author
+        op = opponent or ctx.author
+    
+        box1: List[Dict[str, Any]] = await self.config.user(you).pokebox()
+        box2: List[Dict[str, Any]] = await self.config.user(op).pokebox()
+    
+        a = self._find_entry_by_uid(box1, uid1)
+        b = self._find_entry_by_uid(box2, uid2)
+        if not a:
+            await ctx.reply("Your first UID wasn't found.")
+            return
+        if not b:
+            await ctx.reply("Opponent UID wasn't found.")
+            return
+    
+        # Working copies (don't mutate base stats mid-battle)
+        A = dict(a)
+        B = dict(b)
+        A_hp = self._initial_hp(A)
+        B_hp = self._initial_hp(B)
+    
+        # Turn order by speed
+        A_spd = self._safe_stats(A)["speed"]
+        B_spd = self._safe_stats(B)["speed"]
+    
+        log_lines = []
+        turn = 1
+        first_is_A = True if A_spd >= B_spd else False
+    
+        while A_hp > 0 and B_hp > 0 and turn <= 100:
+            order = [("A", A, B, "B")] if first_is_A else [("B", B, A, "A")]
+            order += [("B", B, A, "A")] if first_is_A else [("A", A, B, "B")]
+    
+            for who, atk, dfn, dlabel in order:
+                if A_hp <= 0 or B_hp <= 0:
+                    break
+                move = await self._pick_move(atk)
+                dmg = self._calc_move_damage(atk, dfn, move)
+                if who == "A":
+                    B_hp -= dmg
+                else:
+                    A_hp -= dmg
+                log_lines.append(f"Turn {turn}: {atk.get('nickname') or atk['name']} used **{move['name'].title()}** → {dlabel} took **{dmg}**")
+            turn += 1
+    
+        winner = None
+        if A_hp > 0 and B_hp <= 0:
+            winner = "A"
+        elif B_hp > 0 and A_hp <= 0:
+            winner = "B"
+        else:
+            # tie on turn limit; coin flip
+            winner = random.choice(["A","B"])
+    
+        # XP & Leveling
+        async def award(e: Dict[str, Any], gain: int) -> Tuple[int,int,int,int]:
+            before = int(e.get("level", 1))
+            lvl, xp, to_next = self._add_xp_to_entry(e, gain)
+            pts = self._give_stat_points_for_levels(before, lvl)
+            e["pending_points"] = int(e.get("pending_points", 0)) + pts
+            return before, lvl, xp, pts
+    
+        if winner == "A":
+            aw_a = await award(a, 50)
+            aw_b = await award(b, 30)
+            result_title = f"🏆 {a.get('nickname') or a['name']} wins!"
+        else:
+            aw_a = await award(a, 30)
+            aw_b = await award(b, 50)
+            result_title = f"🏆 {b.get('nickname') or b['name']} wins!"
+    
+        # Persist boxes
+        await self.config.user(you).pokebox.set(box1)
+        await self.config.user(op).pokebox.set(box2)
+    
+        # Summarize
+        def fmt_aw(label, e, aw):
+            before, lvl, xp, pts = aw
+            return f"**{label} – {e.get('nickname') or e['name']}**  Lvl {before} → **{lvl}**  (XP: {xp})  +{pts} stat point(s)"
+    
+        desc = "\n".join(log_lines[-10:])  # last 10 lines for brevity
+        embed = discord.Embed(title=result_title, description=desc, color=discord.Color.teal())
+        embed.add_field(name="Progress", value=f"{fmt_aw('Yours', a, aw_a)}\n{fmt_aw('Opponent', b, aw_b)}", inline=False)
+        await ctx.reply(embed=embed)
+
+
+
     class TypeSelectView(discord.ui.View):
         def __init__(self, cog: "GachaCatchEmAll", author: discord.abc.User, timeout: int = 120):
             super().__init__(timeout=timeout)
@@ -1101,6 +1349,7 @@ class GachaCatchEmAll(commands.Cog):
     
             # Lock type picker
             self._disable_all()
+            
 
 
 
