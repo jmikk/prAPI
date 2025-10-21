@@ -263,6 +263,11 @@ class GachaCatchEmAll(commands.Cog):
     # --------- UI helpers ---------
 
     def _encounter_embed(self, user, enc, costs):
+        POKEBALL_EMOJI   = discord.PartialEmoji(name="pokeball",   id=1430211868756152443)
+        GREATBALL_EMOJI  = discord.PartialEmoji(name="greatball",  id=1430211777030914179)
+        ULTRABALL_EMOJI  = discord.PartialEmoji(name="ultraball",  id=1430211816939720815)
+        MASTERBALL_EMOJI = discord.PartialEmoji(name="masterball", id=1430211804046295141)
+
         e = discord.Embed(
             title=f"🌿 A wild {enc['name']} appeared!",
             color=discord.Color.green()
