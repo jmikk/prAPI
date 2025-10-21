@@ -1742,122 +1742,123 @@ class GachaCatchEmAll(commands.Cog):
     
             # Lock type picker
             self._disable_all()
-        class BattlePaginator(discord.ui.View):
-            """
-            Paginated play-by-play with a Skip to Results button.
-            pages: list[discord.Embed] (play-by-play pages)
-            results_embed: final results embed
-            """
-            def __init__(
-                self,
-                author: discord.abc.User,
-                pages: List[discord.Embed],
-                results_embed: discord.Embed,
-                opponent: Optional[discord.abc.User] = None,
-                timeout: int = 300
-            ):
-                super().__init__(timeout=timeout)
-                self.author = author
-                self.opponent = opponent
-                self.pages = pages
-                self.results_embed = results_embed
-                self.index = 0
-                self.message: Optional[discord.Message] = None
-                self._showing_results = False
+            
+    class BattlePaginator(discord.ui.View):
+        """
+        Paginated play-by-play with a Skip to Results button.
+        pages: list[discord.Embed] (play-by-play pages)
+        results_embed: final results embed
+         """
+         def __init__(
+             self,
+             author: discord.abc.User,
+             pages: List[discord.Embed],
+             results_embed: discord.Embed,
+             opponent: Optional[discord.abc.User] = None,
+             timeout: int = 300
+          ):
+             super().__init__(timeout=timeout)
+            self.author = author
+            self.opponent = opponent
+            self.pages = pages
+            self.results_embed = results_embed
+            self.index = 0
+            self.message: Optional[discord.Message] = None
+            self._showing_results = False
         
-            async def interaction_check(self, interaction: discord.Interaction) -> bool:
-                # let caller and opponent (if any) use the controls
-                allowed = {self.author.id}
-                if self.opponent:
-                    allowed.add(self.opponent.id)
-                if interaction.user.id not in allowed:
-                    await interaction.response.send_message(
-                        "These controls aren't yours.",
-                        ephemeral=True
-                    )
-                    return False
-                return True
+        async def interaction_check(self, interaction: discord.Interaction) -> bool:
+            # let caller and opponent (if any) use the controls
+            allowed = {self.author.id}
+            if self.opponent:
+                allowed.add(self.opponent.id)
+            if interaction.user.id not in allowed:
+                await interaction.response.send_message(
+                    "These controls aren't yours.",
+                    ephemeral=True
+                )
+                return False
+            return True
         
-            def _current_embed(self) -> discord.Embed:
-                if self._showing_results:
-                    return self.results_embed
-                embed = self.pages[self.index]
-                total = len(self.pages)
-                embed.set_footer(text=f"Page {self.index + 1}/{total} • Use ⏭ to skip to results")
-                return embed
+        def _current_embed(self) -> discord.Embed:
+            if self._showing_results:
+                return self.results_embed
+            embed = self.pages[self.index]
+            total = len(self.pages)
+            embed.set_footer(text=f"Page {self.index + 1}/{total} • Use ⏭ to skip to results")
+            return embed
         
-            def _disable_all(self):
-                for child in self.children:
-                    if isinstance(child, discord.ui.Button):
-                        child.disabled = True
+        def _disable_all(self):
+            for child in self.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = True
         
-            async def on_timeout(self):
-                self._disable_all()
+        async def on_timeout(self):
+            self._disable_all()
+            try:
+                if self.message:
+                    await self.message.edit(view=self)
+            except Exception:
+                pass
+        
+        async def _update(self, interaction: discord.Interaction):
+            if not interaction.response.is_done():
                 try:
-                    if self.message:
-                        await self.message.edit(view=self)
+                    await interaction.response.defer()
                 except Exception:
                     pass
+            if self.message:
+                await self.message.edit(embed=self._current_embed(), view=self)
         
-            async def _update(self, interaction: discord.Interaction):
-                if not interaction.response.is_done():
-                    try:
-                        await interaction.response.defer()
-                    except Exception:
-                        pass
-                if self.message:
-                    await self.message.edit(embed=self._current_embed(), view=self)
+        # Controls
+        @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
+        async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
+            self._showing_results = False
+            self.index = 0
+            await self._update(interaction)
         
-            # Controls
-            @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
-            async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
-                self._showing_results = False
-                self.index = 0
+        @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+        async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+            self._showing_results = False
+            if self.index > 0:
+                self.index -= 1
+            await self._update(interaction)
+        
+        @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
+        async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self._showing_results:
+                # already on results; do nothing
                 await self._update(interaction)
-        
-            @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
-            async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
-                self._showing_results = False
-                if self.index > 0:
-                    self.index -= 1
+                return
+            if self.index < len(self.pages) - 1:
+                self.index += 1
                 await self._update(interaction)
-        
-            @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
-            async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
-                if self._showing_results:
-                    # already on results; do nothing
-                    await self._update(interaction)
-                    return
-                if self.index < len(self.pages) - 1:
-                    self.index += 1
-                    await self._update(interaction)
-                else:
-                    # last page -> move to results
-                    self._showing_results = True
-                    await self._update(interaction)
-        
-            @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
-            async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
-                self._showing_results = False
-                self.index = len(self.pages) - 1
-                await self._update(interaction)
-        
-            @discord.ui.button(label="Skip to Results", style=discord.ButtonStyle.primary, emoji="⏭")
-            async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+            else:
+                # last page -> move to results
                 self._showing_results = True
                 await self._update(interaction)
         
-            @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
-            async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
-                self._disable_all()
-                if not interaction.response.is_done():
-                    try:
-                        await interaction.response.defer()
-                    except Exception:
-                        pass
-                if self.message:
-                    await self.message.edit(view=self)
-                self.stop()
+        @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
+        async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
+            self._showing_results = False
+            self.index = len(self.pages) - 1
+            await self._update(interaction)
+        
+        @discord.ui.button(label="Skip to Results", style=discord.ButtonStyle.primary, emoji="⏭")
+        async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+            self._showing_results = True
+            await self._update(interaction)
+        
+        @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
+        async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+            self._disable_all()
+            if not interaction.response.is_done():
+                try:
+                    await interaction.response.defer()
+                except Exception:
+                    pass
+            if self.message:
+                await self.message.edit(view=self)
+            self.stop()
 
             
 
