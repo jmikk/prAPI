@@ -1713,7 +1713,7 @@ class GachaCatchEmAll(commands.Cog):
         # Caller team block
         results.add_field(
             name=f"{caller.display_name}",
-            value=_fmt_team_block(caller_team),
+            value=_fmt_team_block(caller_team,caller_awards),
             inline=False
         )
     
