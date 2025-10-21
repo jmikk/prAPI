@@ -57,7 +57,7 @@ class GachaCatchEmAll(commands.Cog):
         # Use an integer identifier to avoid config collisions
         self.config: Config = Config.get_conf(self, identifier=0xC0FFEE56, force_registration=True)
         # pokebox stores a LIST of individual entries (each with uid)
-        self.config.register_user(pokebox=[], last_roll=None, active_encounter=None)
+        self.config.register_user(pokebox=[], last_roll=None, active_encounter=None, team=[])
         self.config.register_global(costs=DEFAULT_COSTS)
         self._type_cache: Dict[str, List[int]] = {}  # type -> list of pokedex IDs
         # Caches
@@ -83,6 +83,93 @@ class GachaCatchEmAll(commands.Cog):
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession()
         return self._session
+
+    # ---------- TEAM HELPERS ----------
+
+    async def _get_team(self, member: discord.abc.User) -> List[str]:
+        team = await self.config.user(member).team()
+        if not isinstance(team, list):
+            team = []
+        return [str(uid) for uid in team]
+    
+    async def _set_team(self, member: discord.abc.User, uids: List[str]) -> None:
+        # Keep max 6 and ensure uniqueness, in order
+        seen, clean = set(), []
+        for u in uids:
+            s = str(u)
+            if s not in seen:
+                clean.append(s)
+                seen.add(s)
+            if len(clean) >= 6:
+                break
+        await self.config.user(member).team.set(clean)
+    
+    def _team_entries_from_uids(self, box: List[Dict[str, Any]], uids: List[str]) -> List[Dict[str, Any]]:
+        uidset = {str(u) for u in uids}
+        entries = []
+        for e in box:
+            if str(e.get("uid")) in uidset:
+                entries.append(e)
+        return entries[:6]
+    
+    def _avg_level(self, entries: List[Dict[str, Any]]) -> float:
+        if not entries:
+            return 1.0
+        return sum(int(e.get("level", 1)) for e in entries) / len(entries)
+    
+    def _xp_scale(self, self_level: float, opp_level: float) -> float:
+        """Scale XP by level difference. +10% per level the opponent is higher,
+        -10% per level the opponent is lower; clamp 0.5x .. 2.0x."""
+        delta = float(opp_level) - float(self_level)
+        return max(0.5, min(2.0, 1.0 + 0.10 * delta))
+    
+    async def _ensure_moves_on_entry(self, e: Dict[str, Any]) -> None:
+        # Guarantee at least 1 legal move if moves is empty
+        e.setdefault("moves", [])
+        if e["moves"]:
+            return
+        types = [t for t in (e.get("types") or [])]
+        m = await self._random_starting_move(types)
+        if m:
+            e["moves"] = [m]
+    
+    async def _generate_npc_team(self, target_avg_level: float, size: int = 6) -> List[Dict[str, Any]]:
+        """Build an AI team roughly around target_avg_level. Uses random encounters,
+        assigns one legal move, and scales level a bit (+/-2)."""
+        team: List[Dict[str, Any]] = []
+        for _ in range(size):
+            pdata, pid, bst = await self._random_encounter("greatball", allowed_ids=None)
+            types = [t["type"]["name"] for t in pdata.get("types", [])]
+            stats_map = {s["stat"]["name"]: int(s["base_stat"]) for s in pdata.get("stats", [])}
+            sprite = (
+                pdata.get("sprites", {})
+                .get("other", {})
+                .get("official-artwork", {})
+                .get("front_default")
+                or pdata.get("sprites", {}).get("front_default")
+            )
+            uid = uuid.uuid4().hex[:12]
+            lvl = max(1, int(round(target_avg_level + random.randint(-2, 2))))
+            mon = {
+                "uid": uid,
+                "pokedex_id": int(pid),
+                "name": str(pdata.get("name","unknown")).title(),
+                "types": types,
+                "stats": stats_map,
+                "bst": int(bst),
+                "sprite": sprite,
+                "nickname": None,
+                "caught_at": int(datetime.now(timezone.utc).timestamp()),
+                "level": lvl,
+                "xp": 0,
+                "moves": [],
+                "pending_points": 0,
+                "_npc": True,  # marker so we don't try to persist this to any user's box
+            }
+            await self._ensure_moves_on_entry(mon)
+            team.append(mon)
+        return team
+
 
     # --------- Economy helpers (NexusExchange) ---------
 
@@ -943,6 +1030,69 @@ class GachaCatchEmAll(commands.Cog):
         view = self.TypeSelectView(self, ctx.author)
         msg = await ctx.reply(embed=pick_embed, view=view)
         view.message = msg
+    
+    @commands.hybrid_group(name="team")
+    async def team_group(self, ctx: commands.Context):
+        """Manage your battle team (up to 6 Pokémon by UID)."""
+        if ctx.invoked_subcommand is None:
+            await ctx.reply("Subcommands: `set`, `view`, `auto`, `clear`")
+    
+    @team_group.command(name="set")
+    async def team_set(self, ctx: commands.Context, *uids: str):
+        """Set your team to up to 6 UIDs: e.g. $team set abc123 def456 ..."""
+        if not uids:
+            await ctx.reply("Provide 1–6 UIDs.")
+            return
+        box: List[Dict[str, Any]] = await self.config.user(ctx.author).pokebox()
+        own_uids = {str(e.get("uid")) for e in box}
+        bad = [u for u in uids if str(u) not in own_uids]
+        if bad:
+            await ctx.reply(f"These UIDs aren't in your box: {', '.join(bad)}")
+            return
+        await self._set_team(ctx.author, list(uids))
+        await ctx.reply(f"Team set to: {', '.join(list(uids)[:6])}")
+    
+    @team_group.command(name="view")
+    async def team_view(self, ctx: commands.Context, member: Optional[discord.Member] = None):
+        """View a user's team (defaults to you)."""
+        member = member or ctx.author
+        uids = await self._get_team(member)
+        if not uids:
+            await ctx.reply(f"{member.display_name} has no team set.")
+            return
+        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
+        entries = self._team_entries_from_uids(box, uids)
+        if not entries:
+            await ctx.reply("Team UIDs not found in box.")
+            return
+        lines = []
+        for e in entries:
+            label = e.get("nickname") or e.get("name","?")
+            lines.append(f"`{e.get('uid','?')}` • {label} (Lv {int(e.get('level',1))})")
+        embed = discord.Embed(
+            title=f"{member.display_name}'s Team ({len(entries)}/6)",
+            description="\n".join(lines),
+            color=discord.Color.dark_teal()
+        )
+        await ctx.reply(embed=embed)
+    
+    @team_group.command(name="auto")
+    async def team_auto(self, ctx: commands.Context):
+        """Auto-pick your top 6 highest-level Pokémon as your team."""
+        box: List[Dict[str, Any]] = await self.config.user(ctx.author).pokebox()
+        if not box:
+            await ctx.reply("You have no Pokémon.")
+            return
+        top = sorted(box, key=lambda e: int(e.get("level",1)), reverse=True)[:6]
+        await self._set_team(ctx.author, [e.get("uid") for e in top])
+        await ctx.reply("Auto-selected your top 6 by level.")
+    
+    @team_group.command(name="clear")
+    async def team_clear(self, ctx: commands.Context):
+        """Clear your current team."""
+        await self._set_team(ctx.author, [])
+        await ctx.reply("Cleared your team.")
+
 
 
     @commands.hybrid_command(name="pokeinv")
@@ -1233,6 +1383,169 @@ class GachaCatchEmAll(commands.Cog):
         embed = discord.Embed(title=result_title, description=desc, color=discord.Color.teal())
         embed.add_field(name="Progress", value=f"{fmt_aw('Yours', a, aw_a)}\n{fmt_aw('Opponent', b, aw_b)}", inline=False)
         await ctx.reply(embed=embed)
+
+    
+    @commands.hybrid_command(name="teambattle")
+    async def teambattle(self, ctx: commands.Context, opponent: Optional[discord.Member] = None):
+        """
+        Battle with teams of up to 6. If opponent is omitted, you'll fight an NPC team
+        near your team's average level. Everyone gains XP, scaled by level difference.
+        """
+        caller = ctx.author
+        opp = opponent
+    
+        # Caller team
+        caller_uids = await self._get_team(caller)
+        caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
+        caller_team = self._team_entries_from_uids(caller_box, caller_uids)
+        if not caller_team:
+            # fallback: top 6
+            caller_team = sorted(caller_box, key=lambda e: int(e.get("level",1)), reverse=True)[:6]
+            if not caller_team:
+                await ctx.reply("You have no Pokémon to battle with.")
+                return
+        for e in caller_team:
+            await self._ensure_moves_on_entry(e)
+    
+        # Opponent team
+        if opp:
+            opp_uids = await self._get_team(opp)
+            opp_box: List[Dict[str, Any]] = await self.config.user(opp).pokebox()
+            opp_team = self._team_entries_from_uids(opp_box, opp_uids)
+            if not opp_team:
+                opp_team = sorted(opp_box, key=lambda e: int(e.get("level",1)), reverse=True)[:6]
+            if not opp_team:
+                await ctx.reply(f"{opp.display_name} has no Pokémon to battle with.")
+                return
+            for e in opp_team:
+                await self._ensure_moves_on_entry(e)
+        else:
+            # NPC team around caller average level
+            avg_lvl = self._avg_level(caller_team)
+            opp_team = await self._generate_npc_team(target_avg_level=avg_lvl, size=min(6, len(caller_team) or 6))
+    
+        # Index through first-alive rules
+        ci = oi = 0
+        battle_log: List[str] = []
+        duel_count = 0
+    
+        # Track XP awarded per entry
+        caller_awards: Dict[str, int] = {}
+        opp_awards: Dict[str, int] = {}
+    
+        while ci < len(caller_team) and oi < len(opp_team):
+            A = caller_team[ci]
+            B = opp_team[oi]
+            duel_count += 1
+            winner, log = await self._simulate_duel(A, B)
+            battle_log.extend([f"— Duel {duel_count}: {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)})"] + log[-4:])
+    
+            # XP per duel (scaled per mon vs its opponent)
+            A_lvl = int(A.get("level",1))
+            B_lvl = int(B.get("level",1))
+            A_scale = self._xp_scale(A_lvl, B_lvl)
+            B_scale = self._xp_scale(B_lvl, A_lvl)
+            A_win_xp = int(round(40 * A_scale))
+            A_lose_xp = int(round(25 * A_scale))
+            B_win_xp = int(round(40 * B_scale))
+            B_lose_xp = int(round(25 * B_scale))
+    
+            if winner == "A":
+                caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_win_xp
+                opp_awards[B["uid"]] = opp_awards.get(B["uid"], 0) + B_lose_xp
+                oi += 1  # B fainted, next opponent
+            else:
+                caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_lose_xp
+                opp_awards[B["uid"]] = opp_awards.get(B["uid"], 0) + B_win_xp
+                ci += 1  # A fainted, next caller mon
+    
+        # Determine match winner & give team bonus
+        caller_alive = ci < len(caller_team)
+        match_winner = "caller" if caller_alive else "opp"
+        caller_avg = self._avg_level(caller_team)
+        opp_avg = self._avg_level(opp_team)
+        caller_match_scale = self._xp_scale(caller_avg, opp_avg)
+        opp_match_scale = self._xp_scale(opp_avg, caller_avg)
+        bonus_caller = int(round(20 * caller_match_scale))
+        bonus_opp = int(round(20 * opp_match_scale))
+    
+        if match_winner == "caller":
+            for e in caller_team:
+                caller_awards[e["uid"]] = caller_awards.get(e["uid"], 0) + bonus_caller
+        else:
+            for e in opp_team:
+                opp_awards[e["uid"]] = opp_awards.get(e["uid"], 0) + bonus_opp
+    
+        # Persist XP + pending stat points for real users (ignore NPC entries)
+        def _apply_awards(entries: List[Dict[str, Any]], awards: Dict[str, int]) -> List[str]:
+            lines = []
+            for e in entries:
+                uid = e.get("uid")
+                if not uid or uid not in awards:
+                    continue
+                gain = int(awards[uid])
+                before = int(e.get("level",1))
+                lvl, xp, _ = self._add_xp_to_entry(e, gain)
+                pts = self._give_stat_points_for_levels(before, lvl)
+                e["pending_points"] = int(e.get("pending_points", 0)) + pts
+                lines.append(f"`{uid}` {e.get('nickname') or e.get('name','?')} +{gain} XP → Lv {before}→**{lvl}** (+{pts} pts)")
+            return lines
+    
+        caller_progress = _apply_awards(caller_team, caller_awards)
+        opp_progress = _apply_awards([e for e in opp_team if not e.get("_npc")], opp_awards)
+    
+        # Save both players' boxes if applicable
+        await self.config.user(caller).pokebox.set(caller_box)
+        if opp and opp_progress:
+            opp_box = await self.config.user(opp).pokebox()
+            # Replace updated entries back into opp_box by UID
+            opp_map = {str(e.get("uid")): e for e in opp_team}
+            new_opp_box = []
+            for e in opp_box:
+                uid = str(e.get("uid"))
+                new_opp_box.append(opp_map.get(uid, e))
+            await self.config.user(opp).pokebox.set(new_opp_box)
+    
+        # Build result embed
+        title = "🏆 You win!" if match_winner == "caller" else ("🏆 " + (opp.display_name if opp else "NPC") + " wins!")
+        desc = "\n".join(battle_log[-12:])  # last few highlight lines
+        embed = discord.Embed(title=title, description=desc or "_Battle complete_", color=discord.Color.dark_gold())
+        if caller_progress:
+            embed.add_field(name=f"{caller.display_name} Progress", value="\n".join(caller_progress), inline=False)
+        if opp_progress:
+            who = opp.display_name if opp else "Opponent"
+            embed.add_field(name=f"{who} Progress", value="\n".join(opp_progress), inline=False)
+        await ctx.reply(embed=embed)
+
+    async def _simulate_duel(self, A: Dict[str, Any], B: Dict[str, Any]) -> Tuple[str, List[str]]:
+        """Returns ('A' or 'B', battle_log). Does not mutate original entries."""
+        # working copies
+        a = dict(A); b = dict(B)
+        A_hp = self._initial_hp(a)
+        B_hp = self._initial_hp(b)
+        A_spd = self._safe_stats(a)["speed"]
+        B_spd = self._safe_stats(b)["speed"]
+        first_is_A = True if A_spd >= B_spd else False
+    
+        log = []
+        turn = 1
+        while A_hp > 0 and B_hp > 0 and turn <= 100:
+            order = [("A", a, b), ("B", b, a)] if first_is_A else [("B", b, a), ("A", a, b)]
+            for who, atk, dfn in order:
+                if A_hp <= 0 or B_hp <= 0:
+                    break
+                move = await self._pick_move(atk)
+                dmg = self._calc_move_damage(atk, dfn, move)
+                if who == "A":
+                    B_hp -= dmg
+                else:
+                    A_hp -= dmg
+                log.append(f"Turn {turn}: {atk.get('nickname') or atk['name']} used **{move['name'].title()}** for **{dmg}**")
+            turn += 1
+    
+        winner = "A" if A_hp > 0 else "B"
+        return winner, log
+
 
 
 
