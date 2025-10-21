@@ -1455,7 +1455,6 @@ class GachaCatchEmAll(commands.Cog):
         embed.add_field(name="Progress", value=f"{fmt_aw('Yours', a, aw_a)}\n{fmt_aw('Opponent', b, aw_b)}", inline=False)
         await ctx.reply(embed=embed)
 
-    
     @commands.hybrid_command(name="teambattle")
     async def teambattle(self, ctx: commands.Context, opponent: Optional[discord.Member] = None):
         """
@@ -1465,55 +1464,67 @@ class GachaCatchEmAll(commands.Cog):
         caller = ctx.author
         opp = opponent
     
-        # Caller team
+        # ----- Load caller team (fallback = top 6 by level)
         caller_uids = await self._get_team(caller)
         caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
         caller_team = self._team_entries_from_uids(caller_box, caller_uids)
         if not caller_team:
-            # fallback: top 6
-            caller_team = sorted(caller_box, key=lambda e: int(e.get("level",1)), reverse=True)[:6]
+            caller_team = sorted(caller_box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
             if not caller_team:
                 await ctx.reply("You have no Pokémon to battle with.")
                 return
         for e in caller_team:
             await self._ensure_moves_on_entry(e)
     
-        # Opponent team
+        # ----- Load opponent team or generate NPC team
         if opp:
             opp_uids = await self._get_team(opp)
             opp_box: List[Dict[str, Any]] = await self.config.user(opp).pokebox()
             opp_team = self._team_entries_from_uids(opp_box, opp_uids)
             if not opp_team:
-                opp_team = sorted(opp_box, key=lambda e: int(e.get("level",1)), reverse=True)[:6]
+                opp_team = sorted(opp_box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
             if not opp_team:
                 await ctx.reply(f"{opp.display_name} has no Pokémon to battle with.")
                 return
             for e in opp_team:
                 await self._ensure_moves_on_entry(e)
         else:
-            # NPC team around caller average level
             avg_lvl = self._avg_level(caller_team)
             opp_team = await self._generate_npc_team(target_avg_level=avg_lvl, size=min(6, len(caller_team) or 6))
     
-        # Index through first-alive rules
+        # ----- Team vs Team (frontline KO → next)
         ci = oi = 0
-        battle_log: List[str] = []
         duel_count = 0
     
-        # Track XP awarded per entry
+        # track XP
         caller_awards: Dict[str, int] = {}
         opp_awards: Dict[str, int] = {}
+    
+        # collect per-duel actions for page rendering
+        duel_action_packets: List[Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]]]] = []
+        brief_recap: List[str] = []
     
         while ci < len(caller_team) and oi < len(opp_team):
             A = caller_team[ci]
             B = opp_team[oi]
             duel_count += 1
-            winner, log = await self._simulate_duel(A, B)
-            battle_log.extend([f"— Duel {duel_count}: {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)})"] + log[-4:])
     
-            # XP per duel (scaled per mon vs its opponent)
-            A_lvl = int(A.get("level",1))
-            B_lvl = int(B.get("level",1))
+            # simulate + capture every action
+            winner, actions = await self._simulate_duel(A, B)
+            duel_action_packets.append((A, B, actions))
+    
+            # short recap line for results page
+            if actions:
+                first = actions[0]
+                brief_recap.append(
+                    f"— Duel {duel_count}: {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) "
+                    f"vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)}) • "
+                    f"first move: **{first['move_name']}**"
+                )
+    
+            # XP per-mon in this duel (scaled by level gap)
+            A_lvl = int(A.get("level", 1))
+            B_lvl = int(B.get("level", 1))
             A_scale = self._xp_scale(A_lvl, B_lvl)
             B_scale = self._xp_scale(B_lvl, A_lvl)
             A_win_xp = int(round(40 * A_scale))
@@ -1524,15 +1535,16 @@ class GachaCatchEmAll(commands.Cog):
             if winner == "A":
                 caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_win_xp
                 opp_awards[B["uid"]] = opp_awards.get(B["uid"], 0) + B_lose_xp
-                oi += 1  # B fainted, next opponent
+                oi += 1  # B fainted
             else:
                 caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_lose_xp
                 opp_awards[B["uid"]] = opp_awards.get(B["uid"], 0) + B_win_xp
-                ci += 1  # A fainted, next caller mon
+                ci += 1  # A fainted
     
-        # Determine match winner & give team bonus
+        # ----- Match winner & team bonus
         caller_alive = ci < len(caller_team)
         match_winner = "caller" if caller_alive else "opp"
+    
         caller_avg = self._avg_level(caller_team)
         opp_avg = self._avg_level(opp_team)
         caller_match_scale = self._xp_scale(caller_avg, opp_avg)
@@ -1547,7 +1559,7 @@ class GachaCatchEmAll(commands.Cog):
             for e in opp_team:
                 opp_awards[e["uid"]] = opp_awards.get(e["uid"], 0) + bonus_opp
     
-        # Persist XP + pending stat points for real users (ignore NPC entries)
+        # ----- Apply XP & pending points (ignore NPC persistence)
         def _apply_awards(entries: List[Dict[str, Any]], awards: Dict[str, int]) -> List[str]:
             lines = []
             for e in entries:
@@ -1555,36 +1567,34 @@ class GachaCatchEmAll(commands.Cog):
                 if not uid or uid not in awards:
                     continue
                 gain = int(awards[uid])
-                before = int(e.get("level",1))
+                before = int(e.get("level", 1))
                 lvl, xp, _ = self._add_xp_to_entry(e, gain)
                 pts = self._give_stat_points_for_levels(before, lvl)
                 e["pending_points"] = int(e.get("pending_points", 0)) + pts
-                lines.append(f"`{uid}` {e.get('nickname') or e.get('name','?')} +{gain} XP → Lv {before}→**{lvl}** (+{pts} pts)")
+                lines.append(
+                    f"`{uid}` {e.get('nickname') or e.get('name','?')} +{gain} XP → Lv {before}→**{lvl}** (+{pts} pts)"
+                )
             return lines
     
         caller_progress = _apply_awards(caller_team, caller_awards)
         opp_progress = _apply_awards([e for e in opp_team if not e.get("_npc")], opp_awards)
     
-        # Save both players' boxes if applicable
+        # persist boxes
         await self.config.user(caller).pokebox.set(caller_box)
         if opp and opp_progress:
-            opp_box = await self.config.user(opp).pokebox()
-            # Replace updated entries back into opp_box by UID
+            opp_box_full = await self.config.user(opp).pokebox()
             opp_map = {str(e.get("uid")): e for e in opp_team}
             new_opp_box = []
-            for e in opp_box:
+            for e in opp_box_full:
                 uid = str(e.get("uid"))
                 new_opp_box.append(opp_map.get(uid, e))
             await self.config.user(opp).pokebox.set(new_opp_box)
     
-        # ----- Build result embed (final page) -----
+        # ----- Results page
         title = "🏆 You win!" if match_winner == "caller" else ("🏆 " + (opp.display_name if opp else "NPC") + " wins!")
         results = discord.Embed(title=title, color=discord.Color.dark_gold())
-        
-        # Put a concise recap at top of results
-        recap = "\n".join(battle_log[:3]) if battle_log else "_Battle complete_"
-        results.description = recap
-        
+        results.description = "\n".join(brief_recap[:3]) if brief_recap else "_Battle complete_"
+    
         if caller_progress:
             results.add_field(
                 name=f"{caller.display_name} Progress",
@@ -1598,6 +1608,48 @@ class GachaCatchEmAll(commands.Cog):
                 value="\n".join(opp_progress),
                 inline=False
             )
+    
+        # ----- Build one page per action (HP bars + both sprites each page)
+        def hpbar(cur: int, mx: int) -> str:
+            return self._hp_bar(cur, mx, width=20)
+    
+        header_base = f"{caller.display_name} vs {(opp.display_name if opp else 'NPC Team')}"
+        pages: List[discord.Embed] = []
+    
+        for A, B, actions in duel_action_packets:
+            duel_header = f"— {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)})"
+            for act in actions:
+                a_bar = hpbar(act["A_hp"], act["A_max"])
+                b_bar = hpbar(act["B_hp"], act["B_max"])
+                desc = (
+                    f"{duel_header}\n\n"
+                    f"**Turn {act['turn']}** — "
+                    f"{('Your ' if act['attacker']=='A' else 'Opponent ')}"
+                    f"{'Pokémon ' if act['attacker']=='B' else ''}"
+                    f"used **{act['move_name']}** for **{act['damage']}**\n\n"
+                    f"**{act['A_name']}** HP: {a_bar}  {act['A_hp']}/{act['A_max']}\n"
+                    f"**{act['B_name']}** HP: {b_bar}  {act['B_hp']}/{act['B_max']}\n"
+                )
+                em = discord.Embed(title=f"Battle — {header_base}", description=desc, color=discord.Color.teal())
+                if act["A_sprite"]:
+                    em.set_thumbnail(url=act["A_sprite"])  # left mon
+                if act["B_sprite"]:
+                    em.set_author(name=act["B_name"], icon_url=act["B_sprite"])  # right mon
+                pages.append(em)
+    
+        if not pages:
+            pages = [discord.Embed(title="Battle", description="Battle begins!", color=discord.Color.teal())]
+    
+        # ----- Send paginator
+        view = self.BattlePaginator(
+            author=caller,
+            pages=pages,
+            results_embed=results,
+            opponent=opp
+        )
+        msg = await ctx.reply(embed=pages[0], view=view)
+        view.message = msg
+
         
         # Thumbnails (use first team sprites if available)
         def _first_sprite(team: List[Dict[str, Any]]) -> Optional[str]:
@@ -1823,97 +1875,116 @@ class GachaCatchEmAll(commands.Cog):
             # Lock type picker
             self._disable_all()
             
-    class BattlePaginator(discord.ui.View):
-    # (Use the BattlePaginator you already moved out earlier.)
-    # We’ll just add a tiny change: store files alongside pages.
-        def __init__(self, author, pages_with_files, results_embed, opponent=None, timeout=300):
-            super().__init__(timeout=timeout)
-            self.author = author
-            self.opponent = opponent
-            self.pages_with_files = pages_with_files  # List[Tuple[Embed, Optional[File]]]
-            self.results_embed = results_embed
-            self.index = 0
-            self.message = None
-            self._showing_results = False
-    
-        def _current(self):
-            if self._showing_results:
-                return (self.results_embed, None)
-            emb, f = self.pages_with_files[self.index]
-            total = len(self.pages_with_files)
-            emb.set_footer(text=f"Page {self.index + 1}/{total} • Use ⏭ to skip to results")
-            return (emb, f)
-    
-        # modify _update to re-send with/without file
-        async def _update(self, interaction: discord.Interaction):
-            if not interaction.response.is_done():
-                try:
-                    await interaction.response.defer()
-                except Exception:
-                    pass
-            if not self.message:
-                return
-            emb, f = self._current()
+class BattlePaginator(discord.ui.View):
+    """
+    One-embed-per-action battle viewer with 'Skip to Results'.
+    Uses embeds only (no file uploads on edit).
+    """
+    def __init__(
+        self,
+        author: discord.abc.User,
+        pages: List[discord.Embed],
+        results_embed: discord.Embed,
+        opponent: Optional[discord.abc.User] = None,
+        timeout: int = 300
+    ):
+        super().__init__(timeout=timeout)
+        self.author = author
+        self.opponent = opponent
+        self.pages = pages
+        self.results_embed = results_embed
+        self.index = 0
+        self.message: Optional[discord.Message] = None
+        self._showing_results = False
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        allowed = {self.author.id}
+        if self.opponent:
+            allowed.add(self.opponent.id)
+        if interaction.user.id not in allowed:
+            await interaction.response.send_message("These controls aren't yours.", ephemeral=True)
+            return False
+        return True
+
+    def _current_embed(self) -> discord.Embed:
+        if self._showing_results:
+            return self.results_embed
+        embed = self.pages[self.index]
+        total = len(self.pages)
+        embed.set_footer(text=f"Page {self.index + 1}/{total} • ⏭ Skip to results")
+        return embed
+
+    def _disable_all(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+
+    async def on_timeout(self):
+        self._disable_all()
+        try:
+            if self.message:
+                await self.message.edit(view=self)
+        except Exception:
+            pass
+
+    async def _update(self, interaction: discord.Interaction):
+        if not interaction.response.is_done():
             try:
-                if f:
-                    await self.message.edit(embed=emb, attachments=[f], view=self)
-                else:
-                    # clear attachments if previously present
-                    await self.message.edit(embed=emb, attachments=[], view=self)
+                await interaction.response.defer()
             except Exception:
                 pass
-            
-            # Controls
-            @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
-            async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
-                self._showing_results = False
-                self.index = 0
-                await self._update(interaction)
-            
-            @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
-            async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
-                self._showing_results = False
-                if self.index > 0:
-                    self.index -= 1
-                await self._update(interaction)
-            
-            @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
-            async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
-                if self._showing_results:
-                    # already on results; do nothing
-                    await self._update(interaction)
-                    return
-                if self.index < len(self.pages) - 1:
-                    self.index += 1
-                    await self._update(interaction)
-                else:
-                    # last page -> move to results
-                    self._showing_results = True
-                    await self._update(interaction)
-            
-            @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
-            async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
-                self._showing_results = False
-                self.index = len(self.pages) - 1
-                await self._update(interaction)
-            
-            @discord.ui.button(label="Skip to Results", style=discord.ButtonStyle.primary, emoji="⏭")
-            async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
-                self._showing_results = True
-                await self._update(interaction)
-            
-            @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
-            async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
-                self._disable_all()
-                if not interaction.response.is_done():
-                    try:
-                        await interaction.response.defer()
-                    except Exception:
-                        pass
-                if self.message:
-                    await self.message.edit(view=self)
-                self.stop()
+        if self.message:
+            await self.message.edit(embed=self._current_embed(), view=self)
 
+    @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
+    async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self._showing_results = False
+        self.index = 0
+        await self._update(interaction)
+
+    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+    async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self._showing_results = False
+        if self.index > 0:
+            self.index -= 1
+        await self._update(interaction)
+
+    @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self._showing_results:
+            await self._update(interaction)
+            return
+        if self.index < len(self.pages) - 1:
+            self.index += 1
+            await self._update(interaction)
+        else:
+            self._showing_results = True
+            await self._update(interaction)
+
+    @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
+    async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self._showing_results = False
+        self.index = len(self.pages) - 1
+        await self._update(interaction)
+
+    @discord.ui.button(label="Skip to Results", style=discord.ButtonStyle.primary, emoji="⏭")
+    async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self._showing_results = True
+        await self._update(interaction)
+
+    @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self._disable_all()
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+        if self.message:
+            await self.message.edit(view=self)
+        self.stop()
+
+    
             
 
 
