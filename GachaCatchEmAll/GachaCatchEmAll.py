@@ -22,7 +22,7 @@ POKEAPI_BASE = "https://pokeapi.co/api/v2"
 
 # Reasonable defaults; adjust with [p]gachaadmin setcosts
 DEFAULT_COSTS = {
-    "pokeball": 5.0,
+    "pokeball": 0,
     "greatball": 15.0,
     "ultraball": 50.0,
     "masterball": 200.0,
@@ -268,10 +268,10 @@ class GachaCatchEmAll(commands.Cog):
         title = f"🌿 A wild {enc['name']} appeared!"
         desc = (
             f"""Base Stat Total: **{enc['bst']}**\n Misses so far: **{enc.get('fails', 0)}**\n\n**Choose a ball:**\n
-            ⚪ Poké Ball — **{costs['pokeball']:.2f}** WC\n
-            🔵 Great Ball — **{costs['greatball']:.2f}** WC\n
-            🟡 Ultra Ball — **{costs['ultraball']:.2f}** WC\n
-            🟣 Master Ball — **{costs['masterball']:.2f}** WC"""
+            :pokeball: Poké Ball — **{costs['pokeball']:.2f}** WC\n
+            :greatball: Great Ball — **{costs['greatball']:.2f}** WC\n
+            :ultraball: Ultra Ball — **{costs['ultraball']:.2f}** WC\n
+            :masterball: Master Ball — **{costs['masterball']:.2f}** WC"""
         )
         embed = discord.Embed(title=title, description=desc, color=discord.Color.green())
         if enc.get("sprite"):
@@ -453,19 +453,19 @@ class GachaCatchEmAll(commands.Cog):
                 except Exception:
                     pass
 
-        @discord.ui.button(label="Poké Ball", style=discord.ButtonStyle.secondary, emoji="⚪")
+        @discord.ui.button(label="Poké Ball", style=discord.ButtonStyle.secondary, emoji=":pokeball:")
         async def pokeball(self, interaction: discord.Interaction, button: discord.ui.Button):
             await self._throw(interaction, "pokeball", "Poké Ball")
 
-        @discord.ui.button(label="Great Ball", style=discord.ButtonStyle.primary, emoji="🔵")
+        @discord.ui.button(label="Great Ball", style=discord.ButtonStyle.primary, emoji=":greatball:")
         async def greatball(self, interaction: discord.Interaction, button: discord.ui.Button):
             await self._throw(interaction, "greatball", "Great Ball")
 
-        @discord.ui.button(label="Ultra Ball", style=discord.ButtonStyle.success, emoji="🟡")
+        @discord.ui.button(label="Ultra Ball", style=discord.ButtonStyle.success, emoji=":ultraball:")
         async def ultraball(self, interaction: discord.Interaction, button: discord.ui.Button):
             await self._throw(interaction, "ultraball", "Ultra Ball")
 
-        @discord.ui.button(label="Master Ball", style=discord.ButtonStyle.danger, emoji="🟣")
+        @discord.ui.button(label="Master Ball", style=discord.ButtonStyle.danger, emoji=":masterball:")
         async def masterball(self, interaction: discord.Interaction, button: discord.ui.Button):
             await self._throw(interaction, "masterball", "Master Ball")
 
