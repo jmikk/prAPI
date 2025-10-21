@@ -42,9 +42,7 @@ POKEMON_TYPES = [
     "psychic","bug","rock","ghost","dragon","dark","steel","fairy"
 ]
 
-# Caches
-self._type_moves_cache: Dict[str, List[str]] = {}   # type -> move names
-self._move_cache: Dict[str, Dict[str, Any]] = {}    # move name -> move json (power/type/etc)
+
 
 
 
@@ -62,7 +60,9 @@ class GachaCatchEmAll(commands.Cog):
         self.config.register_user(pokebox=[], last_roll=None, active_encounter=None)
         self.config.register_global(costs=DEFAULT_COSTS)
         self._type_cache: Dict[str, List[int]] = {}  # type -> list of pokedex IDs
-
+        # Caches
+        self._type_moves_cache: Dict[str, List[str]] = {}   # type -> move names
+        self._move_cache: Dict[str, Dict[str, Any]] = {}    # move name -> move json (power/type/etc)
         self._session: Optional[aiohttp.ClientSession] = None
         self._pokemon_list: Optional[List[Dict[str, Any]]] = None  # list of {name, url}
         self._pokemon_cache: Dict[int, Dict[str, Any]] = {}  # id -> pokemon data
