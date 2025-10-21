@@ -988,119 +988,119 @@ class GachaCatchEmAll(commands.Cog):
         msg = await ctx.reply(embed=embed, view=view)
         view.message = msg
 
-class TypeSelectView(discord.ui.View):
-    def __init__(self, cog: "GachaCatchEmAll", author: discord.abc.User, timeout: int = 120):
-        super().__init__(timeout=timeout)
-        self.cog = cog
-        self.author = author
-        self.message: Optional[discord.Message] = None
-
-        # Build rows of buttons (<=5 per row). We'll do 4 rows of 5 and one row with the rest + "All"
-        labels = POKEMON_TYPES[:]  # 18 types
-        # Create buttons dynamically
-        for t in labels:
-            self.add_item(self._make_button(t))
-
-        # Add an "All" button at the end
-        self.add_item(self._make_button("all", style=discord.ButtonStyle.secondary))
-
-    def _make_button(self, t: str, style: discord.ButtonStyle = discord.ButtonStyle.primary):
-        label = "All" if t == "all" else t.title()
-        button = discord.ui.Button(label=label, style=style)
-        async def cb(interaction: discord.Interaction):
-            await self._handle_pick(interaction, t)
-        button.callback = cb  # type: ignore
-        return button
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id != self.author.id:
-            await interaction.response.send_message(
-                "These controls aren't yours — run /gacha to start your own.",
-                ephemeral=True
-            )
-            return False
-        return True
-
-    def _disable_all(self):
-        for child in self.children:
-            if isinstance(child, discord.ui.Button):
-                child.disabled = True
-
-    async def on_timeout(self):
-        self._disable_all()
-        try:
-            if self.message:
-                await self.message.edit(view=self)
-        except Exception:
-            pass
-
-    async def _handle_pick(self, interaction: discord.Interaction, pick: str):
-        # ACK quickly
-        if not interaction.response.is_done():
+    class TypeSelectView(discord.ui.View):
+        def __init__(self, cog: "GachaCatchEmAll", author: discord.abc.User, timeout: int = 120):
+            super().__init__(timeout=timeout)
+            self.cog = cog
+            self.author = author
+            self.message: Optional[discord.Message] = None
+    
+            # Build rows of buttons (<=5 per row). We'll do 4 rows of 5 and one row with the rest + "All"
+            labels = POKEMON_TYPES[:]  # 18 types
+            # Create buttons dynamically
+            for t in labels:
+                self.add_item(self._make_button(t))
+    
+            # Add an "All" button at the end
+            self.add_item(self._make_button("all", style=discord.ButtonStyle.secondary))
+    
+        def _make_button(self, t: str, style: discord.ButtonStyle = discord.ButtonStyle.primary):
+            label = "All" if t == "all" else t.title()
+            button = discord.ui.Button(label=label, style=style)
+            async def cb(interaction: discord.Interaction):
+                await self._handle_pick(interaction, t)
+            button.callback = cb  # type: ignore
+            return button
+    
+        async def interaction_check(self, interaction: discord.Interaction) -> bool:
+            if interaction.user.id != self.author.id:
+                await interaction.response.send_message(
+                    "These controls aren't yours — run /gacha to start your own.",
+                    ephemeral=True
+                )
+                return False
+            return True
+    
+        def _disable_all(self):
+            for child in self.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = True
+    
+        async def on_timeout(self):
+            self._disable_all()
             try:
-                await interaction.response.defer()
+                if self.message:
+                    await self.message.edit(view=self)
             except Exception:
                 pass
-
-        uconf = self.cog.config.user(interaction.user)
-        # Build allowlist if a specific type was chosen
-        allowed_ids: Optional[List[int]] = None
-        chosen_label = "All"
-        if pick != "all":
-            try:
-                allowed_ids = await self.cog._get_type_ids(pick)
-                if not allowed_ids:
-                    # No entries for this type; fail gracefully
-                    await interaction.followup.send(f"Couldn't find Pokémon for type **{pick.title()}**.", ephemeral=True)
+    
+        async def _handle_pick(self, interaction: discord.Interaction, pick: str):
+            # ACK quickly
+            if not interaction.response.is_done():
+                try:
+                    await interaction.response.defer()
+                except Exception:
+                    pass
+    
+            uconf = self.cog.config.user(interaction.user)
+            # Build allowlist if a specific type was chosen
+            allowed_ids: Optional[List[int]] = None
+            chosen_label = "All"
+            if pick != "all":
+                try:
+                    allowed_ids = await self.cog._get_type_ids(pick)
+                    if not allowed_ids:
+                        # No entries for this type; fail gracefully
+                        await interaction.followup.send(f"Couldn't find Pokémon for type **{pick.title()}**.", ephemeral=True)
+                        return
+                    chosen_label = pick.title()
+                except Exception as e:
+                    await interaction.followup.send(f"Error looking up type **{pick}**: {e}", ephemeral=True)
                     return
-                chosen_label = pick.title()
-            except Exception as e:
-                await interaction.followup.send(f"Error looking up type **{pick}**: {e}", ephemeral=True)
-                return
-
-        # Roll encounter (neutral bias for encounter only—same as before)
-        pdata, pid, bst = await self.cog._random_encounter("greatball", allowed_ids=allowed_ids)
-        name = pdata.get("name", "unknown").title()
-        sprite = (
-            pdata.get("sprites", {})
-            .get("other", {})
-            .get("official-artwork", {})
-            .get("front_default")
-            or pdata.get("sprites", {}).get("front_default")
-        )
-        flee_base = max(0.05, min(0.25, 0.10 + (bst - 400) / 800.0))
-        enc = {
-            "id": int(pid),
-            "name": name,
-            "bst": int(bst),
-            "sprite": sprite,
-            "fails": 0,
-            "flee_base": float(flee_base),
-            "filter_type": None if pick == "all" else pick.lower(),
-        }
-        await uconf.active_encounter.set(enc)
-
-        costs = await self.cog.config.costs()
-        embed = self.cog._encounter_embed(interaction.user, enc, costs)
-        # Decorate title to show where they searched
-        if enc.get("filter_type"):
-            embed.title = f"🌿 {chosen_label} Area — a wild {enc['name']} appeared!"
-        else:
-            embed.title = f"🌿 All Areas — a wild {enc['name']} appeared!"
-
-        # Replace the selection UI with the encounter UI
-        view = self.cog.EncounterView(self.cog, interaction.user)
-        try:
-            # Prefer editing the message if we have it; otherwise reply
-            target = self.message or interaction.message
-            msg = await target.edit(content=None, embed=embed, view=view)
-            view.message = msg
-        except Exception:
-            msg = await interaction.followup.send(embed=embed, view=view)
-            view.message = msg
-
-        # Lock type picker
-        self._disable_all()
+    
+            # Roll encounter (neutral bias for encounter only—same as before)
+            pdata, pid, bst = await self.cog._random_encounter("greatball", allowed_ids=allowed_ids)
+            name = pdata.get("name", "unknown").title()
+            sprite = (
+                pdata.get("sprites", {})
+                .get("other", {})
+                .get("official-artwork", {})
+                .get("front_default")
+                or pdata.get("sprites", {}).get("front_default")
+            )
+            flee_base = max(0.05, min(0.25, 0.10 + (bst - 400) / 800.0))
+            enc = {
+                "id": int(pid),
+                "name": name,
+                "bst": int(bst),
+                "sprite": sprite,
+                "fails": 0,
+                "flee_base": float(flee_base),
+                "filter_type": None if pick == "all" else pick.lower(),
+            }
+            await uconf.active_encounter.set(enc)
+    
+            costs = await self.cog.config.costs()
+            embed = self.cog._encounter_embed(interaction.user, enc, costs)
+            # Decorate title to show where they searched
+            if enc.get("filter_type"):
+                embed.title = f"🌿 {chosen_label} Area — a wild {enc['name']} appeared!"
+            else:
+                embed.title = f"🌿 All Areas — a wild {enc['name']} appeared!"
+    
+            # Replace the selection UI with the encounter UI
+            view = self.cog.EncounterView(self.cog, interaction.user)
+            try:
+                # Prefer editing the message if we have it; otherwise reply
+                target = self.message or interaction.message
+                msg = await target.edit(content=None, embed=embed, view=view)
+                view.message = msg
+            except Exception:
+                msg = await interaction.followup.send(embed=embed, view=view)
+                view.message = msg
+    
+            # Lock type picker
+            self._disable_all()
 
 
 
