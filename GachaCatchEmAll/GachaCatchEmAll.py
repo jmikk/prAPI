@@ -37,6 +37,11 @@ BALL_TUNING = {
     "ultraball": {"weight_bias": 1, "bonus_catch": 0.30},
     "masterball": {"weight_bias": 2, "bonus_catch": 999.0},  # auto-catch
 }
+POKEMON_TYPES = [
+    "normal","fire","water","electric","grass","ice","fighting","poison","ground","flying",
+    "psychic","bug","rock","ghost","dragon","dark","steel","fairy"
+]
+
 
 NICKNAME_RE = re.compile(r"^[A-Za-z]{1,20}$")  # “letters only, max 20”
 
@@ -51,6 +56,7 @@ class GachaCatchEmAll(commands.Cog):
         # pokebox stores a LIST of individual entries (each with uid)
         self.config.register_user(pokebox=[], last_roll=None, active_encounter=None)
         self.config.register_global(costs=DEFAULT_COSTS)
+        self._type_cache: Dict[str, List[int]] = {}  # type -> list of pokedex IDs
 
         self._session: Optional[aiohttp.ClientSession] = None
         self._pokemon_list: Optional[List[Dict[str, Any]]] = None  # list of {name, url}
@@ -100,6 +106,30 @@ class GachaCatchEmAll(commands.Cog):
             e["level"] = 1
         if "xp" not in e or not isinstance(e["xp"], int):
             e["xp"] = 0
+
+    async def _get_type_ids(self, type_name: str) -> List[int]:
+        """
+        Fetch and cache Pokémon IDs for a given type using PokeAPI: /type/{type}
+        Returns a list of Pokédex IDs (ints). Filters out forms without numeric IDs.
+        """
+        type_name = type_name.lower().strip()
+        if type_name in self._type_cache:
+            return self._type_cache[type_name]
+    
+        data = await self._fetch_json(f"{POKEAPI_BASE}/type/{type_name}")
+        ids: List[int] = []
+        for p in data.get("pokemon", []):
+            # {"pokemon": {"name": "...", "url": "https://pokeapi.co/api/v2/pokemon/25/"}, "slot": 1}
+            url = p.get("pokemon", {}).get("url", "")
+            pid = self._extract_id_from_url(url)
+            if pid:
+                ids.append(pid)
+    
+        # Dedup & sort for consistency
+        ids = sorted(set(ids))
+        self._type_cache[type_name] = ids
+        return ids
+
     
     def _xp_needed(self, level: int) -> int:
         # Simple linear curve: 100 * level to next level
@@ -172,30 +202,33 @@ class GachaCatchEmAll(commands.Cog):
         data = await self._fetch_json(f"{POKEAPI_BASE}/pokemon/{poke_id}")
         self._pokemon_cache[poke_id] = data
         return data
-
-    async def _random_encounter(self, ball_key: str) -> Tuple[Dict[str, Any], int, int]:
-        """Roll a random Pokémon, biased by base stat totals depending on ball.
-        Designed to be fast: small concurrent batch + cache.
+    
+    async def _random_encounter(self, ball_key: str, allowed_ids: Optional[List[int]] = None) -> Tuple[Dict[str, Any], int, int]:
+        """Roll a random Pokémon, optionally restricted to allowed_ids, biased by base stat totals depending on ball.
         Returns (pokemon_data, poke_id, bst)
         """
         await self._ensure_pokemon_list()
         assert self._pokemon_list is not None
-
-        # Small, tiered batch sizes to keep the interaction snappy
-        sample_sizes = {"pokeball": 8, "greatball": 10, "ultraball": 12, "masterball": 14}
-        sample_n = sample_sizes.get(ball_key, 10)
-
-        population = random.sample(self._pokemon_list, k=min(sample_n, len(self._pokemon_list)))
-        ids: List[int] = []
-        for entry in population:
-            pid = self._extract_id_from_url(entry["url"])  # type: ignore
-            if pid:
-                ids.append(pid)
-
-        if not ids:
+    
+        # Build the candidate ID pool
+        if allowed_ids:
+            candidate_ids = allowed_ids[:]  # copy
+        else:
+            candidate_ids = []
+            for entry in self._pokemon_list:
+                pid = self._extract_id_from_url(entry["url"])  # type: ignore
+                if pid:
+                    candidate_ids.append(pid)
+    
+        if not candidate_ids:
             pdata = await self._get_pokemon(1)
             return pdata, 1, sum(s["base_stat"] for s in pdata.get("stats", []))
-
+    
+        # Small, tiered batch sizes to keep the interaction snappy
+        sample_sizes = {"pokeball": 8, "greatball": 10, "ultraball": 12, "masterball": 14}
+        sample_n = min(sample_sizes.get(ball_key, 10), len(candidate_ids))
+        ids = random.sample(candidate_ids, k=sample_n)
+    
         async def fetch(pid: int) -> Optional[Tuple[int, Dict[str, Any], int]]:
             try:
                 pdata = await self._get_pokemon(pid)
@@ -212,16 +245,14 @@ class GachaCatchEmAll(commands.Cog):
                 return (pid, pdata, bst)
             except Exception:
                 return None
-
-        # Fetch concurrently; time-box to 5s.
-        tasks = [fetch(pid) for pid in ids]
+    
         try:
-            results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=5)
+            results = await asyncio.wait_for(asyncio.gather(*[fetch(pid) for pid in ids]), timeout=5)
         except asyncio.TimeoutError:
             results = []
-        triples: List[Tuple[int, Dict[str, Any], int]] = [t for t in results if t]
+        triples = [t for t in results if t]
         if not triples:
-            # Fallback to popular starters + Pikachu, then Bulbasaur
+            # Fallbacks
             for pid in (1, 4, 7, 25):
                 try:
                     pdata = await self._get_pokemon(pid)
@@ -231,7 +262,7 @@ class GachaCatchEmAll(commands.Cog):
                     continue
             pdata = await self._get_pokemon(1)
             return pdata, 1, sum(s["base_stat"] for s in pdata.get("stats", []))
-
+    
         # Weighting by ball
         bias = BALL_TUNING[ball_key]["weight_bias"]
         weights: List[int] = []
@@ -245,10 +276,11 @@ class GachaCatchEmAll(commands.Cog):
             else:
                 w = max(1, bst * bst // 50)
             weights.append(w)
-
-        choice_idx = random.choices(range(len(triples)), weights=weights, k=1)[0]
-        pid, pdata, bst = triples[choice_idx]
+    
+        idx = random.choices(range(len(triples)), weights=weights, k=1)[0]
+        pid, pdata, bst = triples[idx]
         return pdata, pid, bst
+
 
     @staticmethod
     def _compute_catch_chance(ball_key: str, bst: int) -> float:
@@ -753,48 +785,45 @@ class GachaCatchEmAll(commands.Cog):
                 await self.message.edit(view=self)
             self.stop()
 
-    # --------- Commands ---------
-
+        # --------- Commands ---------
     @commands.hybrid_command(name="gacha")
     async def gacha(self, ctx: commands.Context):
-        """Start (or resume) a wild encounter. Multi-throw enabled until catch or flee."""
+        """Start (or resume) a wild encounter. First choose a type (or All), then multi-throw until catch or flee."""
         try:
             _ = await self._get_balance(ctx.author)
         except Exception as e:
             await ctx.reply(f"Economy unavailable: {e}\nMake sure the NexusExchange cog is loaded.")
             return
-
+    
         uconf = self.config.user(ctx.author)
         enc = await uconf.active_encounter()
-
-        # If no active encounter, roll a new one (neutral bias for encounter only)
-        if not enc:
-            pdata, pid, bst = await self._random_encounter("greatball")
-            name = pdata.get("name", "unknown").title()
-            sprite = (
-                pdata.get("sprites", {})
-                .get("other", {})
-                .get("official-artwork", {})
-                .get("front_default")
-                or pdata.get("sprites", {}).get("front_default")
-            )
-            # compute a base flee rate from BST (stronger mons slightly braver)
-            flee_base = max(0.05, min(0.25, 0.10 + (bst - 400) / 800.0))
-            enc = {
-                "id": int(pid),
-                "name": name,
-                "bst": int(bst),
-                "sprite": sprite,
-                "fails": 0,
-                "flee_base": float(flee_base),
-            }
-            await uconf.active_encounter.set(enc)
-
-        costs = await self.config.costs()
-        embed = self._encounter_embed(ctx.author, enc, costs)
-        view = self.EncounterView(self, ctx.author)
-        msg = await ctx.reply(embed=embed, view=view)
+    
+        if enc:
+            # Resume the current encounter immediately
+            costs = await self.config.costs()
+            embed = self._encounter_embed(ctx.author, enc, costs)
+            if enc.get("filter_type"):
+                embed.title = f"🌿 {str(enc['filter_type']).title()} Area — a wild {enc['name']} appeared!"
+            else:
+                embed.title = f"🌿 All Areas — a wild {enc['name']} appeared!"
+            view = self.EncounterView(self, ctx.author)
+            msg = await ctx.reply(embed=embed, view=view)
+            view.message = msg
+            return
+    
+        # No active encounter — show type selection UI
+        pick_embed = discord.Embed(
+            title="Where do you want to search?",
+            description=(
+                "Pick a **Pokémon type** to explore that habitat, or choose **All** to search everywhere.\n\n"
+                "You’ll get an encounter right after you choose."
+            ),
+            color=discord.Color.blurple(),
+        )
+        view = self.TypeSelectView(self, ctx.author)
+        msg = await ctx.reply(embed=pick_embed, view=view)
         view.message = msg
+
 
     @commands.hybrid_command(name="pokeinv")
     async def pokeinv(self, ctx: commands.Context, member: Optional[discord.Member] = None):
@@ -958,6 +987,121 @@ class GachaCatchEmAll(commands.Cog):
         embed = view._render_embed()
         msg = await ctx.reply(embed=embed, view=view)
         view.message = msg
+
+class TypeSelectView(discord.ui.View):
+    def __init__(self, cog: "GachaCatchEmAll", author: discord.abc.User, timeout: int = 120):
+        super().__init__(timeout=timeout)
+        self.cog = cog
+        self.author = author
+        self.message: Optional[discord.Message] = None
+
+        # Build rows of buttons (<=5 per row). We'll do 4 rows of 5 and one row with the rest + "All"
+        labels = POKEMON_TYPES[:]  # 18 types
+        # Create buttons dynamically
+        for t in labels:
+            self.add_item(self._make_button(t))
+
+        # Add an "All" button at the end
+        self.add_item(self._make_button("all", style=discord.ButtonStyle.secondary))
+
+    def _make_button(self, t: str, style: discord.ButtonStyle = discord.ButtonStyle.primary):
+        label = "All" if t == "all" else t.title()
+        button = discord.ui.Button(label=label, style=style)
+        async def cb(interaction: discord.Interaction):
+            await self._handle_pick(interaction, t)
+        button.callback = cb  # type: ignore
+        return button
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message(
+                "These controls aren't yours — run /gacha to start your own.",
+                ephemeral=True
+            )
+            return False
+        return True
+
+    def _disable_all(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+
+    async def on_timeout(self):
+        self._disable_all()
+        try:
+            if self.message:
+                await self.message.edit(view=self)
+        except Exception:
+            pass
+
+    async def _handle_pick(self, interaction: discord.Interaction, pick: str):
+        # ACK quickly
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+
+        uconf = self.cog.config.user(interaction.user)
+        # Build allowlist if a specific type was chosen
+        allowed_ids: Optional[List[int]] = None
+        chosen_label = "All"
+        if pick != "all":
+            try:
+                allowed_ids = await self.cog._get_type_ids(pick)
+                if not allowed_ids:
+                    # No entries for this type; fail gracefully
+                    await interaction.followup.send(f"Couldn't find Pokémon for type **{pick.title()}**.", ephemeral=True)
+                    return
+                chosen_label = pick.title()
+            except Exception as e:
+                await interaction.followup.send(f"Error looking up type **{pick}**: {e}", ephemeral=True)
+                return
+
+        # Roll encounter (neutral bias for encounter only—same as before)
+        pdata, pid, bst = await self.cog._random_encounter("greatball", allowed_ids=allowed_ids)
+        name = pdata.get("name", "unknown").title()
+        sprite = (
+            pdata.get("sprites", {})
+            .get("other", {})
+            .get("official-artwork", {})
+            .get("front_default")
+            or pdata.get("sprites", {}).get("front_default")
+        )
+        flee_base = max(0.05, min(0.25, 0.10 + (bst - 400) / 800.0))
+        enc = {
+            "id": int(pid),
+            "name": name,
+            "bst": int(bst),
+            "sprite": sprite,
+            "fails": 0,
+            "flee_base": float(flee_base),
+            "filter_type": None if pick == "all" else pick.lower(),
+        }
+        await uconf.active_encounter.set(enc)
+
+        costs = await self.cog.config.costs()
+        embed = self.cog._encounter_embed(interaction.user, enc, costs)
+        # Decorate title to show where they searched
+        if enc.get("filter_type"):
+            embed.title = f"🌿 {chosen_label} Area — a wild {enc['name']} appeared!"
+        else:
+            embed.title = f"🌿 All Areas — a wild {enc['name']} appeared!"
+
+        # Replace the selection UI with the encounter UI
+        view = self.cog.EncounterView(self.cog, interaction.user)
+        try:
+            # Prefer editing the message if we have it; otherwise reply
+            target = self.message or interaction.message
+            msg = await target.edit(content=None, embed=embed, view=view)
+            view.message = msg
+        except Exception:
+            msg = await interaction.followup.send(embed=embed, view=view)
+            view.message = msg
+
+        # Lock type picker
+        self._disable_all()
+
 
 
 
