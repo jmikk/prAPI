@@ -326,7 +326,7 @@ class GachaCatchEmAll(commands.Cog):
                         "bst": int(enc["bst"]),
                         "sprite": enc.get("sprite"),
                         "nickname": None,
-                        "caught_at": datetime.now(timezone.utc).isoformat(),
+                        "caught_at": int(now.timestamp()),
                     }
                     box = await uconf.pokebox()
                     if not isinstance(box, list):
@@ -498,13 +498,20 @@ class GachaCatchEmAll(commands.Cog):
             # Types
             types = e.get("types") or []
             types_text = " / ".join(t.title() for t in types) if types else "Unknown"
-    
+
+            unix = e.get("caught_at_unix")
+            if unix:
+                caught_text = f"<t:{unix}:F> — <t:{unix}:R>"
+            else:
+                # fallback if old entries don't have the unix field yet
+                caught_text = e.get("caught_at", "?")
+                
             desc = (
                 f"""**UID:** `{e.get('uid','??')}`\n
                 **Pokédex ID:** {e.get('pokedex_id','?')}\n
                 **Types:** {types_text}\n
                 **BST:** {e.get('bst','?')}\n
-                **Caught:** {e.get('caught_at','?')}\n\n
+                **Caught:** {caught_text}\n\n
                 **Stats:**\n{stats_text}"""
             )
     
@@ -712,7 +719,11 @@ class GachaCatchEmAll(commands.Cog):
             return
 
         # sort newest first
-        box_sorted = sorted(box, key=lambda e: e.get("caught_at", ""), reverse=True)
+        box_sorted = sorted(
+            box,
+            key=lambda e: int(e.get("caught_at_unix") or 0),
+            reverse=True,
+        )
         page_size = 10  # tweak as you like
         pages: List[List[Dict[str, Any]]] = [box_sorted[i:i + page_size] for i in range(0, len(box_sorted), page_size)]
 
@@ -824,8 +835,11 @@ class GachaCatchEmAll(commands.Cog):
             return
     
         # newest first
-        entries = sorted(box, key=lambda e: e.get("caught_at", ""), reverse=True)
-    
+        entries = sorted(
+            box,
+            key=lambda e: int(e.get("caught_at_unix") or 0),
+            reverse=True,
+        )    
         # Find starting index
         start_index = 0
         if query:
