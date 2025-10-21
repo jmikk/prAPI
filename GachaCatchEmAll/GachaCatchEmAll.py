@@ -501,8 +501,11 @@ class GachaCatchEmAll(commands.Cog):
             entries: List[Dict[str, Any]],
             start_index: int = 0,
             timeout: int = 180,
+            cog: "GachaCatchEmAll",                
         ):
             super().__init__(timeout=timeout)
+
+            self.cog = cog                        
             self.author = author
             self.member = member
             self.entries = entries               # one entry per page
@@ -921,7 +924,7 @@ class GachaCatchEmAll(commands.Cog):
                             start_index = i
                             break
     
-        view = self.MonPaginator(author=ctx.author, member=member, entries=entries, start_index=start_index)
+        view = self.MonPaginator(cog=self, author=ctx.author, member=member, entries=entries, start_index=start_index)
         embed = view._render_embed()
         msg = await ctx.reply(embed=embed, view=view)
         view.message = msg
