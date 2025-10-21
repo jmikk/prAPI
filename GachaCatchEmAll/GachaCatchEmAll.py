@@ -1685,7 +1685,7 @@ class GachaCatchEmAll(commands.Cog):
         # If you didn't store all, you can just use `battle_log` too. We'll use battle_log as-is:
         #full_lines = battle_log[:] if battle_log else ["Battle started."]
         
-        page_lines = self._chunk_lines(full_lines, size=6)  # 6 lines per page
+       #page_lines = self._chunk_lines(full_lines, size=6)  # 6 lines per page
         pages: List[discord.Embed] = []
         
         def _mk_page(lines: List[str], header: str, left_img: Optional[str], right_img: Optional[str]) -> discord.Embed:
@@ -1697,8 +1697,8 @@ class GachaCatchEmAll(commands.Cog):
             return embed
         
         header_base = f"{caller.display_name} vs {(opp.display_name if opp else 'NPC Team')}"
-        for i, chunk in enumerate(page_lines, start=1):
-            pages.append(_mk_page(chunk, f"Battle — {header_base}", caller_thumb, opp_thumb))
+        #for i, chunk in enumerate(page_lines, start=1):
+            #pages.append(_mk_page(chunk, f"Battle — {header_base}", caller_thumb, opp_thumb))
         
         # Safety: at least one page
         if not pages:
