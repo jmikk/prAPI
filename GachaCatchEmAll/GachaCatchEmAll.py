@@ -1507,19 +1507,26 @@ class GachaCatchEmAll(commands.Cog):
         while ci < len(caller_team) and oi < len(opp_team):
             A = caller_team[ci]
             B = opp_team[oi]
-            duel_count += 1
-    
-            winner, actions = await self._simulate_duel(A, B)
+        
+            A_cur, A_max = caller_hp[A["uid"]]
+            B_cur, B_max = opp_hp[B["uid"]]
+        
+            winner, actions, A_end, B_end = await self._simulate_duel(A, B, A_start=A_cur, B_start=B_cur)
             duel_action_packets.append((A, B, actions))
-    
+        
+            # Update carried HP
+            caller_hp[A["uid"]] = (A_end, A_max)
+            opp_hp[B["uid"]]   = (B_end, B_max)
+        
+            # Recap line (optional)
             if actions:
                 first = actions[0]
                 brief_recap.append(
-                    f"— Duel {duel_count}: {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) "
+                    f"— Duel {len(duel_action_packets)}: {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) "
                     f"vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)}) • first move: **{first['move_name']}**"
                 )
-    
-            # XP per-mon scaled by level gap
+        
+            # XP scaling (unchanged)
             A_lvl = int(A.get("level", 1))
             B_lvl = int(B.get("level", 1))
             A_scale = self._xp_scale(A_lvl, B_lvl)
@@ -1528,16 +1535,18 @@ class GachaCatchEmAll(commands.Cog):
             A_lose_xp = int(round(25 * A_scale))
             B_win_xp = int(round(40 * B_scale))
             B_lose_xp = int(round(25 * B_scale))
-    
+        
+            # Advance indexes based on who fainted (winner keeps remaining HP)
             if winner == "A":
                 caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_win_xp
-                opp_awards[B["uid"]] = opp_awards.get(B["uid"], 0) + B_lose_xp
-                oi += 1
+                opp_awards[B["uid"]]   = opp_awards.get(B["uid"], 0) + B_lose_xp
+                oi += 1  # B fainted; A stays with A_end HP
             else:
                 caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_lose_xp
-                opp_awards[B["uid"]] = opp_awards.get(B["uid"], 0) + B_win_xp
-                ci += 1
-    
+                opp_awards[B["uid"]]   = opp_awards.get(B["uid"], 0) + B_win_xp
+                ci += 1  # A fainted; B stays with B_end HP
+        
+            
         # ----- Match winner & team bonus
         caller_alive = ci < len(caller_team)
         match_winner = "caller" if caller_alive else "opp"
@@ -1706,53 +1715,55 @@ class GachaCatchEmAll(commands.Cog):
         # Fallback: at least one generic page
             pages = [(discord.Embed(title="Battle", description="Battle begins!", color=discord.Color.teal()), None)]
 
-    async def _simulate_duel(self, A: Dict[str, Any], B: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]]]:
-        """
-        Returns (winner: 'A'|'B', actions: List[dict]).
-        Each action dict contains:
-          attacker ('A'|'B'), move_name, damage, A_hp, B_hp,
-          A_max, B_max, A_name, B_name, A_sprite, B_sprite
-        """
-        a = dict(A); b = dict(B)
-        A_max = self._initial_hp(a)
-        B_max = self._initial_hp(b)
-        A_hp = A_max
-        B_hp = B_max
-        A_spd = self._safe_stats(a)["speed"]
-        B_spd = self._safe_stats(b)["speed"]
-        first_is_A = True if A_spd >= B_spd else False
-    
-        actions: List[Dict[str, Any]] = []
-        turn = 1
-        while A_hp > 0 and B_hp > 0 and turn <= 100:
-            order = [("A", a, b), ("B", b, a)] if first_is_A else [("B", b, a), ("A", a, b)]
-            for who, atk, dfn in order:
-                if A_hp <= 0 or B_hp <= 0:
-                    break
-                move = await self._pick_move(atk)
-                dmg = self._calc_move_damage(atk, dfn, move)
-                if who == "A":
-                    B_hp -= dmg
-                else:
-                    A_hp -= dmg
-                actions.append({
-                    "attacker": who,
-                    "move_name": str(move.get("name","")).title() or "Move",
-                    "damage": int(dmg),
-                    "A_hp": max(0, A_hp),
-                    "B_hp": max(0, B_hp),
-                    "A_max": int(A_max),
-                    "B_max": int(B_max),
-                    "A_name": a.get("nickname") or a.get("name", "?"),
-                    "B_name": b.get("nickname") or b.get("name", "?"),
-                    "A_sprite": a.get("sprite"),
-                    "B_sprite": b.get("sprite"),
-                    "turn": turn,
-                })
-            turn += 1
-    
-        winner = "A" if A_hp > 0 else ("B" if B_hp > 0 else random.choice(["A","B"]))
-        return winner, actions
+        async def _simulate_duel(
+            self,
+            A: Dict[str, Any],
+            B: Dict[str, Any],
+            A_start: Optional[int] = None,
+            B_start: Optional[int] = None
+        ) -> Tuple[str, List[Dict[str, Any]], int, int]:
+            a = dict(A); b = dict(B)
+            A_max = self._initial_hp(a)
+            B_max = self._initial_hp(b)
+        
+            A_hp = A_max if A_start is None else max(0, min(A_start, A_max))
+            B_hp = B_max if B_start is None else max(0, min(B_start, B_max))
+        
+            A_spd = self._safe_stats(a)["speed"]
+            B_spd = self._safe_stats(b)["speed"]
+            first_is_A = True if A_spd >= B_spd else False
+        
+            actions: List[Dict[str, Any]] = []
+            turn = 1
+            while A_hp > 0 and B_hp > 0 and turn <= 100:
+                order = [("A", a, b), ("B", b, a)] if first_is_A else [("B", b, a), ("A", a, b)]
+                for who, atk, dfn in order:
+                    if A_hp <= 0 or B_hp <= 0:
+                        break
+                    move = await self._pick_move(atk)
+                    dmg = self._calc_move_damage(atk, dfn, move)
+                    if who == "A":
+                        B_hp -= dmg
+                    else:
+                        A_hp -= dmg
+                    actions.append({
+                        "attacker": who,
+                        "move_name": str(move.get("name","")).title() or "Move",
+                        "damage": int(dmg),
+                        "A_hp": max(0, A_hp),
+                        "B_hp": max(0, B_hp),
+                        "A_max": int(A_max),
+                        "B_max": int(B_max),
+                        "A_name": a.get("nickname") or a.get("name", "?"),
+                        "B_name": b.get("nickname") or b.get("name", "?"),
+                        "A_sprite": a.get("sprite"),
+                        "B_sprite": b.get("sprite"),
+                        "turn": turn,
+                    })
+                turn += 1
+        
+            winner = "A" if A_hp > 0 else ("B" if B_hp > 0 else random.choice(["A","B"]))
+            return winner, actions, max(0, A_hp), max(0, B_hp)
 
 
 
