@@ -1038,19 +1038,30 @@ class GachaCatchEmAll(commands.Cog):
             await ctx.reply("Subcommands: `set`, `view`, `auto`, `clear`")
     
     @team_group.command(name="set")
-    async def team_set(self, ctx: commands.Context, *uids: str):
-        """Set your team to up to 6 UIDs: e.g. $team set abc123 def456 ..."""
-        if not uids:
+    async def team_set(self, ctx: commands.Context, uids: str):
+        """
+        Set your team to up to 6 UIDs.
+        Works for both slash & prefix:
+        /team set "uid1 uid2 uid3"   or   $team set uid1 uid2 uid3
+        """
+        # accept spaces or commas
+        parts = [p for p in re.split(r"[,\s]+", uids.strip()) if p]
+        if not parts:
             await ctx.reply("Provide 1–6 UIDs.")
             return
+        if len(parts) > 6:
+            parts = parts[:6]
+    
         box: List[Dict[str, Any]] = await self.config.user(ctx.author).pokebox()
         own_uids = {str(e.get("uid")) for e in box}
-        bad = [u for u in uids if str(u) not in own_uids]
+        bad = [u for u in parts if u not in own_uids]
         if bad:
             await ctx.reply(f"These UIDs aren't in your box: {', '.join(bad)}")
             return
-        await self._set_team(ctx.author, list(uids))
-        await ctx.reply(f"Team set to: {', '.join(list(uids)[:6])}")
+    
+        await self._set_team(ctx.author, parts)
+        await ctx.reply(f"Team set to: {', '.join(parts)}")
+
     
     @team_group.command(name="view")
     async def team_view(self, ctx: commands.Context, member: Optional[discord.Member] = None):
