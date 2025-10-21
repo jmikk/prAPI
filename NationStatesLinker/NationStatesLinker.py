@@ -246,7 +246,6 @@ class NationStatesLinker(commands.Cog):
         verified_role = await self.get_role(guild, gconf.verified_role)  
         region = await gconf.region_name()
         log_channel_id = await gconf.log_channel_id()  # <- we'll use this for fallback
-        has_any_linked = bool(nations_set)  # NEW**
     
         visitor_role = await self.get_role(guild, visitor_id)
         resident_role = await self.get_role(guild, resident_id)
@@ -254,7 +253,8 @@ class NationStatesLinker(commands.Cog):
     
         nations = await self.config.user(member).linked_nations()
         nations_set = {self.normalize_nation(n) for n in nations}
-    
+        has_any_linked = bool(nations_set)  # NEW**
+
         is_resident = False
         is_wa_resident = False
         if region:
