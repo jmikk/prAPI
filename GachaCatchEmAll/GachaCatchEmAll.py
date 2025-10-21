@@ -1826,93 +1826,93 @@ class GachaCatchEmAll(commands.Cog):
     class BattlePaginator(discord.ui.View):
     # (Use the BattlePaginator you already moved out earlier.)
     # We’ll just add a tiny change: store files alongside pages.
-    def __init__(self, author, pages_with_files, results_embed, opponent=None, timeout=300):
-        super().__init__(timeout=timeout)
-        self.author = author
-        self.opponent = opponent
-        self.pages_with_files = pages_with_files  # List[Tuple[Embed, Optional[File]]]
-        self.results_embed = results_embed
-        self.index = 0
-        self.message = None
-        self._showing_results = False
-
-    def _current(self):
-        if self._showing_results:
-            return (self.results_embed, None)
-        emb, f = self.pages_with_files[self.index]
-        total = len(self.pages_with_files)
-        emb.set_footer(text=f"Page {self.index + 1}/{total} • Use ⏭ to skip to results")
-        return (emb, f)
-
-    # modify _update to re-send with/without file
-    async def _update(self, interaction: discord.Interaction):
-        if not interaction.response.is_done():
-            try:
-                await interaction.response.defer()
-            except Exception:
-                pass
-        if not self.message:
-            return
-        emb, f = self._current()
-        try:
-            if f:
-                await self.message.edit(embed=emb, attachments=[f], view=self)
-            else:
-                # clear attachments if previously present
-                await self.message.edit(embed=emb, attachments=[], view=self)
-        except Exception:
-            pass
-        
-        # Controls
-        @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
-        async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
-            self._showing_results = False
+        def __init__(self, author, pages_with_files, results_embed, opponent=None, timeout=300):
+            super().__init__(timeout=timeout)
+            self.author = author
+            self.opponent = opponent
+            self.pages_with_files = pages_with_files  # List[Tuple[Embed, Optional[File]]]
+            self.results_embed = results_embed
             self.index = 0
-            await self._update(interaction)
-        
-        @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
-        async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+            self.message = None
             self._showing_results = False
-            if self.index > 0:
-                self.index -= 1
-            await self._update(interaction)
-        
-        @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
-        async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+    
+        def _current(self):
             if self._showing_results:
-                # already on results; do nothing
-                await self._update(interaction)
-                return
-            if self.index < len(self.pages) - 1:
-                self.index += 1
-                await self._update(interaction)
-            else:
-                # last page -> move to results
-                self._showing_results = True
-                await self._update(interaction)
-        
-        @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
-        async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
-            self._showing_results = False
-            self.index = len(self.pages) - 1
-            await self._update(interaction)
-        
-        @discord.ui.button(label="Skip to Results", style=discord.ButtonStyle.primary, emoji="⏭")
-        async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
-            self._showing_results = True
-            await self._update(interaction)
-        
-        @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
-        async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
-            self._disable_all()
+                return (self.results_embed, None)
+            emb, f = self.pages_with_files[self.index]
+            total = len(self.pages_with_files)
+            emb.set_footer(text=f"Page {self.index + 1}/{total} • Use ⏭ to skip to results")
+            return (emb, f)
+    
+        # modify _update to re-send with/without file
+        async def _update(self, interaction: discord.Interaction):
             if not interaction.response.is_done():
                 try:
                     await interaction.response.defer()
                 except Exception:
                     pass
-            if self.message:
-                await self.message.edit(view=self)
-            self.stop()
+            if not self.message:
+                return
+            emb, f = self._current()
+            try:
+                if f:
+                    await self.message.edit(embed=emb, attachments=[f], view=self)
+                else:
+                    # clear attachments if previously present
+                    await self.message.edit(embed=emb, attachments=[], view=self)
+            except Exception:
+                pass
+            
+            # Controls
+            @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
+            async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
+                self._showing_results = False
+                self.index = 0
+                await self._update(interaction)
+            
+            @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+            async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+                self._showing_results = False
+                if self.index > 0:
+                    self.index -= 1
+                await self._update(interaction)
+            
+            @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
+            async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+                if self._showing_results:
+                    # already on results; do nothing
+                    await self._update(interaction)
+                    return
+                if self.index < len(self.pages) - 1:
+                    self.index += 1
+                    await self._update(interaction)
+                else:
+                    # last page -> move to results
+                    self._showing_results = True
+                    await self._update(interaction)
+            
+            @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
+            async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
+                self._showing_results = False
+                self.index = len(self.pages) - 1
+                await self._update(interaction)
+            
+            @discord.ui.button(label="Skip to Results", style=discord.ButtonStyle.primary, emoji="⏭")
+            async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+                self._showing_results = True
+                await self._update(interaction)
+            
+            @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
+            async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+                self._disable_all()
+                if not interaction.response.is_done():
+                    try:
+                        await interaction.response.defer()
+                    except Exception:
+                        pass
+                if self.message:
+                    await self.message.edit(view=self)
+                self.stop()
 
             
 
