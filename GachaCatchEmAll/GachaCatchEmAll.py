@@ -1683,7 +1683,7 @@ class GachaCatchEmAll(commands.Cog):
         full_lines: List[str] = []
         # Re-sim-summary: already in your loop you had per-duel 'log' (list of turn lines).
         # If you didn't store all, you can just use `battle_log` too. We'll use battle_log as-is:
-        full_lines = battle_log[:] if battle_log else ["Battle started."]
+        #full_lines = battle_log[:] if battle_log else ["Battle started."]
         
         page_lines = self._chunk_lines(full_lines, size=6)  # 6 lines per page
         pages: List[discord.Embed] = []
