@@ -1715,14 +1715,7 @@ class GachaCatchEmAll(commands.Cog):
             value=_fmt_team_block(caller_team),
             inline=False
         )
-        
-        # Opponent team block (hide NPC UIDs if you prefer; keeping as-is for consistency)
-        opp_list = [e for e in opp_team if not e.get("_npc")] if not opp else opp_team
-        results.add_field(
-            name=(opp.display_name if opp else "Opponent"),
-            value=_fmt_team_block(opp_list) or "_No Pokémon_",
-            inline=False
-        )
+    
         
         # (Optional) keep your thumbnails/author icons after this, unchanged.
 
