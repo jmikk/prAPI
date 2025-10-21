@@ -68,6 +68,10 @@ class GachaCatchEmAll(commands.Cog):
         self._pokemon_cache: Dict[int, Dict[str, Any]] = {}  # id -> pokemon data
         self._list_lock = asyncio.Lock()
 
+    def _chunk_lines(self, lines: List[str], size: int) -> List[List[str]]:
+        return [lines[i:i+size] for i in range(0, len(lines), size)]
+
+
     # --------- Red utilities ---------
 
     async def red_delete_data_for_user(self, **kwargs):  # GDPR
@@ -1517,16 +1521,81 @@ class GachaCatchEmAll(commands.Cog):
                 new_opp_box.append(opp_map.get(uid, e))
             await self.config.user(opp).pokebox.set(new_opp_box)
     
-        # Build result embed
+        # ----- Build result embed (final page) -----
         title = "🏆 You win!" if match_winner == "caller" else ("🏆 " + (opp.display_name if opp else "NPC") + " wins!")
-        desc = "\n".join(battle_log[-12:])  # last few highlight lines
-        embed = discord.Embed(title=title, description=desc or "_Battle complete_", color=discord.Color.dark_gold())
+        results = discord.Embed(title=title, color=discord.Color.dark_gold())
+        
+        # Put a concise recap at top of results
+        recap = "\n".join(battle_log[:3]) if battle_log else "_Battle complete_"
+        results.description = recap
+        
         if caller_progress:
-            embed.add_field(name=f"{caller.display_name} Progress", value="\n".join(caller_progress), inline=False)
+            results.add_field(
+                name=f"{caller.display_name} Progress",
+                value="\n".join(caller_progress),
+                inline=False
+            )
         if opp_progress:
             who = opp.display_name if opp else "Opponent"
-            embed.add_field(name=f"{who} Progress", value="\n".join(opp_progress), inline=False)
-        await ctx.reply(embed=embed)
+            results.add_field(
+                name=f"{who} Progress",
+                value="\n".join(opp_progress),
+                inline=False
+            )
+        
+        # Thumbnails (use first team sprites if available)
+        def _first_sprite(team: List[Dict[str, Any]]) -> Optional[str]:
+            for e in team:
+                s = e.get("sprite")
+                if s:
+                    return s
+            return None
+        
+        caller_thumb = _first_sprite(caller_team)
+        opp_thumb = _first_sprite(opp_team)
+        if caller_thumb:
+            results.set_thumbnail(url=caller_thumb)
+        if opp_thumb:
+            # Put opponent sprite into the author icon if available (neat visual)
+            results.set_author(name=(opp.display_name if opp else "NPC Team"), icon_url=opp_thumb)
+        
+        # ----- Build play-by-play pages -----
+        # We already appended duel headlines and last 4 lines of each duel into battle_log.
+        # Let's paginate the FULL play-by-play from all duels for a better story:
+        full_lines: List[str] = []
+        # Re-sim-summary: already in your loop you had per-duel 'log' (list of turn lines).
+        # If you didn't store all, you can just use `battle_log` too. We'll use battle_log as-is:
+        full_lines = battle_log[:] if battle_log else ["Battle started."]
+        
+        page_lines = self._chunk_lines(full_lines, size=6)  # 6 lines per page
+        pages: List[discord.Embed] = []
+        
+        def _mk_page(lines: List[str], header: str, left_img: Optional[str], right_img: Optional[str]) -> discord.Embed:
+            embed = discord.Embed(title=header, description="\n".join(lines), color=discord.Color.teal())
+            if left_img:
+                embed.set_thumbnail(url=left_img)
+            if right_img:
+                embed.set_author(name=(opp.display_name if opp else "NPC Team"), icon_url=right_img)
+            return embed
+        
+        header_base = f"{caller.display_name} vs {(opp.display_name if opp else 'NPC Team')}"
+        for i, chunk in enumerate(page_lines, start=1):
+            pages.append(_mk_page(chunk, f"Battle — {header_base}", caller_thumb, opp_thumb))
+        
+        # Safety: at least one page
+        if not pages:
+            pages.append(_mk_page(["Battle begins!"], f"Battle — {header_base}", caller_thumb, opp_thumb))
+        
+        # ----- Send paginator -----
+        view = self.BattlePaginator(
+            author=caller,
+            pages=pages,
+            results_embed=results,
+            opponent=opp
+        )
+        msg = await ctx.reply(embed=pages[0], view=view)
+        view.message = msg
+
 
     async def _simulate_duel(self, A: Dict[str, Any], B: Dict[str, Any]) -> Tuple[str, List[str]]:
         """Returns ('A' or 'B', battle_log). Does not mutate original entries."""
