@@ -512,7 +512,7 @@ class GachaCatchEmAll(commands.Cog):
                 **Pokédex ID:** {e.get('pokedex_id','?')}\n
                 **Types:** {types_text}\n
                 **BST:** {e.get('bst','?')}\n
-                **Caught:** {caught_text}\n\n
+                **Caught:** <t:{caught_text}:d>\n\n
                 **Stats:**\n{stats_text}"""
             )
     
