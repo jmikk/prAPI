@@ -317,6 +317,7 @@ class GachaCatchEmAll(commands.Cog):
                     types = [t["type"]["name"] for t in pdata.get("types", [])]
                     stats_map = {s["stat"]["name"]: int(s["base_stat"]) for s in pdata.get("stats", [])}
                     uid = uuid.uuid4().hex[:12]  # short UID
+                    now = datetime.now(timezone.utc)
                     entry = {
                         "uid": uid,
                         "pokedex_id": int(enc["id"]),
