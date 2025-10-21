@@ -243,7 +243,7 @@ class NationStatesLinker(commands.Cog):
         visitor_id = await gconf.visitor_role()
         resident_id = await gconf.resident_role()
         wa_resident_id = await gconf.wa_resident_role()
-        verified_role = await self.get_role(guild, gconf.verified_id)  
+        verified_role = await self.get_role(guild, gconf.verified_role)  
         region = await gconf.region_name()
         log_channel_id = await gconf.log_channel_id()  # <- we'll use this for fallback
         has_any_linked = bool(nations_set)  # NEW**
