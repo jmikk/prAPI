@@ -50,6 +50,7 @@ class NationStatesLinker(commands.Cog):
             visitor_role=None,
             resident_role=None,
             wa_resident_role=None,
+            verified_role=None,
             region_name=None,  # e.g., "vibonia"
             log_channel_id = None,
             welcome_channel_id=None,      # NEW
@@ -517,6 +518,12 @@ class NationStatesLinker(commands.Cog):
         """Set the Visitor role for unverified users."""
         await self.config.guild(ctx.guild).visitor_role.set(role.id)
         await ctx.send(f"✅ Visitor role set to {role.mention}")
+      
+    @nslroles.command(name="verified")
+    async def nslroles_verified(self, ctx: commands.Context, role: discord.Role):
+        """Set the verified role for unverified users."""
+        await self.config.guild(ctx.guild).verified_role.set(role.id)
+        await ctx.send(f"✅ Verified role set to {role.mention}")
 
     @nslroles.command(name="resident")
     async def nslroles_resident(self, ctx: commands.Context, role: discord.Role):
