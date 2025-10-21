@@ -1697,7 +1697,7 @@ class GachaCatchEmAll(commands.Cog):
         color = discord.Color.green() if caller_won else discord.Color.red()
         results = discord.Embed(title=title, color=color)
         
-        def _fmt_team_block(team: List[Dict[str, Any]]) -> str:
+        def _fmt_team_block(team: List[Dict[str, Any]], awards: Dict[str, int]) -> str:    
             lines: List[str] = []
             for e in team:
                 lvl = int(e.get("level", 1))
