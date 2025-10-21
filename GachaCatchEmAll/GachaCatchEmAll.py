@@ -1705,7 +1705,7 @@ class GachaCatchEmAll(commands.Cog):
         # Fallback: at least one generic page
             pages = [(discord.Embed(title="Battle", description="Battle begins!", color=discord.Color.teal()), None)]
     
-        pview = self.BattlePaginator(
+        pview = BattlePaginator(
             author=caller,
             pages_with_files=pages,   # note: using updated ctor
             results_embed=results,
