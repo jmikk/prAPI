@@ -1496,11 +1496,10 @@ class GachaCatchEmAll(commands.Cog):
         ci = oi = 0
         duel_count = 0
     
-        # track XP
         caller_awards: Dict[str, int] = {}
         opp_awards: Dict[str, int] = {}
     
-        # collect per-duel actions for page rendering
+        # collect per-duel actions for page rendering & short recap
         duel_action_packets: List[Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]]]] = []
         brief_recap: List[str] = []
     
@@ -1509,20 +1508,17 @@ class GachaCatchEmAll(commands.Cog):
             B = opp_team[oi]
             duel_count += 1
     
-            # simulate + capture every action
             winner, actions = await self._simulate_duel(A, B)
             duel_action_packets.append((A, B, actions))
     
-            # short recap line for results page
             if actions:
                 first = actions[0]
                 brief_recap.append(
                     f"— Duel {duel_count}: {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) "
-                    f"vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)}) • "
-                    f"first move: **{first['move_name']}**"
+                    f"vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)}) • first move: **{first['move_name']}**"
                 )
     
-            # XP per-mon in this duel (scaled by level gap)
+            # XP per-mon scaled by level gap
             A_lvl = int(A.get("level", 1))
             B_lvl = int(B.get("level", 1))
             A_scale = self._xp_scale(A_lvl, B_lvl)
@@ -1535,11 +1531,11 @@ class GachaCatchEmAll(commands.Cog):
             if winner == "A":
                 caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_win_xp
                 opp_awards[B["uid"]] = opp_awards.get(B["uid"], 0) + B_lose_xp
-                oi += 1  # B fainted
+                oi += 1
             else:
                 caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_lose_xp
                 opp_awards[B["uid"]] = opp_awards.get(B["uid"], 0) + B_win_xp
-                ci += 1  # A fainted
+                ci += 1
     
         # ----- Match winner & team bonus
         caller_alive = ci < len(caller_team)
@@ -1571,9 +1567,7 @@ class GachaCatchEmAll(commands.Cog):
                 lvl, xp, _ = self._add_xp_to_entry(e, gain)
                 pts = self._give_stat_points_for_levels(before, lvl)
                 e["pending_points"] = int(e.get("pending_points", 0)) + pts
-                lines.append(
-                    f"`{uid}` {e.get('nickname') or e.get('name','?')} +{gain} XP → Lv {before}→**{lvl}** (+{pts} pts)"
-                )
+                lines.append(f"`{uid}` {e.get('nickname') or e.get('name','?')} +{gain} XP → Lv {before}→**{lvl}** (+{pts} pts)")
             return lines
     
         caller_progress = _apply_awards(caller_team, caller_awards)
@@ -1609,12 +1603,12 @@ class GachaCatchEmAll(commands.Cog):
                 inline=False
             )
     
-        # ----- Build one page per action (HP bars + both sprites each page)
+        # ----- Build one page per action (HP bars + BOTH sprites composited side-by-side)
         def hpbar(cur: int, mx: int) -> str:
             return self._hp_bar(cur, mx, width=20)
     
         header_base = f"{caller.display_name} vs {(opp.display_name if opp else 'NPC Team')}"
-        pages: List[discord.Embed] = []
+        pages_with_files: List[Tuple[discord.Embed, Optional[discord.File]]] = []
     
         for A, B, actions in duel_action_packets:
             duel_header = f"— {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)})"
@@ -1624,30 +1618,46 @@ class GachaCatchEmAll(commands.Cog):
                 desc = (
                     f"{duel_header}\n\n"
                     f"**Turn {act['turn']}** — "
-                    f"{('Your ' if act['attacker']=='A' else 'Opponent ')}"
-                    f"{'Pokémon ' if act['attacker']=='B' else ''}"
-                    f"used **{act['move_name']}** for **{act['damage']}**\n\n"
+                    f"{(caller.display_name + ' ') if act['attacker']=='A' else ((opp.display_name if opp else 'Opponent') + ' ')}"
+                    f"{'(' + (act['A_name'] if act['attacker']=='A' else act['B_name']) + ')'} used **{act['move_name']}** "
+                    f"for **{act['damage']}**\n\n"
                     f"**{act['A_name']}** HP: {a_bar}  {act['A_hp']}/{act['A_max']}\n"
                     f"**{act['B_name']}** HP: {b_bar}  {act['B_hp']}/{act['B_max']}\n"
                 )
+    
                 em = discord.Embed(title=f"Battle — {header_base}", description=desc, color=discord.Color.teal())
-                if act["A_sprite"]:
-                    em.set_thumbnail(url=act["A_sprite"])  # left mon
-                if act["B_sprite"]:
-                    em.set_author(name=act["B_name"], icon_url=act["B_sprite"])  # right mon
-                pages.append(em)
     
-        if not pages:
-            pages = [discord.Embed(title="Battle", description="Battle begins!", color=discord.Color.teal())]
+                # Make a side-by-side image (if Pillow available & both URLs OK)
+                file = await self._compose_vs_image(act["A_sprite"], act["B_sprite"])
+                if file:
+                    em.set_image(url="attachment://vs.png")
+                else:
+                    # Fallback: put A as thumb, B as author icon
+                    if act["A_sprite"]:
+                        em.set_thumbnail(url=act["A_sprite"])
+                    if act["B_sprite"]:
+                        em.set_author(name=act["B_name"], icon_url=act["B_sprite"])
     
-        # ----- Send paginator
-        view = self.BattlePaginator(
+                pages_with_files.append((em, file))
+    
+        if not pages_with_files:
+            pages_with_files.append(
+                (discord.Embed(title="Battle", description="Battle begins!", color=discord.Color.teal()), None)
+            )
+    
+        # ----- Send paginator (NOTE: module-level BattlePaginator; no `self.`)
+        view = BattlePaginator(
             author=caller,
-            pages=pages,
+            pages_with_files=pages_with_files,
             results_embed=results,
             opponent=opp
         )
-        msg = await ctx.reply(embed=pages[0], view=view)
+    
+        first_emb, first_file = view._current()
+        if first_file:
+            msg = await ctx.reply(embed=first_emb, file=first_file, view=view)
+        else:
+            msg = await ctx.reply(embed=first_emb, view=view)
         view.message = msg
 
         
@@ -1875,15 +1885,16 @@ class GachaCatchEmAll(commands.Cog):
             # Lock type picker
             self._disable_all()
             
+# --- REPLACE your current module-level BattlePaginator with this one ---
 class BattlePaginator(discord.ui.View):
     """
-    One-embed-per-action battle viewer with 'Skip to Results'.
-    Uses embeds only (no file uploads on edit).
+    Paginated battle viewer that supports one (embed, optional file) per page,
+    plus a 'Skip to Results' page.
     """
     def __init__(
         self,
         author: discord.abc.User,
-        pages: List[discord.Embed],
+        pages_with_files: List[Tuple[discord.Embed, Optional[discord.File]]],
         results_embed: discord.Embed,
         opponent: Optional[discord.abc.User] = None,
         timeout: int = 300
@@ -1891,7 +1902,7 @@ class BattlePaginator(discord.ui.View):
         super().__init__(timeout=timeout)
         self.author = author
         self.opponent = opponent
-        self.pages = pages
+        self.pages_with_files = pages_with_files
         self.results_embed = results_embed
         self.index = 0
         self.message: Optional[discord.Message] = None
@@ -1906,14 +1917,6 @@ class BattlePaginator(discord.ui.View):
             return False
         return True
 
-    def _current_embed(self) -> discord.Embed:
-        if self._showing_results:
-            return self.results_embed
-        embed = self.pages[self.index]
-        total = len(self.pages)
-        embed.set_footer(text=f"Page {self.index + 1}/{total} • ⏭ Skip to results")
-        return embed
-
     def _disable_all(self):
         for child in self.children:
             if isinstance(child, discord.ui.Button):
@@ -1927,14 +1930,34 @@ class BattlePaginator(discord.ui.View):
         except Exception:
             pass
 
+    def _current(self) -> Tuple[discord.Embed, Optional[discord.File]]:
+        if self._showing_results:
+            emb = self.results_embed
+            emb.set_footer(text="Results")
+            return (emb, None)
+        emb, f = self.pages_with_files[self.index]
+        total = len(self.pages_with_files)
+        emb.set_footer(text=f"Page {self.index + 1}/{total} • ⏭ Skip to results")
+        return (emb, f)
+
     async def _update(self, interaction: discord.Interaction):
         if not interaction.response.is_done():
             try:
                 await interaction.response.defer()
             except Exception:
                 pass
-        if self.message:
-            await self.message.edit(embed=self._current_embed(), view=self)
+        if not self.message:
+            return
+        emb, f = self._current()
+        try:
+            if f:
+                # swap to this page's attachment
+                await self.message.edit(embed=emb, attachments=[f], view=self)
+            else:
+                # no attachment for this page
+                await self.message.edit(embed=emb, attachments=[], view=self)
+        except Exception:
+            pass
 
     @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
     async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1954,7 +1977,7 @@ class BattlePaginator(discord.ui.View):
         if self._showing_results:
             await self._update(interaction)
             return
-        if self.index < len(self.pages) - 1:
+        if self.index < len(self.pages_with_files) - 1:
             self.index += 1
             await self._update(interaction)
         else:
@@ -1964,7 +1987,7 @@ class BattlePaginator(discord.ui.View):
     @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
     async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
         self._showing_results = False
-        self.index = len(self.pages) - 1
+        self.index = len(self.pages_with_files) - 1
         await self._update(interaction)
 
     @discord.ui.button(label="Skip to Results", style=discord.ButtonStyle.primary, emoji="⏭")
@@ -1983,6 +2006,7 @@ class BattlePaginator(discord.ui.View):
         if self.message:
             await self.message.edit(view=self)
         self.stop()
+
 
     
             
