@@ -95,6 +95,55 @@ class GachaCatchEmAll(commands.Cog):
 
     # --------- PokéAPI helpers ---------
 
+    def _ensure_mon_defaults(self, e: Dict[str, Any]) -> None:
+        if "level" not in e or not isinstance(e["level"], int):
+            e["level"] = 1
+        if "xp" not in e or not isinstance(e["xp"], int):
+            e["xp"] = 0
+    
+    def _xp_needed(self, level: int) -> int:
+        # Simple linear curve: 100 * level to next level
+        # (Level 1 -> 100, L2 -> 200, etc.). Tweak any time.
+        level = max(1, int(level))
+        return 100 * level
+    
+    def _add_xp_to_entry(self, e: Dict[str, Any], amount: int) -> Tuple[int, int, int]:
+        """
+        Add XP to a single mon entry. Returns (new_level, new_xp, overflow_to_next).
+        Applies multiple level-ups if needed. Caps at level 100.
+        """
+        self._ensure_mon_defaults(e)
+        if amount <= 0:
+            return e["level"], e["xp"], self._xp_needed(e["level"]) - e["xp"]
+    
+        lvl = int(e["level"])
+        xp = int(e["xp"])
+        cap = 100
+        while amount > 0 and lvl < cap:
+            need = self._xp_needed(lvl)
+            space = max(0, need - xp)
+            if amount >= space:
+                # ding!
+                amount -= space
+                lvl += 1
+                xp = 0
+            else:
+                xp += amount
+                amount = 0
+        # if hit cap, discard extra xp and lock at 0/need (or keep xp as max-1)
+        if lvl >= cap:
+            lvl = cap
+            xp = 0
+        e["level"], e["xp"] = lvl, xp
+        return lvl, xp, max(0, self._xp_needed(lvl) - xp)
+    
+    def _xp_bar(self, level: int, xp: int) -> str:
+        need = self._xp_needed(level)
+        filled = int(round(10 * (xp / need))) if need else 0
+        filled = max(0, min(10, filled))
+        return "▰" * filled + "▱" * (10 - filled) + f"  {xp}/{need}"
+
+
     async def _fetch_json(self, url: str) -> Any:
         session = await self._get_session()
         async with session.get(url, timeout=8) as resp:
@@ -328,6 +377,8 @@ class GachaCatchEmAll(commands.Cog):
                         "sprite": enc.get("sprite"),
                         "nickname": None,
                         "caught_at": int(now.timestamp()),
+                        "level": 1,
+                        "xp": 0,
                     }
                     box = await uconf.pokebox()
                     if not isinstance(box, list):
@@ -486,7 +537,7 @@ class GachaCatchEmAll(commands.Cog):
             nick = e.get("nickname")
             if nick:
                 title = f"{nick} ({e.get('name','Unknown')})"
-    
+        
             # Stats block
             stats = e.get("stats") or {}
             order = ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]
@@ -495,37 +546,39 @@ class GachaCatchEmAll(commands.Cog):
                 if k not in order:
                     parts.append(f"{k.replace('-',' ').title()}: **{v}**")
             stats_text = "\n".join(parts) if parts else "No stats"
-    
+        
             # Types
             types = e.get("types") or []
             types_text = " / ".join(t.title() for t in types) if types else "Unknown"
-
+        
+            # Level / XP (ensure defaults + bar)
+            self.cog._ensure_mon_defaults(e)
+            lvl = int(e["level"])
+            xp = int(e["xp"])
+            xpbar = self.cog._xp_bar(lvl, xp)
+        
+            # Fancy caught time
             unix = e.get("caught_at_unix")
-            if unix:
-                caught_text = f"<t:{unix}:F> — <t:{unix}:R>"
-            else:
-                # fallback if old entries don't have the unix field yet
-                caught_text = e.get("caught_at", "?")
-                
+            caught_text = f"<t:{unix}:F> — <t:{unix}:R>" if unix else e.get("caught_at", "?")
+        
             desc = (
-                f"""**UID:** `{e.get('uid','??')}`\n
-                **Pokédex ID:** {e.get('pokedex_id','?')}\n
-                **Types:** {types_text}\n
-                **BST:** {e.get('bst','?')}\n
-                **Caught:** <t:{caught_text}:d>\n\n
-                **Stats:**\n{stats_text}"""
+                f"**UID:** `{e.get('uid','??')}`\n"
+                f"**Pokédex ID:** {e.get('pokedex_id','?')}\n"
+                f"**Types:** {types_text}\n"
+                f"**BST:** {e.get('bst','?')}\n"
+                f"**Level:** **{lvl}**\n"
+                f"**XP:** {xpbar}\n"
+                f"**Caught:** {caught_text}\n\n"
+                f"**Stats:**\n{stats_text}"
             )
-    
-            embed = discord.Embed(
-                title=title,
-                description=desc,
-                color=discord.Color.purple(),
-            )
+        
+            embed = discord.Embed(title=title, description=desc, color=discord.Color.purple())
             sprite = e.get("sprite")
             if sprite:
                 embed.set_thumbnail(url=sprite)
             embed.set_footer(text=f"{self.member.display_name} — {self.index + 1}/{len(self.entries)}")
             return embed
+
     
         async def _update(self, interaction: discord.Interaction):
             if not interaction.response.is_done():
