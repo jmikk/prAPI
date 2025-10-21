@@ -1503,6 +1503,19 @@ class GachaCatchEmAll(commands.Cog):
         # collect per-duel actions for page rendering & short recap
         duel_action_packets: List[Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]]]] = []
         brief_recap: List[str] = []
+        
+# after caller_team / opp_team are finalized
+        caller_hp: Dict[str, Tuple[int, int]] = {}
+        opp_hp: Dict[str, Tuple[int, int]] = {}
+        
+        def _seed_hp_map(team, store):
+            for e in team:
+                mx = self._initial_hp(e)
+                store[e["uid"]] = (mx, mx)  # (cur, max)
+        
+        _seed_hp_map(caller_team, caller_hp)
+        _seed_hp_map(opp_team, opp_hp)
+
     
         while ci < len(caller_team) and oi < len(opp_team):
             A = caller_team[ci]
