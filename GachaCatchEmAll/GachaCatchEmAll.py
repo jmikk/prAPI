@@ -1705,20 +1705,6 @@ class GachaCatchEmAll(commands.Cog):
         if not pages:
         # Fallback: at least one generic page
             pages = [(discord.Embed(title="Battle", description="Battle begins!", color=discord.Color.teal()), None)]
-    #take out
-        #pview = BattlePaginator(
-        #    author=caller,
-        #    pages_with_files=pages,   # note: using updated ctor
-        #    results_embed=results,
-        #    opponent=opp
-        #)
-        
-        first_emb, first_file = pview._current() if hasattr(pview, "_current") else (pages[0][0], pages[0][1])
-        if first_file:
-            msg = await ctx.reply(embed=first_emb, file=first_file, view=pview)
-        else:
-            msg = await ctx.reply(embed=first_emb, view=pview)
-        pview.message = msg
 
     async def _simulate_duel(self, A: Dict[str, Any], B: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]]]:
         """
