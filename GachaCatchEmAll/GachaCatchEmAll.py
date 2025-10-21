@@ -441,6 +441,128 @@ class GachaCatchEmAll(commands.Cog):
 
     # ----- Inventory paginator (inside the cog) -----
 
+    class MonPaginator(discord.ui.View):
+        def __init__(
+            self,
+            author: discord.abc.User,
+            member: discord.Member,
+            entries: List[Dict[str, Any]],
+            start_index: int = 0,
+            timeout: int = 180,
+        ):
+            super().__init__(timeout=timeout)
+            self.author = author
+            self.member = member
+            self.entries = entries               # one entry per page
+            self.index = max(0, min(start_index, len(entries) - 1))
+            self.message: Optional[discord.Message] = None
+    
+        async def interaction_check(self, interaction: discord.Interaction) -> bool:
+            if interaction.user.id != self.author.id:
+                await interaction.response.send_message(
+                    "These controls aren't yours. Run the command to get your own.",
+                    ephemeral=True,
+                )
+                return False
+            return True
+    
+        def _disable_all(self):
+            for child in self.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = True
+    
+        async def on_timeout(self) -> None:
+            self._disable_all()
+            try:
+                if self.message:
+                    await self.message.edit(view=self)
+            except Exception:
+                pass
+    
+        def _render_embed(self) -> discord.Embed:
+            e = self.entries[self.index]
+            title = e.get("name", "Unknown")
+            nick = e.get("nickname")
+            if nick:
+                title = f"{nick} ({e.get('name','Unknown')})"
+    
+            # Stats block
+            stats = e.get("stats") or {}
+            order = ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]
+            parts = [f"{k.replace('-',' ').title()}: **{stats[k]}**" for k in order if k in stats]
+            for k, v in stats.items():
+                if k not in order:
+                    parts.append(f"{k.replace('-',' ').title()}: **{v}**")
+            stats_text = "\n".join(parts) if parts else "No stats"
+    
+            # Types
+            types = e.get("types") or []
+            types_text = " / ".join(t.title() for t in types) if types else "Unknown"
+    
+            desc = (
+                f"""**UID:** `{e.get('uid','??')}`\n
+                **Pokédex ID:** {e.get('pokedex_id','?')}\n
+                **Types:** {types_text}\n
+                **BST:** {e.get('bst','?')}\n
+                **Caught:** {e.get('caught_at','?')}\n\n
+                **Stats:**\n{stats_text}"""
+            )
+    
+            embed = discord.Embed(
+                title=title,
+                description=desc,
+                color=discord.Color.purple(),
+            )
+            sprite = e.get("sprite")
+            if sprite:
+                embed.set_thumbnail(url=sprite)
+            embed.set_footer(text=f"{self.member.display_name} — {self.index + 1}/{len(self.entries)}")
+            return embed
+    
+        async def _update(self, interaction: discord.Interaction):
+            if not interaction.response.is_done():
+                try:
+                    await interaction.response.defer()
+                except Exception:
+                    pass
+            if self.message:
+                await self.message.edit(embed=self._render_embed(), view=self)
+    
+        @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
+        async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
+            self.index = 0
+            await self._update(interaction)
+    
+        @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+        async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.index > 0:
+                self.index -= 1
+            await self._update(interaction)
+    
+        @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
+        async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.index < len(self.entries) - 1:
+                self.index += 1
+            await self._update(interaction)
+    
+        @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
+        async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
+            self.index = len(self.entries) - 1
+            await self._update(interaction)
+    
+        @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
+        async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+            self._disable_all()
+            if not interaction.response.is_done():
+                try:
+                    await interaction.response.defer()
+                except Exception:
+                    pass
+            if self.message:
+                await self.message.edit(view=self)
+            self.stop()
+
+
     class InvPaginator(discord.ui.View):
         def __init__(
             self,
@@ -691,6 +813,51 @@ class GachaCatchEmAll(commands.Cog):
             f"Poké {costs['pokeball']:.2f}, Great {costs['greatball']:.2f}, "
             f"Ultra {costs['ultraball']:.2f}, Master {costs['masterball']:.2f}"
         )
+
+    @commands.hybrid_command(name="viewmon")
+    async def viewmon(self, ctx: commands.Context, *, query: Optional[str] = None):
+        """View your Pokémon one-by-one with buttons. Start at a specific one by UID, ID, name, or nickname."""
+        member = ctx.author
+        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
+        if not box:
+            await ctx.reply("You have no Pokémon yet.")
+            return
+    
+        # newest first
+        entries = sorted(box, key=lambda e: e.get("caught_at", ""), reverse=True)
+    
+        # Find starting index
+        start_index = 0
+        if query:
+            q = query.strip().lower()
+    
+            # 1) UID exact match
+            for i, e in enumerate(entries):
+                if str(e.get("uid", "")).lower() == q:
+                    start_index = i
+                    break
+            else:
+                # 2) Pokédex ID numeric match
+                if q.isdigit():
+                    target_id = int(q)
+                    for i, e in enumerate(entries):
+                        if int(e.get("pokedex_id") or -1) == target_id:
+                            start_index = i
+                            break
+                # 3) Name or Nickname (case-insensitive, first match)
+                if start_index == 0:  # not found yet (and not already 0 by coincidence)
+                    for i, e in enumerate(entries):
+                        name = str(e.get("name", "")).lower()
+                        nick = str(e.get("nickname") or "").lower()
+                        if q == name or (nick and q == nick):
+                            start_index = i
+                            break
+    
+        view = self.MonPaginator(author=ctx.author, member=member, entries=entries, start_index=start_index)
+        embed = view._render_embed()
+        msg = await ctx.reply(embed=embed, view=view)
+        view.message = msg
+
 
 
 async def setup(bot: commands.Bot):
