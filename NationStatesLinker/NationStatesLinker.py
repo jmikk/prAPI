@@ -255,6 +255,10 @@ class NationStatesLinker(commands.Cog):
         nations_set = {self.normalize_nation(n) for n in nations}
         has_any_linked = bool(nations_set)  # NEW**
 
+        if verified_role:
+            if True and verified_role not in member.roles:
+                to_add.append(verified_role)
+
         is_resident = False
         is_wa_resident = False
         if region:
@@ -268,12 +272,6 @@ class NationStatesLinker(commands.Cog):
             is_wa_resident = False
     
         to_add, to_remove = [], []
-
-        if verified_role:
-            if has_any_linked and verified_role not in member.roles:
-                to_add.append(verified_role)
-            elif not has_any_linked and verified_role in member.roles:
-                to_remove.append(verified_role)
       
         if is_resident and resident_role and resident_role not in member.roles:
             to_add.append(resident_role)
@@ -320,7 +318,6 @@ class NationStatesLinker(commands.Cog):
                             )
                         except Exception:
                             pass
-            # Do not re-raise; just report and continue
         return changed
 
     # --------------- Commands ---------------
