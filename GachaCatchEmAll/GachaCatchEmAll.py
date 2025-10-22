@@ -1559,7 +1559,7 @@ class GachaCatchEmAll(commands.Cog):
         """Admin settings for PokéGacha."""
         pass
 
-        @gachaadmin.command(name="levelup")
+    @gachaadmin.command(name="levelup")
     @checks.admin()
     async def gadmin_levelup(self, ctx: commands.Context, member: discord.Member, query: str, levels: int):
         """Admin: increase a Pokémon's level by N (adds pending stat points)."""
