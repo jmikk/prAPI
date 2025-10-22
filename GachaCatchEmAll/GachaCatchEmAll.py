@@ -1151,6 +1151,103 @@ class GachaCatchEmAll(commands.Cog):
 
         # --------- Commands ---------
 
+    @commands.hybrid_command(name="release")
+    async def release(self, ctx: commands.Context, *, query: str):
+        """Release a Pokémon from your box (UID, name, or nickname). Asks for confirmation."""
+        member = ctx.author
+        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
+        if not box:
+            await ctx.reply("You have no Pokémon.")
+            return
+    
+        e = self._resolve_entry_by_any(box, query)
+        if not e:
+            await ctx.reply("Couldn't find that Pokémon. Use UID, name, or nickname.")
+            return
+    
+        nick = e.get("nickname")
+        label = f"{nick} ({e.get('name','?')})" if nick else e.get("name","?")
+        uid = e.get("uid")
+    
+        emb = discord.Embed(
+            title="Release this Pokémon?",
+            description=(
+                f"You are about to **release** `{uid}` **{label}** (Lv {int(e.get('level',1))}).\n"
+                f"**This cannot be undone.**"
+            ),
+            color=discord.Color.red(),
+        )
+        if e.get("sprite"):
+            emb.set_thumbnail(url=e["sprite"])
+    
+        view = self.ConfirmCombineView(author=member)  # simple yes/no view you already added
+        msg = await ctx.reply(embed=emb, view=view)
+        view.message = msg
+        await view.wait()
+    
+        if view.confirmed is not True:
+            await ctx.send("Release canceled.")
+            return
+    
+        new_box = [x for x in box if str(x.get("uid")) != str(uid)]
+        await self.config.user(member).pokebox.set(new_box)
+    
+        done = discord.Embed(
+            title="Released",
+            description=f"Released `{uid}` **{label}**.",
+            color=discord.Color.dark_grey(),
+        )
+        await ctx.reply(embed=done)
+
+    @gachaadmin.command(name="levelup")
+    @checks.admin()
+    async def gadmin_levelup(self, ctx: commands.Context, member: discord.Member, query: str, levels: int):
+        """Admin: increase a Pokémon's level by N (adds pending stat points)."""
+        levels = int(levels)
+        if levels <= 0:
+            await ctx.reply("Levels must be a positive integer.")
+            return
+    
+        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
+        if not box:
+            await ctx.reply(f"{member.display_name} has no Pokémon.")
+            return
+    
+        e = self._resolve_entry_by_any(box, query)
+        if not e:
+            await ctx.reply("Couldn't find that Pokémon (UID, name, or nickname).")
+            return
+    
+        before = int(e.get("level", 1))
+        after = min(100, before + levels)
+        if after == before:
+            await ctx.reply("No change (already at cap?).")
+            return
+    
+        pts = self._give_stat_points_for_levels(before, after)
+        e["level"] = after
+        e["xp"] = 0
+        e["pending_points"] = int(e.get("pending_points", 0)) + pts
+    
+        await self.config.user(member).pokebox.set(box)
+    
+        label = e.get("nickname") or e.get("name","?")
+        emb = discord.Embed(
+            title="Admin Level Up",
+            description=(
+                f"**{label}** `{e.get('uid')}`\n"
+                f"Level: **{before} → {after}**\n"
+                f"Pending stat points: +**{pts}** (now **{e['pending_points']}**)"
+            ),
+            color=discord.Color.green(),
+        )
+        emb.add_field(name="XP", value=self._xp_bar(after, e["xp"]), inline=True)
+        if e.get("sprite"):
+            emb.set_thumbnail(url=e["sprite"])
+        await ctx.reply(embed=emb)
+
+
+
     @commands.hybrid_group(name="daycare")
     async def daycare_group(self, ctx: commands.Context):
         """Daycare features."""
