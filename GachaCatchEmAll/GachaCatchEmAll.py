@@ -495,7 +495,7 @@ class GachaCatchEmAll(commands.Cog):
         elif eff_mult < 1.0 and eff_mult > 0:
             attacker["_last_eff_msg"] = "It's not very effective..."
         elif eff_mult == 0.0:
-            attacker["_last_eff_msg"] = "It had no effect!"
+            attacker["_last_eff_msg"] = "It had very little effect!"
         else:
             attacker["_last_eff_msg"] = ""
     
