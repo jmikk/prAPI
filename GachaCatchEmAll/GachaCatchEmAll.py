@@ -96,6 +96,19 @@ class GachaCatchEmAll(commands.Cog):
 
     def _chunk_lines(self, lines: List[str], size: int) -> List[List[str]]:
         return [lines[i:i+size] for i in range(0, len(lines), size)]
+   
+    async def _alert_owner(self, ctx: commands.Context, error: Exception):
+    """Ping the bot owner if a command or interaction fails."""
+        try:
+            app_info = await self.bot.application_info()
+            owner = app_info.owner
+            if owner:
+                await ctx.send(f"⚠️ <@{owner.id}>, an error occurred in `{ctx.command}`:\n```{error}```")
+            else:
+                await ctx.send(f"⚠️ Bot owner could not be determined.\nError: `{error}`")
+        except Exception as alert_error:
+            await ctx.send(f"⚠️ Failed to alert bot owner: `{alert_error}`")
+
 
     def _mutation_percent(self, p1: Dict[str, Any], p2: Dict[str, Any]) -> int:
         """
@@ -1852,66 +1865,70 @@ class GachaCatchEmAll(commands.Cog):
     @commands.hybrid_command(name="teambattle")
     async def teambattle(self, ctx: commands.Context, opponent: Optional[discord.Member] = None):
         """
-        Battle with teams of up to 6 in an interactive, turn-by-turn fight.
-        - If opponent is omitted, you fight an NPC team near your team's average level.
-        - Each turn, players choose a move via buttons (NPC/opponent can auto-pick).
-        - A '⏭ Auto-Sim to Results' button lets you jump to the end and see the recap/results.
+        Interactive 6v6 team battle.
+        Players choose moves via buttons each turn or use ⏭ Auto-Sim to Results to fast-forward.
+        If an interaction or message send fails, the bot owner is pinged in chat.
         """
         caller = ctx.author
         opp = opponent
     
-        # ----- Load caller team (fallback = top 6 by level)
-        caller_uids = await self._get_team(caller)
-        caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
-        caller_team = self._team_entries_from_uids(caller_box, caller_uids)
-        if not caller_team:
-            caller_team = sorted(caller_box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
+        try:
+            # ----- Load caller team
+            caller_uids = await self._get_team(caller)
+            caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
+            caller_team = self._team_entries_from_uids(caller_box, caller_uids)
             if not caller_team:
-                await ctx.reply("You have no Pokémon to battle with.")
-                return
-        for e in caller_team:
-            await self._ensure_moves_on_entry(e)
-    
-        # ----- Pick difficulty profile for NPCs
-        mode = "normal"
-        r = random.random()
-        if r < 0.10:
-            mode = "boss"
-        elif r < 0.35:
-            mode = "hard"
-        profile = DIFFICULTY_PROFILES.get(mode, DIFFICULTY_PROFILES["normal"])
-    
-        # ----- Load opponent team or generate NPC team
-        if opp:
-            opp_uids = await self._get_team(opp)
-            opp_box: List[Dict[str, Any]] = await self.config.user(opp).pokebox()
-            opp_team = self._team_entries_from_uids(opp_box, opp_uids)
-            if not opp_team:
-                opp_team = sorted(opp_box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
-            if not opp_team:
-                await ctx.reply(f"{opp.display_name} has no Pokémon to battle with.")
-                return
-            for e in opp_team:
+                caller_team = sorted(caller_box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
+                if not caller_team:
+                    await ctx.reply("You have no Pokémon to battle with.")
+                    return
+            for e in caller_team:
                 await self._ensure_moves_on_entry(e)
-        else:
-            avg_lvl = self._avg_level(caller_team)
-            opp_team = await self._generate_npc_team(
-                target_avg_level=avg_lvl,
-                size=min(6, len(caller_team) or 6)
-            )
-            await self._apply_difficulty_to_npc_team(opp_team, profile)
     
-        # ----- Launch interactive battle UI
-        view = InteractiveTeamBattleView(
-            cog=self,
-            caller=caller,
-            caller_team=caller_team,
-            opp_team=opp_team,
-            opponent=opp
-        )
-        embed = view._current_embed()
-        msg = await ctx.reply(embed=embed, view=view)
-        view.message = msg
+            # ----- Difficulty roll
+            mode = "normal"
+            r = random.random()
+            if r < 0.10:
+                mode = "boss"
+            elif r < 0.35:
+                mode = "hard"
+            profile = DIFFICULTY_PROFILES.get(mode, DIFFICULTY_PROFILES["normal"])
+    
+            # ----- Opponent or NPC team
+            if opp:
+                opp_uids = await self._get_team(opp)
+                opp_box: List[Dict[str, Any]] = await self.config.user(opp).pokebox()
+                opp_team = self._team_entries_from_uids(opp_box, opp_uids)
+                if not opp_team:
+                    opp_team = sorted(opp_box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
+                if not opp_team:
+                    await ctx.reply(f"{opp.display_name} has no Pokémon to battle with.")
+                    return
+                for e in opp_team:
+                    await self._ensure_moves_on_entry(e)
+            else:
+                avg_lvl = self._avg_level(caller_team)
+                opp_team = await self._generate_npc_team(
+                    target_avg_level=avg_lvl,
+                    size=min(6, len(caller_team) or 6)
+                )
+                await self._apply_difficulty_to_npc_team(opp_team, profile)
+    
+            # ----- Launch interactive battle
+            view = InteractiveTeamBattleView(
+                cog=self,
+                caller=caller,
+                caller_team=caller_team,
+                opp_team=opp_team,
+                opponent=opp
+            )
+            embed = view._current_embed()
+            msg = await ctx.reply(embed=embed, view=view)
+            view.message = msg
+    
+        except Exception as e:
+            await ctx.reply(f"❌ There was an error starting the battle: `{e}`")
+            await self._alert_owner(ctx, e)
 
 
 
