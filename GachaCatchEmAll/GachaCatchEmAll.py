@@ -2427,13 +2427,7 @@ class GachaCatchEmAll(commands.Cog):
         # Let paginator call the cog's image composer if you later enable images
         view._compose_vs_image = self._compose_vs_image  # type: ignore
     
-        # Send immediately with the first frame (or results if no frames)
-        if frames:
-            first_emb, first_file = await view._make_page(0)
-        else:
-            view._showing_results = True
-            first_emb, first_file = await view._make_page(0)
-    
+        first_emb, first_files = await view._make_page(0)
         if first_files:
             msg = await ctx.reply(embed=first_emb, files=first_files, view=view)
         else:
