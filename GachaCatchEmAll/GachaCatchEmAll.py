@@ -1968,6 +1968,7 @@ class GachaCatchEmAll(commands.Cog):
                 opp_team=opp_team,
                 opponent=opp
             )
+            await view._rebuild_move_buttons()  # ✅ make sure emojis are added before sending
             embed = view._current_embed()
             msg = await ctx.reply(embed=embed, view=view)
             view.message = msg
