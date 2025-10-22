@@ -495,7 +495,7 @@ class GachaCatchEmAll(commands.Cog):
         elif eff_mult < 1.0 and eff_mult > 0:
             attacker["_last_eff_msg"] = "💀 It's not very effective... 💀"
         elif eff_mult == 0.0:
-            attacker["_last_eff_msg"] = "💀💀💀 It had very little effect! 💀💀💀"
+            attacker["_last_eff_msg"] = "🚫 It had very little effect! 🚫"
         else:
             attacker["_last_eff_msg"] = ""
     
@@ -2317,6 +2317,38 @@ class InteractiveTeamBattleView(discord.ui.View):
             return False
         return True
 
+    def _estimate_effectiveness(self, move: Dict[str, Any], defender: Dict[str, Any]) -> str:
+        """Roughly estimate type effectiveness emoji for a move against a defender."""
+        TYPE_EFFECTIVENESS = {
+            "fire": {"grass": 2.0, "water": 0.5, "rock": 0.5, "bug": 2.0, "ice": 2.0},
+            "water": {"fire": 2.0, "grass": 0.5, "rock": 2.0, "ground": 2.0},
+            "grass": {"water": 2.0, "fire": 0.5, "rock": 2.0, "flying": 0.5},
+            "electric": {"water": 2.0, "ground": 0.0, "flying": 2.0},
+            "rock": {"fire": 2.0, "flying": 2.0, "bug": 2.0},
+            "ground": {"electric": 2.0, "flying": 0.0, "rock": 2.0, "fire": 2.0},
+            "ice": {"grass": 2.0, "ground": 2.0, "flying": 2.0, "fire": 0.5},
+            "flying": {"grass": 2.0, "electric": 0.5, "rock": 0.5},
+            "bug": {"grass": 2.0, "fire": 0.5, "fighting": 0.5},
+            "psychic": {"fighting": 2.0, "poison": 2.0, "dark": 0.0},
+            "dark": {"psychic": 2.0, "ghost": 2.0, "fighting": 0.5},
+            "ghost": {"psychic": 2.0, "normal": 0.0},
+        }
+    
+        mtype = ((move.get("type") or {}).get("name") or "").lower()
+        eff_mult = 1.0
+        for dtype in [t.lower() for t in (defender.get("types") or [])]:
+            eff_mult *= TYPE_EFFECTIVENESS.get(mtype, {}).get(dtype, 1.0)
+    
+        if eff_mult > 1.0:
+            return "🌟"
+        elif eff_mult == 0.0:
+            return "🚫"
+        elif 0 < eff_mult < 1.0:
+            return "💀"
+        else:
+            return ""
+    
+
     def _disable_all(self):
         for child in self.children:
             if isinstance(child, discord.ui.Button):
@@ -2416,13 +2448,27 @@ class InteractiveTeamBattleView(discord.ui.View):
         A_moves = self.cog._entry_move_names(A)
         B_moves = self.cog._entry_move_names(B)
 
-        # Caller move buttons
+        # Get current defender for emoji preview
+        defender = self.opp_team[self.oi] if self.oi < len(self.opp_team) else None
+        
         for name in A_moves:
-            btn = discord.ui.Button(label=name.title(), style=discord.ButtonStyle.primary)
+            # Try to pull cached or API move info for type preview
+            move_info = {"name": name}
+            try:
+                details = await self.cog._get_move_details(name.lower())
+                if details:
+                    move_info.update(details)
+            except Exception:
+                pass
+        
+            emoji = self._estimate_effectiveness(move_info, defender) if defender else ""
+            btn = discord.ui.Button(label=f"{emoji} {name.title()}", style=discord.ButtonStyle.primary)
+        
             async def _cb(inter: discord.Interaction, chosen=name):
                 await self._turn(inter, side="caller", chosen_move=chosen)
             btn.callback = _cb  # type: ignore
             self.add_item(btn)
+
 
         # If a human opponent exists, give them their own row of buttons
         if self.opponent:
