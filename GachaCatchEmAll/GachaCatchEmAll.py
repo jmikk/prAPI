@@ -2063,7 +2063,7 @@ class GachaCatchEmAll(commands.Cog):
             header_base=header_base,
             results_embed=results,
             opponent=opp,
-            use_images=False  # keep False for speed/RAM; flip True if you want sprite pairing
+            use_images=True  # keep False for speed/RAM; flip True if you want sprite pairing
         )
         # Let paginator call the cog's image composer if you later enable images
         view._compose_vs_image = self._compose_vs_image  # type: ignore
