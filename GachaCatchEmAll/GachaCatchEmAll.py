@@ -1199,55 +1199,6 @@ class GachaCatchEmAll(commands.Cog):
         )
         await ctx.reply(embed=done)
 
-    @gachaadmin.command(name="levelup")
-    @checks.admin()
-    async def gadmin_levelup(self, ctx: commands.Context, member: discord.Member, query: str, levels: int):
-        """Admin: increase a Pokémon's level by N (adds pending stat points)."""
-        levels = int(levels)
-        if levels <= 0:
-            await ctx.reply("Levels must be a positive integer.")
-            return
-    
-        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
-        if not box:
-            await ctx.reply(f"{member.display_name} has no Pokémon.")
-            return
-    
-        e = self._resolve_entry_by_any(box, query)
-        if not e:
-            await ctx.reply("Couldn't find that Pokémon (UID, name, or nickname).")
-            return
-    
-        before = int(e.get("level", 1))
-        after = min(100, before + levels)
-        if after == before:
-            await ctx.reply("No change (already at cap?).")
-            return
-    
-        pts = self._give_stat_points_for_levels(before, after)
-        e["level"] = after
-        e["xp"] = 0
-        e["pending_points"] = int(e.get("pending_points", 0)) + pts
-    
-        await self.config.user(member).pokebox.set(box)
-    
-        label = e.get("nickname") or e.get("name","?")
-        emb = discord.Embed(
-            title="Admin Level Up",
-            description=(
-                f"**{label}** `{e.get('uid')}`\n"
-                f"Level: **{before} → {after}**\n"
-                f"Pending stat points: +**{pts}** (now **{e['pending_points']}**)"
-            ),
-            color=discord.Color.green(),
-        )
-        emb.add_field(name="XP", value=self._xp_bar(after, e["xp"]), inline=True)
-        if e.get("sprite"):
-            emb.set_thumbnail(url=e["sprite"])
-        await ctx.reply(embed=emb)
-
-
-
     @commands.hybrid_group(name="daycare")
     async def daycare_group(self, ctx: commands.Context):
         """Daycare features."""
@@ -1607,6 +1558,53 @@ class GachaCatchEmAll(commands.Cog):
     async def gachaadmin(self, ctx: commands.Context):
         """Admin settings for PokéGacha."""
         pass
+
+        @gachaadmin.command(name="levelup")
+    @checks.admin()
+    async def gadmin_levelup(self, ctx: commands.Context, member: discord.Member, query: str, levels: int):
+        """Admin: increase a Pokémon's level by N (adds pending stat points)."""
+        levels = int(levels)
+        if levels <= 0:
+            await ctx.reply("Levels must be a positive integer.")
+            return
+    
+        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
+        if not box:
+            await ctx.reply(f"{member.display_name} has no Pokémon.")
+            return
+    
+        e = self._resolve_entry_by_any(box, query)
+        if not e:
+            await ctx.reply("Couldn't find that Pokémon (UID, name, or nickname).")
+            return
+    
+        before = int(e.get("level", 1))
+        after = min(100, before + levels)
+        if after == before:
+            await ctx.reply("No change (already at cap?).")
+            return
+    
+        pts = self._give_stat_points_for_levels(before, after)
+        e["level"] = after
+        e["xp"] = 0
+        e["pending_points"] = int(e.get("pending_points", 0)) + pts
+    
+        await self.config.user(member).pokebox.set(box)
+    
+        label = e.get("nickname") or e.get("name","?")
+        emb = discord.Embed(
+            title="Admin Level Up",
+            description=(
+                f"**{label}** `{e.get('uid')}`\n"
+                f"Level: **{before} → {after}**\n"
+                f"Pending stat points: +**{pts}** (now **{e['pending_points']}**)"
+            ),
+            color=discord.Color.green(),
+        )
+        emb.add_field(name="XP", value=self._xp_bar(after, e["xp"]), inline=True)
+        if e.get("sprite"):
+            emb.set_thumbnail(url=e["sprite"])
+        await ctx.reply(embed=emb)
 
     @gachaadmin.command(name="resetpokedata")
     @checks.admin()
