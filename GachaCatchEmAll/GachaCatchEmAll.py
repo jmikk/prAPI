@@ -18,6 +18,10 @@ __red_end_user_data_statement__ = (
     "sprite, optional nickname) and your last roll and active encounter."
 )
 
+GYM_LEVELS = {1:10, 2:20, 3:30, 4:40, 5:50, 6:60, 7:70, 8:80}
+ELITE_LEVEL = 90
+
+
 POKEAPI_BASE = "https://pokeapi.co/api/v2"
 
 # Reasonable defaults; adjust with [p]gachaadmin setcosts
@@ -83,8 +87,17 @@ class GachaCatchEmAll(commands.Cog):
         # Use an integer identifier to avoid config collisions
         self.config: Config = Config.get_conf(self, identifier=0xC0FFEE56, force_registration=True)
         # pokebox stores a LIST of individual entries (each with uid)
-        self.config.register_user(pokebox=[], last_roll=None, active_encounter=None, team=[])
-        self.config.register_global(costs=DEFAULT_COSTS)
+        self.config.register_user(
+            pokebox=[],
+            last_roll=None,
+            active_encounter=None,
+            team=[],
+            badges=[]                     # 🆕 earned gym badges (ints 1..8)
+        )        
+        self.config.register_global(
+            costs=DEFAULT_COSTS,
+            champion_team=None            # 🆕 last winning team snapshot (list of entry dicts)
+        )
         self._type_cache: Dict[str, List[int]] = {}  # type -> list of pokedex IDs
         # Caches
         self._type_moves_cache: Dict[str, List[str]] = {}   # type -> move names
@@ -1917,9 +1930,19 @@ class GachaCatchEmAll(commands.Cog):
         """
         caller = ctx.author
         opp = opponent
-    
+     
+        loading_msg = None
         try:
-            # ----- Load caller team
+            # 1) Send the loading GIF right away
+            gif_url = "https://cdn.dribbble.com/users/621155/screenshots/2835314/simple_pokeball.gif"
+            loading_embed = discord.Embed(
+                title="Preparing the arena…",
+                description="Grabbing teams, picking moves, and lining up sprites!",
+                color=discord.Color.blurple()
+            )
+            loading_embed.set_image(url=gif_url)
+            loading_msg = await ctx.reply(embed=loading_embed)
+                # ----- Load caller team
             caller_uids = await self._get_team(caller)
             caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
             caller_team = self._team_entries_from_uids(caller_box, caller_uids)
@@ -1959,7 +1982,15 @@ class GachaCatchEmAll(commands.Cog):
                     size=min(6, len(caller_team) or 6)
                 )
                 await self._apply_difficulty_to_npc_team(opp_team, profile)
-    
+            
+            # 3) Delete the loading GIF
+            try:
+                if loading_msg:
+                    await loading_msg.delete()
+            except Exception:
+                # Non-fatal if the message is already gone or lacks perms
+                pass
+
             # ----- Launch interactive battle
             view = InteractiveTeamBattleView(
                 cog=self,
