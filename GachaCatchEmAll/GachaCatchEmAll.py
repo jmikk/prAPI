@@ -2558,88 +2558,46 @@ class InteractiveTeamBattleView(discord.ui.View):
 
     @discord.ui.button(label="⏭ Auto-Sim to Results", style=discord.ButtonStyle.primary, custom_id="auto")
     async def auto_sim(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """
-        Instantly finish the match (no per-action pages) and show results,
-        preserving whatever images (thumbnail/author) are on the current embed.
-        """
-        # Defer quickly
+        """Instantly skip to the end result, no step pages or new images."""
+        # Graceful defer
         if not interaction.response.is_done():
             try:
                 await interaction.response.defer()
             except Exception:
                 pass
     
-        # Snapshot current images so we can keep them on the results embed
-        cur_thumb = None
-        cur_author_name = None
-        cur_author_icon = None
-        try:
-            if self.message and self.message.embeds:
-                cur = self.message.embeds[0]
-                cur_thumb = getattr(getattr(cur, "thumbnail", None), "url", None)
-                cur_author_name = getattr(getattr(cur, "author", None), "name", None)
-                cur_author_icon = getattr(getattr(cur, "author", None), "icon_url", None)
-        except Exception:
-            pass
+        # Pick winner at random or by remaining team HP
+        total_hp_caller = sum(cur for cur, _ in self.caller_hp.values())
+        total_hp_opp = sum(cur for cur, _ in self.opp_hp.values())
+        caller_alive = total_hp_caller >= total_hp_opp
     
-        # Sim from *current duel state* to the end (no page building)
-        ci, oi = self.ci, self.oi
-        caller_hp = dict(self.caller_hp)
-        opp_hp = dict(self.opp_hp)
-    
-        caller_aw: Dict[str, int] = {}
-        opp_aw: Dict[str, int] = {}
-    
-        while ci < len(self.caller_team) and oi < len(self.opp_team):
-            A = self.caller_team[ci]
-            B = self.opp_team[oi]
-            A_cur, A_max = caller_hp[A["uid"]]
-            B_cur, B_max = opp_hp[B["uid"]]
-    
-            winner, _actions, A_end, B_end = await self.cog._simulate_duel(
-                A, B, A_start=A_cur, B_start=B_cur
-            )
-            caller_hp[A["uid"]] = (A_end, A_max)
-            opp_hp[B["uid"]] = (B_end, B_max)
-    
-            # XP buckets consistent with your team logic
-            A_lvl = int(A.get("level", 1)); B_lvl = int(B.get("level", 1))
-            A_scale = self.cog._xp_scale(A_lvl, B_lvl); B_scale = self.cog._xp_scale(B_lvl, A_lvl)
-            A_win_xp = int(round(40 * A_scale)); A_lose_xp = int(round(25 * A_scale))
-            B_win_xp = int(round(40 * B_scale)); B_lose_xp = int(round(25 * B_scale))
-    
-            if winner == "A":
-                caller_aw[A["uid"]] = caller_aw.get(A["uid"], 0) + A_win_xp
-                opp_aw[B["uid"]] = opp_aw.get(B["uid"], 0) + B_lose_xp
-                oi += 1
-            else:
-                caller_aw[A["uid"]] = caller_aw.get(A["uid"], 0) + A_lose_xp
-                opp_aw[B["uid"]] = opp_aw.get(B["uid"], 0) + B_win_xp
-                ci += 1
-    
-        # Winner bonus
-        caller_alive = ci < len(self.caller_team)
+        # Basic XP scaling
+        caller_aw, opp_aw = {}, {}
         caller_avg = self.cog._avg_level(self.caller_team)
         opp_avg = self.cog._avg_level(self.opp_team)
         caller_scale = self.cog._xp_scale(caller_avg, opp_avg)
         opp_scale = self.cog._xp_scale(opp_avg, caller_avg)
-        bonus_caller = int(round(20 * caller_scale))
-        bonus_opp = int(round(20 * opp_scale))
+        win_bonus, lose_bonus = 40, 25
+    
         if caller_alive:
             for e in self.caller_team:
-                caller_aw[e["uid"]] = caller_aw.get(e["uid"], 0) + bonus_caller
-        else:
+                caller_aw[e["uid"]] = int(round(win_bonus * caller_scale))
             for e in self.opp_team:
-                opp_aw[e["uid"]] = opp_aw.get(e["uid"], 0) + bonus_opp
+                opp_aw[e["uid"]] = int(round(lose_bonus * opp_scale))
+        else:
+            for e in self.caller_team:
+                caller_aw[e["uid"]] = int(round(lose_bonus * caller_scale))
+            for e in self.opp_team:
+                opp_aw[e["uid"]] = int(round(win_bonus * opp_scale))
     
-        # Apply awards to boxes (ignore NPC persistence)
-        async def apply_awards(member: discord.abc.User, team: List[Dict[str, Any]], awards: Dict[str,int]):
-            box: List[Dict[str, Any]] = await self.cog.config.user(member).pokebox()
+        # Apply XP (simple: reuse your add_xp helpers)
+        async def apply_awards(member, team, awards):
+            box = await self.cog.config.user(member).pokebox()
             for i, be in enumerate(box):
                 uid = str(be.get("uid"))
                 if uid in awards:
                     before = int(be.get("level", 1))
-                    lvl, xp, _ = self.cog._add_xp_to_entry(be, int(awards[uid]))
+                    lvl, xp, _ = self.cog._add_xp_to_entry(be, awards[uid])
                     pts = self.cog._give_stat_points_for_levels(before, lvl)
                     be["pending_points"] = int(be.get("pending_points", 0)) + pts
                 box[i] = be
@@ -2649,48 +2607,33 @@ class InteractiveTeamBattleView(discord.ui.View):
         if self.opponent:
             await apply_awards(self.opponent, [e for e in self.opp_team if not e.get("_npc")], opp_aw)
     
-        # Build compact results (keep images the same as current embed)
-        caller_won = caller_alive
-        title = "🏆 Victory!" if caller_won else f"💥 Defeat vs {(self.opponent.display_name if self.opponent else 'NPC')}"
-        color = discord.Color.green() if caller_won else discord.Color.red()
-        results = discord.Embed(title=title, color=color)
+        # Make results embed
+        winner = self.caller if caller_alive else (self.opponent or "NPC")
+        title = f"🏆 {winner} Wins!" if caller_alive else f"💥 {winner} Wins!"
+        color = discord.Color.green() if caller_alive else discord.Color.red()
+        em = discord.Embed(title=title, color=color)
     
-        def _fmt(team: List[Dict[str, Any]], awards: Dict[str,int]) -> str:
-            lines = []
-            for e in team:
-                gained = int(awards.get(e.get("uid",""), 0))
-                lvl = int(e.get("level", 1))
-                xp  = int(e.get("xp", 0))
-                bar = self.cog._xp_bar(lvl, xp)
-                lines.append(f"`{e.get('uid','?')}` **{e.get('nickname') or e.get('name','?')}** — Lv **{lvl}** (+{gained} XP)\n{bar}")
-            return "\n".join(lines) or "_No Pokémon_"
+        def fmt(team, awards):
+            return "\n".join(
+                f"`{e.get('uid','?')}` {e.get('nickname') or e.get('name','?')} +{awards.get(e['uid'],0)} XP"
+                for e in team
+            ) or "_No team_"
     
-        results.add_field(name=f"{self.caller.display_name}", value=_fmt(self.caller_team, caller_aw), inline=False)
+        em.add_field(name=self.caller.display_name, value=fmt(self.caller_team, caller_aw), inline=False)
         if self.opponent:
-            results.add_field(name=f"{self.opponent.display_name}", value=_fmt(self.opp_team, opp_aw), inline=False)
+            em.add_field(name=self.opponent.display_name, value=fmt(self.opp_team, opp_aw), inline=False)
     
-        # Re-apply previous images so the “imgs stay the same”
-        try:
-            if cur_thumb:
-                results.set_thumbnail(url=cur_thumb)
-            if cur_author_icon or cur_author_name:
-                results.set_author(name=(cur_author_name or (self.opponent.display_name if self.opponent else "NPC Team")), icon_url=cur_author_icon or discord.Embed.Empty)
-        except Exception:
-            pass
+        em.set_footer(text="Battle skipped directly to results")
     
-        # Swap view to a simple Close button
+        # Disable all buttons except Close
         self._disable_all()
-        # keep Close enabled
         for child in self.children:
             if isinstance(child, discord.ui.Button) and getattr(child, "custom_id", None) == "close":
                 child.disabled = False
     
-        # Edit the SAME message: no new attachments, images preserved
-        try:
-            await self.message.edit(embed=results, view=self, attachments=[])
-        except Exception as e:
-            # Fallback: send a new message if edit fails
-            await interaction.followup.send(embed=results, view=self)
+        # Show result instantly
+        await self.message.edit(embed=em, view=self, attachments=[])
+
 
 
     @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger, custom_id="close")
