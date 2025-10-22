@@ -93,9 +93,113 @@ class GachaCatchEmAll(commands.Cog):
         self._pokemon_list: Optional[List[Dict[str, Any]]] = None  # list of {name, url}
         self._pokemon_cache: Dict[int, Dict[str, Any]] = {}  # id -> pokemon data
         self._list_lock = asyncio.Lock()
+        self.config.register_guild(
+        
+        elite={
+            "themes": [],        # e.g. ["ice","fighting","ghost","dragon"]
+            "built_at": None,    # unix
+            "champion": None,    # {"user_id": int|None, "name": str, "team": [entry,...]}  (team snapshot)
+        },
+        hall_of_fame=[]          # list of {"user_id": int, "name": str, "team": [entry,...], "won_at": int}
+    )
 
     def _chunk_lines(self, lines: List[str], size: int) -> List[List[str]]:
         return [lines[i:i+size] for i in range(0, len(lines), size)]
+
+    def _now_unix(self) -> int:
+        return int(datetime.now(timezone.utc).timestamp())
+
+    async def _snapshot_team(self, entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Return a compact, immutable copy of a team (max 6)."""
+        snap = []
+        for e in entries[:6]:
+            snap.append({
+                "uid": e.get("uid"),
+                "pokedex_id": int(e.get("pokedex_id") or 0),
+                "name": str(e.get("name","?")),
+                "types": list(e.get("types") or []),
+                "stats": self._safe_stats(e),
+                "bst": int(e.get("bst") or sum(self._safe_stats(e).values())),
+                "sprite": e.get("sprite"),
+                "nickname": e.get("nickname"),
+                "level": int(e.get("level", 1)),
+                "xp": int(e.get("xp", 0)),
+                "moves": [m for m in (e.get("moves") or []) if isinstance(m, str)][:4],
+                "pending_points": int(e.get("pending_points", 0)),
+                "_npc": True,  # champion is treated as NPC during challenge
+            })
+        return snap
+    
+    async def _pick_champion_from_hof(self, guild: discord.Guild) -> Optional[Dict[str, Any]]:
+        g = self.config.guild(guild)
+        hof = await g.hall_of_fame()
+        if not hof:
+            return None
+        pick = random.choice(hof)
+        # structure champion dict
+        return {
+            "user_id": int(pick.get("user_id") or 0),
+            "name": str(pick.get("name","Champion")),
+            "team": pick.get("team") or []
+        }
+    
+    async def _save_hof_win(self, guild: discord.Guild, user: discord.Member, team_entries: List[Dict[str, Any]]):
+        g = self.config.guild(guild)
+        hof = await g.hall_of_fame()
+        hof = list(hof) if isinstance(hof, list) else []
+        hof.append({
+            "user_id": int(user.id),
+            "name": user.display_name,
+            "team": await self._snapshot_team(team_entries),
+            "won_at": self._now_unix()
+        })
+        await g.hall_of_fame.set(hof)
+    
+    async def _generate_typed_npc_team(self, target_avg_level: float, type_name: str, size: int = 6) -> List[Dict[str, Any]]:
+        """Generate an NPC team biased to a single type (fast path)."""
+        allowed = []
+        try:
+            allowed = await self._get_type_ids(type_name)
+        except Exception:
+            allowed = None
+    
+        team: List[Dict[str, Any]] = []
+        for _ in range(size):
+            pdata, pid, bst = await self._random_encounter("greatball", allowed_ids=allowed or None)
+            types = [t["type"]["name"] for t in pdata.get("types", [])]
+            stats_map = {s["stat"]["name"]: int(s["base_stat"]) for s in pdata.get("stats", [])}
+            sprite = (
+                pdata.get("sprites",{}).get("other",{}).get("official-artwork",{}).get("front_default")
+                or pdata.get("sprites",{}).get("front_default")
+            )
+            uid = uuid.uuid4().hex[:12]
+            lvl = max(1, int(round(target_avg_level + random.randint(-2, 2))))
+            mon = {
+                "uid": uid,
+                "pokedex_id": int(pid),
+                "name": str(pdata.get("name","unknown")).title(),
+                "types": types,
+                "stats": stats_map,
+                "bst": int(bst),
+                "sprite": sprite,
+                "nickname": None,
+                "caught_at": self._now_unix(),
+                "level": lvl,
+                "xp": 0,
+                "moves": [],
+                "pending_points": 0,
+                "_npc": True,
+            }
+            await self._ensure_moves_on_entry(mon)  # fast path: gives "tackle" if needed
+            team.append(mon)
+        return team
+    
+    async def _team_block_str(self, team: List[Dict[str, Any]]) -> str:
+        lines = []
+        for e in team:
+            lines.append(f"**{e.get('nickname') or e.get('name','?')}** — Lv {int(e.get('level',1))}")
+        return "\n".join(lines) if lines else "_No Pokémon_"
+
 
     def _mutation_percent(self, p1: Dict[str, Any], p2: Dict[str, Any]) -> int:
         """
@@ -1196,6 +1300,199 @@ class GachaCatchEmAll(commands.Cog):
 
         # --------- Commands ---------
 
+    @commands.hybrid_group(name="elite")
+    async def elite_public(self, ctx: commands.Context):
+        """Elite Four & Hall of Fame."""
+        if ctx.invoked_subcommand is None:
+            await ctx.reply("Subcommands: `info`, `hof`, `challenge`")
+
+    @elite_public.command(name="challenge")
+    async def elite_challenge(self, ctx: commands.Context):
+        """Challenge the Elite Four (Lv 50/60/70/80) and a Champion.
+        Champion is randomly selected from all prior Hall of Fame winners (snapshot team).
+        Win all to enter (or re-enter) the Hall of Fame.
+        """
+        elite = await self.config.guild(ctx.guild).elite()
+        if not elite or not elite.get("themes"):
+            await ctx.reply("Elite Four is not built yet. Ask an admin to run `/gachaadmin elite build`.")
+            return
+    
+        # --- Load your team (or top 6 by level) ---
+        caller = ctx.author
+        uids = await self._get_team(caller)
+        box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
+        team = self._team_entries_from_uids(box, uids)
+        if not team:
+            team = sorted(box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
+        if not team:
+            await ctx.reply("You need at least one Pokémon to challenge the Elite Four.")
+            return
+        for e in team:
+            await self._ensure_moves_on_entry(e)
+    
+        avg_lvl = self._avg_level(team)
+    
+        # --- Trainers: use configured themes; fixed levels per round ---
+        themes: List[str] = elite.get("themes", [])
+        if len(themes) < 4:
+            # If somehow fewer than 4, pad with random types
+            missing = 4 - len(themes)
+            extra = random.sample([t for t in POKEMON_TYPES if t not in themes], k=missing)
+            themes = themes + extra
+    
+        trainer_names = [
+            f"Elite 1 — {themes[0].title()} Specialist (Lv 50)",
+            f"Elite 2 — {themes[1].title()} Specialist (Lv 60)",
+            f"Elite 3 — {themes[2].title()} Specialist (Lv 70)",
+            f"Elite 4 — {themes[3].title()} Specialist (Lv 80)",
+        ]
+        fixed_levels = [50, 60, 70, 80]
+    
+        # Difficulty profiles (you can tune these; we keep them steady)
+        profiles = [
+            DIFFICULTY_PROFILES["hard"],
+            DIFFICULTY_PROFILES["hard"],
+            DIFFICULTY_PROFILES["boss"],
+            DIFFICULTY_PROFILES["boss"],
+        ]
+    
+        # Helper: force entire team to a fixed level (keep stats; zero XP)
+        def _force_team_level(team_entries: List[Dict[str, Any]], level: int) -> None:
+            for e in team_entries:
+                e["level"] = int(level)
+                e["xp"] = 0
+                # ensure at least one legal move
+                # (caller ensured for player; NPC ensured below after generation)
+    
+        # Carry HP across the whole gauntlet for the player team
+        persistent_hp: Dict[str, Tuple[int, int]] = {e["uid"]: (self._initial_hp(e), self._initial_hp(e)) for e in team}
+    
+        async def _team_vs_team_quick(
+            player_team: List[Dict[str, Any]],
+            npc_team: List[Dict[str, Any]],
+            hp_map: Dict[str, Tuple[int, int]],
+        ) -> bool:
+            """Frontline KO style; keep player's remaining HP in hp_map across rounds."""
+            ci = oi = 0
+            npc_hp = {e["uid"]: (self._initial_hp(e), self._initial_hp(e)) for e in npc_team}
+    
+            while ci < len(player_team) and oi < len(npc_team):
+                A = player_team[ci]
+                B = npc_team[oi]
+                A_cur, A_max = hp_map[A["uid"]]
+                B_cur, B_max = npc_hp[B["uid"]]
+    
+                winner, actions, A_end, B_end = await self._simulate_duel(A, B, A_start=A_cur, B_start=B_cur)
+                hp_map[A["uid"]] = (A_end, A_max)
+                npc_hp[B["uid"]] = (B_end, B_max)
+    
+                if winner == "A":
+                    oi += 1
+                else:
+                    ci += 1
+            return ci < len(player_team)  # True if player still has mons
+    
+        # --- Run the four fixed-level trainers ---
+        for idx, (tname, theme, prof, level) in enumerate(zip(trainer_names, themes, profiles, fixed_levels), start=1):
+            # Generate themed NPCs near player's avg; then force to fixed level
+            npc_team = await self._generate_typed_npc_team(
+                target_avg_level=avg_lvl, type_name=theme, size=min(6, len(team))
+            )
+            await self._apply_difficulty_to_npc_team(npc_team, prof)
+            _force_team_level(npc_team, level)
+            for e in npc_team:
+                await self._ensure_moves_on_entry(e)
+    
+            ok = await _team_vs_team_quick(team, npc_team, persistent_hp)
+            if not ok:
+                await ctx.reply(
+                    embed=discord.Embed(
+                        title=f"❌ Defeated by {tname}",
+                        description=f"You fought bravely through {idx-1} trainer(s). Try adjusting your team and stats!",
+                        color=discord.Color.red(),
+                    )
+                )
+                return
+            else:
+                await ctx.send(
+                    embed=discord.Embed(
+                        title=f"✅ {tname} defeated!",
+                        description="Onward to the next trainer…",
+                        color=discord.Color.green(),
+                    )
+                )
+    
+        # --- Champion: random from Hall of Fame (any prior winners) ---
+        hof = await self.config.guild(ctx.guild).hall_of_fame()
+        champ_from_hof = random.choice(hof) if hof else None
+    
+        if champ_from_hof:
+            champ_name = champ_from_hof.get("name", "Champion")
+            champ_team = champ_from_hof.get("team") or []
+            # Ensure each has at least one move; keep snapshot levels as-is
+            for e in champ_team:
+                await self._ensure_moves_on_entry(e)
+        else:
+            # Fallback: NPC Champion (bossy) if no HoF entries exist yet
+            champ_name = "Champion (NPC)"
+            champ_team = await self._generate_npc_team(target_avg_level=max(80, avg_lvl + 2), size=min(6, len(team)))
+            await self._apply_difficulty_to_npc_team(champ_team, DIFFICULTY_PROFILES["boss"])
+            # optional: make NPC champ fixed level 85 for a step up
+            _force_team_level(champ_team, 85)
+            for e in champ_team:
+                await self._ensure_moves_on_entry(e)
+    
+        ok = await _team_vs_team_quick(team, champ_team, persistent_hp)
+        if not ok:
+            await ctx.reply(
+                embed=discord.Embed(
+                    title=f"💥 You fell to the {champ_name}",
+                    description="So close! Tweak your lineup and try again.",
+                    color=discord.Color.orange(),
+                )
+            )
+            return
+    
+        # --- Victory! Record in Hall of Fame and celebrate ---
+        await self._save_hof_win(ctx.guild, caller, team)
+        embed = discord.Embed(
+            title="🏆 Hall of Fame!",
+            description=f"**{caller.display_name}** has defeated the Elite Four and the **{champ_name}**!",
+            color=discord.Color.gold(),
+        )
+        embed.add_field(name="Your Team", value=await self._team_block_str(team), inline=False)
+        await ctx.reply(embed=embed)
+
+    
+    @elite_public.command(name="info")
+    async def elite_info(self, ctx: commands.Context):
+        elite = await self.config.guild(ctx.guild).elite()
+        if not elite or not elite.get("themes"):
+            await ctx.reply("Elite Four is not built yet. Ask an admin to run `/gachaadmin elite build`.")
+            return
+        themes = elite.get("themes", [])
+        champ = elite.get("champion")
+        desc = f"**Themes:** {', '.join(t.title() for t in themes)}\n"
+        if champ and champ.get("team"):
+            desc += f"**Champion:** {champ.get('name','Champion')}"
+        else:
+            desc += "**Champion:** (NPC)"
+        await ctx.reply(embed=discord.Embed(title="Elite Four", description=desc, color=discord.Color.teal()))
+    
+    @elite_public.command(name="hof")
+    async def elite_hof(self, ctx: commands.Context):
+        hof = await self.config.guild(ctx.guild).hall_of_fame()
+        if not hof:
+            await ctx.reply("No Hall of Fame entries yet. Be the first to claim victory!")
+            return
+        # show last 10
+        entries = list(hof)[-10:]
+        lines = []
+        for e in reversed(entries):
+            t = f"<t:{int(e.get('won_at',0))}:R>" if e.get("won_at") else ""
+            lines.append(f"**{e.get('name','?')}** — team of {len(e.get('team') or [])} • {t}")
+        await ctx.reply(embed=discord.Embed(title="Hall of Fame (recent)", description="\n".join(lines), color=discord.Color.gold()))
+
     @commands.hybrid_command(name="release")
     async def release(self, ctx: commands.Context, *, query: str):
         """Release a Pokémon from your box (UID, name, or nickname). Asks for confirmation."""
@@ -1599,6 +1896,67 @@ class GachaCatchEmAll(commands.Cog):
     async def gachaadmin(self, ctx: commands.Context):
         """Admin settings for PokéGacha."""
         pass
+
+    # Admin group
+    @gachaadmin.group(name="elite")
+    @checks.admin()
+    async def gacha_elite(self, ctx: commands.Context):
+        """Admin: Elite Four controls."""
+        if ctx.invoked_subcommand is None:
+            await ctx.reply("Subcommands: `build`, `reset`, `info`")
+    
+    @gacha_elite.command(name="build")
+    @checks.admin()
+    async def elite_build(self, ctx: commands.Context):
+        """
+        Build (or rebuild) the Elite Four for this guild.
+        - Picks 4 unique themes at random
+        - Champion is randomly selected from Hall of Fame (if any), else None (NPC champion later)
+        """
+        g = self.config.guild(ctx.guild)
+        themes = random.sample(POKEMON_TYPES, k=4)
+        champ = await self._pick_champion_from_hof(ctx.guild)
+    
+        elite = {
+            "themes": themes,
+            "built_at": self._now_unix(),
+            "champion": champ  # may be None
+        }
+        await g.elite.set(elite)
+    
+        desc = f"Themes: {', '.join(t.title() for t in themes)}\n"
+        if champ:
+            desc += f"Champion: **{champ.get('name','Champion')}** (from Hall of Fame)"
+        else:
+            desc += "Champion: (NPC champion will be generated at challenge time)"
+        embed = discord.Embed(title="Elite Four Built", description=desc, color=discord.Color.orange())
+        await ctx.reply(embed=embed)
+    
+    @gacha_elite.command(name="reset")
+    @checks.admin()
+    async def elite_reset(self, ctx: commands.Context):
+        """Clear Elite Four + Champion (Hall of Fame not touched)."""
+        g = self.config.guild(ctx.guild)
+        await g.elite.set({"themes": [], "built_at": None, "champion": None})
+        await ctx.reply("Elite Four reset. Use `/gachaadmin elite build` to set up again.")
+    
+    @gacha_elite.command(name="info")
+    @checks.admin()
+    async def elite_info_admin(self, ctx: commands.Context):
+        """Show current Elite Four setup (admin)."""
+        elite = await self.config.guild(ctx.guild).elite()
+        if not elite or not elite.get("themes"):
+            await ctx.reply("Elite Four is not built yet.")
+            return
+        themes = elite.get("themes", [])
+        champ = elite.get("champion")
+        desc = f"Themes: {', '.join(t.title() for t in themes)}\n"
+        if champ and champ.get("team"):
+            desc += f"Champion: **{champ.get('name','Champion')}** (snapshot team of {len(champ['team'])})"
+        else:
+            desc += "Champion: (NPC champion will be generated at challenge time)"
+        await ctx.reply(embed=discord.Embed(title="Elite Four", description=desc, color=discord.Color.blurple()))
+
 
     @gachaadmin.command(name="levelup")
     @checks.admin()
