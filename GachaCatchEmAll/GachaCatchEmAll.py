@@ -98,7 +98,7 @@ class GachaCatchEmAll(commands.Cog):
         return [lines[i:i+size] for i in range(0, len(lines), size)]
    
     async def _alert_owner(self, ctx: commands.Context, error: Exception):
-    """Ping the bot owner if a command or interaction fails."""
+        """Ping the bot owner if a command or interaction fails."""
         try:
             app_info = await self.bot.application_info()
             owner = app_info.owner
