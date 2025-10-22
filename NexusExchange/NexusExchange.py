@@ -1979,10 +1979,10 @@ Helpful Resources:
         
             msg = (
                 f"**Balance for {member.display_name}:**\n"
-                f"💰 On hand: `{balance:,.2f}` {currency}\n"
+                f"💰 On hand: `{balance:,.2f}` {currency}s\n"
             )
             if bank > 0:
-                msg += f"🏦 In bank: `{bank:,.2f}` {currency}\n"
+                msg += f"🏦 In bank: `{bank:,.2f}` {currency}s\n"
             msg += f"⭐ XP: `{xp}`"
         
             await ctx.author.send(msg) if secret else await ctx.send(msg)
@@ -1999,7 +1999,7 @@ Helpful Resources:
             mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
             user_balance = await mini_currency_config.user(member).get_raw(currency_name, default=0)
         
-            result_msg = f"💱 {member.display_name} has `{user_balance:,.2f}` `{currency_name}`."
+            result_msg = f"💱 {member.display_name} has `{user_balance:,.2f}` `{currency_name}s`."
             await ctx.author.send(result_msg) if secret else await ctx.send(result_msg)
 
     def parse_cards(self, xml_data, season, categories):
