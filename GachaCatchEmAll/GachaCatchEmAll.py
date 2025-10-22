@@ -448,30 +448,76 @@ class GachaCatchEmAll(commands.Cog):
         return s
 
     def _calc_move_damage(self, attacker: Dict[str, Any], defender: Dict[str, Any], move_info: Dict[str, Any]) -> int:
+        """Calculate damage with STAB, type effectiveness, and crit chance."""
         a_stats = self._safe_stats(attacker)
         d_stats = self._safe_stats(defender)
     
-        power = move_info.get("power") or 50
+        power = move_info.get("power") or 10
         dmg_class = ((move_info.get("damage_class") or {}).get("name") or "physical").lower()
         mtype = ((move_info.get("type") or {}).get("name") or "").lower()
     
         atk = a_stats["attack"] if dmg_class == "physical" else a_stats["special-attack"]
         deff = d_stats["defense"] if dmg_class == "physical" else d_stats["special-defense"]
     
+        # Base formula (same as before)
         dmg = (power * max(1, atk)) / max(1, deff)
     
-        # STAB
+        # --- STAB ---
         atk_types = [t.lower() for t in (attacker.get("types") or [])]
         if mtype in atk_types:
-            dmg *= 1.2
+            dmg *= 1.2  # Same-type attack bonus
     
-        # small variance
+        # --- TYPE EFFECTIVENESS ---
+        # You can define this dict globally or inside this function.
+        TYPE_EFFECTIVENESS = {
+            "fire": {"grass": 2.0, "water": 0.5, "rock": 0.5, "bug": 2.0, "ice": 2.0},
+            "water": {"fire": 2.0, "grass": 0.5, "rock": 2.0, "ground": 2.0},
+            "grass": {"water": 2.0, "fire": 0.5, "rock": 2.0, "flying": 0.5},
+            "electric": {"water": 2.0, "ground": 0.0, "flying": 2.0},
+            "rock": {"fire": 2.0, "flying": 2.0, "bug": 2.0},
+            "ground": {"electric": 2.0, "flying": 0.0, "rock": 2.0, "fire": 2.0},
+            "ice": {"grass": 2.0, "ground": 2.0, "flying": 2.0, "fire": 0.5},
+            "flying": {"grass": 2.0, "electric": 0.5, "rock": 0.5},
+            "bug": {"grass": 2.0, "fire": 0.5, "fighting": 0.5},
+            "psychic": {"fighting": 2.0, "poison": 2.0, "dark": 0.0},
+            "dark": {"psychic": 2.0, "ghost": 2.0, "fighting": 0.5},
+            "ghost": {"psychic": 2.0, "normal": 0.0},
+        }
+    
+        eff_mult = 1.0
+        def_types = [t.lower() for t in (defender.get("types") or [])]
+        for dtype in def_types:
+            eff_mult *= TYPE_EFFECTIVENESS.get(mtype, {}).get(dtype, 1.0)
+    
+        # Feedback text support (if you want to show messages later)
+        if eff_mult > 1.0:
+            attacker["_last_eff_msg"] = "It's super effective!"
+        elif eff_mult < 1.0 and eff_mult > 0:
+            attacker["_last_eff_msg"] = "It's not very effective..."
+        elif eff_mult == 0.0:
+            attacker["_last_eff_msg"] = "It had no effect!"
+        else:
+            attacker["_last_eff_msg"] = ""
+    
+        dmg *= eff_mult
+    
+        # --- CRITICAL HITS ---
+        # 10% flat crit chance
+        if random.random() < 0.1:
+            dmg *= 1.5
+            attacker["_last_crit"] = True
+        else:
+            attacker["_last_crit"] = False
+    
+        # --- RANDOM VARIANCE ---
         dmg *= random.uniform(0.85, 1.0)
     
-        # difficulty tag (e.g., NPC “boss”)
+        # --- DIFFICULTY / NPC MULTIPLIER ---
         dmg *= float(attacker.get("_dmg_mult", 1.0))
     
+        # Clamp and return
         return max(1, int(round(dmg)))
+
 
     
     def _initial_hp(self, e: Dict[str, Any]) -> int:
@@ -2430,30 +2476,38 @@ class InteractiveTeamBattleView(discord.ui.View):
             a_move = await self.cog._pick_move(A)
 
         # Speed order
+        # Speed order
         A_spd = self.cog._safe_stats(A)["speed"]
         B_spd = self.cog._safe_stats(B)["speed"]
         first_A = True if A_spd >= B_spd else False
-
-        # Resolve damage in correct order (both sides act if alive)
+        
         actions: List[str] = []
+        
+        def perform_attack(attacker, defender, move, a_cur, d_cur, a_store, d_store):
+            """Inner helper to apply one attack and build text."""
+            dmg = self.cog._calc_move_damage(attacker, defender, move)
+            d_cur = max(0, d_cur - dmg)
+            msg = f"{attacker.get('nickname') or attacker['name']} used **{move['name'].title()}** → {defender.get('nickname') or defender['name']} took **{dmg}** damage!"
+            if attacker.get("_last_eff_msg"):
+                msg += f"\n{attacker['_last_eff_msg']}"
+            if attacker.get("_last_crit"):
+                msg += "\n**A critical hit!**"
+            return d_cur, msg
+        
         if first_A:
             if A_cur > 0 and B_cur > 0:
-                d = self.cog._calc_move_damage(A, B, a_move)
-                B_cur = max(0, B_cur - d)
-                actions.append(f"{A.get('nickname') or A['name']} used **{a_move['name'].title()}** → {B.get('nickname') or B['name']} took **{d}**")
+                B_cur, msg = perform_attack(A, B, a_move, A_cur, B_cur, self.caller_hp, self.opp_hp)
+                actions.append(msg)
             if B_cur > 0 and A_cur > 0:
-                d = self.cog._calc_move_damage(B, A, b_move)
-                A_cur = max(0, A_cur - d)
-                actions.append(f"{B.get('nickname') or B['name']} used **{b_move['name'].title()}** → {A.get('nickname') or A['name']} took **{d}**")
+                A_cur, msg = perform_attack(B, A, b_move, B_cur, A_cur, self.opp_hp, self.caller_hp)
+                actions.append(msg)
         else:
             if B_cur > 0 and A_cur > 0:
-                d = self.cog._calc_move_damage(B, A, b_move)
-                A_cur = max(0, A_cur - d)
-                actions.append(f"{B.get('nickname') or B['name']} used **{b_move['name'].title()}** → {A.get('nickname') or A['name']} took **{d}**")
+                A_cur, msg = perform_attack(B, A, b_move, B_cur, A_cur, self.opp_hp, self.caller_hp)
+                actions.append(msg)
             if A_cur > 0 and B_cur > 0:
-                d = self.cog._calc_move_damage(A, B, a_move)
-                B_cur = max(0, B_cur - d)
-                actions.append(f"{A.get('nickname') or A['name']} used **{a_move['name'].title()}** → {B.get('nickname') or B['name']} took **{d}**")
+                B_cur, msg = perform_attack(A, B, a_move, A_cur, B_cur, self.caller_hp, self.opp_hp)
+                actions.append(msg)
 
 
         # Apply clamps & save HP
