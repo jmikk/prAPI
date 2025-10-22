@@ -93,113 +93,9 @@ class GachaCatchEmAll(commands.Cog):
         self._pokemon_list: Optional[List[Dict[str, Any]]] = None  # list of {name, url}
         self._pokemon_cache: Dict[int, Dict[str, Any]] = {}  # id -> pokemon data
         self._list_lock = asyncio.Lock()
-        self.config.register_guild(
-        
-        elite={
-            "themes": [],        # e.g. ["ice","fighting","ghost","dragon"]
-            "built_at": None,    # unix
-            "champion": None,    # {"user_id": int|None, "name": str, "team": [entry,...]}  (team snapshot)
-        },
-        hall_of_fame=[]          # list of {"user_id": int, "name": str, "team": [entry,...], "won_at": int}
-    )
 
     def _chunk_lines(self, lines: List[str], size: int) -> List[List[str]]:
         return [lines[i:i+size] for i in range(0, len(lines), size)]
-
-    def _now_unix(self) -> int:
-        return int(datetime.now(timezone.utc).timestamp())
-
-    async def _snapshot_team(self, entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Return a compact, immutable copy of a team (max 6)."""
-        snap = []
-        for e in entries[:6]:
-            snap.append({
-                "uid": e.get("uid"),
-                "pokedex_id": int(e.get("pokedex_id") or 0),
-                "name": str(e.get("name","?")),
-                "types": list(e.get("types") or []),
-                "stats": self._safe_stats(e),
-                "bst": int(e.get("bst") or sum(self._safe_stats(e).values())),
-                "sprite": e.get("sprite"),
-                "nickname": e.get("nickname"),
-                "level": int(e.get("level", 1)),
-                "xp": int(e.get("xp", 0)),
-                "moves": [m for m in (e.get("moves") or []) if isinstance(m, str)][:4],
-                "pending_points": int(e.get("pending_points", 0)),
-                "_npc": True,  # champion is treated as NPC during challenge
-            })
-        return snap
-    
-    async def _pick_champion_from_hof(self, guild: discord.Guild) -> Optional[Dict[str, Any]]:
-        g = self.config.guild(guild)
-        hof = await g.hall_of_fame()
-        if not hof:
-            return None
-        pick = random.choice(hof)
-        # structure champion dict
-        return {
-            "user_id": int(pick.get("user_id") or 0),
-            "name": str(pick.get("name","Champion")),
-            "team": pick.get("team") or []
-        }
-    
-    async def _save_hof_win(self, guild: discord.Guild, user: discord.Member, team_entries: List[Dict[str, Any]]):
-        g = self.config.guild(guild)
-        hof = await g.hall_of_fame()
-        hof = list(hof) if isinstance(hof, list) else []
-        hof.append({
-            "user_id": int(user.id),
-            "name": user.display_name,
-            "team": await self._snapshot_team(team_entries),
-            "won_at": self._now_unix()
-        })
-        await g.hall_of_fame.set(hof)
-    
-    async def _generate_typed_npc_team(self, target_avg_level: float, type_name: str, size: int = 6) -> List[Dict[str, Any]]:
-        """Generate an NPC team biased to a single type (fast path)."""
-        allowed = []
-        try:
-            allowed = await self._get_type_ids(type_name)
-        except Exception:
-            allowed = None
-    
-        team: List[Dict[str, Any]] = []
-        for _ in range(size):
-            pdata, pid, bst = await self._random_encounter("greatball", allowed_ids=allowed or None)
-            types = [t["type"]["name"] for t in pdata.get("types", [])]
-            stats_map = {s["stat"]["name"]: int(s["base_stat"]) for s in pdata.get("stats", [])}
-            sprite = (
-                pdata.get("sprites",{}).get("other",{}).get("official-artwork",{}).get("front_default")
-                or pdata.get("sprites",{}).get("front_default")
-            )
-            uid = uuid.uuid4().hex[:12]
-            lvl = max(1, int(round(target_avg_level + random.randint(-2, 2))))
-            mon = {
-                "uid": uid,
-                "pokedex_id": int(pid),
-                "name": str(pdata.get("name","unknown")).title(),
-                "types": types,
-                "stats": stats_map,
-                "bst": int(bst),
-                "sprite": sprite,
-                "nickname": None,
-                "caught_at": self._now_unix(),
-                "level": lvl,
-                "xp": 0,
-                "moves": [],
-                "pending_points": 0,
-                "_npc": True,
-            }
-            await self._ensure_moves_on_entry(mon)  # fast path: gives "tackle" if needed
-            team.append(mon)
-        return team
-    
-    async def _team_block_str(self, team: List[Dict[str, Any]]) -> str:
-        lines = []
-        for e in team:
-            lines.append(f"**{e.get('nickname') or e.get('name','?')}** — Lv {int(e.get('level',1))}")
-        return "\n".join(lines) if lines else "_No Pokémon_"
-
 
     def _mutation_percent(self, p1: Dict[str, Any], p2: Dict[str, Any]) -> int:
         """
@@ -213,37 +109,6 @@ class GachaCatchEmAll(commands.Cog):
         l2 = int(p2.get("level", 1))
         pct = (l1 // 10) + (l2 // 10)
         return min(10, max(0, pct))
-
-    async def _get_session(self) -> aiohttp.ClientSession:
-        if self._session is None or self._session.closed:
-            connector = aiohttp.TCPConnector(limit=10, ttl_dns_cache=300)
-            timeout = aiohttp.ClientTimeout(total=6, connect=3, sock_read=4)
-            self._session = aiohttp.ClientSession(connector=connector, timeout=timeout)
-        return self._session
-
-    async def _pick_move(self, e: Dict[str, Any]) -> Dict[str, Any]:
-        moves: List[str] = [m for m in (e.get("moves") or []) if isinstance(m, str)]
-        if not moves:
-            # keep it cheap: just a neutral fallback
-            return {"name": "tackle", "power": 40, "damage_class": {"name": "physical"}, "type": {"name": "normal"}}
-        name = random.choice(moves)
-        key = name.lower()
-        mi = self._move_cache.get(key)
-        if not mi:
-            # FAST PATH: skip web call, use neutral template with name
-            return {"name": name, "power": 50, "damage_class": {"name":"physical"}, "type":{"name":"normal"}}
-        return {"name": name, "power": mi.get("power") or 50,
-                "damage_class": mi.get("damage_class") or {"name":"physical"},
-                "type": mi.get("type") or {"name":"normal"}}
-
-    async def _ensure_moves_on_entry(self, e: Dict[str, Any]) -> None:
-        e.setdefault("moves", [])
-        if not e["moves"]:
-            # avoid /type calls; just give a neutral opener
-            e["moves"] = ["tackle"]
-
-    
-            
 
 
     def _resolve_entry_by_any(self, box: List[Dict[str, Any]], query: str) -> Optional[Dict[str, Any]]:
@@ -1300,199 +1165,6 @@ class GachaCatchEmAll(commands.Cog):
 
         # --------- Commands ---------
 
-    @commands.hybrid_group(name="elite")
-    async def elite_public(self, ctx: commands.Context):
-        """Elite Four & Hall of Fame."""
-        if ctx.invoked_subcommand is None:
-            await ctx.reply("Subcommands: `info`, `hof`, `challenge`")
-
-    @elite_public.command(name="challenge")
-    async def elite_challenge(self, ctx: commands.Context):
-        """Challenge the Elite Four (Lv 50/60/70/80) and a Champion.
-        Champion is randomly selected from all prior Hall of Fame winners (snapshot team).
-        Win all to enter (or re-enter) the Hall of Fame.
-        """
-        elite = await self.config.guild(ctx.guild).elite()
-        if not elite or not elite.get("themes"):
-            await ctx.reply("Elite Four is not built yet. Ask an admin to run `/gachaadmin elite build`.")
-            return
-    
-        # --- Load your team (or top 6 by level) ---
-        caller = ctx.author
-        uids = await self._get_team(caller)
-        box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
-        team = self._team_entries_from_uids(box, uids)
-        if not team:
-            team = sorted(box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
-        if not team:
-            await ctx.reply("You need at least one Pokémon to challenge the Elite Four.")
-            return
-        for e in team:
-            await self._ensure_moves_on_entry(e)
-    
-        avg_lvl = self._avg_level(team)
-    
-        # --- Trainers: use configured themes; fixed levels per round ---
-        themes: List[str] = elite.get("themes", [])
-        if len(themes) < 4:
-            # If somehow fewer than 4, pad with random types
-            missing = 4 - len(themes)
-            extra = random.sample([t for t in POKEMON_TYPES if t not in themes], k=missing)
-            themes = themes + extra
-    
-        trainer_names = [
-            f"Elite 1 — {themes[0].title()} Specialist (Lv 50)",
-            f"Elite 2 — {themes[1].title()} Specialist (Lv 60)",
-            f"Elite 3 — {themes[2].title()} Specialist (Lv 70)",
-            f"Elite 4 — {themes[3].title()} Specialist (Lv 80)",
-        ]
-        fixed_levels = [50, 60, 70, 80]
-    
-        # Difficulty profiles (you can tune these; we keep them steady)
-        profiles = [
-            DIFFICULTY_PROFILES["hard"],
-            DIFFICULTY_PROFILES["hard"],
-            DIFFICULTY_PROFILES["boss"],
-            DIFFICULTY_PROFILES["boss"],
-        ]
-    
-        # Helper: force entire team to a fixed level (keep stats; zero XP)
-        def _force_team_level(team_entries: List[Dict[str, Any]], level: int) -> None:
-            for e in team_entries:
-                e["level"] = int(level)
-                e["xp"] = 0
-                # ensure at least one legal move
-                # (caller ensured for player; NPC ensured below after generation)
-    
-        # Carry HP across the whole gauntlet for the player team
-        persistent_hp: Dict[str, Tuple[int, int]] = {e["uid"]: (self._initial_hp(e), self._initial_hp(e)) for e in team}
-    
-        async def _team_vs_team_quick(
-            player_team: List[Dict[str, Any]],
-            npc_team: List[Dict[str, Any]],
-            hp_map: Dict[str, Tuple[int, int]],
-        ) -> bool:
-            """Frontline KO style; keep player's remaining HP in hp_map across rounds."""
-            ci = oi = 0
-            npc_hp = {e["uid"]: (self._initial_hp(e), self._initial_hp(e)) for e in npc_team}
-    
-            while ci < len(player_team) and oi < len(npc_team):
-                A = player_team[ci]
-                B = npc_team[oi]
-                A_cur, A_max = hp_map[A["uid"]]
-                B_cur, B_max = npc_hp[B["uid"]]
-    
-                winner, actions, A_end, B_end = await self._simulate_duel(A, B, A_start=A_cur, B_start=B_cur)
-                hp_map[A["uid"]] = (A_end, A_max)
-                npc_hp[B["uid"]] = (B_end, B_max)
-    
-                if winner == "A":
-                    oi += 1
-                else:
-                    ci += 1
-            return ci < len(player_team)  # True if player still has mons
-    
-        # --- Run the four fixed-level trainers ---
-        for idx, (tname, theme, prof, level) in enumerate(zip(trainer_names, themes, profiles, fixed_levels), start=1):
-            # Generate themed NPCs near player's avg; then force to fixed level
-            npc_team = await self._generate_typed_npc_team(
-                target_avg_level=avg_lvl, type_name=theme, size=min(6, len(team))
-            )
-            await self._apply_difficulty_to_npc_team(npc_team, prof)
-            _force_team_level(npc_team, level)
-            for e in npc_team:
-                await self._ensure_moves_on_entry(e)
-    
-            ok = await _team_vs_team_quick(team, npc_team, persistent_hp)
-            if not ok:
-                await ctx.reply(
-                    embed=discord.Embed(
-                        title=f"❌ Defeated by {tname}",
-                        description=f"You fought bravely through {idx-1} trainer(s). Try adjusting your team and stats!",
-                        color=discord.Color.red(),
-                    )
-                )
-                return
-            else:
-                await ctx.send(
-                    embed=discord.Embed(
-                        title=f"✅ {tname} defeated!",
-                        description="Onward to the next trainer…",
-                        color=discord.Color.green(),
-                    )
-                )
-    
-        # --- Champion: random from Hall of Fame (any prior winners) ---
-        hof = await self.config.guild(ctx.guild).hall_of_fame()
-        champ_from_hof = random.choice(hof) if hof else None
-    
-        if champ_from_hof:
-            champ_name = champ_from_hof.get("name", "Champion")
-            champ_team = champ_from_hof.get("team") or []
-            # Ensure each has at least one move; keep snapshot levels as-is
-            for e in champ_team:
-                await self._ensure_moves_on_entry(e)
-        else:
-            # Fallback: NPC Champion (bossy) if no HoF entries exist yet
-            champ_name = "Champion (NPC)"
-            champ_team = await self._generate_npc_team(target_avg_level=max(80, avg_lvl + 2), size=min(6, len(team)))
-            await self._apply_difficulty_to_npc_team(champ_team, DIFFICULTY_PROFILES["boss"])
-            # optional: make NPC champ fixed level 85 for a step up
-            _force_team_level(champ_team, 85)
-            for e in champ_team:
-                await self._ensure_moves_on_entry(e)
-    
-        ok = await _team_vs_team_quick(team, champ_team, persistent_hp)
-        if not ok:
-            await ctx.reply(
-                embed=discord.Embed(
-                    title=f"💥 You fell to the {champ_name}",
-                    description="So close! Tweak your lineup and try again.",
-                    color=discord.Color.orange(),
-                )
-            )
-            return
-    
-        # --- Victory! Record in Hall of Fame and celebrate ---
-        await self._save_hof_win(ctx.guild, caller, team)
-        embed = discord.Embed(
-            title="🏆 Hall of Fame!",
-            description=f"**{caller.display_name}** has defeated the Elite Four and the **{champ_name}**!",
-            color=discord.Color.gold(),
-        )
-        embed.add_field(name="Your Team", value=await self._team_block_str(team), inline=False)
-        await ctx.reply(embed=embed)
-
-    
-    @elite_public.command(name="info")
-    async def elite_info(self, ctx: commands.Context):
-        elite = await self.config.guild(ctx.guild).elite()
-        if not elite or not elite.get("themes"):
-            await ctx.reply("Elite Four is not built yet. Ask an admin to run `/gachaadmin elite build`.")
-            return
-        themes = elite.get("themes", [])
-        champ = elite.get("champion")
-        desc = f"**Themes:** {', '.join(t.title() for t in themes)}\n"
-        if champ and champ.get("team"):
-            desc += f"**Champion:** {champ.get('name','Champion')}"
-        else:
-            desc += "**Champion:** (NPC)"
-        await ctx.reply(embed=discord.Embed(title="Elite Four", description=desc, color=discord.Color.teal()))
-    
-    @elite_public.command(name="hof")
-    async def elite_hof(self, ctx: commands.Context):
-        hof = await self.config.guild(ctx.guild).hall_of_fame()
-        if not hof:
-            await ctx.reply("No Hall of Fame entries yet. Be the first to claim victory!")
-            return
-        # show last 10
-        entries = list(hof)[-10:]
-        lines = []
-        for e in reversed(entries):
-            t = f"<t:{int(e.get('won_at',0))}:R>" if e.get("won_at") else ""
-            lines.append(f"**{e.get('name','?')}** — team of {len(e.get('team') or [])} • {t}")
-        await ctx.reply(embed=discord.Embed(title="Hall of Fame (recent)", description="\n".join(lines), color=discord.Color.gold()))
-
     @commands.hybrid_command(name="release")
     async def release(self, ctx: commands.Context, *, query: str):
         """Release a Pokémon from your box (UID, name, or nickname). Asks for confirmation."""
@@ -1897,67 +1569,6 @@ class GachaCatchEmAll(commands.Cog):
         """Admin settings for PokéGacha."""
         pass
 
-    # Admin group
-    @gachaadmin.group(name="elite")
-    @checks.admin()
-    async def gacha_elite(self, ctx: commands.Context):
-        """Admin: Elite Four controls."""
-        if ctx.invoked_subcommand is None:
-            await ctx.reply("Subcommands: `build`, `reset`, `info`")
-    
-    @gacha_elite.command(name="build")
-    @checks.admin()
-    async def elite_build(self, ctx: commands.Context):
-        """
-        Build (or rebuild) the Elite Four for this guild.
-        - Picks 4 unique themes at random
-        - Champion is randomly selected from Hall of Fame (if any), else None (NPC champion later)
-        """
-        g = self.config.guild(ctx.guild)
-        themes = random.sample(POKEMON_TYPES, k=4)
-        champ = await self._pick_champion_from_hof(ctx.guild)
-    
-        elite = {
-            "themes": themes,
-            "built_at": self._now_unix(),
-            "champion": champ  # may be None
-        }
-        await g.elite.set(elite)
-    
-        desc = f"Themes: {', '.join(t.title() for t in themes)}\n"
-        if champ:
-            desc += f"Champion: **{champ.get('name','Champion')}** (from Hall of Fame)"
-        else:
-            desc += "Champion: (NPC champion will be generated at challenge time)"
-        embed = discord.Embed(title="Elite Four Built", description=desc, color=discord.Color.orange())
-        await ctx.reply(embed=embed)
-    
-    @gacha_elite.command(name="reset")
-    @checks.admin()
-    async def elite_reset(self, ctx: commands.Context):
-        """Clear Elite Four + Champion (Hall of Fame not touched)."""
-        g = self.config.guild(ctx.guild)
-        await g.elite.set({"themes": [], "built_at": None, "champion": None})
-        await ctx.reply("Elite Four reset. Use `/gachaadmin elite build` to set up again.")
-    
-    @gacha_elite.command(name="info")
-    @checks.admin()
-    async def elite_info_admin(self, ctx: commands.Context):
-        """Show current Elite Four setup (admin)."""
-        elite = await self.config.guild(ctx.guild).elite()
-        if not elite or not elite.get("themes"):
-            await ctx.reply("Elite Four is not built yet.")
-            return
-        themes = elite.get("themes", [])
-        champ = elite.get("champion")
-        desc = f"Themes: {', '.join(t.title() for t in themes)}\n"
-        if champ and champ.get("team"):
-            desc += f"Champion: **{champ.get('name','Champion')}** (snapshot team of {len(champ['team'])})"
-        else:
-            desc += "Champion: (NPC champion will be generated at challenge time)"
-        await ctx.reply(embed=discord.Embed(title="Elite Four", description=desc, color=discord.Color.blurple()))
-
-
     @gachaadmin.command(name="levelup")
     @checks.admin()
     async def gadmin_levelup(self, ctx: commands.Context, member: discord.Member, query: str, levels: int):
@@ -2227,15 +1838,14 @@ class GachaCatchEmAll(commands.Cog):
         embed = discord.Embed(title=result_title, description=desc, color=discord.Color.teal())
         embed.add_field(name="Progress", value=f"{fmt_aw('Yours', a, aw_a)}\n{fmt_aw('Opponent', b, aw_b)}", inline=False)
         await ctx.reply(embed=embed)
-    
+
     @commands.hybrid_command(name="teambattle")
     async def teambattle(self, ctx: commands.Context, opponent: Optional[discord.Member] = None):
         """
-        Fast Team Battle:
-        - Uses lazy page generation (no precomposed images)
-        - Minimal PokéAPI hits (starter moves are local)
-        - XP scales by level diff; pending stat points on level-up
+        Battle with teams of up to 6. If opponent is omitted, you'll fight an NPC team
+        near your team's average level. Everyone gains XP, scaled by level difference.
         """
+        await ctx.send("searching for oppenent this can take a moment or two...")
         caller = ctx.author
         opp = opponent
     
@@ -2250,8 +1860,7 @@ class GachaCatchEmAll(commands.Cog):
                 return
         for e in caller_team:
             await self._ensure_moves_on_entry(e)
-    
-        # ----- Difficulty (for NPCs)
+
         mode = "normal"
         r = random.random()
         if r < 0.10:
@@ -2259,7 +1868,7 @@ class GachaCatchEmAll(commands.Cog):
         elif r < 0.35:
             mode = "hard"
         profile = DIFFICULTY_PROFILES.get(mode, DIFFICULTY_PROFILES["normal"])
-    
+        
         # ----- Load opponent team or generate NPC team
         if opp:
             opp_uids = await self._get_team(opp)
@@ -2274,41 +1883,56 @@ class GachaCatchEmAll(commands.Cog):
                 await self._ensure_moves_on_entry(e)
         else:
             avg_lvl = self._avg_level(caller_team)
-            opp_team = await self._generate_npc_team(target_avg_level=avg_lvl, size=min(6, len(caller_team)))
+            opp_team = await self._generate_npc_team(target_avg_level=avg_lvl, size=min(6, len(caller_team) or 6))
             await self._apply_difficulty_to_npc_team(opp_team, profile)
     
-        # ----- Carryover HP maps
+        # ----- Team vs Team (frontline KO → next)
+        ci = oi = 0
+        duel_count = 0
+    
+        caller_awards: Dict[str, int] = {}
+        opp_awards: Dict[str, int] = {}
+    
+        # collect per-duel actions for page rendering & short recap
+        duel_action_packets: List[Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]]]] = []
+        brief_recap: List[str] = []
+        
+# after caller_team / opp_team are finalized
         caller_hp: Dict[str, Tuple[int, int]] = {}
         opp_hp: Dict[str, Tuple[int, int]] = {}
-    
+        
         def _seed_hp_map(team, store):
             for e in team:
                 mx = self._initial_hp(e)
                 store[e["uid"]] = (mx, mx)  # (cur, max)
+        
         _seed_hp_map(caller_team, caller_hp)
         _seed_hp_map(opp_team, opp_hp)
-    
-        # ----- Simulate frontline vs frontline
-        ci = oi = 0
-        duel_action_packets: List[Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]]]] = []
-        caller_awards: Dict[str, int] = {}
-        opp_awards: Dict[str, int] = {}
+
     
         while ci < len(caller_team) and oi < len(opp_team):
             A = caller_team[ci]
             B = opp_team[oi]
-    
+        
             A_cur, A_max = caller_hp[A["uid"]]
             B_cur, B_max = opp_hp[B["uid"]]
-    
+        
             winner, actions, A_end, B_end = await self._simulate_duel(A, B, A_start=A_cur, B_start=B_cur)
             duel_action_packets.append((A, B, actions))
-    
-            # update carried HP
+        
+            # Update carried HP
             caller_hp[A["uid"]] = (A_end, A_max)
             opp_hp[B["uid"]]   = (B_end, B_max)
-    
-            # XP scaling per duel outcome
+        
+            # Recap line (optional)
+            if actions:
+                first = actions[0]
+                brief_recap.append(
+                    f"— Duel {len(duel_action_packets)}: {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) "
+                    f"vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)}) • first move: **{first['move_name']}**"
+                )
+        
+            # XP scaling (unchanged)
             A_lvl = int(A.get("level", 1))
             B_lvl = int(B.get("level", 1))
             A_scale = self._xp_scale(A_lvl, B_lvl)
@@ -2317,26 +1941,30 @@ class GachaCatchEmAll(commands.Cog):
             A_lose_xp = int(round(25 * A_scale))
             B_win_xp = int(round(40 * B_scale))
             B_lose_xp = int(round(25 * B_scale))
-    
+        
+            # Advance indexes based on who fainted (winner keeps remaining HP)
             if winner == "A":
                 caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_win_xp
-                opp_awards[B["uid"]]    = opp_awards.get(B["uid"], 0) + B_lose_xp
-                oi += 1  # B fainted
+                opp_awards[B["uid"]]   = opp_awards.get(B["uid"], 0) + B_lose_xp
+                oi += 1  # B fainted; A stays with A_end HP
             else:
                 caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_lose_xp
-                opp_awards[B["uid"]]    = opp_awards.get(B["uid"], 0) + B_win_xp
-                ci += 1  # A fainted
-    
+                opp_awards[B["uid"]]   = opp_awards.get(B["uid"], 0) + B_win_xp
+                ci += 1  # A fainted; B stays with B_end HP
+        
+            
         # ----- Match winner & team bonus
         caller_alive = ci < len(caller_team)
+        match_winner = "caller" if caller_alive else "opp"
+    
         caller_avg = self._avg_level(caller_team)
         opp_avg = self._avg_level(opp_team)
         caller_match_scale = self._xp_scale(caller_avg, opp_avg)
-        opp_match_scale    = self._xp_scale(opp_avg, caller_avg)
+        opp_match_scale = self._xp_scale(opp_avg, caller_avg)
         bonus_caller = int(round(20 * caller_match_scale))
-        bonus_opp    = int(round(20 * opp_match_scale))
+        bonus_opp = int(round(20 * opp_match_scale))
     
-        if caller_alive:
+        if match_winner == "caller":
             for e in caller_team:
                 caller_awards[e["uid"]] = caller_awards.get(e["uid"], 0) + bonus_caller
         else:
@@ -2359,12 +1987,11 @@ class GachaCatchEmAll(commands.Cog):
             return lines
     
         caller_progress = _apply_awards(caller_team, caller_awards)
-        opp_progress    = _apply_awards([e for e in opp_team if not e.get("_npc")], opp_awards)
+        opp_progress = _apply_awards([e for e in opp_team if not e.get("_npc")], opp_awards)
     
-        # Persist user boxes
+        # persist boxes
         await self.config.user(caller).pokebox.set(caller_box)
         if opp and opp_progress:
-            # replace updated entries in opponent's full box
             opp_box_full = await self.config.user(opp).pokebox()
             opp_map = {str(e.get("uid")): e for e in opp_team}
             new_opp_box = []
@@ -2373,72 +2000,93 @@ class GachaCatchEmAll(commands.Cog):
                 new_opp_box.append(opp_map.get(uid, e))
             await self.config.user(opp).pokebox.set(new_opp_box)
     
-        # ----- Results embed (compact, fast)
-        caller_won = caller_alive
+        # ----- Results page
+        # ----- Results page (REPLACE OLD BLOCK WITH THIS) -----
+        caller_won = (ci < len(caller_team))
         title = "🏆 Victory!" if caller_won else f"💥 Defeat vs {(opp.display_name if opp else 'NPC')}"
         color = discord.Color.green() if caller_won else discord.Color.red()
         results = discord.Embed(title=title, color=color)
-    
-        def _fmt_team_block(team: List[Dict[str, Any]], awards: Dict[str, int]) -> str:
+        
+        def _fmt_team_block(team: List[Dict[str, Any]], awards: Dict[str, int]) -> str:    
             lines: List[str] = []
             for e in team:
                 lvl = int(e.get("level", 1))
                 xp  = int(e.get("xp", 0))
                 gained = int(awards.get(e.get("uid", ""), 0))
-                bar = self._xp_bar(lvl, xp)
+                bar = self._xp_bar(lvl, xp)  # uses your existing helper
                 name = e.get("nickname") or e.get("name", "?")
                 uid = e.get("uid", "?")
-                lines.append(f"`{uid}` **{name}** — Lv **{lvl}** (+{gained} XP)\n{bar}")
+                # each mon: name + level on one line, XP bar on next
+                lines.append(f"`{uid}` **{name}** — Lv **{lvl}** (+{gained} XP)\n{bar}")   
             return "\n".join(lines) if lines else "_No Pokémon_"
-    
+        
+        # Caller team block
         results.add_field(
             name=f"{caller.display_name}",
-            value=_fmt_team_block(caller_team, caller_awards),
+            value=_fmt_team_block(caller_team,caller_awards),
             inline=False
         )
-        if opp and opp_progress:
-            results.add_field(
-                name=f"{opp.display_name}",
-                value=_fmt_team_block([e for e in opp_team if not e.get("_npc")], opp_awards),
-                inline=False
-            )
     
-        # ----- Build lightweight frames for the lazy paginator (no images)
-        frames: List[Dict[str, Any]] = []
-        for A, B, actions in duel_action_packets:
-            for act in actions:
-                act["A_bar"] = self._hp_bar(act["A_hp"], act["A_max"], width=20)
-                act["B_bar"] = self._hp_bar(act["B_hp"], act["B_max"], width=20)
-                act["A_level"] = int(A.get("level", 1))
-                act["B_level"] = int(B.get("level", 1))
-                frames.append(act)
+        
+        # (Optional) keep your thumbnails/author icons after this, unchanged.
+
+    
+        # ----- Build one page per action (HP bars + BOTH sprites composited side-by-side)
+        def hpbar(cur: int, mx: int) -> str:
+            return self._hp_bar(cur, mx, width=20)
     
         header_base = f"{caller.display_name} vs {(opp.display_name if opp else 'NPC Team')}"
+        pages_with_files: List[Tuple[discord.Embed, Optional[discord.File]]] = []
     
-        view = LazyBattlePaginator(
+        for A, B, actions in duel_action_packets:
+            duel_header = f"— {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)})"
+            for act in actions:
+                a_bar = hpbar(act["A_hp"], act["A_max"])
+                b_bar = hpbar(act["B_hp"], act["B_max"])
+                desc = (
+                    f"{duel_header}\n\n"
+                    f"**Turn {act['turn']}** — "
+                    f"{(caller.display_name + ' ') if act['attacker']=='A' else ((opp.display_name if opp else 'Opponent') + ' ')}"
+                    f"{'(' + (act['A_name'] if act['attacker']=='A' else act['B_name']) + ')'} used **{act['move_name']}** "
+                    f"for **{act['damage']}**\n\n"
+                    f"**{act['A_name']}** HP: {a_bar}  {act['A_hp']}/{act['A_max']}\n"
+                    f"**{act['B_name']}** HP: {b_bar}  {act['B_hp']}/{act['B_max']}\n"
+                )
+    
+                em = discord.Embed(title=f"Battle — {header_base}", description=desc, color=discord.Color.teal())
+    
+                # Make a side-by-side image (if Pillow available & both URLs OK)
+                file = await self._compose_vs_image(act["A_sprite"], act["B_sprite"])
+                if file:
+                    em.set_image(url="attachment://vs.png")
+                else:
+                    # Fallback: put A as thumb, B as author icon
+                    if act["A_sprite"]:
+                        em.set_thumbnail(url=act["A_sprite"])
+                    if act["B_sprite"]:
+                        em.set_author(name=act["B_name"], icon_url=act["B_sprite"])
+    
+                pages_with_files.append((em, file))
+    
+        if not pages_with_files:
+            pages_with_files.append(
+                (discord.Embed(title="Battle", description="Battle begins!", color=discord.Color.teal()), None)
+            )
+    
+        # ----- Send paginator (NOTE: module-level BattlePaginator; no `self.`)
+        view = BattlePaginator(
             author=caller,
-            frames=frames,
-            header_base=header_base,
+            pages_with_files=pages_with_files,
             results_embed=results,
-            opponent=opp,
-            use_images=False  # keep False for speed/RAM; flip True if you want sprite pairing
+            opponent=opp
         )
-        # Let paginator call the cog's image composer if you later enable images
-        view._compose_vs_image = self._compose_vs_image  # type: ignore
     
-        # Send immediately with the first frame (or results if no frames)
-        if frames:
-            first_emb, first_file = await view._make_page(0)
-        else:
-            view._showing_results = True
-            first_emb, first_file = await view._make_page(0)
-    
+        first_emb, first_file = view._current()
         if first_file:
             msg = await ctx.reply(embed=first_emb, file=first_file, view=view)
         else:
             msg = await ctx.reply(embed=first_emb, view=view)
         view.message = msg
-
 
         
         # Thumbnails (use first team sprites if available)
@@ -2821,156 +2469,6 @@ class ConfirmCombineView(discord.ui.View):
         except Exception:
             pass
         self.stop()
-
-class LazyBattlePaginator(discord.ui.View):
-    """
-    Generates battle pages lazily so we don't download sprites/compose images for
-    hundreds of actions before the first message is sent.
-    """
-    def __init__(
-        self,
-        author: discord.abc.User,
-        frames: List[Dict[str, Any]],  # each is one action dict from your _simulate_duel()
-        header_base: str,
-        results_embed: discord.Embed,
-        opponent: Optional[discord.abc.User] = None,
-        use_images: bool = True,  # turn images off by default for speed/RAM
-        timeout: int = 300
-    ):
-        super().__init__(timeout=timeout)
-        self.author = author
-        self.opponent = opponent
-        self.frames = frames
-        self.header_base = header_base
-        self.results_embed = results_embed
-        self.use_images = use_images
-        self.index = 0
-        self._showing_results = False
-        self.message: Optional[discord.Message] = None
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        allowed = {self.author.id}
-        if self.opponent:
-            allowed.add(self.opponent.id)
-        if interaction.user.id not in allowed:
-            await interaction.response.send_message("These controls aren't yours.", ephemeral=True)
-            return False
-        return True
-
-    def _disable_all(self):
-        for c in self.children:
-            if isinstance(c, discord.ui.Button):
-                c.disabled = True
-
-    async def on_timeout(self):
-        self._disable_all()
-        if self.message:
-            try:
-                await self.message.edit(view=self)
-            except Exception:
-                pass
-
-    async def _make_page(self, i: int) -> Tuple[discord.Embed, List[discord.File]]:
-        act = self.frames[i]
-        emb = discord.Embed(title=f"Battle — {self.header_base}")
-    
-        # Build action text (same as before)
-        emb.description = (
-            f"Turn {act['turn']}: **{act['A_name']}** vs **{act['B_name']}**\n"
-            f"{act['attacker']} used **{act['move_name']}** for {act['damage']} damage!"
-        )
-    
-        files = []
-        try:
-            # fetch A sprite
-            async with aiohttp.ClientSession() as session:
-                async with session.get(act["A_sprite"]) as respA:
-                    if respA.status == 200:
-                        files.append(discord.File(io.BytesIO(await respA.read()), filename="A.png"))
-                async with session.get(act["B_sprite"]) as respB:
-                    if respB.status == 200:
-                        files.append(discord.File(io.BytesIO(await respB.read()), filename="B.png"))
-        except Exception:
-            pass
-    
-        # attach one as embed image, other as thumbnail
-        if files:
-            emb.set_thumbnail(url="attachment://A.png")
-            if len(files) > 1:
-                emb.set_image(url="attachment://B.png")
-        return emb, files
-
-
-
-    # We’ll attach the cog’s helper at runtime (see constructor call below)
-    async def _compose_vs_image(self, left_url: str, right_url: str) -> Optional[discord.File]:
-        return None
-
-    async def _update(self, interaction: discord.Interaction):
-        if not interaction.response.is_done():
-            try:
-                await interaction.response.defer()
-            except Exception:
-                pass
-        if not self.message:
-            return
-        emb, file = await self._make_page(self.index)
-        try:
-            if file:
-                await self.message.edit(embed=emb, attachments=[file], view=self)
-            else:
-                await self.message.edit(embed=emb, attachments=[], view=self)
-        except Exception:
-            pass
-
-    @discord.ui.button(label="◀◀", style=discord.ButtonStyle.secondary)
-    async def first(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self._showing_results = False
-        self.index = 0
-        await self._update(interaction)
-
-    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
-    async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self._showing_results = False
-        if self.index > 0:
-            self.index -= 1
-        await self._update(interaction)
-
-    @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
-    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self._showing_results:
-            await self._update(interaction)
-            return
-        if self.index < len(self.frames) - 1:
-            self.index += 1
-            await self._update(interaction)
-        else:
-            self._showing_results = True
-            await self._update(interaction)
-
-    @discord.ui.button(label="▶▶", style=discord.ButtonStyle.secondary)
-    async def last(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self._showing_results = False
-        self.index = len(self.frames) - 1
-        await self._update(interaction)
-
-    @discord.ui.button(label="Skip to Results", style=discord.ButtonStyle.primary, emoji="⏭")
-    async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self._showing_results = True
-        await self._update(interaction)
-
-    @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
-    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self._disable_all()
-        if not interaction.response.is_done():
-            try:
-                await interaction.response.defer()
-            except Exception:
-                pass
-        if self.message:
-            await self.message.edit(view=self)
-        self.stop()
-
 
 
     
