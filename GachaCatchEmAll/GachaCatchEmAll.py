@@ -110,6 +110,16 @@ class GachaCatchEmAll(commands.Cog):
         pct = (l1 // 10) + (l2 // 10)
         return min(10, max(0, pct))
 
+    def _entry_move_names(self, e: Dict[str, Any]) -> List[str]:
+        """Return up to 4 readable move names for a mon (ensuring at least 1)."""
+        names = [m for m in (e.get("moves") or []) if isinstance(m, str)]
+        if not names:
+            # best-effort starter
+            names = []
+        # Trim to 4; title-case for buttons
+        return [n for n in names][:4] or ["tackle"]
+    
+
 
     def _resolve_entry_by_any(self, box: List[Dict[str, Any]], query: str) -> Optional[Dict[str, Any]]:
         q = (query or "").strip().lower()
@@ -1842,10 +1852,11 @@ class GachaCatchEmAll(commands.Cog):
     @commands.hybrid_command(name="teambattle")
     async def teambattle(self, ctx: commands.Context, opponent: Optional[discord.Member] = None):
         """
-        Battle with teams of up to 6. If opponent is omitted, you'll fight an NPC team
-        near your team's average level. Everyone gains XP, scaled by level difference.
+        Battle with teams of up to 6 in an interactive, turn-by-turn fight.
+        - If opponent is omitted, you fight an NPC team near your team's average level.
+        - Each turn, players choose a move via buttons (NPC/opponent can auto-pick).
+        - A '⏭ Auto-Sim to Results' button lets you jump to the end and see the recap/results.
         """
-        await ctx.send("searching for oppenent this can take a moment or two...")
         caller = ctx.author
         opp = opponent
     
@@ -1860,7 +1871,8 @@ class GachaCatchEmAll(commands.Cog):
                 return
         for e in caller_team:
             await self._ensure_moves_on_entry(e)
-
+    
+        # ----- Pick difficulty profile for NPCs
         mode = "normal"
         r = random.random()
         if r < 0.10:
@@ -1868,7 +1880,7 @@ class GachaCatchEmAll(commands.Cog):
         elif r < 0.35:
             mode = "hard"
         profile = DIFFICULTY_PROFILES.get(mode, DIFFICULTY_PROFILES["normal"])
-        
+    
         # ----- Load opponent team or generate NPC team
         if opp:
             opp_uids = await self._get_team(opp)
@@ -1883,305 +1895,24 @@ class GachaCatchEmAll(commands.Cog):
                 await self._ensure_moves_on_entry(e)
         else:
             avg_lvl = self._avg_level(caller_team)
-            opp_team = await self._generate_npc_team(target_avg_level=avg_lvl, size=min(6, len(caller_team) or 6))
+            opp_team = await self._generate_npc_team(
+                target_avg_level=avg_lvl,
+                size=min(6, len(caller_team) or 6)
+            )
             await self._apply_difficulty_to_npc_team(opp_team, profile)
     
-        # ----- Team vs Team (frontline KO → next)
-        ci = oi = 0
-        duel_count = 0
-    
-        caller_awards: Dict[str, int] = {}
-        opp_awards: Dict[str, int] = {}
-    
-        # collect per-duel actions for page rendering & short recap
-        duel_action_packets: List[Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]]]] = []
-        brief_recap: List[str] = []
-        
-# after caller_team / opp_team are finalized
-        caller_hp: Dict[str, Tuple[int, int]] = {}
-        opp_hp: Dict[str, Tuple[int, int]] = {}
-        
-        def _seed_hp_map(team, store):
-            for e in team:
-                mx = self._initial_hp(e)
-                store[e["uid"]] = (mx, mx)  # (cur, max)
-        
-        _seed_hp_map(caller_team, caller_hp)
-        _seed_hp_map(opp_team, opp_hp)
-
-    
-        while ci < len(caller_team) and oi < len(opp_team):
-            A = caller_team[ci]
-            B = opp_team[oi]
-        
-            A_cur, A_max = caller_hp[A["uid"]]
-            B_cur, B_max = opp_hp[B["uid"]]
-        
-            winner, actions, A_end, B_end = await self._simulate_duel(A, B, A_start=A_cur, B_start=B_cur)
-            duel_action_packets.append((A, B, actions))
-        
-            # Update carried HP
-            caller_hp[A["uid"]] = (A_end, A_max)
-            opp_hp[B["uid"]]   = (B_end, B_max)
-        
-            # Recap line (optional)
-            if actions:
-                first = actions[0]
-                brief_recap.append(
-                    f"— Duel {len(duel_action_packets)}: {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) "
-                    f"vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)}) • first move: **{first['move_name']}**"
-                )
-        
-            # XP scaling (unchanged)
-            A_lvl = int(A.get("level", 1))
-            B_lvl = int(B.get("level", 1))
-            A_scale = self._xp_scale(A_lvl, B_lvl)
-            B_scale = self._xp_scale(B_lvl, A_lvl)
-            A_win_xp = int(round(40 * A_scale))
-            A_lose_xp = int(round(25 * A_scale))
-            B_win_xp = int(round(40 * B_scale))
-            B_lose_xp = int(round(25 * B_scale))
-        
-            # Advance indexes based on who fainted (winner keeps remaining HP)
-            if winner == "A":
-                caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_win_xp
-                opp_awards[B["uid"]]   = opp_awards.get(B["uid"], 0) + B_lose_xp
-                oi += 1  # B fainted; A stays with A_end HP
-            else:
-                caller_awards[A["uid"]] = caller_awards.get(A["uid"], 0) + A_lose_xp
-                opp_awards[B["uid"]]   = opp_awards.get(B["uid"], 0) + B_win_xp
-                ci += 1  # A fainted; B stays with B_end HP
-        
-            
-        # ----- Match winner & team bonus
-        caller_alive = ci < len(caller_team)
-        match_winner = "caller" if caller_alive else "opp"
-    
-        caller_avg = self._avg_level(caller_team)
-        opp_avg = self._avg_level(opp_team)
-        caller_match_scale = self._xp_scale(caller_avg, opp_avg)
-        opp_match_scale = self._xp_scale(opp_avg, caller_avg)
-        bonus_caller = int(round(20 * caller_match_scale))
-        bonus_opp = int(round(20 * opp_match_scale))
-    
-        if match_winner == "caller":
-            for e in caller_team:
-                caller_awards[e["uid"]] = caller_awards.get(e["uid"], 0) + bonus_caller
-        else:
-            for e in opp_team:
-                opp_awards[e["uid"]] = opp_awards.get(e["uid"], 0) + bonus_opp
-    
-        # ----- Apply XP & pending points (ignore NPC persistence)
-        def _apply_awards(entries: List[Dict[str, Any]], awards: Dict[str, int]) -> List[str]:
-            lines = []
-            for e in entries:
-                uid = e.get("uid")
-                if not uid or uid not in awards:
-                    continue
-                gain = int(awards[uid])
-                before = int(e.get("level", 1))
-                lvl, xp, _ = self._add_xp_to_entry(e, gain)
-                pts = self._give_stat_points_for_levels(before, lvl)
-                e["pending_points"] = int(e.get("pending_points", 0)) + pts
-                lines.append(f"`{uid}` {e.get('nickname') or e.get('name','?')} +{gain} XP → Lv {before}→**{lvl}** (+{pts} pts)")
-            return lines
-    
-        caller_progress = _apply_awards(caller_team, caller_awards)
-        opp_progress = _apply_awards([e for e in opp_team if not e.get("_npc")], opp_awards)
-    
-        # persist boxes
-        await self.config.user(caller).pokebox.set(caller_box)
-        if opp and opp_progress:
-            opp_box_full = await self.config.user(opp).pokebox()
-            opp_map = {str(e.get("uid")): e for e in opp_team}
-            new_opp_box = []
-            for e in opp_box_full:
-                uid = str(e.get("uid"))
-                new_opp_box.append(opp_map.get(uid, e))
-            await self.config.user(opp).pokebox.set(new_opp_box)
-    
-        # ----- Results page
-        # ----- Results page (REPLACE OLD BLOCK WITH THIS) -----
-        caller_won = (ci < len(caller_team))
-        title = "🏆 Victory!" if caller_won else f"💥 Defeat vs {(opp.display_name if opp else 'NPC')}"
-        color = discord.Color.green() if caller_won else discord.Color.red()
-        results = discord.Embed(title=title, color=color)
-        
-        def _fmt_team_block(team: List[Dict[str, Any]], awards: Dict[str, int]) -> str:    
-            lines: List[str] = []
-            for e in team:
-                lvl = int(e.get("level", 1))
-                xp  = int(e.get("xp", 0))
-                gained = int(awards.get(e.get("uid", ""), 0))
-                bar = self._xp_bar(lvl, xp)  # uses your existing helper
-                name = e.get("nickname") or e.get("name", "?")
-                uid = e.get("uid", "?")
-                # each mon: name + level on one line, XP bar on next
-                lines.append(f"`{uid}` **{name}** — Lv **{lvl}** (+{gained} XP)\n{bar}")   
-            return "\n".join(lines) if lines else "_No Pokémon_"
-        
-        # Caller team block
-        results.add_field(
-            name=f"{caller.display_name}",
-            value=_fmt_team_block(caller_team,caller_awards),
-            inline=False
-        )
-    
-        
-        # (Optional) keep your thumbnails/author icons after this, unchanged.
-
-    
-        # ----- Build one page per action (HP bars + BOTH sprites composited side-by-side)
-        def hpbar(cur: int, mx: int) -> str:
-            return self._hp_bar(cur, mx, width=20)
-    
-        header_base = f"{caller.display_name} vs {(opp.display_name if opp else 'NPC Team')}"
-        pages_with_files: List[Tuple[discord.Embed, Optional[discord.File]]] = []
-    
-        for A, B, actions in duel_action_packets:
-            duel_header = f"— {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)})"
-            for act in actions:
-                a_bar = hpbar(act["A_hp"], act["A_max"])
-                b_bar = hpbar(act["B_hp"], act["B_max"])
-                desc = (
-                    f"{duel_header}\n\n"
-                    f"**Turn {act['turn']}** — "
-                    f"{(caller.display_name + ' ') if act['attacker']=='A' else ((opp.display_name if opp else 'Opponent') + ' ')}"
-                    f"{'(' + (act['A_name'] if act['attacker']=='A' else act['B_name']) + ')'} used **{act['move_name']}** "
-                    f"for **{act['damage']}**\n\n"
-                    f"**{act['A_name']}** HP: {a_bar}  {act['A_hp']}/{act['A_max']}\n"
-                    f"**{act['B_name']}** HP: {b_bar}  {act['B_hp']}/{act['B_max']}\n"
-                )
-    
-                em = discord.Embed(title=f"Battle — {header_base}", description=desc, color=discord.Color.teal())
-    
-                # Make a side-by-side image (if Pillow available & both URLs OK)
-                file = await self._compose_vs_image(act["A_sprite"], act["B_sprite"])
-                if file:
-                    em.set_image(url="attachment://vs.png")
-                else:
-                    # Fallback: put A as thumb, B as author icon
-                    if act["A_sprite"]:
-                        em.set_thumbnail(url=act["A_sprite"])
-                    if act["B_sprite"]:
-                        em.set_author(name=act["B_name"], icon_url=act["B_sprite"])
-    
-                pages_with_files.append((em, file))
-    
-        if not pages_with_files:
-            pages_with_files.append(
-                (discord.Embed(title="Battle", description="Battle begins!", color=discord.Color.teal()), None)
-            )
-    
-        # ----- Send paginator (NOTE: module-level BattlePaginator; no `self.`)
-        view = BattlePaginator(
-            author=caller,
-            pages_with_files=pages_with_files,
-            results_embed=results,
+        # ----- Launch interactive battle UI
+        view = InteractiveTeamBattleView(
+            cog=self,
+            caller=caller,
+            caller_team=caller_team,
+            opp_team=opp_team,
             opponent=opp
         )
-    
-        first_emb, first_file = view._current()
-        if first_file:
-            msg = await ctx.reply(embed=first_emb, file=first_file, view=view)
-        else:
-            msg = await ctx.reply(embed=first_emb, view=view)
+        embed = view._current_embed()
+        msg = await ctx.reply(embed=embed, view=view)
         view.message = msg
 
-        
-        # Thumbnails (use first team sprites if available)
-        def _first_sprite(team: List[Dict[str, Any]]) -> Optional[str]:
-            for e in team:
-                s = e.get("sprite")
-                if s:
-                    return s
-            return None
-        
-        caller_thumb = _first_sprite(caller_team)
-        opp_thumb = _first_sprite(opp_team)
-        if caller_thumb:
-            results.set_thumbnail(url=caller_thumb)
-        if opp_thumb:
-            # Put opponent sprite into the author icon if available (neat visual)
-            results.set_author(name=(opp.display_name if opp else "NPC Team"), icon_url=opp_thumb)
-        
-        # ----- Build play-by-play pages -----
-        # We already appended duel headlines and last 4 lines of each duel into battle_log.
-        # Let's paginate the FULL play-by-play from all duels for a better story:
-        full_lines: List[str] = []
-        # Re-sim-summary: already in your loop you had per-duel 'log' (list of turn lines).
-        # If you didn't store all, you can just use `battle_log` too. We'll use battle_log as-is:
-        #full_lines = battle_log[:] if battle_log else ["Battle started."]
-        
-       #page_lines = self._chunk_lines(full_lines, size=6)  # 6 lines per page
-        pages: List[discord.Embed] = []
-        
-        def _mk_page(lines: List[str], header: str, left_img: Optional[str], right_img: Optional[str]) -> discord.Embed:
-            embed = discord.Embed(title=header, description="\n".join(lines), color=discord.Color.teal())
-            if left_img:
-                embed.set_thumbnail(url=left_img)
-            if right_img:
-                embed.set_author(name=(opp.display_name if opp else "NPC Team"), icon_url=right_img)
-            return embed
-        
-        header_base = f"{caller.display_name} vs {(opp.display_name if opp else 'NPC Team')}"
-        #for i, chunk in enumerate(page_lines, start=1):
-            #pages.append(_mk_page(chunk, f"Battle — {header_base}", caller_thumb, opp_thumb))
-        
-        # Safety: at least one page
-        if not pages:
-        # Fallback: at least one generic page
-            pages = [(discord.Embed(title="Battle", description="Battle begins!", color=discord.Color.teal()), None)]
-
-    async def _simulate_duel(
-        self,
-        A: Dict[str, Any],
-        B: Dict[str, Any],
-        A_start: Optional[int] = None,
-        B_start: Optional[int] = None
-    ) -> Tuple[str, List[Dict[str, Any]], int, int]:
-        a = dict(A); b = dict(B)
-        A_max = self._initial_hp(a)
-        B_max = self._initial_hp(b)
-        
-        A_hp = A_max if A_start is None else max(0, min(A_start, A_max))
-        B_hp = B_max if B_start is None else max(0, min(B_start, B_max))
-        
-        A_spd = self._safe_stats(a)["speed"]
-        B_spd = self._safe_stats(b)["speed"]
-        first_is_A = True if A_spd >= B_spd else False
-        
-        actions: List[Dict[str, Any]] = []
-        turn = 1
-        while A_hp > 0 and B_hp > 0 and turn <= 100:
-            order = [("A", a, b), ("B", b, a)] if first_is_A else [("B", b, a), ("A", a, b)]
-            for who, atk, dfn in order:
-                if A_hp <= 0 or B_hp <= 0:
-                    break
-                move = await self._pick_move(atk)
-                dmg = self._calc_move_damage(atk, dfn, move)
-                if who == "A":
-                    B_hp -= dmg
-                else:
-                    A_hp -= dmg
-                actions.append({
-                        "attacker": who,
-                        "move_name": str(move.get("name","")).title() or "Move",
-                        "damage": int(dmg),
-                        "A_hp": max(0, A_hp),
-                        "B_hp": max(0, B_hp),
-                        "A_max": int(A_max),
-                        "B_max": int(B_max),
-                        "A_name": a.get("nickname") or a.get("name", "?"),
-                        "B_name": b.get("nickname") or b.get("name", "?"),
-                        "A_sprite": a.get("sprite"),
-                        "B_sprite": b.get("sprite"),
-                        "turn": turn,
-                })
-            turn += 1
-        
-        winner = "A" if A_hp > 0 else ("B" if B_hp > 0 else random.choice(["A","B"]))
-        return winner, actions, max(0, A_hp), max(0, B_hp)
 
 
 
@@ -2469,6 +2200,481 @@ class ConfirmCombineView(discord.ui.View):
         except Exception:
             pass
         self.stop()
+
+class InteractiveTeamBattleView(discord.ui.View):
+    """
+    Turn-by-turn interactive 6v6.
+    - Caller controls their active mon's move.
+    - If an opponent is provided, they can control their active mon too.
+    - Otherwise the opponent/NPC picks randomly.
+    - Always shows an 'Auto-Sim to Results' button to jump to the end.
+    """
+    def __init__(
+        self,
+        cog: "GachaCatchEmAll",
+        caller: discord.abc.User,
+        caller_team: List[Dict[str, Any]],
+        opp_team: List[Dict[str, Any]],
+        opponent: Optional[discord.abc.User] = None,
+        timeout: int = 420
+    ):
+        super().__init__(timeout=timeout)
+        self.cog = cog
+        self.caller = caller
+        self.opponent = opponent
+        self.caller_team = caller_team
+        self.opp_team = opp_team
+        # indexes into each team
+        self.ci = 0
+        self.oi = 0
+        # persistent HP across duels
+        self.caller_hp: Dict[str, Tuple[int, int]] = {}
+        self.opp_hp: Dict[str, Tuple[int, int]] = {}
+        self._seed_hp_map(self.caller_team, self.caller_hp)
+        self._seed_hp_map(self.opp_team, self.opp_hp)
+
+        # progress/xp buckets (we'll compute final XP on finish)
+        self._action_log: List[str] = []  # short lines for recap
+        self._caller_awards: Dict[str, int] = {}
+        self._opp_awards: Dict[str, int] = {}
+
+        # live message
+        self.message: Optional[discord.Message] = None
+
+        # dynamic move buttons (filled on first render)
+        self._rebuild_move_buttons()
+
+    # ---------- guards / boilerplate ----------
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        allowed = {self.caller.id}
+        if self.opponent:
+            allowed.add(self.opponent.id)
+        if interaction.user.id not in allowed:
+            await interaction.response.send_message("These controls aren't yours.", ephemeral=True)
+            return False
+        return True
+
+    def _disable_all(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+
+    async def on_timeout(self):
+        self._disable_all()
+        try:
+            if self.message:
+                await self.message.edit(view=self)
+        except Exception:
+            pass
+
+    # ---------- state helpers ----------
+    def _seed_hp_map(self, team, store):
+        for e in team:
+            mx = self.cog._initial_hp(e)
+            store[e["uid"]] = (mx, mx)  # cur, max
+
+    def _alive(self) -> bool:
+        return self.ci < len(self.caller_team) and self.oi < len(self.opp_team)
+
+    def _active_pair(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        return self.caller_team[self.ci], self.opp_team[self.oi]
+
+    def _hp_tuple(self, e: Dict[str, Any], store: Dict[str, Tuple[int, int]]) -> Tuple[int, int]:
+        return store.get(e["uid"], (self.cog._initial_hp(e), self.cog._initial_hp(e)))
+
+    def _set_hp(self, e: Dict[str, Any], cur: int, store: Dict[str, Tuple[int, int]]):
+        _, mx = self._hp_tuple(e, store)
+        store[e["uid"]] = (max(0, cur), mx)
+
+    def _who_controls(self, user: discord.abc.User) -> str:
+        """Return which side this user controls: 'caller', 'opp', or ''."""
+        if user.id == self.caller.id:
+            return "caller"
+        if self.opponent and user.id == self.opponent.id:
+            return "opp"
+        return ""
+
+    def _hpbar(self, cur: int, mx: int) -> str:
+        return self.cog._hp_bar(cur, mx, width=20)
+
+    # ---------- rendering ----------
+    def _current_embed(self) -> discord.Embed:
+        A, B = self._active_pair()
+        A_cur, A_max = self._hp_tuple(A, self.caller_hp)
+        B_cur, B_max = self._hp_tuple(B, self.opp_hp)
+
+        header = f"{self.caller.display_name} vs {(self.opponent.display_name if self.opponent else 'NPC Team')}"
+        duel = f"{A.get('nickname') or A['name']} (Lv {A.get('level',1)}) vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)})"
+
+        desc = (
+            f"**Duel {self.ci+1 if self.ci==self.oi else max(self.ci,self.oi)+1}** — {duel}\n\n"
+            f"**{A.get('nickname') or A['name']}** HP: {self._hpbar(A_cur,A_max)}  {A_cur}/{A_max}\n"
+            f"**{B.get('nickname') or B['name']}** HP: {self._hpbar(B_cur,B_max)}  {B_cur}/{B_max}\n"
+        )
+
+        em = discord.Embed(title=f"Team Battle — {header}", description=desc, color=discord.Color.teal())
+        # image styling
+        a_s = A.get("sprite"); b_s = B.get("sprite")
+        if a_s:
+            em.set_thumbnail(url=a_s)
+        if b_s:
+            em.set_author(name=(B.get("nickname") or B.get("name","?")), icon_url=b_s)
+
+        if self._action_log:
+            tail = "\n".join(self._action_log[-4:])
+            em.add_field(name="Recent", value=tail, inline=False)
+        em.set_footer(text="Choose a move or ⏭ Auto-Sim to Results")
+        return em
+
+    async def _refresh(self, interaction: Optional[discord.Interaction] = None):
+        """Refresh moves + embed in place."""
+        self._rebuild_move_buttons()
+        if interaction and not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+        if self.message:
+            await self.message.edit(embed=self._current_embed(), view=self)
+
+    def _rebuild_move_buttons(self):
+        """Remove old move buttons and add new ones for whichever users can act."""
+        # Clear old move buttons but keep utility buttons (Auto, Close)
+        keep = {"auto", "close"}
+        to_remove = [c for c in self.children if isinstance(c, discord.ui.Button) and getattr(c, "custom_id", None) not in keep]
+        for c in to_remove:
+            self.remove_item(c)
+
+        if not self._alive():
+            return
+
+        A, B = self._active_pair()
+        A_moves = self.cog._entry_move_names(A)
+        B_moves = self.cog._entry_move_names(B)
+
+        # Caller move buttons
+        for name in A_moves:
+            btn = discord.ui.Button(label=name.title(), style=discord.ButtonStyle.primary)
+            async def _cb(inter: discord.Interaction, chosen=name):
+                await self._turn(inter, side="caller", chosen_move=chosen)
+            btn.callback = _cb  # type: ignore
+            self.add_item(btn)
+
+        # If a human opponent exists, give them their own row of buttons
+        if self.opponent:
+            for name in B_moves:
+                btn = discord.ui.Button(label=f"(Opp) {name.title()}", style=discord.ButtonStyle.secondary)
+                async def _cb(inter: discord.Interaction, chosen=name):
+                    await self._turn(inter, side="opp", chosen_move=chosen)
+                btn.callback = _cb  # type: ignore
+                self.add_item(btn)
+
+    # ---------- core one-turn resolver ----------
+    async def _turn(self, interaction: discord.Interaction, side: str, chosen_move: str):
+        if not self._alive():
+            return
+
+        # Validate controller
+        who = self._who_controls(interaction.user)
+        if side != who and not (side == "caller" and who == "caller") and not (side == "opp" and who == "opp"):
+            await interaction.response.send_message("You can't pick for that side.", ephemeral=True)
+            return
+
+        # Determine current fighters
+        A, B = self._active_pair()
+        A_cur, A_max = self._hp_tuple(A, self.caller_hp)
+        B_cur, B_max = self._hp_tuple(B, self.opp_hp)
+
+        # Compose both moves: chosen for the pressing side; other side random (unless they are human and already pressed)
+        # For simplicity: on each button press we resolve a full "turn" where BOTH act once (speed order),
+        # using chosen_move for the presser and a random legal move for the other side.
+        # If the opponent is human, they can also press their button on the next turn to steer their side.
+        if side == "caller":
+            a_move = {"name": chosen_move, "power": 50, "damage_class": {"name": "physical"}, "type":{"name":"normal"}}
+            # Try to fetch real move if cached
+            try:
+                mi = await self.cog._get_move_details(chosen_move.lower())
+                a_move = {"name": chosen_move, "power": mi.get("power") or 50,
+                          "damage_class": mi.get("damage_class") or {"name":"physical"},
+                          "type": mi.get("type") or {"name":"normal"}}
+            except Exception:
+                pass
+            # Opponent move
+            b_move = await self.cog._pick_move(B)
+        else:
+            b_move = {"name": chosen_move, "power": 50, "damage_class": {"name": "physical"}, "type":{"name":"normal"}}
+            try:
+                mi = await self.cog._get_move_details(chosen_move.lower())
+                b_move = {"name": chosen_move, "power": mi.get("power") or 50,
+                          "damage_class": mi.get("damage_class") or {"name":"physical"},
+                          "type": mi.get("type") or {"name":"normal"}}
+            except Exception:
+                pass
+            a_move = await self.cog._pick_move(A)
+
+        # Speed order
+        A_spd = self.cog._safe_stats(A)["speed"]
+        B_spd = self.cog._safe_stats(B)["speed"]
+        first_A = True if A_spd >= B_spd else False
+
+        # Resolve damage
+        actions: List[str] = []
+        if first_A and B_cur > 0:
+            d = self.cog._calc_move_damage(A, B, a_move)
+            B_cur -= d
+            actions.append(f"{A.get('nickname') or A['name']} used **{a_move['name'].title()}** → {B.get('nickname') or B['name']} took **{d}**")
+        if B_cur > 0:
+            d = self.cog._calc_move_damage(B, A, b_move)
+            A_cur -= d
+            actions.append(f"{B.get('nickname') or B['name']} used **{b_move['name'].title()}** → {A.get('nickname') or A['name']} took **{d}**")
+        if not first_A and B_cur > 0 and A_cur > 0:
+            # (already did B -> A; no second swing)
+
+            # nothing else
+            pass
+
+        # Apply clamps & save HP
+        A_cur = max(0, A_cur); B_cur = max(0, B_cur)
+        self._set_hp(A, A_cur, self.caller_hp)
+        self._set_hp(B, B_cur, self.opp_hp)
+
+        # Log
+        self._action_log.extend(actions)
+
+        # Check faint → advance
+        if A_cur <= 0:
+            self.ci += 1
+        if B_cur <= 0:
+            self.oi += 1
+
+        # If fight continues, refresh to show new HP (and maybe new mon)
+        if self._alive():
+            await self._refresh(interaction)
+            return
+
+        # Otherwise, finish and show results
+        await self._finish_battle(interaction)
+
+    # ---------- finishing / XP / Results ----------
+    async def _finish_battle(self, interaction: discord.Interaction):
+        # Compute who won
+        caller_alive = self.ci < len(self.caller_team)
+        match_winner = "caller" if caller_alive else "opp"
+
+        # XP bucketting (similar to your teambattle routine; keep it slim here)
+        # We'll just give a flat team bonus to winner and a smaller one to loser,
+        # then let the existing add_xp / _give_stat_points handle progression.
+        caller_avg = self.cog._avg_level(self.caller_team)
+        opp_avg = self.cog._avg_level(self.opp_team)
+        caller_scale = self.cog._xp_scale(caller_avg, opp_avg)
+        opp_scale = self.cog._xp_scale(opp_avg, caller_avg)
+        bonus_caller = int(round(40 * caller_scale))
+        bonus_opp = int(round(25 * opp_scale))
+
+        if match_winner == "caller":
+            for e in self.caller_team:
+                self._caller_awards[e["uid"]] = self._caller_awards.get(e["uid"], 0) + bonus_caller
+        else:
+            for e in self.opp_team:
+                self._opp_awards[e["uid"]] = self._opp_awards.get(e["uid"], 0) + bonus_opp
+
+        # Apply XP & pending points to real boxes (ignore NPC persistence)
+        async def apply_awards(member: discord.abc.User, team: List[Dict[str, Any]], awards: Dict[str,int]) -> List[str]:
+            box: List[Dict[str, Any]] = await self.cog.config.user(member).pokebox()
+            # Replace updated entries back into the user's box
+            updated = {str(e["uid"]): e for e in team if e.get("uid")}
+            out_lines = []
+            for i, be in enumerate(box):
+                uid = str(be.get("uid"))
+                if uid in awards:
+                    gain = int(awards[uid])
+                    before = int(be.get("level", 1))
+                    lvl, xp, _ = self.cog._add_xp_to_entry(be, gain)
+                    pts = self.cog._give_stat_points_for_levels(before, lvl)
+                    be["pending_points"] = int(be.get("pending_points", 0)) + pts
+                    out_lines.append(f"`{uid}` {be.get('nickname') or be.get('name','?')} +{gain} XP → Lv {before}→**{lvl}** (+{pts} pts)")
+                box[i] = be
+            await self.cog.config.user(member).pokebox.set(box)
+            return out_lines
+
+        caller_lines = await apply_awards(self.caller, self.caller_team, self._caller_awards)
+        opp_lines: List[str] = []
+        if self.opponent:
+            opp_lines = await apply_awards(self.opponent, [e for e in self.opp_team if not e.get("_npc")], self._opp_awards)
+
+        # Build results embed (compact)
+        title = "🏆 Victory!" if match_winner == "caller" else f"💥 Defeat vs {(self.opponent.display_name if self.opponent else 'NPC')}"
+        color = discord.Color.green() if match_winner == "caller" else discord.Color.red()
+        results = discord.Embed(title=title, color=color)
+        results.add_field(
+            name=f"{self.caller.display_name}",
+            value="\n".join(caller_lines) or "_No XP changes_",
+            inline=False
+        )
+        if self.opponent and opp_lines:
+            results.add_field(
+                name=f"{self.opponent.display_name}",
+                value="\n".join(opp_lines),
+                inline=False
+            )
+        if self._action_log:
+            results.add_field(name="Last turns", value="\n".join(self._action_log[-6:]), inline=False)
+
+        # Replace controls with a simple Close
+        self._disable_all()
+        # keep Close enabled
+        for child in self.children:
+            if isinstance(child, discord.ui.Button) and getattr(child, "custom_id", None) == "close":
+                child.disabled = False
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+        await self.message.edit(embed=results, view=self)
+
+    # ---------- utility buttons ----------
+    @discord.ui.button(label="⏭ Auto-Sim to Results", style=discord.ButtonStyle.primary, custom_id="auto")
+    async def auto_sim(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """
+        Jump to the existing automatic flow:
+        we reuse your '_simulate_duel' + BattlePaginator style.
+        """
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+
+        # Recreate an automatic, end-to-end simulation using your existing helpers.
+        # We'll stitch minimal per-duel embed pages + final results using your BattlePaginator.
+        duel_packets: List[Tuple[discord.Embed, Optional[discord.File]]] = []
+        caller_aw: Dict[str,int] = {}
+        opp_aw: Dict[str,int] = {}
+
+        # Build fresh HP maps starting from current state
+        # (If you prefer: start from scratch instead—this one honors progress so far.)
+        ci, oi = self.ci, self.oi
+        caller_hp = dict(self.caller_hp)
+        opp_hp = dict(self.opp_hp)
+
+        while ci < len(self.caller_team) and oi < len(self.opp_team):
+            A = self.caller_team[ci]
+            B = self.opp_team[oi]
+            A_cur, A_max = caller_hp[A["uid"]]
+            B_cur, B_max = opp_hp[B["uid"]]
+            winner, actions, A_end, B_end = await self.cog._simulate_duel(A, B, A_start=A_cur, B_start=B_cur)
+            caller_hp[A["uid"]] = (A_end, A_max)
+            opp_hp[B["uid"]] = (B_end, B_max)
+
+            # Build per-action pages (compact: only last step of each duel to keep pages shorter)
+            if actions:
+                last = actions[-1]
+                desc = (
+                    f"**{A.get('nickname') or A['name']} (Lv {A.get('level',1)})** vs "
+                    f"**{B.get('nickname') or B['name']} (Lv {B.get('level',1)})**\n\n"
+                    f"**{last['attacker']}** used **{last['move_name']}** for **{last['damage']}**\n\n"
+                    f"**{last['A_name']}** HP: {self._hpbar(last['A_hp'], last['A_max'])} {last['A_hp']}/{last['A_max']}\n"
+                    f"**{last['B_name']}** HP: {self._hpbar(last['B_hp'], last['B_max'])} {last['B_hp']}/{last['B_max']}\n"
+                )
+                em = discord.Embed(title="Auto Battle", description=desc, color=discord.Color.teal())
+                file = await self.cog._compose_vs_image(last["A_sprite"], last["B_sprite"])
+                if file:
+                    em.set_image(url="attachment://vs.png")
+                duel_packets.append((em, file))
+
+            # XP buckets roughly like your auto path
+            A_lvl = int(A.get("level", 1)); B_lvl = int(B.get("level", 1))
+            A_scale = self.cog._xp_scale(A_lvl, B_lvl); B_scale = self.cog._xp_scale(B_lvl, A_lvl)
+            A_win_xp = int(round(40 * A_scale)); A_lose_xp = int(round(25 * A_scale))
+            B_win_xp = int(round(40 * B_scale)); B_lose_xp = int(round(25 * B_scale))
+            if winner == "A":
+                caller_aw[A["uid"]] = caller_aw.get(A["uid"], 0) + A_win_xp
+                opp_aw[B["uid"]] = opp_aw.get(B["uid"], 0) + B_lose_xp
+                oi += 1
+            else:
+                caller_aw[A["uid"]] = caller_aw.get(A["uid"], 0) + A_lose_xp
+                opp_aw[B["uid"]] = opp_aw.get(B["uid"], 0) + B_win_xp
+                ci += 1
+
+        # Match winner bonus
+        caller_alive = ci < len(self.caller_team)
+        caller_avg = self.cog._avg_level(self.caller_team)
+        opp_avg = self.cog._avg_level(self.opp_team)
+        caller_scale = self.cog._xp_scale(caller_avg, opp_avg)
+        opp_scale = self.cog._xp_scale(opp_avg, caller_avg)
+        bonus_caller = int(round(20 * caller_scale))
+        bonus_opp = int(round(20 * opp_scale))
+        if caller_alive:
+            for e in self.caller_team:
+                caller_aw[e["uid"]] = caller_aw.get(e["uid"], 0) + bonus_caller
+        else:
+            for e in self.opp_team:
+                opp_aw[e["uid"]] = opp_aw.get(e["uid"], 0) + bonus_opp
+
+        # Apply awards to boxes (mirror your existing logic)
+        async def apply_awards(member: discord.abc.User, awards: Dict[str,int]):
+            box: List[Dict[str, Any]] = await self.cog.config.user(member).pokebox()
+            for i, be in enumerate(box):
+                uid = str(be.get("uid"))
+                if uid in awards:
+                    before = int(be.get("level", 1))
+                    lvl, xp, _ = self.cog._add_xp_to_entry(be, int(awards[uid]))
+                    pts = self.cog._give_stat_points_for_levels(before, lvl)
+                    be["pending_points"] = int(be.get("pending_points", 0)) + pts
+                box[i] = be
+            await self.cog.config.user(member).pokebox.set(box)
+
+        await apply_awards(self.caller, caller_aw)
+        if self.opponent:
+            await apply_awards(self.opponent, {k:v for k,v in opp_aw.items() if v>0 and not any(e.get("uid")==k and e.get("_npc") for e in self.opp_team)})
+
+        # Build compact results embed
+        caller_won = caller_alive
+        title = "🏆 Victory!" if caller_won else f"💥 Defeat vs {(self.opponent.display_name if self.opponent else 'NPC')}"
+        color = discord.Color.green() if caller_won else discord.Color.red()
+        results = discord.Embed(title=title, color=color)
+
+        def _fmt(team: List[Dict[str, Any]], awards: Dict[str,int]) -> str:
+            lines = []
+            for e in team:
+                gained = int(awards.get(e.get("uid",""), 0))
+                lvl = int(e.get("level", 1))
+                xp  = int(e.get("xp", 0))
+                bar = self.cog._xp_bar(lvl, xp)
+                lines.append(f"`{e.get('uid','?')}` **{e.get('nickname') or e.get('name','?')}** — Lv **{lvl}** (+{gained} XP)\n{bar}")
+            return "\n".join(lines) or "_No Pokémon_"
+
+        results.add_field(name=f"{self.caller.display_name}", value=_fmt(self.caller_team, caller_aw), inline=False)
+
+        # Spawn a BattlePaginator to let them page through auto pages, then see results
+        self._disable_all()
+        pager = BattlePaginator(
+            author=self.caller,
+            pages_with_files=duel_packets or [(discord.Embed(title="Auto Battle", description="(no pages)", color=discord.Color.teal()), None)],
+            results_embed=results,
+            opponent=self.opponent
+        )
+
+        emb, file = pager._current()
+        if file:
+            msg = await interaction.followup.send(embed=emb, file=file, view=pager)
+        else:
+            msg = await interaction.followup.send(embed=emb, view=pager)
+        pager.message = msg
+
+    @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger, custom_id="close")
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self._disable_all()
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+        if self.message:
+            await self.message.edit(view=self)
+        self.stop()
+
 
 
     
