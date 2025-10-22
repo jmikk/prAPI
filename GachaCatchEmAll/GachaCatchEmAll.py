@@ -2550,61 +2550,58 @@ class InteractiveTeamBattleView(discord.ui.View):
                 pass
         await self.message.edit(embed=results, view=self)
 
-    # ---------- utility buttons ----------
     @discord.ui.button(label="⏭ Auto-Sim to Results", style=discord.ButtonStyle.primary, custom_id="auto")
     async def auto_sim(self, interaction: discord.Interaction, button: discord.ui.Button):
         """
-        Jump to the existing automatic flow:
-        we reuse your '_simulate_duel' + BattlePaginator style.
+        Instantly finish the match (no per-action pages) and show results,
+        preserving whatever images (thumbnail/author) are on the current embed.
         """
+        # Defer quickly
         if not interaction.response.is_done():
             try:
                 await interaction.response.defer()
             except Exception:
                 pass
-
-        # Recreate an automatic, end-to-end simulation using your existing helpers.
-        # We'll stitch minimal per-duel embed pages + final results using your BattlePaginator.
-        duel_packets: List[Tuple[discord.Embed, Optional[discord.File]]] = []
-        caller_aw: Dict[str,int] = {}
-        opp_aw: Dict[str,int] = {}
-
-        # Build fresh HP maps starting from current state
-        # (If you prefer: start from scratch instead—this one honors progress so far.)
+    
+        # Snapshot current images so we can keep them on the results embed
+        cur_thumb = None
+        cur_author_name = None
+        cur_author_icon = None
+        try:
+            if self.message and self.message.embeds:
+                cur = self.message.embeds[0]
+                cur_thumb = getattr(getattr(cur, "thumbnail", None), "url", None)
+                cur_author_name = getattr(getattr(cur, "author", None), "name", None)
+                cur_author_icon = getattr(getattr(cur, "author", None), "icon_url", None)
+        except Exception:
+            pass
+    
+        # Sim from *current duel state* to the end (no page building)
         ci, oi = self.ci, self.oi
         caller_hp = dict(self.caller_hp)
         opp_hp = dict(self.opp_hp)
-
+    
+        caller_aw: Dict[str, int] = {}
+        opp_aw: Dict[str, int] = {}
+    
         while ci < len(self.caller_team) and oi < len(self.opp_team):
             A = self.caller_team[ci]
             B = self.opp_team[oi]
             A_cur, A_max = caller_hp[A["uid"]]
             B_cur, B_max = opp_hp[B["uid"]]
-            winner, actions, A_end, B_end = await self.cog._simulate_duel(A, B, A_start=A_cur, B_start=B_cur)
+    
+            winner, _actions, A_end, B_end = await self.cog._simulate_duel(
+                A, B, A_start=A_cur, B_start=B_cur
+            )
             caller_hp[A["uid"]] = (A_end, A_max)
             opp_hp[B["uid"]] = (B_end, B_max)
-
-            # Build per-action pages (compact: only last step of each duel to keep pages shorter)
-            if actions:
-                last = actions[-1]
-                desc = (
-                    f"**{A.get('nickname') or A['name']} (Lv {A.get('level',1)})** vs "
-                    f"**{B.get('nickname') or B['name']} (Lv {B.get('level',1)})**\n\n"
-                    f"**{last['attacker']}** used **{last['move_name']}** for **{last['damage']}**\n\n"
-                    f"**{last['A_name']}** HP: {self._hpbar(last['A_hp'], last['A_max'])} {last['A_hp']}/{last['A_max']}\n"
-                    f"**{last['B_name']}** HP: {self._hpbar(last['B_hp'], last['B_max'])} {last['B_hp']}/{last['B_max']}\n"
-                )
-                em = discord.Embed(title="Auto Battle", description=desc, color=discord.Color.teal())
-                file = await self.cog._compose_vs_image(last["A_sprite"], last["B_sprite"])
-                if file:
-                    em.set_image(url="attachment://vs.png")
-                duel_packets.append((em, file))
-
-            # XP buckets roughly like your auto path
+    
+            # XP buckets consistent with your team logic
             A_lvl = int(A.get("level", 1)); B_lvl = int(B.get("level", 1))
             A_scale = self.cog._xp_scale(A_lvl, B_lvl); B_scale = self.cog._xp_scale(B_lvl, A_lvl)
             A_win_xp = int(round(40 * A_scale)); A_lose_xp = int(round(25 * A_scale))
             B_win_xp = int(round(40 * B_scale)); B_lose_xp = int(round(25 * B_scale))
+    
             if winner == "A":
                 caller_aw[A["uid"]] = caller_aw.get(A["uid"], 0) + A_win_xp
                 opp_aw[B["uid"]] = opp_aw.get(B["uid"], 0) + B_lose_xp
@@ -2613,8 +2610,8 @@ class InteractiveTeamBattleView(discord.ui.View):
                 caller_aw[A["uid"]] = caller_aw.get(A["uid"], 0) + A_lose_xp
                 opp_aw[B["uid"]] = opp_aw.get(B["uid"], 0) + B_win_xp
                 ci += 1
-
-        # Match winner bonus
+    
+        # Winner bonus
         caller_alive = ci < len(self.caller_team)
         caller_avg = self.cog._avg_level(self.caller_team)
         opp_avg = self.cog._avg_level(self.opp_team)
@@ -2628,9 +2625,9 @@ class InteractiveTeamBattleView(discord.ui.View):
         else:
             for e in self.opp_team:
                 opp_aw[e["uid"]] = opp_aw.get(e["uid"], 0) + bonus_opp
-
-        # Apply awards to boxes (mirror your existing logic)
-        async def apply_awards(member: discord.abc.User, awards: Dict[str,int]):
+    
+        # Apply awards to boxes (ignore NPC persistence)
+        async def apply_awards(member: discord.abc.User, team: List[Dict[str, Any]], awards: Dict[str,int]):
             box: List[Dict[str, Any]] = await self.cog.config.user(member).pokebox()
             for i, be in enumerate(box):
                 uid = str(be.get("uid"))
@@ -2641,17 +2638,17 @@ class InteractiveTeamBattleView(discord.ui.View):
                     be["pending_points"] = int(be.get("pending_points", 0)) + pts
                 box[i] = be
             await self.cog.config.user(member).pokebox.set(box)
-
-        await apply_awards(self.caller, caller_aw)
+    
+        await apply_awards(self.caller, self.caller_team, caller_aw)
         if self.opponent:
-            await apply_awards(self.opponent, {k:v for k,v in opp_aw.items() if v>0 and not any(e.get("uid")==k and e.get("_npc") for e in self.opp_team)})
-
-        # Build compact results embed
+            await apply_awards(self.opponent, [e for e in self.opp_team if not e.get("_npc")], opp_aw)
+    
+        # Build compact results (keep images the same as current embed)
         caller_won = caller_alive
         title = "🏆 Victory!" if caller_won else f"💥 Defeat vs {(self.opponent.display_name if self.opponent else 'NPC')}"
         color = discord.Color.green() if caller_won else discord.Color.red()
         results = discord.Embed(title=title, color=color)
-
+    
         def _fmt(team: List[Dict[str, Any]], awards: Dict[str,int]) -> str:
             lines = []
             for e in team:
@@ -2661,24 +2658,34 @@ class InteractiveTeamBattleView(discord.ui.View):
                 bar = self.cog._xp_bar(lvl, xp)
                 lines.append(f"`{e.get('uid','?')}` **{e.get('nickname') or e.get('name','?')}** — Lv **{lvl}** (+{gained} XP)\n{bar}")
             return "\n".join(lines) or "_No Pokémon_"
-
+    
         results.add_field(name=f"{self.caller.display_name}", value=_fmt(self.caller_team, caller_aw), inline=False)
-
-        # Spawn a BattlePaginator to let them page through auto pages, then see results
+        if self.opponent:
+            results.add_field(name=f"{self.opponent.display_name}", value=_fmt(self.opp_team, opp_aw), inline=False)
+    
+        # Re-apply previous images so the “imgs stay the same”
+        try:
+            if cur_thumb:
+                results.set_thumbnail(url=cur_thumb)
+            if cur_author_icon or cur_author_name:
+                results.set_author(name=(cur_author_name or (self.opponent.display_name if self.opponent else "NPC Team")), icon_url=cur_author_icon or discord.Embed.Empty)
+        except Exception:
+            pass
+    
+        # Swap view to a simple Close button
         self._disable_all()
-        pager = BattlePaginator(
-            author=self.caller,
-            pages_with_files=duel_packets or [(discord.Embed(title="Auto Battle", description="(no pages)", color=discord.Color.teal()), None)],
-            results_embed=results,
-            opponent=self.opponent
-        )
+        # keep Close enabled
+        for child in self.children:
+            if isinstance(child, discord.ui.Button) and getattr(child, "custom_id", None) == "close":
+                child.disabled = False
+    
+        # Edit the SAME message: no new attachments, images preserved
+        try:
+            await self.message.edit(embed=results, view=self, attachments=[])
+        except Exception as e:
+            # Fallback: send a new message if edit fails
+            await interaction.followup.send(embed=results, view=self)
 
-        emb, file = pager._current()
-        if file:
-            msg = await interaction.followup.send(embed=emb, file=file, view=pager)
-        else:
-            msg = await interaction.followup.send(embed=emb, view=pager)
-        pager.message = msg
 
     @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger, custom_id="close")
     async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
