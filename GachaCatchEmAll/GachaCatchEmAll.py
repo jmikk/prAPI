@@ -97,6 +97,20 @@ class GachaCatchEmAll(commands.Cog):
     def _chunk_lines(self, lines: List[str], size: int) -> List[List[str]]:
         return [lines[i:i+size] for i in range(0, len(lines), size)]
 
+    def _mutation_percent(self, p1: Dict[str, Any], p2: Dict[str, Any]) -> int:
+        """
+        Return total mutation percent as a deterministic buff.
+        Rule: +1% per 10 levels from each parent, hard cap at 10% total.
+        Examples:
+          L25 + L18 -> floor(25/10)=2 + floor(18/10)=1 => 3% total
+          L60 + L60 -> 6 + 6 = 12 -> cap to 10%
+        """
+        l1 = int(p1.get("level", 1))
+        l2 = int(p2.get("level", 1))
+        pct = (l1 // 10) + (l2 // 10)
+        return min(10, max(0, pct))
+
+
     def _resolve_entry_by_any(self, box: List[Dict[str, Any]], query: str) -> Optional[Dict[str, Any]]:
         q = (query or "").strip().lower()
         if not q:
@@ -1257,8 +1271,7 @@ class GachaCatchEmAll(commands.Cog):
                 f"• Species = one of the two at random\n"
                 f"• Stats = mixed per stat\n"
                 f"• Moves = random mix from both (up to 4)\n"
-                f"• Level = average of parents (rounded down)\n"
-                f"• Mutation chance: **{mut_pct}%** (+10% to one random stat if it happens)\n\n"
+                f"• Mutation %: **{mut_pct}%**\n\n"
                 f"**This cannot be undone.**"
             ),
             color=discord.Color.orange()
@@ -1278,7 +1291,6 @@ class GachaCatchEmAll(commands.Cog):
             return
     
         # Build child
-        import math, uuid, random
         pick_species = random.choice([A, B])
         other = B if pick_species is A else A
     
@@ -1288,7 +1300,7 @@ class GachaCatchEmAll(commands.Cog):
         child_sprite = pick_species.get("sprite") or other.get("sprite")
     
         # level/xp
-        child_level = max(1, (L1 + L2) // 2)
+        child_level = 1
         child_xp = 0
     
         # types = union but ensure shared at least remains (keep max 2 like real mons)
@@ -1306,14 +1318,12 @@ class GachaCatchEmAll(commands.Cog):
         for k in ["hp","attack","defense","special-attack","special-defense","speed"]:
             child_stats[k] = random.choice([sa.get(k,10), sb.get(k,10)])
     
-        # mutation: +10% to one random stat (at least +1)
-        if random.random() < (min(10, (L1 // 10) + (L2 // 10)) / 100.0):
-            mk = random.choice(list(child_stats.keys()))
-            boosted = max(1, int(round(child_stats[mk] * 1.10)))
-            # make sure we actually change at least by +1
-            if boosted == child_stats[mk]:
-                boosted += 1
-            child_stats[mk] = boosted
+        mut_pct = self._mutation_percent(parent1, parent2)
+        if mut_pct > 0:
+            mult = 1.0 + (mut_pct / 100.0)
+            for k in ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]:
+                base = int(child_stats.get(k, 10))
+                child_stats[k] = max(1, int(round(base * mult)))
     
         # moves: random mix up to 4
         moves_a = [m for m in (A.get("moves") or []) if isinstance(m, str)]
