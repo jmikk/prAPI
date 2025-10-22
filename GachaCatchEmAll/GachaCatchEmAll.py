@@ -491,11 +491,11 @@ class GachaCatchEmAll(commands.Cog):
     
         # Feedback text support (if you want to show messages later)
         if eff_mult > 1.0:
-            attacker["_last_eff_msg"] = "It's super effective!"
+            attacker["_last_eff_msg"] = "🌟 It's super effective! 🌟"
         elif eff_mult < 1.0 and eff_mult > 0:
-            attacker["_last_eff_msg"] = "It's not very effective..."
+            attacker["_last_eff_msg"] = "💀 It's not very effective... 💀"
         elif eff_mult == 0.0:
-            attacker["_last_eff_msg"] = "It had very little effect!"
+            attacker["_last_eff_msg"] = "💀💀💀 It had very little effect! 💀💀💀"
         else:
             attacker["_last_eff_msg"] = ""
     
@@ -2492,7 +2492,7 @@ class InteractiveTeamBattleView(discord.ui.View):
             if attacker.get("_last_eff_msg"):
                 msg += f"\n{attacker['_last_eff_msg']}"
             if attacker.get("_last_crit"):
-                msg += "\n**A critical hit!**"
+                msg += "\n**💥A critical hit!💥**"
             return d_cur, msg
         
         if first_A:
