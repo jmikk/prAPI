@@ -97,6 +97,29 @@ class GachaCatchEmAll(commands.Cog):
     def _chunk_lines(self, lines: List[str], size: int) -> List[List[str]]:
         return [lines[i:i+size] for i in range(0, len(lines), size)]
 
+    def _resolve_entry_by_any(self, box: List[Dict[str, Any]], query: str) -> Optional[Dict[str, Any]]:
+        q = (query or "").strip().lower()
+        if not q:
+            return None
+        # 1) UID exact match
+        for e in box:
+            if str(e.get("uid","")).lower() == q:
+                return e
+        # 2) Pokédex ID numeric (first match)
+        if q.isdigit():
+            target_id = int(q)
+            for e in box:
+                if int(e.get("pokedex_id") or -1) == target_id:
+                    return e
+        # 3) Name or Nickname (first match)
+        for e in box:
+            name = str(e.get("name","")).lower()
+            nick = str(e.get("nickname") or "").lower()
+            if q == name or (nick and q == nick):
+                return e
+        return None
+
+
     def _pick_counter_types(self, your_team: List[Dict[str, Any]]) -> List[str]:
         # collect your visible types
         yours = set()
@@ -1127,6 +1150,188 @@ class GachaCatchEmAll(commands.Cog):
             self.stop()
 
         # --------- Commands ---------
+
+    @commands.hybrid_group(name="daycare")
+    async def daycare_group(self, ctx: commands.Context):
+        """Daycare features."""
+        if ctx.invoked_subcommand is None:
+            await ctx.reply("Subcommands: `combine`")
+    
+    @daycare_group.command(name="combine")
+    async def daycare_combine(self, ctx: commands.Context, parent1: str, parent2: str):
+        """
+        Combine two Pokémon (UID, name, or nickname). Both parents are poofed.
+        Rules:
+        - Both parents must be ≥ level 10
+        - Must share at least one type
+        - Child: species of one parent at random, mixed moves, mixed stats, possible mutation
+        - Mutation chance = min(10, floor(L1/10)+floor(L2/10))%
+        """
+        member = ctx.author
+        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
+        if not box:
+            await ctx.reply("You have no Pokémon.")
+            return
+    
+        A = self._resolve_entry_by_any(box, parent1)
+        B = self._resolve_entry_by_any(box, parent2)
+        if not A or not B:
+            await ctx.reply("Couldn't find one or both parents. Use UID, name, or nickname.")
+            return
+        if str(A.get("uid")) == str(B.get("uid")):
+            await ctx.reply("Pick two different parents.")
+            return
+    
+        # Checks
+        L1 = int(A.get("level", 1))
+        L2 = int(B.get("level", 1))
+        if L1 < 10 or L2 < 10:
+            await ctx.reply("Both parents must be at least **level 10**.")
+            return
+    
+        t1 = {t.lower() for t in (A.get("types") or [])}
+        t2 = {t.lower() for t in (B.get("types") or [])}
+        if not (t1 & t2):
+            await ctx.reply("Parents must **share at least one type**.")
+            return
+    
+        # Preview embed + Confirm
+        a_name = A.get("nickname") or A.get("name", "?")
+        b_name = B.get("nickname") or B.get("name", "?")
+        mut_pct = min(10, (L1 // 10) + (L2 // 10))
+        preview = discord.Embed(
+            title="Daycare — Combine?",
+            description=(
+                f"You're about to **combine**:\n"
+                f"• `{A.get('uid')}` **{a_name}** (Lv {L1}) — Types: {', '.join(t1) or '?'}\n"
+                f"• `{B.get('uid')}` **{b_name}** (Lv {L2}) — Types: {', '.join(t2) or '?'}\n\n"
+                f"This will **poof both parents** and produce **one child**:\n"
+                f"• Species = one of the two at random\n"
+                f"• Stats = mixed per stat\n"
+                f"• Moves = random mix from both (up to 4)\n"
+                f"• Level = average of parents (rounded down)\n"
+                f"• Mutation chance: **{mut_pct}%** (+10% to one random stat if it happens)\n\n"
+                f"**This cannot be undone.**"
+            ),
+            color=discord.Color.orange()
+        )
+        if A.get("sprite"):
+            preview.set_thumbnail(url=A["sprite"])
+        if B.get("sprite"):
+            preview.set_author(name=b_name, icon_url=B["sprite"])
+    
+        view = self.ConfirmCombineView(author=member)
+        msg = await ctx.reply(embed=preview, view=view)
+        view.message = msg
+        await view.wait()
+    
+        if view.confirmed is not True:
+            await ctx.send("Combine canceled.")
+            return
+    
+        # Build child
+        import math, uuid, random
+        pick_species = random.choice([A, B])
+        other = B if pick_species is A else A
+    
+        # species + sprites
+        child_species = pick_species.get("name", "Unknown")
+        child_pid = int(pick_species.get("pokedex_id") or other.get("pokedex_id") or 0)
+        child_sprite = pick_species.get("sprite") or other.get("sprite")
+    
+        # level/xp
+        child_level = max(1, (L1 + L2) // 2)
+        child_xp = 0
+    
+        # types = union but ensure shared at least remains (keep max 2 like real mons)
+        union_types = list({*t1, *t2})
+        # Prefer to keep 1–2 types; if >2, pick 2 at random
+        if len(union_types) > 2:
+            random.shuffle(union_types)
+            union_types = union_types[:2]
+    
+        # stats: per-stat pick from either parent 50/50
+        def _stats(e): 
+            return self._safe_stats(e)
+        sa, sb = _stats(A), _stats(B)
+        child_stats = {}
+        for k in ["hp","attack","defense","special-attack","special-defense","speed"]:
+            child_stats[k] = random.choice([sa.get(k,10), sb.get(k,10)])
+    
+        # mutation: +10% to one random stat (at least +1)
+        if random.random() < (min(10, (L1 // 10) + (L2 // 10)) / 100.0):
+            mk = random.choice(list(child_stats.keys()))
+            boosted = max(1, int(round(child_stats[mk] * 1.10)))
+            # make sure we actually change at least by +1
+            if boosted == child_stats[mk]:
+                boosted += 1
+            child_stats[mk] = boosted
+    
+        # moves: random mix up to 4
+        moves_a = [m for m in (A.get("moves") or []) if isinstance(m, str)]
+        moves_b = [m for m in (B.get("moves") or []) if isinstance(m, str)]
+        pool = list(dict.fromkeys(moves_a + moves_b))  # dedupe, keep order-ish
+        random.shuffle(pool)
+        child_moves = pool[:4] if pool else []
+        # ensure at least 1 legal move if we somehow ended empty
+        if not child_moves:
+            # try to grab one by types
+            starter = await self._random_starting_move(union_types)
+            if starter:
+                child_moves = [starter]
+    
+        child_uid = uuid.uuid4().hex[:12]
+        child_entry = {
+            "uid": child_uid,
+            "pokedex_id": child_pid,
+            "name": str(child_species).title(),
+            "types": union_types,
+            "stats": child_stats,
+            "bst": int(sum(child_stats.values())),
+            "sprite": child_sprite,
+            "nickname": None,
+            "caught_at": int(datetime.now(timezone.utc).timestamp()),
+            "level": int(child_level),
+            "xp": int(child_xp),
+            "moves": child_moves,
+            "pending_points": 0,
+        }
+    
+        # Remove both parents; add child; save box
+        uida = str(A.get("uid"))
+        uidb = str(B.get("uid"))
+        new_box = [e for e in box if str(e.get("uid")) not in (uida, uidb)]
+        new_box.append(child_entry)
+        await self.config.user(member).pokebox.set(new_box)
+    
+        # Result
+        res = discord.Embed(
+            title="✨ Daycare Result",
+            description=(
+                f"Parents `{uida}` **{a_name}** and `{uidb}` **{b_name}** were combined.\n"
+                f"You received **{child_entry['name']}** (UID: `{child_uid}`) at **Lv {child_level}**!"
+            ),
+            color=discord.Color.gold()
+        )
+        if child_sprite:
+            res.set_thumbnail(url=child_sprite)
+        # show types + xp bar quickly
+        res.add_field(
+            name="Types",
+            value=" / ".join(t.title() for t in union_types) or "Unknown",
+            inline=True
+        )
+        res.add_field(
+            name="XP",
+            value=self._xp_bar(child_entry["level"], child_entry["xp"]),
+            inline=True
+        )
+        # brief stats preview
+        stats_lines = "\n".join(f"{k.replace('-',' ').title()}: **{v}**" for k, v in child_stats.items())
+        res.add_field(name="Stats", value=stats_lines, inline=False)
+    
+        await ctx.reply(embed=res)
+
     @commands.hybrid_command(name="gacha")
     async def gacha(self, ctx: commands.Context):
         """Start (or resume) a wild encounter. First choose a type (or All), then multi-throw until catch or flee."""
@@ -2111,6 +2316,53 @@ class BattlePaginator(discord.ui.View):
                 pass
         if self.message:
             await self.message.edit(view=self)
+        self.stop()
+
+
+class ConfirmCombineView(discord.ui.View):
+    def __init__(self, author: discord.abc.User, timeout: int = 60):
+        super().__init__(timeout=timeout)
+        self.author = author
+        self.message: Optional[discord.Message] = None
+        self.confirmed: Optional[bool] = None
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("These buttons aren’t for you.", ephemeral=True)
+            return False
+        return True
+
+    def _disable_all(self):
+        for c in self.children:
+            if isinstance(c, discord.ui.Button):
+                c.disabled = True
+
+    async def on_timeout(self):
+        self._disable_all()
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except Exception:
+                pass
+
+    @discord.ui.button(label="✅ Confirm", style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.confirmed = True
+        self._disable_all()
+        try:
+            await interaction.response.edit_message(view=self)
+        except Exception:
+            pass
+        self.stop()
+
+    @discord.ui.button(label="✖ Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.confirmed = False
+        self._disable_all()
+        try:
+            await interaction.response.edit_message(view=self)
+        except Exception:
+            pass
         self.stop()
 
 
