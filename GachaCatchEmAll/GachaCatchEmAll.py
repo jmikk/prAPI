@@ -2870,50 +2870,36 @@ class LazyBattlePaginator(discord.ui.View):
             except Exception:
                 pass
 
-    async def _make_page(self, i: int) -> Tuple[discord.Embed, Optional[discord.File]]:
-        if self._showing_results:
-            emb = self.results_embed
-            emb.set_footer(text="Results")
-            return emb, None
-    
-        if not self.frames:
-            return discord.Embed(title="Battle", description="(no actions?)"), None
-    
+    async def _make_page(self, i: int) -> Tuple[discord.Embed, List[discord.File]]:
         act = self.frames[i]
-        duel_header = f"— {act['A_name']} (Lv {act.get('A_level','?')}) vs {act['B_name']} (Lv {act.get('B_level','?')})"
+        emb = discord.Embed(title=f"Battle — {self.header_base}")
     
-        desc = (
-            f"{duel_header}\n\n"
-            f"**Turn {act['turn']}** — "
-            f"{(self.author.display_name + ' ') if act['attacker']=='A' else ((self.opponent.display_name if self.opponent else 'Opponent') + ' ')}"
-            f"{'(' + (act['A_name'] if act['attacker']=='A' else act['B_name']) + ')'} used **{act['move_name']}** "
-            f"for **{act['damage']}**\n\n"
-            f"**{act['A_name']}** HP: {act['A_hp']}/{act['A_max']}  {act.get('A_bar','')}\n"
-            f"**{act['B_name']}** HP: {act['B_hp']}/{act['B_max']}  {act.get('B_bar','')}\n"
+        # Build action text (same as before)
+        emb.description = (
+            f"Turn {act['turn']}: **{act['A_name']}** vs **{act['B_name']}**\n"
+            f"{act['attacker']} used **{act['move_name']}** for {act['damage']} damage!"
         )
     
-        em = discord.Embed(title=f"Battle — {self.header_base}", description=desc, color=discord.Color.teal())
-        em.set_footer(text=f"Page {i + 1}/{len(self.frames)} • ⏭ Results")
+        files = []
+        try:
+            # fetch A sprite
+            async with aiohttp.ClientSession() as session:
+                async with session.get(act["A_sprite"]) as respA:
+                    if respA.status == 200:
+                        files.append(discord.File(io.BytesIO(await respA.read()), filename="A.png"))
+                async with session.get(act["B_sprite"]) as respB:
+                    if respB.status == 200:
+                        files.append(discord.File(io.BytesIO(await respB.read()), filename="B.png"))
+        except Exception:
+            pass
     
-        file = None
-        if self.use_images and act.get("A_sprite") and act.get("B_sprite"):
-            try:
-                file = await self._compose_vs_image(act["A_sprite"], act["B_sprite"])
-                if file:
-                    em.set_image(url="attachment://vs.png")
-            except Exception:
-                pass
-        else:
-            # 👇 NEW: in no-photo mode, show the ACTIVE Pokémon as the thumbnail
-            active_sprite = act["A_sprite"] if act.get("attacker") == "A" else act.get("B_sprite")
-            other_sprite  = act["B_sprite"] if act.get("attacker") == "A" else act.get("A_sprite")
-            if active_sprite:
-                em.set_thumbnail(url=active_sprite)
-            # (Optional) show the other Pokémon in the author icon to keep context
-            if other_sprite:
-                em.set_author(name=act["B_name"] if act.get("attacker") == "A" else act["A_name"], icon_url=other_sprite)
-    
-        return em, file
+        # attach one as embed image, other as thumbnail
+        if files:
+            emb.set_thumbnail(url="attachment://A.png")
+            if len(files) > 1:
+                emb.set_image(url="attachment://B.png")
+        return emb, files
+
 
 
     # We’ll attach the cog’s helper at runtime (see constructor call below)
