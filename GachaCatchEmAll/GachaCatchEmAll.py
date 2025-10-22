@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import discord
 from redbot.core import commands, Config, checks
 import aiohttp
+import io
 
 
 __red_end_user_data_statement__ = (
@@ -2433,11 +2434,12 @@ class GachaCatchEmAll(commands.Cog):
             view._showing_results = True
             first_emb, first_file = await view._make_page(0)
     
-        if first_file:
-            msg = await ctx.reply(embed=first_emb, file=first_file, view=view)
+        if first_files:
+            msg = await ctx.reply(embed=first_emb, files=first_files, view=view)
         else:
             msg = await ctx.reply(embed=first_emb, view=view)
         view.message = msg
+
 
 
         
@@ -2873,27 +2875,25 @@ class LazyBattlePaginator(discord.ui.View):
     async def _make_page(self, i: int) -> Tuple[discord.Embed, List[discord.File]]:
         act = self.frames[i]
         emb = discord.Embed(title=f"Battle — {self.header_base}")
-    
-        # Build action text (same as before)
         emb.description = (
             f"Turn {act['turn']}: **{act['A_name']}** vs **{act['B_name']}**\n"
             f"{act['attacker']} used **{act['move_name']}** for {act['damage']} damage!"
         )
     
-        files = []
+        files: List[discord.File] = []
         try:
-            # fetch A sprite
-            async with aiohttp.ClientSession() as session:
+            session = await self.cog._get_session()  # reuse cog session
+            if act.get("A_sprite"):
                 async with session.get(act["A_sprite"]) as respA:
                     if respA.status == 200:
                         files.append(discord.File(io.BytesIO(await respA.read()), filename="A.png"))
+            if act.get("B_sprite"):
                 async with session.get(act["B_sprite"]) as respB:
                     if respB.status == 200:
                         files.append(discord.File(io.BytesIO(await respB.read()), filename="B.png"))
         except Exception:
             pass
     
-        # attach one as embed image, other as thumbnail
         if files:
             emb.set_thumbnail(url="attachment://A.png")
             if len(files) > 1:
@@ -2914,11 +2914,13 @@ class LazyBattlePaginator(discord.ui.View):
                 pass
         if not self.message:
             return
-        emb, file = await self._make_page(self.index)
+        emb, files = await self._make_page(self.index)
         try:
-            if file:
-                await self.message.edit(embed=emb, attachments=[file], view=self)
+            if files:
+                # upload new files for this page
+                await self.message.edit(embed=emb, files=files, view=self)
             else:
+                # remove previous attachments
                 await self.message.edit(embed=emb, attachments=[], view=self)
         except Exception:
             pass
