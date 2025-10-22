@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-import discord
+import discordf
 from redbot.core import commands, Config, checks
 import aiohttp
 
@@ -2424,15 +2424,20 @@ class InteractiveTeamBattleView(discord.ui.View):
         return em
 
     async def _refresh(self, interaction: Optional[discord.Interaction] = None):
-        """Refresh moves + embed in place."""
-        self._rebuild_move_buttons()
-        if interaction and not interaction.response.is_done():
-            try:
+        """Refresh the embed and rebuild move buttons to reflect current Pokémon."""
+        try:
+            # rebuild move buttons for the new active Pokémon
+            await self._rebuild_move_buttons()
+    
+            # defer to keep interaction alive
+            if interaction and not interaction.response.is_done():
                 await interaction.response.defer()
-            except Exception:
-                pass
-        if self.message:
-            await self.message.edit(embed=self._current_embed(), view=self)
+    
+            if self.message:
+                await self.message.edit(embed=self._current_embed(), view=self)
+        except Exception as e:
+            print(f"[Battle Refresh Error] {e}")
+
     
     async def _rebuild_move_buttons(self):
         """Rebuilds move buttons with effectiveness emojis based on opponent's types."""
@@ -2561,6 +2566,14 @@ class InteractiveTeamBattleView(discord.ui.View):
             self.ci += 1
         if B_cur <= 0:
             self.oi += 1
+
+        if A_cur <= 0 and self.ci < len(self.caller_team):
+            next_name = self.caller_team[self.ci].get("nickname") or self.caller_team[self.ci]["name"]
+            self._action_log.append(f"➡️ **{next_name}** entered the battle!")
+        if B_cur <= 0 and self.oi < len(self.opp_team):
+            next_name = self.opp_team[self.oi].get("nickname") or self.opp_team[self.oi]["name"]
+            self._action_log.append(f"⬅️ **{next_name}** entered the battle!")
+
 
         # If fight continues, refresh to show new HP (and maybe new mon)
         if self._alive():
