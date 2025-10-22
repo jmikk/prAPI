@@ -2434,21 +2434,27 @@ class InteractiveTeamBattleView(discord.ui.View):
         B_spd = self.cog._safe_stats(B)["speed"]
         first_A = True if A_spd >= B_spd else False
 
-        # Resolve damage
+        # Resolve damage in correct order (both sides act if alive)
         actions: List[str] = []
-        if first_A and B_cur > 0:
-            d = self.cog._calc_move_damage(A, B, a_move)
-            B_cur -= d
-            actions.append(f"{A.get('nickname') or A['name']} used **{a_move['name'].title()}** → {B.get('nickname') or B['name']} took **{d}**")
-        if B_cur > 0:
-            d = self.cog._calc_move_damage(B, A, b_move)
-            A_cur -= d
-            actions.append(f"{B.get('nickname') or B['name']} used **{b_move['name'].title()}** → {A.get('nickname') or A['name']} took **{d}**")
-        if not first_A and B_cur > 0 and A_cur > 0:
-            # (already did B -> A; no second swing)
+        if first_A:
+            if A_cur > 0 and B_cur > 0:
+                d = self.cog._calc_move_damage(A, B, a_move)
+                B_cur = max(0, B_cur - d)
+                actions.append(f"{A.get('nickname') or A['name']} used **{a_move['name'].title()}** → {B.get('nickname') or B['name']} took **{d}**")
+            if B_cur > 0 and A_cur > 0:
+                d = self.cog._calc_move_damage(B, A, b_move)
+                A_cur = max(0, A_cur - d)
+                actions.append(f"{B.get('nickname') or B['name']} used **{b_move['name'].title()}** → {A.get('nickname') or A['name']} took **{d}**")
+        else:
+            if B_cur > 0 and A_cur > 0:
+                d = self.cog._calc_move_damage(B, A, b_move)
+                A_cur = max(0, A_cur - d)
+                actions.append(f"{B.get('nickname') or B['name']} used **{b_move['name'].title()}** → {A.get('nickname') or A['name']} took **{d}**")
+            if A_cur > 0 and B_cur > 0:
+                d = self.cog._calc_move_damage(A, B, a_move)
+                B_cur = max(0, B_cur - d)
+                actions.append(f"{A.get('nickname') or A['name']} used **{a_move['name'].title()}** → {B.get('nickname') or B['name']} took **{d}**")
 
-            # nothing else
-            pass
 
         # Apply clamps & save HP
         A_cur = max(0, A_cur); B_cur = max(0, B_cur)
