@@ -2871,49 +2871,49 @@ class LazyBattlePaginator(discord.ui.View):
                 pass
 
     async def _make_page(self, i: int) -> Tuple[discord.Embed, Optional[discord.File]]:
-    if self._showing_results:
-        emb = self.results_embed
-        emb.set_footer(text="Results")
-        return emb, None
-
-    if not self.frames:
-        return discord.Embed(title="Battle", description="(no actions?)"), None
-
-    act = self.frames[i]
-    duel_header = f"— {act['A_name']} (Lv {act.get('A_level','?')}) vs {act['B_name']} (Lv {act.get('B_level','?')})"
-
-    desc = (
-        f"{duel_header}\n\n"
-        f"**Turn {act['turn']}** — "
-        f"{(self.author.display_name + ' ') if act['attacker']=='A' else ((self.opponent.display_name if self.opponent else 'Opponent') + ' ')}"
-        f"{'(' + (act['A_name'] if act['attacker']=='A' else act['B_name']) + ')'} used **{act['move_name']}** "
-        f"for **{act['damage']}**\n\n"
-        f"**{act['A_name']}** HP: {act['A_hp']}/{act['A_max']}  {act.get('A_bar','')}\n"
-        f"**{act['B_name']}** HP: {act['B_hp']}/{act['B_max']}  {act.get('B_bar','')}\n"
-    )
-
-    em = discord.Embed(title=f"Battle — {self.header_base}", description=desc, color=discord.Color.teal())
-    em.set_footer(text=f"Page {i + 1}/{len(self.frames)} • ⏭ Results")
-
-    file = None
-    if self.use_images and act.get("A_sprite") and act.get("B_sprite"):
-        try:
-            file = await self._compose_vs_image(act["A_sprite"], act["B_sprite"])
-            if file:
-                em.set_image(url="attachment://vs.png")
-        except Exception:
-            pass
-    else:
-        # 👇 NEW: in no-photo mode, show the ACTIVE Pokémon as the thumbnail
-        active_sprite = act["A_sprite"] if act.get("attacker") == "A" else act.get("B_sprite")
-        other_sprite  = act["B_sprite"] if act.get("attacker") == "A" else act.get("A_sprite")
-        if active_sprite:
-            em.set_thumbnail(url=active_sprite)
-        # (Optional) show the other Pokémon in the author icon to keep context
-        if other_sprite:
-            em.set_author(name=act["B_name"] if act.get("attacker") == "A" else act["A_name"], icon_url=other_sprite)
-
-    return em, file
+        if self._showing_results:
+            emb = self.results_embed
+            emb.set_footer(text="Results")
+            return emb, None
+    
+        if not self.frames:
+            return discord.Embed(title="Battle", description="(no actions?)"), None
+    
+        act = self.frames[i]
+        duel_header = f"— {act['A_name']} (Lv {act.get('A_level','?')}) vs {act['B_name']} (Lv {act.get('B_level','?')})"
+    
+        desc = (
+            f"{duel_header}\n\n"
+            f"**Turn {act['turn']}** — "
+            f"{(self.author.display_name + ' ') if act['attacker']=='A' else ((self.opponent.display_name if self.opponent else 'Opponent') + ' ')}"
+            f"{'(' + (act['A_name'] if act['attacker']=='A' else act['B_name']) + ')'} used **{act['move_name']}** "
+            f"for **{act['damage']}**\n\n"
+            f"**{act['A_name']}** HP: {act['A_hp']}/{act['A_max']}  {act.get('A_bar','')}\n"
+            f"**{act['B_name']}** HP: {act['B_hp']}/{act['B_max']}  {act.get('B_bar','')}\n"
+        )
+    
+        em = discord.Embed(title=f"Battle — {self.header_base}", description=desc, color=discord.Color.teal())
+        em.set_footer(text=f"Page {i + 1}/{len(self.frames)} • ⏭ Results")
+    
+        file = None
+        if self.use_images and act.get("A_sprite") and act.get("B_sprite"):
+            try:
+                file = await self._compose_vs_image(act["A_sprite"], act["B_sprite"])
+                if file:
+                    em.set_image(url="attachment://vs.png")
+            except Exception:
+                pass
+        else:
+            # 👇 NEW: in no-photo mode, show the ACTIVE Pokémon as the thumbnail
+            active_sprite = act["A_sprite"] if act.get("attacker") == "A" else act.get("B_sprite")
+            other_sprite  = act["B_sprite"] if act.get("attacker") == "A" else act.get("A_sprite")
+            if active_sprite:
+                em.set_thumbnail(url=active_sprite)
+            # (Optional) show the other Pokémon in the author icon to keep context
+            if other_sprite:
+                em.set_author(name=act["B_name"] if act.get("attacker") == "A" else act["A_name"], icon_url=other_sprite)
+    
+        return em, file
 
 
     # We’ll attach the cog’s helper at runtime (see constructor call below)
