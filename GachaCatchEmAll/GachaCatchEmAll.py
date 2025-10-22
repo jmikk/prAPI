@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-import discordf
+import discord
 from redbot.core import commands, Config, checks
 import aiohttp
 
