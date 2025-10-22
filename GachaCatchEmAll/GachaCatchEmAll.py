@@ -2433,51 +2433,25 @@ class InteractiveTeamBattleView(discord.ui.View):
         if self.message:
             await self.message.edit(embed=self._current_embed(), view=self)
 
-    async def _rebuild_move_buttons(self):
-        """Remove old move buttons and add new ones for whichever users can act."""
-        # Clear old move buttons but keep utility buttons (Auto, Close)
-        keep = {"auto", "close"}
-        to_remove = [c for c in self.children if isinstance(c, discord.ui.Button) and getattr(c, "custom_id", None) not in keep]
-        for c in to_remove:
-            self.remove_item(c)
-
+    def _rebuild_move_buttons(self):
+        self.clear_items()
+    
         if not self._alive():
             return
-
+    
         A, B = self._active_pair()
         A_moves = self.cog._entry_move_names(A)
-        B_moves = self.cog._entry_move_names(B)
-
-        # Get current defender for emoji preview
-        defender = self.opp_team[self.oi] if self.oi < len(self.opp_team) else None
-        
         for name in A_moves:
-            # Try to pull cached or API move info for type preview
-            move_info = {"name": name}
-            try:
-                details = await self.cog._get_move_details(name.lower())
-                if details:
-                    move_info.update(details)
-            except Exception:
-                pass
-        
-            emoji = self._estimate_effectiveness(move_info, defender) if defender else ""
-            btn = discord.ui.Button(label=f"{emoji} {name.title()}", style=discord.ButtonStyle.primary)
-        
+            btn = discord.ui.Button(label=name.title(), style=discord.ButtonStyle.primary)
             async def _cb(inter: discord.Interaction, chosen=name):
                 await self._turn(inter, side="caller", chosen_move=chosen)
             btn.callback = _cb  # type: ignore
             self.add_item(btn)
+        
+        # keep static buttons like Auto and Close
+        self.add_item(self.auto_sim)
+        self.add_item(self.close)    
 
-
-        # If a human opponent exists, give them their own row of buttons
-        if self.opponent:
-            for name in B_moves:
-                btn = discord.ui.Button(label=f"(Opp) {name.title()}", style=discord.ButtonStyle.secondary)
-                async def _cb(inter: discord.Interaction, chosen=name):
-                    await self._turn(inter, side="opp", chosen_move=chosen)
-                btn.callback = _cb  # type: ignore
-                self.add_item(btn)
 
     # ---------- core one-turn resolver ----------
     async def _turn(self, interaction: discord.Interaction, side: str, chosen_move: str):
