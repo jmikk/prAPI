@@ -2379,9 +2379,9 @@ class InteractiveTeamBattleView(discord.ui.View):
         # image styling
         a_s = A.get("sprite"); b_s = B.get("sprite")
         if a_s:      
-            em.set_author(name=(B.get("nickname") or B.get("name","?")), icon_url=b_s)
+            em.set_author(name=(B.get("nickname") or B.get("name","?")), icon_url=a_s)
         if b_s:
-            em.set_thumbnail(url=a_s)
+            em.set_thumbnail(url=b_s)
 
 
         if self._action_log:
