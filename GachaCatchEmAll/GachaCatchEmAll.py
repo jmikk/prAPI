@@ -1180,7 +1180,7 @@ class GachaCatchEmAll(commands.Cog):
         if e.get("sprite"):
             emb.set_thumbnail(url=e["sprite"])
     
-        view = self.ConfirmCombineView(author=member)  # simple yes/no view you already added
+        view = ConfirmCombineView(author=member)  # simple yes/no view you already added
         msg = await ctx.reply(embed=emb, view=view)
         view.message = msg
         await view.wait()
@@ -1268,7 +1268,7 @@ class GachaCatchEmAll(commands.Cog):
         if B.get("sprite"):
             preview.set_author(name=b_name, icon_url=B["sprite"])
     
-        view = self.ConfirmCombineView(author=member)
+        view = ConfirmCombineView(author=member)
         msg = await ctx.reply(embed=preview, view=view)
         view.message = msg
         await view.wait()
