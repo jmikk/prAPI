@@ -2433,7 +2433,7 @@ class InteractiveTeamBattleView(discord.ui.View):
         if self.message:
             await self.message.edit(embed=self._current_embed(), view=self)
 
-    def _rebuild_move_buttons(self):
+    async def _rebuild_move_buttons(self):
         """Remove old move buttons and add new ones for whichever users can act."""
         # Clear old move buttons but keep utility buttons (Auto, Close)
         keep = {"auto", "close"}
