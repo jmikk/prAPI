@@ -2432,8 +2432,9 @@ class InteractiveTeamBattleView(discord.ui.View):
                 pass
         if self.message:
             await self.message.edit(embed=self._current_embed(), view=self)
-
-    def _rebuild_move_buttons(self):
+    
+    async def _rebuild_move_buttons(self):
+        """Rebuilds move buttons with effectiveness emojis based on opponent's types."""
         self.clear_items()
     
         if not self._alive():
@@ -2441,16 +2442,31 @@ class InteractiveTeamBattleView(discord.ui.View):
     
         A, B = self._active_pair()
         A_moves = self.cog._entry_move_names(A)
+    
+        defender = self.opp_team[self.oi] if self.oi < len(self.opp_team) else None
+    
         for name in A_moves:
-            btn = discord.ui.Button(label=name.title(), style=discord.ButtonStyle.primary)
+            # fetch move details for emoji prediction
+            move_info = {"name": name}
+            try:
+                details = await self.cog._get_move_details(name.lower())
+                if details:
+                    move_info.update(details)
+            except Exception:
+                pass
+    
+            emoji = self._estimate_effectiveness(move_info, defender) if defender else ""
+            label = f"{emoji} {name.title()}" if emoji else name.title()
+    
+            btn = discord.ui.Button(label=label, style=discord.ButtonStyle.primary)
             async def _cb(inter: discord.Interaction, chosen=name):
                 await self._turn(inter, side="caller", chosen_move=chosen)
             btn.callback = _cb  # type: ignore
             self.add_item(btn)
-        
-        # keep static buttons like Auto and Close
+    
+        # Always include the Auto-Sim and Close buttons last
         self.add_item(self.auto_sim)
-        self.add_item(self.close)    
+        self.add_item(self.close)
 
 
     # ---------- core one-turn resolver ----------
