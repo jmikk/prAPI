@@ -145,6 +145,37 @@ class GachaCatchEmAll(commands.Cog):
             names = []
         # Trim to 4; title-case for buttons
         return [n for n in names][:4] or ["tackle"]
+
+    async def _build_moves_preview(self, types: List[str], max_moves: int = 4) -> List[Dict[str, Any]]:
+        """
+        Build up to `max_moves` candidate moves from the mon's types and return
+        compact dicts with name/type/power/class for display. Falls back to Tackle.
+        """
+        pool: List[str] = []
+        for t in types or []:
+            try:
+                pool.extend(await self._get_moves_for_type(t))
+            except Exception:
+                pass
+        pool = sorted(set(pool))
+        if not pool:
+            return [{"name": "tackle", "type": "normal", "power": 40, "class": "physical"}]
+    
+        picks = random.sample(pool, k=min(max_moves, len(pool)))
+        out: List[Dict[str, Any]] = []
+        for mv in picks:
+            try:
+                md = await self._get_move_details(mv.lower())
+                out.append({
+                    "name": mv,
+                    "type": ((md.get("type") or {}).get("name") or "normal"),
+                    "power": md.get("power") if md.get("power") is not None else "—",
+                    "class": ((md.get("damage_class") or {}).get("name") or "physical"),
+                })
+            except Exception:
+                out.append({"name": mv, "type": "normal", "power": "—", "class": "physical"})
+        return out
+
     
 
 
@@ -775,6 +806,20 @@ class GachaCatchEmAll(commands.Cog):
         )
         if enc.get("sprite"):
             e.set_thumbnail(url=enc["sprite"])
+
+        pm = enc.get("preview_moves") or []
+       
+        if pm:
+            def _icon_for_class(cls: str) -> str:
+                return "💪" if cls == "physical" else "🧠" if cls == "special" else "✨"
+            lines = []
+            for i, m in enumerate(pm, 1):
+                lines.append(
+                    f"{i}. **{str(m['name']).title()}** — {str(m['type']).title()} "
+                    f"(Power: {m['power']}) {_icon_for_class(str(m['class']).lower())}"
+                )
+            e.add_field(name="Moves Preview", value="\n".join(lines), inline=False)
+        
         return e
 
 
@@ -962,6 +1007,69 @@ class GachaCatchEmAll(commands.Cog):
         GREATBALL_EMOJI  = discord.PartialEmoji(name="greatball",  id=1430211777030914179)
         ULTRABALL_EMOJI  = discord.PartialEmoji(name="ultraball",  id=1430211816939720815)
         MASTERBALL_EMOJI = discord.PartialEmoji(name="masterball", id=1430211804046295141)
+
+        @discord.ui.button(label="Search Again", style=discord.ButtonStyle.secondary, emoji="🔄")
+        async def search_again(self, interaction: discord.Interaction, button: discord.ui.Button):
+            # Gracefully defer
+            if not interaction.response.is_done():
+                try:
+                    await interaction.response.defer()
+                except Exception:
+                    pass
+        
+            uconf = self.cog.config.user(interaction.user)
+            enc = await uconf.active_encounter()
+            # keep the same habitat filter if present
+            filter_type = (enc or {}).get("filter_type")
+        
+            # Build allowlist if a specific type was chosen
+            allowed_ids = None
+            if filter_type:
+                try:
+                    allowed_ids = await self.cog._get_type_ids(filter_type)
+                except Exception:
+                    allowed_ids = None
+        
+            # Roll a new encounter
+            pdata, pid, bst = await self.cog._random_encounter("greatball", allowed_ids=allowed_ids)
+            name = pdata.get("name", "unknown").title()
+            sprite = (
+                pdata.get("sprites", {})
+                .get("other", {}).get("official-artwork", {}).get("front_default")
+                or pdata.get("sprites", {}).get("front_default")
+            )
+            flee_base = max(0.05, min(0.25, 0.10 + (bst - 400) / 800.0))
+        
+            # New enc dict
+            new_enc = {
+                "id": int(pid),
+                "name": name,
+                "bst": int(bst),
+                "sprite": sprite,
+                "fails": 0,
+                "flee_base": float(flee_base),
+                "filter_type": filter_type if filter_type else None,
+            }
+        
+            # Build moves preview for the new mon
+            pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
+            new_enc["preview_moves"] = await self.cog._build_moves_preview(pdata_types, max_moves=4)
+        
+            # Save and redraw
+            await uconf.active_encounter.set(new_enc)
+            costs = await self.cog.config.costs()
+            embed = self.cog._encounter_embed(interaction.user, new_enc, costs)
+            embed.title = (
+                f"🌿 {str(filter_type).title()} Area — a wild {name} appeared!" if filter_type
+                else f"🌿 All Areas — a wild {name} appeared!"
+            )
+        
+            target_msg = self.message or interaction.message
+            try:
+                await target_msg.edit(content=None, embed=embed, view=self)
+            except Exception:
+                await interaction.followup.send(embed=embed, view=self)
+
 
 
         @discord.ui.button(label="Poké Ball",   style=discord.ButtonStyle.secondary, emoji=POKEBALL_EMOJI)
@@ -1494,6 +1602,15 @@ class GachaCatchEmAll(commands.Cog):
     
         if enc:
             # Resume the current encounter immediately
+                # ensure preview moves exist
+            if not enc.get("preview_moves"):
+                try:
+                    pdata = await self._get_pokemon(int(enc["id"]))
+                    pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
+                    enc["preview_moves"] = await self._build_moves_preview(pdata_types, max_moves=4)
+                    await uconf.active_encounter.set(enc)
+                except Exception:
+                    pass
             costs = await self.config.costs()
             embed = self._encounter_embed(ctx.author, enc, costs)
             if enc.get("filter_type"):
@@ -2112,6 +2229,8 @@ class GachaCatchEmAll(commands.Cog):
                 "flee_base": float(flee_base),
                 "filter_type": None if pick == "all" else pick.lower(),
             }
+            pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
+            enc["preview_moves"] = await self.cog._build_moves_preview(pdata_types, max_moves=4)
             await uconf.active_encounter.set(enc)
     
             costs = await self.cog.config.costs()
