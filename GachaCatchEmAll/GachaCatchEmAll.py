@@ -2344,9 +2344,6 @@ class InteractiveTeamBattleView(discord.ui.View):
         # live message
         self.message: Optional[discord.Message] = None
 
-        # dynamic move buttons (filled on first render)
-        self._rebuild_move_buttons()
-
     # ---------- guards / boilerplate ----------
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         allowed = {self.caller.id}
@@ -2462,7 +2459,7 @@ class InteractiveTeamBattleView(discord.ui.View):
         em.set_footer(text="Choose a move or ⏭ Auto-Sim to Results")
         return em
 
-    async def _refresh(self, interaction: Optional[discord.Interaction] = None):
+    async def _refresh_ui(self, interaction: Optional[discord.Interaction] = None):
         """Refresh the embed and rebuild move buttons to reflect current Pokémon."""
         try:
             # rebuild move buttons for the new active Pokémon
@@ -2616,7 +2613,7 @@ class InteractiveTeamBattleView(discord.ui.View):
 
         # If fight continues, refresh to show new HP (and maybe new mon)
         if self._alive():
-            await self._refresh(interaction)
+            await self._refresh_ui(interaction)
             return
 
         # Otherwise, finish and show results
