@@ -20,6 +20,7 @@ __red_end_user_data_statement__ = (
 
 GYM_LEVELS = {1:10, 2:20, 3:30, 4:40, 5:50, 6:60, 7:70, 8:80}
 ELITE_LEVEL = 90
+ALL_BADGES = [f"gym{i}" for i in range(1, 9)]
 
 
 POKEAPI_BASE = "https://pokeapi.co/api/v2"
@@ -1053,13 +1054,14 @@ class GachaCatchEmAll(commands.Cog):
             filled = max(0, min(10, filled))
             return "▰" * filled + "▱" * (10 - filled) + f"  {xp}/{need}"
     
+        # --- replace the whole _render_embed method in MonPaginator with this ---
         def _render_embed(self) -> discord.Embed:
             e = self.entries[self.index]
             title = e.get("name", "Unknown")
             nick = e.get("nickname")
             if nick:
                 title = f"{nick} ({e.get('name','Unknown')})"
-    
+        
             # Stats block
             stats = e.get("stats") or {}
             order = ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]
@@ -1068,24 +1070,28 @@ class GachaCatchEmAll(commands.Cog):
                 if k not in order:
                     parts.append(f"{k.replace('-',' ').title()}: **{v}**")
             stats_text = "\n".join(parts) if parts else "No stats"
-    
+        
             # Types
             types = e.get("types") or []
             types_text = " / ".join(t.title() for t in types) if types else "Unknown"
-    
+        
             # Level / XP with safe defaults
             lvl = int(e.get("level", 1))
             xp = int(e.get("xp", 0))
             xpbar = self._xp_bar(lvl, xp)
-    
-            # Fancy caught time: prefer caught_at_unix; fallback if caught_at is int; else show ISO
+        
+            # Moves (up to 4)
+            moves = [m for m in (e.get("moves") or []) if isinstance(m, str)]
+            moves_text = ", ".join(m.title() for m in moves[:4]) if moves else "—"
+        
+            # Caught time
             unix = e.get("caught_at_unix")
             if unix is None:
                 ca = e.get("caught_at")
                 if isinstance(ca, int):
                     unix = ca
             caught_text = f"<t:{unix}:F> — <t:{unix}:R>" if unix is not None else (e.get("caught_at", "?") or "?")
-    
+        
             desc = (
                 f"**UID:** `{e.get('uid','??')}`\n"
                 f"**Pokédex ID:** {e.get('pokedex_id','?')}\n"
@@ -1094,15 +1100,17 @@ class GachaCatchEmAll(commands.Cog):
                 f"**Level:** **{lvl}**\n"
                 f"**XP:** {xpbar}\n"
                 f"**Caught:** {caught_text}\n\n"
+                f"**Moves:** {moves_text}\n\n"
                 f"**Stats:**\n{stats_text}"
             )
-    
+        
             embed = discord.Embed(title=title, description=desc, color=discord.Color.purple())
             sprite = e.get("sprite")
             if sprite:
                 embed.set_thumbnail(url=sprite)
             embed.set_footer(text=f"{self.member.display_name} — {self.index + 1}/{len(self.entries)}")
             return embed
+
     
         async def _update(self, interaction: discord.Interaction):
             if not interaction.response.is_done():
