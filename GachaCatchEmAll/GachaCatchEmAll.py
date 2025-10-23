@@ -1930,6 +1930,7 @@ class GachaCatchEmAll(commands.Cog):
         await ctx.reply(embed=embed)
 
     @commands.hybrid_command(name="teambattle")
+    @commands.cooldown(1, 10, commands.BucketType.user)
     async def teambattle(self, ctx: commands.Context, opponent: Optional[discord.Member] = None):
         """
         Interactive 6v6 team battle.
