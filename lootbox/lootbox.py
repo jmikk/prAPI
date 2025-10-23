@@ -78,33 +78,39 @@ class lootbox(commands.Cog):
             pol = await self.config.guild(guild).cooldown_policy()
             self._policy_cache[guild.id] = pol
 
-    # helper: PURE SYNC function for dynamic_cooldown
     def _cooldown_for_ctx_sync(self, ctx: commands.Context) -> commands.Cooldown:
-        # fallback if DMs or missing policy
         if not ctx.guild:
             return commands.Cooldown(1, 86400)
-
+    
         policy = self._policy_cache.get(ctx.guild.id)
         if not policy:
             return commands.Cooldown(1, 86400)
-
+    
         default_rate = policy["default"]["rate"]
         default_per = policy["default"]["per"]
         best_rate, best_per = default_rate, default_per
-
-        roles_policy = policy.get("roles", {})
-        member = ctx.guild.get_member(ctx.author.id)
+    
+        # Use the invoking member; avoids cache/intents issues
+        member = ctx.author if isinstance(ctx.author, discord.Member) else ctx.guild.get_member(ctx.author.id)
+    
         if member:
+            roles_policy = policy.get("roles", {})
             for r in member.roles:
+                if not r:  # just in case
+                    continue
                 rp = roles_policy.get(str(r.id))
                 if rp:
-                    rate, per = rp.get("rate", default_rate), rp.get("per", default_per)
-                    if rate / per > best_rate / best_per:
+                    rate = rp.get("rate", default_rate)
+                    per = rp.get("per", default_per)
+                    # pick the most permissive (highest requests/second)
+                    if (rate / per) > (best_rate / best_per):
                         best_rate, best_per = rate, per
-
+    
         if best_per > 86400:
             best_per = 86400
+    
         return commands.Cooldown(best_rate, best_per)
+
 
 
 
