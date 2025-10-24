@@ -951,6 +951,25 @@ class SSE(commands.Cog):
             + (f" • name: **{name}**" if name else "")
         )
 
+    @es_group.command(name="listwebhooks")
+    @checks.admin_or_permissions(manage_guild=True)
+    async def es_listwebhooks(self, ctx: commands.Context):
+        """List all webhooks Elderscry is configured to use for this guild."""
+        default = await self.config.guild(ctx.guild).default_webhook()
+        wa_move = await self.config.guild(ctx.guild).wa_move_webhook()
+        filters = await self.config.guild(ctx.guild).filters()
+    
+        lines = [f"**Default webhook:** {default or 'not set'}",
+                 f"**WA-move webhook:** {wa_move or 'not set'}"]
+    
+        for i, f in enumerate(filters, start=1):
+            nm = f.get('name') or '(unnamed)'
+            wh = f.get('webhook')
+            lines.append(f"{i}. {nm}: {wh or 'uses default'}")
+    
+        await ctx.send("\n".join(lines[:50]))
+    
+
 
 
     @es_filters.command(name="remove")
