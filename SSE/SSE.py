@@ -90,6 +90,40 @@ DEFAULT_COMMON_FILTERS: Dict[str, str] = {
 MINIFLAG_RE = re.compile(r'<img src="([^"]+?)" class="miniflag"', re.I)
 RMB_LINK_RE = re.compile(r'<a href="/region=([^"/]+)/page=display_region_rmb\?postid=(\d+)', re.I)
 
+MOVE_RE = re.compile(
+    r"@@(?P<nation>[a-z0-9_ ]+?)@@\s+relocated\s+from\s+%%(?P<from>[^%]+)%%\s+to\s+%%(?P<to>[^%]+)%%",
+    re.I,
+)
+
+async def _is_wa_member(self, nation_slug: str) -> bool:
+    """True if nation is WA member."""
+    api_nation = ns_norm(nation_slug)
+    url = f"https://www.nationstates.net/cgi-bin/api.cgi?nation={api_nation}&q=wa+unstatus"
+    headers = {"User-Agent": await self._pick_any_user_agent()}
+    try:
+        async with self.session.get(url, headers=headers) as resp:
+            txt = await resp.text()
+        root = ET.fromstring(txt)
+        wa_val = root.findtext(".//WA")
+        if wa_val is not None:
+            return wa_val.strip() == "1"
+        unstatus = (root.findtext(".//UNSTATUS") or "").lower()
+        return "member" in unstatus
+    except Exception:
+        log.exception("WA check failed for %s", nation_slug)
+        return False
+
+def _parse_move(self, text: str) -> Optional[tuple[str, str, str]]:
+    """Return (nation_slug, from_region_slug, to_region_slug) if move string matches."""
+    m = self.MOVE_RE.search(text or "")
+    if not m:
+        return None
+    nation = ns_norm(m.group("nation"))
+    from_r = ns_norm(m.group("from"))
+    to_r = ns_norm(m.group("to"))
+    return nation, from_r, to_r
+
+
 
 def _regions_from_buckets(buckets: Optional[List[str]]) -> set[str]:
     """
@@ -160,13 +194,19 @@ class SSE(commands.Cog):
         self._cache_ttl_seconds: int = 9000  
 
         default_guild = {
-            "regions": [],                     # list of region slugs (lowercase, underscores). If empty, no listener.
-            "default_webhook": "",             # fallback webhook (https://discord.com/api/webhooks/...)
-            "user_agent": "",                  # NS UA string
-            "enabled": False,                  # start/stop toggle
-            "filters": [],
-            "route_unmatched_to_default": True,# list of dicts: pattern, color (int), role_id (int|None), webhook (str|None), name (str|None)
-        }
+    "regions": [],
+    "default_webhook": "",
+    "user_agent": "",
+    "enabled": False,
+    "filters": [],
+    "route_unmatched_to_default": True,
+
+    # NEW: dedicated WA-move stream (per guild)
+    "wa_move_webhook": "",        # if set, WA members moving INTO a watched region go here
+    "wa_move_color": 0x2ECC71,    # pleasant green
+    "wa_move_role_id": None,      # optional mention role
+}
+        
         self.config.register_guild(**default_guild)
 
     # ------------- Lifecycle -------------
@@ -221,6 +261,30 @@ class SSE(commands.Cog):
         data = await self._fetch_region_nations(region_slug)
         self._region_nations_cache[region_slug] = (data, datetime.now(timezone.utc).timestamp())
         return data
+
+    async def _is_wa_member(self, nation_slug: str) -> bool:
+        """
+        Returns True if the nation is a WA member, else False.
+        Uses q=wa+unstatus for robustness.
+        """
+        if not nation_slug:
+            return False
+        nation_slug = ns_norm(nation_slug)
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?nation={nation_slug}&q=wa+unstatus"
+        headers = {"User-Agent": await self._pick_any_user_agent()}
+        try:
+            async with self.session.get(url, headers=headers) as resp:
+                txt = await resp.text()
+            root = ET.fromstring(txt)
+            wa = (root.findtext(".//WA") or "").strip()
+            if wa.isdigit():
+                return wa == "1"
+            unstatus = (root.findtext(".//UNSTATUS") or "").lower()
+            return "member" in unstatus
+        except Exception:
+            log.exception("WA check failed for %s", nation_slug)
+            return False
+
     
     async def _region_for_nation_via_caches(self, nation_slug: str) -> Optional[str]:
         """
@@ -366,6 +430,72 @@ class SSE(commands.Cog):
         event_str = data.get("str", "") or ""
         html = data.get("htmlStr", "") or ""
         buckets = data.get("buckets") or []
+
+        # ---- WA Move fast-path (per-region, destination only) ----
+        try:
+            parsed = self._parse_move(event_str)
+        except Exception:
+            parsed = None
+        
+        if parsed:
+            nation_slug, from_region, to_region = parsed
+        
+            # Only care about moves INTO a region we watch (per guild)
+            tasks = []
+            for guild in self.bot.guilds:
+                if not await self.config.guild(guild).enabled():
+                    continue
+        
+                watched = set(await self.config.guild(guild).regions() or [])
+                if to_region not in watched:
+                    continue  # this guild doesn't care about this destination
+        
+                wa_move_webhook = await self.config.guild(guild).wa_move_webhook()
+                if not wa_move_webhook:
+                    continue  # no dedicated stream set up for this guild
+        
+                # Check WA membership once (outside the embed loop)
+                wa_member = await self._is_wa_member(nation_slug)
+                if not wa_member:
+                    continue  # only stream WA members
+        
+                color = int(await self.config.guild(guild).wa_move_color() or 0x2ECC71)
+                role_id = await self.config.guild(guild).wa_move_role_id()
+        
+                # Build a crisp embed just for this stream
+                flag_url = self._flag_from_html(html)
+                title = f"WA Nation moved into {to_region.replace('_',' ').title()}"
+                desc = hyperlink_ns(event_str)
+        
+                embed = discord.Embed(
+                    title=title,
+                    description=desc,
+                    colour=discord.Colour(color),
+                    timestamp=datetime.fromtimestamp(
+                        data.get("time", int(datetime.now(timezone.utc).timestamp())),
+                        tz=timezone.utc,
+                    ),
+                )
+                if flag_url:
+                    embed.set_thumbnail(url=flag_url)
+        
+                # Add quick fields for clarity
+                embed.add_field(name="Nation", value=f"[{nation_slug}](https://www.nationstates.net/nation={nation_slug})", inline=True)
+                embed.add_field(name="From", value=f"[{from_region.replace('_',' ')}](https://www.nationstates.net/region={from_region})", inline=True)
+                embed.add_field(name="To", value=f"[{to_region.replace('_',' ')}](https://www.nationstates.net/region={to_region})", inline=True)
+        
+                eid = data.get("id", "N/A")
+                embed.set_footer(text=f"Event ID: {eid} • Destination region scope")
+        
+                content = f"<@&{role_id}>" if role_id else None
+                tasks.append(self._post_webhook(wa_move_webhook, content, [embed]))
+        
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            # Note: do NOT return here; let normal filters also process as usual if they match.
+
+
+        
     
         # --- Region set & primary from buckets only ---
         event_regions: set[str] = _regions_from_buckets(buckets)
@@ -643,6 +773,22 @@ class SSE(commands.Cog):
     async def es_group(self, ctx: commands.Context):
         """Elderscry controls."""
         pass
+
+    @es_group.command(name="setwamovestream")
+    async def es_set_wa_move_stream(self, ctx: commands.Context, webhook: str):
+        await self.config.guild(ctx.guild).wa_move_webhook.set(webhook.strip())
+        await ctx.send("WA Move stream webhook set.")
+    
+    @es_group.command(name="setwamovecolor")
+    async def es_set_wa_move_color(self, ctx: commands.Context, color: int):
+        await self.config.guild(ctx.guild).wa_move_color.set(int(color))
+        await ctx.send("WA Move stream color updated.")
+    
+    @es_group.command(name="setwamoverole")
+    async def es_set_wa_move_role(self, ctx: commands.Context, role_id: Optional[int] = None):
+        await self.config.guild(ctx.guild).wa_move_role_id.set(role_id)
+        await ctx.send(f"WA Move stream role set to: {role_id or 'none'}")
+    
 
     @es_group.command(name="enable")
     async def es_enable(self, ctx: commands.Context, enabled: bool):
