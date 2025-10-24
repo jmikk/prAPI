@@ -204,7 +204,8 @@ class SSE(commands.Cog):
     # NEW: dedicated WA-move stream (per guild)
     "wa_move_webhook": "",        # if set, WA members moving INTO a watched region go here
     "wa_move_color": 0x2ECC71,    # pleasant green
-    "wa_move_role_id": None,      # optional mention role
+    "wa_move_role_id": None,
+    "wa_move_overrides": {}  # { "vibonia": {"webhook": "...", "role_id": 123, "color": 0x00AA55}, ... }# optional mention role
 }
         
         self.config.register_guild(**default_guild)
@@ -216,6 +217,27 @@ class SSE(commands.Cog):
         # Autostart for guilds that have enabled
         if any(await self._guild_enabled_any()):
             self.listener_task = asyncio.create_task(self._run_listener(), name="Elderscry_SSE")
+
+    async def _wa_move_settings_for(self, guild: discord.Guild, to_region: str):
+        """
+        Returns (webhook, role_id, color) for WA-move into `to_region`,
+        preferring per-region overrides, else falling back to guild-wide defaults.
+        """
+        to_region = ns_norm(to_region)
+        overrides = await self.config.guild(guild).wa_move_overrides()
+        if overrides and to_region in overrides:
+            ov = overrides[to_region] or {}
+            webhook = ov.get("webhook") or ""
+            role_id = ov.get("role_id")
+            color = int(ov.get("color") or 0x2ECC71)
+            return webhook, role_id, color
+    
+        # fall back to global
+        webhook = await self.config.guild(guild).wa_move_webhook()
+        role_id = await self.config.guild(guild).wa_move_role_id()
+        color = int(await self.config.guild(guild).wa_move_color() or 0x2ECC71)
+        return webhook, role_id, color
+
 
     async def cog_unload(self):
         if self.listener_task and not self.listener_task.done():
@@ -477,7 +499,6 @@ class SSE(commands.Cog):
                 if to_region not in watched:
                     continue  # this guild doesn't care about this destination
         
-                wa_move_webhook = await self.config.guild(guild).wa_move_webhook()
                 if not wa_move_webhook:
                     continue  # no dedicated stream set up for this guild
         
@@ -486,9 +507,10 @@ class SSE(commands.Cog):
                 if not wa_member:
                     continue  # only stream WA members
         
-                color = int(await self.config.guild(guild).wa_move_color() or 0x2ECC71)
-                role_id = await self.config.guild(guild).wa_move_role_id()
-        
+                wa_move_webhook, role_id, color = await self._wa_move_settings_for(guild, to_region)
+                if not wa_move_webhook:
+                    continue
+            
                 # Build a crisp embed just for this stream
                 flag_url = self._flag_from_html(html)
                 title = f"WA Nation moved into {to_region.replace('_',' ').title()}"
@@ -815,6 +837,55 @@ class SSE(commands.Cog):
     async def es_group(self, ctx: commands.Context):
         """Elderscry controls."""
         pass
+
+    @es_group.group(name="wamove", invoke_without_command=True)
+    async def es_wamove(self, ctx: commands.Context):
+        """Manage WA-move per-region overrides."""
+        ov = await self.config.guild(ctx.guild).wa_move_overrides()
+        if not ov:
+            return await ctx.send("No per-region overrides set.")
+        lines = [f"**{r}** → webhook: {'set' if v.get('webhook') else '—'}, "
+                 f"role: {v.get('role_id') or '—'}, color: {hex(int(v.get('color') or 0))}"
+                 for r, v in ov.items()]
+        await ctx.send("\n".join(lines[:50]))
+
+    @es_wamove.command(name="set")
+    async def es_wamove_set(self, ctx: commands.Context, region: str, webhook: str = "", role_id: Optional[int] = None, color: Optional[int] = None):
+        """Set per-region WA-move override: webhook [role_id] [color]. Use empty webhook to remove."""
+        r = ns_norm(region)
+        async with self.config.guild(ctx.guild).wa_move_overrides() as ov:
+            if not webhook:
+                ov.pop(r, None)
+            else:
+                cur = ov.get(r, {})
+                cur["webhook"] = webhook.strip()
+                if role_id is not None:
+                    cur["role_id"] = role_id
+                if color is not None:
+                    cur["color"] = int(color)
+                ov[r] = cur
+        await ctx.send(f"WA-move override {'removed' if not webhook else 'updated'} for `{r}`.")
+
+    @es_wamove.command(name="role")
+    async def es_wamove_role(self, ctx: commands.Context, region: str, role_id: Optional[int] = None):
+        """Set per-region WA-move role (or clear by omitting role_id)."""
+        r = ns_norm(region)
+        async with self.config.guild(ctx.guild).wa_move_overrides() as ov:
+            cur = ov.get(r, {})
+            cur["role_id"] = role_id
+            ov[r] = cur
+        await ctx.send(f"Role for `{r}` set to: {role_id or 'none'}")
+    
+    @es_wamove.command(name="color")
+    async def es_wamove_color(self, ctx: commands.Context, region: str, color: int):
+        """Set per-region WA-move embed color (int)."""
+        r = ns_norm(region)
+        async with self.config.guild(ctx.guild).wa_move_overrides() as ov:
+            cur = ov.get(r, {})
+            cur["color"] = int(color)
+            ov[r] = cur
+        await ctx.send(f"Color for `{r}` set to: {color}")
+    
 
     @es_group.command(name="setwamovestream")
     async def es_set_wa_move_stream(self, ctx: commands.Context, webhook: str):
