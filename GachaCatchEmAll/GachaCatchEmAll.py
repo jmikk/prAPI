@@ -511,9 +511,23 @@ class GachaCatchEmAll(commands.Cog):
     
     def _give_stat_points_for_levels(self, before_level: int, after_level: int) -> int:
         """
-        1 stat point per level gained.
+        Calculates how many total stat points are earned across all stats
+        between two levels, roughly matching Pokémon-style growth.
+    
+        Each level-up rolls for each stat independently from [0,0,0,1,1,1,2].
+        Expected total ≈ 4.3 per level.
         """
-        return max(0, int(after_level) - int(before_level))
+        levels_gained = max(0, int(after_level) - int(before_level))
+        if levels_gained <= 0:
+            return 0
+    
+        total_points = 0
+        for _ in range(levels_gained):
+            # 6 stats × roll per stat
+            for _ in range(6):
+                total_points += random.choice([0, 0, 0, 1, 1, 1, 2])
+        return total_points
+
     
     def _find_entry_by_uid(self, box: List[Dict[str, Any]], uid: str) -> Optional[Dict[str, Any]]:
         for e in box:
@@ -527,29 +541,7 @@ class GachaCatchEmAll(commands.Cog):
         for k in ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]:
             s.setdefault(k, 10)
         return s
-
-    def _auto_allocate_points(self, e: Dict[str, Any], pts: int) -> None:
-        """Auto-spend 'pts' stat points on this entry. Bias to the mon's stronger attack style."""
-        if pts <= 0:
-            return
-        stats = self._safe_stats(e)
-    
-        # Determine bias: physical vs special
-        physical_bias = stats["attack"] >= stats["special-attack"]
-        if physical_bias:
-            prio = ["hp", "attack", "speed", "defense", "special-defense", "special-attack"]
-        else:
-            prio = ["hp", "special-attack", "speed", "special-defense", "defense", "attack"]
-    
-        # Distribute round-robin by priority
-        for i in range(pts):
-            k = prio[i % len(prio)]
-            stats[k] = int(stats.get(k, 10)) + 1
-    
-        e["stats"] = stats
-        e["bst"] = sum(stats.values())
-
-
+        
     def _calc_move_damage(self, attacker: Dict[str, Any], defender: Dict[str, Any], move_info: Dict[str, Any]) -> int:
         """Calculate damage with STAB, type effectiveness, and crit chance."""
         a_stats = self._safe_stats(attacker)
@@ -1837,6 +1829,50 @@ class GachaCatchEmAll(commands.Cog):
         target["nickname"] = nickname
         await self.config.user(ctx.author).pokebox.set(box)
         await ctx.reply(f"Set nickname for `{uid}` to **{nickname}**.")
+
+    def _auto_allocate_points(self, e: Dict[str, Any], pts: int) -> None:
+        """
+        Randomly distribute 'pts' stat points across the six stats with a small,
+        Pokémon-flavored bias:
+          - favor the mon's dominant attack (Atk or SpA)
+          - small bumps to HP and Speed
+        """
+        if pts <= 0:
+            return
+    
+        stats = self._safe_stats(e)
+    
+        # Determine dominant style (physical vs special)
+        physical_bias = stats["attack"] >= stats["special-attack"]
+    
+        # Base weights (equal chance)
+        weights = {
+            "hp": 1.00,
+            "attack": 1.00,
+            "defense": 1.00,
+            "special-attack": 1.00,
+            "special-defense": 1.00,
+            "speed": 1.00,
+        }
+    
+        # Light, reasonable nudges to feel more like in-game growth trends
+        weights["hp"] *= 1.10
+        weights["speed"] *= 1.10
+        if physical_bias:
+            weights["attack"] *= 1.30
+        else:
+            weights["special-attack"] *= 1.30
+    
+        order = ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]
+        weight_list = [weights[k] for k in order]
+    
+        for _ in range(pts):
+            pick = random.choices(order, weights=weight_list, k=1)[0]
+            stats[pick] = int(stats.get(pick, 10)) + 1
+    
+        e["stats"] = stats
+        e["bst"] = sum(stats.values())
+
 
     # --------- Admin ---------
 
