@@ -948,15 +948,23 @@ class GachaCatchEmAll(commands.Cog):
 
 
                 if caught:
-                    # save per-catch entry and end encounter
+                    # Pull species data
                     pdata = await self.cog._get_pokemon(enc["id"])
                     types = [t["type"]["name"] for t in pdata.get("types", [])]
                     stats_map = {s["stat"]["name"]: int(s["base_stat"]) for s in pdata.get("stats", [])}
                     uid = uuid.uuid4().hex[:12]
                     now = datetime.now(timezone.utc)
-                    unix = int(now.timestamp())
-                    types = [t["type"]["name"] for t in pdata.get("types", [])]
-                    start_move = await self.cog._random_starting_move(types)
+                
+                    # ✅ Use the committed starter moves shown in the embed
+                    starter_moves = enc.get("starter_moves") or []
+                    moves_flat = [m.get("name") for m in starter_moves
+                                  if isinstance(m, dict) and m.get("name")]
+                
+                    # Final fallback in case something went wrong
+                    if not moves_flat:
+                        rm = await self.cog._random_starting_move(types)
+                        moves_flat = [rm] if rm else ["tackle"]
+                
                     entry = {
                         "uid": uid,
                         "pokedex_id": int(enc["id"]),
@@ -969,17 +977,17 @@ class GachaCatchEmAll(commands.Cog):
                         "caught_at": int(now.timestamp()),
                         "level": 1,
                         "xp": 0,
-                        "moves": [start_move] if start_move else [],   # NEW
-                        "pending_points": 0,                           # NEW
+                        "moves": moves_flat,      # <-- committed previewed moves
+                        "pending_points": 0,
                     }
-
+                
                     box = await uconf.pokebox()
                     if not isinstance(box, list):
                         box = []
                     box.append(entry)
                     await uconf.pokebox.set(box)
                     await uconf.active_encounter.clear()
-
+                
                     embed = discord.Embed(
                         title=f"🎉 Caught {enc['name']}!",
                         description=f"UID: `{uid}` — use `$nickname {uid} <Name>` to nickname it.",
@@ -989,11 +997,12 @@ class GachaCatchEmAll(commands.Cog):
                         embed.set_thumbnail(url=enc["sprite"])
                     bal = await self.cog._get_balance(interaction.user)
                     embed.set_footer(text=f"New balance: {bal:.2f} WC")
-
+                
                     self._disable_all()
                     await target_msg.edit(content=None, embed=embed, view=self)
                     self.stop()
                     return
+
 
                 # not caught — roll flee chance
                 fails = int(enc.get("fails", 0)) + 1
