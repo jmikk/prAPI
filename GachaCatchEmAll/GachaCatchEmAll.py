@@ -146,6 +146,39 @@ class GachaCatchEmAll(commands.Cog):
         # Trim to 4; title-case for buttons
         return [n for n in names][:4] or ["tackle"]
 
+    async def _pick_starting_moves(self, types: List[str], n: int = 4) -> List[Dict[str, Any]]:
+        """
+        Deterministically pick up to n legal moves from the Pokémon's types.
+        Returns compact dicts: {name,type,power,class}. Guarantees at least 1 move (Tackle fallback).
+        """
+        pool: List[str] = []
+        for t in types or []:
+            try:
+                pool.extend(await self._get_moves_for_type(t))
+            except Exception:
+                pass
+        pool = sorted(set(pool))
+    
+        if not pool:
+            return [{"name":"tackle","type":"normal","power":40,"class":"physical"}]
+    
+        # Choose up to n moves; random.sample keeps variety but we'll store result on the encounter
+        picks = random.sample(pool, k=min(n, len(pool)))
+        out = []
+        for mv in picks:
+            try:
+                md = await self._get_move_details(mv.lower())
+                out.append({
+                    "name": mv,
+                    "type": ((md.get("type") or {}).get("name") or "normal"),
+                    "power": md.get("power") if md.get("power") is not None else "—",
+                    "class": ((md.get("damage_class") or {}).get("name") or "physical"),
+                })
+            except Exception:
+                out.append({"name": mv, "type": "normal", "power": "—", "class": "physical"})
+        return out
+
+
     async def _build_moves_preview(self, types: List[str], max_moves: int = 4) -> List[Dict[str, Any]]:
         """
         Build up to `max_moves` candidate moves from the mon's types and return
@@ -807,18 +840,19 @@ class GachaCatchEmAll(commands.Cog):
         if enc.get("sprite"):
             e.set_thumbnail(url=enc["sprite"])
 
-        pm = enc.get("preview_moves") or []
-       
-        if pm:
+        # NEW: committed starter moves (what you'll actually get)
+        sm = enc.get("starter_moves") or []
+        if sm:
             def _icon_for_class(cls: str) -> str:
                 return "💪" if cls == "physical" else "🧠" if cls == "special" else "✨"
             lines = []
-            for i, m in enumerate(pm, 1):
+            for i, m in enumerate(sm, 1):
                 lines.append(
                     f"{i}. **{str(m['name']).title()}** — {str(m['type']).title()} "
                     f"(Power: {m['power']}) {_icon_for_class(str(m['class']).lower())}"
                 )
-            e.add_field(name="Moves Preview", value="\n".join(lines), inline=False)
+            e.add_field(name="Will join your team with:", value="\n".join(lines), inline=False)
+
         
         return e
 
@@ -904,6 +938,14 @@ class GachaCatchEmAll(commands.Cog):
                 bst = int(enc["bst"])
                 chance = self.cog._compute_catch_chance(ball_key, bst)
                 caught = (ball_key == "masterball") or (random.random() <= chance)
+                
+                starter_moves = enc.get("starter_moves") or []
+                moves_flat = [m.get("name") for m in starter_moves if isinstance(m, dict) and m.get("name")]
+                if not moves_flat:
+                    # final fallback if something went wrong
+                    rm = await self.cog._random_starting_move(types)
+                    moves_flat = [rm] if rm else ["tackle"]
+
 
                 if caught:
                     # save per-catch entry and end encounter
@@ -1053,7 +1095,8 @@ class GachaCatchEmAll(commands.Cog):
         
             # Build moves preview for the new mon
             pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
-            new_enc["preview_moves"] = await self.cog._build_moves_preview(pdata_types, max_moves=4)
+            new_enc["starter_moves"] = await self.cog._pick_starting_moves(pdata_types, n=1)
+
         
             # Save and redraw
             await uconf.active_encounter.set(new_enc)
@@ -1603,11 +1646,11 @@ class GachaCatchEmAll(commands.Cog):
         if enc:
             # Resume the current encounter immediately
                 # ensure preview moves exist
-            if not enc.get("preview_moves"):
+            if not enc.get("starter_moves"):
                 try:
                     pdata = await self._get_pokemon(int(enc["id"]))
                     pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
-                    enc["preview_moves"] = await self._build_moves_preview(pdata_types, max_moves=4)
+                    enc["starter_moves"] = await self._pick_starting_moves(pdata_types, n=4)
                     await uconf.active_encounter.set(enc)
                 except Exception:
                     pass
@@ -2230,7 +2273,8 @@ class GachaCatchEmAll(commands.Cog):
                 "filter_type": None if pick == "all" else pick.lower(),
             }
             pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
-            enc["preview_moves"] = await self.cog._build_moves_preview(pdata_types, max_moves=4)
+            enc["starter_moves"] = await self.cog._pick_starting_moves(pdata_types, n=1)
+
             await uconf.active_encounter.set(enc)
     
             costs = await self.cog.config.costs()
