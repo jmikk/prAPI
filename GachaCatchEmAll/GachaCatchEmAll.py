@@ -1850,12 +1850,24 @@ class GachaCatchEmAll(commands.Cog):
     @checks.admin()
     async def gadmin_levelup(self, ctx: commands.Context, member: discord.Member, query: str, levels: int):
         """Admin: increase a Pokémon's level by N (adds pending stat points)."""
+        # load member's box
+        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
+        if not box:
+            await ctx.reply(f"{member.display_name} has no Pokémon.")
+            return
+    
+        # resolve the entry by UID / dex id / name / nickname
+        e = self._resolve_entry_by_any(box, query)
+        if not e:
+            await ctx.reply("Couldn't find that Pokémon. Use UID, name, or nickname.")
+            return
+    
         before = int(e.get("level", 1))
-        after = min(100, before + levels)
+        after = min(100, before + int(levels))
         if after == before:
             await ctx.reply("No change (already at cap?).")
             return
-        
+    
         pts = self._give_stat_points_for_levels(before, after)
         if await self.config.auto_stat_up():
             self._auto_allocate_points(e, pts)
@@ -1863,12 +1875,12 @@ class GachaCatchEmAll(commands.Cog):
         else:
             e["pending_points"] = int(e.get("pending_points", 0)) + pts
             pending_text = f"Pending stat points: +**{pts}** (now **{e['pending_points']}**)"
-        
+    
         e["level"] = after
         e["xp"] = 0
         await self.config.user(member).pokebox.set(box)
-        
-        label = e.get("nickname") or e.get("name","?")
+    
+        label = e.get("nickname") or e.get("name", "?")
         emb = discord.Embed(
             title="Admin Level Up",
             description=(
@@ -1882,6 +1894,7 @@ class GachaCatchEmAll(commands.Cog):
         if e.get("sprite"):
             emb.set_thumbnail(url=e["sprite"])
         await ctx.reply(embed=emb)
+
 
 
     @gachaadmin.command(name="resetpokedata")
