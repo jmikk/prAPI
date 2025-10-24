@@ -963,14 +963,7 @@ class GachaCatchEmAll(commands.Cog):
                 bst = int(enc["bst"])
                 chance = self.cog._compute_catch_chance(ball_key, bst)
                 caught = (ball_key == "masterball") or (random.random() <= chance)
-                
-                starter_moves = enc.get("starter_moves") or []
-                moves_flat = [m.get("name") for m in starter_moves if isinstance(m, dict) and m.get("name")]
-                if not moves_flat:
-                    # final fallback if something went wrong
-                    rm = await self.cog._random_starting_move(types)
-                    moves_flat = [rm] if rm else ["tackle"]
-
+            
 
                 if caught:
                     # Pull species data
@@ -1593,7 +1586,7 @@ class GachaCatchEmAll(commands.Cog):
         for k in ["hp","attack","defense","special-attack","special-defense","speed"]:
             child_stats[k] = random.choice([sa.get(k,10), sb.get(k,10)])
     
-        mut_pct = self._mutation_percent(parent1, parent2)
+        mut_pct = self._mutation_percent(A, B)
         if mut_pct > 0:
             mult = 1.0 + (mut_pct / 100.0)
             for k in ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]:
@@ -1857,44 +1850,31 @@ class GachaCatchEmAll(commands.Cog):
     @checks.admin()
     async def gadmin_levelup(self, ctx: commands.Context, member: discord.Member, query: str, levels: int):
         """Admin: increase a Pokémon's level by N (adds pending stat points)."""
-        levels = int(levels)
-        if levels <= 0:
-            await ctx.reply("Levels must be a positive integer.")
-            return
-    
-        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
-        if not box:
-            await ctx.reply(f"{member.display_name} has no Pokémon.")
-            return
-    
-        e = self._resolve_entry_by_any(box, query)
-        if not e:
-            await ctx.reply("Couldn't find that Pokémon (UID, name, or nickname).")
-            return
-    
         before = int(e.get("level", 1))
         after = min(100, before + levels)
         if after == before:
             await ctx.reply("No change (already at cap?).")
             return
-    
-        pts = self._give_stat_points_for_levels(before, after_or_lvl)
+        
+        pts = self._give_stat_points_for_levels(before, after)
         if await self.config.auto_stat_up():
             self._auto_allocate_points(e, pts)
+            pending_text = f"Auto-applied +**{pts}** to stats"
         else:
             e["pending_points"] = int(e.get("pending_points", 0)) + pts
+            pending_text = f"Pending stat points: +**{pts}** (now **{e['pending_points']}**)"
+        
         e["level"] = after
         e["xp"] = 0
-    
         await self.config.user(member).pokebox.set(box)
-    
+        
         label = e.get("nickname") or e.get("name","?")
         emb = discord.Embed(
             title="Admin Level Up",
             description=(
                 f"**{label}** `{e.get('uid')}`\n"
                 f"Level: **{before} → {after}**\n"
-                f"Pending stat points: +**{pts}** (now **{e['pending_points']}**)"
+                f"{pending_text}"
             ),
             color=discord.Color.green(),
         )
@@ -1902,6 +1882,7 @@ class GachaCatchEmAll(commands.Cog):
         if e.get("sprite"):
             emb.set_thumbnail(url=e["sprite"])
         await ctx.reply(embed=emb)
+
 
     @gachaadmin.command(name="resetpokedata")
     @checks.admin()
@@ -2104,7 +2085,6 @@ class GachaCatchEmAll(commands.Cog):
                 self._auto_allocate_points(e, pts)
             else:
                 e["pending_points"] = int(e.get("pending_points", 0)) + pts
-            e["pending_points"] = int(e.get("pending_points", 0)) + pts
             return before, lvl, xp, pts
     
         if winner == "A":
@@ -2860,12 +2840,12 @@ class InteractiveTeamBattleView(discord.ui.View):
                     before = int(be.get("level", 1))
                     lvl, xp, _ = self.cog._add_xp_to_entry(be, gain)
                     pts = self.cog._give_stat_points_for_levels(before, lvl)
-                    if await self.config.auto_stat_up():
-                        self._auto_allocate_points(e, pts)
+                    if await self.cog.config.auto_stat_up():
+                        self.cog._auto_allocate_points(be, pts)
                     else:
-                        e["pending_points"] = int(e.get("pending_points", 0)) + pts
-                    be["pending_points"] = int(be.get("pending_points", 0)) + pts
+                        be["pending_points"] = int(be.get("pending_points", 0)) + pts
                     out_lines.append(f"`{uid}` {be.get('nickname') or be.get('name','?')} +{gain} XP → Lv {before}→**{lvl}** (+{pts} pts)")
+
                 box[i] = be
             await self.cog.config.user(member).pokebox.set(box)
             return out_lines
@@ -2949,11 +2929,11 @@ class InteractiveTeamBattleView(discord.ui.View):
                     before = int(be.get("level", 1))
                     lvl, xp, _ = self.cog._add_xp_to_entry(be, awards[uid])
                     pts = self.cog._give_stat_points_for_levels(before, lvl)
-                    if await self.config.auto_stat_up():
-                        self._auto_allocate_points(e, pts)
+                    if await self.cog.config.auto_stat_up():
+                        self.cog._auto_allocate_points(be, pts)
                     else:
-                        e["pending_points"] = int(e.get("pending_points", 0)) + pts
-                    be["pending_points"] = int(be.get("pending_points", 0)) + pts
+                        be["pending_points"] = int(be.get("pending_points", 0)) + pts
+
                 box[i] = be
             await self.cog.config.user(member).pokebox.set(box)
     
