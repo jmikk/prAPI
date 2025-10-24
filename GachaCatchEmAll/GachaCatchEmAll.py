@@ -1731,27 +1731,34 @@ class GachaCatchEmAll(commands.Cog):
     
     @team_group.command(name="view")
     async def team_view(self, ctx: commands.Context, member: Optional[discord.Member] = None):
-        """View a user's team (defaults to you)."""
+        """View a user's team (defaults to you) with an overview + per-mon pages."""
         member = member or ctx.author
         uids = await self._get_team(member)
-        if not uids:
-            await ctx.reply(f"{member.display_name} has no team set.")
-            return
         box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
-        entries = self._team_entries_from_uids(box, uids)
-        if not entries:
-            await ctx.reply("Team UIDs not found in box.")
+    
+        if not box:
+            await ctx.reply(f"{member.display_name} has no Pokémon.")
             return
-        lines = []
+    
+        entries = self._team_entries_from_uids(box, uids) if uids else []
+        if not entries:
+            # fallback: top 6 by level, but still say they have no explicit team
+            fallback = sorted(box, key=lambda e: int(e.get("level",1)), reverse=True)[:6]
+            if not fallback:
+                await ctx.reply(f"{member.display_name} has no team set.")
+                return
+            notice = await ctx.reply("No team set — showing top 6 by level.")
+            entries = fallback
+    
+        # ensure each entry has at least 1 move for nicer pages
         for e in entries:
-            label = e.get("nickname") or e.get("name","?")
-            lines.append(f"`{e.get('uid','?')}` • {label} (Lv {int(e.get('level',1))})")
-        embed = discord.Embed(
-            title=f"{member.display_name}'s Team ({len(entries)}/6)",
-            description="\n".join(lines),
-            color=discord.Color.dark_teal()
-        )
-        await ctx.reply(embed=embed)
+            await self._ensure_moves_on_entry(e)
+    
+        view = TeamViewPaginator(author=ctx.author, member=member, entries=entries)
+        embed = view._render_embed()  # starts at Overview
+        msg = await ctx.reply(embed=embed, view=view)
+        view.message = msg
+
     
     @team_group.command(name="auto")
     async def team_auto(self, ctx: commands.Context):
@@ -3030,6 +3037,167 @@ class InteractiveTeamBattleView(discord.ui.View):
         if self.message:
             await self.message.edit(view=self)
         self.stop()
+
+# --- New: TeamViewPaginator ---------------------------------------------------
+class TeamViewPaginator(discord.ui.View):
+    """
+    Pager for team view:
+      - Page 0: overview of the whole team (order, UID, level, quick stats)
+      - Pages 1..N: one Pokémon per page (like MonPaginator styling)
+    """
+    def __init__(
+        self,
+        author: discord.abc.User,
+        member: discord.Member,
+        entries: List[Dict[str, Any]],
+        timeout: int = 180,
+    ):
+        super().__init__(timeout=timeout)
+        self.author = author
+        self.member = member
+        self.entries = entries[:6]  # safety
+        self.index = 0              # 0 = overview page
+        self.message: Optional[discord.Message] = None
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message(
+                "These controls aren't yours. Run the command to get your own.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    def _disable_all(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+
+    async def on_timeout(self) -> None:
+        self._disable_all()
+        try:
+            if self.message:
+                await self.message.edit(view=self)
+        except Exception:
+            pass
+
+    # --- small helpers reused from your cog’s methods ---
+    def _xp_needed(self, level: int) -> int:
+        level = max(1, int(level))
+        return 100 * level
+
+    def _xp_bar(self, level: int, xp: int) -> str:
+        need = self._xp_needed(level)
+        filled = int(round(10 * (xp / need))) if need else 0
+        filled = max(0, min(10, filled))
+        return "▰" * filled + "▱" * (10 - filled) + f"  {xp}/{need}"
+
+    # --- rendering ---
+    def _render_overview(self) -> discord.Embed:
+        lines = []
+        for i, e in enumerate(self.entries, start=1):
+            name = e.get("nickname") or e.get("name", "?")
+            lvl  = int(e.get("level", 1))
+            uid  = e.get("uid", "?")
+            types = " / ".join(t.title() for t in (e.get("types") or [])) or "Unknown"
+            moves = ", ".join(m.title() for m in (e.get("moves") or [])[:4]) or "—"
+            lines.append(
+                f"**{i}.** `{uid}` • **{name}** (Lv {lvl})\n"
+                f" Types: {types}\n"
+                f" Moves: {moves}"
+            )
+        desc = "\n\n".join(lines) if lines else "_No team set._"
+        emb = discord.Embed(
+            title=f"{self.member.display_name}'s Team Overview ({len(self.entries)}/6)",
+            description=desc,
+            color=discord.Color.dark_teal()
+        )
+        emb.set_footer(text="Use ▶ to see each Pokémon")
+        return emb
+
+    def _render_mon(self, e: Dict[str, Any], idx: int) -> discord.Embed:
+        title = e.get("nickname") or e.get("name", "Unknown")
+        stats = e.get("stats") or {}
+        order = ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]
+        parts = [f"{k.replace('-',' ').title()}: **{stats.get(k,10)}**" for k in order]
+        stats_text = "\n".join(parts)
+
+        types = " / ".join(t.title() for t in (e.get("types") or [])) or "Unknown"
+
+        lvl = int(e.get("level", 1))
+        xp = int(e.get("xp", 0))
+        xpbar = self._xp_bar(lvl, xp)
+
+        moves = ", ".join(m.title() for m in (e.get("moves") or [])[:4]) or "—"
+
+        desc = (
+            f"**UID:** `{e.get('uid','?')}`\n"
+            f"**Pokédex ID:** {e.get('pokedex_id','?')}\n"
+            f"**Types:** {types}\n"
+            f"**BST:** {e.get('bst','?')}\n"
+            f"**Level:** **{lvl}**\n"
+            f"**XP:** {xpbar}\n\n"
+            f"**Moves:** {moves}\n\n"
+            f"**Stats:**\n{stats_text}"
+        )
+        embed = discord.Embed(
+            title=f"{title} — Team Slot {idx}",
+            description=desc,
+            color=discord.Color.purple()
+        )
+        sprite = e.get("sprite")
+        if sprite:
+            embed.set_thumbnail(url=sprite)
+        embed.set_footer(text=f"{self.member.display_name} • {idx}/{len(self.entries)} • ◀ to go back to Overview")
+        return embed
+
+    def _render_embed(self) -> discord.Embed:
+        if self.index == 0:
+            return self._render_overview()
+        # index 1..N show mon (1-based slot idx)
+        slot = max(1, min(self.index, len(self.entries)))
+        return self._render_mon(self.entries[slot - 1], slot)
+
+    async def _update(self, interaction: discord.Interaction):
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+        if self.message:
+            await self.message.edit(embed=self._render_embed(), view=self)
+
+    # --- nav buttons (Overview is page 0) ---
+    @discord.ui.button(label="Overview", style=discord.ButtonStyle.secondary)
+    async def to_overview(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.index = 0
+        await self._update(interaction)
+
+    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+    async def prev(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.index > 0:
+            self.index -= 1
+        await self._update(interaction)
+
+    @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        max_page = max(0, len(self.entries))  # 0..N
+        if self.index < max_page:
+            self.index += 1
+        await self._update(interaction)
+
+    @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.danger)
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self._disable_all()
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+        if self.message:
+            await self.message.edit(view=self)
+        self.stop()
+
 
 
 
