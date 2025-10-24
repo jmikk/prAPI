@@ -94,11 +94,14 @@ class GachaCatchEmAll(commands.Cog):
             active_encounter=None,
             team=[],
             badges=[]                     # 🆕 earned gym badges (ints 1..8)
-        )        
+        )   
+        
         self.config.register_global(
             costs=DEFAULT_COSTS,
-            champion_team=None            # 🆕 last winning team snapshot (list of entry dicts)
+            champion_team=None,
+            auto_stat_up=True,   # NEW: default ON (set False if you prefer)
         )
+        
         self._type_cache: Dict[str, List[int]] = {}  # type -> list of pokedex IDs
         # Caches
         self._type_moves_cache: Dict[str, List[str]] = {}   # type -> move names
@@ -524,6 +527,28 @@ class GachaCatchEmAll(commands.Cog):
         for k in ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]:
             s.setdefault(k, 10)
         return s
+
+    def _auto_allocate_points(self, e: Dict[str, Any], pts: int) -> None:
+        """Auto-spend 'pts' stat points on this entry. Bias to the mon's stronger attack style."""
+        if pts <= 0:
+            return
+        stats = self._safe_stats(e)
+    
+        # Determine bias: physical vs special
+        physical_bias = stats["attack"] >= stats["special-attack"]
+        if physical_bias:
+            prio = ["hp", "attack", "speed", "defense", "special-defense", "special-attack"]
+        else:
+            prio = ["hp", "special-attack", "speed", "special-defense", "defense", "attack"]
+    
+        # Distribute round-robin by priority
+        for i in range(pts):
+            k = prio[i % len(prio)]
+            stats[k] = int(stats.get(k, 10)) + 1
+    
+        e["stats"] = stats
+        e["bst"] = sum(stats.values())
+
 
     def _calc_move_damage(self, attacker: Dict[str, Any], defender: Dict[str, Any], move_info: Dict[str, Any]) -> int:
         """Calculate damage with STAB, type effectiveness, and crit chance."""
@@ -1853,10 +1878,13 @@ class GachaCatchEmAll(commands.Cog):
             await ctx.reply("No change (already at cap?).")
             return
     
-        pts = self._give_stat_points_for_levels(before, after)
+        pts = self._give_stat_points_for_levels(before, after_or_lvl)
+        if await self.config.auto_stat_up():
+            self._auto_allocate_points(e, pts)
+        else:
+            e["pending_points"] = int(e.get("pending_points", 0)) + pts
         e["level"] = after
         e["xp"] = 0
-        e["pending_points"] = int(e.get("pending_points", 0)) + pts
     
         await self.config.user(member).pokebox.set(box)
     
@@ -2072,6 +2100,10 @@ class GachaCatchEmAll(commands.Cog):
             before = int(e.get("level", 1))
             lvl, xp, to_next = self._add_xp_to_entry(e, gain)
             pts = self._give_stat_points_for_levels(before, lvl)
+            if await self.config.auto_stat_up():
+                self._auto_allocate_points(e, pts)
+            else:
+                e["pending_points"] = int(e.get("pending_points", 0)) + pts
             e["pending_points"] = int(e.get("pending_points", 0)) + pts
             return before, lvl, xp, pts
     
@@ -2828,6 +2860,10 @@ class InteractiveTeamBattleView(discord.ui.View):
                     before = int(be.get("level", 1))
                     lvl, xp, _ = self.cog._add_xp_to_entry(be, gain)
                     pts = self.cog._give_stat_points_for_levels(before, lvl)
+                    if await self.config.auto_stat_up():
+                        self._auto_allocate_points(e, pts)
+                    else:
+                        e["pending_points"] = int(e.get("pending_points", 0)) + pts
                     be["pending_points"] = int(be.get("pending_points", 0)) + pts
                     out_lines.append(f"`{uid}` {be.get('nickname') or be.get('name','?')} +{gain} XP → Lv {before}→**{lvl}** (+{pts} pts)")
                 box[i] = be
@@ -2913,6 +2949,10 @@ class InteractiveTeamBattleView(discord.ui.View):
                     before = int(be.get("level", 1))
                     lvl, xp, _ = self.cog._add_xp_to_entry(be, awards[uid])
                     pts = self.cog._give_stat_points_for_levels(before, lvl)
+                    if await self.config.auto_stat_up():
+                        self._auto_allocate_points(e, pts)
+                    else:
+                        e["pending_points"] = int(e.get("pending_points", 0)) + pts
                     be["pending_points"] = int(be.get("pending_points", 0)) + pts
                 box[i] = be
             await self.cog.config.user(member).pokebox.set(box)
