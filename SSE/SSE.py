@@ -431,6 +431,33 @@ class SSE(commands.Cog):
         html = data.get("htmlStr", "") or ""
         buckets = data.get("buckets") or []
 
+        # Detect moves + WA status (used for both fast-path and normal filter embeds)
+        wa_member: Optional[bool] = None
+        move_tuple = None  # (nation_slug, from_region, to_region)
+        
+        try:
+            move_tuple = self._parse_move(event_str)
+        except Exception:
+            move_tuple = None
+        
+        # If this event was a move, show the WA + route clearly
+        if move_tuple:
+            nslug, from_r, to_r = move_tuple
+            # Show WA if we checked it (fallback to "Unknown" if the API check failed)
+            if wa_member is None:
+                wa_text = "Unknown"
+            else:
+                wa_text = "Yes" if wa_member else "No"
+            embed.add_field(name="WA Member", value=wa_text, inline=True)
+            embed.add_field(
+                name="Move",
+                value=f"[{from_r.replace('_',' ')}](https://www.nationstates.net/region={from_r}) → "
+                      f"[{to_r.replace('_',' ')}](https://www.nationstates.net/region={to_r})",
+                inline=False
+            )
+
+
+
         # ---- WA Move fast-path (per-region, destination only) ----
         try:
             parsed = self._parse_move(event_str)
@@ -483,7 +510,9 @@ class SSE(commands.Cog):
                 embed.add_field(name="Nation", value=f"[{nation_slug}](https://www.nationstates.net/nation={nation_slug})", inline=True)
                 embed.add_field(name="From", value=f"[{from_region.replace('_',' ')}](https://www.nationstates.net/region={from_region})", inline=True)
                 embed.add_field(name="To", value=f"[{to_region.replace('_',' ')}](https://www.nationstates.net/region={to_region})", inline=True)
-        
+               
+                embed.add_field(name="WA Member", value="Yes" if wa_member else "No", inline=True)
+               
                 eid = data.get("id", "N/A")
                 embed.set_footer(text=f"Event ID: {eid} • Destination region scope")
         
@@ -657,6 +686,19 @@ class SSE(commands.Cog):
 
 
     # ------------- Utils -------------
+
+    def _parse_move(self, text: str) -> Optional[tuple[str, str, str]]:
+        """
+        Return (nation_slug, from_region_slug, to_region_slug) if the event is a move.
+        """
+        m = MOVE_RE.search(text or "")
+        if not m:
+            return None
+        nation = ns_norm(m.group("nation"))
+        from_r = ns_norm(m.group("from"))
+        to_r = ns_norm(m.group("to"))
+        return nation, from_r, to_r
+
     
     def _flag_from_html(self, html: str) -> Optional[str]:
         m = MINIFLAG_RE.search(html)
