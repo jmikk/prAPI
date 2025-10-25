@@ -25,6 +25,23 @@ ALL_BADGES = [f"gym{i}" for i in range(1, 9)]
 
 POKEAPI_BASE = "https://pokeapi.co/api/v2"
 
+# Default per-zone media (use GIFs or static images). Keys can be habitat names,
+# Pokémon types, or "all"/"default". Admins can override at runtime.
+DEFAULT_ZONE_MEDIA = {
+    "all": "https://cdn.dribbble.com/userupload/21183270/file/original-bd720cc572516fcc161d74534730b696.gif",
+    "default": "https://cdn.dribbble.com/userupload/21183270/file/original-bd720cc572516fcc161d74534730b696.gif",
+
+    # Habitats (if you add a habitat picker later)
+    "caves": "https://cdn.dribbble.com/userupload/21183270/file/original-bd720cc572516fcc161d74534730b696.gif",
+    "forest": "https://cdn.dribbble.com/userupload/21183270/file/original-bd720cc572516fcc161d74534730b696.gif",
+    "ocean": "https://cdn.dribbble.com/userupload/21183270/file/original-bd720cc572516fcc161d74534730b696.gif",
+    "mountains": "https://cdn.dribbble.com/userupload/21183270/file/original-bd720cc572516fcc161d74534730b696.gif",
+    "volcano": "https://cdn.dribbble.com/userupload/21183270/file/original-bd720cc572516fcc161d74534730b696.gif",
+    "sky": "https://cdn.dribbble.com/userupload/21183270/file/original-bd720cc572516fcc161d74534730b696.gif",
+    "tundra": "https://cdn.dribbble.com/userupload/21183270/file/original-bd720cc572516fcc161d74534730b696.gif",
+    "mystic ruins": "https://cdn.dribbble.com/userupload/21183270/file/original-bd720cc572516fcc161d74534730b696.gif",
+}
+
 # Reasonable defaults; adjust with [p]gachaadmin setcosts
 DEFAULT_COSTS = {
     "pokeball": 0,
@@ -46,6 +63,9 @@ POKEMON_TYPES = [
     "normal","fire","water","electric","grass","ice","fighting","poison","ground","flying",
     "psychic","bug","rock","ghost","dragon","dark","steel","fairy"
 ]
+
+
+
 
 HABITAT_GROUPS = {
     "Plains": ["normal", "grass", "fighting", "ground"],
@@ -111,10 +131,12 @@ class GachaCatchEmAll(commands.Cog):
         )   
         
         self.config.register_global(
-            costs=DEFAULT_COSTS,
-            champion_team=None,
-            auto_stat_up=True,   # NEW: default ON (set False if you prefer)
-        )
+        costs=DEFAULT_COSTS,
+        champion_team=None,
+        auto_stat_up=True,
+        zone_media=DEFAULT_ZONE_MEDIA,   # NEW
+    )
+
         
         self._type_cache: Dict[str, List[int]] = {}  # type -> list of pokedex IDs
         # Caches
@@ -124,6 +146,13 @@ class GachaCatchEmAll(commands.Cog):
         self._pokemon_list: Optional[List[Dict[str, Any]]] = None  # list of {name, url}
         self._pokemon_cache: Dict[int, Dict[str, Any]] = {}  # id -> pokemon data
         self._list_lock = asyncio.Lock()
+
+    async def _get_zone_media(self, key: Optional[str]) -> Optional[str]:
+        """Return a URL for the zone/type key; falls back to 'default'/'all'."""
+        key = (key or "all").strip().lower()
+        media = await self.config.zone_media()
+        return media.get(key) or media.get("default") or media.get("all")
+
 
     def _chunk_lines(self, lines: List[str], size: int) -> List[List[str]]:
         return [lines[i:i+size] for i in range(0, len(lines), size)]
@@ -2348,6 +2377,23 @@ class TypeSelectView(discord.ui.View):
                 await interaction.followup.send(f"Couldn't find Pokémon for **{chosen_label}**.", ephemeral=True)
                 return
             allowed_ids = ids if ids else None  # None means “all”
+
+            # --- NEW: show zone loading embed on the SAME message
+        loading_url = await self.cog._get_zone_media(zone_key)
+        loading = discord.Embed(
+            title=f"Searching {chosen_label}…",
+            description="Looking for wild Pokémon in this area…",
+            color=discord.Color.blurple(),
+        )
+        if loading_url:
+            loading.set_image(url=loading_url)
+    
+        target = self.message or interaction.message
+        try:
+            await target.edit(content=None, embed=loading, view=None)
+        except Exception:
+            # Fallback if we can't edit (rare)
+            await interaction.followup.send(embed=loading)
 
         # Roll encounter (neutral bias)
         pdata, pid, bst = await self.cog._random_encounter("greatball", allowed_ids=allowed_ids)
