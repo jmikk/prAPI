@@ -1664,6 +1664,16 @@ class GachaCatchEmAll(commands.Cog):
     @commands.hybrid_command(name="gacha", aliases=["catch"])
     async def gacha(self, ctx: commands.Context):
         """Start (or resume) a wild encounter. First choose a type (or All), then multi-throw until catch or flee."""
+        
+        box = await uconf.pokebox()
+        max_pokemon = 1000  # or whatever limit you want
+        
+        if len(box) >= max_pokemon:
+            await interaction.followup.send(
+                f"Your Pokébox is full! (Max {max_pokemon}) — release or combine some first.",
+                ephemeral=True
+            )
+            return
         try:
             _ = await self._get_balance(ctx.author)
         except Exception as e:
