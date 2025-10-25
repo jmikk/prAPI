@@ -47,6 +47,20 @@ POKEMON_TYPES = [
     "psychic","bug","rock","ghost","dragon","dark","steel","fairy"
 ]
 
+HABITAT_GROUPS = {
+    "Plains": ["normal", "grass", "fighting", "ground"],
+    "Mountains": ["rock", "steel", "flying", "dragon"],
+    "Caves": ["dark", "poison", "dragon"],
+    "Ocean": ["water", "ice"],
+    "Forest": ["bug", "grass", "fairy"],
+    "Volcano": ["fire", "rock", "ground"],
+    "Sky": ["flying", "electric"],
+    "Tundra": ["ice", "steel"],
+    "Mystic Ruins": ["ghost", "psychic"],
+    "All": [],  # fallback: includes all types
+}
+
+
 # Difficulty profiles for NPCs
 DIFFICULTY_PROFILES = {
     "easy":   {"level_delta": -1, "stat_mult": 0.95, "damage_mult": 1.00, "extra_moves": 0, "counterpick": False},
@@ -1080,16 +1094,14 @@ class GachaCatchEmAll(commands.Cog):
         
             uconf = self.cog.config.user(interaction.user)
             enc = await uconf.active_encounter()
-            # keep the same habitat filter if present
-            filter_type = (enc or {}).get("filter_type")
         
-            # Build allowlist if a specific type was chosen
-            allowed_ids = None
-            if filter_type:
-                try:
-                    allowed_ids = await self.cog._get_type_ids(filter_type)
-                except Exception:
-                    allowed_ids = None
+            # keep the same habitat filter if present
+            habitat_name = (enc or {}).get("filter_type")
+            type_list = HABITAT_GROUPS.get(habitat_name, []) if habitat_name else []
+            allowed_ids = []
+            for t in type_list:
+                allowed_ids.extend(await self.cog._get_type_ids(t))
+            allowed_ids = sorted(set(allowed_ids)) if allowed_ids else None
         
             # Roll a new encounter
             pdata, pid, bst = await self.cog._random_encounter("greatball", allowed_ids=allowed_ids)
@@ -1101,7 +1113,6 @@ class GachaCatchEmAll(commands.Cog):
             )
             flee_base = max(0.05, min(0.25, 0.10 + (bst - 400) / 800.0))
         
-            # New enc dict
             new_enc = {
                 "id": int(pid),
                 "name": name,
@@ -1109,20 +1120,19 @@ class GachaCatchEmAll(commands.Cog):
                 "sprite": sprite,
                 "fails": 0,
                 "flee_base": float(flee_base),
-                "filter_type": filter_type if filter_type else None,
+                "filter_type": habitat_name if habitat_name else None,  # ✅ was undefined before
             }
         
-            # Build moves preview for the new mon
+            # Build 4-move preview for the new mon
             pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
-            new_enc["starter_moves"] = await self.cog._pick_starting_moves(pdata_types, n=1)
-
+            new_enc["starter_moves"] = await self.cog._pick_starting_moves(pdata_types, n=4)
         
             # Save and redraw
             await uconf.active_encounter.set(new_enc)
             costs = await self.cog.config.costs()
             embed = self.cog._encounter_embed(interaction.user, new_enc, costs)
             embed.title = (
-                f"🌿 {str(filter_type).title()} Area — a wild {name} appeared!" if filter_type
+                f"🌿 {str(habitat_name).title()} Area — a wild {name} appeared!" if habitat_name
                 else f"🌿 All Areas — a wild {name} appeared!"
             )
         
@@ -1131,6 +1141,7 @@ class GachaCatchEmAll(commands.Cog):
                 await target_msg.edit(content=None, embed=embed, view=self)
             except Exception:
                 await interaction.followup.send(embed=embed, view=self)
+
 
 
 
@@ -1688,9 +1699,9 @@ class GachaCatchEmAll(commands.Cog):
         pick_embed = discord.Embed(
             title="Where do you want to search?",
             description=(
-                "Pick a **Pokémon type** to explore that habitat, or choose **All** to search everywhere.\n\n"
-                "You’ll get an encounter right after you choose."
-            ),
+            "Pick a **habitat** to explore (or choose **All** to search everywhere).\n\n"
+            "You’ll get an encounter right after you choose."
+        ),
             color=discord.Color.blurple(),
         )
         view = self.TypeSelectView(self, ctx.author)
@@ -2259,122 +2270,124 @@ class GachaCatchEmAll(commands.Cog):
 
 
 
-    class TypeSelectView(discord.ui.View):
-        def __init__(self, cog: "GachaCatchEmAll", author: discord.abc.User, timeout: int = 120):
-            super().__init__(timeout=timeout)
-            self.cog = cog
-            self.author = author
-            self.message: Optional[discord.Message] = None
-    
-            # Build rows of buttons (<=5 per row). We'll do 4 rows of 5 and one row with the rest + "All"
-            labels = POKEMON_TYPES[:]  # 18 types
-            # Create buttons dynamically
-            for t in labels:
-                self.add_item(self._make_button(t))
-    
-            # Add an "All" button at the end
-            self.add_item(self._make_button("all", style=discord.ButtonStyle.secondary))
-    
-        def _make_button(self, t: str, style: discord.ButtonStyle = discord.ButtonStyle.primary):
-            label = "All" if t == "all" else t.title()
-            button = discord.ui.Button(label=label, style=style)
-            async def cb(interaction: discord.Interaction):
-                await self._handle_pick(interaction, t)
-            button.callback = cb  # type: ignore
-            return button
-    
-        async def interaction_check(self, interaction: discord.Interaction) -> bool:
-            if interaction.user.id != self.author.id:
-                await interaction.response.send_message(
-                    "These controls aren't yours — run /gacha to start your own.",
-                    ephemeral=True
-                )
-                return False
-            return True
-    
-        def _disable_all(self):
-            for child in self.children:
-                if isinstance(child, discord.ui.Button):
-                    child.disabled = True
-    
-        async def on_timeout(self):
-            self._disable_all()
+class TypeSelectView(discord.ui.View):
+    def __init__(self, cog: "GachaCatchEmAll", author: discord.abc.User, timeout: int = 120):
+        super().__init__(timeout=timeout)
+        self.cog = cog
+        self.author = author
+        self.message: Optional[discord.Message] = None
+
+        # Build buttons from habitat groups + All
+        labels = list(HABITAT_GROUPS.keys())
+        if "All" not in labels:
+            labels.append("All")
+
+        for h in labels:
+            self.add_item(self._make_button(h))
+
+    def _make_button(self, habitat_label: str, style: discord.ButtonStyle = discord.ButtonStyle.primary):
+        button = discord.ui.Button(label=habitat_label, style=style)
+        async def cb(interaction: discord.Interaction):
+            # normalize "All" → "all" for internal logic
+            await self._handle_pick(interaction, "all" if habitat_label.lower() == "all" else habitat_label)
+        button.callback = cb  # type: ignore
+        return button
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message(
+                "These controls aren't yours — run /gacha to start your own.",
+                ephemeral=True
+            )
+            return False
+        return True
+
+    def _disable_all(self):
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+
+    async def on_timeout(self):
+        self._disable_all()
+        try:
+            if self.message:
+                await self.message.edit(view=self)
+        except Exception:
+            pass
+
+    async def _handle_pick(self, interaction: discord.Interaction, pick: str):
+        # ACK quickly
+        if not interaction.response.is_done():
             try:
-                if self.message:
-                    await self.message.edit(view=self)
+                await interaction.response.defer()
             except Exception:
                 pass
-    
-        async def _handle_pick(self, interaction: discord.Interaction, pick: str):
-            # ACK quickly
-            if not interaction.response.is_done():
+
+        uconf = self.cog.config.user(interaction.user)
+
+        # Build allowlist if a specific HABITAT was chosen
+        allowed_ids: Optional[List[int]] = None
+        chosen_label = "All"
+
+        if pick != "all":
+            chosen_label = pick  # habitat name as displayed to the user
+            type_list = HABITAT_GROUPS.get(pick, [])
+            ids: List[int] = []
+            for t in type_list:
                 try:
-                    await interaction.response.defer()
+                    ids.extend(await self.cog._get_type_ids(t))
                 except Exception:
                     pass
-    
-            uconf = self.cog.config.user(interaction.user)
-            # Build allowlist if a specific type was chosen
-            allowed_ids: Optional[List[int]] = None
-            chosen_label = "All"
-            if pick != "all":
-                try:
-                    allowed_ids = await self.cog._get_type_ids(pick)
-                    if not allowed_ids:
-                        # No entries for this type; fail gracefully
-                        await interaction.followup.send(f"Couldn't find Pokémon for type **{pick.title()}**.", ephemeral=True)
-                        return
-                    chosen_label = pick.title()
-                except Exception as e:
-                    await interaction.followup.send(f"Error looking up type **{pick}**: {e}", ephemeral=True)
-                    return
-    
-            # Roll encounter (neutral bias for encounter only—same as before)
-            pdata, pid, bst = await self.cog._random_encounter("greatball", allowed_ids=allowed_ids)
-            name = pdata.get("name", "unknown").title()
-            sprite = (
-                pdata.get("sprites", {})
-                .get("other", {})
-                .get("official-artwork", {})
-                .get("front_default")
-                or pdata.get("sprites", {}).get("front_default")
-            )
-            flee_base = max(0.05, min(0.25, 0.10 + (bst - 400) / 800.0))
-            enc = {
-                "id": int(pid),
-                "name": name,
-                "bst": int(bst),
-                "sprite": sprite,
-                "fails": 0,
-                "flee_base": float(flee_base),
-                "filter_type": None if pick == "all" else pick.lower(),
-            }
-            pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
-            enc["starter_moves"] = await self.cog._pick_starting_moves(pdata_types, n=1)
+            ids = sorted(set(ids))
+            if not ids and type_list:
+                await interaction.followup.send(f"Couldn't find Pokémon for **{chosen_label}**.", ephemeral=True)
+                return
+            allowed_ids = ids if ids else None  # None means “all”
 
-            await uconf.active_encounter.set(enc)
-    
-            costs = await self.cog.config.costs()
-            embed = self.cog._encounter_embed(interaction.user, enc, costs)
-            # Decorate title to show where they searched
-            if enc.get("filter_type"):
-                embed.title = f"🌿 {chosen_label} Area — a wild {enc['name']} appeared!"
-            else:
-                embed.title = f"🌿 All Areas — a wild {enc['name']} appeared!"
-    
-            # Replace the selection UI with the encounter UI
-            view = self.cog.EncounterView(self.cog, interaction.user)
-            try:
-                # Prefer editing the message if we have it; otherwise reply
-                target = self.message or interaction.message
-                msg = await target.edit(content=None, embed=embed, view=view)
-                view.message = msg
-            except Exception:
-                msg = await interaction.followup.send(embed=embed, view=view)
-                view.message = msg
-    
-            # Lock type picker
-            self._disable_all()
+        # Roll encounter (neutral bias)
+        pdata, pid, bst = await self.cog._random_encounter("greatball", allowed_ids=allowed_ids)
+        name = pdata.get("name", "unknown").title()
+        sprite = (
+            pdata.get("sprites", {})
+            .get("other", {}).get("official-artwork", {}).get("front_default")
+            or pdata.get("sprites", {}).get("front_default")
+        )
+        flee_base = max(0.05, min(0.25, 0.10 + (bst - 400) / 800.0))
+        enc = {
+            "id": int(pid),
+            "name": name,
+            "bst": int(bst),
+            "sprite": sprite,
+            "fails": 0,
+            "flee_base": float(flee_base),
+            "filter_type": None if pick == "all" else chosen_label,  # store HABITAT name
+        }
+
+        # Show 4 committed starter moves (these are what you get)
+        pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
+        enc["starter_moves"] = await self.cog._pick_starting_moves(pdata_types, n=4)
+
+        await uconf.active_encounter.set(enc)
+
+        costs = await self.cog.config.costs()
+        embed = self.cog._encounter_embed(interaction.user, enc, costs)
+        # Decorate title to show habitat searched
+        if enc.get("filter_type"):
+            embed.title = f"🌿 {str(enc['filter_type']).title()} Area — a wild {enc['name']} appeared!"
+        else:
+            embed.title = f"🌿 All Areas — a wild {enc['name']} appeared!"
+
+        view = self.cog.EncounterView(self.cog, interaction.user)
+        try:
+            target = self.message or interaction.message
+            msg = await target.edit(content=None, embed=embed, view=view)
+            view.message = msg
+        except Exception:
+            msg = await interaction.followup.send(embed=embed, view=view)
+            view.message = msg
+
+        self._disable_all()
+
             
 # --- REPLACE your current module-level BattlePaginator with this one ---
 class BattlePaginator(discord.ui.View):
