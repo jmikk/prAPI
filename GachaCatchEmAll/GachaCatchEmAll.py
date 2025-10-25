@@ -1693,29 +1693,26 @@ class GachaCatchEmAll(commands.Cog):
     @commands.hybrid_command(name="gacha", aliases=["catch"])
     async def gacha(self, ctx: commands.Context):
         """Start (or resume) a wild encounter. First choose a type (or All), then multi-throw until catch or flee."""
-        
-        uconf = self.config.user(ctx.author)
-        box = await uconf.pokebox()
-        max_pokemon = 1000  # or whatever limit you want
-        
-        if len(box) >= max_pokemon:
-            await interaction.followup.send(
-                f"Your Pokébox is full! (Max {max_pokemon}) — release or combine some first.",
-                ephemeral=True
-            )
-            return
+        # economy available?
         try:
             _ = await self._get_balance(ctx.author)
         except Exception as e:
             await ctx.reply(f"Economy unavailable: {e}\nMake sure the NexusExchange cog is loaded.")
             return
     
+        # capacity guard (stop BEFORE showing an encounter)
         uconf = self.config.user(ctx.author)
-        enc = await uconf.active_encounter()
+        box = await uconf.pokebox()
+        if not isinstance(box, list):
+            box = []
+        max_pokemon = 1000  # TODO: make configurable via gachaadmin if you like
+        if len(box) >= max_pokemon:
+            await ctx.reply(f"Your Pokébox is full! (Max {max_pokemon}) — release or combine some first.")
+            return
     
+        # resume encounter?
+        enc = await uconf.active_encounter()
         if enc:
-            # Resume the current encounter immediately
-                # ensure preview moves exist
             if not enc.get("starter_moves"):
                 try:
                     pdata = await self._get_pokemon(int(enc["id"]))
@@ -1726,27 +1723,27 @@ class GachaCatchEmAll(commands.Cog):
                     pass
             costs = await self.config.costs()
             embed = self._encounter_embed(ctx.author, enc, costs)
-            if enc.get("filter_type"):
-                embed.title = f"🌿 {str(enc['filter_type']).title()} Area — a wild {enc['name']} appeared!"
-            else:
-                embed.title = f"🌿 All Areas — a wild {enc['name']} appeared!"
+            embed.title = (
+                f"🌿 {str(enc['filter_type']).title()} Area — a wild {enc['name']} appeared!"
+                if enc.get("filter_type") else
+                f"🌿 All Areas — a wild {enc['name']} appeared!"
+            )
             view = self.EncounterView(self, ctx.author)
             msg = await ctx.reply(embed=embed, view=view)
             view.message = msg
             return
     
-        # No active encounter — show type selection UI
+        # no encounter yet → show habitat picker
         pick_embed = discord.Embed(
             title="Where do you want to search?",
-            description=(
-            "Pick a **habitat** to explore (or choose **All** to search everywhere).\n\n"
-            "You’ll get an encounter right after you choose."
-        ),
+            description=("Pick a **habitat** to explore (or choose **All** to search everywhere).\n\n"
+                         "You’ll get an encounter right after you choose."),
             color=discord.Color.blurple(),
         )
         view = TypeSelectView(self, ctx.author)
         msg = await ctx.reply(embed=pick_embed, view=view)
         view.message = msg
+
     
     @commands.hybrid_group(name="team")
     async def team_group(self, ctx: commands.Context):
@@ -2380,14 +2377,17 @@ class TypeSelectView(discord.ui.View):
             allowed_ids = ids if ids else None  # None means “all”
 
             # --- NEW: show zone loading embed on the SAME message
-        loading_url = await self.cog._get_zone_media(zone_key)
-        loading = discord.Embed(
-            title=f"Searching {chosen_label}…",
-            description="Looking for wild Pokémon in this area…",
-            color=discord.Color.blurple(),
-        )
-        if loading_url:
-            loading.set_image(url=loading_url)
+                    # --- NEW: show zone loading embed on the SAME message
+            zone_key = "all" if pick == "all" else str(chosen_label).lower()
+            loading_url = await self.cog._get_zone_media(zone_key)
+            loading = discord.Embed(
+                title=f"Searching {chosen_label}…",
+                description="Looking for wild Pokémon in this area…",
+                color=discord.Color.blurple(),
+            )
+            if loading_url:
+                loading.set_image(url=loading_url)
+
     
         target = self.message or interaction.message
         try:
