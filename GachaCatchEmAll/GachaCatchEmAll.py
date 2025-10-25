@@ -1125,7 +1125,7 @@ class GachaCatchEmAll(commands.Cog):
         
             # Build 4-move preview for the new mon
             pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
-            new_enc["starter_moves"] = await self.cog._pick_starting_moves(pdata_types, n=4)
+            new_enc["starter_moves"] = await self.cog._pick_starting_moves(pdata_types, n=1)
         
             # Save and redraw
             await uconf.active_encounter.set(new_enc)
@@ -1680,7 +1680,7 @@ class GachaCatchEmAll(commands.Cog):
                 try:
                     pdata = await self._get_pokemon(int(enc["id"]))
                     pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
-                    enc["starter_moves"] = await self._pick_starting_moves(pdata_types, n=4)
+                    enc["starter_moves"] = await self._pick_starting_moves(pdata_types, n=1)
                     await uconf.active_encounter.set(enc)
                 except Exception:
                     pass
@@ -2360,7 +2360,7 @@ class TypeSelectView(discord.ui.View):
 
         # Show 4 committed starter moves (these are what you get)
         pdata_types = [t["type"]["name"] for t in pdata.get("types", [])]
-        enc["starter_moves"] = await self.cog._pick_starting_moves(pdata_types, n=4)
+        enc["starter_moves"] = await self.cog._pick_starting_moves(pdata_types, n=1)
 
         await uconf.active_encounter.set(enc)
 
