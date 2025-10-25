@@ -1661,7 +1661,7 @@ class GachaCatchEmAll(commands.Cog):
     
         await ctx.reply(embed=res)
 
-    @commands.hybrid_command(name="gacha")
+    @commands.hybrid_command(name="gacha", aliases=["catch"])
     async def gacha(self, ctx: commands.Context):
         """Start (or resume) a wild encounter. First choose a type (or All), then multi-throw until catch or flee."""
         try:
