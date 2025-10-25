@@ -1704,7 +1704,7 @@ class GachaCatchEmAll(commands.Cog):
         ),
             color=discord.Color.blurple(),
         )
-        view = self.TypeSelectView(self, ctx.author)
+        view = TypeSelectView(self, ctx.author)
         msg = await ctx.reply(embed=pick_embed, view=view)
         view.message = msg
     
@@ -2264,11 +2264,6 @@ class GachaCatchEmAll(commands.Cog):
         except Exception as e:
             await ctx.reply(f"❌ There was an error starting the battle: `{e}`")
             await self._alert_owner(ctx, e)
-
-
-
-
-
 
 class TypeSelectView(discord.ui.View):
     def __init__(self, cog: "GachaCatchEmAll", author: discord.abc.User, timeout: int = 120):
