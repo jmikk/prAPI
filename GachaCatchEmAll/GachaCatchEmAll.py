@@ -969,7 +969,7 @@ class GachaCatchEmAll(commands.Cog):
                     await interaction.response.defer()
                 except Exception:
                     pass
-
+            
             # Load active encounter
             uconf = self.cog.config.user(interaction.user)
             enc = await uconf.active_encounter()
@@ -1694,6 +1694,7 @@ class GachaCatchEmAll(commands.Cog):
     async def gacha(self, ctx: commands.Context):
         """Start (or resume) a wild encounter. First choose a type (or All), then multi-throw until catch or flee."""
         
+        uconf = self.config.user(ctx.author)
         box = await uconf.pokebox()
         max_pokemon = 1000  # or whatever limit you want
         
