@@ -131,15 +131,21 @@ class GachaCatchEmAll(commands.Cog):
             last_roll=None,
             active_encounter=None,
             team=[],
-            badges=[]                     # 🆕 earned gym badges (ints 1..8)
+            badges=[]                     
         )   
         
         self.config.register_global(
         costs=DEFAULT_COSTS,
         champion_team=None,
         auto_stat_up=True,
-        zone_media=DEFAULT_ZONE_MEDIA,   # NEW
+        zone_media=DEFAULT_ZONE_MEDIA,   
+        move_db={},                    
     )
+
+        self._type_cache: Dict[str, List[int]] = {}
+        self._type_moves_cache: Dict[str, List[str]] = {}
+        self._move_cache: Dict[str, Dict[str, Any]] = {}    # in-memory cache
+        self._move_db_lock = asyncio.Lock()                 # 🆕 serialize DB writes
 
         
         self._type_cache: Dict[str, List[int]] = {}  # type -> list of pokedex IDs
@@ -532,15 +538,66 @@ class GachaCatchEmAll(commands.Cog):
     
     async def _get_move_details(self, move_name: str) -> Dict[str, Any]:
         """
-        Returns cached move data. Important fields: power (may be None), type.name, damage_class.name
+        Return move data with shape:
+          {
+            "name": "tackle",
+            "power": 40 or None,
+            "accuracy": 100 or None,
+            "pp": 35 or None,
+            "type": {"name": "normal"},
+            "damage_class": {"name": "physical"}
+          }
+    
+        Lookup order: in-memory -> local DB -> PokéAPI (then save to DB).
         """
-        key = move_name.lower()
+        key = (move_name or "").strip().lower()
+        if not key:
+            return {"name": "unknown", "power": None, "accuracy": None, "pp": None,
+                    "type": {"name": "normal"}, "damage_class": {"name": "physical"}}
+    
+        # 1) In-memory cache
         if key in self._move_cache:
             return self._move_cache[key]
-        data = await self._fetch_json(f"{POKEAPI_BASE}/move/{key}")
-        self._move_cache[key] = data
-        return data
     
+        # 2) Local persistent DB
+        try:
+            db = await self.config.move_db()
+            cached = db.get(key)
+            if cached:
+                # trust and promote to RAM
+                self._move_cache[key] = cached
+                return cached
+        except Exception:
+            pass
+    
+        # 3) Fetch from API, normalize, persist
+        data = await self._fetch_json(f"{POKEAPI_BASE}/move/{key}")
+    
+        normalized = {
+            "name": data.get("name", key),
+            "power": data.get("power"),                  # can be None
+            "accuracy": data.get("accuracy"),            # can be None
+            "pp": data.get("pp"),                        # can be None
+            "type": (data.get("type") or {"name": "normal"}),
+            "damage_class": (data.get("damage_class") or {"name": "physical"}),
+        }
+    
+        # Put in RAM
+        self._move_cache[key] = normalized
+    
+        # Persist (best-effort; ignore races)
+        try:
+            async with self._move_db_lock:
+                db = await self.config.move_db()
+                if key not in db:
+                    db[key] = normalized
+                    await self.config.move_db.set(db)
+        except Exception:
+            pass
+    
+        return normalized
+    
+        
     async def _random_starting_move(self, types: List[str]) -> Optional[str]:
         """
         From all moves matching any of the Pokémon's types, pick one at random.
