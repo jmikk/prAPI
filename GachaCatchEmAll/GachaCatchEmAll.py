@@ -1471,35 +1471,44 @@ class GachaCatchEmAll(commands.Cog):
 
     @commands.hybrid_command(name="exportbox")
     async def exportbox(self, ctx: commands.Context, member: Optional[discord.Member] = None):
-        """Export all your Pokémon (or another member's) to an HTML grid (sprite, name/nickname, level, types, stats, moves)."""
+        """Export all your Pokémon (or another member's) to an HTML grid with sprite, stats, types, and moves (with type, power, and icon) + live search."""
         member = member or ctx.author
-        box = await self.config.user(member).pokebox()
+        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
     
         if not box:
             await ctx.reply(f"{member.display_name} has no Pokémon to export.")
             return
     
-        # newest first (or change to level sort if you prefer)
         box_sorted = sorted(box, key=lambda e: int(e.get("caught_at", 0)), reverse=True)
     
-        # type colors (soft, readable)
+        # --- Prefetch move data once ---
+        unique_moves = {m.strip().lower() for e in box_sorted for m in (e.get("moves") or []) if isinstance(m, str) and m.strip()}
+        move_cache: Dict[str, Dict[str, Any]] = {}
+        for mv in unique_moves:
+            try:
+                move_cache[mv] = await self._get_move_details(mv)
+            except Exception:
+                move_cache[mv] = {}
+    
+        dmg_icons = {"physical": "⚔️", "special": "🔮", "status": "🌀"}
+    
         type_colors = {
             "normal":"#A8A77A","fire":"#EE8130","water":"#6390F0","electric":"#F7D02C","grass":"#7AC74C",
             "ice":"#96D9D6","fighting":"#C22E28","poison":"#A33EA1","ground":"#E2BF65","flying":"#A98FF3",
             "psychic":"#F95587","bug":"#A6B91A","rock":"#B6A136","ghost":"#735797","dragon":"#6F35FC",
             "dark":"#705746","steel":"#B7B7CE","fairy":"#D685AD"
         }
-    
         def chip(t: str) -> str:
             c = type_colors.get(t.lower(), "#444")
             return f'<span class="chip" style="background:{c}">{html.escape(t.title())}</span>'
     
-        # build card HTML rows
-        cards = []
+        cards_html = []
         for e in box_sorted:
-            name = html.escape(e.get("name", "Unknown")).title()
-            nickname = html.escape(e.get("nickname") or "")
-            label = f"{nickname} — {name}" if nickname and nickname.lower() != name.lower() else name
+            name = (e.get("name") or "Unknown").title()
+            esc_name = html.escape(name)
+            nickname = e.get("nickname") or ""
+            esc_nick = html.escape(nickname)
+            label = f"{esc_nick} — {esc_name}" if nickname and nickname.lower() != name.lower() else esc_name
             level = int(e.get("level", 1))
             sprite = (
                 e.get("sprite")
@@ -1509,132 +1518,211 @@ class GachaCatchEmAll(commands.Cog):
             pid = html.escape(str(e.get("pokedex_id", "?")))
             uid = html.escape(str(e.get("uid", "?")))
             types = [t for t in (e.get("types") or [])]
+            types_lower = " ".join(t.lower() for t in types)
             chips = " ".join(chip(t) for t in types) or '<span class="chip" style="background:#444">Unknown</span>'
     
             stats = e.get("stats") or {}
-            # enforce keys + defaults
             order = ["hp","attack","defense","special-attack","special-defense","speed"]
-            stat_cells = "".join(
+            stat_rows = "".join(
                 f"<tr><td>{s.replace('-',' ').title()}</td><td>{int(stats.get(s, 10))}</td></tr>"
                 for s in order
             )
     
-            moves = [m for m in (e.get("moves") or []) if isinstance(m, str)]
-            if not moves:
-                moves_html = "<li>—</li>"
-            else:
-                moves_html = "".join(f"<li>{html.escape(m.title())}</li>" for m in moves[:4])
+            # Moves with type, power, and damage class icon
+            mv_items = []
+            moves_lower_accum = []
+            for m in (e.get("moves") or [])[:4]:
+                if not isinstance(m, str):
+                    continue
+                key = m.strip().lower()
+                md = move_cache.get(key, {}) or {}
+                mtype = ((md.get("type") or {}).get("name") or "normal").title()
+                mpower = md.get("power")
+                power_txt = "—" if mpower in (None, "—") else str(mpower)
+                dmg_class = ((md.get("damage_class") or {}).get("name") or "status").lower()
+                icon = dmg_icons.get(dmg_class, "🌀")
+                mv_items.append(f"<li>{html.escape(m.title())} {icon} — {html.escape(mtype)} ({power_txt})</li>")
+                # accumulate lowercase for search
+                moves_lower_accum.append(key)
+                if mtype:
+                    moves_lower_accum.append(mtype.lower())
+            moves_html = "".join(mv_items) if mv_items else "<li>—</li>"
     
-            cards.append(f'''
-            <div class="card">
-                <div class="sprite-wrap">
-                    <img src="{sprite}" alt="{name}" loading="lazy">
-                </div>
+            # data-* attributes for client-side search
+            data_attrs = (
+                f'data-name="{html.escape(name.lower())}" '
+                f'data-nick="{html.escape(nickname.lower())}" '
+                f'data-types="{html.escape(types_lower)}" '
+                f'data-moves="{html.escape(" ".join(moves_lower_accum))}"'
+            )
+    
+            cards_html.append(f'''
+            <div class="card" {data_attrs}>
+                <div class="sprite-wrap"><img src="{sprite}" alt="{esc_name}" loading="lazy"></div>
                 <h3 class="name">{label}</h3>
                 <div class="meta">#{pid} • UID: <code>{uid}</code></div>
                 <div class="types">{chips}</div>
                 <div class="level">Lv {level}</div>
-    
                 <div class="cols">
                     <div class="col">
                         <h4>Stats</h4>
-                        <table class="stats">
-                            <tbody>
-                                {stat_cells}
-                            </tbody>
-                        </table>
+                        <table class="stats"><tbody>{stat_rows}</tbody></table>
                     </div>
                     <div class="col">
                         <h4>Moves</h4>
-                        <ul class="moves">
-                            {moves_html}
-                        </ul>
+                        <ul class="moves">{moves_html}</ul>
                     </div>
                 </div>
             </div>
-            '''
-            )
+            ''')
     
         html_text = f"""<!DOCTYPE html>
     <html lang="en">
     <head>
     <meta charset="utf-8">
-    <title>{member.display_name}'s Pokémon Box</title>
+    <title>{html.escape(member.display_name)}'s Pokémon Box</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        :root {{
-            --bg: #101114;
-            --panel: #17191e;
-            --panel-2: #1f2330;
-            --text: #e9ecf1;
-            --muted: #a8b0c2;
-            --accent: #ffcb05;
-            --accent-2: #2a75bb;
-            --ring: rgba(255,255,255,0.08);
-        }}
-        * {{ box-sizing: border-box; }}
-        body {{
-            background: radial-gradient(1000px 600px at 50% -10%, #1b2230 0%, #11141b 55%, var(--bg) 100%);
-            color: var(--text); font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0; padding: 2rem; line-height: 1.45;
-        }}
-        h1 {{
-            text-align: center; margin: 0 0 0.25rem 0; font-weight: 800; letter-spacing: 0.3px;
-            color: var(--accent); text-shadow: 2px 2px var(--accent-2);
-        }}
-        .sub {{
-            text-align: center; color: var(--muted); margin-bottom: 1.5rem; font-size: 0.95rem;
-        }}
-        .grid {{
-            display: grid; gap: 1rem;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            align-items: stretch;
-        }}
-        .card {{
-            background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
-            border-radius: 14px; padding: 12px;
-            box-shadow: 0 1px 0 var(--ring), 0 12px 24px rgba(0,0,0,0.25);
-            border: 1px solid rgba(255,255,255,0.05);
-            transition: transform .15s ease, box-shadow .15s ease;
-        }}
-        .card:hover {{ transform: translateY(-2px); box-shadow: 0 1px 0 var(--ring), 0 18px 30px rgba(0,0,0,0.35); }}
-        .sprite-wrap {{ display: flex; justify-content: center; align-items: center; height: 120px; }}
-        .sprite-wrap img {{ width: 96px; height: 96px; image-rendering: -webkit-optimize-contrast; }}
-        .name {{ margin: 6px 0 4px; font-size: 1.05rem; }}
-        .meta {{ color: var(--muted); font-size: 0.8rem; margin-bottom: 6px; }}
-        code {{ background: rgba(255,255,255,0.06); padding: 0 .25rem; border-radius: 6px; }}
-        .types {{ margin-bottom: 6px; }}
-        .chip {{
-            display: inline-block; padding: 2px 8px; border-radius: 999px; margin: 0 4px 4px 0;
-            color: #111; font-weight: 700; font-size: 0.75rem; letter-spacing: .2px;
-            box-shadow: inset 0 -1px 0 rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.25);
-        }}
-        .level {{ font-weight: 700; margin-bottom: 8px; }}
-        .cols {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
-        .col h4 {{ margin: 6px 0; font-size: 0.9rem; color: #dbe4ff; }}
-        .stats {{ width: 100%; border-collapse: collapse; }}
-        .stats td {{ padding: 3px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.85rem; }}
-        .stats tr:last-child td {{ border-bottom: 0; }}
-        .moves {{ list-style: none; padding: 0; margin: 0; }}
-        .moves li {{ padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); font-size: 0.9rem; }}
-        .moves li:last-child {{ border-bottom: 0; }}
-        footer {{ margin-top: 1.5rem; text-align: center; color: var(--muted); font-size: 0.85rem; }}
+    :root {{
+      --bg:#101114; --card1:#1a1c22; --card2:#212530; --text:#f0f0f0; --muted:#888;
+      --accent:#ffcb05; --accent2:#2a75bb;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      margin: 0; padding: 2rem 1rem;
+    }}
+    .container {{ max-width: 1200px; margin: 0 auto; }}
+    h1 {{
+      text-align: center; color: var(--accent);
+      text-shadow: 2px 2px var(--accent2); margin: 0 0 0.25rem;
+    }}
+    .sub {{ text-align: center; color: #aaa; margin-bottom: 1rem; }}
+    .toolbar {{
+      display:flex; gap:.75rem; align-items:center; justify-content:center;
+      flex-wrap: wrap; margin: 0 auto 1rem; max-width: 900px;
+    }}
+    #q {{
+      width: min(100%, 620px);
+      padding: .65rem .8rem; border-radius: 10px; border: 1px solid #2b2f3a;
+      background: #14161a; color: var(--text); font-size: 1rem;
+      outline: none;
+    }}
+    #q::placeholder {{ color: #9aa; }}
+    .badge {{ color:#9aa; font-size:.9rem; }}
+    .count {{ font-weight: 600; color: #dbe4ff; }}
+    .grid {{
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }}
+    .card {{
+      background: linear-gradient(180deg, var(--card1) 0%, var(--card2) 100%);
+      border-radius: 14px; padding: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+      transition: transform .2s ease;
+    }}
+    .card:hover {{ transform: translateY(-3px); }}
+    .sprite-wrap {{ text-align: center; }}
+    .sprite-wrap img {{ width: 96px; height: 96px; }}
+    .name {{ font-weight: 700; margin-top: 6px; }}
+    .meta {{ color: var(--muted); font-size: .82rem; margin-bottom: 4px; }}
+    .types {{ margin-bottom: 6px; }}
+    .chip {{
+      display:inline-block; padding:2px 8px; border-radius:999px;
+      color:#111; font-weight:700; font-size:.75rem; margin:0 4px 4px 0;
+    }}
+    .level {{ color:#dbe4ff; margin-bottom: 6px; }}
+    .cols {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }}
+    .col h4 {{ margin: 6px 0; color:#dbe4ff; font-size:.9rem; }}
+    .stats td {{
+      padding: 3px 6px; font-size: .85rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }}
+    .moves {{ list-style: none; padding: 0; margin: 0; }}
+    .moves li {{
+      padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,.08);
+      font-size: .9rem;
+    }}
+    footer {{ text-align:center; margin-top:1.5rem; color:#888; font-size:.85rem; }}
+    small.hint {{ display:block; text-align:center; color:#9aa; margin-top:.25rem; }}
     </style>
     </head>
     <body>
-      <h1>{html.escape(member.display_name)}'s Pokémon Box</h1>
-      <div class="sub">Exported {datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")} — {len(box_sorted)} Pokémon</div>
-      <div class="grid">
-        {''.join(cards)}
+      <div class="container">
+        <h1>{html.escape(member.display_name)}'s Pokémon Box</h1>
+        <div class="sub">
+          Exported {datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")} — <span class="count" id="count">{len(box_sorted)}</span> Pokémon
+        </div>
+    
+        <div class="toolbar">
+          <input id="q" type="search" placeholder="Search by nickname, name, move, or type… (e.g., ‘char fire tackle’)" autofocus />
+          <span class="badge">Showing <span class="count" id="count2">{len(box_sorted)}</span></span>
+        </div>
+        <small class="hint">Tip: use spaces to combine terms (AND). Examples: <em>fire</em>, <em>pikachu thunderbolt</em>, <em>grass tackle</em>.</small>
+    
+        <div class="grid" id="grid">
+          {''.join(cards_html)}
+        </div>
+    
+        <footer>PokéGacha export • Open locally in any browser</footer>
       </div>
-      <footer>PokéGacha export • Open locally in any browser</footer>
+    
+    <script>
+    (function() {{
+      const q = document.getElementById('q');
+      const grid = document.getElementById('grid');
+      const cards = Array.from(grid.querySelectorAll('.card'));
+      const countEls = [document.getElementById('count'), document.getElementById('count2')];
+    
+      function norm(s) {{
+        return (s || '').toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '');
+      }}
+    
+      function matches(card, terms) {{
+        // searchable haystack built from data-* attributes
+        const name = card.dataset.name || '';
+        const nick = card.dataset.nick || '';
+        const types = card.dataset.types || '';
+        const moves = card.dataset.moves || '';
+        const hay = `${{name}} ${{nick}} ${{types}} ${{moves}}`;
+        // every term must appear
+        for (const t of terms) {{
+          if (!hay.includes(t)) return false;
+        }}
+        return true;
+      }}
+    
+      function apply() {{
+        const raw = norm(q.value.trim());
+        const terms = raw.split(/\\s+/).filter(Boolean);
+        let shown = 0;
+        for (const c of cards) {{
+          const ok = terms.length === 0 ? true : matches(c, terms);
+          c.style.display = ok ? '' : 'none';
+          if (ok) shown++;
+        }}
+        for (const el of countEls) el.textContent = shown;
+      }}
+    
+      let to = null;
+      q.addEventListener('input', () => {{
+        // debounce a little for smoother typing
+        clearTimeout(to);
+        to = setTimeout(apply, 80);
+      }});
+    
+      // initial
+      apply();
+    }})();
+    </script>
     </body>
-    </html>
-    """
+    </html>"""
     
         data = io.BytesIO(html_text.encode("utf-8"))
         filename = f"{member.display_name}_pokemon_box.html"
         await ctx.reply(file=discord.File(data, filename=filename))
+
 
 
     @commands.hybrid_command(name="release")
