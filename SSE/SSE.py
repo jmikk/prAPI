@@ -90,6 +90,20 @@ DEFAULT_COMMON_FILTERS: Dict[str, str] = {
 MINIFLAG_RE = re.compile(r'<img src="([^"]+?)" class="miniflag"', re.I)
 RMB_LINK_RE = re.compile(r'<a href="/region=([^"/]+)/page=display_region_rmb\?postid=(\d+)', re.I)
 
+MOVE_DEST_RE = re.compile(r"(?i)\brelocated from\b.*?\bto\b\s*%%(.*?)%%")
+
+def _extract_move_destination(text: str) -> Optional[str]:
+    """
+    From '... relocated from %%Old%% to %%New%% ...' return ns_norm('New').
+    """
+    if not text:
+        return None
+    m = MOVE_DEST_RE.search(text)
+    if not m:
+        return None
+    return ns_norm(m.group(1))
+
+
 
 
 
@@ -168,6 +182,12 @@ class SSE(commands.Cog):
             "enabled": False,                  # start/stop toggle
             "filters": [],
             "route_unmatched_to_default": True,# list of dicts: pattern, color (int), role_id (int|None), webhook (str|None), name (str|None)
+                    # --- Move-ins alert (independent of filters) ---
+            "movein_enabled": False,           # master toggle
+            "movein_regions": [],              # list of DESTINATION regions to watch (normalized)
+            "movein_role_id": None,            # role to ping
+            "movein_webhook": "",              # dedicated webhook
+            "movein_color": 0x2ECC71,          # embed color for move-ins
         }
         self.config.register_guild(**default_guild)
 
@@ -426,7 +446,7 @@ class SSE(commands.Cog):
         title, desc = hyperlink_ns(title), hyperlink_ns(desc)
 
 
-                # Detect "Moves" and try to extract the nation
+        # Detect "Moves" and try to extract the nation
         is_move_event = bool(re.search(r"\brelocated from\b", event_str or "", re.I))
         wa_status_text: Optional[str] = None
         if is_move_event:
@@ -449,6 +469,75 @@ class SSE(commands.Cog):
             fallback = bool(await self.config.guild(guild).route_unmatched_to_default())
     
             matched = False
+
+                    # ----- Independent Move-Ins alert (ignores normal filters) -----
+            try:
+                mi_enabled = await self.config.guild(guild := None).movein_enabled()  # placeholder to satisfy editor
+            except Exception:
+                # We'll read per-guild below; this just avoids linter warnings in some editors
+                pass
+    
+            # We want to evaluate per-guild settings, so loop guilds here and schedule posts
+            movein_tasks = []
+            is_move = bool(re.search(r"(?i)\brelocated from\b", event_str or ""))
+            if is_move:
+                dest = _extract_move_destination(event_str)  # normalized
+                nation_slug = _extract_nation_from_event(html, event_str)
+    
+                # Build WA status once if we have a nation
+                wa_status_text: Optional[str] = None
+                if nation_slug:
+                    is_wa = await self._is_wa_member(nation_slug)
+                    if is_wa is True:
+                        wa_status_text = "WA"
+                    elif is_wa is False:
+                        wa_status_text = "Not-WA"
+    
+                for g in self.bot.guilds:
+                    if not await self.config.guild(g).enabled():
+                        continue
+                    if not await self.config.guild(g).movein_enabled():
+                        continue
+    
+                    # Must have webhook and at least one region configured
+                    mi_webhook = await self.config.guild(g).movein_webhook()
+                    if not mi_webhook:
+                        continue
+                    mi_regions = (await self.config.guild(g).movein_regions()) or []
+                    if not mi_regions:
+                        continue
+    
+                    # Only fire if DESTINATION matches configured region list
+                    if dest and dest in mi_regions:
+                        mi_role = await self.config.guild(g).movein_role_id()
+                        mi_color = int(await self.config.guild(g).movein_color() or 0x2ECC71)
+    
+                        # Build embed
+                        embed = discord.Embed(
+                            title=title or "Move-In",
+                            description=desc or event_str,
+                            colour=discord.Colour(mi_color),
+                            timestamp=datetime.fromtimestamp(
+                                data.get("time", int(datetime.now(timezone.utc).timestamp())),
+                                tz=timezone.utc,
+                            ),
+                        )
+                        if flag_url:
+                            embed.set_thumbnail(url=flag_url)
+    
+                        # Footer with Event ID, Destination, WA status
+                        eid = data.get("id", "N/A")
+                        footer_parts = [f"Event ID: {eid}", f"Destination: {dest.replace('_',' ').title()}"]
+                        if wa_status_text:
+                            footer_parts.append(f"WA status: {wa_status_text}")
+                        embed.set_footer(text=" • ".join(footer_parts))
+    
+                        content = f"<@&{mi_role}>" if mi_role else None
+                        movein_tasks.append(self._post_webhook(mi_webhook, content, [embed]))
+    
+            if movein_tasks:
+                await asyncio.gather(*movein_tasks, return_exceptions=True)
+
     
             for f in filters:
                 patt = f.get("pattern") or ""
@@ -729,6 +818,65 @@ class SSE(commands.Cog):
     async def es_group(self, ctx: commands.Context):
         """Elderscry controls."""
         pass
+
+    @es_group.group(name="movein", invoke_without_command=True)
+    @checks.admin_or_permissions(manage_guild=True)
+    async def es_movein(self, ctx: commands.Context):
+        """Move-Ins alert settings (independent of filters)."""
+        enabled = await self.config.guild(ctx.guild).movein_enabled()
+        regions = await self.config.guild(ctx.guild).movein_regions()
+        role_id = await self.config.guild(ctx.guild).movein_role_id()
+        webhook = await self.config.guild(ctx.guild).movein_webhook()
+        color = await self.config.guild(ctx.guild).movein_color()
+        regions_disp = ", ".join(regions) if regions else "_none_"
+        await ctx.send(
+            f"**Move-Ins Alert**: {'ON' if enabled else 'OFF'}\n"
+            f"Destination Regions: {regions_disp}\n"
+            f"Role: {role_id or '—'}\n"
+            f"Webhook: {'set' if webhook else 'not set'}\n"
+            f"Color: {color or '—'}"
+        )
+
+    @es_movein.command(name="enable")
+    async def es_movein_enable(self, ctx: commands.Context, enabled: bool):
+        await self.config.guild(ctx.guild).movein_enabled.set(bool(enabled))
+        await ctx.send(f"Move-Ins alert is now **{'ON' if enabled else 'OFF'}**.")
+
+    @es_movein.command(name="setwebhook")
+    async def es_movein_setwebhook(self, ctx: commands.Context, webhook: str):
+        await self.config.guild(ctx.guild).movein_webhook.set(webhook.strip())
+        await ctx.send("Move-Ins webhook set.")
+
+    @es_movein.command(name="setrole")
+    async def es_movein_setrole(self, ctx: commands.Context, role_id: int):
+        await self.config.guild(ctx.guild).movein_role_id.set(int(role_id))
+        await ctx.send(f"Move-Ins role set to `{role_id}`.")
+
+    @es_movein.command(name="setcolor")
+    async def es_movein_setcolor(self, ctx: commands.Context, color: int):
+        await self.config.guild(ctx.guild).movein_color.set(int(color))
+        await ctx.send(f"Move-Ins color set to `{color}`.")
+
+    @es_movein.command(name="addregion")
+    async def es_movein_addregion(self, ctx: commands.Context, *, region: str):
+        r = ns_norm(region)
+        async with self.config.guild(ctx.guild).movein_regions() as rs:
+            if r not in rs:
+                rs.append(r)
+        await ctx.send(f"Move-Ins destination added: `{r}`.")
+
+    @es_movein.command(name="removeregion")
+    async def es_movein_removeregion(self, ctx: commands.Context, *, region: str):
+        r = ns_norm(region)
+        async with self.config.guild(ctx.guild).movein_regions() as rs:
+            if r in rs:
+                rs.remove(r)
+        await ctx.send(f"Move-Ins destination removed: `{r}`.")
+
+    @es_movein.command(name="clearregions")
+    async def es_movein_clearregions(self, ctx: commands.Context):
+        await self.config.guild(ctx.guild).movein_regions.set([])
+        await ctx.send("Move-Ins destinations cleared.")
 
     @es_group.command(name="enable")
     async def es_enable(self, ctx: commands.Context, enabled: bool):
