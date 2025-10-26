@@ -485,16 +485,22 @@ class SSE(commands.Cog):
                 if flag_url:
                     embed.set_thumbnail(url=flag_url)
     
+                # --- build footer once, then set it ---
                 eid = data.get("id", "N/A")
+                footer_parts = []
+                
                 if event_regions:
-                    embed.set_footer(text=f"Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}")
+                    footer_parts.append(f"Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}")
                 elif region:
-                    embed.set_footer(text=f"Event ID: {eid} • Region: {region}")
+                    footer_parts.append(f"Event ID: {eid} • Region: {region}")
                 else:
-                    embed.set_footer(text=f"Event ID: {eid}")
+                    footer_parts.append(f"Event ID: {eid}")
+                
                 if wa_status_text:
                     footer_parts.append(f"WA status: {wa_status_text}")
+                
                 embed.set_footer(text=" • ".join(footer_parts))
+
     
                 content = f"<@&{role_id}>" if role_id else None
                 tasks.append(self._post_webhook(webhook, content, [embed]))
@@ -513,13 +519,22 @@ class SSE(commands.Cog):
                 if flag_url:
                     embed.set_thumbnail(url=flag_url)
     
+                # --- build footer once, then set it ---
                 eid = data.get("id", "N/A")
+                footer_parts = []
+                
                 if event_regions:
-                    embed.set_footer(text=f"(unmatched) Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}")
+                    footer_parts.append(f"Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}")
                 elif region:
-                    embed.set_footer(text=f"(unmatched) Event ID: {eid} • Region: {region}")
+                    footer_parts.append(f"Event ID: {eid} • Region: {region}")
                 else:
-                    embed.set_footer(text=f"(unmatched) Event ID: {eid}")
+                    footer_parts.append(f"Event ID: {eid}")
+                
+                if wa_status_text:
+                    footer_parts.append(f"WA status: {wa_status_text}")
+                
+                embed.set_footer(text=" • ".join(footer_parts))
+
                 
                 if wa_status_text:
                     footer_parts.append(f"WA status: {wa_status_text}")
