@@ -91,6 +91,8 @@ MINIFLAG_RE = re.compile(r'<img src="([^"]+?)" class="miniflag"', re.I)
 RMB_LINK_RE = re.compile(r'<a href="/region=([^"/]+)/page=display_region_rmb\?postid=(\d+)', re.I)
 
 
+
+
 def _regions_from_buckets(buckets: Optional[List[str]]) -> set[str]:
     """
     From buckets like ["nation:feuvian","change","region:the_frontier_sea","all"]
@@ -186,6 +188,54 @@ class SSE(commands.Cog):
                 pass
         if self.session:
             await self.session.close()
+
+        # --- WA membership cache ---
+    _wa_members_cache: Optional[Tuple[set[str], float]] = None
+    _wa_cache_ttl_seconds: int = 3600  # 1 hour
+
+    async def _get_wa_members(self) -> set[str]:
+        """
+        Fetch WA members for council=1 and cache for a short TTL.
+        Returns a set of normalized nation slugs.
+        """
+        # Serve from cache if valid
+        if self._wa_members_cache:
+            members, ts = self._wa_members_cache
+            if (datetime.now(timezone.utc).timestamp() - ts) < self._wa_cache_ttl_seconds:
+                return members
+
+        url = "https://www.nationstates.net/cgi-bin/api.cgi?wa=1&q=members"
+        headers = {"User-Agent": await self._pick_any_user_agent()}
+        try:
+            async with self.session.get(url, headers=headers) as resp:
+                txt = await resp.text()
+        except Exception:
+            log.exception("Failed fetching WA members")
+            return set()
+
+        try:
+            root = ET.fromstring(txt)
+            payload = root.findtext(".//MEMBERS") or ""
+            # Comma-separated list; normalize each name
+            items = [ns_norm(x) for x in payload.split(",") if x.strip()]
+            members = set(items)
+            self._wa_members_cache = (members, datetime.now(timezone.utc).timestamp())
+            return members
+        except Exception:
+            log.exception("Failed parsing WA members")
+            return set()
+
+    async def _is_wa_member(self, nation_slug: str) -> Optional[bool]:
+        """
+        Returns True if nation is WA, False if not, or None if unknown/error.
+        """
+        if not nation_slug:
+            return None
+        members = await self._get_wa_members()
+        if not members:
+            return None
+        return nation_slug in members
+
 
     async def _fetch_region_nations(self, region_slug: str) -> set[str]:
         """Fetch nations in a region via q=nations and return a set of normalized nation slugs."""
@@ -374,7 +424,21 @@ class SSE(commands.Cog):
         flag_url = self._flag_from_html(html)
         title, desc = self._smart_title_desc(event_str)
         title, desc = hyperlink_ns(title), hyperlink_ns(desc)
-    
+
+
+                # Detect "Moves" and try to extract the nation
+        is_move_event = bool(re.search(r"\brelocated from\b", event_str or "", re.I))
+        wa_status_text: Optional[str] = None
+        if is_move_event:
+            nation_slug = _extract_nation_from_event(html, event_str)  # lowercased, normalized via helper
+            if nation_slug:
+                is_wa = await self._is_wa_member(nation_slug)
+                if is_wa is True:
+                    wa_status_text = "WA"
+                elif is_wa is False:
+                    wa_status_text = "Not-WA"
+               
+
         tasks = []
         for guild in self.bot.guilds:
             if not await self.config.guild(guild).enabled():
@@ -428,6 +492,9 @@ class SSE(commands.Cog):
                     embed.set_footer(text=f"Event ID: {eid} • Region: {region}")
                 else:
                     embed.set_footer(text=f"Event ID: {eid}")
+                if wa_status_text:
+                    footer_parts.append(f"WA status: {wa_status_text}")
+                embed.set_footer(text=" • ".join(footer_parts))
     
                 content = f"<@&{role_id}>" if role_id else None
                 tasks.append(self._post_webhook(webhook, content, [embed]))
@@ -453,6 +520,10 @@ class SSE(commands.Cog):
                     embed.set_footer(text=f"(unmatched) Event ID: {eid} • Region: {region}")
                 else:
                     embed.set_footer(text=f"(unmatched) Event ID: {eid}")
+                
+                if wa_status_text:
+                    footer_parts.append(f"WA status: {wa_status_text}")
+                embed.set_footer(text=" • ".join(footer_parts))
     
                 tasks.append(self._post_webhook(default_webhook, None, [embed]))
     
