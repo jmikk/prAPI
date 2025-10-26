@@ -427,7 +427,7 @@ class SSE(commands.Cog):
         # Normal filter-based event
         await self._process_filtered_event(data)
 
-        async def _process_filtered_event(self, data: dict):
+    async def _process_filtered_event(self, data: dict):
             """
             Route a non-RMB event to all matching filters.
             Region scoping now uses ONLY SSE buckets. If buckets are missing region info,
