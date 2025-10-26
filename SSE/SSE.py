@@ -427,7 +427,7 @@ class SSE(commands.Cog):
         # Normal filter-based event
         await self._process_filtered_event(data)
 
-    async def _process_filtered_event(self, data: dict):
+        async def _process_filtered_event(self, data: dict):
         """
         Route a non-RMB event to all matching filters.
         Region scoping now uses ONLY SSE buckets. If buckets are missing region info,
@@ -436,132 +436,107 @@ class SSE(commands.Cog):
         event_str = data.get("str", "") or ""
         html = data.get("htmlStr", "") or ""
         buckets = data.get("buckets") or []
-    
+
         # --- Region set & primary from buckets only ---
         event_regions: set[str] = _regions_from_buckets(buckets)
         region: Optional[str] = _primary_region_from_buckets(buckets)
-        
+
         flag_url = self._flag_from_html(html)
         title, desc = self._smart_title_desc(event_str)
         title, desc = hyperlink_ns(title), hyperlink_ns(desc)
 
+        # ----- Independent Move-Ins alert (ignores normal filters) -----
+        movein_tasks = []
+        is_move = bool(re.search(r"(?i)\brelocated from\b", event_str or ""))
+        if is_move:
+            dest = _extract_move_destination(event_str)  # normalized destination region
+            nation_slug = _extract_nation_from_event(html, event_str)  # already lowercased
 
-        # Detect "Moves" and try to extract the nation
-        is_move_event = bool(re.search(r"\brelocated from\b", event_str or "", re.I))
-        wa_status_text: Optional[str] = None
-        if is_move_event:
-            nation_slug = _extract_nation_from_event(html, event_str)  # lowercased, normalized via helper
+            # Compute WA status (None if unknown); we only fire if True
+            is_wa: Optional[bool] = None
             if nation_slug:
                 is_wa = await self._is_wa_member(nation_slug)
-                if is_wa is True:
-                    wa_status_text = "WA"
-                elif is_wa is False:
-                    wa_status_text = "Not-WA"
-               
 
-        tasks = []
-        for guild in self.bot.guilds:
-            if not await self.config.guild(guild).enabled():
-                continue
-    
-            filters = await self.config.guild(guild).filters()
-            default_webhook = await self.config.guild(guild).default_webhook()
-            fallback = bool(await self.config.guild(guild).route_unmatched_to_default())
-    
-            matched = False
-
-                    # ----- Independent Move-Ins alert (ignores normal filters) -----
-            try:
-                mi_enabled = await self.config.guild(guild := None).movein_enabled()  # placeholder to satisfy editor
-            except Exception:
-                # We'll read per-guild below; this just avoids linter warnings in some editors
-                pass
-    
-            # We want to evaluate per-guild settings, so loop guilds here and schedule posts
-            movein_tasks = []
-            is_move = bool(re.search(r"(?i)\brelocated from\b", event_str or ""))
-            if is_move:
-                dest = _extract_move_destination(event_str)  # normalized
-                nation_slug = _extract_nation_from_event(html, event_str)
-    
-                # Build WA status once if we have a nation
-                wa_status_text: Optional[str] = None
-                if nation_slug:
-                    is_wa = await self._is_wa_member(nation_slug)
-                    if is_wa is True:
-                        wa_status_text = "WA"
-                    elif is_wa is False:
-                        wa_status_text = "Not-WA"
-    
+            # Only alert when confirmed WA and destination matches a configured region
+            if is_wa is True and dest:
                 for g in self.bot.guilds:
                     if not await self.config.guild(g).enabled():
                         continue
                     if not await self.config.guild(g).movein_enabled():
                         continue
-    
-                    # Must have webhook and at least one region configured
+
                     mi_webhook = await self.config.guild(g).movein_webhook()
                     if not mi_webhook:
                         continue
-                    mi_regions = (await self.config.guild(g).movein_regions()) or []
-                    if not mi_regions:
-                        continue
-    
-                    # Only fire if DESTINATION matches configured region list
-                    if dest and dest in mi_regions:
-                        mi_role = await self.config.guild(g).movein_role_id()
-                        mi_color = int(await self.config.guild(g).movein_color() or 0x2ECC71)
-    
-                        # Build embed
-                        embed = discord.Embed(
-                            title=title or "Move-In",
-                            description=desc or event_str,
-                            colour=discord.Colour(mi_color),
-                            timestamp=datetime.fromtimestamp(
-                                data.get("time", int(datetime.now(timezone.utc).timestamp())),
-                                tz=timezone.utc,
-                            ),
-                        )
-                        if flag_url:
-                            embed.set_thumbnail(url=flag_url)
-    
-                        # Footer with Event ID, Destination, WA status
-                        eid = data.get("id", "N/A")
-                        footer_parts = [f"Event ID: {eid}", f"Destination: {dest.replace('_',' ').title()}"]
-                        if wa_status_text:
-                            footer_parts.append(f"WA status: {wa_status_text}")
-                        embed.set_footer(text=" • ".join(footer_parts))
-    
-                        content = f"<@&{mi_role}>" if mi_role else None
-                        movein_tasks.append(self._post_webhook(mi_webhook, content, [embed]))
-    
-            if movein_tasks:
-                await asyncio.gather(*movein_tasks, return_exceptions=True)
 
-    
+                    mi_regions = (await self.config.guild(g).movein_regions()) or []
+                    if dest not in mi_regions:
+                        continue
+
+                    mi_role = await self.config.guild(g).movein_role_id()
+                    mi_color = int(await self.config.guild(g).movein_color() or 0x2ECC71)
+
+                    embed = discord.Embed(
+                        title=title or "Move-In",
+                        description=desc or event_str,
+                        colour=discord.Colour(mi_color),
+                        timestamp=datetime.fromtimestamp(
+                            data.get("time", int(datetime.now(timezone.utc).timestamp())),
+                            tz=timezone.utc,
+                        ),
+                    )
+                    if flag_url:
+                        embed.set_thumbnail(url=flag_url)
+
+                    eid = data.get("id", "N/A")
+                    footer_parts = [
+                        f"Event ID: {eid}",
+                        f"Destination: {dest.replace('_',' ').title()}",
+                        "WA status: WA",
+                    ]
+                    embed.set_footer(text=" • ".join(footer_parts))
+
+                    content = f"<@&{mi_role}>" if mi_role else None
+                    movein_tasks.append(self._post_webhook(mi_webhook, content, [embed]))
+
+        if movein_tasks:
+            await asyncio.gather(*movein_tasks, return_exceptions=True)
+
+        # ----- Normal filter-based routing (unchanged) -----
+        tasks = []
+        for guild in self.bot.guilds:
+            if not await self.config.guild(guild).enabled():
+                continue
+
+            filters = await self.config.guild(guild).filters()
+            default_webhook = await self.config.guild(guild).default_webhook()
+            fallback = bool(await self.config.guild(guild).route_unmatched_to_default())
+
+            matched = False
+
             for f in filters:
                 patt = f.get("pattern") or ""
                 regs = [r.strip().lower() for r in (f.get("regions") or []) if r]
-    
+
                 # Region scope: event must reference ANY of the filter regions (via buckets)
                 if regs:
                     if not event_regions or not any(er in regs for er in event_regions):
                         continue
-    
+
                 # Regex match on text
                 try:
                     if patt and not re.search(patt, event_str, re.I):
                         continue
                 except re.error:
                     continue
-    
+
                 matched = True
                 color = int(f.get("color") or 0x5865F2)
                 role_id = f.get("role_id")
                 webhook = f.get("webhook") or default_webhook
                 if not webhook:
                     continue
-    
+
                 embed = discord.Embed(
                     title=title or "NationStates Event",
                     description=desc or event_str,
@@ -573,27 +548,22 @@ class SSE(commands.Cog):
                 )
                 if flag_url:
                     embed.set_thumbnail(url=flag_url)
-    
-                # --- build footer once, then set it ---
+
+                # footer
                 eid = data.get("id", "N/A")
                 footer_parts = []
-                
                 if event_regions:
                     footer_parts.append(f"Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}")
                 elif region:
                     footer_parts.append(f"Event ID: {eid} • Region: {region}")
                 else:
                     footer_parts.append(f"Event ID: {eid}")
-                
-                if wa_status_text:
-                    footer_parts.append(f"WA status: {wa_status_text}")
-                
+
                 embed.set_footer(text=" • ".join(footer_parts))
 
-    
                 content = f"<@&{role_id}>" if role_id else None
                 tasks.append(self._post_webhook(webhook, content, [embed]))
-    
+
             # Fallback routing if no filters matched
             if not matched and fallback and default_webhook:
                 embed = discord.Embed(
@@ -607,32 +577,20 @@ class SSE(commands.Cog):
                 )
                 if flag_url:
                     embed.set_thumbnail(url=flag_url)
-    
-                # --- build footer once, then set it ---
-                eid = data.get("id", "N/A")
-                footer_parts = []
-                
-                if event_regions:
-                    footer_parts.append(f"Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}")
-                elif region:
-                    footer_parts.append(f"Event ID: {eid} • Region: {region}")
-                else:
-                    footer_parts.append(f"Event ID: {eid}")
-                
-                if wa_status_text:
-                    footer_parts.append(f"WA status: {wa_status_text}")
-                
-                embed.set_footer(text=" • ".join(footer_parts))
 
-                
-                if wa_status_text:
-                    footer_parts.append(f"WA status: {wa_status_text}")
-                embed.set_footer(text=" • ".join(footer_parts))
-    
+                eid = data.get("id", "N/A")
+                if event_regions:
+                    footer = f"Event ID: {eid} • Regions: {', '.join(sorted(event_regions))}"
+                elif region:
+                    footer = f"Event ID: {eid} • Region: {region}"
+                else:
+                    footer = f"Event ID: {eid}"
+                embed.set_footer(text=footer)
+
                 tasks.append(self._post_webhook(default_webhook, None, [embed]))
-    
+
         if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            await asyncio.gather(*tasks, return_exceptions=True)    
 
 
 
@@ -836,6 +794,35 @@ class SSE(commands.Cog):
             f"Webhook: {'set' if webhook else 'not set'}\n"
             f"Color: {color or '—'}"
         )
+
+    @es_movein.command(name="setregion")
+    async def es_movein_setregion(self, ctx: commands.Context, *, region: str):
+        """Set a single destination region for Move-Ins (overwrites any existing list)."""
+        r = ns_norm(region)
+        await self.config.guild(ctx.guild).movein_regions.set([r])
+        await ctx.send(f"Move-Ins destination region set to: `{r}`.")
+
+    @es_movein.command(name="configure")
+    async def es_movein_configure(self, ctx: commands.Context, region: str, role_id: int, webhook: str):
+        """
+        Quick setup: set region, role, and webhook, and enable Move-Ins alerts.
+        Usage:
+          [p]elderscry movein configure "The Wellspring" 123456789012345678 https://discord.com/api/webhooks/...
+        """
+        r = ns_norm(region)
+        await self.config.guild(ctx.guild).movein_regions.set([r])
+        await self.config.guild(ctx.guild).movein_role_id.set(int(role_id))
+        await self.config.guild(ctx.guild).movein_webhook.set(webhook.strip())
+        await self.config.guild(ctx.guild).movein_enabled.set(True)
+        await ctx.send(
+             "✅ Move-Ins configured:\n"
+            f"• Region: `{r}`\n"
+            f"• Role: `{role_id}`\n"
+            f"• Webhook: `set`\n"
+            f"• Status: **ON**\n\n"
+            "Any **WA** nation moving **into** this region will trigger an alert."
+        )
+
 
     @es_movein.command(name="enable")
     async def es_movein_enable(self, ctx: commands.Context, enabled: bool):
