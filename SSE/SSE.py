@@ -1136,6 +1136,29 @@ class SSE(commands.Cog):
             )
         await ctx.send("\n".join(lines[:50]))
 
+    @es_group.command(name="webhooks")
+    async def es_webhooks(self, ctx: commands.Context):
+        """Show all webhooks currently configured."""
+        default_wh = await self.config.guild(ctx.guild).default_webhook()
+        movein_wh = await self.config.guild(ctx.guild).movein_webhook()
+        filters = await self.config.guild(ctx.guild).filters()
+
+        lines = []
+        lines.append(f"**Default webhook:** {default_wh or '_not set_'}")
+        lines.append(f"**Move-In webhook:** {movein_wh or '_not set_'}")
+
+        if not filters:
+            lines.append("**Filter webhooks:** _none_")
+        else:
+            lines.append("**Filter webhooks:**")
+            for i, f in enumerate(filters, start=1):
+                name = f.get('name') or f'(Filter {i})'
+                wh = f.get('webhook') or '(uses default)'
+                lines.append(f"• {name}: {wh}")
+
+        await ctx.send("\n".join(lines[:50]))
+
+
 
 
 # ---- setup ----
