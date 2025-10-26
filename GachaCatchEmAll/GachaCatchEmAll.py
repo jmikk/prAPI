@@ -12,6 +12,10 @@ import discord
 from redbot.core import commands, Config, checks
 import aiohttp
 
+import io
+from datetime import datetime
+import html
+
 
 __red_end_user_data_statement__ = (
     "This cog stores Pokémon you catch (per-catch entries with UID, species id/name, types, stats, "
@@ -1464,6 +1468,174 @@ class GachaCatchEmAll(commands.Cog):
             self.stop()
 
         # --------- Commands ---------
+
+    @commands.hybrid_command(name="exportbox")
+    async def exportbox(self, ctx: commands.Context, member: Optional[discord.Member] = None):
+        """Export all your Pokémon (or another member's) to an HTML grid (sprite, name/nickname, level, types, stats, moves)."""
+        member = member or ctx.author
+        box = await self.config.user(member).pokebox()
+    
+        if not box:
+            await ctx.reply(f"{member.display_name} has no Pokémon to export.")
+            return
+    
+        # newest first (or change to level sort if you prefer)
+        box_sorted = sorted(box, key=lambda e: int(e.get("caught_at", 0)), reverse=True)
+    
+        # type colors (soft, readable)
+        type_colors = {
+            "normal":"#A8A77A","fire":"#EE8130","water":"#6390F0","electric":"#F7D02C","grass":"#7AC74C",
+            "ice":"#96D9D6","fighting":"#C22E28","poison":"#A33EA1","ground":"#E2BF65","flying":"#A98FF3",
+            "psychic":"#F95587","bug":"#A6B91A","rock":"#B6A136","ghost":"#735797","dragon":"#6F35FC",
+            "dark":"#705746","steel":"#B7B7CE","fairy":"#D685AD"
+        }
+    
+        def chip(t: str) -> str:
+            c = type_colors.get(t.lower(), "#444")
+            return f'<span class="chip" style="background:{c}">{html.escape(t.title())}</span>'
+    
+        # build card HTML rows
+        cards = []
+        for e in box_sorted:
+            name = html.escape(e.get("name", "Unknown")).title()
+            nickname = html.escape(e.get("nickname") or "")
+            label = f"{nickname} — {name}" if nickname and nickname.lower() != name.lower() else name
+            level = int(e.get("level", 1))
+            sprite = (
+                e.get("sprite")
+                or e.get("sprites", {}).get("front_default")
+                or "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/0.png"
+            )
+            pid = html.escape(str(e.get("pokedex_id", "?")))
+            uid = html.escape(str(e.get("uid", "?")))
+            types = [t for t in (e.get("types") or [])]
+            chips = " ".join(chip(t) for t in types) or '<span class="chip" style="background:#444">Unknown</span>'
+    
+            stats = e.get("stats") or {}
+            # enforce keys + defaults
+            order = ["hp","attack","defense","special-attack","special-defense","speed"]
+            stat_cells = "".join(
+                f"<tr><td>{s.replace('-',' ').title()}</td><td>{int(stats.get(s, 10))}</td></tr>"
+                for s in order
+            )
+    
+            moves = [m for m in (e.get("moves") or []) if isinstance(m, str)]
+            if not moves:
+                moves_html = "<li>—</li>"
+            else:
+                moves_html = "".join(f"<li>{html.escape(m.title())}</li>" for m in moves[:4])
+    
+            cards.append(f'''
+            <div class="card">
+                <div class="sprite-wrap">
+                    <img src="{sprite}" alt="{name}" loading="lazy">
+                </div>
+                <h3 class="name">{label}</h3>
+                <div class="meta">#{pid} • UID: <code>{uid}</code></div>
+                <div class="types">{chips}</div>
+                <div class="level">Lv {level}</div>
+    
+                <div class="cols">
+                    <div class="col">
+                        <h4>Stats</h4>
+                        <table class="stats">
+                            <tbody>
+                                {stat_cells}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col">
+                        <h4>Moves</h4>
+                        <ul class="moves">
+                            {moves_html}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            '''
+            )
+    
+        html_text = f"""<!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="utf-8">
+    <title>{member.display_name}'s Pokémon Box</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {{
+            --bg: #101114;
+            --panel: #17191e;
+            --panel-2: #1f2330;
+            --text: #e9ecf1;
+            --muted: #a8b0c2;
+            --accent: #ffcb05;
+            --accent-2: #2a75bb;
+            --ring: rgba(255,255,255,0.08);
+        }}
+        * {{ box-sizing: border-box; }}
+        body {{
+            background: radial-gradient(1000px 600px at 50% -10%, #1b2230 0%, #11141b 55%, var(--bg) 100%);
+            color: var(--text); font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 2rem; line-height: 1.45;
+        }}
+        h1 {{
+            text-align: center; margin: 0 0 0.25rem 0; font-weight: 800; letter-spacing: 0.3px;
+            color: var(--accent); text-shadow: 2px 2px var(--accent-2);
+        }}
+        .sub {{
+            text-align: center; color: var(--muted); margin-bottom: 1.5rem; font-size: 0.95rem;
+        }}
+        .grid {{
+            display: grid; gap: 1rem;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            align-items: stretch;
+        }}
+        .card {{
+            background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+            border-radius: 14px; padding: 12px;
+            box-shadow: 0 1px 0 var(--ring), 0 12px 24px rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: transform .15s ease, box-shadow .15s ease;
+        }}
+        .card:hover {{ transform: translateY(-2px); box-shadow: 0 1px 0 var(--ring), 0 18px 30px rgba(0,0,0,0.35); }}
+        .sprite-wrap {{ display: flex; justify-content: center; align-items: center; height: 120px; }}
+        .sprite-wrap img {{ width: 96px; height: 96px; image-rendering: -webkit-optimize-contrast; }}
+        .name {{ margin: 6px 0 4px; font-size: 1.05rem; }}
+        .meta {{ color: var(--muted); font-size: 0.8rem; margin-bottom: 6px; }}
+        code {{ background: rgba(255,255,255,0.06); padding: 0 .25rem; border-radius: 6px; }}
+        .types {{ margin-bottom: 6px; }}
+        .chip {{
+            display: inline-block; padding: 2px 8px; border-radius: 999px; margin: 0 4px 4px 0;
+            color: #111; font-weight: 700; font-size: 0.75rem; letter-spacing: .2px;
+            box-shadow: inset 0 -1px 0 rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.25);
+        }}
+        .level {{ font-weight: 700; margin-bottom: 8px; }}
+        .cols {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
+        .col h4 {{ margin: 6px 0; font-size: 0.9rem; color: #dbe4ff; }}
+        .stats {{ width: 100%; border-collapse: collapse; }}
+        .stats td {{ padding: 3px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.85rem; }}
+        .stats tr:last-child td {{ border-bottom: 0; }}
+        .moves {{ list-style: none; padding: 0; margin: 0; }}
+        .moves li {{ padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); font-size: 0.9rem; }}
+        .moves li:last-child {{ border-bottom: 0; }}
+        footer {{ margin-top: 1.5rem; text-align: center; color: var(--muted); font-size: 0.85rem; }}
+    </style>
+    </head>
+    <body>
+      <h1>{html.escape(member.display_name)}'s Pokémon Box</h1>
+      <div class="sub">Exported {datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")} — {len(box_sorted)} Pokémon</div>
+      <div class="grid">
+        {''.join(cards)}
+      </div>
+      <footer>PokéGacha export • Open locally in any browser</footer>
+    </body>
+    </html>
+    """
+    
+        data = io.BytesIO(html_text.encode("utf-8"))
+        filename = f"{member.display_name}_pokemon_box.html"
+        await ctx.reply(file=discord.File(data, filename=filename))
+
 
     @commands.hybrid_command(name="release")
     async def release(self, ctx: commands.Context, *, query: str):
