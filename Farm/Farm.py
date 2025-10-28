@@ -1098,7 +1098,7 @@ class Farm(commands.Cog):
 
 
     @commands.command()
-    async def pay(self, ctx: commands.Context, member: discord.Member, amount: int):
+    async def gold_pay(self, ctx: commands.Context, member: discord.Member, amount: int):
         """Pay another player some gold."""
         author = ctx.author
 
