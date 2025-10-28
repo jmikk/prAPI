@@ -8,6 +8,7 @@ import time
 import re
 import datetime
 import traceback
+import io
 
 class APIRecruiter(commands.Cog):
     def __init__(self, bot):
@@ -207,25 +208,33 @@ class APIRecruiter(commands.Cog):
     async def manualreport(self, ctx):
         await self.send_report()
 
+
     async def send_report(self):
         sent_nations = await self.config.sent_nations()
         last_report_count = await self.config.last_report_count()
         total_sent = await self.config.total_tgs_sent()
         sent_since_last = total_sent - last_report_count
-
+    
         report_content = "\n".join(sent_nations)
         filename = f"tg_sent_{datetime.datetime.utcnow().strftime('%Y-%m-%d')}.txt"
-
-        file = discord.File(fp=discord.File(fp=report_content.encode(), filename=filename), filename=filename)
+    
+        # Use BytesIO for an in-memory file
+        file = discord.File(io.BytesIO(report_content.encode()), filename=filename)
+    
         channel = await self.get_log_channel()
         if channel:
             await channel.send(
-                content=(f"Recruitment Report:\nTotal TGs Sent: {total_sent}\n"
-                         f"TGs Sent Since Last Report: {sent_since_last}"),
+                content=(
+                    f"Recruitment Report:\n"
+                    f"Total TGs Sent: {total_sent}\n"
+                    f"TGs Sent Since Last Report: {sent_since_last}"
+                ),
                 file=file
             )
+    
         await self.config.last_report_count.set(total_sent)
         await self.config.sent_nations.set([])
+
 
     @commands.command()
     async def resetrecruitlist(self, ctx):
