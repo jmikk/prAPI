@@ -341,7 +341,7 @@ class Farm(commands.Cog):
 
 
 
-    @commands.command(name="balance")
+    @commands.command(name="gold_balance")
     async def balance(self, ctx):
         """Check your gold balance."""
         user = ctx.author
