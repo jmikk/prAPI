@@ -3400,6 +3400,43 @@ class InteractiveTeamBattleView(discord.ui.View):
                 pass
         await self.message.edit(embed=results, view=self)
 
+    @discord.ui.button(label="🔁 Battle Again", style=discord.ButtonStyle.success)
+    async def battle_again(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Only the two players can use this button
+        allowed = {self.caller.id}
+        if self.opponent:
+            allowed.add(self.opponent.id)
+        if interaction.user.id not in allowed:
+            await interaction.response.send_message("Only the current battlers can start a rematch.", ephemeral=True)
+            return
+
+        # Acknowledge quickly so the button feels snappy
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+
+        try:
+            ctx = await commands.Context.from_interaction(interaction)
+            await self.cog.teambattle(ctx, opponent=self.opponent)
+        except Exception:
+            # Fallback: local rematch as above if your env doesn't support from_interaction
+            new_view = InteractiveTeamBattleView(
+                cog=self.cog,
+                caller=self.caller,
+                caller_team=[dict(e) for e in self._original_caller_team],
+                opp_team=[dict(e) for e in self._original_opp_team],
+                opponent=self.opponent,
+                timeout=300,
+            )
+            await new_view._rebuild_move_buttons()
+            new_embed = new_view._current_embed()
+            msg = await interaction.followup.send(embed=new_embed, view=new_view)
+            new_view.message = msg
+
+
+
     @discord.ui.button(label="⏭ Auto-Sim to Results", style=discord.ButtonStyle.primary, custom_id="auto")
     async def auto_sim(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Instantly skip to the end result, no step pages or new images."""
