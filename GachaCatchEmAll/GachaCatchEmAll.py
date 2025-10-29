@@ -493,7 +493,7 @@ class GachaCatchEmAll(commands.Cog):
         for _ in range(size):
             pdata, pid, bst = await self._random_encounter("greatball", allowed_ids=None)
             types = [t["type"]["name"] for t in pdata.get("types", [])]
-            stats_map = {s["stat"]["name"]: int(s["base_stat"]) for s in pdata.get("stats", [])}
+            stats_map = {s["stat"]["name"]: int(s["base_stat"]+1.2 * target_avg_level) for s in pdata.get("stats", [])}
             sprite = (
                 pdata.get("sprites", {})
                 .get("other", {})
