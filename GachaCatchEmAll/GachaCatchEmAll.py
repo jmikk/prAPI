@@ -164,26 +164,57 @@ class GachaCatchEmAll(commands.Cog):
     async def _tower_generate_mon(self, target_level: int) -> Dict[str, Any]:
         """
         Return a single NPC mon dict at the requested level.
-        Adjust this to use your existing NPC/entry generator.
-        Must at least include: uid (str/int), name, level, types[], sprite, moves/learnset for _entry_move_names, etc.
+        Normalizes common shapes: single dict, list[dict], tuple, etc.
         """
-        # Example: if you have something like _random_npc_entry(level)
+        cand: Optional[Any] = None
+    
+        # 1) Prefer your own NPC generators if you have them
         try:
-            e = await self._generate_npc_team(target_avg_level=target_level,size=1)  # <-- replace with your own
-        except AttributeError:
-            # Minimal fallback demo (you should replace with a real generator!)
-            e = {
-                "uid": f"npc-{target_level}-{self.bot.loop.time()}",
+            if hasattr(self, "_random_npc_entry"):
+                # many cogs already have this
+                cand = await self._random_npc_entry(level=target_level)
+            elif hasattr(self, "_build_npc_team"):
+                # some return a full team; we'll grab one
+                team = await self._build_npc_team(level=target_level, size=1)
+                cand = team
+        except Exception:
+            cand = None
+    
+        # 2) Normalize to a single dict
+        if isinstance(cand, list):
+            cand = random.choice(cand) if cand else None
+        if isinstance(cand, tuple):
+            cand = cand[0] if cand else None
+        if cand is None:
+            # 3) Minimal fallback if you don't have generators wired yet
+            cand = {
+                "uid": f"npc-{target_level}-{secrets.token_hex(4)}",
                 "name": "Towerling",
-                "level": target_level,
                 "types": ["normal"],
                 "sprite": None,
                 "moves": ["tackle", "bite", "slash", "headbutt"],
+                "level": target_level,
             }
-        # Ensure level is set
-        e["level"] = target_level
-        # Mark as NPC so you don’t write it back to boxes anywhere
+    
+        # 4) Make a shallow copy so we don’t mutate shared state
+        e: Dict[str, Any] = dict(cand)
+    
+        # 5) Ensure required fields
         e["_npc"] = True
+        e["level"] = int(target_level)
+        e.setdefault("uid", f"npc-{target_level}-{secrets.token_hex(4)}")
+        e.setdefault("name", "Towerling")
+        e.setdefault("types", ["normal"])
+    
+        # 6) Ensure it has moves your _entry_move_names() can read
+        # If your cog uses a different shape (e.g., learnset), adjust here:
+        if not e.get("moves"):
+            try:
+                if hasattr(self, "_legal_moves_for_level"):
+                    e["moves"] = await self._legal_moves_for_level(e, e["level"])
+            except Exception:
+                e["moves"] = ["tackle"]
+    
         return e
 
 
