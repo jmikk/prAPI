@@ -1560,20 +1560,44 @@ class GachaCatchEmAll(commands.Cog):
             blocks = int(round(width * pct))
             return "▰" * blocks + "▱" * (width - blocks) + f"  {filled}/{total}  ({int(pct*100)}%)"
 
-        # --------- Commands ---------
+
+    async def _get_user_team(self, member):
+        #Keys:  uid, pokedex_id, name, types [], stats{hp, attack, defense, special-attack,special-defense, speed}
+        #bst, sprite, nickname, caught_at, level, xp, moves[], pending_points (OUTDATED)
+
+        #[{'uid': '19239d251d01', 'pokedex_id': 946, 'name': 'Bramblin', 'types': ['grass', 'ghost'],
+        #'stats': {'hp': 40, 'attack': 65, 'defense': 30, 'special-attack': 45, 'special-defense': 35, 'speed': 60}, 
+        #'bst': 275, 'sprite': 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/946.png',
+        #'nickname': None, 'caught_at': 1761703876, 'level': 1, 'xp': 20, 'moves': ['nightmare'], 'pending_points': 0},
+        caller = member
+        caller_uids = await self._get_team(caller)
+        caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
+        caller_team = self._team_entries_from_uids(caller_box, caller_uids)
+        return caller_team
+
+    async def _get_battle_tower_baddie(self, floor)
+        
+
+        
+    # --------- Commands ---------
     @commands.hybrid_command(name="test2")
     async def test2(self,ctx):
         await ctx.send("Yup you are good")
         
-        caller = ctx.author
-        caller_uids = await self._get_team(caller)
-        caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
-        caller_team = self._team_entries_from_uids(caller_box, caller_uids)
-        await ctx.send(caller_team)
+        
+        bad_team1 = await self._generate_npc_team(self, 1, 1)
+        bad_team2 = await self._generate_npc_team(self, 100, 1)
+        await ctx.send(bad_team1)
+        await ctx.send(bad_team2)
+
+        
+        await ctx.send("And I'm done")
+        
 
     @commands.hybrid_command(name="battletower")
     async def battletower(self,ctx):
-        pass
+        good_team = await _get_user_team(ctx.author)
+        
         
 
     
