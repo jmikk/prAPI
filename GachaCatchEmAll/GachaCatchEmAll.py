@@ -1622,7 +1622,6 @@ class GachaCatchEmAll(commands.Cog):
     @commands.hybrid_command(name="battletower")
     async def battle_tower(self, ctx: commands.Context, start_floor: Optional[int] = None):
         """Enter the Battle Tower gauntlet. No healing between enemies."""
-        return
         user = ctx.author
     
         # Clamp starting floor to user's max reached
