@@ -1561,6 +1561,19 @@ class GachaCatchEmAll(commands.Cog):
             return "▰" * blocks + "▱" * (width - blocks) + f"  {filled}/{total}  ({int(pct*100)}%)"
 
         # --------- Commands ---------
+
+    @commands.hybrid_command(name="test2")
+    async def test2(self,ctx):
+        await ctx.send("Yup you are good")
+        caller_uids = await self._get_team(caller)
+        caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
+        caller_team = self._team_entries_from_uids(caller_box, caller_uids)
+        await ctx.send(caller_team)
+
+    @commands.hybrid_command(name="battletower")
+    async def battletower(self,ctx):
+        
+
     
     @commands.hybrid_command(name="pokedex")
     async def pokedex(self, ctx: commands.Context, member: Optional[discord.Member] = None):
