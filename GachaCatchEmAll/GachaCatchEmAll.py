@@ -1593,8 +1593,8 @@ class GachaCatchEmAll(commands.Cog):
     async def _tower_scale(self, baddie, levels):
         for _ in range(levels):
             growth_choices = [0, 1, 1, 2, 2, 3]
-            new_mon = dict(mon)
-            stats = dict(mon.get("stats", {}))
+            new_mon = dict(baddie)
+            stats = dict(baddie.get("stats", {}))
             for key in stats:
                 stats[key] += random.choice(growth_choices)
         new_mon["stats"] = stats
