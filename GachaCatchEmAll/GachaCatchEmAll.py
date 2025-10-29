@@ -3885,8 +3885,7 @@ class BattleTowerView(discord.ui.View):
     - No auto-sim; the user must play turns.
     """
 
-    def __init__(self, cog: "GachaCatchEmAll", caller: discord.abc.User,
-                 caller_team: List[Dict[str, Any]], start_floor: int = 1, timeout: int = 600):
+    def __init__(self, cog: "GachaCatchEmAll", caller: discord.abc.User, caller_team: List[Dict[str, Any]], start_floor: int = 1, timeout: int = 600):
         super().__init__(timeout=timeout)
         self.cog = cog
         self.caller = caller
