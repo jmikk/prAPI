@@ -1580,7 +1580,6 @@ class GachaCatchEmAll(commands.Cog):
     @commands.hybrid_command(name="test2")
     async def test2(self,ctx):
         await ctx.send("Yup you are good")
-        async def _generate_npc_team(self, target_avg_level: float, size: int = 6) -> List[Dict[str, Any]]:
         
         bad_team1 = await self._generate_npc_team(1, 1)
         bad_team2 = await self._generate_npc_team(100, 1)
