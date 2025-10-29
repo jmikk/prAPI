@@ -132,7 +132,8 @@ class GachaCatchEmAll(commands.Cog):
             last_roll=None,
             active_encounter=None,
             team=[],
-            badges=[]                     
+            badges=[],
+            tower_max_floor=1,
         )   
         
         self.config.register_global(
@@ -157,6 +158,34 @@ class GachaCatchEmAll(commands.Cog):
         self._pokemon_list: Optional[List[Dict[str, Any]]] = None  # list of {name, url}
         self._pokemon_cache: Dict[int, Dict[str, Any]] = {}  # id -> pokemon data
         self._list_lock = asyncio.Lock()
+
+    # Inside your GachaCatchEmAll cog:
+
+    async def _tower_generate_mon(self, target_level: int) -> Dict[str, Any]:
+        """
+        Return a single NPC mon dict at the requested level.
+        Adjust this to use your existing NPC/entry generator.
+        Must at least include: uid (str/int), name, level, types[], sprite, moves/learnset for _entry_move_names, etc.
+        """
+        # Example: if you have something like _random_npc_entry(level)
+        try:
+            e = await self._generate_npc_team(target_avg_level=target_level,size=1)  # <-- replace with your own
+        except AttributeError:
+            # Minimal fallback demo (you should replace with a real generator!)
+            e = {
+                "uid": f"npc-{target_level}-{self.bot.loop.time()}",
+                "name": "Towerling",
+                "level": target_level,
+                "types": ["normal"],
+                "sprite": None,
+                "moves": ["tackle", "bite", "slash", "headbutt"],
+            }
+        # Ensure level is set
+        e["level"] = target_level
+        # Mark as NPC so you don’t write it back to boxes anywhere
+        e["_npc"] = True
+        return e
+
 
     async def _get_zone_media(self, key: Optional[str]) -> Optional[str]:
         """Return a URL for the zone/type key; falls back to 'default'/'all'."""
@@ -443,11 +472,35 @@ class GachaCatchEmAll(commands.Cog):
             return 1.0
         return sum(int(e.get("level", 1)) for e in entries) / len(entries)
     
-    def _xp_scale(self, self_level: float, opp_level: float) -> float:
-        """Scale XP by level difference. +10% per level the opponent is higher,
-        -10% per level the opponent is lower; clamp 0.5x .. 2.0x."""
-        delta = float(opp_level) - float(self_level)
-        return max(0.5, min(2.0, 1.0 + 0.10 * delta))
+    def _xp_scale(self, user_avg_level: float, enemy_avg_level: float) -> float:
+        """
+        Returns a multiplier for XP rewards based on relative difficulty.
+    
+        - 1.0 means same-level battle.
+        - >1.0 means the enemy is stronger (bonus XP).
+        - <1.0 means the enemy is weaker (reduced XP).
+        - Hard-capped between 0.5x and 3.0x for sanity.
+        """
+    
+        # Difference between enemy and user team
+        diff = enemy_avg_level - user_avg_level
+    
+        # Small differences shouldn't matter too much, so make scaling gentle.
+        # Every level difference = ±5% XP change.
+        # Big differences escalate exponentially for large gaps.
+        scale = 1.0 + (diff * 0.05)
+    
+        # If enemy is much stronger (>10 levels), give extra exponential boost
+        if diff > 10:
+            scale *= 1.0 + ((diff - 10) * 0.08)
+    
+        # If enemy is much weaker (<-10 levels), reduce further
+        if diff < -10:
+            scale *= 1.0 + ((diff + 10) * 0.03)
+    
+        # Clamp to avoid crazy rewards
+        return max(0.5, min(scale, 3.0))
+
     
     async def _ensure_moves_on_entry(self, e: Dict[str, Any]) -> None:
         # Guarantee at least 1 legal move if moves is empty
@@ -1526,6 +1579,30 @@ class GachaCatchEmAll(commands.Cog):
             self.stop()
 
         # --------- Commands ---------
+
+        @commands.hybrid_command(name="battletower")
+        async def battle_tower(self, ctx: commands.Context, start_floor: Optional[int] = None):
+            """Enter the Battle Tower gauntlet. No healing between enemies."""
+            # Get the user's allowed starting floor
+            max_floor = int(await self.config.user(ctx.author).tower_max_floor())
+            start = int(start_floor or 1)
+            if start > max_floor:
+                start = max_floor
+            if start < 1:
+                start = 1
+        
+            caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
+            caller_team = self._team_entries_from_uids(caller_box, caller_uids)
+            if not caller_team:
+                caller_team = sorted(caller_box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
+                if not caller_team:
+                    await ctx.reply("You have no Pokémon to battle with.")
+                    return
+            for e in caller_team:
+                await self._ensure_moves_on_entry(e)
+        
+            view = BattleTowerView(self, ctx.author, caller_team, start_floor=start)
+            await view.start(ctx)
 
         # ---------- small UI helper ----------
         def _pct_bar(self, filled: int, total: int, width: int = 18) -> str:
@@ -3733,6 +3810,374 @@ class TeamViewPaginator(discord.ui.View):
         if self.message:
             await self.message.edit(view=self)
         self.stop()
+
+
+class BattleTowerView(discord.ui.View):
+    """
+    Battle Tower: Endless single-enemy encounters.
+    - No healing between enemies for the user's team.
+    - Explore Floor: fight another of the same level.
+    - Ascend Floor: increase NPC level by 1.
+    - Forced ascend every 10 defeats on the current floor.
+    - Full user team gets XP on every enemy defeated.
+    - No auto-sim; the user must play turns.
+    """
+
+    def __init__(self, cog: "GachaCatchEmAll", caller: discord.abc.User,
+                 caller_team: List[Dict[str, Any]], start_floor: int = 1, timeout: int = 600):
+        super().__init__(timeout=timeout)
+        self.cog = cog
+        self.caller = caller
+        self.caller_team = caller_team
+        self.start_floor = int(max(1, start_floor))
+
+        # State
+        self.floor = self.start_floor
+        self.defeats_on_floor = 0
+        self.total_defeats = 0
+
+        # User persistent HP (no healing between enemies)
+        self.caller_hp: Dict[str, Tuple[int, int]] = {}
+        self._seed_hp_map(self.caller_team, self.caller_hp)
+        self.ci = 0  # index into caller team (advances on faint)
+
+        # Current NPC
+        self.npc: Optional[Dict[str, Any]] = None
+        self.npc_hp: Tuple[int, int] = (0, 0)
+
+        # UI/live message
+        self.message: Optional[discord.Message] = None
+        self._action_log: List[str] = []
+
+        # Between-fight choice flag (when true, show Explore/Ascend/Forfeit; otherwise show move buttons)
+        self._awaiting_choice = False
+
+    # ---------- lifecycle ----------
+    async def start(self, ctx: commands.Context):
+        # Create first NPC and show the first duel
+        await self._spawn_new_npc()
+        await self._rebuild_move_buttons()
+        em = self._embed_duel()
+        self.message = await ctx.send(embed=em, view=self)
+
+    # ---------- util / hp ----------
+    def _seed_hp_map(self, team, store):
+        for e in team:
+            mx = self.cog._initial_hp(e)
+            store[e["uid"]] = (mx, mx)  # cur, max
+
+    def _hp_tuple(self, e: Dict[str, Any], store: Dict[str, Tuple[int, int]]) -> Tuple[int, int]:
+        return store.get(e["uid"], (self.cog._initial_hp(e), self.cog._initial_hp(e)))
+
+    def _set_hp(self, e: Dict[str, Any], cur: int, store: Dict[str, Tuple[int, int]]):
+        _, mx = self._hp_tuple(e, store)
+        store[e["uid"]] = (max(0, cur), mx)
+
+    def _alive(self) -> bool:
+        return self.ci < len(self.caller_team) and self.npc is not None and self.npc_hp[0] > 0
+
+    def _user_active(self) -> Dict[str, Any]:
+        return self.caller_team[self.ci]
+
+    async def _spawn_new_npc(self):
+        # NPC level scales by floor; you can tune this formula
+        team_avg = self.cog._avg_level(self.caller_team)
+        target_level = self.floor
+        self.npc = await self.cog._tower_generate_mon(target_level)
+        mx = self.cog._initial_hp(self.npc)
+        self.npc_hp = (mx, mx)
+        self._awaiting_choice = False
+        self._action_log.append(f"🆚 Floor {self.floor}: A wild **{self.npc.get('nickname') or self.npc['name']}** (Lv {self.npc.get('level', target_level)}) appears!")
+
+    # ---------- buttons state ----------
+    def _disable_all(self):
+        for it in self.children:
+            if isinstance(it, discord.ui.Button):
+                it.disabled = True
+
+    def _clear_to_move_buttons(self):
+        self.clear_items()
+        self._awaiting_choice = False
+
+    def _set_choice_buttons(self):
+        self.clear_items()
+        # Only between fights:
+        # Explore Floor (same level)
+        explore = discord.ui.Button(label="🔁 Explore Floor", style=discord.ButtonStyle.primary, custom_id="tower_explore")
+        ascend = discord.ui.Button(label="⏫ Ascend Floor", style=discord.ButtonStyle.success, custom_id="tower_ascend")
+        forfeit = discord.ui.Button(label="✖ Forfeit", style=discord.ButtonStyle.danger, custom_id="tower_forfeit")
+
+        async def _explore_cb(inter: discord.Interaction):
+            if inter.user.id != self.caller.id:
+                await inter.response.send_message("Not your run.", ephemeral=True)
+                return
+            if not inter.response.is_done():
+                await inter.response.defer()
+            await self._spawn_new_npc()
+            await self._rebuild_move_buttons()
+            await self._refresh()
+
+        async def _ascend_cb(inter: discord.Interaction):
+            if inter.user.id != self.caller.id:
+                await inter.response.send_message("Not your run.", ephemeral=True)
+                return
+            if not inter.response.is_done():
+                await inter.response.defer()
+            self.floor += 1
+            await self._spawn_new_npc()
+            await self._rebuild_move_buttons()
+            await self._refresh()
+
+        async def _forfeit_cb(inter: discord.Interaction):
+            if inter.user.id != self.caller.id:
+                await inter.response.send_message("Not your run.", ephemeral=True)
+                return
+            if not inter.response.is_done():
+                await inter.response.defer()
+            await self._end_run()
+
+        explore.callback = _explore_cb
+        ascend.callback = _ascend_cb
+        forfeit.callback = _forfeit_cb
+        self.add_item(explore); self.add_item(ascend); self.add_item(forfeit)
+        self._awaiting_choice = True
+
+    # ---------- render ----------
+    def _hpbar(self, cur: int, mx: int) -> str:
+        return self.cog._hp_bar(cur, mx, width=20)
+
+    def _embed_duel(self) -> discord.Embed:
+        A = self._user_active()
+        B = self.npc
+        A_cur, A_max = self._hp_tuple(A, self.caller_hp)
+        B_cur, B_max = self.npc_hp
+
+        desc = (
+            f"**Floor {self.floor}** — {A.get('nickname') or A['name']} (Lv {A.get('level',1)}) "
+            f"vs {B.get('nickname') or B['name']} (Lv {B.get('level',1)})\n\n"
+            f"**{A.get('nickname') or A['name']}** HP: {self._hpbar(A_cur,A_max)}  {A_cur}/{A_max}\n"
+            f"**{B.get('nickname') or B['name']}** HP: {self._hpbar(B_cur,B_max)}  {B_cur}/{B_max}\n"
+        )
+        em = discord.Embed(title=f"🏯 Battle Tower — {self.caller.display_name}", description=desc, color=discord.Color.gold())
+        if self._action_log:
+            em.add_field(name="Recent", value="\n".join(self._action_log[-4:]), inline=False)
+        em.set_footer(text="No autosim. Win to earn XP. No healing between enemies.")
+        # Sprites (optional)
+        a_s = A.get("sprite"); b_s = B.get("sprite")
+        if a_s: em.set_author(name=(A.get("nickname") or A.get("name","?")), icon_url=a_s)
+        if b_s: em.set_thumbnail(url=b_s)
+        return em
+
+    async def _refresh(self):
+        if self.message:
+            await self.message.edit(embed=self._embed_duel(), view=self)
+
+    # ---------- move buttons ----------
+    async def _rebuild_move_buttons(self):
+        self.clear_items()
+        if not self.npc:
+            return
+        A = self._user_active()
+        defender = self.npc
+        for name in self.cog._entry_move_names(A):
+            # effectiveness emoji
+            emoji = ""
+            try:
+                mi = await self.cog._get_move_details(name.lower())
+                # quick effectiveness (optional):
+                mtype = ((mi.get("type") or {}).get("name") or "").lower()
+                eff = 1.0
+                for dtype in [t.lower() for t in (defender.get("types") or [])]:
+                    eff *= {"fire":{"grass":2,"water":.5}, "water":{"fire":2,"grass":.5}, "grass":{"water":2,"fire":.5}}.get(mtype, {}).get(dtype, 1.0)
+                emoji = "🌟" if eff > 1 else "💀" if 0 < eff < 1 else "🚫" if eff == 0 else ""
+            except Exception:
+                pass
+
+            btn = discord.ui.Button(label=f"{emoji} {name.title()}" if emoji else name.title(), style=discord.ButtonStyle.primary)
+            async def _cb(inter: discord.Interaction, chosen=name):
+                if inter.user.id != self.caller.id:
+                    await inter.response.send_message("Not your run.", ephemeral=True)
+                    return
+                await self._turn(inter, chosen)
+            btn.callback = _cb  # type: ignore
+            self.add_item(btn)
+
+        # Add a Forfeit button during fights
+        end = discord.ui.Button(label="✖ Forfeit", style=discord.ButtonStyle.danger, custom_id="tower_forfeit_fight")
+        async def _end_cb(inter: discord.Interaction):
+            if inter.user.id != self.caller.id:
+                await inter.response.send_message("Not your run.", ephemeral=True)
+                return
+            if not inter.response.is_done():
+                await inter.response.defer()
+            await self._end_run()
+        end.callback = _end_cb
+        self.add_item(end)
+
+    # ---------- turn resolution ----------
+    async def _turn(self, interaction: discord.Interaction, chosen_move: str):
+        if not self.npc:
+            return
+
+        # Defer quickly
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
+
+        A = self._user_active()
+        B = self.npc
+        A_cur, A_max = self._hp_tuple(A, self.caller_hp)
+        B_cur, B_max = self.npc_hp
+
+        # Build moves
+        def _mk(move_name, fallback_power=50):
+            d = {"name": move_name, "power": fallback_power, "damage_class": {"name": "physical"}, "type":{"name":"normal"}}
+            try:
+                mi = awaitable_result = None
+            except Exception:
+                pass
+            return d
+
+        # Caller move details
+        a_move = {"name": chosen_move, "power": 50, "damage_class": {"name":"physical"}, "type":{"name":"normal"}}
+        try:
+            mi = await self.cog._get_move_details(chosen_move.lower())
+            a_move = {"name": chosen_move, "power": mi.get("power") or 50,
+                      "damage_class": mi.get("damage_class") or {"name":"physical"},
+                      "type": mi.get("type") or {"name":"normal"}}
+        except Exception:
+            pass
+
+        # NPC picks randomly from its legal moves
+        b_move = await self.cog._pick_move(B)
+
+        # Speed order
+        A_spd = self.cog._safe_stats(A)["speed"]
+        B_spd = self.cog._safe_stats(B)["speed"]
+        first_A = A_spd >= B_spd
+
+        def perform(attacker, defender, move, d_cur):
+            dmg = self.cog._calc_move_damage(attacker, defender, move)
+            d_cur = max(0, d_cur - dmg)
+            msg = f"{attacker.get('nickname') or attacker['name']} used **{move['name'].title()}** → {defender.get('nickname') or defender['name']} took **{dmg}**!"
+            if attacker.get("_last_eff_msg"):
+                msg += f"\n{attacker['_last_eff_msg']}"
+            if attacker.get("_last_crit"):
+                msg += "\n**💥A critical hit!💥**"
+            return d_cur, msg
+
+        actions = []
+        if first_A:
+            if A_cur > 0 and B_cur > 0:
+                B_cur, msg = perform(A, B, a_move, B_cur); actions.append(msg)
+            if B_cur > 0 and A_cur > 0:
+                A_cur, msg = perform(B, A, b_move, A_cur); actions.append(msg)
+        else:
+            if B_cur > 0 and A_cur > 0:
+                A_cur, msg = perform(B, A, b_move, A_cur); actions.append(msg)
+            if A_cur > 0 and B_cur > 0:
+                B_cur, msg = perform(A, B, a_move, B_cur); actions.append(msg)
+
+        # Save HP
+        self._set_hp(A, A_cur, self.caller_hp)
+        self.npc_hp = (B_cur, B_max)
+        self._action_log.extend(actions)
+
+        # Handle faints
+        advanced = False
+        if A_cur <= 0:
+            self.ci += 1
+            advanced = True
+            if self.ci < len(self.caller_team):
+                nxt = self.caller_team[self.ci]
+                self._action_log.append(f"➡️ **{nxt.get('nickname') or nxt['name']}** entered the battle!")
+        if B_cur <= 0:
+            await self._on_enemy_defeated()
+
+        # Continue duel or end/choice
+        if self.ci >= len(self.caller_team):
+            await self._end_run()
+            return
+
+        if self.npc and self.npc_hp[0] > 0:
+            # Still fighting same enemy
+            await self._rebuild_move_buttons()
+            await self._refresh()
+        else:
+            # Between fights → show choices (or force ascend if needed)
+            self._set_choice_buttons()
+            await self._refresh()
+
+    async def _on_enemy_defeated(self):
+        """Award XP, update counters, maybe force ascend."""
+        if not self.npc:
+            return
+        self._action_log.append(f"✅ **{self.npc.get('nickname') or self.npc['name']}** was defeated!")
+        self.total_defeats += 1
+        self.defeats_on_floor += 1
+
+        # Award XP to FULL user team
+        team_avg = self.cog._avg_level(self.caller_team)
+        enemy_lvl = int(self.npc.get("level", self.floor))
+        scale = self.cog._xp_scale(team_avg, enemy_lvl)
+        base = 16 + 4 * max(1, self.floor)  # tuneable curve
+        award = int(round(base * scale))
+
+        # Write back changes to user box
+        box: List[Dict[str, Any]] = await self.cog.config.user(self.caller).pokebox()
+        # quick index by uid
+        by_uid = {str(e.get("uid")): (i, e) for i, e in enumerate(box)}
+
+        for ue in self.caller_team:
+            uid = str(ue.get("uid"))
+            if uid in by_uid:
+                i, be = by_uid[uid]
+                before = int(be.get("level", 1))
+                lvl, xp, _ = self.cog._add_xp_to_entry(be, award)
+                pts = self.cog._give_stat_points_for_levels(before, lvl)
+                if await self.cog.config.auto_stat_up():
+                    self.cog._auto_allocate_points(be, pts)
+                else:
+                    be["pending_points"] = int(be.get("pending_points", 0)) + pts
+                box[i] = be
+                # also mirror level locally so UI shows updated level
+                ue["level"] = lvl
+        await self.cog.config.user(self.caller).pokebox.set(box)
+
+        # Forced ascend every 10 on a floor
+        if self.defeats_on_floor >= 10:
+            self.floor += 1
+            self.defeats_on_floor = 0
+            self._action_log.append("🔔 Floor quota met. You are **forced to ascend**!")
+        # Clear current NPC to present choice/new spawn
+        self.npc = None
+        self.npc_hp = (0, 0)
+
+        # Update max floor reached
+        prev_max = int(await self.cog.config.user(self.caller).tower_max_floor())
+        if self.floor > prev_max:
+            await self.cog.config.user(self.caller).tower_max_floor.set(self.floor)
+
+    async def _end_run(self):
+        """Run ends when team is wiped or user forfeits."""
+        self._disable_all()
+        # Final summary
+        em = discord.Embed(
+            title="🏁 Battle Tower — Run Ended",
+            description=(
+                f"**Floors Climbed:** {self.floor if self.defeats_on_floor==0 else self.floor} "
+                f"\n**Total Defeats:** {self.total_defeats}\n"
+                f"**Reached Floor:** {self.floor}"
+            ),
+            color=discord.Color.dark_gold()
+        )
+        em.set_footer(text="Your highest reached floor has been saved; you can start there next time.")
+        if self.message:
+            await self.message.edit(embed=em, view=self)
+        self.stop()
+
 
 
 
