@@ -3208,7 +3208,6 @@ class InteractiveTeamBattleView(discord.ui.View):
         # Always include the Auto-Sim and Close buttons last
         self.add_item(self.auto_sim)
         self.add_item(self.close)
-        self.add_item(self.battle_again)
 
 
 
@@ -3321,6 +3320,8 @@ class InteractiveTeamBattleView(discord.ui.View):
 
     # ---------- finishing / XP / Results ----------
     async def _finish_battle(self, interaction: discord.Interaction):
+        self.add_item(self.battle_again)
+
         # Compute who won
         caller_alive = self.ci < len(self.caller_team)
         match_winner = "caller" if caller_alive else "opp"
