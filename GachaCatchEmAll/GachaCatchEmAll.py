@@ -1580,8 +1580,8 @@ class GachaCatchEmAll(commands.Cog):
 
         # --------- Commands ---------
 
-        @commands.hybrid_command(name="battletower")
-        async def battle_tower(self, ctx: commands.Context, start_floor: Optional[int] = None):
+    @commands.hybrid_command(name="battletower")
+    async def battle_tower(self, ctx: commands.Context, start_floor: Optional[int] = None):
             """Enter the Battle Tower gauntlet. No healing between enemies."""
             # Get the user's allowed starting floor
             max_floor = int(await self.config.user(ctx.author).tower_max_floor())
@@ -1612,8 +1612,8 @@ class GachaCatchEmAll(commands.Cog):
             blocks = int(round(width * pct))
             return "▰" * blocks + "▱" * (width - blocks) + f"  {filled}/{total}  ({int(pct*100)}%)"
     
-        @commands.hybrid_command(name="pokedex")
-        async def pokedex(self, ctx: commands.Context, member: Optional[discord.Member] = None):
+    @commands.hybrid_command(name="pokedex")
+    async def pokedex(self, ctx: commands.Context, member: Optional[discord.Member] = None):
             """
             Show Pokédex progress for you (or another member):
             - Overall unique species caught vs total available
