@@ -11,7 +11,6 @@ from datetime import datetime
 from discord.ext.commands import BucketType
 import discord
 
-
 def global_cooldown_check():
     """Blocks the command if a global 60s window is active.
     Sends a self-cleaning message with a Discord timestamp before raising."""
