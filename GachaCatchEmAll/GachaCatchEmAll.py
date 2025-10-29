@@ -493,7 +493,7 @@ class GachaCatchEmAll(commands.Cog):
         for _ in range(size):
             pdata, pid, bst = await self._random_encounter("greatball", allowed_ids=None)
             types = [t["type"]["name"] for t in pdata.get("types", [])]
-            stats_map = {s["stat"]["name"]: int(s["base_stat"]+1.2 * target_avg_level) for s in pdata.get("stats", [])}
+            stats_map = {s["stat"]["name"]: int(s["base_stat"]) for s in pdata.get("stats", [])}
             sprite = (
                 pdata.get("sprites", {})
                 .get("other", {})
@@ -1584,12 +1584,25 @@ class GachaCatchEmAll(commands.Cog):
         bad_team1 = await self._generate_npc_team(1, 1)
         bad_team2 = await self._generate_npc_team(100, 1)
         await ctx.send(bad_team1)
+        _tower_scale(bad_team2)
         await ctx.send(bad_team2)
 
         
-        await ctx.send("And I'm done")
         
+        await ctx.send("And I'm done")
 
+    async def _tower_scale(self, baddie, level):
+        for _ in range(levels):
+            growth_choices = [0, 1, 1, 2, 2, 3]
+            new_mon = dict(mon)
+            stats = dict(mon.get("stats", {}))
+            for key in stats:
+                stats[key] += random.choice(growth_choices)
+        new_mon["stats"] = stats
+        return new_mon
+
+        
+        
     @commands.hybrid_command(name="battletower")
     async def battletower(self,ctx):
         good_team = await _get_user_team(ctx.author)
