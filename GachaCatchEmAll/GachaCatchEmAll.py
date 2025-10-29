@@ -1590,7 +1590,7 @@ class GachaCatchEmAll(commands.Cog):
         
         await ctx.send("And I'm done")
 
-    async def _tower_scale(self, baddie, levels):
+    def _tower_scale(self, baddie, levels):
         for _ in range(levels):
             growth_choices = [0, 1, 1, 2, 2, 3]
             new_mon = dict(baddie)
