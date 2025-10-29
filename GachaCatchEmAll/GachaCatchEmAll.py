@@ -3977,7 +3977,7 @@ class BattleTowerView(discord.ui.View):
                 await inter.response.defer()
             await self._spawn_new_npc()
             await self._rebuild_move_buttons()
-            await self._refresh()
+            await self.refresh_view()
 
         async def _ascend_cb(inter: discord.Interaction):
             if inter.user.id != self.caller.id:
@@ -3988,7 +3988,7 @@ class BattleTowerView(discord.ui.View):
             self.floor += 1
             await self._spawn_new_npc()
             await self._rebuild_move_buttons()
-            await self._refresh()
+            await self.refresh_view()
 
         async def _forfeit_cb(inter: discord.Interaction):
             if inter.user.id != self.caller.id:
@@ -4030,7 +4030,7 @@ class BattleTowerView(discord.ui.View):
         if b_s: em.set_thumbnail(url=b_s)
         return em
 
-    async def _refresh(self):
+    async def refresh_view(self):
         if self.message:
             await self.message.edit(embed=self._embed_duel(), view=self)
 
@@ -4166,11 +4166,11 @@ class BattleTowerView(discord.ui.View):
         if self.npc and self.npc_hp[0] > 0:
             # Still fighting same enemy
             await self._rebuild_move_buttons()
-            await self._refresh()
+            await self.refresh_view()
         else:
             # Between fights → show choices (or force ascend if needed)
             self._set_choice_buttons()
-            await self._refresh()
+            await self.refresh_view()
 
     async def _on_enemy_defeated(self):
         """Award XP, update counters, maybe force ascend."""
