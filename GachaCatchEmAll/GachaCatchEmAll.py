@@ -82,7 +82,6 @@ HABITAT_GROUPS = {
     "Tundra": ["ice", "steel"],
     "Mystic Ruins": ["ghost", "psychic"],
     "Sky": ["flying", "electric"],
-    "All": set(["normal", "grass", "fighting", "ground","rock", "steel", "flying", "dragon","dark", "poison", "dragon","water", "ice","bug", "grass", "fairy","fire", "rock", "ground","flying", "electric","ice", "steel","ghost", "psychic","flying", "electric"]),  # fallback: includes all types
 }
 
 
@@ -2846,8 +2845,7 @@ class TypeSelectView(discord.ui.View):
 
         # Build buttons from habitat groups + All
         labels = list(HABITAT_GROUPS.keys())
-        if "All" not in labels:
-            labels.append("All")
+    
 
         for h in labels:
             self.add_item(self._make_button(h))
