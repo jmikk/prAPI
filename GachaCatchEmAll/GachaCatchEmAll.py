@@ -3208,6 +3208,11 @@ class InteractiveTeamBattleView(discord.ui.View):
         # Always include the Auto-Sim and Close buttons last
         self.add_item(self.auto_sim)
         self.add_item(self.close)
+        self.add_item(self.battle_again)
+        for item in self.children:
+            if item.label == "Battle Again":
+                item.disabled = True
+
 
 
 
@@ -3320,8 +3325,7 @@ class InteractiveTeamBattleView(discord.ui.View):
 
     # ---------- finishing / XP / Results ----------
     async def _finish_battle(self, interaction: discord.Interaction):
-        self.add_item(self.battle_again)
-
+        # Create the dynamic button
         # Compute who won
         caller_alive = self.ci < len(self.caller_team)
         match_winner = "caller" if caller_alive else "opp"
@@ -3391,9 +3395,8 @@ class InteractiveTeamBattleView(discord.ui.View):
 
         # Replace controls with a simple Close
         self._disable_all()
-        # keep Close enabled
         for child in self.children:
-            if isinstance(child, discord.ui.Button) and getattr(child, "custom_id", None) == "close":
+            if isinstance(child, discord.ui.Button) and getattr(child, "custom_id", None) == "Battle Again":
                 child.disabled = False
         if not interaction.response.is_done():
             try:
