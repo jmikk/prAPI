@@ -188,7 +188,7 @@ class GachaCatchEmAll(commands.Cog):
         if cand is None:
             # 3) Minimal fallback if you don't have generators wired yet
             cand = {
-                "uid": f"npc-{target_level}-{secrets.token_hex(4)}",
+                "uid": f"npc-{target_level}",
                 "name": "Towerling",
                 "types": ["normal"],
                 "sprite": None,
@@ -1643,7 +1643,6 @@ class GachaCatchEmAll(commands.Cog):
         except Exception:
             caller_uids = []
     
-        # Build the team: preferred uids → fallback to top 6 by level
         caller_team: List[Dict[str, Any]] = []
         if caller_uids and hasattr(self, "_team_entries_from_uids"):
             try:
