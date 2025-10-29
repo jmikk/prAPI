@@ -1584,7 +1584,7 @@ class GachaCatchEmAll(commands.Cog):
         bad_team1 = await self._generate_npc_team(1, 1)
         bad_team2 = await self._generate_npc_team(100, 1)
         await ctx.send(bad_team1)
-        self.tower_scale(bad_team2)
+        self._tower_scale(bad_team2)
         await ctx.send(bad_team2)
 
         
