@@ -1591,25 +1591,56 @@ class GachaCatchEmAll(commands.Cog):
     @commands.hybrid_command(name="battletower")
     async def battle_tower(self, ctx: commands.Context, start_floor: Optional[int] = None):
         """Enter the Battle Tower gauntlet. No healing between enemies."""
-        # Get the user's allowed starting floor
-        max_floor = int(await self.config.user(ctx.author).tower_max_floor())
+        user = ctx.author
+    
+        # Clamp starting floor to user's max reached
+        max_floor = int(await self.config.user(user).tower_max_floor())
         start = int(start_floor or 1)
         if start > max_floor:
             start = max_floor
         if start < 1:
             start = 1
-        
-        caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
-        caller_team = self._team_entries_from_uids(caller_box, caller_uids)
+    
+        # Get user's full box
+        caller_box: List[Dict[str, Any]] = await self.config.user(user).pokebox()
+    
+        # Try to fetch a saved active team UID list, if your cog stores one
+        caller_uids: List[str] = []
+        try:
+            # Adjust this key to whatever your cog actually uses, e.g. "team", "active_team_uids", etc.
+            caller_uids = list(await self.config.user(user).active_team())
+        except Exception:
+            caller_uids = []
+    
+        # Build the team: preferred uids → fallback to top 6 by level
+        caller_team: List[Dict[str, Any]] = []
+        if caller_uids and hasattr(self, "_team_entries_from_uids"):
+            try:
+                caller_team = self._team_entries_from_uids(caller_box, caller_uids)
+            except Exception:
+                caller_team = []
+    
         if not caller_team:
-            caller_team = sorted(caller_box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
-            if not caller_team:
-                await ctx.reply("You have no Pokémon to battle with.")
-                return
+            # fallback: take top 6 by level
+            caller_team = sorted(
+                [dict(e) for e in caller_box],
+                key=lambda e: int(e.get("level", 1)),
+                reverse=True
+            )[:6]
+    
+        if not caller_team:
+            await ctx.reply("You have no Pokémon to battle with.", mention_author=False)
+            return
+    
+        # Make sure each entry has moves available
         for e in caller_team:
-            await self._ensure_moves_on_entry(e)
-        
-        view = BattleTowerView(self, ctx.author, caller_team, start_floor=start)
+            try:
+                await self._ensure_moves_on_entry(e)
+            except Exception:
+                pass
+    
+        # Start the tower run
+        view = BattleTowerView(self, user, caller_team, start_floor=start)
         await view.start(ctx)
 
     
