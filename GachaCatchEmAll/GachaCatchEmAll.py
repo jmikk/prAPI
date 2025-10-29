@@ -3216,17 +3216,14 @@ class InteractiveTeamBattleView(discord.ui.View):
 
     async def _ctx_from_interaction(self, interaction: discord.Interaction):
         """
-        Best-effort way to get a Context that works with Red/discord.py.
-        Prefers Context.from_interaction if available; otherwise a small shim.
+        Best-effort Context for reusing teambattle logic.
         """
-        # discord.py 2.3+ has this:
         if hasattr(commands.Context, "from_interaction"):
             try:
                 return await commands.Context.from_interaction(interaction)
             except Exception:
                 pass
-
-        # Fallback shim sufficient for our internal call
+    
         class _Shim:
             def __init__(self, bot, guild, channel, author, followup):
                 self.bot = bot
@@ -3234,39 +3231,63 @@ class InteractiveTeamBattleView(discord.ui.View):
                 self.channel = channel
                 self.author = author
                 self.me = guild.me if guild else None
-                self.send = followup.send  # used by _start_teambattle_impl
+                self._send = followup.send
+            async def send(self, *a, **kw):
+                return await self._send(*a, **kw)
+            async def reply(self, *a, **kw):
+                return await self._send(*a, **kw)
+    
         return _Shim(self.cog.bot, interaction.guild, interaction.channel, interaction.user, interaction.followup)
 
+
     def _add_rematch_button(self):
-        """Create a Battle Again button and add it to the view (called only at end)."""
         btn = discord.ui.Button(
             label="🔁 Battle Again",
             style=discord.ButtonStyle.success,
             custom_id="rematch"
         )
-
+    
         async def _rematch_cb(inter: discord.Interaction):
-            # Only participants can trigger
+            # Only battlers can press
             allowed = {self.caller.id}
             if self.opponent:
                 allowed.add(self.opponent.id)
             if inter.user.id not in allowed:
                 await inter.response.send_message("Only the battlers can start a rematch.", ephemeral=True)
                 return
-
+    
             # Be responsive
             if not inter.response.is_done():
                 try:
                     await inter.response.defer()
                 except Exception:
                     pass
-
-            # Build a Context and call the same impl that /teambattle uses (re-rolls opponents!)
-            ctx = await self._ctx_from_interaction(inter)
-            await self.cog._start_teambattle_impl(ctx, caller=self.caller, opponent=self.opponent)
-
-        btn.callback = _rematch_cb  # wire it up
+    
+            try:
+                ctx = await self._ctx_from_interaction(inter)
+    
+                # Preferred internal entry (if you refactored it)
+                if hasattr(self.cog, "_start_teambattle_impl"):
+                    await self.cog._start_teambattle_impl(ctx, caller=self.caller, opponent=self.opponent)
+                    return
+    
+                # Fallback: call the command directly
+                if hasattr(self.cog, "teambattle"):
+                    await self.cog.teambattle(ctx, opponent=self.opponent)
+                    return
+    
+                await inter.followup.send("Rematch wiring error: no teambattle entry point found.", ephemeral=True)
+    
+            except Exception as e:
+                # Surface errors so it never feels like “nothing happened”
+                try:
+                    await inter.followup.send(f"Couldn't start rematch: `{type(e).__name__}: {e}`", ephemeral=True)
+                except Exception:
+                    pass
+    
+        btn.callback = _rematch_cb
         self.add_item(btn)
+
 
 
     # ---------- core one-turn resolver ----------
