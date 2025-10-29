@@ -1575,10 +1575,7 @@ class GachaCatchEmAll(commands.Cog):
         caller_team = self._team_entries_from_uids(caller_box, caller_uids)
         return caller_team
 
-    async def _get_battle_tower_baddie(self, floor)
-        
-
-        
+            
     # --------- Commands ---------
     @commands.hybrid_command(name="test2")
     async def test2(self,ctx):
