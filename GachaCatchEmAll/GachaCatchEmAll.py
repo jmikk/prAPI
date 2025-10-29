@@ -1578,32 +1578,6 @@ class GachaCatchEmAll(commands.Cog):
                 await self.message.edit(view=self)
             self.stop()
 
-        # --------- Commands ---------
-
-    @commands.hybrid_command(name="battletower")
-    async def battle_tower(self, ctx: commands.Context, start_floor: Optional[int] = None):
-            """Enter the Battle Tower gauntlet. No healing between enemies."""
-            # Get the user's allowed starting floor
-            max_floor = int(await self.config.user(ctx.author).tower_max_floor())
-            start = int(start_floor or 1)
-            if start > max_floor:
-                start = max_floor
-            if start < 1:
-                start = 1
-        
-            caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
-            caller_team = self._team_entries_from_uids(caller_box, caller_uids)
-            if not caller_team:
-                caller_team = sorted(caller_box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
-                if not caller_team:
-                    await ctx.reply("You have no Pokémon to battle with.")
-                    return
-            for e in caller_team:
-                await self._ensure_moves_on_entry(e)
-        
-            view = BattleTowerView(self, ctx.author, caller_team, start_floor=start)
-            await view.start(ctx)
-
         # ---------- small UI helper ----------
         def _pct_bar(self, filled: int, total: int, width: int = 18) -> str:
             total = max(1, int(total))
@@ -1611,72 +1585,99 @@ class GachaCatchEmAll(commands.Cog):
             pct = filled / total
             blocks = int(round(width * pct))
             return "▰" * blocks + "▱" * (width - blocks) + f"  {filled}/{total}  ({int(pct*100)}%)"
+
+        # --------- Commands ---------
+
+    @commands.hybrid_command(name="battletower")
+    async def battle_tower(self, ctx: commands.Context, start_floor: Optional[int] = None):
+        """Enter the Battle Tower gauntlet. No healing between enemies."""
+        # Get the user's allowed starting floor
+        max_floor = int(await self.config.user(ctx.author).tower_max_floor())
+        start = int(start_floor or 1)
+        if start > max_floor:
+            start = max_floor
+        if start < 1:
+            start = 1
+        
+        caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
+        caller_team = self._team_entries_from_uids(caller_box, caller_uids)
+        if not caller_team:
+            caller_team = sorted(caller_box, key=lambda e: int(e.get("level", 1)), reverse=True)[:6]
+            if not caller_team:
+                await ctx.reply("You have no Pokémon to battle with.")
+                return
+        for e in caller_team:
+            await self._ensure_moves_on_entry(e)
+        
+        view = BattleTowerView(self, ctx.author, caller_team, start_floor=start)
+        await view.start(ctx)
+
     
     @commands.hybrid_command(name="pokedex")
     async def pokedex(self, ctx: commands.Context, member: Optional[discord.Member] = None):
-            """
-            Show Pokédex progress for you (or another member):
-            - Overall unique species caught vs total available
-            - Breakdown by Pokémon type
-            """
-            member = member or ctx.author
+        """
+        Show Pokédex progress for you (or another member):
+        - Overall unique species caught vs total available
+        - Breakdown by Pokémon type
+        """
+        member = member or ctx.author
     
             # Your box (unique species by Pokédex ID)
-            box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
-            species_you_have: Dict[int, Dict[str, Any]] = {}
-            for e in box:
-                try:
-                    pid = int(e.get("pokedex_id") or 0)
-                except Exception:
-                    continue
-                if pid > 0 and pid not in species_you_have:
-                    species_you_have[pid] = e  # keep first entry; we only need id+types
+        box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
+        species_you_have: Dict[int, Dict[str, Any]] = {}
+        for e in box:
+            try:
+                pid = int(e.get("pokedex_id") or 0)
+            except Exception:
+                continue
+            if pid > 0 and pid not in species_you_have:
+                species_you_have[pid] = e  # keep first entry; we only need id+types
     
-            # Overall total: use the master list we already fetch from PokeAPI
-            await self._ensure_pokemon_list()
-            total_all = len(self._pokemon_list or [])  # includes all canonical /pokemon/{id} entries
+        # Overall total: use the master list we already fetch from PokeAPI
+        await self._ensure_pokemon_list()
+        total_all = len(self._pokemon_list or [])  # includes all canonical /pokemon/{id} entries
     
-            overall_bar = self._pct_bar(len(species_you_have), total_all, width=24)
+        overall_bar = self._pct_bar(len(species_you_have), total_all, width=24)
     
-            # By-type totals (cached by _get_type_ids) + your unique caught that match that type
-            # NOTE: We count *unique species* you own that have the type (not per-individual dupes)
-            per_type_lines = []
-            for t in POKEMON_TYPES:
-                try:
-                    type_ids = await self._get_type_ids(t)         # all species ids for this type
-                except Exception:
-                    type_ids = []
-                total_t = len(type_ids)
-                # of your unique species, how many have this type?
-                you_t = 0
-                for pid, e in species_you_have.items():
-                    # if this species has the type (we trust your stored 'types' list)
-                    if any(tt.lower() == t for tt in (e.get("types") or [])):
-                        you_t += 1
-                bar = self._pct_bar(you_t, total_t, width=12)
-                # Nice label casing
-                per_type_lines.append(f"**{t.title():<9}** {bar}")
+        # By-type totals (cached by _get_type_ids) + your unique caught that match that type
+        # NOTE: We count *unique species* you own that have the type (not per-individual dupes)
+        per_type_lines = []
+        for t in POKEMON_TYPES:
+            try:
+                type_ids = await self._get_type_ids(t)         # all species ids for this type
+            except Exception:
+                type_ids = []
+            total_t = len(type_ids)
+            # of your unique species, how many have this type?
+            you_t = 0
+            for pid, e in species_you_have.items():
+                # if this species has the type (we trust your stored 'types' list)
+                if any(tt.lower() == t for tt in (e.get("types") or [])):
+                    you_t += 1
+            bar = self._pct_bar(you_t, total_t, width=12)
+            # Nice label casing
+            per_type_lines.append(f"**{t.title():<9}** {bar}")
     
-            # Build embed
-            em = discord.Embed(
-                title=f"Pokédex Progress — {member.display_name}",
-                color=discord.Color.green()
-            )
-            em.add_field(name="Overall", value=overall_bar, inline=False)
+        # Build embed
+        em = discord.Embed(
+            title=f"Pokédex Progress — {member.display_name}",
+            color=discord.Color.green()
+        )
+        em.add_field(name="Overall", value=overall_bar, inline=False)
     
             # 18 lines is fine but Discord fields have limits; split into 2–3 columns
             # Chunk into 3 roughly-equal blocks for readability
-            cols = 3
-            chunk = (len(per_type_lines) + cols - 1) // cols
-            for i in range(cols):
-                block = per_type_lines[i*chunk : (i+1)*chunk]
-                if block:
-                    em.add_field(name="By Type" if i == 0 else "‌", value="\n".join(block), inline=True)
+        cols = 3
+        chunk = (len(per_type_lines) + cols - 1) // cols
+        for i in range(cols):
+            block = per_type_lines[i*chunk : (i+1)*chunk]
+            if block:
+                em.add_field(name="By Type" if i == 0 else "‌", value="\n".join(block), inline=True)
     
-            # Tiny footer hint
-            em.set_footer(text="Counts are unique species (not duplicates).")
+        # Tiny footer hint
+        em.set_footer(text="Counts are unique species (not duplicates).")
     
-            await ctx.reply(embed=em)
+        await ctx.reply(embed=em)
 
 
     @commands.hybrid_command(name="exportbox")
