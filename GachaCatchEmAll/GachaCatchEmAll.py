@@ -3208,6 +3208,8 @@ class InteractiveTeamBattleView(discord.ui.View):
         # Always include the Auto-Sim and Close buttons last
         self.add_item(self.auto_sim)
         self.add_item(self.close)
+        self.add_item(self.battle_again)
+
 
 
     # ---------- core one-turn resolver ----------
@@ -3253,7 +3255,6 @@ class InteractiveTeamBattleView(discord.ui.View):
                 pass
             a_move = await self.cog._pick_move(A)
 
-        # Speed order
         # Speed order
         A_spd = self.cog._safe_stats(A)["speed"]
         B_spd = self.cog._safe_stats(B)["speed"]
