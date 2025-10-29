@@ -202,7 +202,7 @@ class GachaCatchEmAll(commands.Cog):
         # 5) Ensure required fields
         e["_npc"] = True
         e["level"] = int(target_level)
-        e.setdefault("uid", f"npc-{target_level}-{secrets.token_hex(4)}")
+        e.setdefault("uid", f"npc-{target_level}")
         e.setdefault("name", "Towerling")
         e.setdefault("types", ["normal"])
     
