@@ -1561,7 +1561,6 @@ class GachaCatchEmAll(commands.Cog):
             return "▰" * blocks + "▱" * (width - blocks) + f"  {filled}/{total}  ({int(pct*100)}%)"
 
         # --------- Commands ---------
-
     @commands.hybrid_command(name="test2")
     async def test2(self,ctx):
         await ctx.send("Yup you are good")
@@ -1572,6 +1571,7 @@ class GachaCatchEmAll(commands.Cog):
 
     @commands.hybrid_command(name="battletower")
     async def battletower(self,ctx):
+        pass
         
 
     
