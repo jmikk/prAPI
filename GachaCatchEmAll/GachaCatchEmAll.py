@@ -2610,6 +2610,9 @@ class GachaCatchEmAll(commands.Cog):
     @commands.hybrid_command(name="teambattle")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def teambattle(self, ctx: commands.Context, opponent: Optional[discord.Member] = None):
+        await self._start_teambattle_impl(ctx, caller=ctx.author, opponent=opponent)
+   
+    async def _start_teambattle_impl(self, ctx, caller: discord.abc.User, opponent: Optional[discord.abc.User]):
         """
         Interactive 6v6 team battle.
         Players choose moves via buttons each turn or use ⏭ Auto-Sim to Results to fast-forward.
@@ -3208,12 +3211,62 @@ class InteractiveTeamBattleView(discord.ui.View):
         # Always include the Auto-Sim and Close buttons last
         self.add_item(self.auto_sim)
         self.add_item(self.close)
-        self.add_item(self.battle_again)
-        for item in self.children:
-            if item.label == "Battle Again":
-                item.disabled = True
+      
 
 
+    async def _ctx_from_interaction(self, interaction: discord.Interaction):
+        """
+        Best-effort way to get a Context that works with Red/discord.py.
+        Prefers Context.from_interaction if available; otherwise a small shim.
+        """
+        # discord.py 2.3+ has this:
+        if hasattr(commands.Context, "from_interaction"):
+            try:
+                return await commands.Context.from_interaction(interaction)
+            except Exception:
+                pass
+
+        # Fallback shim sufficient for our internal call
+        class _Shim:
+            def __init__(self, bot, guild, channel, author, followup):
+                self.bot = bot
+                self.guild = guild
+                self.channel = channel
+                self.author = author
+                self.me = guild.me if guild else None
+                self.send = followup.send  # used by _start_teambattle_impl
+        return _Shim(self.cog.bot, interaction.guild, interaction.channel, interaction.user, interaction.followup)
+
+    def _add_rematch_button(self):
+        """Create a Battle Again button and add it to the view (called only at end)."""
+        btn = discord.ui.Button(
+            label="🔁 Battle Again",
+            style=discord.ButtonStyle.success,
+            custom_id="rematch"
+        )
+
+        async def _rematch_cb(inter: discord.Interaction):
+            # Only participants can trigger
+            allowed = {self.caller.id}
+            if self.opponent:
+                allowed.add(self.opponent.id)
+            if inter.user.id not in allowed:
+                await inter.response.send_message("Only the battlers can start a rematch.", ephemeral=True)
+                return
+
+            # Be responsive
+            if not inter.response.is_done():
+                try:
+                    await inter.response.defer()
+                except Exception:
+                    pass
+
+            # Build a Context and call the same impl that /teambattle uses (re-rolls opponents!)
+            ctx = await self._ctx_from_interaction(inter)
+            await self.cog._start_teambattle_impl(ctx, caller=self.caller, opponent=self.opponent)
+
+        btn.callback = _rematch_cb  # wire it up
+        self.add_item(btn)
 
 
     # ---------- core one-turn resolver ----------
@@ -3395,52 +3448,15 @@ class InteractiveTeamBattleView(discord.ui.View):
 
         # Replace controls with a simple Close
         self._disable_all()
-        for child in self.children:
-            if isinstance(child, discord.ui.Button) and getattr(child, "custom_id", None) == "Battle Again":
-                child.disabled = False
+
+        self._add_rematch_button()
+        
         if not interaction.response.is_done():
             try:
                 await interaction.response.defer()
             except Exception:
                 pass
         await self.message.edit(embed=results, view=self)
-
-    @discord.ui.button(label="🔁 Battle Again", style=discord.ButtonStyle.success)
-    async def battle_again(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Only the two players can use this button
-        allowed = {self.caller.id}
-        if self.opponent:
-            allowed.add(self.opponent.id)
-        if interaction.user.id not in allowed:
-            await interaction.response.send_message("Only the current battlers can start a rematch.", ephemeral=True)
-            return
-
-        # Acknowledge quickly so the button feels snappy
-        if not interaction.response.is_done():
-            try:
-                await interaction.response.defer()
-            except Exception:
-                pass
-
-        try:
-            ctx = await commands.Context.from_interaction(interaction)
-            await self.cog.teambattle(ctx, opponent=self.opponent)
-        except Exception:
-            # Fallback: local rematch as above if your env doesn't support from_interaction
-            new_view = InteractiveTeamBattleView(
-                cog=self.cog,
-                caller=self.caller,
-                caller_team=[dict(e) for e in self._original_caller_team],
-                opp_team=[dict(e) for e in self._original_opp_team],
-                opponent=self.opponent,
-                timeout=300,
-            )
-            await new_view._rebuild_move_buttons()
-            new_embed = new_view._current_embed()
-            msg = await interaction.followup.send(embed=new_embed, view=new_view)
-            new_view.message = msg
-
-
 
     @discord.ui.button(label="⏭ Auto-Sim to Results", style=discord.ButtonStyle.primary, custom_id="auto")
     async def auto_sim(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -3517,9 +3533,8 @@ class InteractiveTeamBattleView(discord.ui.View):
     
         # Disable all buttons except Close
         self._disable_all()
-        for child in self.children:
-            if isinstance(child, discord.ui.Button) and getattr(child, "custom_id", None) == "close":
-                child.disabled = False
+        
+        self._add_rematch_button()
     
         # Show result instantly
         await self.message.edit(embed=em, view=self, attachments=[])
