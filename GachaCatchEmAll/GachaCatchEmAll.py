@@ -1565,7 +1565,7 @@ class GachaCatchEmAll(commands.Cog):
     async def test2(self,ctx):
         await ctx.send("Yup you are good")
         
-        caller = ctx.author()
+        caller = ctx.author
         caller_uids = await self._get_team(caller)
         caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
         caller_team = self._team_entries_from_uids(caller_box, caller_uids)
