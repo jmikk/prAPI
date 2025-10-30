@@ -1648,11 +1648,6 @@ class GachaCatchEmAll(commands.Cog):
                + s.get("special-attack", 0) + s.get("special-defense", 0) + s.get("speed", 0))
 
     def _parse_move(move_str: str) -> Tuple[str, str, str, Optional[int]]:
-        """
-        'thunderbolt {electric,special attack.,90}' -> ("thunderbolt", "electric", "special", 90)
-        'shadow_ball {ghost,special attack.,80}'
-        If style is 'status' it returns ("status") with power None (we will avoid picking those).
-        """
         name, rest = move_str.split("{", 1)
         name = name.strip()
         inside = rest.strip().rstrip("}")
