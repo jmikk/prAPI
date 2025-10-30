@@ -1,8 +1,7 @@
 # battle_tower.py
 import copy
-import math
 import random
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import discord
 from redbot.core import commands
@@ -235,11 +234,12 @@ class BattleTowerView(discord.ui.View):
             if interaction.user.id != self.parent.user_id:
                 return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
 
-            # Ask the main Gacha cog to scale the foe
-            gcog = interaction.client.get_cog("GachaCatchEmAll")
-            self.parent.foe = self._tower_scale(self.parent.foe, self.parent.level_step)
+            # Call the COG's scaler (not the View)
+            cog = self.parent.ctx.cog  # instance of BattleTower
+            if hasattr(cog, "_tower_scale"):
+                self.parent.foe = cog._tower_scale(self.parent.foe, self.parent.level_step)
             else:
-                # Minimal fallback if helper not found
+                # Minimal fallback
                 s = self.parent.foe.get("stats", {})
                 for _ in range(self.parent.level_step):
                     for k in s:
@@ -247,6 +247,7 @@ class BattleTowerView(discord.ui.View):
                 self.parent.foe["stats"] = s
                 self.parent.foe["level"] = self.parent.foe.get("level", 1) + self.parent.level_step
 
+            # Reset HP and refresh view
             self.parent.f_cur = self.parent.f_max = _init_hp(self.parent.foe)
             self.parent._arm_player_buttons()
             emb = _battle_embed(
@@ -256,6 +257,7 @@ class BattleTowerView(discord.ui.View):
                 footer=f"Challenging higher level foe (Lv {self.parent.foe.get('level','?')}).",
             )
             await interaction.response.edit_message(embed=emb, view=self.parent)
+
 
     class CloseButton(discord.ui.Button):
         def __init__(self):
@@ -386,7 +388,8 @@ class BattleTower(commands.Cog):
             footer="Choose a move, ⏩ Auto-Sim, or Give Up.",
         )
         await ctx.send(embed=emb, view=view)
-
+    
+    @staticmethod
     def _recalc_bst(stats: Dict[str, int]) -> int:
         """Recalculate BST from standard keys (missing keys count as 0)."""
         keys = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
@@ -438,7 +441,7 @@ class BattleTower(commands.Cog):
             b["level"] = int(b.get("level", 1)) + levels
 
             if update_bst and "bst" in b:
-                b["bst"] = _recalc_bst(stats)
+                b["bst"] = self._recalc_bst(stats)
 
             return b
 
