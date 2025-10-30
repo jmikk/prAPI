@@ -1,0 +1,393 @@
+# battle_tower.py
+import copy
+import math
+import random
+from typing import Dict, List, Optional, Tuple
+
+import discord
+from redbot.core import commands
+
+HP_BAR_LEN = 20
+
+
+def _hp_bar(cur: int, maxhp: int, length: int = HP_BAR_LEN) -> str:
+    cur = max(0, min(cur, maxhp))
+    fill = int(round((cur / maxhp) * length)) if maxhp > 0 else 0
+    return "▰" * fill + "▱" * (length - fill)
+
+
+def _init_hp(mon: Dict) -> int:
+    """Readable in-embed HP scale (not your stored base)."""
+    base_hp = int(mon.get("stats", {}).get("hp", 1))
+    return max(10, base_hp * 5)
+
+
+def _bst(mon: Dict) -> int:
+    s = mon.get("stats", {})
+    return int(
+        s.get("hp", 0)
+        + s.get("attack", 0)
+        + s.get("defense", 0)
+        + s.get("special-attack", 0)
+        + s.get("special-defense", 0)
+        + s.get("speed", 0)
+    )
+
+
+def _parse_move(move_str: str) -> Tuple[str, str, str, Optional[int]]:
+    """
+    Supports your custom move format:
+      'thunderbolt {electric,special attack.,90}'
+    and plain names (fallback):
+      'nightmare' -> ('nightmare', mon.types[0] (later), 'special', 60)
+    NOTE: Type fallback is handled in _coerce_move.
+    """
+    if "{" not in move_str or "}" not in move_str:
+        return move_str.strip(), "", "special", None
+    name, rest = move_str.split("{", 1)
+    name = name.strip()
+    inside = rest.strip().rstrip("}")
+    parts = [p.strip() for p in inside.split(",")]
+    mtype = parts[0] if parts else ""
+    style_phrase = parts[1].lower() if len(parts) > 1 else "status"
+    style = "physical" if "physical" in style_phrase else ("special" if "special" in style_phrase else "status")
+    power = None
+    if len(parts) > 2:
+        try:
+            power = int(parts[2])
+        except Exception:
+            power = None
+    return name, mtype, style, power
+
+
+def _coerce_move(mon: Dict, s: str) -> Tuple[str, str, str, int]:
+    """Make sure we always have (name, type, style, power) for damage calc."""
+    name, mtype, style, power = _parse_move(s)
+    if not mtype:
+        mtype = (mon.get("types") or ["normal"])[0]
+    if style not in ("physical", "special", "status"):
+        style = "special"
+    if power is None:
+        # Reasonable default if user team moves are names only
+        power = 60 if style in ("physical", "special") else 0
+    return name, mtype, style, int(power)
+
+
+def _pick_damage_move(mon: Dict) -> Optional[Tuple[str, str, str, int]]:
+    moves = list(mon.get("moves", []))
+    random.shuffle(moves)
+    for s in moves:
+        name, mtype, style, power = _coerce_move(mon, s)
+        if style in ("physical", "special") and power > 0:
+            return (name, mtype, style, power)
+    return None
+
+
+def _calc_damage(attacker: Dict, defender: Dict, move: Tuple[str, str, str, int]) -> int:
+    """Simple, fast damage model with STAB + RNG."""
+    _name, mtype, style, power = move
+    a = attacker.get("stats", {})
+    d = defender.get("stats", {})
+    atk = a.get("attack", 1)
+    dfc = d.get("defense", 1)
+    if style == "special":
+        atk = a.get("special-attack", 1)
+        dfc = d.get("special-defense", 1)
+
+    stab = 1.5 if mtype in (attacker.get("types") or []) else 1.0
+    rand = random.uniform(0.85, 1.0)
+    spd_bonus = 1.05 if a.get("speed", 0) >= d.get("speed", 0) else 1.0
+    dmg = (power * (atk / max(1, dfc)) * stab * rand * spd_bonus)
+    return max(1, int(dmg))
+
+
+def _battle_embed(
+    title: str,
+    player: Dict,
+    p_cur: int,
+    p_max: int,
+    foe: Dict,
+    f_cur: int,
+    f_max: int,
+    footer: Optional[str] = None,
+) -> discord.Embed:
+    e = discord.Embed(title=title, color=discord.Color.blurple())
+    e.description = (
+        f"**Duel —** {player['name'].title()} (Lv {player.get('level','?')}) vs {foe['name'].title()} (Lv {foe.get('level','?')})\n\n"
+        f"**{player['name'].title()} HP:** {_hp_bar(p_cur, p_max)}  {p_cur}/{p_max}\n"
+        f"**{foe['name'].title()} HP:** {_hp_bar(f_cur, f_max)}  {f_cur}/{f_max}\n"
+    )
+    ps = player.get("sprite")
+    if ps:
+        e.set_author(name=player["name"].title(), icon_url=ps)
+    fs = foe.get("sprite")
+    if fs:
+        e.set_thumbnail(url=fs)
+    if footer:
+        e.set_footer(text=footer)
+    return e
+
+
+class BattleTowerView(discord.ui.View):
+    """Interactive Battle Tower fight loop."""
+
+    def __init__(self, ctx: commands.Context, player: Dict, foe: Dict, level_step: int = 5, timeout: int = 180):
+        super().__init__(timeout=timeout)
+        self.ctx = ctx
+        self.user_id = ctx.author.id
+        self.level_step = level_step
+        self.player = copy.deepcopy(player)
+        self.foe = copy.deepcopy(foe)
+
+        # Pools
+        self.p_max = _init_hp(self.player)
+        self.f_max = _init_hp(self.foe)
+        self.p_cur = self.p_max
+        self.f_cur = self.f_max
+
+        self._arm_player_buttons()
+
+    # ---------- Buttons ----------
+    def _arm_player_buttons(self):
+        self.clear_items()
+
+        # Add up to 4 damage moves (fallback to first 4 if needed)
+        candidates = []
+        for m in self.player.get("moves", [])[:4]:
+            mv = _coerce_move(self.player, m)
+            if mv[2] in ("physical", "special") and mv[3] > 0:
+                candidates.append(mv)
+        if not candidates:
+            for m in self.player.get("moves", [])[:4]:
+                candidates.append(_coerce_move(self.player, m))
+        for idx, mv in enumerate(candidates[:4]):
+            label = f"{mv[0].title()} ({mv[3]})"
+            self.add_item(self.MoveButton(self, label=label, move=mv, row=0 if idx < 3 else 1))
+
+        self.add_item(self.AutoSimButton(self))
+        self.add_item(self.GiveUpButton(self))
+
+    class MoveButton(discord.ui.Button):
+        def __init__(self, parent: "BattleTowerView", label: str, move: Tuple[str, str, str, int], row: int = 0):
+            super().__init__(style=discord.ButtonStyle.primary, label=label, row=row)
+            self.parent = parent
+            self.move = move
+
+        async def callback(self, interaction: discord.Interaction):
+            await self.parent._turn(interaction, self.move, autosim=False)
+
+    class AutoSimButton(discord.ui.Button):
+        def __init__(self, parent: "BattleTowerView"):
+            super().__init__(style=discord.ButtonStyle.secondary, label="⏩ Auto-Sim")
+            self.parent = parent
+
+        async def callback(self, interaction: discord.Interaction):
+            mv = _pick_damage_move(self.parent.player) or _coerce_move(self.parent.player, (self.parent.player.get("moves") or ["tackle"])[0])
+            await self.parent._turn(interaction, mv, autosim=True)
+
+    class GiveUpButton(discord.ui.Button):
+        def __init__(self, parent: "BattleTowerView"):
+            super().__init__(style=discord.ButtonStyle.danger, label="Give Up")
+            self.parent = parent
+
+        async def callback(self, interaction: discord.Interaction):
+            if interaction.user.id != self.parent.user_id:
+                return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
+            self.parent.clear_items()
+            self.parent.add_item(self.parent.CloseButton())
+            emb = _battle_embed(
+                "You Gave Up — Battle Tower",
+                self.parent.player,
+                self.parent.p_cur,
+                self.parent.p_max,
+                self.parent.foe,
+                self.parent.f_cur,
+                self.parent.f_max,
+                footer="Battle ended by player.",
+            )
+            await interaction.response.edit_message(embed=emb, view=self.parent)
+
+    class RematchSame(discord.ui.Button):
+        def __init__(self, parent: "BattleTowerView"):
+            super().__init__(style=discord.ButtonStyle.success, label="🔁 Rematch (Same Level)")
+            self.parent = parent
+
+        async def callback(self, interaction: discord.Interaction):
+            if interaction.user.id != self.parent.user_id:
+                return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
+            # Reset foe HP (same level)
+            self.parent.f_cur = self.parent.f_max = _init_hp(self.parent.foe)
+            self.parent._arm_player_buttons()
+            emb = _battle_embed(
+                "Team Battle — Battle Tower",
+                self.parent.player, self.parent.p_cur, self.parent.p_max,
+                self.parent.foe, self.parent.f_cur, self.parent.f_max,
+                footer="Rematch started at the same level.",
+            )
+            await interaction.response.edit_message(embed=emb, view=self.parent)
+
+    class RematchHigher(discord.ui.Button):
+        def __init__(self, parent: "BattleTowerView"):
+            super().__init__(style=discord.ButtonStyle.primary, label="⬆️ Challenge Higher Level")
+            self.parent = parent
+
+        async def callback(self, interaction: discord.Interaction):
+            if interaction.user.id != self.parent.user_id:
+                return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
+
+            # Ask the main Gacha cog to scale the foe
+            gcog = interaction.client.get_cog("GachaCatchEmAll")
+            if gcog and hasattr(gcog, "_tower_scale"):
+                self.parent.foe = gcog._tower_scale(self.parent.foe, self.parent.level_step)
+            else:
+                # Minimal fallback if helper not found
+                s = self.parent.foe.get("stats", {})
+                for _ in range(self.parent.level_step):
+                    for k in s:
+                        s[k] += random.choice([0, 1, 1, 2, 2, 3])
+                self.parent.foe["stats"] = s
+                self.parent.foe["level"] = self.parent.foe.get("level", 1) + self.parent.level_step
+
+            self.parent.f_cur = self.parent.f_max = _init_hp(self.parent.foe)
+            self.parent._arm_player_buttons()
+            emb = _battle_embed(
+                "Team Battle — Battle Tower",
+                self.parent.player, self.parent.p_cur, self.parent.p_max,
+                self.parent.foe, self.parent.f_cur, self.parent.f_max,
+                footer=f"Challenging higher level foe (Lv {self.parent.foe.get('level','?')}).",
+            )
+            await interaction.response.edit_message(embed=emb, view=self.parent)
+
+    class CloseButton(discord.ui.Button):
+        def __init__(self):
+            super().__init__(style=discord.ButtonStyle.secondary, label="Close")
+
+        async def callback(self, interaction: discord.Interaction):
+            await interaction.response.edit_message(view=None)
+
+    # ---------- Turn engine ----------
+    async def _turn(self, interaction: discord.Interaction, move: Tuple[str, str, str, int], autosim: bool):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
+
+        # Player hits
+        p_dmg = _calc_damage(self.player, self.foe, move)
+        self.f_cur = max(0, self.f_cur - p_dmg)
+        if self.f_cur <= 0:
+            return await self._victory(interaction, move[0], p_dmg)
+
+        # Foe counters
+        foe_move = _pick_damage_move(self.foe) or ("tackle", "normal", "physical", 40)
+        f_dmg = _calc_damage(self.foe, self.player, foe_move)
+        self.p_cur = max(0, self.p_cur - f_dmg)
+        if self.p_cur <= 0:
+            return await self._defeat(interaction, foe_move[0], f_dmg)
+
+        footer = f"You used {move[0]} ({p_dmg}). Foe used {foe_move[0]} ({f_dmg})."
+        emb = _battle_embed("Team Battle — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
+        await interaction.response.edit_message(embed=emb, view=self)
+
+        if autosim:
+            # Continue autosim with a random damaging move
+            nmv = _pick_damage_move(self.player)
+            if nmv:
+                # Use followup to acknowledge, then immediately continue
+                await interaction.followup.send("⏩ Auto-sim continues…", ephemeral=True)
+                await self._turn(interaction, nmv, autosim=True)
+
+    async def _victory(self, interaction: discord.Interaction, used: str, dealt: int):
+        # EXP via main cog helpers
+        gcog = interaction.client.get_cog("GachaCatchEmAll")
+        exp_txt = ""
+        if gcog and hasattr(gcog, "_add_xp_to_entry") and hasattr(gcog, "_xp_bar"):
+            # Award EXP by BST diff + level factor
+            player_bst = _bst(self.player)
+            foe_bst = _bst(self.foe)
+            lvl = int(self.foe.get("level", 1))
+            diff = max(0, foe_bst - player_bst)
+            exp = max(10, diff // 4 + lvl * 2)
+
+            before_lvl = int(self.player.get("level", 1))
+            before_xp = int(self.player.get("xp", 0))
+            new_lvl, new_xp, _ = gcog._add_xp_to_entry(self.player, exp)
+            exp_txt = f"**+{exp} EXP** — Lv {before_lvl}→{new_lvl}  {_safe_xpbar(gcog, new_lvl, new_xp)}"
+        else:
+            exp_txt = "EXP awarded (helper not found)."
+
+        # Swap to rematch controls
+        self.clear_items()
+        self.add_item(self.RematchSame(self))
+        self.add_item(self.RematchHigher(self))
+        self.add_item(self.CloseButton())
+        footer = f"✅ Victory! Used {used} for {dealt} damage. {exp_txt}"
+        emb = _battle_embed("Victory — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
+        await interaction.response.edit_message(embed=emb, view=self)
+
+    async def _defeat(self, interaction: discord.Interaction, foe_used: str, dealt: int):
+        self.clear_items()
+        self.add_item(self.CloseButton())
+        footer = f"💀 Defeat. Foe used {foe_used} for {dealt} damage."
+        emb = _battle_embed("Defeat — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
+        await interaction.response.edit_message(embed=emb, view=self)
+
+
+def _safe_xpbar(gcog, level: int, xp: int) -> str:
+    try:
+        return gcog._xp_bar(level, xp)
+    except Exception:
+        need = 100
+        filled = int(round(10 * (xp / need))) if need else 0
+        filled = max(0, min(10, filled))
+        return "▰" * filled + "▱" * (10 - filled) + f"  {xp}/{need}"
+
+
+class BattleTower(commands.Cog):
+    """Endless Battle Tower that depends on GachaCatchEmAll helpers."""
+
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.hybrid_command(name="battletower")
+    async def battletower(self, ctx: commands.Context, level: int = 100, level_step: int = 5):
+        """Fight an endlessly scaling NPC at the given level. Buttons = your moves."""
+        await ctx.defer()
+
+        gcog = self.bot.get_cog("GachaCatchEmAll")
+        if not gcog:
+            return await ctx.reply("GachaCatchEmAll cog not found. Please load it first.")
+
+        # 1) Get player mon (first slot for now)
+        team = await gcog._get_user_team(ctx.author)
+        if not team:
+            return await ctx.reply("You don't have a team set up.")
+        player = copy.deepcopy(team[0])
+
+        # Ensure keys we use exist:
+        player.setdefault("level", player.get("level", 1))
+        player.setdefault("xp", player.get("xp", 0))
+        player.setdefault("moves", player.get("moves", ["tackle"]))
+        player.setdefault("types", player.get("types", ["normal"]))
+
+        # 2) Get/scale NPC
+        npc_list = await gcog._generate_npc_team(1, 1)
+        foe = copy.deepcopy(npc_list[0] if isinstance(npc_list, list) else npc_list)
+        foe.setdefault("level", foe.get("level", 1))
+        start_lv = int(foe["level"])
+        if level > start_lv:
+            foe = gcog._tower_scale(foe, level - start_lv)
+
+        # 3) Send interactive view
+        view = BattleTowerView(ctx, player=player, foe=foe, level_step=level_step)
+        pmax = _init_hp(player)
+        fmax = _init_hp(foe)
+        emb = _battle_embed(
+            "Team Battle — Battle Tower",
+            player, pmax, pmax,
+            foe, fmax, fmax,
+            footer="Choose a move, ⏩ Auto-Sim, or Give Up.",
+        )
+        await ctx.send(embed=emb, view=view)
+
+
+async def setup(bot):
+    await bot.add_cog(BattleTower(bot))
