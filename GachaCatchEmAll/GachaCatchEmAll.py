@@ -1576,7 +1576,7 @@ class GachaCatchEmAll(commands.Cog):
         return caller_team
 
 
-    def _scale_one_baddie(baddie: Dict, levels: int) -> Dict:
+    def _scale_one_baddie(self, baddie: Dict, levels: int) -> Dict:
         """Scale one baddie's stats by applying random 0–3 gains per level."""
         growth_choices = [0, 1, 1, 2, 2, 3]
         b = copy.deepcopy(baddie)
@@ -1595,9 +1595,9 @@ class GachaCatchEmAll(commands.Cog):
     def _tower_scale(self, target: Union[Dict, List[Dict]], levels: int) -> Union[Dict, List[Dict]]:
         """Scale a single baddie dict OR a list of baddie dicts."""
         if isinstance(target, list):
-            return [_scale_one_baddie(b, levels) for b in target]
+            return [self._scale_one_baddie(b, levels) for b in target]
         elif isinstance(target, dict):
-            return _scale_one_baddie(target, levels)
+            return self._scale_one_baddie(target, levels)
         else:
             raise TypeError(f"Expected dict or list of dicts, got {type(target)!r}")
 
