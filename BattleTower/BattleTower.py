@@ -146,7 +146,8 @@ class BattleTowerView(discord.ui.View):
 
         self._arm_player_buttons()
 
-    # ---------- Buttons ----------
+    # --- inside BattleTowerView ---
+
     def _arm_player_buttons(self):
         self.clear_items()
 
@@ -159,105 +160,99 @@ class BattleTowerView(discord.ui.View):
         if not candidates:
             for m in self.player.get("moves", [])[:4]:
                 candidates.append(_coerce_move(self.player, m))
+
         for idx, mv in enumerate(candidates[:4]):
             label = f"{mv[0].title()} ({mv[3]})"
-            self.add_item(self.MoveButton(self, label=label, move=mv, row=0 if idx < 3 else 1))
+            self.add_item(self.MoveButton(tower=self, label=label, move=mv, row=0 if idx < 3 else 1))
 
-        self.add_item(self.AutoSimButton(self))
-        self.add_item(self.GiveUpButton(self))
+        self.add_item(self.AutoSimButton(tower=self))
+        self.add_item(self.GiveUpButton(tower=self))
 
     class MoveButton(discord.ui.Button):
-        def __init__(self, parent: "BattleTowerView", label: str, move: Tuple[str, str, str, int], row: int = 0):
+        def __init__(self, tower: "BattleTowerView", label: str, move: Tuple[str, str, str, int], row: int = 0):
             super().__init__(style=discord.ButtonStyle.primary, label=label, row=row)
-            self.parent = parent
+            self.tower = tower
             self.move = move
 
         async def callback(self, interaction: discord.Interaction):
-            await self.parent._turn(interaction, self.move, autosim=False)
+            await self.tower._turn(interaction, self.move, autosim=False)
 
     class AutoSimButton(discord.ui.Button):
-        def __init__(self, parent: "BattleTowerView"):
+        def __init__(self, tower: "BattleTowerView"):
             super().__init__(style=discord.ButtonStyle.secondary, label="⏩ Auto-Sim")
-            self.parent = parent
+            self.tower = tower
 
         async def callback(self, interaction: discord.Interaction):
-            mv = _pick_damage_move(self.parent.player) or _coerce_move(self.parent.player, (self.parent.player.get("moves") or ["tackle"])[0])
-            await self.parent._turn(interaction, mv, autosim=True)
+            mv = _pick_damage_move(self.tower.player) or _coerce_move(self.tower.player, (self.tower.player.get("moves") or ["tackle"])[0])
+            await self.tower._turn(interaction, mv, autosim=True)
 
     class GiveUpButton(discord.ui.Button):
-        def __init__(self, parent: "BattleTowerView"):
+        def __init__(self, tower: "BattleTowerView"):
             super().__init__(style=discord.ButtonStyle.danger, label="Give Up")
-            self.parent = parent
+            self.tower = tower
 
         async def callback(self, interaction: discord.Interaction):
-            if interaction.user.id != self.parent.user_id:
+            if interaction.user.id != self.tower.user_id:
                 return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
-            self.parent.clear_items()
-            self.parent.add_item(self.parent.CloseButton())
+            self.tower.clear_items()
+            self.tower.add_item(self.tower.CloseButton())
             emb = _battle_embed(
                 "You Gave Up — Battle Tower",
-                self.parent.player,
-                self.parent.p_cur,
-                self.parent.p_max,
-                self.parent.foe,
-                self.parent.f_cur,
-                self.parent.f_max,
+                self.tower.player, self.tower.p_cur, self.tower.p_max,
+                self.tower.foe, self.tower.f_cur, self.tower.f_max,
                 footer="Battle ended by player.",
             )
-            await interaction.response.edit_message(embed=emb, view=self.parent)
+            await interaction.response.edit_message(embed=emb, view=self.tower)
 
     class RematchSame(discord.ui.Button):
-        def __init__(self, parent: "BattleTowerView"):
+        def __init__(self, tower: "BattleTowerView"):
             super().__init__(style=discord.ButtonStyle.success, label="🔁 Rematch (Same Level)")
-            self.parent = parent
+            self.tower = tower
 
         async def callback(self, interaction: discord.Interaction):
-            if interaction.user.id != self.parent.user_id:
+            if interaction.user.id != self.tower.user_id:
                 return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
-            # Reset foe HP (same level)
-            self.parent.f_cur = self.parent.f_max = _init_hp(self.parent.foe)
-            self.parent._arm_player_buttons()
+            self.tower.f_cur = self.tower.f_max = _init_hp(self.tower.foe)
+            self.tower._arm_player_buttons()
             emb = _battle_embed(
                 "Team Battle — Battle Tower",
-                self.parent.player, self.parent.p_cur, self.parent.p_max,
-                self.parent.foe, self.parent.f_cur, self.parent.f_max,
+                self.tower.player, self.tower.p_cur, self.tower.p_max,
+                self.tower.foe, self.tower.f_cur, self.tower.f_max,
                 footer="Rematch started at the same level.",
             )
-            await interaction.response.edit_message(embed=emb, view=self.parent)
+            await interaction.response.edit_message(embed=emb, view=self.tower)
 
     class RematchHigher(discord.ui.Button):
-        def __init__(self, parent: "BattleTowerView"):
+        def __init__(self, tower: "BattleTowerView"):
             super().__init__(style=discord.ButtonStyle.primary, label="⬆️ Challenge Higher Level")
-            self.parent = parent
+            self.tower = tower
 
         async def callback(self, interaction: discord.Interaction):
-            if interaction.user.id != self.parent.user_id:
+            if interaction.user.id != self.tower.user_id:
                 return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
 
-            # Call the COG's scaler (not the View)
-            cog = self.parent.ctx.cog  # instance of BattleTower
+            # Use the *cog's* scaler
+            cog = self.tower.ctx.cog
             if hasattr(cog, "_tower_scale"):
-                self.parent.foe = cog._tower_scale(self.parent.foe, self.parent.level_step)
+                self.tower.foe = cog._tower_scale(self.tower.foe, self.tower.level_step)
             else:
-                # Minimal fallback
-                s = self.parent.foe.get("stats", {})
-                for _ in range(self.parent.level_step):
+                # Fallback growth
+                s = self.tower.foe.get("stats", {})
+                for _ in range(self.tower.level_step):
                     for k in s:
                         s[k] += random.choice([0, 1, 1, 2, 2, 3])
-                self.parent.foe["stats"] = s
-                self.parent.foe["level"] = self.parent.foe.get("level", 1) + self.parent.level_step
+                self.tower.foe["stats"] = s
+                self.tower.foe["level"] = self.tower.foe.get("level", 1) + self.tower.level_step
 
-            # Reset HP and refresh view
-            self.parent.f_cur = self.parent.f_max = _init_hp(self.parent.foe)
-            self.parent._arm_player_buttons()
+            self.tower.f_cur = self.tower.f_max = _init_hp(self.tower.foe)
+            self.tower._arm_player_buttons()
             emb = _battle_embed(
                 "Team Battle — Battle Tower",
-                self.parent.player, self.parent.p_cur, self.parent.p_max,
-                self.parent.foe, self.parent.f_cur, self.parent.f_max,
-                footer=f"Challenging higher level foe (Lv {self.parent.foe.get('level','?')}).",
+                self.tower.player, self.tower.p_cur, self.tower.p_max,
+                self.tower.foe, self.tower.f_cur, self.tower.f_max,
+                footer=f"Challenging higher level foe (Lv {self.tower.foe.get('level','?')}).",
             )
-            await interaction.response.edit_message(embed=emb, view=self.parent)
-
+            await interaction.response.edit_message(embed=emb, view=self.tower)
 
     class CloseButton(discord.ui.Button):
         def __init__(self):
@@ -265,6 +260,7 @@ class BattleTowerView(discord.ui.View):
 
         async def callback(self, interaction: discord.Interaction):
             await interaction.response.edit_message(view=None)
+
 
     # ---------- Turn engine ----------
     async def _turn(self, interaction: discord.Interaction, move: Tuple[str, str, str, int], autosim: bool):
