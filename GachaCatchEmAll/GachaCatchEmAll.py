@@ -1575,35 +1575,67 @@ class GachaCatchEmAll(commands.Cog):
         caller_team = self._team_entries_from_uids(caller_box, caller_uids)
         return caller_team
 
+
+    def _scale_one_baddie(baddie: Dict, levels: int) -> Dict:
+        """Scale one baddie's stats by applying random 0–3 gains per level."""
+        growth_choices = [0, 1, 1, 2, 2, 3]
+        b = copy.deepcopy(baddie)
+        stats = dict(b.get("stats", {}))
+        if not stats:
+            return b
+
+        for _ in range(levels):
+            for key in stats:
+                stats[key] += random.choice(growth_choices)
+
+        b["stats"] = stats
+        b["level"] = b.get("level", 1) + levels
+        return b
+
+    def _tower_scale(target: Union[Dict, List[Dict]], levels: int) -> Union[Dict, List[Dict]]:
+        """Scale a single baddie dict OR a list of baddie dicts."""
+        if isinstance(target, list):
+            return [_scale_one_baddie(b, levels) for b in target]
+        elif isinstance(target, dict):
+            return _scale_one_baddie(target, levels)
+        else:
+            raise TypeError(f"Expected dict or list of dicts, got {type(target)!r}")
+
             
     # --------- Commands ---------
     @commands.hybrid_command(name="test2")
     async def test2(self, ctx):
         await ctx.send("Yup you are good")
 
-        bad_team1 = await self._generate_npc_team(1, 1)
-        await ctx.send(f"Base: ```{bad_team1}```")
+        bad_team1 = await self._generate_npc_team(1, 1)  # returns list of baddies
+        scaled_team = _tower_scale(bad_team1, 100)
 
-        # _tower_scale is sync, so no await
-        bad_team1 = self._tower_scale(bad_team1[0], 100)
-        await ctx.send(f"Scaled: ```{bad_team1}```")
+        # Loop through each baddie and show in an embed
+        for baddie in scaled_team:
+            embed = discord.Embed(
+                title=f"🌟 {baddie['name'].title()}",
+                description=f"**Level:** {baddie.get('level', '???')}\n**Types:** {', '.join(baddie.get('types', []))}",
+                color=discord.Color.green()
+            )
 
-        await ctx.send("And I'm done")
+            # Add stats as a field
+            stats = baddie.get("stats", {})
+            stat_text = "\n".join([f"**{k.title()}**: {v}" for k, v in stats.items()])
+            embed.add_field(name="📊 Stats", value=stat_text or "No stats", inline=False)
 
-    def _tower_scale(self, baddie: dict, levels: int) -> dict:
-        """Scale a baddie's stats by applying random 0–3 gains per level."""
-        growth_choices = [0, 1, 1, 2, 2, 3]
-        stats = dict(baddie["stats"])  # copy to avoid mutating original
-        bst=0
-        for _ in range(levels):
-            for key in stats:
-                stats[key] += random.choice(growth_choices)
-                bst = bst + stats[key]
+            # Add moves if available
+            moves = baddie.get("moves", [])
+            if moves:
+                embed.add_field(name="🎯 Moves", value="\n".join(moves), inline=False)
 
-        baddie["stats"] = stats
-        baddie["bst"] = bst
-        baddie["level"] = baddie.get("level", 1) + levels
-        return baddie
+            # Add sprite thumbnail if available
+            sprite = baddie.get("sprite")
+            if sprite:
+                embed.set_thumbnail(url=sprite)
+
+            await ctx.send(embed=embed)
+
+        await ctx.send("And I'm done ✅")
 
         
         
