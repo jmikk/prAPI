@@ -1579,17 +1579,15 @@ class GachaCatchEmAll(commands.Cog):
     def _scale_one_baddie(self, baddie: Dict, levels: int) -> Dict:
         """Scale one baddie's stats by applying random 0–3 gains per level."""
         growth_choices = [0, 1, 1, 2, 2, 3]
-        b = copy.deepcopy(baddie)
-        stats = dict(b.get("stats", {}))
-        if not stats:
-            return b
-
+        stats = baddie["stats"]
+        bst = 0
         for _ in range(levels):
             for key in stats:
                 stats[key] += random.choice(growth_choices)
+                bst = stats[key] + bst
 
-        b["stats"] = stats
-        b["level"] = b.get("level", 1) + levels
+        baddie["stats"] = stats
+        baddie["level"] = 
         return b
 
     def _tower_scale(self, target: Union[Dict, List[Dict]], levels: int) -> Union[Dict, List[Dict]]:
