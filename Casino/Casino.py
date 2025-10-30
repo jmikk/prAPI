@@ -56,6 +56,11 @@ class Casino(commands.Cog):
     @cooldown(1, 3, BucketType.guild)
     async def coinflip(self, ctx, bet: float, call: str = None):
         """Flip a coin with animated message updates. You can call Heads or Tails, but it does not affect the odds."""
+       
+        if bet > 50000:
+            await ctx.send("Bet to big please bet under 2857")
+            return
+            
         bet2 = bet
         balance = await self.get_balance(ctx.author)
         if not call:
@@ -122,6 +127,11 @@ class Casino(commands.Cog):
     @cooldown(1, 3, BucketType.guild)
     async def dice(self, ctx, bet: float):
         """Roll dice against the house with animated graphics."""
+
+        if bet > 50000:
+            await ctx.send("Sorry your bet is over the max allowed try betting less than 50,000")
+            return 
+            
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
@@ -167,6 +177,11 @@ class Casino(commands.Cog):
     @cooldown(1, 3, BucketType.guild)
     async def slots(self, ctx, bet: float):
         """Play a 3x3 slot machine with emojis and live message updates."""
+
+        if bet > 2857:
+            await ctx.send("Bet to big try betting lesss than 2857")
+            return
+            
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
@@ -228,6 +243,11 @@ class Casino(commands.Cog):
     @cooldown(1, 3, BucketType.guild)
     async def roulette(self, ctx, bet: float, call: str):
         """Play roulette. Bet on a number (0-36), red, black, even, or odd."""
+
+        if bet > 2857:
+                await ctx.send("Bet to big please bet under 2857")
+                return
+            
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
             return await ctx.send("Invalid bet amount.")
