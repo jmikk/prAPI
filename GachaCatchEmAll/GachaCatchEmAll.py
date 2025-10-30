@@ -12,7 +12,6 @@ import discord
 from redbot.core import commands, Config, checks
 import aiohttp
 
-
 import io
 from datetime import datetime
 import html
@@ -1579,23 +1578,29 @@ class GachaCatchEmAll(commands.Cog):
             
     # --------- Commands ---------
     @commands.hybrid_command(name="test2")
-    async def test2(self,ctx):
+    async def test2(self, ctx):
         await ctx.send("Yup you are good")
-        
+
         bad_team1 = await self._generate_npc_team(1, 1)
-        await ctx.send(bad_team1)
-        bad_team1 = self._tower_scale(bad_team1,100)
-        await ctx.send(bad_team1)
+        await ctx.send(f"Base: ```{bad_team1}```")
+
+        # _tower_scale is sync, so no await
+        bad_team1 = self._tower_scale(bad_team1, 100)
+        await ctx.send(f"Scaled: ```{bad_team1}```")
 
         await ctx.send("And I'm done")
 
-    def _tower_scale(self, baddie, levels):
+    def _tower_scale(self, baddie: dict, levels: int) -> dict:
+        """Scale a baddie's stats by applying random 0–3 gains per level."""
+        growth_choices = [0, 1, 1, 2, 2, 3]
+        stats = dict(baddie["stats"])  # copy to avoid mutating original
+
         for _ in range(levels):
-            growth_choices = [0, 1, 1, 2, 2, 3]
-            stats = baddie["stats"]
             for key in stats:
                 stats[key] += random.choice(growth_choices)
+
         baddie["stats"] = stats
+        baddie["level"] = baddie.get("level", 1) + levels
         return baddie
 
         
