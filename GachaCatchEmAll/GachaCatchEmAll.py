@@ -1585,7 +1585,7 @@ class GachaCatchEmAll(commands.Cog):
         await ctx.send(f"Base: ```{bad_team1}```")
 
         # _tower_scale is sync, so no await
-        bad_team1 = self._tower_scale(bad_team1, 100)
+        bad_team1 = self._tower_scale(bad_team1[0], 100)
         await ctx.send(f"Scaled: ```{bad_team1}```")
 
         await ctx.send("And I'm done")
