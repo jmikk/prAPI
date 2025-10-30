@@ -1608,7 +1608,7 @@ class GachaCatchEmAll(commands.Cog):
         await ctx.send("Yup you are good")
 
         bad_team1 = await self._generate_npc_team(1, 1)  # returns list of baddies
-        scaled_team = _tower_scale(bad_team1, 100)
+        scaled_team = self._tower_scale(bad_team1, 100)
 
         # Loop through each baddie and show in an embed
         for baddie in scaled_team:
