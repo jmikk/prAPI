@@ -1587,7 +1587,7 @@ class GachaCatchEmAll(commands.Cog):
                 bst = stats[key] + bst
 
         baddie["stats"] = stats
-        return b
+        return baddie
 
     def _tower_scale(self, target: Union[Dict, List[Dict]], levels: int) -> Union[Dict, List[Dict]]:
         """Scale a single baddie dict OR a list of baddie dicts."""
