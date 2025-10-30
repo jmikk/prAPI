@@ -1594,12 +1594,14 @@ class GachaCatchEmAll(commands.Cog):
         """Scale a baddie's stats by applying random 0–3 gains per level."""
         growth_choices = [0, 1, 1, 2, 2, 3]
         stats = dict(baddie["stats"])  # copy to avoid mutating original
-
+        bst=0
         for _ in range(levels):
             for key in stats:
                 stats[key] += random.choice(growth_choices)
+                bst = bst + stats[key]
 
         baddie["stats"] = stats
+        baddie["bst"] = bst
         baddie["level"] = baddie.get("level", 1) + levels
         return baddie
 
