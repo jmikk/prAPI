@@ -1704,32 +1704,23 @@ class GachaCatchEmAll(commands.Cog):
         base_hp = int(mon.get("stats", {}).get("hp", 1))
         return max(10, base_hp * 5)
 
-    def _format_battle_embed(
-        title: str,
-        player: Dict,
-        p_cur: int,
-        p_max: int,
-        foe: Dict,
-        f_cur: int,
-        f_max: int,
-        footer: Optional[str] = None
-    ) -> discord.Embed:
-            # Title & main
-            embed = discord.Embed(title=title, color=discord.Color.dark_green())
-            # Duel line
-            embed.description = (
-                f"**Duel —** {player['name'].title()} (Lv {player.get('level','?')}) vs {foe['name'].title()} (Lv {foe.get('level','?')})\n\n"
-                f"**{player['name'].title()} HP:** {_hp_bar(p_cur, p_max)}  {p_cur}/{p_max}\n"
-                f"**{foe['name'].title()} HP:** {_hp_bar(f_cur, f_max)}  {f_cur}/{f_max}\n"
-            )
-            # Thumbnails
-            ps = player.get("sprite")
-            if ps: embed.set_author(name=player['name'].title(), icon_url=ps)
-            fs = foe.get("sprite")
-            if fs: embed.set_thumbnail(url=fs)
-            if footer:
-                embed.set_footer(text=footer)
-            return embed
+    def _format_battle_embed(title: str,player: Dict,p_cur: int,p_max: int,foe: Dict,f_cur: int,f_max: int,footer: Optional[str] = None) -> discord.Embed:
+        # Title & main
+        embed = discord.Embed(title=title, color=discord.Color.dark_green())
+        # Duel line
+        embed.description = (
+            f"**Duel —** {player['name'].title()} (Lv {player.get('level','?')}) vs {foe['name'].title()} (Lv {foe.get('level','?')})\n\n"
+            f"**{player['name'].title()} HP:** {_hp_bar(p_cur, p_max)}  {p_cur}/{p_max}\n"
+            f"**{foe['name'].title()} HP:** {_hp_bar(f_cur, f_max)}  {f_cur}/{f_max}\n"
+        )
+           # Thumbnails
+        ps = player.get("sprite")
+        if ps: embed.set_author(name=player['name'].title(), icon_url=ps)
+        fs = foe.get("sprite")
+        if fs: embed.set_thumbnail(url=fs)
+        if footer:
+            embed.set_footer(text=footer)
+        return embed
 
         
         
