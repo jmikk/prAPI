@@ -1591,12 +1591,11 @@ class GachaCatchEmAll(commands.Cog):
     def _tower_scale(self, baddie, levels):
         for _ in range(levels):
             growth_choices = [0, 1, 1, 2, 2, 3]
-            new_mon = dict(baddie)
-            stats = dict(baddie.get("stats", {}))
+            stats = baddie.get("stats", {})
             for key in stats:
                 stats[key] += random.choice(growth_choices)
-        new_mon["stats"] = stats
-        return new_mon
+        baddie["stats"] = stats
+        return baddie
 
         
         
