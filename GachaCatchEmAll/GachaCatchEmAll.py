@@ -1592,7 +1592,7 @@ class GachaCatchEmAll(commands.Cog):
         b["level"] = b.get("level", 1) + levels
         return b
 
-    def _tower_scale(target: Union[Dict, List[Dict]], levels: int) -> Union[Dict, List[Dict]]:
+    def _tower_scale(self, target: Union[Dict, List[Dict]], levels: int) -> Union[Dict, List[Dict]]:
         """Scale a single baddie dict OR a list of baddie dicts."""
         if isinstance(target, list):
             return [_scale_one_baddie(b, levels) for b in target]
