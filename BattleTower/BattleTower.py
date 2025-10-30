@@ -345,7 +345,7 @@ class BattleTower(commands.Cog):
         self.bot = bot
 
     @commands.hybrid_command(name="battletower")
-    async def battletower(self, ctx: commands.Context, level: int = 100, level_step: int = 5):
+    async def battletower(self, ctx: commands.Context, level: int = 1, level_step: int = 5):
         """Fight an endlessly scaling NPC at the given level. Buttons = your moves."""
         await ctx.defer()
 
