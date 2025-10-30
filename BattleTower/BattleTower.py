@@ -237,8 +237,7 @@ class BattleTowerView(discord.ui.View):
 
             # Ask the main Gacha cog to scale the foe
             gcog = interaction.client.get_cog("GachaCatchEmAll")
-            if gcog and hasattr(gcog, "_tower_scale"):
-                self.parent.foe = gcog._tower_scale(self.parent.foe, self.parent.level_step)
+                self.parent.foe = self._tower_scale(self.parent.foe, self.parent.level_step)
             else:
                 # Minimal fallback if helper not found
                 s = self.parent.foe.get("stats", {})
@@ -374,7 +373,7 @@ class BattleTower(commands.Cog):
         foe.setdefault("level", foe.get("level", 1))
         start_lv = int(foe["level"])
         if level > start_lv:
-            foe = gcog._tower_scale(foe, level - start_lv)
+            foe = self._tower_scale(foe, level - start_lv)
 
         # 3) Send interactive view
         view = BattleTowerView(ctx, player=player, foe=foe, level_step=level_step)
@@ -387,6 +386,67 @@ class BattleTower(commands.Cog):
             footer="Choose a move, ⏩ Auto-Sim, or Give Up.",
         )
         await ctx.send(embed=emb, view=view)
+
+    def _recalc_bst(stats: Dict[str, int]) -> int:
+        """Recalculate BST from standard keys (missing keys count as 0)."""
+        keys = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
+        return sum(int(stats.get(k, 0)) for k in keys)
+
+    def _tower_scale(
+        self,
+        target: Union[Dict, List[Dict]],
+        levels: int,
+        *,
+        copy_input: bool = True,
+        seed: Optional[int] = None,
+        update_bst: bool = True,
+    ) -> Union[Dict, List[Dict]]:
+        """
+        Scale a mon (or list of mons) upward by `levels`.
+        - Each level adds a random choice from [0,1,1,2,2,3] to EACH stat.
+        - Increments 'level' by `levels`.
+        - If update_bst=True and a 'bst' field exists, it will be refreshed.
+
+        Returns: same shape (dict or list) as provided.
+        """
+        if seed is not None:
+            random.seed(seed)
+
+        if levels <= 0:
+            return copy.deepcopy(target) if copy_input else target
+
+        growth_choices = [0, 1, 1, 2, 2, 3]
+
+        def scale_one(mon: Dict) -> Dict:
+            b = copy.deepcopy(mon) if copy_input else mon
+            stats = b.get("stats")
+            if not isinstance(stats, dict):
+                # Nothing to scale if stats are missing/invalid
+                b["level"] = int(b.get("level", 1)) + levels
+                return b
+
+            # Add weighted growth to each stat for each level
+            for _ in range(levels):
+                for k, v in list(stats.items()):
+                    try:
+                        stats[k] = int(v) + random.choice(growth_choices)
+                    except Exception:
+                        # If a stat isn't numeric, leave it as-is
+                        pass
+
+            b["stats"] = stats
+            b["level"] = int(b.get("level", 1)) + levels
+
+            if update_bst and "bst" in b:
+                b["bst"] = _recalc_bst(stats)
+
+            return b
+
+        if isinstance(target, list):
+            return [scale_one(m) for m in target]
+        if isinstance(target, dict):
+            return scale_one(target)
+        raise TypeError(f"_tower_scale expected dict or list[dict], got {type(target)!r}")
 
 
 async def setup(bot):
