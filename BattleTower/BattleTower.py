@@ -237,7 +237,7 @@ class BattleTowerView(discord.ui.View):
 
             # Ask the main Gacha cog to scale the foe
             gcog = interaction.client.get_cog("GachaCatchEmAll")
-                self.parent.foe = self._tower_scale(self.parent.foe, self.parent.level_step)
+            self.parent.foe = self._tower_scale(self.parent.foe, self.parent.level_step)
             else:
                 # Minimal fallback if helper not found
                 s = self.parent.foe.get("stats", {})
