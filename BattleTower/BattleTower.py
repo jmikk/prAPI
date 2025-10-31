@@ -185,7 +185,6 @@ class BattleTowerView(discord.ui.View):
         filled = int(round(10 * (xp / need)))
         filled = max(0, min(10, filled))
         return "▰" * filled + "▱" * (10 - filled) + f"  {xp}/{need}"
-        # ▰▰▰▱▱▱▱▱
 
 
 
@@ -380,7 +379,7 @@ class BattleTowerView(discord.ui.View):
                 # Green bar (🟩 filled, ⬛ empty)
                 bar = self._green_xp_bar(gcog, new_lvl, new_xp)
 
-                lines.append(f"**{mon['name'].title()}** — {lvl_text}  {bar}")
+                lines.append(f"**{mon['name'].title()}** \n {lvl_text}  {bar}")
         else:
             for mon in self.team:
                 lines.append(f"**{mon.get('name','?').title()}** +{final_exp} EXP")
