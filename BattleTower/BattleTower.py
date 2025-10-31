@@ -4,7 +4,6 @@ import random
 from typing import Dict, List, Optional, Tuple, Union
 
 import discord
-from redbot.core import commands
 from redbot.core import commands, Config
 
 HP_BAR_LEN = 20
@@ -427,19 +426,20 @@ class BattleTower(commands.Cog):
         if not gcog:
             return await ctx.reply("GachaCatchEmAll cog not found. Please load it first.")
 
-        # 1) Get player mon (first slot for now)
+        # 1) Get full player team
         team = await gcog._get_user_team(ctx.author)
         if not team:
             return await ctx.reply("You don't have a team set up.")
-        player = copy.deepcopy(team)
 
-        # Ensure keys we use exist:
-        player.setdefault("level", player.get("level", 1))
-        player.setdefault("xp", player.get("xp", 0))
-        player.setdefault("moves", player.get("moves", ["tackle"]))
-        player.setdefault("types", player.get("types", ["normal"]))
+        # Deep-copy + ensure required keys exist for EVERY mon in the party
+        player_team = copy.deepcopy(team)
+        for mon in player_team:
+            mon.setdefault("level", mon.get("level", 1))
+            mon.setdefault("xp", mon.get("xp", 0))
+            mon.setdefault("moves", mon.get("moves", ["tackle"]))
+            mon.setdefault("types", mon.get("types", ["normal"]))
 
-        # 2) Get/scale NPC
+        # 2) Get/scale single NPC
         npc_list = await gcog._generate_npc_team(1, 1)
         foe = copy.deepcopy(npc_list[0] if isinstance(npc_list, list) else npc_list)
         foe.setdefault("level", foe.get("level", 1))
@@ -447,17 +447,19 @@ class BattleTower(commands.Cog):
         if level > start_lv:
             foe = self._tower_scale(foe, level - start_lv)
 
-        # 3) Send interactive view
-        view = BattleTowerView(ctx, player=player, foe=foe, level_step=level_step)
-        pmax = _init_hp(player[0])
+        # 3) Send interactive view (pass the WHOLE party)
+        view = BattleTowerView(ctx, player_team=player_team, foe=foe, level_step=level_step)
+
+        pmax = _init_hp(player_team[0])  # first active mon
         fmax = _init_hp(foe)
         emb = _battle_embed(
             "Team Battle — Battle Tower",
-            player[0], pmax, pmax,
+            player_team[0], pmax, pmax,
             foe, fmax, fmax,
             footer="Choose a move, ⏩ Auto-Sim, or Give Up.",
         )
         await ctx.send(embed=emb, view=view)
+
     
     @staticmethod
     def _recalc_bst(stats: Dict[str, int]) -> int:
