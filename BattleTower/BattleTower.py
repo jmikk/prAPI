@@ -367,26 +367,43 @@ class BattleTowerView(discord.ui.View):
 
     class RematchSame(discord.ui.Button):
         def __init__(self, tower: "BattleTowerView"):
-            super().__init__(style=discord.ButtonStyle.success, label=f"Next fight /10")
+            # Compute the label from the tower's state, not the button's
             self.tower = tower
-
+            remaining = max(0, 10 - tower.wins_since_floor_up)
+            label = f"🔁 Next fight {remaining}/10"
+            super().__init__(style=discord.ButtonStyle.success, label=label)
+    
         async def callback(self, interaction: discord.Interaction):
             if interaction.user.id != self.tower.user_id:
                 return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
-
+    
+            # Always ACK first to avoid the "Interaction failed" banner
+            if not interaction.response.is_done():
+                await interaction.response.defer()
+    
+            # Keep the same level but fetch a different species
             desired = int(self.tower.foe.get("level", 1))
             self.tower.foe = await self.tower._fetch_new_foe(desired)
-
-            # Reset foe HP and refresh UI
+    
+            # Reset foe HP for the new match; player HP stays as-is by design
             self.tower.f_cur = self.tower.f_max = _init_hp(self.tower.foe)
+    
+            # Rebuild move buttons for the current active mon
             self.tower._arm_player_buttons()
+    
+            # Optional: refresh the label to reflect current progress again
+            # (useful if you reuse this button later)
+            remaining = max(0, 10 - self.tower.wins_since_floor_up)
+            self.label = f"🔁 Next fight {remaining}/10"
+    
             emb = _battle_embed(
                 "Team Battle — Battle Tower",
                 self.tower.player, self.tower.p_cur, self.tower.p_max,
                 self.tower.foe, self.tower.f_cur, self.tower.f_max,
                 footer=f"Rematch at Lv {desired} — new opponent!",
             )
-            await interaction.response.edit_message(embed=emb, view=self.tower)
+            await self.tower._safe_edit(interaction, embed=emb, view=self.tower)
+
 
 
     class CloseButton(discord.ui.Button):
