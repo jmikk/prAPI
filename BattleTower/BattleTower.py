@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import discord
 from redbot.core import commands
+from redbot.core import commands, Config
 
 HP_BAR_LEN = 20
 
@@ -133,6 +134,7 @@ class BattleTowerView(discord.ui.View):
     def __init__(self, ctx: commands.Context, player: Dict, foe: Dict, level_step: int = 5, timeout: int = 180):
         super().__init__(timeout=timeout)
         self.ctx = ctx
+        self.cog: BattleTower = ctx.cog
         self.user_id = ctx.author.id
         self.level_step = level_step
         self.player = copy.deepcopy(player)
@@ -145,6 +147,9 @@ class BattleTowerView(discord.ui.View):
         self.f_cur = self.f_max
 
         self._arm_player_buttons()
+
+
+
 
     # --- inside BattleTowerView ---
 
@@ -195,6 +200,7 @@ class BattleTowerView(discord.ui.View):
             if interaction.user.id != self.tower.user_id:
                 return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
             self.tower.clear_items()
+            await self.tower.cog._reset_streak(self.tower.user_id)
             self.tower.add_item(self.tower.CloseButton())
             emb = _battle_embed(
                 "You Gave Up — Battle Tower",
@@ -293,23 +299,34 @@ class BattleTowerView(discord.ui.View):
                 await self._turn(interaction, nmv, autosim=True)
 
     async def _victory(self, interaction: discord.Interaction, used: str, dealt: int):
-        # EXP via main cog helpers
         gcog = interaction.client.get_cog("GachaCatchEmAll")
         exp_txt = ""
-        if gcog and hasattr(gcog, "_add_xp_to_entry") and hasattr(gcog, "_xp_bar"):
-            # Award EXP by BST diff + level factor
-            player_bst = _bst(self.player)
-            foe_bst = _bst(self.foe)
-            lvl = int(self.foe.get("level", 1))
-            diff = max(0, foe_bst - player_bst)
-            exp = max(10, diff // 4 + lvl * 2)
 
+        # Base EXP by BST diff + level factor
+        player_bst = _bst(self.player)
+        foe_bst = _bst(self.foe)
+        lvl = int(self.foe.get("level", 1))
+        diff = max(0, foe_bst - player_bst)
+        base_exp = max(10, diff // 4 + lvl * 2)
+
+        # --- Streak bonus ---
+        # +10% per current streak, capped at +50%
+        current_streak = await self.cog._get_streak(self.user_id)
+        bonus_mult = min(1.0 + 0.10 * current_streak, 1.50)
+        final_exp = int(round(base_exp * bonus_mult))
+        # Increment streak for next battle
+        new_streak = await self.cog._inc_streak(self.user_id)
+
+        if gcog and hasattr(gcog, "_add_xp_to_entry") and hasattr(gcog, "_xp_bar"):
             before_lvl = int(self.player.get("level", 1))
             before_xp = int(self.player.get("xp", 0))
-            new_lvl, new_xp, _ = gcog._add_xp_to_entry(self.player, exp)
-            exp_txt = f"**+{exp} EXP** — Lv {before_lvl}→{new_lvl}  {_safe_xpbar(gcog, new_lvl, new_xp)}"
+            new_lvl, new_xp, _ = gcog._add_xp_to_entry(self.player, final_exp)
+            exp_txt = (
+                f"**+{final_exp} EXP** (base {base_exp}, streak x{bonus_mult:.2f}; streak **{new_streak}**)"
+                f" — Lv {before_lvl}→{new_lvl}  {_safe_xpbar(gcog, new_lvl, new_xp)}"
+            )
         else:
-            exp_txt = "EXP awarded (helper not found)."
+            exp_txt = f"EXP awarded: {final_exp} (base {base_exp}, streak x{bonus_mult:.2f}; streak {new_streak})."
 
         # Swap to rematch controls
         self.clear_items()
@@ -320,9 +337,11 @@ class BattleTowerView(discord.ui.View):
         emb = _battle_embed("Victory — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
         await interaction.response.edit_message(embed=emb, view=self)
 
+
     async def _defeat(self, interaction: discord.Interaction, foe_used: str, dealt: int):
         self.clear_items()
         self.add_item(self.CloseButton())
+        await self.cog._reset_streak(self.user_id)
         footer = f"💀 Defeat. Foe used {foe_used} for {dealt} damage."
         emb = _battle_embed("Defeat — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
         await interaction.response.edit_message(embed=emb, view=self)
@@ -343,6 +362,25 @@ class BattleTower(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.config = Config.get_conf(self, identifier=0xBATTLETOWER, force_registration=True)
+        # per-user streak
+        self.config.register_user(bt_streak=0)
+
+    async def _get_streak(self, user_id: int) -> int:
+        return await self.config.user_from_id(user_id).bt_streak()
+
+    async def _set_streak(self, user_id: int, value: int) -> None:
+        await self.config.user_from_id(user_id).bt_streak.set(value)
+
+    async def _inc_streak(self, user_id: int) -> int:
+        streak = await self._get_streak(user_id)
+        streak += 1
+        await self._set_streak(user_id, streak)
+        return streak
+
+    async def _reset_streak(self, user_id: int) -> None:
+        await self._set_streak(user_id, 0)
+
 
     @commands.hybrid_command(name="battletower")
     async def battletower(self, ctx: commands.Context, level: int = 1, level_step: int = 5):
