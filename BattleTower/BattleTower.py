@@ -482,7 +482,7 @@ class BattleTowerView(discord.ui.View):
             # Try to send next party mon
             if self._advance_next_player():
                 footer = (
-                f"You used {move[0]} ({p_dmg}). {p_eff_desc} "
+                f"You used {move[0]} ({p_dmg}). {p_eff_desc}\n"
                 f"Foe used {foe_move[0]} ({f_dmg}). {f_eff_desc}"
                 ).strip()
                 emb = _battle_embed(
