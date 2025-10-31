@@ -160,6 +160,31 @@ class GachaCatchEmAll(commands.Cog):
 
     # Inside your GachaCatchEmAll cog:
 
+    async def _apply_exp_bulk(self, member, updates: Iterable[Tuple[str, int, int]]) -> None:
+        """
+        updates: iterable of (uid, new_level, new_xp)
+        Writes level/xp back into the user's pokebox by uid.
+        """
+        box: list[Dict[str, Any]] = await self.config.user(member).pokebox()
+        index = {m.get("uid"): i for i, m in enumerate(box)}
+        changed = False
+        for uid, lvl, xp in updates:
+            i = index.get(uid)
+            if i is None:
+                continue
+            # Ensure defaults so keys exist
+            if "level" not in box[i]:
+                box[i]["level"] = 1
+            if "xp" not in box[i]:
+                box[i]["xp"] = 0
+            # Write back
+            if box[i]["level"] != lvl or box[i]["xp"] != xp:
+                box[i]["level"] = int(lvl)
+                box[i]["xp"] = int(xp)
+                changed = True
+        if changed:
+            await self.config.user(member).pokebox.set(box)
+
 
     async def _get_zone_media(self, key: Optional[str]) -> Optional[str]:
         """Return a URL for the zone/type key; falls back to 'default'/'all'."""
