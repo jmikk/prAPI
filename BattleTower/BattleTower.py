@@ -152,6 +152,15 @@ class BattleTowerView(discord.ui.View):
 
         self._arm_player_buttons()
 
+        # run/session stats
+        self.current_floor: int = getattr(self, "current_floor", 1)  # will be set by command
+        self.wins_since_floor_up: int = getattr(self, "wins_since_floor_up", 0)
+        self.total_wins: int = getattr(self, "total_wins", 0)
+        self.turns: int = 0
+        self.total_damage_dealt: int = 0
+        self.total_damage_taken: int = 0
+        self.moves_used: Dict[str, int] = {}
+
 
 
 
@@ -308,6 +317,18 @@ class BattleTowerView(discord.ui.View):
         if interaction.user.id != self.user_id:
             return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
 
+            # after computing p_dmg and applying to foe:
+        self.total_damage_dealt += p_dmg
+        # track move usage
+        self.moves_used[move[0]] = self.moves_used.get(move[0], 0) + 1
+
+        # foe damage
+        self.total_damage_taken += f_dmg
+
+        # increment turn counter once per full round
+        self.turns += 1
+
+
         # Player hits
         p_dmg = _calc_damage(self.player, self.foe, move)
         self.f_cur = max(0, self.f_cur - p_dmg)
@@ -360,47 +381,66 @@ class BattleTowerView(discord.ui.View):
         diff = max(0, foe_bst - player_bst)
         base_exp = max(10, diff // 4 + lvl * 2)
 
-        # Streak bonus: +10% per win, capped at +50%
+        # Streak bonus
         current_streak = await self.cog._get_streak(self.user_id)
         bonus_mult = min(1.0 + 0.10 * current_streak, 1.50)
         final_exp = int(round(base_exp * bonus_mult))
         new_streak = await self.cog._inc_streak(self.user_id)
 
+        # Grant EXP to entire party
         lines = []
-        if gcog and hasattr(gcog, "_add_xp_to_entry"):
+        if gcog and hasattr(gcog, "_add_xp_to_entry") and hasattr(gcog, "_xp_bar"):
             for mon in self.team:
                 before_lvl = int(mon.get("level", 1))
                 before_xp = int(mon.get("xp", 0))
                 new_lvl, new_xp, _ = gcog._add_xp_to_entry(mon, final_exp)
-
-                # In BattleTowerView._victory (after awarding exp to self.team)
-                updates = []
-                for mon in self.team:
-                    # you already called: new_lvl, new_xp, _ = gcog._add_xp_to_entry(mon, final_exp)
-                    updates.append((mon["uid"], mon["level"], mon["xp"]))
-
-                # Persist to the user’s real data:
-                await gcog._apply_exp_bulk(self.ctx.author, updates)
-
-
-                # Only show arrow if they actually leveled up
+                # green bar + “arrow only if leveled up”
                 lvl_text = f"Lv {before_lvl} → {new_lvl}" if new_lvl > before_lvl else f"Lv {new_lvl}"
-
                 bar = self._green_xp_bar(gcog, new_lvl, new_xp)
-
-                lines.append(f"**{mon['name'].title()}** \n {lvl_text}  {bar}")
+                lines.append(f"**{mon['name'].title()}** — {lvl_text}  {bar}")
+            # persist back to user’s box by UID (see previous message for helper)
+            if hasattr(gcog, "_apply_exp_bulk"):
+                updates = [(mon["uid"], mon["level"], mon["xp"]) for mon in self.team if "uid" in mon]
+                await gcog._apply_exp_bulk(self.ctx.author, updates)
         else:
             for mon in self.team:
                 lines.append(f"**{mon.get('name','?').title()}** +{final_exp} EXP")
 
-        # Summary embed
+        # Count win and check floor-up
+        self.total_wins += 1
+        self.wins_since_floor_up += 1
+        floor_msg = ""
+        if self.wins_since_floor_up >= 10:
+            self.wins_since_floor_up = 0
+            self.current_floor += 1
+            # scale foe for next battle (auto up-scaling)
+            if hasattr(self.cog, "_tower_scale"):
+                self.foe = self.cog._tower_scale(self.foe, self.level_step)
+            else:
+                s = self.foe.get("stats", {})
+                for _ in range(self.level_step):
+                    for k in s:
+                        s[k] += random.choice([0, 1, 1, 2, 2, 3])
+                self.foe["stats"] = s
+                self.foe["level"] = self.foe.get("level", 1) + self.level_step
+            # reset foe HP for next fight
+            self.f_cur = self.f_max = _init_hp(self.foe)
+            floor_msg = f"\n\n⬆️ **Floor Up!** You’ve reached **Floor {self.current_floor}**."
+            # update highest floor in storage
+            await self.cog._set_highest_floor(self.user_id, self.current_floor)
+
+        # Summary embed (victory)
         self.clear_items()
         self.add_item(self.RematchSame(self))
         self.add_item(self.RematchHigher(self))
         self.add_item(self.CloseButton())
 
-        summary = discord.Embed(title="🏆 Victory — Team EXP Summary", color=discord.Color.green())
-        summary.description = f"Used **{used}** for **{dealt}** damage.\n" + "\n".join(lines)
+        summary = discord.Embed(title=f"🏆 Victory — Team EXP (Floor {self.current_floor})", color=discord.Color.green())
+        summary.description = (
+            f"Used **{used}** for **{dealt}** damage."
+            f"{floor_msg}\n\n" +
+            "\n".join(lines)
+        )
         summary.set_footer(text=f"+{final_exp} EXP to each (base {base_exp}, streak x{bonus_mult:.2f}; current streak {new_streak})")
 
         await interaction.response.edit_message(embed=summary, view=self)
@@ -408,13 +448,29 @@ class BattleTowerView(discord.ui.View):
 
 
 
+
     async def _defeat(self, interaction: discord.Interaction, foe_used: str, dealt: int):
+        # reset streak
+        await self.cog._reset_streak(self.user_id)
+
+        # defeat summary
+        mlist = ", ".join(f"{k}×{v}" for k, v in self.moves_used.items()) or "—"
+        desc = (
+            f"**Floor Reached:** {self.current_floor}\n"
+            f"**Foes Defeated This Run:** {self.total_wins}\n"
+            f"**Turns Taken:** {self.turns}\n"
+            f"**Total Damage Dealt:** {self.total_damage_dealt}\n"
+            f"**Total Damage Taken:** {self.total_damage_taken}\n"
+            f"**Last Blow:** Foe used **{foe_used}** ({dealt})\n"
+            f"**Moves Used:** {mlist}"
+        )
+
         self.clear_items()
         self.add_item(self.CloseButton())
-        await self.cog._reset_streak(self.user_id)
-        footer = f"💀 Defeat. Foe used {foe_used} for {dealt} damage."
-        emb = _battle_embed("Defeat — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
+
+        emb = discord.Embed(title="💀 Defeat — Run Summary", description=desc, color=discord.Color.red())
         await interaction.response.edit_message(embed=emb, view=self)
+
 
 
 def _safe_xpbar(gcog, level: int, xp: int) -> str:
@@ -434,7 +490,16 @@ class BattleTower(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier="0xBATTLETOWER", force_registration=True)
         # per-user streak
-        self.config.register_user(bt_streak=0)
+        self.config.register_user(bt_streak=0, bt_highest_floor=1)  # add bt_highest_floor
+
+        # add helpers in BattleTower class
+    async def _get_highest_floor(self, user_id: int) -> int:
+        return await self.config.user_from_id(user_id).bt_highest_floor()
+
+    async def _set_highest_floor(self, user_id: int, floor: int) -> None:
+        cur = await self._get_highest_floor(user_id)
+        if floor > cur:
+            await self.config.user_from_id(user_id).bt_highest_floor.set(int(floor))
 
     async def _get_streak(self, user_id: int) -> int:
         return await self.config.user_from_id(user_id).bt_streak()
@@ -453,11 +518,19 @@ class BattleTower(commands.Cog):
 
 
     @commands.hybrid_command(name="battletower")
-    async def battletower(self, ctx: commands.Context, level: int = 1, level_step: int = 5):
+    async def battletower(self, ctx: commands.Context, level: int = 1):
         """Fight an endlessly scaling NPC at the given level. Buttons = your moves."""
+        level_step: int = 1
         await ctx.defer()
 
         await self._reset_streak(ctx.author.id)
+
+
+        # Highest floor gate
+        highest = await self._get_highest_floor(ctx.author.id)  # default 1
+        start_floor = highest if floor is None else min(highest, max(1, int(floor)))
+        if floor is not None and start_floor != floor:
+            await ctx.send(f"You can only start on your highest unlocked floor. Starting on **Floor {start_floor}**.", ephemeral=True)
 
         gcog = self.bot.get_cog("GachaCatchEmAll")
         if not gcog:
