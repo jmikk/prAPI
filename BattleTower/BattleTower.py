@@ -237,18 +237,14 @@ class BattleTowerView(discord.ui.View):
 
         async def callback(self, interaction: discord.Interaction):
             if interaction.user.id != self.tower.user_id:
-                return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
+                return await interaction.response.defer(ephemeral=True)  # silent reject
+
+            # Toggle autosim without sending messages
+            self.tower.autosim_running = not self.tower.autosim_running
+            await interaction.response.defer()  # ACK with no new message
 
             if self.tower.autosim_running:
-                # stop autosim
-                self.tower.autosim_running = False
-                await interaction.response.send_message("🛑 Auto-Sim stopped.", ephemeral=True)
-                return
-
-            # start autosim
-            self.tower.autosim_running = True
-            await interaction.response.send_message("⏩ Auto-Sim started. Battles will continue automatically every few seconds.", ephemeral=True)
-            await self.tower._autosim_loop(interaction)
+                await self.tower._autosim_loop(interaction)
 
 
     class GiveUpButton(discord.ui.Button):
@@ -332,29 +328,13 @@ class BattleTowerView(discord.ui.View):
         return candidate
 
     async def _autosim_loop(self, interaction: discord.Interaction):
-        """Continuously simulates turns every few seconds until stopped or battle ends."""
         while self.autosim_running and self.f_cur > 0 and self.p_cur > 0:
             mv = _pick_damage_move(self.player) or _coerce_move(self.player, (self.player.get("moves") or ["tackle"])[0])
             await self._turn(interaction, mv, autosim=True)
-            await asyncio.sleep(2)  # simple, reliable sleep
+            await asyncio.sleep(2)
+            # If foe fainted, _victory will prep next foe; just continue loop naturally
+        # No end message — we quietly stop
 
-            # If foe fainted, _victory() may have queued the next foe.
-            # If a new foe got prepped (HP reset), continue; else stop.
-            if self.f_cur <= 0:
-                await asyncio.sleep(1.5)
-                if hasattr(self, "foe") and self.f_cur == self.f_max:
-                    continue
-                self.autosim_running = False
-                break
-
-        if not self.autosim_running:
-            try:
-                await interaction.followup.send("✅ Auto-Sim ended.", ephemeral=True)
-            except Exception:
-                pass
-
-        if not self.autosim_running:
-            await interaction.followup.send("✅ Auto-Sim ended.", ephemeral=True)
 
 
 
@@ -418,7 +398,6 @@ class BattleTowerView(discord.ui.View):
 
         if autosim:
             nmv = _pick_damage_move(self.player) or move
-            await interaction.followup.send("⏩ Auto-sim continues…", ephemeral=True)
             await self._turn(interaction, nmv, autosim=True)
 
 
@@ -431,7 +410,6 @@ class BattleTowerView(discord.ui.View):
             nmv = _pick_damage_move(self.player)
             if nmv:
                 # Use followup to acknowledge, then immediately continue
-                await interaction.followup.send("⏩ Auto-sim continues…", ephemeral=True)
                 await self._turn(interaction, nmv, autosim=True)
 
     async def _victory(self, interaction: discord.Interaction, used: str, dealt: int):
@@ -499,13 +477,14 @@ class BattleTowerView(discord.ui.View):
             "\n".join(lines)
         )
         summary.set_footer(text=f"+{final_exp} EXP to each (base {base_exp}, streak x{bonus_mult:.2f}; current streak {new_streak})")
-        # If autosim was running, automatically challenge next foe
+        
+        # First, show the victory summary on the SAME message
+        await self._safe_edit(interaction, embed=summary, view=self)
+
+        # If autosim is running, wait a moment then replace the SAME message with next battle
         if self.autosim_running:
-            await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=3))
-            if self.wins_since_floor_up >= 10:
-                desired = int(self.foe.get("level", 1)) + self.level_step
-            else:
-                desired = int(self.foe.get("level", 1))
+            await asyncio.sleep(1.5)
+            desired = int(self.foe.get("level", 1))
             self.foe = await self._fetch_new_foe(desired)
             self.f_cur = self.f_max = _init_hp(self.foe)
             emb = _battle_embed(
@@ -514,24 +493,37 @@ class BattleTowerView(discord.ui.View):
                 self.foe, self.f_cur, self.f_max,
                 footer=f"AutoSim continues... Lv {desired} opponent.",
             )
-            await interaction.followup.send(embed=emb, view=self)
+            await self._safe_edit(interaction, embed=emb, view=self)
+            # Resume loop
             await self._autosim_loop(interaction)
+            return
 
-        await interaction.response.edit_message(embed=summary, view=self)
-
+        await self._safe_edit(interaction, embed=summary, view=self)
 
     async def _safe_edit(self, interaction: discord.Interaction, *, embed: discord.Embed, view: Optional[discord.ui.View] = None):
         """
-        Edit the original message whether or not this interaction's response has already been used.
+        Edit the one original message for this view. Never sends new messages.
         """
+        # Best: we stored the original message in the command
+        if getattr(self, "message", None):
+            await self.message.edit(embed=embed, view=view)
+            return
+
+        # Fallbacks if message wasn't stored for some reason
         try:
             if interaction.response.is_done():
-                await interaction.edit_original_response(embed=embed, view=view)
+                # For component interactions, edit the message the component belongs to
+                if hasattr(interaction, "message") and interaction.message:
+                    await interaction.message.edit(embed=embed, view=view)
+                else:
+                    await interaction.edit_original_response(embed=embed, view=view)
             else:
                 await interaction.response.edit_message(embed=embed, view=view)
         except Exception:
-            # Last resort: send a followup (prevents the loop from silently dying)
-            await interaction.followup.send(embed=embed, view=view)
+            # Final fallback: try editing the component's message
+            if hasattr(interaction, "message") and interaction.message:
+                await interaction.message.edit(embed=embed, view=view)
+
 
 
 
@@ -658,7 +650,8 @@ class BattleTower(commands.Cog):
             foe, fmax, fmax,
             footer="Choose a move, ⏩ Auto-Sim, or Give Up.",
         )
-        await ctx.send(embed=emb, view=view)
+        msg = await ctx.send(embed=emb, view=view)
+        view.message = msg  # <— IMPORTANT: store original message
 
     
     @staticmethod
