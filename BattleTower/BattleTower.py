@@ -276,6 +276,18 @@ class BattleTowerView(discord.ui.View):
 
 
 
+    def _refresh_move_button_indicators(self):
+        """Update MoveButtons' emoji/labels based on current foe types."""
+        foe_types = [t.lower() for t in (self.foe.get("types") or ["normal"])]
+        for item in self.children:
+            if isinstance(item, BattleTowerView.MoveButton):
+                name, mtype, style, power = item.move
+                if style in ("physical","special") and power > 0:
+                    item.emoji = _effectiveness_emoji(mtype, foe_types)
+                else:
+                    item.emoji = "⚪"
+                # keep label consistent
+                item.label = f"{name.title()} ({power})"
 
     # --- inside BattleTowerView ---
     def _advance_next_player(self) -> bool:
@@ -290,6 +302,7 @@ class BattleTowerView(discord.ui.View):
         self.p_max = _init_hp(self.player)
         self.p_cur = self.p_max
         self._arm_player_buttons()
+        self._refresh_move_button_indicators()
         return True
 
     def _green_xp_bar(self, gcog, level: int, xp: int) -> str:
@@ -312,6 +325,7 @@ class BattleTowerView(discord.ui.View):
 
     def _arm_player_buttons(self):
         self.clear_items()
+
         candidates = []
         for m in self.player.get("moves", [])[:4]:
             mv = _coerce_move(self.player, m)
@@ -321,15 +335,19 @@ class BattleTowerView(discord.ui.View):
             for m in self.player.get("moves", [])[:4]:
                 candidates.append(_coerce_move(self.player, m))
 
-        foe_types = self.foe.get("types", ["normal"])
+        foe_types = [t.lower() for t in (self.foe.get("types") or ["normal"])]
 
         for idx, mv in enumerate(candidates[:4]):
-            eff_emoji = _effectiveness_emoji(mv[1], foe_types)
-            label = f"{eff_emoji} {mv[0].title()} ({mv[3]})"
-            self.add_item(self.MoveButton(tower=self, label=label, move=mv, row=0 if idx < 3 else 1))
+            # label does not include emoji anymore — emoji goes into the button prop
+            label = f"{mv[0].title()} ({mv[3]})"
+            emoji = _effectiveness_emoji(mv[1], foe_types) if mv[2] in ("physical","special") and mv[3] > 0 else "⚪"
+            btn = self.MoveButton(tower=self, label=label, move=mv, row=0 if idx < 3 else 1)
+            btn.emoji = emoji
+            self.add_item(btn)
 
         self.add_item(self.AutoSimButton(tower=self))
         self.add_item(self.GiveUpButton(tower=self))
+
 
 
     class MoveButton(discord.ui.Button):
@@ -392,6 +410,7 @@ class BattleTowerView(discord.ui.View):
             # Reset foe HP and refresh UI
             self.tower.f_cur = self.tower.f_max = _init_hp(self.tower.foe)
             self.tower._arm_player_buttons()
+            self.tower._refresh_move_button_indicators()
             emb = _battle_embed(
                 "Team Battle — Battle Tower",
                 self.tower.player, self.tower.p_cur, self.tower.p_max,
@@ -596,11 +615,14 @@ class BattleTowerView(discord.ui.View):
                 self.foe, self.f_cur, self.f_max,
                 footer=f"AutoSim continues... Lv {desired} opponent.",
             )
+            self._arm_player_buttons()
+            self._refresh_move_button_indicators()
             await self._safe_edit(interaction, embed=emb, view=self)
             await self._autosim_loop(interaction)
             return
 
-
+        self._arm_player_buttons()
+        self._refresh_move_button_indicators()
         await self._safe_edit(interaction, embed=summary, view=self)
 
     async def _safe_edit(self, interaction: discord.Interaction, *, embed: discord.Embed, view: Optional[discord.ui.View] = None):
