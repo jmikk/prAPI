@@ -607,38 +607,13 @@ class Casino(commands.Cog):
         eligible_count = 0
     
         if house_net < 0:
-            # Casino lost money => add to regional debt
-            loss = -house_net
-            await self._increase_regional_debt(loss)
-            actions.append(f"📈 Increased regional debt by **{loss:,.2f}** WC.")
+           pass
         elif house_net > 0:
             # Casino profited: pay down debt first
-            profit = house_net
+            profit = house_net * .10
             if starting_debt > 0:
-                paydown = min(profit, starting_debt)
-                await self._decrease_regional_debt(paydown)
-                actions.append(f"💳 Paid down regional debt by **{paydown:,.2f}** WC.")
-                profit -= paydown
-    
-            if profit > 0:
-                role = ctx.guild.get_role(1098673767858843648)
-                if role:
-                    recipients = [m for m in role.members if not m.bot]
-                    eligible_count = len(recipients)
-                    pool = profit * 0.50
-                    distribution_total = pool
-                    if eligible_count > 0 and pool > 0:
-                        distributed_each = pool / eligible_count
-                        for m in recipients:
-                            await self.update_balance(m, distributed_each)
-                        actions.append(
-                            f"🎁 Distributed **{pool:,.2f}** WC (50% of profit) "
-                            f"evenly to **{eligible_count}** members ({distributed_each:,.2f} each)."
-                        )
-                    else:
-                        actions.append("ℹ️ No eligible members found for distribution.")
-                else:
-                    actions.append("⚠️ Role 1098673767858843648 not found; skipped profit distribution.")
+                await self._decrease_regional_debt(profit)
+                actions.append(f"💳 Paid down regional debt by **{profit:,.2f}** WC.")
         else:
             actions.append("ℹ️ House net was exactly 0. No changes applied.")
     
