@@ -448,6 +448,8 @@ class BattleTower(commands.Cog):
         """Fight an endlessly scaling NPC at the given level. Buttons = your moves."""
         await ctx.defer()
 
+        await self._reset_streak(ctx.author.id)
+
         gcog = self.bot.get_cog("GachaCatchEmAll")
         if not gcog:
             return await ctx.reply("GachaCatchEmAll cog not found. Please load it first.")
