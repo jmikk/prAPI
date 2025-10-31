@@ -6,6 +6,8 @@ from typing import Dict, List, Optional, Tuple, Union
 import discord
 from redbot.core import commands, Config
 
+import asyncio  # top of file
+
 HP_BAR_LEN = 20
 
 
@@ -334,16 +336,22 @@ class BattleTowerView(discord.ui.View):
         while self.autosim_running and self.f_cur > 0 and self.p_cur > 0:
             mv = _pick_damage_move(self.player) or _coerce_move(self.player, (self.player.get("moves") or ["tackle"])[0])
             await self._turn(interaction, mv, autosim=True)
-            await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=2))
+            await asyncio.sleep(2)  # simple, reliable sleep
 
-            # if foe fainted and there's a new battle ready, continue automatically
+            # If foe fainted, _victory() may have queued the next foe.
+            # If a new foe got prepped (HP reset), continue; else stop.
             if self.f_cur <= 0:
-                await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=3))
+                await asyncio.sleep(1.5)
                 if hasattr(self, "foe") and self.f_cur == self.f_max:
                     continue
-                else:
-                    self.autosim_running = False
-                    break
+                self.autosim_running = False
+                break
+
+        if not self.autosim_running:
+            try:
+                await interaction.followup.send("✅ Auto-Sim ended.", ephemeral=True)
+            except Exception:
+                pass
 
         if not self.autosim_running:
             await interaction.followup.send("✅ Auto-Sim ended.", ephemeral=True)
@@ -395,7 +403,7 @@ class BattleTowerView(discord.ui.View):
                     self.foe, self.f_cur, self.f_max,
                     footer,
                 )
-                return await interaction.response.edit_message(embed=emb, view=self)
+                return await self._safe_edit(interaction, embed=emb, view=self)
             else:
                 return await self._defeat(interaction, foe_used=foe_move[0], dealt=f_dmg)
 
@@ -406,7 +414,7 @@ class BattleTowerView(discord.ui.View):
             self.foe, self.f_cur, self.f_max,
             footer,
         )
-        await interaction.response.edit_message(embed=emb, view=self)
+        await self._safe_edit(interaction, embed=emb, view=self)
 
         if autosim:
             nmv = _pick_damage_move(self.player) or move
@@ -416,7 +424,7 @@ class BattleTowerView(discord.ui.View):
 
         footer = f"You used {move[0]} ({p_dmg}). Foe used {foe_move[0]} ({f_dmg})."
         emb = _battle_embed("Team Battle — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
-        await interaction.response.edit_message(embed=emb, view=self)
+       await self._safe_edit(interaction, embed=emb, view=self)
 
         if autosim:
             # Continue autosim with a random damaging move
@@ -512,6 +520,21 @@ class BattleTowerView(discord.ui.View):
         await interaction.response.edit_message(embed=summary, view=self)
 
 
+    async def _safe_edit(self, interaction: discord.Interaction, *, embed: discord.Embed, view: Optional[discord.ui.View] = None):
+        """
+        Edit the original message whether or not this interaction's response has already been used.
+        """
+        try:
+            if interaction.response.is_done():
+                await interaction.edit_original_response(embed=embed, view=view)
+            else:
+                await interaction.response.edit_message(embed=embed, view=view)
+        except Exception:
+            # Last resort: send a followup (prevents the loop from silently dying)
+            await interaction.followup.send(embed=embed, view=view)
+
+
+
 
 
 
@@ -535,7 +558,7 @@ class BattleTowerView(discord.ui.View):
         self.add_item(self.CloseButton())
 
         emb = discord.Embed(title="💀 Defeat — Run Summary", description=desc, color=discord.Color.red())
-        await interaction.response.edit_message(embed=emb, view=self)
+        await self._safe_edit(interaction, embed=emb, view=self)
 
 
 
