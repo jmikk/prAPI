@@ -335,7 +335,6 @@ class BattleTowerView(discord.ui.View):
 
     async def _victory(self, interaction: discord.Interaction, used: str, dealt: int):
         gcog = interaction.client.get_cog("GachaCatchEmAll")
-        exp_txt = ""
 
         # Base EXP by BST diff + level factor
         player_bst = _bst(self.player)
@@ -344,33 +343,41 @@ class BattleTowerView(discord.ui.View):
         diff = max(0, foe_bst - player_bst)
         base_exp = max(10, diff // 4 + lvl * 2)
 
-        # --- Streak bonus ---
-        # +10% per current streak, capped at +50%
+        # Streak bonus: +10% per win, capped at +50%
         current_streak = await self.cog._get_streak(self.user_id)
         bonus_mult = min(1.0 + 0.10 * current_streak, 1.50)
         final_exp = int(round(base_exp * bonus_mult))
-        # Increment streak for next battle
         new_streak = await self.cog._inc_streak(self.user_id)
 
+        # Build the summary lines (whole party gains EXP)
+        lines = []
         if gcog and hasattr(gcog, "_add_xp_to_entry") and hasattr(gcog, "_xp_bar"):
-            before_lvl = int(self.player.get("level", 1))
-            before_xp = int(self.player.get("xp", 0))
-            new_lvl, new_xp, _ = gcog._add_xp_to_entry(self.player, final_exp)
-            exp_txt = (
-                f"**+{final_exp} EXP** (base {base_exp}, streak x{bonus_mult:.2f}; streak **{new_streak}**)"
-                f" — Lv {before_lvl}→{new_lvl}  {_safe_xpbar(gcog, new_lvl, new_xp)}"
-            )
+            for mon in self.team:
+                before_lvl = int(mon.get("level", 1))
+                before_xp = int(mon.get("xp", 0))
+                new_lvl, new_xp, _ = gcog._add_xp_to_entry(mon, final_exp)
+                bar = _safe_xpbar(gcog, new_lvl, new_xp)
+                lines.append(f"**{mon['name'].title()}** — Lv {before_lvl}→{new_lvl}  {bar}")
         else:
-            exp_txt = f"EXP awarded: {final_exp} (base {base_exp}, streak x{bonus_mult:.2f}; streak {new_streak})."
+            # Fallback text if helpers are unavailable
+            for mon in self.team:
+                lines.append(f"**{mon.get('name','?').title()}** +{final_exp} EXP")
 
-        # Swap to rematch controls
+        # Show a dedicated summary page
         self.clear_items()
         self.add_item(self.RematchSame(self))
         self.add_item(self.RematchHigher(self))
         self.add_item(self.CloseButton())
-        footer = f"✅ Victory! Used {used} for {dealt} damage. {exp_txt}"
-        emb = _battle_embed("Victory — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
-        await interaction.response.edit_message(embed=emb, view=self)
+
+        summary = discord.Embed(title="🏆 Victory — Team EXP Summary", color=discord.Color.gold())
+        summary.description = (
+            f"Used **{used}** for **{dealt}** damage.\n"
+            + "\n".join(lines)
+        )
+        summary.set_footer(text=f"+{final_exp} EXP to each (base {base_exp}, streak x{bonus_mult:.2f}; current streak {new_streak})")
+
+        await interaction.response.edit_message(embed=summary, view=self)
+
 
 
     async def _defeat(self, interaction: discord.Interaction, foe_used: str, dealt: int):
