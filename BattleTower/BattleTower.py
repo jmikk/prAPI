@@ -161,6 +161,8 @@ class BattleTowerView(discord.ui.View):
         self.total_damage_taken: int = 0
         self.moves_used: Dict[str, int] = {}
 
+        self.autosim_running = False
+
 
 
 
@@ -232,8 +234,20 @@ class BattleTowerView(discord.ui.View):
             self.tower = tower
 
         async def callback(self, interaction: discord.Interaction):
-            mv = _pick_damage_move(self.tower.player) or _coerce_move(self.tower.player, (self.tower.player.get("moves") or ["tackle"])[0])
-            await self.tower._turn(interaction, mv, autosim=True)
+            if interaction.user.id != self.tower.user_id:
+                return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
+
+            if self.tower.autosim_running:
+                # stop autosim
+                self.tower.autosim_running = False
+                await interaction.response.send_message("🛑 Auto-Sim stopped.", ephemeral=True)
+                return
+
+            # start autosim
+            self.tower.autosim_running = True
+            await interaction.response.send_message("⏩ Auto-Sim started. Battles will continue automatically every few seconds.", ephemeral=True)
+            await self.tower._autosim_loop(interaction)
+
 
     class GiveUpButton(discord.ui.Button):
         def __init__(self, tower: "BattleTowerView"):
@@ -314,6 +328,26 @@ class BattleTowerView(discord.ui.View):
             candidate = self.cog._tower_scale(candidate, diff)
         candidate.setdefault("level", desired_level)
         return candidate
+
+    async def _autosim_loop(self, interaction: discord.Interaction):
+        """Continuously simulates turns every few seconds until stopped or battle ends."""
+        while self.autosim_running and self.f_cur > 0 and self.p_cur > 0:
+            mv = _pick_damage_move(self.player) or _coerce_move(self.player, (self.player.get("moves") or ["tackle"])[0])
+            await self._turn(interaction, mv, autosim=True)
+            await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=2))
+
+            # if foe fainted and there's a new battle ready, continue automatically
+            if self.f_cur <= 0:
+                await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=3))
+                if hasattr(self, "foe") and self.f_cur == self.f_max:
+                    continue
+                else:
+                    self.autosim_running = False
+                    break
+
+    if not self.autosim_running:
+        await interaction.followup.send("✅ Auto-Sim ended.", ephemeral=True)
+
 
 
 
