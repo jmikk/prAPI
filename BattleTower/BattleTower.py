@@ -494,20 +494,20 @@ class BattleTowerView(discord.ui.View):
         await self._safe_edit(interaction, embed=summary, view=self)
 
     async def _safe_edit(self, interaction: discord.Interaction, *, embed: discord.Embed, view: Optional[discord.ui.View] = None):
-    try:
-        if not interaction.response.is_done():
-            # ACK + edit the component’s original message
-            await interaction.response.edit_message(embed=embed, view=view)
-            return
+        try:
+            if not interaction.response.is_done():
+                # ACK + edit the component’s original message
+                await interaction.response.edit_message(embed=embed, view=view)
+                return
 
-        # Already ACKed (maybe via defer) -> edit the original
-        await interaction.edit_original_response(embed=embed, view=view)
-    except Exception:
-        # Last resort: edit the message object directly
-        if getattr(self, "message", None):
-            await self.message.edit(embed=embed, view=view)
-        elif hasattr(interaction, "message") and interaction.message:
-            await interaction.message.edit(embed=embed, view=view)
+            # Already ACKed (maybe via defer) -> edit the original
+            await interaction.edit_original_response(embed=embed, view=view)
+        except Exception:
+            # Last resort: edit the message object directly
+            if getattr(self, "message", None):
+                await self.message.edit(embed=embed, view=view)
+            elif hasattr(interaction, "message") and interaction.message:
+                await interaction.message.edit(embed=embed, view=view)
 
     async def _defeat(self, interaction: discord.Interaction, foe_used: str, dealt: int):
         # reset streak
