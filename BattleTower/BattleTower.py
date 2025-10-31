@@ -262,47 +262,21 @@ class BattleTowerView(discord.ui.View):
         async def callback(self, interaction: discord.Interaction):
             if interaction.user.id != self.tower.user_id:
                 return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
+
+            desired = int(self.tower.foe.get("level", 1))
+            self.tower.foe = await self.tower._fetch_new_foe(desired)
+
+            # Reset foe HP and refresh UI
             self.tower.f_cur = self.tower.f_max = _init_hp(self.tower.foe)
             self.tower._arm_player_buttons()
             emb = _battle_embed(
                 "Team Battle — Battle Tower",
                 self.tower.player, self.tower.p_cur, self.tower.p_max,
                 self.tower.foe, self.tower.f_cur, self.tower.f_max,
-                footer="Rematch started at the same level.",
+                footer=f"Rematch at Lv {desired} — new opponent!",
             )
             await interaction.response.edit_message(embed=emb, view=self.tower)
 
-    class RematchHigher(discord.ui.Button):
-        def __init__(self, tower: "BattleTowerView"):
-            super().__init__(style=discord.ButtonStyle.primary, label="⬆️ Challenge Higher Level")
-            self.tower = tower
-
-        async def callback(self, interaction: discord.Interaction):
-            if interaction.user.id != self.tower.user_id:
-                return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
-
-            # Use the *cog's* scaler
-            cog = self.tower.ctx.cog
-            if hasattr(cog, "_tower_scale"):
-                self.tower.foe = cog._tower_scale(self.tower.foe, self.tower.level_step)
-            else:
-                # Fallback growth
-                s = self.tower.foe.get("stats", {})
-                for _ in range(self.tower.level_step):
-                    for k in s:
-                        s[k] += random.choice([0, 1, 1, 2, 2, 3])
-                self.tower.foe["stats"] = s
-                self.tower.foe["level"] = self.tower.foe.get("level", 1) + self.tower.level_step
-
-            self.tower.f_cur = self.tower.f_max = _init_hp(self.tower.foe)
-            self.tower._arm_player_buttons()
-            emb = _battle_embed(
-                "Team Battle — Battle Tower",
-                self.tower.player, self.tower.p_cur, self.tower.p_max,
-                self.tower.foe, self.tower.f_cur, self.tower.f_max,
-                footer=f"Challenging higher level foe (Lv {self.tower.foe.get('level','?')}).",
-            )
-            await interaction.response.edit_message(embed=emb, view=self.tower)
 
     class CloseButton(discord.ui.Button):
         def __init__(self):
@@ -310,6 +284,37 @@ class BattleTowerView(discord.ui.View):
 
         async def callback(self, interaction: discord.Interaction):
             await interaction.response.edit_message(view=None)
+
+    async def _fetch_new_foe(self, desired_level: int) -> Dict:
+        """
+        Ask the main cog for a fresh NPC, ensure it's a different species than the current foe,
+        and scale it up to desired_level.
+        """
+        gcog = self.ctx.bot.get_cog("GachaCatchEmAll")
+        if not gcog:
+            return self.foe  # fallback
+
+        old_id = self.foe.get("pokedex_id") or self.foe.get("name")
+        candidate = None
+
+        # Try a few times to get a different species
+        for _ in range(10):
+            npc_list = await gcog._generate_npc_team(1, 1)
+            cand = copy.deepcopy(npc_list[0] if isinstance(npc_list, list) else npc_list)
+            new_id = cand.get("pokedex_id") or cand.get("name")
+            if new_id != old_id:
+                candidate = cand
+                break
+            candidate = cand  # keep last as fallback
+
+        # Scale to desired level
+        base_lv = int(candidate.get("level", 1))
+        diff = max(0, desired_level - base_lv)
+        if diff and hasattr(self.cog, "_tower_scale"):
+            candidate = self.cog._tower_scale(candidate, diff)
+        candidate.setdefault("level", desired_level)
+        return candidate
+
 
 
     async def _turn(self, interaction: discord.Interaction, move: Tuple[str, str, str, int], autosim: bool):
@@ -422,33 +427,27 @@ class BattleTowerView(discord.ui.View):
             for mon in self.team:
                 lines.append(f"**{mon.get('name','?').title()}** +{final_exp} EXP")
 
-        # Count win and check floor-up
         self.total_wins += 1
         self.wins_since_floor_up += 1
         floor_msg = ""
         if self.wins_since_floor_up >= 10:
             self.wins_since_floor_up = 0
             self.current_floor += 1
-            # scale foe for next battle (auto up-scaling)
-            if hasattr(self.cog, "_tower_scale"):
-                self.foe = self.cog._tower_scale(self.foe, self.level_step)
-            else:
-                s = self.foe.get("stats", {})
-                for _ in range(self.level_step):
-                    for k in s:
-                        s[k] += random.choice([0, 1, 1, 2, 2, 3])
-                self.foe["stats"] = s
-                self.foe["level"] = self.foe.get("level", 1) + self.level_step
+
+            # New foe at higher level (different species)
+            desired = int(self.foe.get("level", 1)) + self.level_step
+            self.foe = await self._fetch_new_foe(desired)
+
             # reset foe HP for next fight
             self.f_cur = self.f_max = _init_hp(self.foe)
             floor_msg = f"\n\n⬆️ **Floor Up!** You’ve reached **Floor {self.current_floor}**."
+
             # update highest floor in storage
             await self.cog._set_highest_floor(self.user_id, self.current_floor)
 
         # Summary embed (victory)
         self.clear_items()
         self.add_item(self.RematchSame(self))
-        self.add_item(self.RematchHigher(self))
         self.add_item(self.CloseButton())
 
         summary = discord.Embed(title=f"🏆 Victory — Team EXP (Floor {self.current_floor})", color=discord.Color.green())
