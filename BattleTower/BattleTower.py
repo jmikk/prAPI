@@ -376,7 +376,6 @@ class BattleTowerView(discord.ui.View):
                 # Only show arrow if they actually leveled up
                 lvl_text = f"Lv {before_lvl} → {new_lvl}" if new_lvl > before_lvl else f"Lv {new_lvl}"
 
-                # Green bar (🟩 filled, ⬛ empty)
                 bar = self._green_xp_bar(gcog, new_lvl, new_xp)
 
                 lines.append(f"**{mon['name'].title()}** \n {lvl_text}  {bar}")
