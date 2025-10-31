@@ -520,7 +520,7 @@ class BattleTower(commands.Cog):
     @commands.hybrid_command(name="battletower")
     async def battletower(self, ctx: commands.Context, floor: int = 1):
         """Fight an endlessly scaling NPC at the given level. Buttons = your moves."""
-        leve = floor
+        level = floor
         level_step: int = 1
         await ctx.defer()
 
