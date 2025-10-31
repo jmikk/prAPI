@@ -165,7 +165,7 @@ class BattleTowerView(discord.ui.View):
 
         self.autosim_running = False
 
-        self.autosim_delay = 1.0  # seconds between autosim actions
+        self.autosim_delay = 10.0  # seconds between autosim actions
 
 
 
