@@ -131,13 +131,18 @@ def _battle_embed(
 class BattleTowerView(discord.ui.View):
     """Interactive Battle Tower fight loop."""
 
-    def __init__(self, ctx: commands.Context, player: Dict, foe: Dict, level_step: int = 5, timeout: int = 180):
+    def __init__(self, ctx: commands.Context, player_team: List[Dict], foe: Dict, level_step: int = 5, timeout: int = 180):
         super().__init__(timeout=timeout)
         self.ctx = ctx
         self.cog: BattleTower = ctx.cog
         self.user_id = ctx.author.id
         self.level_step = level_step
-        self.player = copy.deepcopy(player)
+
+        self.team: List[Dict] = copy.deepcopy(player_team)
+        self.pi: int = 0  # party index
+        self.player: Dict = self.team[self.pi]
+
+        # Opponent
         self.foe = copy.deepcopy(foe)
 
         # Pools
@@ -152,6 +157,20 @@ class BattleTowerView(discord.ui.View):
 
 
     # --- inside BattleTowerView ---
+    def _advance_next_player(self) -> bool:
+        """
+        Move to next party member if any remain. Returns True if switched,
+        False if no more mons (team wiped).
+        """
+        self.pi += 1
+        if self.pi >= len(self.team):
+            return False
+        self.player = self.team[self.pi]
+        self.p_max = _init_hp(self.player)
+        self.p_cur = self.p_max
+        self._arm_player_buttons()
+        return True
+
 
     def _arm_player_buttons(self):
         self.clear_items()
@@ -283,8 +302,25 @@ class BattleTowerView(discord.ui.View):
         foe_move = _pick_damage_move(self.foe) or ("tackle", "normal", "physical", 40)
         f_dmg = _calc_damage(self.foe, self.player, foe_move)
         self.p_cur = max(0, self.p_cur - f_dmg)
+
         if self.p_cur <= 0:
-            return await self._defeat(interaction, foe_move[0], f_dmg)
+            # Try to send next party mon
+            if self._advance_next_player():
+                # Switched successfully: announce and continue
+                footer = (
+                    f"Your previous mon fainted. You sent out **{self.player['name'].title()}**!\n"
+                    f"(Foe used {foe_move[0]} for {f_dmg} damage.)"
+                )
+                emb = _battle_embed(
+                    "Team Battle — Battle Tower",
+                    self.player, self.p_cur, self.p_max,
+                    self.foe, self.f_cur, self.f_max,
+                    footer,
+                )
+                return await interaction.response.edit_message(embed=emb, view=self)
+            else:
+                # No more team members: defeat
+                return await self._defeat(interaction, foe_move[0], f_dmg)
 
         footer = f"You used {move[0]} ({p_dmg}). Foe used {foe_move[0]} ({f_dmg})."
         emb = _battle_embed("Team Battle — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
@@ -395,7 +431,7 @@ class BattleTower(commands.Cog):
         team = await gcog._get_user_team(ctx.author)
         if not team:
             return await ctx.reply("You don't have a team set up.")
-        player = copy.deepcopy(team[0])
+        player = copy.deepcopy(team)
 
         # Ensure keys we use exist:
         player.setdefault("level", player.get("level", 1))
@@ -413,11 +449,11 @@ class BattleTower(commands.Cog):
 
         # 3) Send interactive view
         view = BattleTowerView(ctx, player=player, foe=foe, level_step=level_step)
-        pmax = _init_hp(player)
+        pmax = _init_hp(player[0])
         fmax = _init_hp(foe)
         emb = _battle_embed(
             "Team Battle — Battle Tower",
-            player, pmax, pmax,
+            player[0], pmax, pmax,
             foe, fmax, fmax,
             footer="Choose a move, ⏩ Auto-Sim, or Give Up.",
         )
