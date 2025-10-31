@@ -692,6 +692,71 @@ class BattleTower(commands.Cog):
     async def _reset_streak(self, user_id: int) -> None:
         await self._set_streak(user_id, 0)
 
+    @commands.hybrid_command(name="battletowerinfo", aliases=("btinfo", "bti"))
+    async def battletowerinfo(self, ctx: commands.Context):
+        """Show your Battle Tower stats and mechanics overview."""
+        # For slash usage, defer ephemerally; classic prefix just ignores it.
+        try:
+            await ctx.defer(ephemeral=True)
+        except Exception:
+            pass
+    
+        user_id = ctx.author.id
+        highest = await self._get_highest_floor(user_id)
+        streak = await self._get_streak(user_id)
+    
+        # Mechanics summary (kept short & readable)
+        dmg_lines = [
+            "• **Damage** ≈ `power × (Atk/Def) × STAB × Type × RNG × SpeedBonus`",
+            "   — STAB: ×1.5 if move type matches attacker type",
+            "   — Type: super (×2), not very (×0.5), immune (×0) → we still deal **min 1**",
+            "   — RNG: ×0.85 ~ ×1.00; SpeedBonus: ×1.05 if attacker ≥ defender Speed",
+        ]
+    
+        autosim = [
+            "• **Auto-Sim**: instant resolve with bias (player damage ×0.65, foe ×1.10).",
+            "  Use real buttons for best results.",
+        ]
+    
+        floors = [
+            "• **Floors**: +1 floor every **10 wins** in a run.",
+            "  You can start up to your **highest unlocked floor**.",
+        ]
+    
+        emb = discord.Embed(
+            title="Battle Tower — Info & Your Stats",
+            color=discord.Color.blurple()
+        )
+        emb.add_field(
+            name="Your Stats",
+            value=f"• **Highest Floor Unlocked:** {highest}\n",
+            inline=False
+        )
+        emb.add_field(
+            name="Damage Model",
+            value="\n".join(dmg_lines),
+            inline=False
+        )
+        emb.add_field(
+            name="Auto-Sim",
+            value="\n".join(autosim),
+            inline=False
+        )
+        emb.add_field(
+            name="Floors & Progression",
+            value="\n".join(floors),
+            inline=False
+        )
+        emb.set_footer(text="Use $battletower to start. Choose a move, ⏩ Auto-Sim, or Give Up.")
+    
+        # Send ephemerally if slash; otherwise normal send.
+        try:
+            await ctx.send(embed=emb, ephemeral=True)
+        except TypeError:
+            # Fallback for prefix command contexts that don't support ephemeral arg
+            await ctx.send(embed=emb)
+
+
 
     @commands.hybrid_command(name="battletower")
     async def battletower(self, ctx: commands.Context, floor: int = 1):
