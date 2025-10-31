@@ -10,6 +10,50 @@ import asyncio  # top of file
 
 HP_BAR_LEN = 20
 
+# --- Type chart (Gen6+ style) ---
+# Multiplier lookup: TYPE_CHART[attacking_type].get(defending_type, 1.0)
+TYPE_CHART = {
+    "normal": {"rock": 0.5, "ghost": 0.0, "steel": 0.5},
+    "fire":   {"fire": 0.5, "water": 0.5, "grass": 2.0, "ice": 2.0, "bug": 2.0, "rock": 0.5, "dragon": 0.5, "steel": 2.0},
+    "water":  {"fire": 2.0, "water": 0.5, "grass": 0.5, "ground": 2.0, "rock": 2.0, "dragon": 0.5},
+    "electric":{"water": 2.0, "electric": 0.5, "grass": 0.5, "ground": 0.0, "flying": 2.0, "dragon": 0.5},
+    "grass":  {"fire": 0.5, "water": 2.0, "grass": 0.5, "poison": 0.5, "ground": 2.0, "flying": 0.5, "bug": 0.5, "rock": 2.0, "dragon": 0.5, "steel": 0.5},
+    "ice":    {"fire": 0.5, "water": 0.5, "grass": 2.0, "ice": 0.5, "ground": 2.0, "flying": 2.0, "dragon": 2.0, "steel": 0.5},
+    "fighting":{"normal": 2.0, "ice": 2.0, "rock": 2.0, "dark": 2.0, "steel": 2.0, "poison": 0.5, "flying": 0.5, "psychic": 0.5, "bug": 0.5, "fairy": 0.5, "ghost": 0.0},
+    "poison": {"grass": 2.0, "fairy": 2.0, "poison": 0.5, "ground": 0.5, "rock": 0.5, "ghost": 0.5, "steel": 0.0},
+    "ground": {"fire": 2.0, "electric": 2.0, "poison": 2.0, "rock": 2.0, "steel": 2.0, "grass": 0.5, "bug": 0.5, "flying": 0.0},
+    "flying": {"grass": 2.0, "fighting": 2.0, "bug": 2.0, "electric": 0.5, "rock": 0.5, "steel": 0.5},
+    "psychic":{"fighting": 2.0, "poison": 2.0, "psychic": 0.5, "steel": 0.5, "dark": 0.0},
+    "bug":    {"grass": 2.0, "psychic": 2.0, "dark": 2.0, "fire": 0.5, "fighting": 0.5, "poison": 0.5, "flying": 0.5, "ghost": 0.5, "steel": 0.5, "fairy": 0.5},
+    "rock":   {"fire": 2.0, "ice": 2.0, "flying": 2.0, "bug": 2.0, "fighting": 0.5, "ground": 0.5, "steel": 0.5},
+    "ghost":  {"psychic": 2.0, "ghost": 2.0, "dark": 0.5, "normal": 0.0},
+    "dragon": {"dragon": 2.0, "steel": 0.5, "fairy": 0.0},
+    "dark":   {"psychic": 2.0, "ghost": 2.0, "fighting": 0.5, "dark": 0.5, "fairy": 0.5},
+    "steel":  {"rock": 2.0, "ice": 2.0, "fairy": 2.0, "fire": 0.5, "water": 0.5, "electric": 0.5, "steel": 0.5},
+    "fairy":  {"fighting": 2.0, "dragon": 2.0, "dark": 2.0, "fire": 0.5, "poison": 0.5, "steel": 0.5},
+}
+
+def _type_effectiveness(multitype: str, defender_types: List[str]) -> Tuple[float, str]:
+    """
+    Returns (multiplier, descriptor) where descriptor is:
+    "", "It’s super effective!", "It’s not very effective…", "It doesn’t affect the foe…"
+    Stacks correctly vs dual-typed targets.
+    """
+    atk_type = (multitype or "normal").lower()
+    mult = 1.0
+    for d in (defender_types or []):
+        d = d.lower()
+        mult *= TYPE_CHART.get(atk_type, {}).get(d, 1.0)
+
+    if mult == 0.0:
+        return 0.0, "It doesn’t affect the foe…"
+    if mult > 1.0:
+        return mult, "It’s super effective!"
+    if 0.0 < mult < 1.0:
+        return mult, "It’s not very effective…"
+    return 1.0, ""
+
+
 
 def _hp_bar(cur: int, maxhp: int, length: int = HP_BAR_LEN) -> str:
     cur = max(0, min(cur, maxhp))
@@ -85,7 +129,7 @@ def _pick_damage_move(mon: Dict) -> Optional[Tuple[str, str, str, int]]:
 
 
 def _calc_damage(attacker: Dict, defender: Dict, move: Tuple[str, str, str, int]) -> int:
-    """Simple, fast damage model with STAB + RNG."""
+    """Simple, fast damage model with STAB + type effectiveness + RNG."""
     _name, mtype, style, power = move
     a = attacker.get("stats", {})
     d = defender.get("stats", {})
@@ -95,11 +139,20 @@ def _calc_damage(attacker: Dict, defender: Dict, move: Tuple[str, str, str, int]
         atk = a.get("special-attack", 1)
         dfc = d.get("special-defense", 1)
 
+    # STAB
     stab = 1.5 if mtype in (attacker.get("types") or []) else 1.0
+
+    # Type effectiveness
+    eff_mult, _ = _type_effectiveness(mtype, defender.get("types") or [])
+
     rand = random.uniform(0.85, 1.0)
     spd_bonus = 1.05 if a.get("speed", 0) >= d.get("speed", 0) else 1.0
-    dmg = (power * (atk / max(1, dfc)) * stab * rand * spd_bonus)
+
+    dmg = (power * (atk / max(1, dfc)) * stab * eff_mult * rand * spd_bonus)
+
+    # Soft-lock guard: even if eff_mult == 0.0, deal at least 1
     return max(1, int(dmg))
+
 
 
 def _battle_embed(
@@ -403,6 +456,7 @@ class BattleTowerView(discord.ui.View):
         self.moves_used = getattr(self, "moves_used", {})
 
         # --- Player hits ---
+        p_eff_mult, p_eff_desc = _type_effectiveness(move[1], self.foe.get("types") or [])
         p_dmg = _calc_damage(self.player, self.foe, move)
         self.f_cur = max(0, self.f_cur - p_dmg)
         # record immediately to avoid UnboundLocalError on early returns
@@ -416,6 +470,7 @@ class BattleTowerView(discord.ui.View):
 
         # --- Foe counters ---
         foe_move = _pick_damage_move(self.foe) or ("tackle", "normal", "physical", 40)
+        f_eff_mult, f_eff_desc = _type_effectiveness(foe_move[1], self.player.get("types") or [])
         f_dmg = _calc_damage(self.foe, self.player, foe_move)
         self.p_cur = max(0, self.p_cur - f_dmg)
         self.total_damage_taken += f_dmg
@@ -427,9 +482,9 @@ class BattleTowerView(discord.ui.View):
             # Try to send next party mon
             if self._advance_next_player():
                 footer = (
-                    f"Your previous mon fainted. You sent out **{self.player['name'].title()}**!\n"
-                    f"(Foe used {foe_move[0]} for {f_dmg} damage.)"
-                )
+                f"You used {move[0]} ({p_dmg}). {p_eff_desc} "
+                f"Foe used {foe_move[0]} ({f_dmg}). {f_eff_desc}"
+                ).strip()
                 emb = _battle_embed(
                     "Team Battle — Battle Tower",
                     self.player, self.p_cur, self.p_max,
