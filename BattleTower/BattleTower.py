@@ -546,7 +546,7 @@ class BattleTower(commands.Cog):
         highest = await self._get_highest_floor(ctx.author.id)  # default 1
         start_floor = highest if floor is None else min(highest, max(1, int(floor)))
         if floor is not None and start_floor != floor:
-            await ctx.send(f"You can only start on your highest unlocked floor. Starting on **Floor {start_floor}**.", ephemeral=True)
+            await ctx.send(f"You can only start on your highest unlocked floor. Your highest **Floor {start_floor}**.", ephemeral=True)
             return
         gcog = self.bot.get_cog("GachaCatchEmAll")
         if not gcog:
