@@ -225,31 +225,23 @@ class BattleTowerView(discord.ui.View):
                 return await interaction.response.defer(ephemeral=True)
 
             await interaction.response.defer()
-
-            # Toggle
             self.tower.autosim_running = not self.tower.autosim_running
 
+            # Re-arm controls for current state
+            self.tower._apply_controls(mode="battle")
+
+            # Refresh the battle embed with the correct single/toggle button
+            emb = _battle_embed(
+                "Team Battle — Battle Tower (AutoSim)" if self.tower.autosim_running else "Team Battle — Battle Tower",
+                self.tower.player, self.tower.p_cur, self.tower.p_max,
+                self.tower.foe, self.tower.f_cur, self.tower.f_max,
+                footer="Auto-Sim running… only the toggle is active." if self.tower.autosim_running else "Auto-Sim stopped. Choose a move."
+            )
+            await self.tower._safe_edit(interaction, embed=emb, view=self.tower)
+
             if self.tower.autosim_running:
-                # Replace all buttons with only Auto-Sim
-                self.tower._arm_autosim_only()
-                emb = _battle_embed(
-                    "Team Battle — Battle Tower (AutoSim)",
-                    self.tower.player, self.tower.p_cur, self.tower.p_max,
-                    self.tower.foe, self.tower.f_cur, self.tower.f_max,
-                    footer="Auto-Sim running… only the toggle is active.",
-                )
-                await self.tower._safe_edit(interaction, embed=emb, view=self.tower)
                 await self.tower._autosim_loop(interaction)
-            else:
-                # Restore full control buttons
-                self.tower._arm_player_buttons()
-                emb = _battle_embed(
-                    "Team Battle — Battle Tower",
-                    self.tower.player, self.tower.p_cur, self.tower.p_max,
-                    self.tower.foe, self.tower.f_cur, self.tower.f_max,
-                    footer="Auto-Sim stopped. Choose a move.",
-                )
-                await self.tower._safe_edit(interaction, embed=emb, view=self.tower)
+
 
 
 
@@ -336,7 +328,9 @@ class BattleTowerView(discord.ui.View):
     async def _autosim_loop(self, interaction: discord.Interaction):
         while self.autosim_running and self.f_cur > 0 and self.p_cur > 0:
             mv = _pick_damage_move(self.player) or _coerce_move(self.player, (self.player.get("moves") or ["tackle"])[0])
+            self._apply_controls(mode="battle")
             await self._turn(interaction, mv, autosim=True)
+            self._apply_controls(mode="battle")
             await asyncio.sleep(self.autosim_delay)  # 1 second between actions
 
             if self.f_cur <= 0:
@@ -396,6 +390,7 @@ class BattleTowerView(discord.ui.View):
                     self.foe, self.f_cur, self.f_max,
                     footer,
                 )
+                self._apply_controls(mode="battle")
                 return await self._safe_edit(interaction, embed=emb, view=self)
             else:
                 return await self._defeat(interaction, foe_used=foe_move[0], dealt=f_dmg)
@@ -407,6 +402,7 @@ class BattleTowerView(discord.ui.View):
             self.foe, self.f_cur, self.f_max,
             footer,
         )
+        self._apply_controls(mode="battle")
         await self._safe_edit(interaction, embed=emb, view=self)
 
     def _arm_autosim_only(self):
@@ -480,8 +476,7 @@ class BattleTowerView(discord.ui.View):
             "\n".join(lines)
         )
         summary.set_footer(text=f"+{final_exp} EXP to each (base {base_exp}, streak x{bonus_mult:.2f}; current streak {new_streak})")
-        self._arm_player_buttons()
-        # First, show the victory summary on the SAME message
+        self._apply_controls(mode="victory")        # First, show the victory summary on the SAME message
         await self._safe_edit(interaction, embed=summary, view=self)
 
         if self.autosim_running:
@@ -552,7 +547,7 @@ class BattleTowerView(discord.ui.View):
         self.add_item(self.CloseButton())
 
         emb = discord.Embed(title="💀 Defeat — Run Summary", description=desc, color=discord.Color.red())
-        self._arm_player_buttons()
+        self._apply_controls(mode="defeat") 
         await self._safe_edit(interaction, embed=emb, view=self)
 
     def _apply_controls(self, *, mode: str = "battle"):
