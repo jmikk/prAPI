@@ -268,6 +268,38 @@ class BattleTowerView(discord.ui.View):
         self.autosim_player_mult = 0.65  # nerf player
         self.autosim_foe_mult = 1.10     # slight foe buff
 
+    async def _canonicalize_mon_moves(mon: Dict) -> None:
+        """
+        Convert mon['moves'] entries into structured 'name {type,style,power}'
+        using PokéAPI. On failure: primary type + special + 60. Status moves -> 0.
+        """
+        raw_moves = mon.get("moves") or []
+        new_moves: List[str] = []
+    
+        for mv in raw_moves[:4]:
+            # Already structured? keep as-is
+            if "{" in mv and "}" in mv:
+                new_moves.append(mv)
+                continue
+    
+            info = await _fetch_move_from_pokeapi(mv)
+            if info:
+                mtype, style, power = info
+                if power is None:
+                    power = 0 if style == "status" else 60
+                new_moves.append(f"{mv.strip()} {{{mtype},{style},{int(power)}}}")
+            else:
+                mtype = (mon.get("types") or ["normal"])[0]
+                new_moves.append(f"{mv.strip()} {{{mtype},special,60}}")
+    
+        if not new_moves:
+            # Ensure at least one move
+            mtype = (mon.get("types") or ["normal"])[0]
+            new_moves = [f"tackle {{{mtype},physical,40}}"]
+    
+        mon["moves"] = new_moves
+
+
     async def _fast_autosim_resolve(self, interaction: discord.Interaction):
         """
         Instantly simulate to victory/defeat with biased damage (player nerfed).
@@ -488,6 +520,7 @@ class BattleTowerView(discord.ui.View):
         if diff and hasattr(self.cog, "_tower_scale"):
             candidate = self.cog._tower_scale(candidate, diff)
         candidate.setdefault("level", desired_level)
+        await _canonicalize_mon_moves(candidate)
         return candidate
 
     async def _autosim_loop(self, interaction: discord.Interaction):
@@ -882,6 +915,7 @@ class BattleTower(commands.Cog):
             foe = self._tower_scale(foe, level - start_lv)
         
         await self._canonicalize_team_moves(player_team)
+        await _canonicalize_mon_moves(foe)
         
         # 3) Send interactive view (pass the WHOLE party)
         view = BattleTowerView(ctx, player_team=player_team, foe=foe, level_step=level_step)
