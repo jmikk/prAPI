@@ -165,6 +165,8 @@ class BattleTowerView(discord.ui.View):
 
         self.autosim_running = False
 
+        self.autosim_delay = 1.0  # seconds between autosim actions
+
 
 
 
@@ -331,9 +333,16 @@ class BattleTowerView(discord.ui.View):
         while self.autosim_running and self.f_cur > 0 and self.p_cur > 0:
             mv = _pick_damage_move(self.player) or _coerce_move(self.player, (self.player.get("moves") or ["tackle"])[0])
             await self._turn(interaction, mv, autosim=True)
-            await asyncio.sleep(2)
-            # If foe fainted, _victory will prep next foe; just continue loop naturally
-        # No end message — we quietly stop
+            await asyncio.sleep(self.autosim_delay)  # 1 second between actions
+
+            if self.f_cur <= 0:
+                # brief pause before next battle handoff
+                await asyncio.sleep(self.autosim_delay)
+                if hasattr(self, "foe") and self.f_cur == self.f_max:
+                    continue
+                self.autosim_running = False
+                break
+
 
 
 
@@ -481,9 +490,8 @@ class BattleTowerView(discord.ui.View):
         # First, show the victory summary on the SAME message
         await self._safe_edit(interaction, embed=summary, view=self)
 
-        # If autosim is running, wait a moment then replace the SAME message with next battle
         if self.autosim_running:
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(self.autosim_delay)  # 1 second
             desired = int(self.foe.get("level", 1))
             self.foe = await self._fetch_new_foe(desired)
             self.f_cur = self.f_max = _init_hp(self.foe)
@@ -494,9 +502,9 @@ class BattleTowerView(discord.ui.View):
                 footer=f"AutoSim continues... Lv {desired} opponent.",
             )
             await self._safe_edit(interaction, embed=emb, view=self)
-            # Resume loop
             await self._autosim_loop(interaction)
             return
+
 
         await self._safe_edit(interaction, embed=summary, view=self)
 
