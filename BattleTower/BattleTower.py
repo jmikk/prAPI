@@ -495,7 +495,7 @@ class BattleTowerView(discord.ui.View):
             else:
                 return await self._defeat(interaction, foe_used=foe_move[0], dealt=f_dmg)
 
-        footer = f"You used {move[0]} ({p_dmg}). Foe used {foe_move[0]} ({f_dmg})."
+        footer = f"You used {move[0]} ({p_dmg}).\n Foe used {foe_move[0]} ({f_dmg})."
         emb = _battle_embed(
             "Team Battle — Battle Tower",
             self.player, self.p_cur, self.p_max,
