@@ -491,6 +491,23 @@ class BattleTowerView(discord.ui.View):
             "\n".join(lines)
         )
         summary.set_footer(text=f"+{final_exp} EXP to each (base {base_exp}, streak x{bonus_mult:.2f}; current streak {new_streak})")
+        # If autosim was running, automatically challenge next foe
+        if self.autosim_running:
+            await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=3))
+            if self.wins_since_floor_up >= 10:
+                desired = int(self.foe.get("level", 1)) + self.level_step
+            else:
+                desired = int(self.foe.get("level", 1))
+            self.foe = await self._fetch_new_foe(desired)
+            self.f_cur = self.f_max = _init_hp(self.foe)
+            emb = _battle_embed(
+                "Team Battle — Battle Tower (AutoSim)",
+                self.player, self.p_cur, self.p_max,
+                self.foe, self.f_cur, self.f_max,
+                footer=f"AutoSim continues... Lv {desired} opponent.",
+            )
+            await interaction.followup.send(embed=emb, view=self)
+            await self._autosim_loop(interaction)
 
         await interaction.response.edit_message(embed=summary, view=self)
 
