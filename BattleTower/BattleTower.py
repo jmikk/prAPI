@@ -424,7 +424,7 @@ class BattleTowerView(discord.ui.View):
 
         footer = f"You used {move[0]} ({p_dmg}). Foe used {foe_move[0]} ({f_dmg})."
         emb = _battle_embed("Team Battle — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
-       await self._safe_edit(interaction, embed=emb, view=self)
+        await self._safe_edit(interaction, embed=emb, view=self)
 
         if autosim:
             # Continue autosim with a random damaging move
