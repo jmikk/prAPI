@@ -405,21 +405,6 @@ class BattleTowerView(discord.ui.View):
         )
         await self._safe_edit(interaction, embed=emb, view=self)
 
-        if autosim:
-            nmv = _pick_damage_move(self.player) or move
-            await self._turn(interaction, nmv, autosim=True)
-
-
-        footer = f"You used {move[0]} ({p_dmg}). Foe used {foe_move[0]} ({f_dmg})."
-        emb = _battle_embed("Team Battle — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
-        await self._safe_edit(interaction, embed=emb, view=self)
-
-        if autosim:
-            # Continue autosim with a random damaging move
-            nmv = _pick_damage_move(self.player)
-            if nmv:
-                # Use followup to acknowledge, then immediately continue
-                await self._turn(interaction, nmv, autosim=True)
 
     async def _victory(self, interaction: discord.Interaction, used: str, dealt: int):
         gcog = interaction.client.get_cog("GachaCatchEmAll")
