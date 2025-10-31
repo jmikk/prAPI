@@ -7,6 +7,53 @@ import discord
 from redbot.core import commands, Config
 
 import asyncio  # top of file
+import aiohttp
+
+
+import aiohttp
+
+# Simple in-memory cache to avoid hammering PokéAPI
+MOVE_CACHE: Dict[str, Tuple[str, str, Optional[int]]] = {}
+# cache value: (type, style, power_or_None)
+
+def _slugify_move_name(name: str) -> str:
+    # PokéAPI uses kebab-case lowercase, e.g. "Solar Beam" -> "solar-beam"
+    return name.strip().lower().replace(" ", "-")
+
+def _damage_class_to_style(dc: str) -> str:
+    dc = (dc or "").lower()
+    if dc in ("physical", "special"):
+        return dc
+    return "status"
+
+async def _fetch_move_from_pokeapi(raw_name: str) -> Optional[Tuple[str, str, Optional[int]]]:
+    """
+    Returns (type, style, power_or_None) or None if failed.
+    style is one of "physical", "special", "status".
+    power_or_None preserves None if PokéAPI has no power (e.g., status moves).
+    """
+    name = _slugify_move_name(raw_name)
+    if name in MOVE_CACHE:
+        return MOVE_CACHE[name]
+
+    url = f"https://pokeapi.co/api/v2/move/{name}"
+    try:
+        timeout = aiohttp.ClientTimeout(total=6)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    return None
+                data = await resp.json()
+
+        mtype = (data.get("type", {}) or {}).get("name", "normal")
+        dmg_class = (data.get("damage_class", {}) or {}).get("name", "status")
+        style = _damage_class_to_style(dmg_class)
+        power = data.get("power", None)  # may be None for status or weird moves
+        MOVE_CACHE[name] = (mtype, style, power)
+        return MOVE_CACHE[name]
+    except Exception:
+        return None
+
 
 HP_BAR_LEN = 20
 
@@ -220,6 +267,42 @@ class BattleTowerView(discord.ui.View):
 
         self.autosim_player_mult = 0.65  # nerf player
         self.autosim_foe_mult = 1.10     # slight foe buff
+
+    async def _canonicalize_team_moves(self, team: List[Dict]) -> None:
+        """
+        For each mon in team, convert plain move names into your structured format:
+        'name {type,style,power}'. If PokéAPI fails, default to 60 power (or 0 for status).
+        """
+        for mon in team:
+            raw_moves = mon.get("moves") or []
+            new_moves: List[str] = []
+            for mv in raw_moves[:4]:  # keep first 4 like your UI
+                # Keep already-structured moves as-is
+                if "{" in mv and "}" in mv:
+                    new_moves.append(mv)
+                    continue
+    
+                info = await _fetch_move_from_pokeapi(mv)
+                if info:
+                    mtype, style, power = info
+                    # If PokéAPI has no power, pick sensible default:
+                    # status -> 0; otherwise 60 (your requested default)
+                    if power is None:
+                        power = 0 if style == "status" else 60
+                    new_moves.append(f"{mv.strip()} {{{mtype},{style},{int(power)}}}")
+                else:
+                    # Full fallback: use mon's primary type, assume special 60 like your current default
+                    mtype = (mon.get("types") or ["normal"])[0]
+                    new_moves.append(f"{mv.strip()} {{{mtype},special,60}}")
+    
+            # If a mon had fewer than 1-4 moves, keep the remainder untouched or add a generic tackle if you like
+            if not new_moves:
+                # Ensure at least one move exists
+                mtype = (mon.get("types") or ["normal"])[0]
+                new_moves = [f"tackle {{{mtype},physical,40}}"]
+    
+            mon["moves"] = new_moves
+
 
     async def _fast_autosim_resolve(self, interaction: discord.Interaction):
         """
@@ -798,7 +881,9 @@ class BattleTower(commands.Cog):
         start_lv = int(foe["level"])
         if level > start_lv:
             foe = self._tower_scale(foe, level - start_lv)
-
+        
+        await self._canonicalize_team_moves(player_team)
+        
         # 3) Send interactive view (pass the WHOLE party)
         view = BattleTowerView(ctx, player_team=player_team, foe=foe, level_step=level_step)
 
