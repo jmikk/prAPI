@@ -345,8 +345,8 @@ class BattleTowerView(discord.ui.View):
                     self.autosim_running = False
                     break
 
-    if not self.autosim_running:
-        await interaction.followup.send("✅ Auto-Sim ended.", ephemeral=True)
+        if not self.autosim_running:
+            await interaction.followup.send("✅ Auto-Sim ended.", ephemeral=True)
 
 
 
