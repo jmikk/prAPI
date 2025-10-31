@@ -312,38 +312,40 @@ class BattleTowerView(discord.ui.View):
             await interaction.response.edit_message(view=None)
 
 
-    # ---------- Turn engine ----------
     async def _turn(self, interaction: discord.Interaction, move: Tuple[str, str, str, int], autosim: bool):
         if interaction.user.id != self.user_id:
             return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
 
-            # after computing p_dmg and applying to foe:
-        self.total_damage_dealt += p_dmg
-        # track move usage
-        self.moves_used[move[0]] = self.moves_used.get(move[0], 0) + 1
+        # Ensure run counters exist (in case they weren't set in __init__)
+        self.total_damage_dealt = getattr(self, "total_damage_dealt", 0)
+        self.total_damage_taken = getattr(self, "total_damage_taken", 0)
+        self.turns = getattr(self, "turns", 0)
+        self.moves_used = getattr(self, "moves_used", {})
 
-        # foe damage
-        self.total_damage_taken += f_dmg
-
-        # increment turn counter once per full round
-        self.turns += 1
-
-
-        # Player hits
+        # --- Player hits ---
         p_dmg = _calc_damage(self.player, self.foe, move)
         self.f_cur = max(0, self.f_cur - p_dmg)
+        # record immediately to avoid UnboundLocalError on early returns
+        self.total_damage_dealt += p_dmg
+        self.moves_used[move[0]] = self.moves_used.get(move[0], 0) + 1
+
         if self.f_cur <= 0:
+            # Count the turn when the foe is KO'd before their action
+            self.turns += 1
             return await self._victory(interaction, move[0], p_dmg)
 
-        # Foe counters
+        # --- Foe counters ---
         foe_move = _pick_damage_move(self.foe) or ("tackle", "normal", "physical", 40)
         f_dmg = _calc_damage(self.foe, self.player, foe_move)
         self.p_cur = max(0, self.p_cur - f_dmg)
+        self.total_damage_taken += f_dmg
+
+        # Full round completed
+        self.turns += 1
 
         if self.p_cur <= 0:
             # Try to send next party mon
             if self._advance_next_player():
-                # Switched successfully: announce and continue
                 footer = (
                     f"Your previous mon fainted. You sent out **{self.player['name'].title()}**!\n"
                     f"(Foe used {foe_move[0]} for {f_dmg} damage.)"
@@ -356,8 +358,22 @@ class BattleTowerView(discord.ui.View):
                 )
                 return await interaction.response.edit_message(embed=emb, view=self)
             else:
-                # No more team members: defeat
-                return await self._defeat(interaction, foe_move[0], f_dmg)
+                return await self._defeat(interaction, foe_used=foe_move[0], dealt=f_dmg)
+
+        footer = f"You used {move[0]} ({p_dmg}). Foe used {foe_move[0]} ({f_dmg})."
+        emb = _battle_embed(
+            "Team Battle — Battle Tower",
+            self.player, self.p_cur, self.p_max,
+            self.foe, self.f_cur, self.f_max,
+            footer,
+        )
+        await interaction.response.edit_message(embed=emb, view=self)
+
+        if autosim:
+            nmv = _pick_damage_move(self.player) or move
+            await interaction.followup.send("⏩ Auto-sim continues…", ephemeral=True)
+            await self._turn(interaction, nmv, autosim=True)
+
 
         footer = f"You used {move[0]} ({p_dmg}). Foe used {foe_move[0]} ({f_dmg})."
         emb = _battle_embed("Team Battle — Battle Tower", self.player, self.p_cur, self.p_max, self.foe, self.f_cur, self.f_max, footer)
