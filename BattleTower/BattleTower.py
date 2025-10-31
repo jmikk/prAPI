@@ -184,7 +184,7 @@ class BattleTowerView(discord.ui.View):
         need = max(1, need)
         filled = int(round(10 * (xp / need)))
         filled = max(0, min(10, filled))
-        return "`"+"▰" * filled + "▱" * (10 - filled)+ "`" + f"  {xp}/{need}"
+        return "▰" * filled + "▱" * (10 - filled) + f"  {xp}/{need}"
         # ▰▰▰▱▱▱▱▱
 
 
