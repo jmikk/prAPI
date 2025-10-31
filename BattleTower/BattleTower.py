@@ -367,7 +367,7 @@ class BattleTowerView(discord.ui.View):
 
     class RematchSame(discord.ui.Button):
         def __init__(self, tower: "BattleTowerView"):
-            super().__init__(style=discord.ButtonStyle.success, label=f"Next fight {self.wins_since_floor_up-10}/10")
+            super().__init__(style=discord.ButtonStyle.success, label=f"Next fight /10")
             self.tower = tower
 
         async def callback(self, interaction: discord.Interaction):
