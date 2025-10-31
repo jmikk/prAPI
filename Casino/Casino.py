@@ -46,8 +46,9 @@ class Casino(commands.Cog):
 
     async def update_balance(self, user: discord.Member, amount: int):
         balance = await self.get_balance(user)
-        new_balance = max(0, balance + amount)  # Prevent negative balance
+        new_balance = max(0, balance + amount * .99)  # Prevent negative balance
         await self.config.user(user).master_balance.set(new_balance)
+        await self._decrease_regional_debt(amount * .01)
         return new_balance
 
 
