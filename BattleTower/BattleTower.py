@@ -362,7 +362,7 @@ class BattleTower(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=0xBATTLETOWER, force_registration=True)
+        self.config = Config.get_conf(self, identifier="0xBATTLETOWER", force_registration=True)
         # per-user streak
         self.config.register_user(bt_streak=0)
 
