@@ -152,10 +152,6 @@ class BattleTowerView(discord.ui.View):
         self.p_cur = self.p_max
         self.f_cur = self.f_max
 
-        self.autosim_running = False
-
-        self.autosim_delay = 2.0  # seconds between autosim actions
-
         self._arm_player_buttons()
 
         # run/session stats
@@ -167,6 +163,9 @@ class BattleTowerView(discord.ui.View):
         self.total_damage_taken: int = 0
         self.moves_used: Dict[str, int] = {}
 
+        self.autosim_running = False
+
+        self.autosim_delay = 2.0  # seconds between autosim actions
 
 
 
@@ -205,7 +204,24 @@ class BattleTowerView(discord.ui.View):
 
 
     def _arm_player_buttons(self):
-       self._apply_controls(mode="battle")
+        self.clear_items()
+
+        # Add up to 4 damage moves (fallback to first 4 if needed)
+        candidates = []
+        for m in self.player.get("moves", [])[:4]:
+            mv = _coerce_move(self.player, m)
+            if mv[2] in ("physical", "special") and mv[3] > 0:
+                candidates.append(mv)
+        if not candidates:
+            for m in self.player.get("moves", [])[:4]:
+                candidates.append(_coerce_move(self.player, m))
+
+        for idx, mv in enumerate(candidates[:4]):
+            label = f"{mv[0].title()} ({mv[3]})"
+            self.add_item(self.MoveButton(tower=self, label=label, move=mv, row=0 if idx < 3 else 1))
+
+        self.add_item(self.AutoSimButton(tower=self))
+        self.add_item(self.GiveUpButton(tower=self))
 
     class MoveButton(discord.ui.Button):
         def __init__(self, tower: "BattleTowerView", label: str, move: Tuple[str, str, str, int], row: int = 0):
@@ -223,27 +239,14 @@ class BattleTowerView(discord.ui.View):
 
         async def callback(self, interaction: discord.Interaction):
             if interaction.user.id != self.tower.user_id:
-                return await interaction.response.defer(ephemeral=True)
+                return await interaction.response.defer(ephemeral=True)  # silent reject
 
-            await interaction.response.defer()
+            # Toggle autosim without sending messages
             self.tower.autosim_running = not self.tower.autosim_running
-
-            # Re-arm controls for current state
-            self.tower._apply_controls(mode="battle")
-
-            # Refresh the battle embed with the correct single/toggle button
-            emb = _battle_embed(
-                "Team Battle — Battle Tower (AutoSim)" if self.tower.autosim_running else "Team Battle — Battle Tower",
-                self.tower.player, self.tower.p_cur, self.tower.p_max,
-                self.tower.foe, self.tower.f_cur, self.tower.f_max,
-                footer="Auto-Sim running… only the toggle is active." if self.tower.autosim_running else "Auto-Sim stopped. Choose a move."
-            )
-            await self.tower._safe_edit(interaction, embed=emb, view=self.tower)
+            await interaction.response.defer()  # ACK with no new message
 
             if self.tower.autosim_running:
                 await self.tower._autosim_loop(interaction)
-
-
 
 
     class GiveUpButton(discord.ui.Button):
@@ -256,18 +259,14 @@ class BattleTowerView(discord.ui.View):
                 return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
             self.tower.clear_items()
             await self.tower.cog._reset_streak(self.tower.user_id)
-
-            # Build summary
+            self.tower.add_item(self.tower.CloseButton())
             emb = _battle_embed(
                 "You Gave Up — Battle Tower",
                 self.tower.player, self.tower.p_cur, self.tower.p_max,
                 self.tower.foe, self.tower.f_cur, self.tower.f_max,
                 footer="Battle ended by player.",
             )
-
-            # Only correct buttons for this state:
-            self.tower._apply_controls(mode="defeat")
-            await self.tower._safe_edit(interaction, embed=emb, view=self.tower)
+            await interaction.response.edit_message(embed=emb, view=self.tower)
 
     class RematchSame(discord.ui.Button):
         def __init__(self, tower: "BattleTowerView"):
@@ -283,6 +282,7 @@ class BattleTowerView(discord.ui.View):
 
             # Reset foe HP and refresh UI
             self.tower.f_cur = self.tower.f_max = _init_hp(self.tower.foe)
+            self.tower._arm_player_buttons()
             emb = _battle_embed(
                 "Team Battle — Battle Tower",
                 self.tower.player, self.tower.p_cur, self.tower.p_max,
@@ -332,9 +332,7 @@ class BattleTowerView(discord.ui.View):
     async def _autosim_loop(self, interaction: discord.Interaction):
         while self.autosim_running and self.f_cur > 0 and self.p_cur > 0:
             mv = _pick_damage_move(self.player) or _coerce_move(self.player, (self.player.get("moves") or ["tackle"])[0])
-            self._apply_controls(mode="battle")
             await self._turn(interaction, mv, autosim=True)
-            self._apply_controls(mode="battle")
             await asyncio.sleep(self.autosim_delay)  # 1 second between actions
 
             if self.f_cur <= 0:
@@ -394,7 +392,6 @@ class BattleTowerView(discord.ui.View):
                     self.foe, self.f_cur, self.f_max,
                     footer,
                 )
-                self._apply_controls(mode="battle")
                 return await self._safe_edit(interaction, embed=emb, view=self)
             else:
                 return await self._defeat(interaction, foe_used=foe_move[0], dealt=f_dmg)
@@ -406,13 +403,7 @@ class BattleTowerView(discord.ui.View):
             self.foe, self.f_cur, self.f_max,
             footer,
         )
-        self._apply_controls(mode="battle")
         await self._safe_edit(interaction, embed=emb, view=self)
-
-    def _arm_autosim_only(self):
-        """Show only the Auto-Sim toggle button while autosim is active."""
-        self._apply_controls()
-
 
 
     async def _victory(self, interaction: discord.Interaction, used: str, dealt: int):
@@ -468,6 +459,11 @@ class BattleTowerView(discord.ui.View):
             # update highest floor in storage
             await self.cog._set_highest_floor(self.user_id, self.current_floor)
 
+        # Summary embed (victory)
+        self.clear_items()
+        self.add_item(self.RematchSame(self))
+        self.add_item(self.CloseButton())
+
         summary = discord.Embed(title=f"🏆 Victory — Team EXP (Floor {self.current_floor})", color=discord.Color.green())
         summary.description = (
             f"Used **{used}** for **{dealt}** damage."
@@ -475,7 +471,8 @@ class BattleTowerView(discord.ui.View):
             "\n".join(lines)
         )
         summary.set_footer(text=f"+{final_exp} EXP to each (base {base_exp}, streak x{bonus_mult:.2f}; current streak {new_streak})")
-        self._apply_controls(mode="victory")        # First, show the victory summary on the SAME message
+        
+        # First, show the victory summary on the SAME message
         await self._safe_edit(interaction, embed=summary, view=self)
 
         if self.autosim_running:
@@ -542,53 +539,11 @@ class BattleTowerView(discord.ui.View):
             f"**Moves Used:** {mlist}"
         )
 
+        self.clear_items()
+        self.add_item(self.CloseButton())
 
         emb = discord.Embed(title="💀 Defeat — Run Summary", description=desc, color=discord.Color.red())
-        self._apply_controls(mode="defeat") 
         await self._safe_edit(interaction, embed=emb, view=self)
-
-    def _apply_controls(self, *, mode: str = "battle"):
-        """
-        mode: "battle" (normal turn UI), "victory", or "defeat"
-        Ensures only the correct buttons are on the message.
-        """
-        self.clear_items()
-
-        # While autosim is running, ALWAYS show just the toggle button.
-        if self.autosim_running:
-            btn = self.AutoSimButton(tower=self)
-            btn.label = "⏹ Stop Auto-Sim"
-            self.add_item(btn)
-            return
-
-        # Autosim not running: show the appropriate set per mode
-        if mode == "battle":
-            # normal move controls
-            candidates = []
-            for m in self.player.get("moves", [])[:4]:
-                mv = _coerce_move(self.player, m)
-                if mv[2] in ("physical", "special") and mv[3] > 0:
-                    candidates.append(mv)
-            if not candidates:
-                for m in self.player.get("moves", [])[:4]:
-                    candidates.append(_coerce_move(self.player, m))
-
-            for idx, mv in enumerate(candidates[:4]):
-                label = f"{mv[0].title()} ({mv[3]})"
-                self.add_item(self.MoveButton(tower=self, label=label, move=mv, row=0 if idx < 3 else 1))
-
-            self.add_item(self.AutoSimButton(tower=self))
-            self.add_item(self.GiveUpButton(tower=self))
-
-        elif mode == "victory":
-            # post-battle summary controls
-            self.add_item(self.RematchSame(self))
-            self.add_item(self.CloseButton())
-
-        elif mode == "defeat":
-            # defeat summary only offers close
-            self.add_item(self.CloseButton())
-
 
 
 
