@@ -520,7 +520,7 @@ class BattleTowerView(discord.ui.View):
         if diff and hasattr(self.cog, "_tower_scale"):
             candidate = self.cog._tower_scale(candidate, diff)
         candidate.setdefault("level", desired_level)
-        await _canonicalize_mon_moves(candidate)
+        await self._canonicalize_mon_moves(candidate)
         return candidate
 
     async def _autosim_loop(self, interaction: discord.Interaction):
