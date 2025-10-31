@@ -239,14 +239,35 @@ class BattleTowerView(discord.ui.View):
 
         async def callback(self, interaction: discord.Interaction):
             if interaction.user.id != self.tower.user_id:
-                return await interaction.response.defer(ephemeral=True)  # silent reject
+                return await interaction.response.defer(ephemeral=True)
 
-            # Toggle autosim without sending messages
+            await interaction.response.defer()
+
+            # Toggle
             self.tower.autosim_running = not self.tower.autosim_running
-            await interaction.response.defer()  # ACK with no new message
 
             if self.tower.autosim_running:
+                # Replace all buttons with only Auto-Sim
+                self.tower._arm_autosim_only()
+                emb = _battle_embed(
+                    "Team Battle — Battle Tower (AutoSim)",
+                    self.tower.player, self.tower.p_cur, self.tower.p_max,
+                    self.tower.foe, self.tower.f_cur, self.tower.f_max,
+                    footer="Auto-Sim running… only the toggle is active.",
+                )
+                await self.tower._safe_edit(interaction, embed=emb, view=self.tower)
                 await self.tower._autosim_loop(interaction)
+            else:
+                # Restore full control buttons
+                self.tower._arm_player_buttons()
+                emb = _battle_embed(
+                    "Team Battle — Battle Tower",
+                    self.tower.player, self.tower.p_cur, self.tower.p_max,
+                    self.tower.foe, self.tower.f_cur, self.tower.f_max,
+                    footer="Auto-Sim stopped. Choose a move.",
+                )
+                await self.tower._safe_edit(interaction, embed=emb, view=self.tower)
+
 
 
     class GiveUpButton(discord.ui.Button):
@@ -405,6 +426,12 @@ class BattleTowerView(discord.ui.View):
         )
         await self._safe_edit(interaction, embed=emb, view=self)
 
+    def _arm_autosim_only(self):
+        """Show only the Auto-Sim toggle button while autosim is active."""
+        self.clear_items()
+        self.add_item(self.AutoSimButton(tower=self))
+
+
 
     async def _victory(self, interaction: discord.Interaction, used: str, dealt: int):
         gcog = interaction.client.get_cog("GachaCatchEmAll")
@@ -471,7 +498,7 @@ class BattleTowerView(discord.ui.View):
             "\n".join(lines)
         )
         summary.set_footer(text=f"+{final_exp} EXP to each (base {base_exp}, streak x{bonus_mult:.2f}; current streak {new_streak})")
-        
+        self._arm_player_buttons()
         # First, show the victory summary on the SAME message
         await self._safe_edit(interaction, embed=summary, view=self)
 
@@ -543,6 +570,7 @@ class BattleTowerView(discord.ui.View):
         self.add_item(self.CloseButton())
 
         emb = discord.Embed(title="💀 Defeat — Run Summary", description=desc, color=discord.Color.red())
+        self._arm_player_buttons()
         await self._safe_edit(interaction, embed=emb, view=self)
 
 
