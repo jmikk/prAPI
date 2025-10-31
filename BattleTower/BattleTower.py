@@ -139,6 +139,8 @@ class BattleTowerView(discord.ui.View):
         self.user_id = ctx.author.id
         self.level_step = level_step
 
+        self.autosim_running = False
+
         self.team: List[Dict] = copy.deepcopy(player_team)
         self.pi: int = 0  # party index
         self.player: Dict = self.team[self.pi]
@@ -163,9 +165,51 @@ class BattleTowerView(discord.ui.View):
         self.total_damage_taken: int = 0
         self.moves_used: Dict[str, int] = {}
 
+        self.autosim_player_mult = 0.65  # nerf player
+        self.autosim_foe_mult = 1.10     # slight foe buff
+
+    async def _fast_autosim_resolve(self, interaction: discord.Interaction):
+        """
+        Instantly simulate to victory/defeat with biased damage (player nerfed).
+        Produces a single final embed (victory or defeat).
+        """
+        # Block the loop-style autosim; we're doing an instant resolve.
         self.autosim_running = False
 
-        self.autosim_delay = 2.0  # seconds between autosim actions
+        while self.f_cur > 0 and self.p_cur > 0:
+            # --- Player action ---
+            mv = _pick_damage_move(self.player) or _coerce_move(self.player, (self.player.get("moves") or ["tackle"])[0])
+            p_dmg_raw = _calc_damage(self.player, self.foe, mv)
+            p_dmg = max(1, int(p_dmg_raw * self.autosim_player_mult))
+            self.f_cur = max(0, self.f_cur - p_dmg)
+
+            # tracking
+            self.total_damage_dealt = getattr(self, "total_damage_dealt", 0) + p_dmg
+            self.moves_used = getattr(self, "moves_used", {})
+            self.moves_used[mv[0]] = self.moves_used.get(mv[0], 0) + 1
+
+            if self.f_cur <= 0:
+                self.turns = getattr(self, "turns", 0) + 1
+                # End immediately with your normal victory flow
+                return await self._victory(interaction, used=mv[0], dealt=p_dmg)
+
+            # --- Foe action ---
+            foe_move = _pick_damage_move(self.foe) or ("tackle", "normal", "physical", 40)
+            f_dmg_raw = _calc_damage(self.foe, self.player, foe_move)
+            f_dmg = max(1, int(f_dmg_raw * self.autosim_foe_mult))
+            self.p_cur = max(0, self.p_cur - f_dmg)
+            self.total_damage_taken = getattr(self, "total_damage_taken", 0) + f_dmg
+
+            # Round done
+            self.turns = getattr(self, "turns", 0) + 1
+
+            if self.p_cur <= 0:
+                # Try to send next party mon silently (no UI churn)
+                if self._advance_next_player():
+                    # continue simulation with new active mon
+                    continue
+                # Out of mons → defeat summary
+                return await self._defeat(interaction, foe_used=foe_move[0], dealt=f_dmg)
 
 
 
@@ -239,14 +283,14 @@ class BattleTowerView(discord.ui.View):
 
         async def callback(self, interaction: discord.Interaction):
             if interaction.user.id != self.tower.user_id:
-                return await interaction.response.defer(ephemeral=True)  # silent reject
+                return await interaction.response.defer(ephemeral=True)
 
-            # Toggle autosim without sending messages
-            self.tower.autosim_running = not self.tower.autosim_running
-            await interaction.response.defer()  # ACK with no new message
+            # ACK immediately so the client doesn't show "interaction failed"
+            await interaction.response.defer()
 
-            if self.tower.autosim_running:
-                await self.tower._autosim_loop(interaction)
+            # One-shot, instant resolve with bias
+            await self.tower._fast_autosim_resolve(interaction)
+
 
 
     class GiveUpButton(discord.ui.Button):
