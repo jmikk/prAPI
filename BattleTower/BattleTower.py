@@ -268,42 +268,6 @@ class BattleTowerView(discord.ui.View):
         self.autosim_player_mult = 0.65  # nerf player
         self.autosim_foe_mult = 1.10     # slight foe buff
 
-    async def _canonicalize_team_moves(self, team: List[Dict]) -> None:
-        """
-        For each mon in team, convert plain move names into your structured format:
-        'name {type,style,power}'. If PokéAPI fails, default to 60 power (or 0 for status).
-        """
-        for mon in team:
-            raw_moves = mon.get("moves") or []
-            new_moves: List[str] = []
-            for mv in raw_moves[:4]:  # keep first 4 like your UI
-                # Keep already-structured moves as-is
-                if "{" in mv and "}" in mv:
-                    new_moves.append(mv)
-                    continue
-    
-                info = await _fetch_move_from_pokeapi(mv)
-                if info:
-                    mtype, style, power = info
-                    # If PokéAPI has no power, pick sensible default:
-                    # status -> 0; otherwise 60 (your requested default)
-                    if power is None:
-                        power = 0 if style == "status" else 60
-                    new_moves.append(f"{mv.strip()} {{{mtype},{style},{int(power)}}}")
-                else:
-                    # Full fallback: use mon's primary type, assume special 60 like your current default
-                    mtype = (mon.get("types") or ["normal"])[0]
-                    new_moves.append(f"{mv.strip()} {{{mtype},special,60}}")
-    
-            # If a mon had fewer than 1-4 moves, keep the remainder untouched or add a generic tackle if you like
-            if not new_moves:
-                # Ensure at least one move exists
-                mtype = (mon.get("types") or ["normal"])[0]
-                new_moves = [f"tackle {{{mtype},physical,40}}"]
-    
-            mon["moves"] = new_moves
-
-
     async def _fast_autosim_resolve(self, interaction: discord.Interaction):
         """
         Instantly simulate to victory/defeat with biased damage (player nerfed).
@@ -750,6 +714,41 @@ class BattleTower(commands.Cog):
         self.config = Config.get_conf(self, identifier="0xBATTLETOWER", force_registration=True)
         # per-user streak
         self.config.register_user(bt_streak=0, bt_highest_floor=1)  # add bt_highest_floor
+
+    async def _canonicalize_team_moves(self, team: List[Dict]) -> None:
+        """
+        For each mon in team, convert plain move names into your structured format:
+        'name {type,style,power}'. If PokéAPI fails, default to 60 power (or 0 for status).
+        """
+        for mon in team:
+            raw_moves = mon.get("moves") or []
+            new_moves: List[str] = []
+            for mv in raw_moves[:4]:  # keep first 4 like your UI
+                # Keep already-structured moves as-is
+                if "{" in mv and "}" in mv:
+                    new_moves.append(mv)
+                    continue
+    
+                info = await _fetch_move_from_pokeapi(mv)
+                if info:
+                    mtype, style, power = info
+                    # If PokéAPI has no power, pick sensible default:
+                    # status -> 0; otherwise 60 (your requested default)
+                    if power is None:
+                        power = 0 if style == "status" else 60
+                    new_moves.append(f"{mv.strip()} {{{mtype},{style},{int(power)}}}")
+                else:
+                    # Full fallback: use mon's primary type, assume special 60 like your current default
+                    mtype = (mon.get("types") or ["normal"])[0]
+                    new_moves.append(f"{mv.strip()} {{{mtype},special,60}}")
+    
+            # If a mon had fewer than 1-4 moves, keep the remainder untouched or add a generic tackle if you like
+            if not new_moves:
+                # Ensure at least one move exists
+                mtype = (mon.get("types") or ["normal"])[0]
+                new_moves = [f"tackle {{{mtype},physical,40}}"]
+    
+            mon["moves"] = new_moves
 
         # add helpers in BattleTower class
     async def _get_highest_floor(self, user_id: int) -> int:
