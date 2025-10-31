@@ -204,7 +204,7 @@ class BattleTowerView(discord.ui.View):
 
 
     def _arm_player_buttons(self):
-       self._apply_controls()
+       self._apply_controls(mode="battle")
 
     class MoveButton(discord.ui.Button):
         def __init__(self, tower: "BattleTowerView", label: str, move: Tuple[str, str, str, int], row: int = 0):
@@ -255,14 +255,18 @@ class BattleTowerView(discord.ui.View):
                 return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
             self.tower.clear_items()
             await self.tower.cog._reset_streak(self.tower.user_id)
-            self.tower.add_item(self.tower.CloseButton())
+
+            # Build summary
             emb = _battle_embed(
                 "You Gave Up — Battle Tower",
                 self.tower.player, self.tower.p_cur, self.tower.p_max,
                 self.tower.foe, self.tower.f_cur, self.tower.f_max,
                 footer="Battle ended by player.",
             )
-            await interaction.response.edit_message(embed=emb, view=self.tower)
+
+            # Only correct buttons for this state:
+            self.tower._apply_controls(mode="defeat")
+            await self.tower._safe_edit(interaction, embed=emb, view=self.tower)
 
     class RematchSame(discord.ui.Button):
         def __init__(self, tower: "BattleTowerView"):
@@ -278,7 +282,6 @@ class BattleTowerView(discord.ui.View):
 
             # Reset foe HP and refresh UI
             self.tower.f_cur = self.tower.f_max = _init_hp(self.tower.foe)
-            self.tower._arm_player_buttons()
             emb = _battle_embed(
                 "Team Battle — Battle Tower",
                 self.tower.player, self.tower.p_cur, self.tower.p_max,
@@ -464,11 +467,6 @@ class BattleTowerView(discord.ui.View):
             # update highest floor in storage
             await self.cog._set_highest_floor(self.user_id, self.current_floor)
 
-        # Summary embed (victory)
-        self.clear_items()
-        self.add_item(self.RematchSame(self))
-        self.add_item(self.CloseButton())
-
         summary = discord.Embed(title=f"🏆 Victory — Team EXP (Floor {self.current_floor})", color=discord.Color.green())
         summary.description = (
             f"Used **{used}** for **{dealt}** damage."
@@ -543,8 +541,6 @@ class BattleTowerView(discord.ui.View):
             f"**Moves Used:** {mlist}"
         )
 
-        self.clear_items()
-        self.add_item(self.CloseButton())
 
         emb = discord.Embed(title="💀 Defeat — Run Summary", description=desc, color=discord.Color.red())
         self._apply_controls(mode="defeat") 
