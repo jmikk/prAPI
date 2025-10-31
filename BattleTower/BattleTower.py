@@ -170,6 +170,23 @@ class BattleTowerView(discord.ui.View):
         self._arm_player_buttons()
         return True
 
+    def _green_xp_bar(self, gcog, level: int, xp: int) -> str:
+        """🟩/⬛ 10-slot bar with numeric xp/need, using the main cog's _xp_needed if available."""
+        need = 0
+        if hasattr(gcog, "_xp_needed"):
+            try:
+                need = int(gcog._xp_needed(level))
+            except Exception:
+                need = 100
+        else:
+            need = 100
+
+        need = max(1, need)
+        filled = int(round(10 * (xp / need)))
+        filled = max(0, min(10, filled))
+        return "🟩" * filled + "⬛" * (10 - filled) + f"  {xp}/{need}"
+
+
 
     def _arm_player_buttons(self):
         self.clear_items()
@@ -349,34 +366,36 @@ class BattleTowerView(discord.ui.View):
         final_exp = int(round(base_exp * bonus_mult))
         new_streak = await self.cog._inc_streak(self.user_id)
 
-        # Build the summary lines (whole party gains EXP)
         lines = []
-        if gcog and hasattr(gcog, "_add_xp_to_entry") and hasattr(gcog, "_xp_bar"):
+        if gcog and hasattr(gcog, "_add_xp_to_entry"):
             for mon in self.team:
                 before_lvl = int(mon.get("level", 1))
                 before_xp = int(mon.get("xp", 0))
                 new_lvl, new_xp, _ = gcog._add_xp_to_entry(mon, final_exp)
-                bar = _safe_xpbar(gcog, new_lvl, new_xp)
-                lines.append(f"**{mon['name'].title()}** — Lv {before_lvl}→{new_lvl}  {bar}")
+
+                # Only show arrow if they actually leveled up
+                lvl_text = f"Lv {before_lvl} → {new_lvl}" if new_lvl > before_lvl else f"Lv {new_lvl}"
+
+                # Green bar (🟩 filled, ⬛ empty)
+                bar = self._green_xp_bar(gcog, new_lvl, new_xp)
+
+                lines.append(f"**{mon['name'].title()}** — {lvl_text}  {bar}")
         else:
-            # Fallback text if helpers are unavailable
             for mon in self.team:
                 lines.append(f"**{mon.get('name','?').title()}** +{final_exp} EXP")
 
-        # Show a dedicated summary page
+        # Summary embed
         self.clear_items()
         self.add_item(self.RematchSame(self))
         self.add_item(self.RematchHigher(self))
         self.add_item(self.CloseButton())
 
-        summary = discord.Embed(title="🏆 Victory — Team EXP Summary", color=discord.Color.gold())
-        summary.description = (
-            f"Used **{used}** for **{dealt}** damage.\n"
-            + "\n".join(lines)
-        )
+        summary = discord.Embed(title="🏆 Victory — Team EXP Summary", color=discord.Color.green())
+        summary.description = f"Used **{used}** for **{dealt}** damage.\n" + "\n".join(lines)
         summary.set_footer(text=f"+{final_exp} EXP to each (base {base_exp}, streak x{bonus_mult:.2f}; current streak {new_streak})")
 
         await interaction.response.edit_message(embed=summary, view=self)
+
 
 
 
