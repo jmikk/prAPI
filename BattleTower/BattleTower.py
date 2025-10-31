@@ -373,6 +373,16 @@ class BattleTowerView(discord.ui.View):
                 before_xp = int(mon.get("xp", 0))
                 new_lvl, new_xp, _ = gcog._add_xp_to_entry(mon, final_exp)
 
+                # In BattleTowerView._victory (after awarding exp to self.team)
+                updates = []
+                for mon in self.team:
+                    # you already called: new_lvl, new_xp, _ = gcog._add_xp_to_entry(mon, final_exp)
+                    updates.append((mon["uid"], mon["level"], mon["xp"]))
+
+                # Persist to the user’s real data:
+                await gcog._apply_exp_bulk(self.ctx.author, updates)
+
+
                 # Only show arrow if they actually leveled up
                 lvl_text = f"Lv {before_lvl} → {new_lvl}" if new_lvl > before_lvl else f"Lv {new_lvl}"
 
