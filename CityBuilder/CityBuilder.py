@@ -1,24 +1,681 @@
 # citybuilder_buttons.py
 import asyncio
 import math
-from typing import Dict, Optional, Tuple, Callable
+from typing import Dict, Optional, Tuple, Callable, List, Set
 import io
 import aiohttp
 import discord
 from discord import ui
 from redbot.core import commands, Config
 import random
+import time
+
+SCRAP_PRICE_LOCAL = 5.0  # how much local currency per scrap
+
+TEAM_CELESTIAL = "Team Celestial Nexus"
+TEAM_DROWNED   = "Team Drowned World"
+TEAM_IRON      = "Team Iron Empire"
+TEAM_LIST      = [TEAM_CELESTIAL, TEAM_DROWNED, TEAM_IRON]
+
+TEAM_CRESTS = {
+    "Team Celestial Nexus": "https://i.imgur.com/Bg3F8uh.png",
+    "Team Iron Empire":     "https://i.imgur.com/JcCH03K.png",
+    "Team Drowned World":   "https://i.imgur.com/3wXxLSI.png",
+}
 
 # ====== Balance knobs ======
 BUILDINGS: Dict[str, Dict] = {
-    "house":   {"cost": 50.0,  "upkeep": 0, "produces": {},"capacity": 1, "tier": 0},  # +1 worker capacity
-    "farm":    {"cost": 100.0, "upkeep": 0, "produces": {"food": 5}, "tier": 1},
-    "mine":    {"cost": 200.0, "upkeep": 0, "produces": {"metal": 2}, "tier": 1},
-    "factory": {"cost": 500.0, "upkeep": 5, "produces": {"goods": 1}, "tier": 1},
+  "house": {
+    "cost": 100.0,
+    "inputs": {},
+    "upkeep": 0,
+    "tier": 0
+  },
+
+  # ----- Tier 1 -----
+  "Farm": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"food": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+  "Mine": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"ore": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+  "Lumberyard": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"wood": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+  "Mana fountain": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"Mana": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+  "Cow": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"milk": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+  "Goblin Camp": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"Goblin teeth": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+  "Fairy Grove": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"Fairy dust": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+  "oil well": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"oil": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+  "Sheep Pasture": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"wool": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+  "garden": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"herb": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+  "salt flats": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"salt": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+  "Fishery": {
+    "cost": 100.0,
+    "inputs": {},
+    "produces": {"fish": 1},
+    "upkeep": 0,
+    "tier": 1
+  },
+
+  # ----- Tier 2 -----
+  "smokehouse": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "food": 2, "fish": 2 },
+    "produces": { "dried meat": 1 },
+    "tier": 2
+  },
+  "forge kitchen": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "ore": 2, "food": 2 },
+    "produces": { "iron rations": 1 },
+    "tier": 2
+  },
+  "blacksmiths forge": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "wood": 2, "ore": 2 },
+    "produces": { "weapons": 1 },
+    "tier": 2
+  },
+  "Enchanter’s Workshop": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "Mana": 2, "wood": 2 },
+    "produces": { "magic staff": 1 },
+    "tier": 2
+  },
+  "Altar of Purity": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "milk": 2, "Mana": 2 },
+    "produces": { "Blessed cheese": 1 },
+    "tier": 2
+  },
+  "Witch’s Cauldron": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "Goblin teeth": 2, "milk": 2 },
+    "produces": { "cursed brew": 1 },
+    "tier": 2
+  },
+  "Fey Altar": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "Fairy dust": 2, "Goblin teeth": 2 },
+    "produces": { "Charm Amulet": 1 },
+    "tier": 2
+  },
+  "Arcane Lampworks": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "oil": 2, "Fairy dust": 2 },
+    "produces": { "Enchanted Lantern": 1 },
+    "tier": 2
+  },
+  "Oil Weaver’s Hall": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "wool": 2, "oil": 2 },
+    "produces": { "Oily Rags": 1 },
+    "tier": 2
+  },
+  "Druid’s Hut": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "herb": 2, "wool": 2 },
+    "produces": { "Healing Poultice": 1 },
+    "tier": 2
+  },
+  "Apothecary": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "salt": 2, "herb": 2 },
+    "produces": { "Preservation Tonic": 1 },
+    "tier": 2
+  },
+  "Sea Shrine": {
+    "cost": 300.0,
+    "upkeep": 10,
+    "inputs": { "fish": 2, "salt": 2 },
+    "produces": { "Dreid Kraken Jerky": 1 },
+    "tier": 2
+  },
+
+  # ----- Tier 3 -----
+  "Hunter’s Lodge": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "dried meat": 2, "Dreid Kraken Jerky": 2 },
+    "produces": { "Beast Provisions": 1 },
+    "tier": 3
+  },
+  "War Camp": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "iron rations": 2, "dried meat": 2 },
+    "produces": { "Soldier Supplies": 1 },
+    "tier": 3
+  },
+  "Armory Barracks": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "weapons": 2, "iron rations": 2 },
+    "produces": { "Armed Troops": 1 },
+    "tier": 3
+  },
+  "Wizard Forge": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "magic staff": 2, "weapons": 2 },
+    "produces": { "Arcane Weaponry": 1 },
+    "tier": 3
+  },
+  "Cathedral Armory": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "Blessed cheese": 2, "magic staff": 2 },
+    "produces": { "Holy Relic": 1 },
+    "tier": 3
+  },
+  "Blighted Chapel": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "cursed brew": 2, "Blessed cheese": 2 },
+    "produces": { "Corrupted Icon": 1 },
+    "tier": 3
+  },
+  "Dark Shrine": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "Charm Amulet": 2, "cursed brew": 2 },
+    "produces": { "Hexed Relic": 1 },
+    "tier": 3
+  },
+  "Oracle’s Tower": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "Enchanted Lantern": 2, "Charm Amulet": 2 },
+    "produces": { "Vision Crystal": 1 },
+    "tier": 3
+  },
+  "Pyromancer’s Lab": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "Oily Rags": 2, "Enchanted Lantern": 2 },
+    "produces": { "Firebomb": 1 },
+    "tier": 3
+  },
+  "Battlefield Tent": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "Healing Poultice": 2, "Oily Rags": 2 },
+    "produces": { "First Aid Pack": 1 },
+    "tier": 3
+  },
+  "Alchemical Lab": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "Preservation Tonic": 2, "Healing Poultice": 2 },
+    "produces": { "Elixir of Life": 1 },
+    "tier": 3
+  },
+  "Temple of the Deep": {
+    "cost": 400.0,
+    "upkeep": 15,
+    "inputs": { "Dreid Kraken Jerky": 2, "Preservation Tonic": 2 },
+    "produces": { "Tear of the Kraken": 1 },
+    "tier": 3
+  },
+
+  # ----- Tier 4 -----
+  "Grand Market": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "Beast Provisions": 2, "Tear of the Kraken": 2 },
+    "produces": { "Wealth": 1 },
+    "tier": 4
+  },
+  "Bloodforge": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "Soldier Supplies": 2, "Beast Provisions": 2 },
+    "produces": { "Warspawn": 1 },
+    "tier": 4
+  },
+  "War Academy": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "Armed Troops": 2, "Soldier Supplies": 2 },
+    "produces": { "Elite Army": 1 },
+    "tier": 4
+  },
+  "Battle Mage Citadel": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "Arcane Weaponry": 2, "Armed Troops": 2 },
+    "produces": { "War Mages": 1 },
+    "tier": 4
+  },
+  "Sacred Armory": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "Holy Relic": 2, "Arcane Weaponry": 2 },
+    "produces": { "Divine Crusaders": 1 },
+    "tier": 4
+  },
+  "Desecrated Cathedral": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "Corrupted Icon": 2, "Holy Relic": 2 },
+    "produces": { "Fallen Paladins": 1 },
+    "tier": 4
+  },
+  "Cabal Sanctum": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "Hexed Relic": 2, "Corrupted Icon": 2 },
+    "produces": { "Dark Cultists": 1 },
+    "tier": 4
+  },
+  "Oracle Spire": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "Vision Crystal": 2, "Hexed Relic": 2 },
+    "produces": { "Prophecy Scrolls": 1 },
+    "tier": 4
+  },
+  "Siege Workshop": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "Firebomb": 2, "Vision Crystal": 2 },
+    "produces": { "Demolition Squad": 1 },
+    "tier": 4
+  },
+  "Field Hospital": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "First Aid Pack": 2, "Firebomb": 2 },
+    "produces": { "War Medics": 1 },
+    "tier": 4
+  },
+  "Alchemical Sanctuary": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "Elixir of Life": 2, "First Aid Pack": 2 },
+    "produces": { "Immortal Guard": 1 },
+    "tier": 4
+  },
+  "Temple of the Abyss": {
+    "cost": 1000.0,
+    "upkeep": 40,
+    "inputs": { "Tear of the Kraken": 2, "Elixir of Life": 2 },
+    "produces": { "Kraken-Blessed Chosen": 1 },
+    "tier": 4
+  },
+
+  # ----- Tier 5 -----
+  "Abyssal Throne": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "Wealth": 2, "Kraken-Blessed Chosen": 2 },
+    "produces": { "Kraken Dominion": 1 },
+    "tier": 5
+  },
+  "Blood Market": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "Warspawn": 2, "Wealth": 2 },
+    "produces": { "Mercenary Legion": 1 },
+    "tier": 5
+  },
+  "Grand Fortress": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "Elite Army": 2, "Warspawn": 2 },
+    "produces": { "Conqueror Host": 1 },
+    "tier": 5
+  },
+  "Arcane War College": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "War Mages": 2, "Elite Army": 2 },
+    "produces": { "Spellbound Battalion": 1 },
+    "tier": 5
+  },
+  "Sanctified Citadel": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "Divine Crusaders": 2, "War Mages": 2 },
+    "produces": { "Holy Inquisition": 1 },
+    "tier": 5
+  },
+  "Twilight Abbey": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "Fallen Paladins": 2, "Divine Crusaders": 2 },
+    "produces": { "Oathbreakers": 1 },
+    "tier": 5
+  },
+  "Obsidian Pyramid": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "Dark Cultists": 2, "Fallen Paladins": 2 },
+    "produces": { "Shadow Hierarchy": 1 },
+    "tier": 5
+  },
+  "Temple of Oracles": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "Prophecy Scrolls": 2, "Dark Cultists": 2 },
+    "produces": { "Fateweavers": 1 },
+    "tier": 5
+  },
+  "Siege Foundry": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "Demolition Squad": 2, "Prophecy Scrolls": 2 },
+    "produces": { "War Machines": 1 },
+    "tier": 5
+  },
+  "Sanctum of Mercy": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "War Medics": 2, "Demolition Squad": 2 },
+    "produces": { "Battle Chaplains": 1 },
+    "tier": 5
+  },
+  "Hall of Eternity": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "Immortal Guard": 2, "War Medics": 2 },
+    "produces": { "Eternal Vanguard": 1 },
+    "tier": 5
+  },
+  "Abyssal Monastery": {
+    "cost": 1200.0,
+    "upkeep": 50,
+    "inputs": { "Kraken-Blessed Chosen": 2, "Immortal Guard": 2 },
+    "produces": { "Heralds of the Deep": 1 },
+    "tier": 5
+  },
+
+  # ----- Tier 6 -----
+  "Empire of the Deep": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "Kraken Dominion": 2, "Heralds of the Deep": 2 },
+    "produces": { "Kraken Imperium": 1 },
+    "tier": 6
+  },
+  "Council of Chains": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "Mercenary Legion": 2, "Kraken Dominion": 2 },
+    "produces": { "Slaver Dynasties": 1 },
+    "tier": 6
+  },
+  "Iron Dominion": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "Conqueror Host": 2, "Mercenary Legion": 2 },
+    "produces": { "Warlord Kingdoms": 1 },
+    "tier": 6
+  },
+  "Mage Conclave": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "Spellbound Battalion": 2, "Conqueror Host": 2 },
+    "produces": { "Arcane Dominion": 1 },
+    "tier": 6
+  },
+  "High Theocracy": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "Holy Inquisition": 2, "Spellbound Battalion": 2 },
+    "produces": { "Eternal Church": 1 },
+    "tier": 6
+  },
+  "Order of Twilight": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "Oathbreakers": 2, "Holy Inquisition": 2 },
+    "produces": { "Dusk Crusaders": 1 },
+    "tier": 6
+  },
+  "Night Court": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "Shadow Hierarchy": 2, "Oathbreakers": 2 },
+    "produces": { "Shadow Empire": 1 },
+    "tier": 6
+  },
+  "Council of Prophets": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "Fateweavers": 2, "Shadow Hierarchy": 2 },
+    "produces": { "Fate Dominion": 1 },
+    "tier": 6
+  },
+  "Engineer's Guildhall": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "War Machines": 2, "Fateweavers": 2 },
+    "produces": { "Colossus Engines": 1 },
+    "tier": 6
+  },
+  "Order of Mercy": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "Battle Chaplains": 2, "War Machines": 2 },
+    "produces": { "Holy Hospitallers": 1 },
+    "tier": 6
+  },
+  "Pantheon’s Vault": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "Eternal Vanguard": 2, "Battle Chaplains": 2 },
+    "produces": { "Demi-Gods": 1 },
+    "tier": 6
+  },
+  "Rite of Abyss": {
+    "cost": 18000.0,
+    "upkeep": 90,
+    "inputs": { "Heralds of the Deep": 2, "Eternal Vanguard": 2},
+    "produces": { "Deep Ascendants": 1 },
+    "tier": 6
+  },
+
+  # ----- Tier 7 -----
+  "Abyssal Convergence": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Kraken Imperium": 2, "Deep Ascendants": 2 },
+    "produces": { "World-Eater Cult": 1 },
+    "tier": 7
+  },
+  "Throne of Chains": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Slaver Dynasties": 2, "Kraken Imperium": 2 },
+    "produces": { "Tyrant Overlords": 1 },
+    "tier": 7
+  },
+  "Bloodforged Empire": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Warlord Kingdoms": 2, "Slaver Dynasties": 2 },
+    "produces": { "Eternal Conquerors": 1 },
+    "tier": 7
+  },
+  "Grand Arcanum": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Arcane Dominion": 2, "Warlord Kingdoms": 2 },
+    "produces": { "Spellforged Empire": 1 },
+    "tier": 7
+  },
+  "Celestial Synod": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Eternal Church": 2, "Arcane Dominion": 2 },
+    "produces": { "Divine Hierarchs": 1 },
+    "tier": 7
+  },
+  "Crimson Cathedral": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Dusk Crusaders": 2, "Eternal Church": 2 },
+    "produces": { "Twilight Zealots": 1 },
+    "tier": 7
+  },
+  "Crown of Midnight": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Shadow Empire": 2, "Dusk Crusaders": 2 },
+    "produces": { "Umbral Sovereigns": 1 },
+    "tier": 7
+  },
+  "Prophet-King’s Court": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Fate Dominion": 2, "Shadow Empire": 2 },
+    "produces": { "Destiny Weavers": 1 },
+    "tier": 7
+  },
+  "Titan Forge": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Colossus Engines": 2, "Fate Dominion": 2 },
+    "produces": { "Living War Machines": 1 },
+    "tier": 7
+  },
+  "Sanctum of Steel": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Holy Hospitallers": 2, "Colossus Engines": 2 },
+    "produces": { "Paladins of Iron": 1 },
+    "tier": 7
+  },
+  "Celestial Ascent": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Demi-Gods": 2, "Holy Hospitallers": 2 },
+    "produces": { "Minor Deities": 1 },
+    "tier": 7
+  },
+  "Abyssal Apotheosis": {
+    "cost": 24500.0,
+    "upkeep": 105,
+    "inputs": { "Deep Ascendants": 2, "Demi-Gods": 2 },
+    "produces": { "Eldritch Gods": 1 },
+    "tier": 7
+  },
+
+  # ----- Tier 8 -----
+  "The Abyss Awakens": {
+    "cost": 65000.0,
+    "upkeep": 160,
+    "inputs": {
+      "World-Eater Cult": 2,
+      "Eldritch Gods": 2,
+      "Umbral Sovereigns": 2,
+      "Twilight Zealots": 2
+    },
+    "produces": { "Team Drowned World tokens": 1 },
+    "tier": 8
+  },
+  "The Eternal Dominion": {
+    "cost": 65000.0,
+    "upkeep": 160,
+    "inputs": {
+      "Tyrant Overlords": 2,
+      "Eternal Conquerors": 2,
+      "Spellforged Empire": 2,
+      "Living War Machines": 2
+    },
+    "produces": { "Team Iron Empire tokens": 1 },
+    "tier": 8
+  },
+  "The Ascended Pantheon": {
+    "cost": 65000.0,
+    "upkeep": 160,
+    "inputs": {
+      "Divine Hierarchs": 2,
+      "Destiny Weavers": 2,
+      "Paladins of Iron": 2,
+      "Minor Deities": 2
+    },
+    "produces": { "Team Celestial Nexus tokens": 1 },
+    "tier": 8
+  }
 }
 
+
 # Per-worker wage (in WC) per tick; user pays in local currency at their rate
-WORKER_WAGE_WC = 1.0
+WORKER_WAGE_WC = 5.0
 
 
 TICK_SECONDS = 3600  # hourly ticks
@@ -29,6 +686,743 @@ NS_BASE = "https://www.nationstates.net/cgi-bin/api.cgi"
 
 # Default composite: 46 + a few companions (tweak freely)
 DEFAULT_SCALES = [46, 1, 10, 39]
+
+# ---------- Planner Entry Button (on the City main menu) -------------
+class PlanBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Plan", style=discord.ButtonStyle.secondary, custom_id="city:plan")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        embed = await view.cog.planner_embed(interaction.user, None, None, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanRootView(view.cog, view.author, show_admin=view.show_admin),
+        )
+
+# -------------------- Root: pick Buildings or Resources ---------------
+class PlanRootView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.show_admin = show_admin
+        self.add_item(PlanPickKindBtn("building"))
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+class PlanPickKindBtn(ui.Button):
+    def __init__(self, kind: str):
+        super().__init__(
+            label="Buildings" if kind == "building" else "Resources",
+            style=discord.ButtonStyle.primary,
+            custom_id=f"city:plan:{kind}",
+        )
+        self.kind = kind
+
+    async def callback(self, interaction: discord.Interaction):
+        root: PlanRootView = self.view  # type: ignore
+        embed = await root.cog.planner_embed(interaction.user, self.kind, None, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanTierView(root.cog, root.author, self.kind, root.show_admin),
+        )
+
+# -------------------- Tier select after kind --------------------------
+class PlanTierView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, kind: str, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.kind = kind
+        self.show_admin = show_admin
+        # Build a dropdown of all tiers (use cog._all_tiers())
+        self.add_item(PlanTierSelect(self.cog, self.kind))
+        self.add_item(BackToRootBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+class PlanTierSelect(ui.Select):
+    def __init__(self, cog: "CityBuilder", kind: str):
+        self.cog = cog
+        self.kind = kind
+        options = [discord.SelectOption(label=f"Tier {t}", value=str(t)) for t in cog._all_tiers()]
+        super().__init__(placeholder="Choose a tier", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        tier = int(self.values[0])
+        embed = await self.cog.planner_embed(interaction.user, self.kind, tier, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanItemView(self.cog, interaction.user, self.kind, tier, getattr(self.view, "show_admin", False)),  # type: ignore
+        )
+
+class BackToRootBtn(ui.Button):
+    def __init__(self, show_admin: bool):
+        super().__init__(label="Back", style=discord.ButtonStyle.secondary)
+        self.show_admin = show_admin
+
+    async def callback(self, interaction: discord.Interaction):
+        view: PlanTierView = self.view  # type: ignore
+        embed = await view.cog.planner_embed(interaction.user, None, None, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanRootView(view.cog, interaction.user, show_admin=self.show_admin),
+        )
+
+# -------------------- Item select after tier --------------------------
+class PlanItemView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, kind: str, tier: int, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.kind = kind
+        self.tier = int(tier)
+        self.show_admin = show_admin
+        self.add_item(PlanItemSelect(cog, kind, tier))
+        self.add_item(BackToTierBtn(kind, show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+class PlanItemSelect(ui.Select):
+    def __init__(self, cog: "CityBuilder", kind: str, tier: int):
+        self.cog = cog
+        self.kind = kind
+        self.tier = int(tier)
+        items = self.cog._items_by_tier(kind, tier)
+        options = [discord.SelectOption(label=name, value=name) for name in items] or [discord.SelectOption(label="—", value="-", default=True)]
+        super().__init__(placeholder="Choose what to plan", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        name = self.values[0]
+        if name == "-":
+            return await interaction.response.send_message("Nothing in this tier.", ephemeral=True)
+        embed = await self.cog.planner_embed(interaction.user, self.kind, self.tier, name)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanTreeView(self.cog, interaction.user, self.kind, self.tier, name, getattr(self.view, "show_admin", False)),  # type: ignore
+        )
+
+class BackToTierBtn(ui.Button):
+    def __init__(self, kind: str, show_admin: bool):
+        super().__init__(label="Back", style=discord.ButtonStyle.secondary)
+        self.kind = kind
+        self.show_admin = show_admin
+
+    async def callback(self, interaction: discord.Interaction):
+        view: PlanItemView = self.view  # type: ignore
+        embed = await view.cog.planner_embed(interaction.user, self.kind, None, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanTierView(view.cog, interaction.user, self.kind, self.show_admin),
+        )
+
+# -------------------- Final tree + back buttons -----------------------
+class PlanTreeView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, kind: str, tier: int, name: str, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.kind = kind
+        self.tier = int(tier)
+        self.name = name
+        self.show_admin = show_admin
+        self.add_item(BackToItemsBtn(kind, tier, show_admin))
+        self.add_item(BackBtn(show_admin))  # back to main city
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author.id
+
+class BackToItemsBtn(ui.Button):
+    def __init__(self, kind: str, tier: int, show_admin: bool):
+        super().__init__(label="Back to Items", style=discord.ButtonStyle.secondary)
+        self.kind = kind
+        self.tier = int(tier)
+        self.show_admin = show_admin
+
+    async def callback(self, interaction: discord.Interaction):
+        view: PlanTreeView = self.view  # type: ignore
+        embed = await view.cog.planner_embed(interaction.user, self.kind, self.tier, None)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=PlanItemView(view.cog, interaction.user, self.kind, self.tier, self.show_admin),
+        )
+
+
+class SellAllScrapBtn(discord.ui.Button):
+    def __init__(self, cog: "CityBuilder"):
+        super().__init__(label="Sell Scrap", emoji="♻️", style=discord.ButtonStyle.green, custom_id="city:sell_scrap")
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        sold, revenue = await self.cog.sell_scrap(interaction.user, None)
+        rate, cur = await self.cog._get_rate_currency(interaction.user)
+
+        header = f"♻️ Sold {sold} scrap for **{revenue:,.2f} {cur}**" if sold else "No scrap to sell."
+        new_embed = await self.cog.make_city_embed(interaction.user, header=header)
+
+        # ✅ This acknowledges and updates in one go (no infinite “thinking”)
+        await interaction.response.edit_message(embed=new_embed, view=self.view)
+
+        # Optional ephemeral message
+        if sold:
+            await interaction.followup.send(f"✅ Sold **{sold}** scrap for **{revenue:,.2f} {cur}**.", ephemeral=True)
+        else:
+            await interaction.followup.send("You don’t have any scrap to sell.", ephemeral=True)
+
+
+
+class TeamScoresBtn(ui.Button):
+    def __init__(self):
+        super().__init__(
+            label="Team Scores",
+            style=discord.ButtonStyle.blurple,
+            custom_id="city:teamscores",
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        # Make sure the user has a team (assign if needed)
+        await view.cog.assign_team_if_needed(interaction.user)
+
+        e = await view.cog.team_scores_embed(interaction.user)
+        # Reuse your existing LeaderboardView (nav/back) or just keep current view
+        await interaction.response.edit_message(
+            embed=e,
+            view=LeaderboardView(view.cog, view.author, show_admin=view.show_admin),
+        )
+
+
+class ResourceRecycleBtn(ui.Button):
+    def __init__(self, resource: str):
+        super().__init__(label=f"♻️ {resource}", style=discord.ButtonStyle.secondary)
+        self.resource = resource
+
+    async def callback(self, interaction: discord.Interaction):
+        view: ResourcesTierDetailView = self.view  # type: ignore
+        await interaction.response.send_modal(RecycleResourceQtyModal(view.cog, self.resource))
+
+
+class RecycleResourceQtyModal(discord.ui.Modal, title="♻️ Recycle Resources → Scrap"):
+    def __init__(self, cog: "CityBuilder", resource_name: str):
+        super().__init__()
+        self.cog = cog
+        self.resource_name = resource_name
+        self.qty = discord.ui.TextInput(label=f"How many **{resource_name}** to recycle?", placeholder="e.g., 10", required=True)
+        self.add_item(self.qty)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        res = self.resource_name.strip()
+        if res == "ore":
+            res = "metal"
+        try:
+            qty = int(str(self.qty.value))
+            if qty <= 0:
+                raise ValueError
+        except Exception:
+            return await interaction.response.send_message("❌ Quantity must be a positive integer.", ephemeral=True)
+
+        d = await self.cog.config.user(interaction.user).all()
+        inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
+        have = int(inv.get(res, 0))
+        if have < qty:
+            return await interaction.response.send_message(
+                f"❌ You only have **{have} {res}**.", ephemeral=True
+            )
+
+        scrap_gain = self.cog._scrap_from_resource(res, qty)
+        await self.cog._adjust_resources(interaction.user, {res: -qty, "scrap": scrap_gain})
+
+        e = await self.cog.make_city_embed(
+            interaction.user,
+            header=f"♻️ Recycled **{qty} {res}** → **{scrap_gain} scrap**."
+        )
+        await interaction.response.send_message(embed=e, ephemeral=True)
+
+class ResourcesTierDetailView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, tier: int, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.tier = int(tier)
+        self.show_admin = show_admin
+
+        # Add a recycle button for every resource mapped to this tier
+        r2t = self.cog._resource_tier_map()
+        tier_resources = [r for r, t in r2t.items() if int(t) == self.tier]
+        for r in sorted(tier_resources):
+            self.add_item(ResourceRecycleBtn(r))
+
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
+
+class WorkersTiersMenuView(discord.ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.show_admin = show_admin
+
+        # TIER BUTTONS (above)
+        for t in self.cog._all_tiers():
+            btn = WorkersTierButton(t)
+            # leave rows for auto-placement so they sit above the bottom row
+            self.add_item(btn)
+
+        # ACTION ROW (bottom)
+        hire_btn = HireWorkerBtn()
+        fire_btn = FireWorkerBtn()
+        back_btn = BackBtn(show_admin)
+
+        # Pin these to the bottom row so tiers stay above them
+        hire_btn.row = 4
+        fire_btn.row = 4
+        back_btn.row = 4
+
+        self.add_item(hire_btn)
+        self.add_item(fire_btn)
+        self.add_item(back_btn)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
+class WorkersBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Workers", style=discord.ButtonStyle.secondary, custom_id="city:workers")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        embed = await view.cog.workers_overview_by_tier_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=WorkersTiersMenuView(view.cog, view.author, show_admin=view.show_admin),
+        )
+
+
+class WorkersTierButton(ui.Button):
+    def __init__(self, tier: int):
+        super().__init__(label=f"Tier {tier}", style=discord.ButtonStyle.primary, custom_id=f"city:workers:tier:{tier}")
+        self.tier = int(tier)
+
+    async def callback(self, interaction: discord.Interaction):
+        menu: WorkersTiersMenuView = self.view  # type: ignore
+        e = await menu.cog.workers_tier_detail_embed(interaction.user, self.tier)
+        await interaction.response.edit_message(
+            embed=e,
+            view=WorkersTierView(menu.cog, menu.author, self.tier, menu.show_admin),  # 👈 pass tier!
+        )
+
+
+
+
+class BuildingsTierActionsView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, tier: int, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.tier = int(tier)
+        self.show_admin = show_admin
+
+        # Collect names for this tier
+        build_names = []
+        recycle_names = []
+
+        for name, meta in BUILDINGS.items():
+            if int(meta.get("tier", 0)) == self.tier:
+                build_names.append(name)
+                if name.lower() != "house":  # usually you don't "recycle" housing
+                    recycle_names.append(name)
+
+        # Add Build buttons first
+        for name in build_names:
+            self.add_item(BuildInTierBtn(name))
+
+        # Then add Recycle buttons
+        for name in recycle_names:
+            self.add_item(RecycleBuildingInTierBtn(name))
+
+        # Finally, add the back button
+        self.add_item(BackToTiersBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message(
+                "This panel isn’t yours. Use `$city` to open your own.", ephemeral=True
+            )
+            return False
+        return True
+
+
+
+class WorkersTierView(discord.ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, tier: int, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.tier = tier
+        self.show_admin = show_admin
+
+        # Collect eligible building names for this tier (skip "house")
+        eligible = [
+            name for name, meta in BUILDINGS.items()
+            if int(meta.get("tier", 0)) == int(tier) and name != "house"
+        ]
+        # Sort case-insensitively for stable ordering
+        eligible.sort(key=str.casefold)
+
+        # Add ALL assign buttons first
+        for name in eligible:
+            self.add_item(AssignWorkerToBuildingBtn(name))
+
+        # Then add ALL unassign buttons
+        for name in eligible:
+            self.add_item(UnassignWorkerFromBuildingBtn(name))
+
+        # Back button
+        self.add_item(BackToWorkersTiersBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
+class AssignWorkerToBuildingBtn(discord.ui.Button):
+    def __init__(self, building: str):
+        super().__init__(label=f"+ {building}", style=discord.ButtonStyle.success)
+        self.building = building
+
+    async def callback(self, interaction: discord.Interaction):
+        view: WorkersTierView = self.view  # type: ignore
+        cog = view.cog
+        user = interaction.user
+
+        d = await cog.config.user(user).all()
+        st = await cog._get_staffing(user)
+        owned = int((d.get("buildings") or {}).get(self.building, {}).get("count", 0))
+        if owned <= 0:
+            return await interaction.response.send_message(f"❌ You don’t own any {self.building}.", ephemeral=True)
+
+        if int(d.get("workers_unassigned") or 0) <= 0:
+            return await interaction.response.send_message("❌ No unassigned workers available.", ephemeral=True)
+
+        if st.get(self.building, 0) >= owned:
+            return await interaction.response.send_message(f"❌ All {self.building} are already staffed.", ephemeral=True)
+
+        st[self.building] = st.get(self.building, 0) + 1
+        await cog._set_staffing(user, st)
+        await cog.config.user(user).workers_unassigned.set(int(d.get("workers_unassigned") or 0) - 1)
+
+        e = await cog.workers_tier_detail_embed(user, view.tier)
+        await interaction.response.edit_message(embed=e, view=view)
+
+
+class UnassignWorkerFromBuildingBtn(discord.ui.Button):
+    def __init__(self, building: str):
+        super().__init__(label=f"– {building}", style=discord.ButtonStyle.danger)  # red
+        self.building = building
+
+    async def callback(self, interaction: discord.Interaction):
+        view: WorkersTierView = self.view  # type: ignore
+        cog = view.cog
+        user = interaction.user
+
+        st = await cog._get_staffing(user)
+        if st.get(self.building, 0) <= 0:
+            return await interaction.response.send_message(f"❌ No workers assigned to {self.building}.", ephemeral=True)
+
+        st[self.building] -= 1
+        await cog._set_staffing(user, st)
+        un = int((await cog.config.user(user).workers_unassigned()) or 0) + 1
+        await cog.config.user(user).workers_unassigned.set(un)
+
+        e = await cog.workers_tier_detail_embed(user, view.tier)
+        await interaction.response.edit_message(embed=e, view=view)
+
+
+class BackToWorkersTiersBtn(ui.Button):
+    def __init__(self, show_admin: bool):
+        super().__init__(label="Back to Tiers", style=discord.ButtonStyle.secondary, custom_id="city:workers:tiers:back")
+        self.show_admin = show_admin
+
+    async def callback(self, interaction: discord.Interaction):
+        detail: WorkersTierActionsView | WorkersTierView = self.view  # type: ignore
+        e = await detail.cog.workers_overview_by_tier_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=e,
+            view=WorkersTiersMenuView(detail.cog, detail.author, show_admin=self.show_admin),
+        )
+
+
+
+
+
+class BuildInTierBtn(ui.Button):
+    def __init__(self, bname: str):
+        # label shows the building name; we’ll show local price in the ephemeral error/confirm text
+        super().__init__(label=f"Build {bname}", style=discord.ButtonStyle.success, custom_id=f"city:build:tier:{bname}")
+        self.bname = bname
+
+    async def callback(self, interaction: discord.Interaction):
+        view: BuildingsTierActionsView = self.view  # type: ignore
+        cog = view.cog
+        user = interaction.user
+
+        if self.bname not in BUILDINGS:
+            return await interaction.response.send_message("⚠️ Unknown building.", ephemeral=True)
+
+        # Compute current local price from WC cost
+        wc_cost = trunc2(float(BUILDINGS[self.bname].get("cost", 0.0)))
+        rate, cur = await cog._get_rate_currency(user)
+        local_cost = trunc2(wc_cost * rate)
+
+        # Check bank balance
+        bank_local = trunc2(float(await cog.config.user(user).bank()))
+        if bank_local + 1e-9 < local_cost:
+            return await interaction.response.send_message(
+                f"❌ Not enough in bank for **{self.bname}**. Need **{local_cost:,.2f} {cur}**.",
+                ephemeral=True
+            )
+
+        # Deduct local, add building
+        await cog.config.user(user).bank.set(trunc2(bank_local - local_cost))
+        bld = await cog.config.user(user).buildings()
+        curcnt = int((bld.get(self.bname) or {}).get("count", 0))
+        bld[self.bname] = {"count": curcnt + 1}
+        await cog.config.user(user).buildings.set(bld)
+
+        # Refresh the tier details (so the new owned count shows), keep the action buttons
+        header = f"🏗️ Built **{self.bname}** for **{local_cost:,.2f} {cur}**."
+        e = await cog.buildings_tier_embed(user, view.tier)
+        if e.description:
+            e.description = f"{header}\n\n{e.description}"
+        else:
+            e.description = header
+
+        await interaction.response.edit_message(embed=e, view=view)
+
+
+class BackToTiersBtn(ui.Button):
+    def __init__(self, show_admin: bool):
+        super().__init__(label="Back to Tiers", style=discord.ButtonStyle.secondary, custom_id="city:buildings:tiers:back")
+        self.show_admin = show_admin
+
+    async def callback(self, interaction: discord.Interaction):
+        view: BuildingsTierActionsView = self.view  # type: ignore
+        tier_view = BuildingsTierView(view.cog, view.author, show_admin=self.show_admin)
+        e = await view.cog.buildings_overview_embed(interaction.user)
+        await interaction.response.edit_message(embed=e, view=tier_view)
+
+
+class RecycleBuildingSelect(ui.Select):
+    def __init__(self, cog: "CityBuilder"):
+        self.cog = cog
+        # List only buildings the user owns (>0)
+        options = []
+        # We'll fill options at refresh-time in callback if needed,
+        # but building an initial generic list keeps UI responsive.
+        for name in BUILDINGS.keys():
+            options.append(discord.SelectOption(label=name))
+        super().__init__(placeholder="Choose a building to recycle", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        bname = self.values[0]
+        # Ask for quantity in a modal
+        await interaction.response.send_modal(RecycleBuildingQtyModal(self.cog, bname))
+
+# --- Recycle building button (3.9-safe, robust) ---
+class RecycleBuildingInTierBtn(discord.ui.Button):
+    def __init__(self, building_name: str):
+        super().__init__(
+            label=f"Recycle {building_name}",
+            style=discord.ButtonStyle.red,
+            custom_id=f"city:recycle:{building_name}",  # unique per building
+        )
+        self.building_name = building_name
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view  # BuildingsTierActionsView
+        cog = view.cog     # type: ignore
+        user = interaction.user
+        bname = self.building_name
+
+        try:
+            # Decrement building count
+            async with cog.config.user(user).buildings() as b:
+                meta = b.get(bname, {"count": 0})
+                if isinstance(meta, int):
+                    meta = {"count": int(meta)}
+                count = int(meta.get("count", 0))
+
+                if count <= 0:
+                    new_embed = await cog.make_city_embed(
+                        user, header=f"⚠️ You don’t own any **{bname}** to recycle."
+                    )
+                    return await interaction.response.edit_message(embed=new_embed, view=view)
+
+                meta["count"] = count - 1
+                b[bname] = meta
+
+            # --- Scrap reward ---
+            tier = int(BUILDINGS.get(bname, {}).get("tier", 0))
+            scrap_gain = tier * 10
+            if scrap_gain > 0:
+                async with cog.config.user(user).resources() as res:
+                    res["scrap"] = res.get("scrap", 0) + scrap_gain
+
+            # Rebuild city panel
+            header = f"🗑️ Recycled **{bname}** (now {count - 1})."
+            if scrap_gain > 0:
+                header += f" Gained **{scrap_gain} scrap**."
+            new_embed = await cog.make_city_embed(user, header=header)
+
+            await interaction.response.edit_message(embed=new_embed, view=view)
+
+            # Ephemeral confirmation
+            msg = f"Recycled **{bname}** → gained **{scrap_gain} scrap**." if scrap_gain > 0 else f"Recycled **{bname}**."
+            await interaction.followup.send(msg, ephemeral=True)
+
+        except Exception as e:
+            if interaction.response.is_done():
+                await interaction.followup.send(f"❌ Recycle failed: `{e}`", ephemeral=True)
+            else:
+                await interaction.response.send_message(f"❌ Recycle failed: `{e}`", ephemeral=True)
+
+
+
+
+
+class LeaderboardBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Leaderboard", style=discord.ButtonStyle.secondary, custom_id="city:lb")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        e = await view.cog.leaderboard_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=e,
+            view=LeaderboardView(view.cog, view.author, show_admin=view.show_admin)
+        )
+
+class LeaderboardView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
+class ViewResourcesBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="View Resources", style=discord.ButtonStyle.secondary, custom_id="city:resources:view")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        e = await view.cog.resources_overview_embed(interaction.user)
+        tier_view = ResourcesTierView(view.cog, view.author, show_admin=view.show_admin)
+        await interaction.response.edit_message(embed=e, view=tier_view)
+
+class ResourcesTierView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.show_admin = show_admin
+        for t in self.cog._all_tiers():
+            self.add_item(ResourceTierButton(t))
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+class ResourceTierButton(ui.Button):
+    def __init__(self, tier: int):
+        super().__init__(label=f"Tier {tier}", style=discord.ButtonStyle.primary, custom_id=f"city:resources:tier:{tier}")
+        self.tier = int(tier)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: ResourcesTierView = self.view  # type: ignore
+        e = await view.cog.resources_tier_embed(interaction.user, self.tier)
+        await interaction.response.edit_message(
+            embed=e,
+            view=ResourcesTierDetailView(view.cog, view.author, self.tier, show_admin=view.show_admin)
+        )
+
+
+
+class ViewBuildingsBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="View Buildings", style=discord.ButtonStyle.secondary, custom_id="city:buildings:view")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        e = await view.cog.buildings_overview_embed(interaction.user)
+        tier_view = BuildingsTierView(view.cog, view.author, show_admin=view.show_admin)
+        await interaction.response.edit_message(embed=e, view=tier_view)
+
+
+class BuildingsTierView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.show_admin = show_admin
+
+        # Add a button per tier dynamically
+        for t in self.cog._all_tiers():
+            self.add_item(TierButton(t))
+
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
+class TierButton(ui.Button):
+    def __init__(self, tier: int):
+        super().__init__(label=f"Tier {tier}", style=discord.ButtonStyle.primary, custom_id=f"city:buildings:tier:{tier}")
+        self.tier = int(tier)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: BuildingsTierView = self.view  # <-- get the parent view
+        e = await view.cog.buildings_tier_embed(interaction.user, self.tier)
+        actions = BuildingsTierActionsView(view.cog, view.author, self.tier, show_admin=view.show_admin)
+        await interaction.response.edit_message(embed=e, view=actions)
+
+
+
+
 
 # ====== Utility ======
 def trunc2(x: float) -> float:
@@ -233,8 +1627,8 @@ class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
         self.max_wc = trunc2(max_wc or 0.0)
 
         # Build the input dynamically so we can customize label/placeholder
-        label = f"Amount to deposit (max {self.max_wc:.2f} WC)" if max_wc is not None else "Amount to deposit (in WC)"
-        placeholder = f"{self.max_wc:.2f}" if max_wc is not None else "e.g. 100.50"
+        label = f"Amount to deposit (max {self.max_wc:,.2f} WC)" if max_wc is not None else "Amount to deposit (in WC)"
+        placeholder = f"{self.max_wc:,.2f}" if max_wc is not None else "e.g. 100.50"
 
         self.amount = discord.ui.TextInput(
             label=label,
@@ -268,7 +1662,7 @@ class DepositModal(discord.ui.Modal, title="🏦 Deposit Wellcoins"):
 
         _, cur = await self.cog._get_rate_currency(interaction.user)
         await interaction.response.send_message(
-            f"✅ Deposited {amt_wc:.2f} WC → **{local_credit:.2f} {cur}**. New bank: **{bank_local:.2f} {cur}**",
+            f"✅ Deposited {amt_wc:,.2f} WC → **{local_credit:,.2f} {cur}**. New treasury: **{bank_local:,.2f} {cur}**",
             ephemeral=True
         )
 
@@ -281,8 +1675,8 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
         self.max_local = trunc2(max_local or 0.0)
         self.currency = currency or "Local"
 
-        label = f"Amount to withdraw (max {self.max_local:.2f} {self.currency})"
-        placeholder = f"{self.max_local:.2f}" if max_local is not None else "e.g. 50.00"
+        label = f"Amount to withdraw (max {self.max_local:,.2f} {self.currency})"
+        placeholder = f"{self.max_local:,.2f}" if max_local is not None else "e.g. 50.00"
 
         self.amount = discord.ui.TextInput(
             label=label,
@@ -304,7 +1698,7 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
         bank_local = trunc2(float(await self.cog.config.user(interaction.user).bank()))
         if bank_local + 1e-9 < amt_local:
             return await interaction.response.send_message(
-                f"❌ Not enough in bank. You have **{bank_local:.2f} {self.currency}**.",
+                f"❌ Not enough in the treasury. You have **{bank_local:,.2f} {self.currency}**.",
                 ephemeral=True
             )
 
@@ -332,8 +1726,8 @@ class WithdrawModal(discord.ui.Modal, title="🏦 Withdraw Wellcoins"):
         # Confirm
         _, cur = await self.cog._get_rate_currency(interaction.user)
         await interaction.response.send_message(
-            f"✅ Withdrew **{amt_local:.2f} {cur}** → **{amt_wc:.2f} WC**.\n"
-            f"New bank: **{new_bank:.2f} {cur}**",
+            f"✅ Withdrew **{amt_local:,.2f} {cur}** → **{amt_wc:,.2f} WC**.\n"
+            f"New treasury balance: **{new_bank:,.2f} {cur}**",
             ephemeral=True
         )
 
@@ -369,39 +1763,54 @@ class SetupNationModal(discord.ui.Modal, title="🌍 Link Your NationStates Nati
         self.cog = cog
 
     async def on_submit(self, interaction: discord.Interaction):
-        nation_input = str(self.nation.value).strip()
+      # 1) Acknowledge immediately
+      try:
+          await interaction.response.defer(ephemeral=True, thinking=True)
+      except Exception:
+          pass  # ok if already deferred/acknowledged elsewhere
+  
+      nation_input = str(self.nation.value).strip()
+  
+      # 2) Do your slow work in try/except
+      try:
+          # Fetch currency + census (add a timeout on the HTTP layer if you can)
+          currency, scores, xml_text = await ns_fetch_currency_and_scales(nation_input, DEFAULT_SCALES)
+  
+          # Existence check
+          if not _xml_has_nation_block(xml_text):
+              return await interaction.followup.send(
+                  "❌ I couldn’t find that nation. Double-check the spelling (use the **main** name).",
+                  ephemeral=True,
+              )
+  
+          # Compute & save
+          rate, details = compute_currency_rate(scores)
+          await self.cog.config.user(interaction.user).ns_nation.set(normalize_nation(nation_input))
+          await self.cog.config.user(interaction.user).ns_currency.set(currency)
+          await self.cog.config.user(interaction.user).set_raw(
+              "ns_scores", value={str(k): float(v) for k, v in scores.items()}
+          )
+          await self.cog.config.user(interaction.user).wc_to_local_rate.set(rate)
+          await self.cog.config.user(interaction.user).set_raw("rate_debug", value=details)
+          await self.cog.config.user(interaction.user).set_raw("ns_last_xml", value=xml_text)
+  
+          # Optional: assign team AFTER deferring (this can be slow if it scans all users)
+          team = await self.cog.assign_team_if_needed(interaction.user)
+  
+          # Build UI and respond
+          embed = await self.cog.make_city_embed(
+              interaction.user,
+              header=f"✅ Linked to **{nation_input}** · Assigned to **{team}**"
+          )
+          view = CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
+  
+          # 3) Finish by editing the deferred response or sending a followup
+          await interaction.edit_original_response(embed=embed, view=view)
+  
+      except Exception as e:
+          # 4) Error path – you already deferred, so followup
+          await interaction.followup.send(f"❌ Linking failed: `{e}`", ephemeral=True)
 
-        # Fetch currency + census (returns raw XML as 3rd value)
-        try:
-            currency, scores, xml_text = await ns_fetch_currency_and_scales(nation_input, DEFAULT_SCALES)
-        except Exception as e:
-            return await interaction.response.send_message(
-                f"❌ Failed to reach NationStates API.\n`{e}`", ephemeral=True
-            )
-
-        # ===== NEW: existence check =====
-        if not _xml_has_nation_block(xml_text):
-            return await interaction.response.send_message(
-                "❌ I couldn’t find that nation. Double-check the spelling (use your nation’s **main** name, "
-                "no BBCode/links) and try again.",
-                ephemeral=True,
-            )
-        # =================================
-
-        # Compute & save
-        rate, details = compute_currency_rate(scores)
-
-        await self.cog.config.user(interaction.user).ns_nation.set(normalize_nation(nation_input))
-        await self.cog.config.user(interaction.user).ns_currency.set(currency)
-        await self.cog.config.user(interaction.user).set_raw("ns_scores", value={str(k): float(v) for k, v in scores.items()})
-        await self.cog.config.user(interaction.user).wc_to_local_rate.set(rate)
-        await self.cog.config.user(interaction.user).set_raw("rate_debug", value=details)
-        await self.cog.config.user(interaction.user).set_raw("ns_last_xml", value=xml_text)  # keep for debugging
-
-        # Show main panel
-        embed = await self.cog.make_city_embed(interaction.user, header=f"✅ Linked to **{nation_input}**.")
-        view = CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user))
-        await interaction.response.send_message(embed=embed, view=view)
 
 class WorkersView(ui.View):
     def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
@@ -432,15 +1841,18 @@ class HireWorkerBtn(ui.Button):
         img = f"https://i.pravatar.cc/150?img={seed}"
         wage_local = await cog._wc_to_local(interaction.user, WORKER_WAGE_WC)
         _, cur = await cog._get_rate_currency(interaction.user)
+        
+        Reliability = random.choice(["⭐","⭐⭐","⭐⭐⭐","⭐⭐⭐⭐","⭐⭐⭐⭐⭐"])
+        Safety = random.choice(["⭐","⭐⭐","⭐⭐⭐","⭐⭐⭐⭐","⭐⭐⭐⭐⭐"])
 
         e = discord.Embed(
             title="👤 Candidate: General Worker",
             description=(
                 "Hard-working, adaptable, and ready to operate your facilities.\n"
-                "• Reliability: ⭐⭐⭐\n"
-                "• Safety: ⭐⭐⭐⭐\n"
+                f"• Reliability: {Reliability}\n"
+                f"• Safety: {Safety}\n"
                 "• Salary: "
-                f"**{wage_local:.2f} {cur}** per tick"
+                f"**{wage_local:,.2f} {cur}** per tick"
             )
         )
         e.set_image(url=img)
@@ -449,6 +1861,48 @@ class HireWorkerBtn(ui.Button):
             embed=e,
             view=ConfirmHireView(cog, view.author, show_admin=any(isinstance(i, NextDayBtn) for i in view.children))
         )
+
+class FireWorkerBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Fire Worker", style=discord.ButtonStyle.danger, custom_id="city:workers:fire")
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view  # can be WorkersView or WorkersTiersMenuView
+        cog: CityBuilder = view.cog  # type: ignore
+
+        d = await cog.config.user(interaction.user).all()
+        hired = int(d.get("workers_hired") or 0)
+        if hired <= 0:
+            return await interaction.response.send_message("❌ You don’t have any workers to fire.", ephemeral=True)
+
+        # figure out unassigned count
+        st = await cog._get_staffing(interaction.user)
+        assigned = sum(int(v) for v in st.values())
+        unassigned = max(0, hired - assigned)
+        if unassigned <= 0:
+            return await interaction.response.send_message(
+                "❌ All workers are assigned right now. Unassign one before firing.",
+                ephemeral=True
+            )
+
+        # fire: -1 hired and -1 unassigned
+        await cog.config.user(interaction.user).workers_hired.set(hired - 1)
+        await cog.config.user(interaction.user).workers_unassigned.set(unassigned - 1)
+
+        # If we’re on the tier overview, refresh that; otherwise fall back to generic workers panel
+        if isinstance(view, WorkersTiersMenuView):
+            e = await cog.workers_overview_by_tier_embed(interaction.user)
+            await interaction.response.edit_message(
+                embed=e,
+                view=WorkersTiersMenuView(cog, view.author, show_admin=view.show_admin)  # type: ignore
+            )
+        else:
+            e = await cog.workers_embed(interaction.user)
+            await interaction.response.edit_message(
+                embed=e,
+                view=WorkersView(cog, interaction.user, show_admin=any(isinstance(i, NextDayBtn) for i in view.children))  # type: ignore
+            )
+
 
 class ConfirmHireView(ui.View):
     def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
@@ -554,6 +2008,8 @@ class UnassignWorkerBtn(ui.Button):
             view=UnassignView(view.cog, view.author, show_admin=any(isinstance(i, NextDayBtn) for i in view.children)),
         )
 
+
+
 class UnassignView(ui.View):
     def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
         super().__init__(timeout=120)
@@ -590,6 +2046,114 @@ class UnassignSelect(ui.Select):
         )
 
 
+# ====== Store confirmations ======
+class ConfirmPurchaseView(ui.View):
+    def __init__(
+        self,
+        cog: "CityBuilder",
+        buyer: discord.abc.User,
+        owner_id: int,
+        listing_id: str,
+        listing_name: str,
+        bundle: Dict[str, int],
+        price_wc: float,
+        buyer_price_local: float,
+        show_admin: bool,
+    ):
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.buyer = buyer
+        self.owner_id = int(owner_id)
+        self.listing_id = listing_id
+        self.listing_name = listing_name
+        self.bundle = dict(bundle)
+        self.price_wc = float(price_wc)
+        self.buyer_price_local = float(buyer_price_local)
+        self.show_admin = show_admin
+        self.add_item(ConfirmPurchaseBtn())
+        self.add_item(CancelConfirmBtn())
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.buyer.id
+
+
+class ConfirmPurchaseBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Confirm Purchase", style=discord.ButtonStyle.success)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: ConfirmPurchaseView = self.view  # type: ignore
+        cog = view.cog
+
+        # Re-load seller listing (to avoid race conditions)
+        owner_conf = cog.config.user_from_id(view.owner_id)
+        owner_data = await owner_conf.all()
+        listings = list(owner_data.get("store_sell_listings") or [])
+        listing = next((x for x in listings if x.get("id") == view.listing_id), None)
+        if not listing:
+            return await interaction.response.send_message("Listing unavailable.", ephemeral=True)
+
+        # Check effective stock again
+        eff_stock = cog._effective_stock_from_escrow(listing) if hasattr(cog, "_effective_stock_from_escrow") else int(listing.get("stock", 0) or 0)
+        if eff_stock <= 0:
+            listing["stock"] = 0
+            for i, it in enumerate(listings):
+                if it.get("id") == view.listing_id:
+                    listings[i] = listing
+                    break
+            await owner_conf.store_sell_listings.set(listings)
+            return await interaction.response.send_message("⚠️ This listing is currently out of stock.", ephemeral=True)
+
+        # Charge buyer (uses price calculated earlier)
+        ok = await cog._charge_bank_local(view.buyer, trunc2(view.buyer_price_local))
+        if not ok:
+            return await interaction.response.send_message(
+                f"❌ Not enough funds. Need **{view.buyer_price_local:,.2f}** (incl. 10% fee).",
+                ephemeral=True
+            )
+
+        # Transfer one unit from escrow → buyer
+        bundle = {k: int(v) for k, v in (listing.get("bundle") or {}).items()}
+        escrow = {k: int(v) for k, v in (listing.get("escrow") or {}).items()}
+        for r, need in bundle.items():
+            escrow[r] = max(0, int(escrow.get(r, 0)) - int(need))
+        listing["escrow"] = escrow
+        listing["stock"] = max(0, int(listing.get("stock", 0)) - 1)
+
+        # Save seller listing
+        for i, it in enumerate(listings):
+            if it.get("id") == view.listing_id:
+                listings[i] = listing
+                break
+        await owner_conf.store_sell_listings.set(listings)
+
+        # Give items to buyer
+        await cog._adjust_resources(view.buyer, bundle)
+
+        # Credit seller (after fee)
+        seller_user = cog.bot.get_user(view.owner_id)
+        if seller_user:
+            seller_payout_local = trunc2((await cog._wc_to_local(seller_user, float(listing.get("price_wc") or view.price_wc))) * 0.90)
+            await cog._credit_bank_local(seller_user, seller_payout_local)
+
+        # Feedback + return to main menu
+        e = await cog.make_city_embed(
+            view.buyer,
+            header=f"🛒 Purchased **{view.listing_name}** for **{view.buyer_price_local:,.2f}** (incl. fee)."
+        )
+        await interaction.response.edit_message(
+            embed=e,
+            view=CityMenuView(cog, view.buyer, show_admin=view.show_admin)
+        )
+
+class CancelConfirmBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Cancel", style=discord.ButtonStyle.secondary)
+
+    async def callback(self, interaction: discord.Interaction):
+        # Just close the ephemeral confirmation
+        await interaction.response.send_message("❎ Cancelled.", ephemeral=True)
+
 
 # ====== Cog ======
 class CityBuilder(commands.Cog):
@@ -614,11 +2178,928 @@ class CityBuilder(commands.Cog):
             workers_unassigned=0,       # idle workers
             staffing={},                # {"farm": 0, "mine": 0, ...}# optional for debugging
 
-            store_sell_listings=[],  # [{id:str, name:str, bundle:{res:int}, price_wc:float, stock:int}]
+            store_sell_listings=[],  # [{id:str, name:str, bundle:{res:int}, price_wc: float, stock:int}]
             store_buy_orders=[],     # [{id:str, resource:str, qty:int, price_wc:float}]
+            team=None,              # "Team Celestial Nexus" / "Team Drowned World" / "Team Iron Empire"
         )
-        self.task = bot.loop.create_task(self.resource_tick())
+        self.next_tick_at: Optional[int] = None
+        self._producer_index = self._build_producer_index()
 
+    async def cog_load(self):
+        # Start background tick after the bot is ready to load cogs
+        # (safer than doing it in __init__)
+        self.task = asyncio.create_task(self.resource_tick())
+
+    def cog_unload(self):
+        # Cancel the background task cleanly
+        task = getattr(self, "task", None)
+        if task:
+            task.cancel()
+
+    def _build_producer_index(self):
+        """
+        Map resource -> list of (building_name, qty_out, building_tier).
+        Uses BUILDINGS[*]['produces'].
+        """
+        index = {}
+        buildings = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+        for bname, meta in buildings.items():
+            produces = meta.get("produces") or {}
+            tier = int(meta.get("tier", 0) or 0)
+            for res_name, qty in (produces.items() if isinstance(produces, dict) else []):
+                index.setdefault(str(res_name), []).append((bname, int(qty or 1), tier))
+        return index
+
+    def _resource_tier(self, res_name: str) -> int:
+        # Prefer explicit tier if present on RESOURCES
+        res_tbl = getattr(self, "RESOURCES", globals().get("RESOURCES", {})) or {}
+        meta = res_tbl.get(res_name, {}) or {}
+        if "tier" in meta and str(meta["tier"]).isdigit():
+            return int(meta["tier"])
+        # Otherwise infer from producers
+        best = None
+        for _, _, btier in self._producer_index.get(res_name, []):
+            if btier and (best is None or btier < best):
+                best = btier
+        return best if best is not None else 1
+
+    def _all_tiers(self) -> list[int]:
+        tiers = set()
+        b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+        for meta in b_tbl.values():
+            if "tier" in meta:
+                try:
+                    t = int(meta["tier"])
+                    if t > 0:
+                        tiers.add(t)
+                except Exception:
+                    pass
+        # include inferred resource tiers (optional but helpful)
+        for res in getattr(self, "RESOURCES", globals().get("RESOURCES", {})) or {}:
+            t = self._resource_tier(res)
+            if t > 0:
+                tiers.add(t)
+        return sorted(tiers) or [1]
+
+    def _items_by_tier(self, kind: str, tier: int) -> list[str]:
+        tier = int(tier)
+        if kind == "building":
+            table = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+            names = [n for n, m in table.items() if str(m.get("tier", "")) == str(tier)]
+        else:
+            # resources: use explicit tier or inferred producer tier
+            table = getattr(self, "RESOURCES", globals().get("RESOURCES", {})) or {}
+            names = []
+            for n in table.keys():
+                if self._resource_tier(n) == tier:
+                    names.append(n)
+            # also include resources that exist only as outputs (not listed in RESOURCES)
+            for r in self._producer_index.keys():
+                if r not in table and self._resource_tier(r) == tier:
+                    names.append(r)
+        return sorted(set(names), key=str.lower)
+
+    # --- Planner helpers -------------------------------------------------
+
+    def _choose_producer(self, res_name: str) -> Optional[Tuple[str, int, int]]:
+        """
+        Return (building_name, qty_out_per_tick, building_tier) for the chosen producer of `res_name`,
+        or None if no producer exists.
+        Strategy: prefer lowest tier; if tie, prefer higher output.
+        """
+        candidates = self._producer_index.get(res_name, [])
+        if not candidates:
+            return None
+        # candidates: list of (bname, qty_out, tier)
+        # sort by (tier asc, output desc)
+        bname, qty, tier = sorted(candidates, key=lambda x: (x[2] if x[2] is not None else 9999, -(x[1] or 0)))[0]
+        return (bname, int(qty or 1), int(tier or 0))
+
+    def _compute_per_tick_buildings(self, res_name: str, qty_per_tick: float = 1.0) -> Dict[str, float]:
+        """
+        Return {building_name: count_needed} to produce `qty_per_tick` of `res_name` each tick.
+        """
+        totals: Dict[str, float] = {}
+        self._accumulate_buildings_for_resource(res_name, float(qty_per_tick), totals)
+        return totals
+
+    def _sum_upkeep(self, building_counts: Dict[str, float]) -> float:
+        """Sum upkeep across all buildings given their counts."""
+        b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+        total = 0.0
+        for bname, cnt in building_counts.items():
+            upkeep = float(b_tbl.get(bname, {}).get("upkeep", 0) or 0)
+            total += upkeep * float(cnt)
+        return total
+
+    def _accumulate_buildings_for_resource(self,res_name: str,qty_needed: float,totals: Dict[str, float],seen: Optional[Set[Tuple[str, str]]] = None,):
+        """
+        Add required buildings into `totals` to produce `qty_needed` of `res_name` per tick.
+        Base resources (no producer) are ignored.
+        """
+        if qty_needed <= 0:
+            return
+        if seen is None:
+            seen = set()
+    
+        chosen = self._choose_producer(res_name)
+        if chosen is None:
+            # No producer → treat as base input; ignore for building counts.
+            return
+    
+        bname, out_per_tick, _tier = chosen
+        if out_per_tick <= 0:
+            # Avoid divide-by-zero; treat as impossible
+            return
+    
+        # How many buildings are needed to cover qty_needed per tick?
+        needed_buildings = math.ceil(qty_needed / float(out_per_tick))
+        totals[bname] = totals.get(bname, 0.0) + needed_buildings
+    
+        # Recurse into this building's input resources
+        b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+        meta = b_tbl.get(bname, {}) or {}
+        inputs = meta.get("inputs") or {}
+        key = ("building", bname.lower())
+        if key in seen:
+            return
+        seen.add(key)
+    
+        for in_res, in_qty_per_build in (inputs.items() if isinstance(inputs, dict) else []):
+            # total required per tick = (qty per building per tick) * (number of buildings)
+            self._accumulate_buildings_for_resource(
+                str(in_res),
+                float(in_qty_per_build) * needed_buildings,
+                totals,
+                seen,
+            )
+    
+        def _all_tiers(self) -> list[int]:
+            """Return a sorted list of all tiers seen in BUILDINGS/RESOURCES."""
+            tiers = set()
+            for meta in getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})).values():
+                try:
+                    tiers.add(int(meta.get("tier", 0)))
+                except Exception:
+                    pass
+            for meta in getattr(self, "RESOURCES", globals().get("RESOURCES", {})).values():
+                try:
+                    tiers.add(int(meta.get("tier", 0)))
+                except Exception:
+                    pass
+            tiers = {t for t in tiers if t > 0}
+            return sorted(tiers) or [1]
+    
+    def _items_by_tier(self, kind: str, tier: int) -> list[str]:
+        """Return item names by kind ('building' or 'resource') and tier."""
+        if kind == "building":
+            table = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {}))
+        else:
+            table = getattr(self, "RESOURCES", globals().get("RESOURCES", {}))
+        out = []
+        for name, meta in (table or {}).items():
+            try:
+                if int(meta.get("tier", 0)) == int(tier):
+                    out.append(name)
+            except Exception:
+                continue
+        return sorted(out, key=str.lower)
+    
+    def _planner_children(self, kind: str, name: str) -> list[tuple[str, str, int]]:
+        """
+        Return a list of (child_kind, child_name, qty) that this item requires.
+        For buildings, look for meta['requires'] = {'resource or building name': qty}.
+        For resources, try 'inputs' (dict) or 'produced_by' (list of buildings).
+        """
+        children = []
+        if kind == "building":
+            table = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {}))
+            meta = (table or {}).get(name, {}) or {}
+            reqs = meta.get("requires") or {}
+            for child_name, qty in (reqs.items() if isinstance(reqs, dict) else []):
+                # Guess: if it's a building name, treat as building; else resource
+                if child_name in (globals().get("BUILDINGS", {})):
+                    children.append(("building", child_name, int(qty)))
+                else:
+                    children.append(("resource", child_name, int(qty)))
+        else:
+            table = getattr(self, "RESOURCES", globals().get("RESOURCES", {}))
+            meta = (table or {}).get(name, {}) or {}
+            inputs = meta.get("inputs") or {}
+            for res_name, qty in (inputs.items() if isinstance(inputs, dict) else []):
+                children.append(("resource", res_name, int(qty)))
+            produced_by = meta.get("produced_by") or []
+            for b in (produced_by if isinstance(produced_by, list) else []):
+                children.append(("building", str(b), 1))
+        return children
+    
+    def _planner_tree_lines(self,kind: str,name: str,depth: int = 0,seen: Optional[Set[Tuple[str, str]]] = None) -> List[str]:
+        if seen is None:
+            seen = set()
+        key = (kind, name.lower())
+        prefix = "  " * depth + ("• " if depth > 0 else "")
+        lines = [f"{prefix}**{name}** ({'building' if kind=='building' else 'resource'})"]
+        if key in seen:
+            lines[-1] += " ↻"
+            return lines
+        seen.add(key)
+        for ck, child, qty in self._planner_children(kind, name):
+            qty_txt = f" ×{qty}" if qty and qty != 1 else ""
+            child_prefix = "  " * (depth + 1) + "• "
+            lines.append(f"{child_prefix}**{child}** ({'building' if ck=='building' else 'resource'}){qty_txt}")
+            # Recurse
+            lines.extend(self._planner_tree_lines(ck, child, depth + 2, seen))
+        return lines
+    
+    async def planner_embed(
+        self,
+        user: discord.abc.User,
+        kind: Optional[str] = None,
+        tier: Optional[int] = None,
+        item: Optional[str] = None
+    ) -> discord.Embed:
+        if kind is None:
+            return discord.Embed(title="🏗️ Plan Your City", description="Pick what you want to plan.")
+        if tier is None:
+            return discord.Embed(
+                title=("🏗️ Buildings" if kind == "building" else "🧱 Resources"),
+                description="Choose a tier:"
+            )
+        if item is None:
+            items = self._items_by_tier(kind, tier)
+            desc = "\n".join(f"• {x}" for x in items) or "—"
+            return discord.Embed(
+                title=f"{'🏗️ Buildings' if kind == 'building' else '🧱 Resources'} — Tier {tier}",
+                description=desc
+            )
+    
+        # --------- COMPACT OUTPUT ONLY: buildings + total upkeep ----------
+        title = f"🗺️ Plan: {item}"
+    
+        if kind == "resource":
+            counts = self._compute_per_tick_buildings(item, 1.0)
+            total_upkeep = self._sum_upkeep(counts)
+            if counts:
+                lines = "\n".join(f"• **{b}** ×{int(math.ceil(c))}" for b, c in sorted(counts.items(), key=lambda x: x[0].lower()))
+            else:
+                lines = "— (No buildings required; base resource)"
+            desc = f"**Buildings needed to produce 1 × {item} per tick**\n{lines}\n\n**Total upkeep:** {total_upkeep:.0f}"
+            e = discord.Embed(title=title, description=desc)
+            e.set_footer(text=f"Resource · Tier {tier}")
+            return e
+    
+        # kind == "building"
+        b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+        meta = b_tbl.get(item, {}) or {}
+        produces = meta.get("produces") or {}
+        if isinstance(produces, dict) and produces:
+            sections: List[str] = []
+            # Show a compact section for **each** output, normalized to 1 per tick
+            for out_res in sorted(produces.keys(), key=str.lower):
+                counts = self._compute_per_tick_buildings(str(out_res), 1.0)
+                total_upkeep = self._sum_upkeep(counts)
+                if counts:
+                    lines = "\n".join(f"• **{b}** ×{int(math.ceil(c))}" for b, c in sorted(counts.items(), key=lambda x: x[0].lower()))
+                else:
+                    lines = "— (No buildings required; base resource)"
+                sections.append(f"**1 × {out_res} per tick**\n{lines}\n**Total upkeep:** {total_upkeep:.0f}")
+            desc = "\n\n".join(sections)
+        else:
+            desc = "_No output mapping found for this building._"
+    
+        e = discord.Embed(title=title, description=desc)
+        e.set_footer(text=f"Building · Tier {tier}")
+        return e
+
+
+
+
+    def _planner_children(self, kind: str, name: str) -> list[tuple[str, str, int]]:
+        children = []
+        if kind == "building":
+            b_tbl = getattr(self, "BUILDINGS", globals().get("BUILDINGS", {})) or {}
+            meta = b_tbl.get(name, {}) or {}
+            inputs = meta.get("inputs") or {}
+            for res_name, qty in (inputs.items() if isinstance(inputs, dict) else []):
+                children.append(("resource", str(res_name), int(qty or 1)))
+            # If you ever add building dependencies, also handle meta.get("requires") here.
+        else:  # resource
+            # Show buildings that can produce this resource
+            for bname, qty_out, _tier in self._producer_index.get(name, []):
+                # qty_out is output per cycle; for tree display it's enough to show the link
+                children.append(("building", bname, 1))
+        return children
+    
+
+
+
+    async def _get_scrap_qty(self, user: discord.abc.User) -> int:
+        res = await self.config.user(user).resources()
+        for key in SCRAP_RESOURCE_KEYS:
+            if key in res:
+                try:
+                    return int(res.get(key, 0))
+                except Exception:
+                    return int(float(res.get(key, 0)) or 0)
+        return 0
+
+    async def _set_scrap_qty(self, user: discord.abc.User, new_qty: int) -> None:
+        async with self.config.user(user).resources() as res:
+            # normalize to the first existing key or default to lower "scrap"
+            key = None
+            for k in SCRAP_RESOURCE_KEYS:
+                if k in res:
+                    key = k
+                    break
+            if key is None:
+                key = "scrap"
+            res[key] = max(0, int(new_qty))
+    
+    async def sell_scrap(self, user: discord.abc.User, qty: Optional[int] = None) -> Tuple[int, float]:
+        """
+        Sell 'qty' scrap for local currency; if qty is None, sell all.
+        Returns (sold_qty, revenue_local).
+        """
+        res = await self.config.user(user).resources()
+        have = int(res.get("scrap", 0))
+        if have <= 0:
+            return 0, 0.0
+    
+        if qty is None or qty > have:
+            qty = have
+    
+        revenue = round(qty * float(SCRAP_PRICE_LOCAL), 2)
+    
+        # Deduct scrap
+        async with self.config.user(user).resources() as res:
+            res["scrap"] = have - qty
+    
+        # Credit treasury
+        bank = float(await self.config.user(user).bank())
+        bank += revenue
+        await self.config.user(user).bank.set(bank)
+    
+        return qty, revenue
+
+
+    def _staffing_totals_by_tier(self, user_data: dict) -> dict[int, tuple[int, int]]:
+        """
+        Returns {tier: (assigned_in_tier, max_staffable_in_tier)}.
+        max_staffable = owned count (1 worker per building unit).
+        """
+        by_tier: dict[int, tuple[int, int]] = {}
+        bld = user_data.get("buildings") or {}
+        st = {k: int(v) for k, v in (user_data.get("staffing") or {}).items()}
+    
+        for name, meta in BUILDINGS.items():
+            t = int(meta.get("tier", 0))
+            owned = int((bld.get(name) or {}).get("count", 0))
+            if owned <= 0 or name == "house":
+                # houses don’t take staffing
+                continue
+            assigned = min(int(st.get(name, 0)), owned)
+            a, m = by_tier.get(t, (0, 0))
+            by_tier[t] = (a + assigned, m + owned)
+        return by_tier
+
+    async def workers_overview_by_tier_embed(self, user: discord.abc.User) -> discord.Embed:
+        d = await self.config.user(user).all()
+        hired = int(d.get("workers_hired") or 0)
+        st = await self._get_staffing(user)
+        assigned_total = sum(int(v) for v in st.values())
+        unassigned = max(0, hired - assigned_total)
+    
+        by_tier = self._staffing_totals_by_tier(d)
+        lines = []
+        for t in self._all_tiers():
+            a, m = by_tier.get(t, (0, 0))
+            lines.append(f"**Tier {t}** — {a}/{m} staffed")
+    
+        e = discord.Embed(title="👷 Workers by Tier",
+                          description="Pick a tier to assign workers to buildings.")
+        e.add_field(name="Tiers", value="\n".join(lines) or "—", inline=False)
+        e.add_field(name="Totals", value=f"Hired **{hired}** · Assigned **{assigned_total}** · Unassigned **{unassigned}**", inline=False)
+        e.set_footer(text=f"Unassigned: {unassigned}")
+        return e
+
+
+    async def workers_tier_detail_embed(self, user: discord.abc.User, tier: int) -> discord.Embed:
+        d = await self.config.user(user).all()
+        st = await self._get_staffing(user)
+        lines = []
+        for name, meta in sorted(BUILDINGS.items()):
+            if int(meta.get("tier", 0)) != int(tier) or name == "house":
+                continue
+            owned = int((d.get("buildings") or {}).get(name, {}).get("count", 0))
+            if owned <= 0:
+                continue
+            staffed = int(st.get(name, 0))
+            lines.append(f"• **{name}** — {staffed}/{owned} staffed")
+        if not lines:
+            lines = ["—"]
+    
+        # totals for footer
+        hired = int(d.get("workers_hired") or 0)
+        assigned_total = sum(int(v) for v in st.values())
+        unassigned = max(0, hired - assigned_total)
+    
+        e = discord.Embed(title=f"👷 Tier {tier} — Staffing", description="\n".join(lines))
+        e.set_footer(text=f"Total workers: {hired} | Unassigned: {unassigned}")
+        return e
+
+
+
+
+    async def how_to_play_embed(self, user: discord.abc.User) -> discord.Embed:
+        e = discord.Embed(
+            title="📖 How to Play CityBuilder",
+            description=(
+                "Welcome to **CityBuilder**! Here’s the basics:\n\n"
+                "🏗️ **Buildings** — Buy farms, mines, factories, and houses. "
+                "Houses increase worker capacity, other buildings produce resources.\n\n"
+                "👷 **Workers** — Hire and assign workers to staffed buildings so they actually produce.\n\n"
+                "📦 **Resources** — Produced each tick (1h). Resources can be recycled into scrap or sold.\n\n"
+                "🏦 **Treasury** — Pays upkeep and wages every tick. If empty, production halts.\n\n"
+                "🛒 **Store** — Trade resources with other players. Buyers pay +10% fee, sellers lose −10% on payout.\n\n"
+                "♻️ **Recycle** — Convert unwanted resources/buildings into scrap (Tier 0).\n\n"
+                "🏆 **Leaderboard** — Score is based on your buildings (mainly) and resources."
+            )
+        )
+        e.set_footer(text="Tip: Use `$city` anytime to return to your main city panel.")
+        return e
+
+
+    def _bundle_mul(self, per_unit: Dict[str, int], units: int) -> Dict[str, int]:
+        return {k: int(v) * int(units) for k, v in (per_unit or {}).items()}
+
+    def _wage_multiplier(self, hired: int, cap: int) -> float:
+        if hired <= cap:
+            return 1.0
+        overflow = hired - cap
+        if cap <= 0:
+            return 1.0 + float(overflow)  # no housing at all → harsh penalty
+        return 1.0 + (float(overflow) / float(cap))
+    
+    def _compute_wages_wc_from_numbers(self, hired: int, cap: int) -> float:
+        base = trunc2(hired * WORKER_WAGE_WC)
+        mult = self._wage_multiplier(hired, cap)
+        return trunc2(base * mult)
+
+
+
+
+    # --- Scoring params (tweak to taste) ---
+    def _score_params(self) -> dict:
+        """
+        Building score dominates; each tier is exponentially more valuable.
+        - Buildings:   b_score = b_base * (b_growth ** tier) * count
+        - Resources:   r_score = r_base * (r_growth ** tier) * qty
+        """
+        return {
+            "b_base": 100.0,  # base points per T0 building
+            "b_growth": 3.0,  # exponential growth per tier for buildings
+            "r_base": 10.0,    # base points per unit of T0 resource
+            "r_growth": 3.0,  # exponential growth per tier for resources
+            "top_n": 10,      # leaderboard size
+        }
+    
+    def _building_tier_totals(self, user_data: dict) -> dict[int, int]:
+        """
+        Returns {tier: total_count_of_buildings_at_that_tier}.
+        """
+        by_tier: dict[int, int] = {}
+        owned = (user_data.get("buildings") or {})
+        for name, meta in BUILDINGS.items():
+            t = int(meta.get("tier", 0))
+            cnt = int((owned.get(name) or {}).get("count", 0))
+            if cnt > 0:
+                by_tier[t] = by_tier.get(t, 0) + cnt
+        return by_tier
+
+    
+    def _resource_tier_totals(self, user_data: dict) -> dict[int, int]:
+        """
+        Returns {tier: total_qty_of_resources_at_that_tier}.
+        Resources with no producer mapping are ignored.
+        """
+        inv = {k: int(v) for k, v in (user_data.get("resources") or {}).items()}
+        r2t = self._resource_tier_map()
+        out: dict[int, int] = {}
+        for r, qty in inv.items():
+            if qty <= 0 or r not in r2t:
+                continue
+            t = int(r2t[r])
+            out[t] = out.get(t, 0) + qty
+        return out
+    
+    def _compute_user_score_from_data(self, user_data: dict) -> float:
+        """
+        Pure function version (uses user_data) so we can score everyone quickly.
+        """
+        p = self._score_params()
+        b_totals = self._building_tier_totals(user_data)
+        r_totals = self._resource_tier_totals(user_data)
+    
+        score = 0.0
+        # Buildings dominate
+        for t, cnt in b_totals.items():
+            score += p["b_base"] * (p["b_growth"] ** int(t)) * float(cnt)
+        # Resources contribute less
+        for t, qty in r_totals.items():
+            score += p["r_base"] * (p["r_growth"] ** int(t)) * float(qty)
+        return float(int(score))  # keep it neat (integer points)
+
+    def _fmt_int(self, n) -> str:
+        try:
+            return f"{n:,.0f}"
+        except Exception:
+            return str(int(n))
+    
+    async def team_scores_embed(self, requester: discord.abc.User) -> discord.Embed:
+        """
+        Sums per-user scores (same score calc as the leaderboard) per team.
+        """
+        params = self._score_params()
+        all_users = await self.config.all_users()
+    
+        # Precompute user scores using the same function you use for leaderboard
+        team_totals = {t: 0.0 for t in TEAM_LIST}
+        team_counts = {t: 0 for t in TEAM_LIST}
+    
+        for uid, data in all_users.items():
+            team = data.get("team")
+            if team not in TEAM_LIST:
+                continue
+            score = self._compute_user_score_from_data(data)
+            team_totals[team] += score
+            team_counts[team] += 1
+    
+        # Sort by total score desc
+        rows = sorted(team_totals.items(), key=lambda kv: kv[1], reverse=True)
+    
+        # Build lines
+        lines = []
+        for team, total in rows:
+            players = team_counts.get(team, 0)
+            avg = (total / players) if players else 0.0
+            lines.append(
+                f"**{team}** — {self._fmt_int(total)} pts  ·  {players} players  ·  avg {self._fmt_int(avg)}"
+            )
+    
+        # Identify requester's team
+        my_team = await self.config.user(requester).team()
+        footer = f"Your team: {my_team or '—'}"
+    
+        e = discord.Embed(title="📊 Team Scores", description="\n".join(lines))
+        e.set_footer(text=footer)
+        return e
+  
+    
+    async def assign_team_if_needed(self, user: discord.abc.User) -> str:
+        """Assign user to the smallest team if they don't already have one."""
+        cur = await self.config.user(user).team()
+        if cur in TEAM_LIST:
+            return cur
+    
+        all_users = await self.config.all_users()
+        counts = {t: 0 for t in TEAM_LIST}
+        for _, data in all_users.items():
+            t = data.get("team")
+            if t in counts:
+                counts[t] += 1
+    
+        smallest = min(counts.values())
+        candidates = [t for t, c in counts.items() if c == smallest]
+        # deterministic tie-break using user id
+        team = candidates[(hash(str(user.id)) % len(candidates))]
+    
+        await self.config.user(user).team.set(team)
+        return team
+
+    
+    
+    async def leaderboard_embed(self, requester: discord.abc.User) -> discord.Embed:
+        """
+        Computes all users' scores, shows Top N and the requester's rank.
+        """
+        params = self._score_params()
+        top_n = int(params.get("top_n", 10))
+    
+        all_users = await self.config.all_users()
+    
+        # Build (user_id, score) pairs
+        scored: list[tuple[int, float]] = []
+        for uid, udata in all_users.items():
+            try:
+                s = self._compute_user_score_from_data(udata or {})
+            except Exception:
+                s = 0.0
+            scored.append((int(uid), s))
+    
+        # Sort desc by score, then asc by user id for stability
+        scored.sort(key=lambda tup: (-tup[1], tup[0]))
+    
+        # Find requester rank
+        req_id = int(getattr(requester, "id", 0))
+        rank_map = {uid: i + 1 for i, (uid, _) in enumerate(scored)}
+        my_rank = rank_map.get(req_id, None)
+        my_score = next((s for (uid, s) in scored if uid == req_id), 0.0)
+    
+        # Build Top N lines
+        lines = []
+        for i, (uid, score) in enumerate(scored[:top_n], start=1):
+            u = self.bot.get_user(uid)
+            name = u.display_name if u else f"User {uid}"
+            medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"#{i}"
+            lines.append(f"{medal} **{name}** — **{score:,.0f}** pts")  # 👈 commas
+    
+        if not lines:
+            lines = ["—"]
+    
+        footer = (
+            f"Your rank: #{my_rank} — {my_score:,.0f} pts"
+            if my_rank else "You’re not ranked yet."
+        )
+    
+        e = discord.Embed(
+            title="🏆 City Leaderboard",
+            description="\n".join(lines)
+        )
+        e.set_footer(text=footer)
+        return e
+
+    def _resource_tier_map(self) -> Dict[str, int]:
+        """
+        Map each resource to the *lowest* tier of any building that produces it.
+        Example: if farm (t1) and factory (t2) both produce 'food', tier is 1.
+        """
+        m: Dict[str, int] = {}
+        for bname, meta in BUILDINGS.items():
+            tier = int(meta.get("tier", 0))
+            for res in (meta.get("produces") or {}).keys():
+                if res not in m:
+                    m[res] = tier
+                else:
+                    m[res] = min(m[res], tier)
+    
+        # Ensure 'scrap' is visible as a T0 resource (even if no building produces it)
+        m.setdefault("scrap", 0)
+    
+        return m
+    
+    def _scrap_from_resource(self, res: str, qty: int) -> int:
+        """Scrap gained from recycling 'qty' units of resource 'res', based on resource score."""
+        p = self._score_params()
+        r_tier = self._resource_tier_map().get(res, 0)
+        per_unit = int(p["r_base"] * (p["r_growth"] ** int(r_tier)))
+        return max(0, per_unit * max(0, int(qty)))
+    
+    def _scrap_from_building(self, bname: str, qty: int) -> int:
+        """Scrap gained from recycling 'qty' buildings, based on building score."""
+        if bname not in BUILDINGS:
+            return 0
+        p = self._score_params()
+        b_tier = int(BUILDINGS[bname].get("tier", 0))
+        per_unit = int(p["b_base"] * (p["b_growth"] ** int(b_tier)))
+        return max(0, per_unit * max(0, int(qty)))
+
+
+    
+    def _group_resources_by_tier(self, user_data: dict) -> Dict[int, list]:
+        """
+        Returns {tier: [(resource, qty), ...]} for current inventory.
+        Resources with no producer mapping are ignored.
+        """
+        inv = {k: int(v) for k, v in (user_data.get("resources") or {}).items()}
+        r2t = self._resource_tier_map()
+        by_tier: Dict[int, list] = {}
+        for r, qty in inv.items():
+            if qty <= 0:
+                continue
+            if r not in r2t:
+                # skip unknown/unmapped resources
+                continue
+            t = int(r2t[r])
+            by_tier.setdefault(t, []).append((r, qty))
+        for t in by_tier:
+            by_tier[t].sort(key=lambda p: p[0])
+        return by_tier
+    
+    async def resources_overview_embed(self, user: discord.abc.User) -> discord.Embed:
+        """
+        Overview of user's resources grouped by tier (totals per tier).
+        Shows tiers even if empty as '—'.
+        """
+        d = await self.config.user(user).all()
+        grouped = self._group_resources_by_tier(d)
+        lines = []
+        for t in self._all_tiers():
+            entries = grouped.get(t, [])
+            total = sum(q for _, q in entries)
+            lines.append(f"**Tier {t}** — {total if total > 0 else '—'}")
+        e = discord.Embed(title="📦 Resources by Tier", description="\n".join(lines) or "—")
+        e.set_footer(text="Select a tier below to view details.")
+        return e
+    
+    async def resources_tier_embed(self, user: discord.abc.User, tier: int) -> discord.Embed:
+        """
+        Detail view for a resource tier: shows each resource, qty, and which buildings (at this tier)
+        can produce it, with per-building output rate.
+        """
+        d = await self.config.user(user).all()
+        inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
+        lines = []
+    
+        # collect all resources that *map* to this tier
+        r2t = self._resource_tier_map()
+        tier_resources = [r for r, t in r2t.items() if int(t) == int(tier)]
+    
+        # for each resource at this tier, show qty and producers (at this tier)
+        for res in sorted(tier_resources):
+            qty = int(inv.get(res, 0))
+            producers = []
+            for bname, meta in sorted(BUILDINGS.items()):
+                if int(meta.get("tier", 0)) != int(tier):
+                    continue
+                out = meta.get("produces") or {}
+                if res in out:
+                    producers.append(f"{bname}(+{int(out[res])}/t)")
+            prod_txt = ", ".join(producers) if producers else "—"
+            lines.append(f"• **{res}** — qty **{qty}** · produced by: {prod_txt}")
+    
+        if not lines:
+            lines = ["—"]
+    
+        return discord.Embed(title=f"📦 Tier {tier} Resources", description="\n".join(lines))
+
+
+    def _next_tick_ts(self) -> int:
+        if getattr(self, "next_tick_at", None):
+            return int(self.next_tick_at)
+        return int((time.time() // TICK_SECONDS + 1) * TICK_SECONDS)
+
+    def _all_tiers(self) -> list:
+        """Sorted unique tiers from BUILDINGS."""
+        tiers = sorted({int(data.get("tier", 0)) for data in BUILDINGS.values()})
+        return tiers
+
+    def _group_owned_by_tier(self, user_data: dict) -> Dict[int, list]:
+        """
+        Returns {tier: [(name, count), ...]} containing only buildings the user owns (>0).
+        """
+        by_tier: Dict[int, list] = {}
+        owned = (user_data.get("buildings") or {})
+        for name, meta in BUILDINGS.items():
+            tier = int(meta.get("tier", 0))
+            cnt = int((owned.get(name) or {}).get("count", 0))
+            if cnt > 0:
+                by_tier.setdefault(tier, []).append((name, cnt))
+        # sort names within each tier
+        for t in by_tier:
+            by_tier[t].sort(key=lambda p: p[0])
+        return by_tier
+    
+    async def buildings_overview_embed(self, user: discord.abc.User) -> discord.Embed:
+        """
+        Overview of user's buildings grouped by tier.
+        Shows the TOTAL count per tier (0 if empty).
+        """
+        d = await self.config.user(user).all()
+        grouped = self._group_owned_by_tier(d)
+    
+        lines = []
+        for t in self._all_tiers():
+            entries = grouped.get(t, [])
+            total = sum(cnt for _, cnt in entries)
+            lines.append(f"**Tier {t}** — {total}")
+    
+        e = discord.Embed(
+            title="🏗️ Buildings by Tier",
+            description="\n".join(lines) or "—"
+        )
+        e.set_footer(text="Select a tier below to view details.")
+        return e
+
+    
+    async def buildings_tier_embed(self, user: discord.abc.User, tier: int) -> discord.Embed:
+        """
+        Detailed view for a single tier: local cost, upkeep (/t), and clear multi-input/output lines.
+        """
+        d = await self.config.user(user).all()
+        rate, cur = await self._get_rate_currency(user)
+    
+        def fmt_io(io: Dict[str, int], *, per_tick: bool = True) -> str:
+            if not io:
+                return "—"
+            suf = "/t" if per_tick else ""
+            # Example: "metal+2/t, food+1/t, scrap+5/t"
+            return ", ".join(f"{k}+{int(v)}{suf}" for k, v in io.items())
+    
+        lines = []
+        for name, meta in sorted(BUILDINGS.items()):
+            if int(meta.get("tier", 0)) != int(tier):
+                continue
+    
+            cnt = int((d.get("buildings") or {}).get(name, {}).get("count", 0))
+            cost_wc = trunc2(float(meta.get("cost", 0.0)))
+            upkeep_wc = trunc2(float(meta.get("upkeep", 0.0)))
+            cost_local = trunc2(cost_wc * rate)
+            upkeep_local = trunc2(upkeep_wc * rate)
+    
+            inputs = meta.get("inputs") or {}
+            outputs = meta.get("produces") or {}
+    
+            # Optional note for houses
+            cap_note = ""
+            if name == "house":
+                cap = int(meta.get("capacity", 0))
+                if cap:
+                    cap_note = f" · Capacity +{cap}"
+    
+            # Build the block for this building
+            lines.append(
+                f"• **{name}** (owned {cnt})\n"
+                f"  Cost **{cost_local:,.2f} {cur}** · Upkeep **{upkeep_local:,.2f} {cur}/t**{cap_note}\n"
+                f"  **Inputs:**  {fmt_io(inputs)}\n"
+                f"  **Outputs:** {fmt_io(outputs)}"
+            )
+    
+        if not lines:
+            lines = ["—"]
+    
+        e = discord.Embed(title=f"🏗️ Tier {tier} — Details", description="\n".join(lines))
+        return e
+
+    
+
+    def _effective_stock_from_escrow(self, listing: Dict) -> int:
+        """
+        Derive usable stock from escrow vs per-unit bundle.
+        If 'escrow' missing (legacy), fall back to listing['stock'] (best effort).
+        """
+        bundle = {k: int(v) for k, v in (listing.get("bundle") or {}).items()}
+        escrow = {k: int(v) for k, v in (listing.get("escrow") or {}).items()}
+        if not bundle:
+            return 0
+        # Units possible with current escrow
+        possible = min((escrow.get(k, 0) // max(1, bundle[k])) for k in bundle.keys())
+        return min(int(listing.get("stock", 0)), possible)
+
+    
+    async def store_my_listings_embed(self, user: discord.abc.User, header: Optional[str] = None) -> discord.Embed:
+        d = await self.config.user(user).all()
+        lst = list(d.get("store_sell_listings") or [])
+        orders = list(d.get("store_buy_orders") or [])
+        rate, cur = await self._get_rate_currency(user)
+        def fmt_bundle(b: Dict[str, int]) -> str:
+            if not b: return "—"
+            return ", ".join([f"{k}+{v}" for k, v in b.items()])
+        sell_lines = []
+        for it in lst:
+            p_local = trunc2(float(it.get("price_wc") or 0.0) * rate)
+            sell_lines.append(f"• **{it.get('id')}** — {it.get('name')} | {fmt_bundle(it.get('bundle') or {})} | "
+                              f"Price **{p_local:,.2f} {cur}** | Stock {int(it.get('stock') or 0)}")
+        buy_lines = []
+        for o in orders:
+            p_local = trunc2(float(o.get("price_wc") or 0.0) * rate)
+            buy_lines.append(f"• **{o.get('id')}** — {o.get('resource')} ×{int(o.get('qty') or 0)} @ **{p_local:,.2f} {cur}** /u")
+        desc = (header + "\n\n" if header else "") + "**Your Sell Listings**\n" + ("\n".join(sell_lines) or "—")
+        e = discord.Embed(title="🧾 My Store", description=desc)
+        return e
+    
+    async def store_browse_embed(self, viewer: discord.abc.User) -> discord.Embed:
+        all_users = await self.config.all_users()
+        rate, cur = await self._get_rate_currency(viewer)
+        lines = []
+        for owner_id, udata in all_users.items():
+            if int(owner_id) == viewer.id:
+                continue
+            for it in (udata.get("store_sell_listings") or []):
+                # Compute effective (escrow-backed) stock FIRST
+                effective_stock = (
+                    self._effective_stock_from_escrow(it)
+                    if hasattr(self, "_effective_stock_from_escrow")
+                    else int(it.get("stock") or 0)
+                )
+                if effective_stock <= 0:
+                    continue
+    
+                price_wc = float(it.get("price_wc") or 0.0)
+                price_local = trunc2(price_wc * rate * 1.10)  # include buyer fee
+                owner = self.bot.get_user(int(owner_id))
+                owner_name = owner.display_name if owner else f"User {owner_id}"
+                bundle = ", ".join([f"{k}+{v}" for k, v in (it.get("bundle") or {}).items()]) or "—"
+    
+                lines.append(
+                    f"• **{it.get('id')}** — {it.get('name')} by *{owner_name}* · {bundle} · "
+                    f"**{price_local:,.2f} {cur}** (incl. fee) · Stock {effective_stock}"
+                )
+    
+        e = discord.Embed(
+            title="🛍️ Browse Listings",
+            description="\n".join(lines) or "No listings available."
+        )
+        return e
     async def _adjust_resources(self, user: discord.abc.User, delta: Dict[str, int]) -> None:
         d = await self.config.user(user).all()
         res = dict(d.get("resources") or {})
@@ -667,10 +3148,10 @@ class CityBuilder(commands.Cog):
             
         e = discord.Embed(title="👷 Workers", description="Hire and assign workers to buildings to enable production.")
         e.add_field(name="Status",
-                    value=(f"Hired **{hired}** · Capacity **{cap}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "),
+                    value=(f"Hired **{hired}** · Capacity **{cap}** · Assigned **{assigned}** · Unassigned **{unassigned}**"),
                     inline=False)
         e.add_field(name="Wage",
-                    value=f"**{wage_local:.2f} {cur}** per worker per tick",
+                    value=f"**{wage_local:,.2f} {cur}** per worker per tick",
                     inline=False)
         e.add_field(name="Staffing by Building", value=staffed_txt, inline=False)
         return e
@@ -761,23 +3242,47 @@ class CityBuilder(commands.Cog):
             return trunc2(float(await nexus.config.user(user).wallet()))
         except Exception:
             return 0.0
-
+    
     async def bank_help_embed(self, user: discord.abc.User) -> discord.Embed:
         bank_local = trunc2(float(await self.config.user(user).bank()))
+        d = await self.config.user(user).all()
+        bld = d.get("buildings", {})
         _, cur = await self._get_rate_currency(user)
+    
+        # compute upkeep + wages (in local), same as main panel
+        wc_upkeep = 0.0
+        for b, info in bld.items():
+            if b in BUILDINGS:
+                wc_upkeep += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
+        wc_upkeep = trunc2(wc_upkeep)
+        local_upkeep = await self._wc_to_local(user, wc_upkeep)
+        wages_local = await self._wc_to_local(user, trunc2(int(d.get("workers_hired") or 0) * WORKER_WAGE_WC))
+        per_tick_local = trunc2(local_upkeep + wages_local)
+    
+        if per_tick_local > 0:
+            ticks_left = int(bank_local // per_tick_local)
+            seconds_left = ticks_left * TICK_SECONDS
+            end_ts = int(time.time()) + seconds_left
+            runway_txt = f"About {ticks_left} ticks — runs out <t:{end_ts}:R> (<t:{end_ts}:T>)"
+        else:
+            runway_txt = "∞ (no upkeep/wages)"
+
+    
         e = discord.Embed(
-            title="🏦 Bank",
+            title="🏦 Treasury",
             description="Your **Bank** pays wages/upkeep each tick in your **local currency**. "
                         "If the bank can’t cover upkeep, **production halts**."
         )
-        e.add_field(name="Current Balance", value=f"**{bank_local:.2f} {cur}**", inline=False)
+        e.add_field(name="Current Balance", value=f"**{bank_local:,.2f} {cur}**", inline=False)
+        e.add_field(name="Per-Tick Need", value=f"**{per_tick_local:,.2f} {cur}/t**", inline=True)
+        e.add_field(name="Runway", value=runway_txt, inline=True)
         e.add_field(
             name="Tips",
-            value="• Deposit: wallet **WC → local** bank\n"
-                  "• Withdraw: bank **local → WC** wallet\n",
+            value="• Deposit: wallet **WC → local** bank\n",
             inline=False,
         )
         return e
+
 
 
     # --- FX helpers ---
@@ -823,7 +3328,7 @@ class CityBuilder(commands.Cog):
         filebuf = io.BytesIO(xml_text.encode("utf-8"))
         file = discord.File(filebuf, filename=filename)
         await ctx.send(
-            content=f"📄 XML for **{target_nation}** · recalculated: `1 WC = {float(rate):.2f} {currency}`",
+            content=f"📄 XML for **{target_nation}** · recalculated: `1 WC = {float(rate):,.2f} {currency}`",
             file=file
         )
 
@@ -898,7 +3403,7 @@ class CityBuilder(commands.Cog):
             w = weights[sid]
             raw = scores.get(sid)
             if raw is None:
-                lines.append(f"• Scale {sid}: **missing** → norm `—` × w `{w:.2f}` = contrib `0.00`")
+                lines.append(f"• Scale {sid}: **missing** → norm `—` × w `{w:,.2f}` = contrib `0.00`")
                 continue
             norm = transforms[sid](raw)
             contrib = w * norm
@@ -906,7 +3411,7 @@ class CityBuilder(commands.Cog):
             den += abs(w)
             # format raw compactly (handles scientific)
             raw_str = f"{raw:.4g}"
-            lines.append(f"• Scale {sid}: raw `{raw_str}` → norm `{norm:.2f}` × w `{w:.2f}` = contrib `{contrib:.2f}`")
+            lines.append(f"• Scale {sid}: raw `{raw_str}` → norm `{norm:,.2f}` × w `{w:,.2f}` = contrib `{contrib:,.2f}`")
     
         idx = (num / den) if den else 0.5
         mapped = _map_index_to_rate(idx)
@@ -920,12 +3425,12 @@ class CityBuilder(commands.Cog):
     
         e = discord.Embed(title="💱 FX Rate Details", description=desc)
         if rate is not None:
-            e.add_field(name="Current Rate", value=f"1 WC = **{float(rate):.2f} {currency}**", inline=False)
+            e.add_field(name="Current Rate", value=f"1 WC = **{float(rate):,.2f} {currency}**", inline=False)
         else:
             e.add_field(name="Current Rate", value="(not set)", inline=False)
     
         e.add_field(name="Per-Scale Contributions", value="\n".join(lines) or "—", inline=False)
-        e.add_field(name="Composite Index → Rate", value=f"Index `{idx:.3f}` → Mapped Rate `{mapped:.2f}`", inline=False)
+        e.add_field(name="Composite Index → Rate", value=f"Index `{idx:.3f}` → Mapped Rate `{mapped:,.2f}`", inline=False)
         e.add_field(
             name="Weights & Transforms",
             value=(
@@ -958,9 +3463,6 @@ class CityBuilder(commands.Cog):
         d = await self.config.user(user).all()
         return not (d.get("ns_nation") and d.get("ns_currency") and (d.get("wc_to_local_rate") is not None))
 
-    # -------------- lifecycle --------------
-    async def cog_unload(self):
-        self.task.cancel()
 
     def _is_adminish(self, member: discord.Member) -> bool:
         p = member.guild_permissions if isinstance(member, discord.Member) else None
@@ -972,6 +3474,7 @@ class CityBuilder(commands.Cog):
         await self.bot.wait_until_ready()
         while True:
             await self.process_all_ticks()
+            self.next_tick_at = int(time.time()) + TICK_SECONDS
             await asyncio.sleep(TICK_SECONDS)
 
     async def process_all_ticks(self):
@@ -980,55 +3483,123 @@ class CityBuilder(commands.Cog):
             user = self.bot.get_user(user_id)
             if user:
                 await self.process_tick(user)
-
+    
     async def process_tick(self, user: discord.abc.User):
+        """
+        Pay-as-you-go production:
+        - Sort staffed building *units* by descending tier.
+        - For each unit, compute marginal WC cost (its upkeep + 1 worker's marginal wage incl. housing overflow).
+        - Convert that marginal WC to local; if treasury can cover it and inputs exist, run the unit:
+            * Deduct local funds
+            * Consume inputs
+            * Add outputs
+            * Count that worker as 'used' (affects next unit's marginal wage via overflow)
+        - Stop when funds or inputs run out.
+        """
         d = await self.config.user(user).all()
         bld = d.get("buildings", {})
         if not bld:
             return
     
+        # Ensure staffing consistency
         await self._reconcile_staffing(user)
         st = await self._get_staffing(user)
     
-        # Buildings upkeep (WC)
-        total_upkeep_wc = 0.0
-        for b, info in bld.items():
-            if b in BUILDINGS:
-                total_upkeep_wc += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
-        total_upkeep_wc = trunc2(total_upkeep_wc)
-    
-        # Wages (WC)
-        hired = int(d.get("workers_hired") or 0)
-        wages_wc = trunc2(hired * WORKER_WAGE_WC)
-    
-        # Total WC → Local
-        need_local = await self._wc_to_local(user, trunc2(total_upkeep_wc + wages_wc))
+        # Snapshot inventory + treasury (local)
+        new_resources = dict(d.get("resources", {}))
         bank_local = trunc2(float(d.get("bank", 0.0)))
     
-        # If we can't pay **everything**, halt production and don't charge
-        if bank_local + 1e-9 < need_local:
+        # Quick exit: nothing staffed
+        any_staffed = any(min(int((bld.get(b) or {}).get("count", 0)), int(st.get(b, 0))) > 0 for b in bld.keys())
+        if not any_staffed:
             return
     
-        # Deduct funds
-        bank_local = trunc2(bank_local - need_local)
+        # Capacity affects wage overflow
+        cap = await self._worker_capacity(user)
     
-        # Production only from staffed units
-        new_resources = dict(d.get("resources", {}))
-        for b, info in bld.items():
-            if b not in BUILDINGS:
+        # --- Build a flat list of staffed building *units* with their tier/name ---
+        # Each element is (tier:int, name:str)
+        units: list[tuple[int, str]] = []
+        for bname, info in bld.items():
+            if bname not in BUILDINGS:
                 continue
             cnt = int(info.get("count", 0))
-            staffed = min(cnt, int(st.get(b, 0)))
+            staffed = min(cnt, int(st.get(bname, 0)))
             if staffed <= 0:
                 continue
-            for res, amt in BUILDINGS[b]["produces"].items():
-                new_resources[res] = int(new_resources.get(res, 0)) + int(amt * staffed)
+            tier = int(BUILDINGS[bname].get("tier", 0))
+            units.extend((tier, bname) for _ in range(staffed))
     
+        # Highest tier first
+        units.sort(key=lambda t: (-t[0], t[1]))
+    
+        # Helper to get marginal wage (WC) of adding the Nth paid worker
+        def _marginal_wage_wc(n_workers_before: int) -> float:
+            # total(n) - total(n-1), using the same overflow schedule as your global wage function
+            before = self._compute_wages_wc_from_numbers(n_workers_before, cap)
+            after = self._compute_wages_wc_from_numbers(n_workers_before + 1, cap)
+            return trunc2(after - before)
+    
+        used_workers = 0  # number of workers we actually fund this tick
+    
+        # For each staffed unit in priority order, attempt to fund and run it
+        for tier, bname in units:
+            meta = BUILDINGS[bname]
+            # Per-unit upkeep in WC
+            upkeep_wc = trunc2(float(meta.get("upkeep", 0.0)))
+    
+            # Marginal wage (WC) for adding this worker
+            wage_wc = _marginal_wage_wc(used_workers)
+    
+            # Total marginal WC for this unit
+            unit_wc = trunc2(upkeep_wc + wage_wc)
+    
+            # Convert to local to compare against treasury
+            unit_local = await self._wc_to_local(user, unit_wc)
+            if bank_local + 1e-9 < unit_local:
+                # Not enough funds to run more units; stop early
+                break
+    
+            # Check if we have inputs to run ONE unit
+            inputs = {k: int(v) for k, v in (meta.get("inputs") or {}).items()}
+            can_run = True
+            for res, need in inputs.items():
+                if need <= 0:
+                    continue
+                if int(new_resources.get(res, 0)) < need:
+                    can_run = False
+                    break
+            if not can_run:
+                # Skip this unit; maybe lower-tier units can still run
+                continue
+    
+            # PAY for this unit
+            bank_local = trunc2(bank_local - unit_local)
+    
+            # CONSUME inputs
+            for res, need in inputs.items():
+                if need <= 0:
+                    continue
+                new_resources[res] = int(new_resources.get(res, 0)) - need
+                if new_resources[res] < 0:
+                    new_resources[res] = 0  # safety
+    
+            # PRODUCE outputs
+            for res, amt in (meta.get("produces") or {}).items():
+                if amt <= 0:
+                    continue
+                new_resources[res] = int(new_resources.get(res, 0)) + int(amt)
+    
+            # Count this worker as funded/used
+            used_workers += 1
+    
+        # Save final inventory and treasury
         await self.config.user(user).resources.set(new_resources)
         await self.config.user(user).bank.set(bank_local)
 
 
-    # -------------- embeds & helpers --------------
+
+
     async def make_city_embed(self, user: discord.abc.User, header: Optional[str] = None) -> discord.Embed:
         d = await self.config.user(user).all()
         res = d.get("resources", {})
@@ -1040,7 +3611,7 @@ class CityBuilder(commands.Cog):
         wc_upkeep = 0.0
         for b, info in bld.items():
             if b in BUILDINGS:
-                wc_upkeep += BUILDINGS[b]["upkeep"] * int(info.get("count", 0))
+                wc_upkeep += BUILDINGS[b].get("upkeep", 0) * int(info.get("count", 0))
         wc_upkeep = trunc2(wc_upkeep)
         local_upkeep = await self._wc_to_local(user, wc_upkeep)
     
@@ -1051,61 +3622,73 @@ class CityBuilder(commands.Cog):
         assigned = sum(st.values())
         unassigned = max(0, hired - assigned)
         cap = await self._worker_capacity(user)
-        wages_local = await self._wc_to_local(user, trunc2(hired * WORKER_WAGE_WC))
+        wages_wc = self._compute_wages_wc_from_numbers(hired, cap)
+        wages_local = await self._wc_to_local(user, wages_wc)
+        per_tick_local = trunc2(local_upkeep + wages_local)
+    
+        if per_tick_local > 0:
+            ticks_left = int(bank_local // per_tick_local)
+            seconds_left = ticks_left * TICK_SECONDS
+            end_ts = int(time.time()) + seconds_left
+            runway_txt = f"About {ticks_left} ticks — runs out <t:{end_ts}:R> (<t:{end_ts}:T>)"
+        else:
+            runway_txt = "∞ (no upkeep/wages)"
     
         desc = "Use the buttons below to manage your city."
         if header:
             desc = f"{header}\n\n{desc}"
     
-        e = discord.Embed(title=f"🌆 {getattr(user, 'display_name', 'Your')} City", description=desc)
+        e = discord.Embed(
+            title=f"🌆 {getattr(user, 'display_name', 'Your')} City",
+            description=desc
+        )
     
-        btxt = "\n".join(f"• **{b}** × {info.get('count', 0)}" for b, info in bld.items()) or "None"
-        rtxt = "\n".join(f"• **{k}**: {v}" for k, v in res.items()) or "None"
+        # Team crest + Team field (make it non-inline so it doesn't interfere with the 2-column row)
+        my_team = d.get("team")
+        if my_team:
+            if my_team in TEAM_CRESTS:
+                e.set_thumbnail(url=TEAM_CRESTS[my_team])
+            e.add_field(name="Team", value=my_team, inline=False)
     
-        e.add_field(name="🏗️ Buildings", value=btxt, inline=False)
-        e.add_field(name="📦 Resources", value=rtxt, inline=False)
+        # ---- Buildings text (sum by tier) ----
+        grouped_owned = self._group_owned_by_tier(d)
+        b_lines = []
+        for t in self._all_tiers():
+            total = sum(cnt for _, cnt in grouped_owned.get(t, []))
+            b_lines.append(f"**Tier {t}** — {total}")
+        btxt = "\n".join(b_lines) or "None"
+    
+        # ---- Resources text (sum by tier) ----
+        grouped_res = self._group_resources_by_tier(d)
+        r_lines = []
+        for t in self._all_tiers():
+            total = sum(q for _, q in grouped_res.get(t, []))
+            r_lines.append(f"**Tier {t}** — {total}")
+        rtxt = "\n".join(r_lines) or "None"
+    
+        # 👉 Side-by-side columns:
+        e.add_field(name="🏗️ Buildings", value=btxt, inline=True)
+        e.add_field(name="📦 Resources", value=rtxt, inline=True)
+        # spacer to lock the 2-column layout (Discord likes rows of 3 inline fields)
+        e.add_field(name="\u200b", value="\u200b", inline=True)
+    
         e.add_field(
             name="👷 Workers",
             value=(
-                f"Hired **{hired}** · Assigned **{assigned}** · Unassigned **{unassigned}** · "
-                f"Capacity **{cap}**\n"
-                f"Wages per tick: **{wages_local:.2f} {cur}** "
-                f"(= {trunc2(hired * WORKER_WAGE_WC):.2f} WC)"
+                f"Hired **{hired}** · Capacity **{cap}** · Assigned **{assigned}** · Unassigned **{unassigned}**\n"
+                f"Wages per tick: **{wages_local:,.2f} {cur}** "
             ),
             inline=False,
         )
-        e.add_field(name="🏦 Bank", value=f"**{bank_local:.2f} {cur}**", inline=True)
-        e.add_field(name="⏳ Upkeep per Tick", value=f"**{local_upkeep:.2f} {cur}/t**", inline=True)
-        e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:.2f} {cur}**", inline=False)
+        e.add_field(name="🏦 Treasury", value=f"**{bank_local:,.2f} {cur}**", inline=True)
+        e.add_field(name="⏳ Total Upkeep per Tick", value=f"**{per_tick_local:,.2f} {cur}/t**", inline=True)
+        e.add_field(name="📉 Runway", value=runway_txt, inline=False)
+        e.add_field(name="🌍 Exchange", value=f"1 WC = **{rate:,.2f} {cur}**", inline=False)
+    
+        next_ts = self._next_tick_ts()
+        e.add_field(name="🕒 Next Tick", value=f"<t:{next_ts}:R>  —  <t:{next_ts}:T>", inline=False)
+    
         return e
-
-
-
-    
-    async def build_help_embed(self, user: discord.abc.User) -> discord.Embed:
-        e = discord.Embed(
-            title="🏗️ Build",
-            description="Pick a building to buy **1 unit** (costs your **local currency**; prices shown below)."
-        )
-    
-        lines = []
-        for name, data in BUILDINGS.items():
-            wc_cost = float(data["cost"])
-            wc_upkeep = float(data["upkeep"])
-            local_cost = await self._wc_to_local(user, wc_cost)
-            local_upkeep = await self._wc_to_local(user, wc_upkeep)
-            produces_str = ", ".join(f"{r}+{a}/tick" for r, a in data["produces"].items()) or "—"
-            _, cur = await self._get_rate_currency(user)
-            note = " (+1 worker capacity)" if name == "house" else ""
-    
-            lines.append(
-                f"**{name}** — Cost **{local_cost:.2f} {cur}** | "
-                f"Upkeep **{local_upkeep:.2f} {cur}/t** | Produces {produces_str} {note}"
-            )
-    
-        e.add_field(name="Catalog", value="\n".join(lines) or "—", inline=False)
-        return e
-
 
 
 
@@ -1137,18 +3720,53 @@ class RateView(ui.View):
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
             return False
         return True
-
 class StoreBtn(ui.Button):
     def __init__(self):
         super().__init__(label="Store", style=discord.ButtonStyle.secondary, custom_id="city:store")
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
-        embed = await view.cog.store_home_embed(interaction.user)
-        await interaction.response.edit_message(
-            embed=embed,
-            view=StoreMenuView(view.cog, view.author, show_admin=view.show_admin),
+
+        # ── NEW: pull balances ─────────────────────────────────────────────
+        bank_local = trunc2(float(await view.cog.config.user(interaction.user).bank()))
+        wallet_wc = await view.cog._get_wallet_wc(interaction.user)
+        rate, cur = await view.cog._get_rate_currency(interaction.user)
+        wallet_local = await view.cog._wc_to_local(interaction.user, wallet_wc)
+        total_local = trunc2(bank_local + wallet_local)
+        # ───────────────────────────────────────────────────────────────────
+
+        e = discord.Embed(
+            title="🛒 Player Store",
+            description=(
+                "Create sell listings for **bundles**, post **buy orders** for resources, "
+                "and trade across currencies.\n\n"
+                "Fees: Buyer **+10%** on conversion · Seller **−10%** on payout."
+            ),
         )
+        e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
+        e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
+
+        # ── NEW: show balances ─────────────────────────────────────────────
+        e.add_field(
+            name="💰 Your Balance",
+            value=(
+                f"Treasury: **{bank_local:,.2f} {cur}**\n"
+                f"Wallet: **{wallet_wc:,.2f} WC** (≈ **{wallet_local:,.2f} {cur}**)\n"
+                f"Total: **{total_local:,.2f} {cur}**"
+            ),
+            inline=False
+        )
+        # ───────────────────────────────────────────────────────────────────
+
+        try:
+            await interaction.response.edit_message(
+                embed=e,
+                view=StoreMenuView(view.cog, view.author, show_admin=view.show_admin),  # type: ignore
+            )
+        except NameError:
+            await interaction.response.edit_message(embed=e, view=view)
+
+
 
 class RecalcRateBtn(ui.Button):
     def __init__(self):
@@ -1183,33 +3801,27 @@ class CityMenuView(ui.View):
         self.cog = cog
         self.author = author
         self.show_admin = show_admin
-
+#menu buttons
         self.add_item(ViewBtn())
-        self.add_item(BuildBtn())
+        #self.add_item(BuildBtn())
+        self.add_item(SellAllScrapBtn(self.cog))  # << add here
         self.add_item(BankBtn())
         self.add_item(WorkersBtn())
         self.add_item(StoreBtn())
+        self.add_item(ViewBuildingsBtn())  
+        self.add_item(ViewResourcesBtn())
+        self.add_item(LeaderboardBtn())
+        self.add_item(TeamScoresBtn())   
+        self.add_item(HowToPlayBtn())
+        self.add_item(PlanBtn())
         if show_admin:
             self.add_item(NextDayBtn())
-            self.add_item(RateBtn())  # add after BankBtn
+            self.add_item(RateBtn()) 
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author.id:
             await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
         return interaction.user.id == self.author.id
-
-class WorkersBtn(ui.Button):
-    def __init__(self):
-        super().__init__(label="Workers", style=discord.ButtonStyle.secondary, custom_id="city:workers")
-
-    async def callback(self, interaction: discord.Interaction):
-        view: CityMenuView = self.view  # type: ignore
-        embed = await view.cog.workers_embed(interaction.user)
-        await interaction.response.edit_message(
-            embed=embed,
-            view=WorkersView(view.cog, view.author, show_admin=view.show_admin),
-        )
-
 
 class ViewBtn(ui.Button):
     def __init__(self):
@@ -1220,9 +3832,35 @@ class ViewBtn(ui.Button):
         embed = await view.cog.make_city_embed(interaction.user)
         await interaction.response.edit_message(embed=embed, view=view)
 
+class HowToPlayBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="How to Play", style=discord.ButtonStyle.primary, custom_id="city:howtoplay")
+
+    async def callback(self, interaction: discord.Interaction):
+        view: CityMenuView = self.view  # type: ignore
+        e = await view.cog.how_to_play_embed(interaction.user)
+        await interaction.response.edit_message(
+            embed=e,
+            view=HowToPlayView(view.cog, view.author, show_admin=view.show_admin),
+        )
+
+class HowToPlayView(ui.View):
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author = author
+        self.add_item(BackBtn(show_admin))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("This panel isn’t yours. Use `$city` to open your own.", ephemeral=True)
+            return False
+        return True
+
+
 class BankBtn(ui.Button):
     def __init__(self):
-        super().__init__(label="Bank", style=discord.ButtonStyle.secondary, custom_id="city:bank")
+        super().__init__(label="Treasury", style=discord.ButtonStyle.success, custom_id="city:bank")
 
     async def callback(self, interaction: discord.Interaction):
         view: CityMenuView = self.view  # type: ignore
@@ -1271,9 +3909,9 @@ class BuildSelect(ui.Select):
             wc_upkeep = trunc2(BUILDINGS[name]["upkeep"])
             local_cost = trunc2(wc_cost * self.rate)
             local_upkeep = trunc2(wc_upkeep * self.rate)
-            desc = f"Cost {local_cost:.2f} {self.currency} · Upkeep {local_upkeep:.2f} {self.currency}/t"
+            desc = f"Cost {local_cost:,.2f} {self.currency} · Upkeep {local_upkeep:,.2f} {self.currency}/t"
             if len(desc) > 96:
-                desc = f"Cost {local_cost:.2f} · Upkeep {local_upkeep:.2f}/t"
+                desc = f"Cost {local_cost:,.2f} · Upkeep {local_upkeep:,.2f}/t"
             options.append(discord.SelectOption(label=name, description=desc))
 
 
@@ -1295,7 +3933,7 @@ class BuildSelect(ui.Select):
         if bank_local + 1e-9 < local_cost:
             return await interaction.response.send_message(
                 f"❌ Not enough in bank for **{building}**. "
-                f"Need **{local_cost:.2f} {self.currency}**.",
+                f"Need **{local_cost:,.2f} {self.currency}**.",
                 ephemeral=True
             )
 
@@ -1309,7 +3947,7 @@ class BuildSelect(ui.Select):
         bld[building] = {"count": curcnt + 1}
         await self.cog.config.user(interaction.user).buildings.set(bld)
 
-        header = f"🏗️ Built **{building}** for **{local_cost:.2f} {self.currency}**."
+        header = f"🏗️ Built **{building}** for **{local_cost:,.2f} {self.currency}**."
         embed = await self.cog.make_city_embed(interaction.user, header=header)
         await interaction.response.edit_message(
             embed=embed,
@@ -1342,7 +3980,7 @@ class BankView(ui.View):
         self.cog = cog
         self.author = author
         self.add_item(BankDepositBtn())
-        self.add_item(BankWithdrawBtn())
+        #self.add_item(BankWithdrawBtn())
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -1379,9 +4017,9 @@ class StoreMenuView(ui.View):
         self.author = author
         self.add_item(MyListingsBtn())
         self.add_item(AddSellListingBtn())
-        self.add_item(AddBuyOrderBtn())
+        #self.add_item(AddBuyOrderBtn())
         self.add_item(BrowseStoresBtn())
-        self.add_item(FulfillBuyOrdersBtn())
+        #self.add_item(FulfillBuyOrdersBtn())
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -1407,7 +4045,7 @@ class StoreManageMyView(ui.View):
         self.cog = cog
         self.author = author
         self.add_item(RemoveListingBtn())
-        self.add_item(RemoveBuyOrderBtn())
+        #self.add_item(RemoveBuyOrderBtn())
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -1423,15 +4061,6 @@ class AddSellListingBtn(ui.Button):
         await interaction.response.send_modal(AddSellListingModal(view.cog))
 
 
-class AddBuyOrderBtn(ui.Button):
-    def __init__(self):
-        super().__init__(label="Add Buy Order", style=discord.ButtonStyle.success, custom_id="store:addbuy")
-
-    async def callback(self, interaction: discord.Interaction):
-        view: StoreMenuView = self.view  # type: ignore
-        await interaction.response.send_modal(AddBuyOrderModal(view.cog))
-
-
 class BrowseStoresBtn(ui.Button):
     def __init__(self):
         super().__init__(label="Browse Stores", style=discord.ButtonStyle.primary, custom_id="store:browse")
@@ -1439,21 +4068,11 @@ class BrowseStoresBtn(ui.Button):
     async def callback(self, interaction: discord.Interaction):
         view: StoreMenuView = self.view  # type: ignore
         e = await view.cog.store_browse_embed(interaction.user)
+
         buyview = StoreBuyView(view.cog, view.author, view.children[-1].show_admin)
-        await buyview.select.refresh(interaction.user)
+        await buyview.refresh(interaction.user)  # build first page
         await interaction.response.edit_message(embed=e, view=buyview)
 
-
-class FulfillBuyOrdersBtn(ui.Button):
-    def __init__(self):
-        super().__init__(label="Fulfill Buy Orders", style=discord.ButtonStyle.primary, custom_id="store:fulfill")
-
-    async def callback(self, interaction: discord.Interaction):
-        view: StoreMenuView = self.view  # type: ignore
-        e = await view.cog.store_fulfill_embed(interaction.user)
-        sellview = StoreSellToOrdersView(view.cog, view.author, view.children[-1].show_admin)
-        await sellview.select.refresh(interaction.user)
-        await interaction.response.edit_message(embed=e, view=sellview)
 
 
 class RemoveListingBtn(ui.Button):
@@ -1463,15 +4082,6 @@ class RemoveListingBtn(ui.Button):
     async def callback(self, interaction: discord.Interaction):
         view: StoreManageMyView = self.view  # type: ignore
         await interaction.response.send_modal(RemoveSellListingModal(view.cog))
-
-
-class RemoveBuyOrderBtn(ui.Button):
-    def __init__(self):
-        super().__init__(label="Remove Buy Order", style=discord.ButtonStyle.danger, custom_id="store:removebuy")
-
-    async def callback(self, interaction: discord.Interaction):
-        view: StoreManageMyView = self.view  # type: ignore
-        await interaction.response.send_modal(RemoveBuyOrderModal(view.cog))
 
 
 # --------- Modals ----------
@@ -1503,7 +4113,7 @@ class AddSellListingModal(discord.ui.Modal, title="➕ New Sell Listing"):
                 if ":" not in part:
                     raise ValueError("Use key:value like food:1")
                 k, v = [x.strip().lower() for x in part.split(":", 1)]
-                if k == "ore":  # map alias
+                if k == "ore":
                     k = "metal"
                 if k not in ("food", "metal", "goods"):
                     raise ValueError(f"Unknown resource '{k}'. Use food, metal, goods.")
@@ -1512,61 +4122,68 @@ class AddSellListingModal(discord.ui.Modal, title="➕ New Sell Listing"):
                     raise ValueError("Amounts must be positive integers.")
                 out[k] = out.get(k, 0) + amt
             return out
-
+    
         try:
             bundle = parse_bundle(str(self.bundle.value))
             price_local = float(str(self.price.value))
-            stock = int(str(self.stock.value))
-            if price_local <= 0 or stock <= 0:
+            requested_stock = int(str(self.stock.value))
+            if price_local <= 0 or requested_stock <= 0:
                 raise ValueError
         except Exception as e:
             return await interaction.response.send_message(f"❌ Invalid input: {e}", ephemeral=True)
-
-        # Convert local -> WC (no fee when *setting* a price; we store pure WC)
+    
+        # Convert local -> WC (store pure WC)
         price_wc = await self.cog._local_to_wc(interaction.user, price_local)
-
-        # Save listing
+    
+        # Check seller resources and compute craftable stock
+        d = await self.cog.config.user(interaction.user).all()
+        inv = {k: int(v) for k, v in (d.get("resources") or {}).items()}
+    
+        def max_units_from_inventory(inv: Dict[str, int], per_unit: Dict[str, int]) -> int:
+            if not per_unit:
+                return 0
+            vals = []
+            for r, need in per_unit.items():
+                have = int(inv.get(r, 0))
+                if need <= 0:
+                    return 0
+                vals.append(have // need)
+            return min(vals) if vals else 0
+    
+        craftable = max_units_from_inventory(inv, bundle)
+        final_stock = min(requested_stock, craftable)
+    
+        if final_stock <= 0:
+            return await interaction.response.send_message(
+                "❌ You don’t currently have the resources to back that listing (stock would be 0).",
+                ephemeral=True
+            )
+    
+        # ESCROW: remove resources upfront from seller and store on the listing
+        escrow_total = self.cog._bundle_mul(bundle, final_stock)
+        # Deduct from seller inventory
+        await self.cog._adjust_resources(interaction.user, {k: -v for k, v in escrow_total.items()})
+    
+        # Save listing with escrow
         d = await self.cog.config.user(interaction.user).all()
         lst = list(d.get("store_sell_listings") or [])
         new_id = f"S{random.randint(10_000, 99_999)}"
-        lst.append({"id": new_id, "name": str(self.name.value).strip(), "bundle": bundle, "price_wc": float(price_wc), "stock": int(stock)})
+        lst.append({
+            "id": new_id,
+            "name": str(self.name.value).strip(),
+            "bundle": bundle,
+            "price_wc": float(price_wc),
+            "stock": int(final_stock),
+            "escrow": escrow_total,  # total reserved resources
+        })
         await self.cog.config.user(interaction.user).store_sell_listings.set(lst)
-
-        e = await self.cog.store_my_listings_embed(interaction.user, header=f"✅ Added listing **{self.name.value}** at {price_local:.2f} (your currency).")
+    
+        e = await self.cog.store_my_listings_embed(
+            interaction.user,
+            header=f"✅ Added listing **{self.name.value}** at {price_local:,.2f} (your currency). "
+                   f"Escrowed stock: {final_stock}."
+        )
         await interaction.response.send_message(embed=e, ephemeral=True)
-
-
-class AddBuyOrderModal(discord.ui.Modal, title="➕ New Buy Order"):
-    resource = discord.ui.TextInput(label="Resource (food / metal / goods)", required=True)
-    qty = discord.ui.TextInput(label="Quantity wanted", required=True)
-    price = discord.ui.TextInput(label="Offered price per unit (your currency; saved in WC)", required=True)
-
-    def __init__(self, cog: "CityBuilder"):
-        super().__init__()
-        self.cog = cog
-
-    async def on_submit(self, interaction: discord.Interaction):
-        r = str(self.resource.value).strip().lower()
-        if r == "ore":
-            r = "metal"
-        if r not in ("food", "metal", "goods"):
-            return await interaction.response.send_message("❌ Resource must be food, metal, or goods.", ephemeral=True)
-        try:
-            qty = int(str(self.qty.value))
-            price_local = float(str(self.price.value))
-            if qty <= 0 or price_local <= 0:
-                raise ValueError
-        except Exception:
-            return await interaction.response.send_message("❌ Quantity and price must be positive numbers.", ephemeral=True)
-
-        price_wc = await self.cog._local_to_wc(interaction.user, price_local)
-        d = await self.cog.config.user(interaction.user).all()
-        lst = list(d.get("store_buy_orders") or [])
-        new_id = f"B{random.randint(10_000, 99_999)}"
-        lst.append({"id": new_id, "resource": r, "qty": qty, "price_wc": float(price_wc)})
-        await self.cog.config.user(interaction.user).store_buy_orders.set(lst)
-        await interaction.response.send_message(f"✅ Buy order **{new_id}** created: {qty} {r} at {price_local:.2f} (your currency).", ephemeral=True)
-
 
 class RemoveSellListingModal(discord.ui.Modal, title="🗑️ Remove Sell Listing"):
     listing_id = discord.ui.TextInput(label="Listing ID", placeholder="e.g., S12345", required=True)
@@ -1585,287 +4202,193 @@ class RemoveSellListingModal(discord.ui.Modal, title="🗑️ Remove Sell Listin
         await interaction.response.send_message(f"✅ Removed listing **{lid}**.", ephemeral=True)
 
 
-class RemoveBuyOrderModal(discord.ui.Modal, title="🗑️ Remove Buy Order"):
-    order_id = discord.ui.TextInput(label="Order ID", placeholder="e.g., B54321", required=True)
-
-    def __init__(self, cog: "CityBuilder"):
-        super().__init__()
-        self.cog = cog
-
-    async def on_submit(self, interaction: discord.Interaction):
-        oid = str(self.order_id.value).strip()
-        lst = list(await self.cog.config.user(interaction.user).store_buy_orders())
-        new = [x for x in lst if x.get("id") != oid]
-        if len(new) == len(lst):
-            return await interaction.response.send_message("❌ Order not found.", ephemeral=True)
-        await self.cog.config.user(interaction.user).store_buy_orders.set(new)
-        await interaction.response.send_message(f"✅ Removed order **{oid}**.", ephemeral=True)
-
-
-# --------- Buyer view (purchase listings) ----------
 class StoreBuyView(ui.View):
-    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
+    PAGE_SIZE = 25  # Discord select limit
+
+    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool, page: int = 0):
         super().__init__(timeout=180)
         self.cog = cog
         self.author = author
-        self.select = PurchaseListingSelect(cog)
+        self.show_admin = show_admin
+        self.page = max(0, int(page))
+        self.total_pages = 1  # will be set on refresh
+        self._all_items: list[tuple[int, dict]] = []  # [(owner_id, listing_dict)]
+
+        self.select = PurchaseListingSelect(cog, self)
         self.add_item(self.select)
+        self.add_item(PrevPageBtn())
+        self.add_item(NextPageBtn())
         self.add_item(BackBtn(show_admin))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == self.author.id
 
+    async def load_all_items(self, viewer: discord.abc.User):
+        """Build the full list of (owner_id, listing) across all users, filtered & sorted."""
+        self._all_items.clear()
+        all_users = await self.cog.config.all_users()
+
+        for owner_id, udata in all_users.items():
+            if int(owner_id) == viewer.id:
+                continue
+            for it in (udata.get("store_sell_listings") or []):
+                # Compute effective (escrow-backed) stock
+                effective_stock = (
+                    self.cog._effective_stock_from_escrow(it)
+                    if hasattr(self.cog, "_effective_stock_from_escrow")
+                    else int(it.get("stock") or 0)
+                )
+                if effective_stock <= 0:
+                    continue
+                self._all_items.append((int(owner_id), it))
+
+        # optional stable sort by name then id
+        self._all_items.sort(key=lambda p: (str(p[1].get("name") or ""), str(p[1].get("id") or "")))
+
+        # compute total pages
+        n = len(self._all_items)
+        self.total_pages = max(1, (n + self.PAGE_SIZE - 1) // self.PAGE_SIZE)
+        self.page = min(self.page, self.total_pages - 1)  # clamp
+
+    def slice_for_page(self) -> list[tuple[int, dict]]:
+        start = self.page * self.PAGE_SIZE
+        end = start + self.PAGE_SIZE
+        return self._all_items[start:end]
+
+    async def refresh(self, viewer: discord.abc.User):
+        """Rebuild options for the current page."""
+        await self.load_all_items(viewer)
+        await self.select.refresh(viewer)
 
 class PurchaseListingSelect(ui.Select):
-    def __init__(self, cog: "CityBuilder"):
+    def __init__(self, cog: "CityBuilder", view: "StoreBuyView"):
         self.cog = cog
-        options = []
-        # Build options across all users
-        options = []  # [(owner_id, listing)]
-        # We'll store owner_id in the option value as "ownerId|listingId"
-        # Render below in callback
-        super().__init__(placeholder="Buy 1 unit from a listing", min_values=1, max_values=1, options=[])
-   async def callback(self, interaction: discord.Interaction):
+        self._view = view
+        super().__init__(placeholder="Loading listings…", min_values=1, max_values=1, options=[])
+
+    async def refresh(self, viewer: discord.abc.User):
+        # Ensure the view has data (in case refresh() on the view wasn't called)
+        if not self._view._all_items:
+            await self._view.load_all_items(viewer)
+    
+        opts: list[discord.SelectOption] = []
+        page_items = self._view.slice_for_page()
+        for owner_id, item in page_items:
+            price_wc = float(item.get("price_wc") or 0.0)
+            price_local_fee = trunc2((await self.cog._wc_to_local(viewer, price_wc)) * 1.10)
+    
+            effective_stock = (
+                self.cog._effective_stock_from_escrow(item)
+                if hasattr(self.cog, "_effective_stock_from_escrow")
+                else int(item.get("stock") or 0)
+            )
+            if effective_stock <= 0:
+                continue
+    
+            label = f'{item.get("name")} [Stock {effective_stock}]'
+            desc = f'Price {price_local_fee:,.2f} in your currency (incl. fee)'
+            value = f'{owner_id}|{item.get("id")}'
+            opts.append(discord.SelectOption(label=label[:100], description=desc[:100], value=value))
+    
+        if not opts:
+            opts = [discord.SelectOption(label="No available listings on this page", description="—", value="none")]
+    
+        self.options = opts
+        self.placeholder = f"Buy 1 unit — Page {self._view.page+1}/{self._view.total_pages}"
+
+
+    async def callback(self, interaction: discord.Interaction):
         value = self.values[0]
         if value == "none":
-            return await interaction.response.send_message("Nothing to buy right now.", ephemeral=True)
+            return await interaction.response.send_message("Nothing to buy on this page.", ephemeral=True)
+
         owner_s, lid = value.split("|", 1)
         owner_id = int(owner_s)
         if owner_id == interaction.user.id:
             return await interaction.response.send_message("You can’t buy your own listing.", ephemeral=True)
 
-        # Fetch listing
-        owner_data = await self.cog.config._get_base_group(owner_id).all()  # private helper OK in Red
+        # Fetch listing fresh (race-safe)
+        owner_conf = self.cog.config.user_from_id(owner_id)
+        owner_data = await owner_conf.all()
         listings = list(owner_data.get("store_sell_listings") or [])
         listing = next((x for x in listings if x.get("id") == lid), None)
-        if not listing or int(listing.get("stock", 0)) <= 0:
+        if not listing:
             return await interaction.response.send_message("Listing unavailable.", ephemeral=True)
 
+        eff_stock = (
+            self.cog._effective_stock_from_escrow(listing)
+            if hasattr(self.cog, "_effective_stock_from_escrow")
+            else int(listing.get("stock", 0) or 0)
+        )
+        if eff_stock <= 0:
+            # reflect 0 stock for visibility
+            listing["stock"] = 0
+            for i, it in enumerate(listings):
+                if it.get("id") == lid:
+                    listings[i] = listing
+                    break
+            await owner_conf.store_sell_listings.set(listings)
+            return await interaction.response.send_message("⚠️ This listing is currently out of stock.", ephemeral=True)
+
         price_wc = float(listing.get("price_wc") or 0.0)
-        # Buyer pays in local + fee
-        buyer_price_local = await self.cog._wc_to_local(interaction.user, price_wc)
-        buyer_price_local = trunc2(buyer_price_local * 1.10)
+        buyer_price_local = trunc2((await self.cog._wc_to_local(interaction.user, price_wc)) * 1.10)
 
-        # Charge buyer
-        ok = await self.cog._charge_bank_local(interaction.user, buyer_price_local)
-        if not ok:
-            return await interaction.response.send_message(f"❌ Not enough funds. Need **{buyer_price_local:.2f}** in your currency (incl. 10% fee).", ephemeral=True)
+        bundle = {k: int(v) for k, v in (listing.get("bundle") or {}).items()}
+        _, buyer_cur = await self.cog._get_rate_currency(interaction.user)
+        bundle_txt = ", ".join([f"{k}+{v}" for k, v in bundle.items()]) or "—"
 
-        # Add bundle to buyer
-        bundle = dict(listing.get("bundle") or {})
-        await self.cog._adjust_resources(interaction.user, bundle)
+        confirm_embed = discord.Embed(
+            title="Confirm Purchase",
+            description=(
+                f"**{listing.get('name')}**\n"
+                f"Bundle: {bundle_txt}\n"
+                f"Price: **{buyer_price_local:,.2f} {buyer_cur}** (incl. 10% fee)\n\n"
+                "Do you want to proceed?"
+            )
+        )
 
-        # Decrement seller stock
-        for it in listings:
-            if it.get("id") == lid:
-                it["stock"] = int(it.get("stock", 0)) - 1
-                break
-        await self.cog.config._get_base_group(owner_id).store_sell_listings.set(listings)
+        await interaction.response.send_message(
+            embed=confirm_embed,
+            view=ConfirmPurchaseView(
+                self.cog,
+                interaction.user,
+                owner_id,
+                lid,
+                str(listing.get("name") or "Item"),
+                bundle,
+                price_wc,
+                buyer_price_local,
+                show_admin=self.cog._is_adminish(interaction.user),
+            ),
+            ephemeral=True
+        )
 
-        # Credit seller (after fee)
-        seller_user = self.cog.bot.get_user(owner_id)
-        if seller_user:
-            seller_payout_local = await self.cog._wc_to_local(seller_user, price_wc)
-            seller_payout_local = trunc2(seller_payout_local * 0.90)
-            await self.cog._credit_bank_local(seller_user, seller_payout_local)
+# ------ NEW: pager buttons ------
+class PrevPageBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="◀ Prev", style=discord.ButtonStyle.secondary)
 
-        # Confirm to buyer
-        e = await self.cog.make_city_embed(interaction.user, header=f"🛒 Purchased **{listing.get('name')}** for **{buyer_price_local:.2f}** (your currency).")
-        await interaction.response.edit_message(embed=e, view=CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user)))
-
-
-    async def refresh(self, viewer: discord.abc.User):
-        # Build dynamic options with viewer price
-        opts: list[discord.SelectOption] = []
-        all_users = await self.cog.config.all_users()
-        for owner_id, udata in all_users.items():
-            if str(owner_id) == str(viewer.id):
-                continue  # don't buy from self
-            for item in (udata.get("store_sell_listings") or []):
-                if int(item.get("stock", 0)) <= 0:
-                    continue
-                price_wc = float(item.get("price_wc") or 0.0)
-                price_local = await self.cog._wc_to_local(viewer, price_wc)
-                price_local_fee = trunc2(price_local * 1.10)  # buyer pays 10% fee
-                label = f'{item.get("name")} [Stock {item.get("stock")}]'
-                desc = f'Price {price_local_fee:.2f} in your currency (incl. 10% fee)'
-                value = f'{owner_id}|{item.get("id")}'
-                opts.append(discord.SelectOption(label=label[:100], description=desc[:100], value=value))
-        if not opts:
-            opts = [discord.SelectOption(label="No available listings", description="—", value="none")]
-        self.options = opts
-
-
-class StoreSellToOrdersView(ui.View):
-    def __init__(self, cog: "CityBuilder", author: discord.abc.User, show_admin: bool):
-        super().__init__(timeout=180)
-        self.cog = cog
-        self.author = author
-        self.select = FulfillOrderSelect(cog)
-        self.add_item(self.select)
-        self.add_item(BackBtn(show_admin))
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return interaction.user.id == self.author.id
-
-
-
-class FulfillOrderSelect(ui.Select):
-    def __init__(self, cog: "CityBuilder"):
-        self.cog = cog
-        super().__init__(placeholder="Sell 1 unit into a buy order", min_values=1, max_values=1, options=[])
-
-    async def refresh(self, seller: discord.abc.User):
-        opts = []
-        all_users = await self.cog.config.all_users()
-        for owner_id, udata in all_users.items():
-            if int(owner_id) == seller.id:
-                continue
-            for o in (udata.get("store_buy_orders") or []):
-                if int(o.get("qty", 0)) <= 0:
-                    continue
-                res = o.get("resource")
-                price_wc = float(o.get("price_wc") or 0.0)
-                # Show seller payout in seller currency (w/ 10% fee)
-                payout_local = await self.cog._wc_to_local(seller, price_wc)
-                payout_local_fee = trunc2(payout_local * 0.90)
-                label = f'Order {o.get("id")} · {res} x{int(o.get("qty"))}'
-                desc = f'Payout {payout_local_fee:.2f} (your currency, after 10% fee)'
-                value = f'{owner_id}|{o.get("id")}'
-                opts.append(discord.SelectOption(label=label[:100], description=desc[:100], value=value))
-        if not opts:
-            opts = [discord.SelectOption(label="No open buy orders", description="—", value="none")]
-        self.options = opts
-   
     async def callback(self, interaction: discord.Interaction):
-        value = self.values[0]
-        if value == "none":
-            return await interaction.response.send_message("No orders to fulfill.", ephemeral=True)
-        buyer_s, oid = value.split("|", 1)
-        buyer_id = int(buyer_s)
+        view: StoreBuyView = self.view  # type: ignore
+        if view.page > 0:
+            view.page -= 1
+            await view.select.refresh(interaction.user)
+            await interaction.response.edit_message(view=view)
+        else:
+            await interaction.response.send_message("Already at the first page.", ephemeral=True)
 
-        # Pull order
-        buyer_data = await self.cog.config._get_base_group(buyer_id).all()
-        orders = list(buyer_data.get("store_buy_orders") or [])
-        order = next((x for x in orders if x.get("id") == oid), None)
-        if not order or int(order.get("qty", 0)) <= 0:
-            return await interaction.response.send_message("Order unavailable.", ephemeral=True)
+class NextPageBtn(ui.Button):
+    def __init__(self):
+        super().__init__(label="Next ▶", style=discord.ButtonStyle.secondary)
 
-        res = order.get("resource")
-        # Check seller has resource
-        d = await self.cog.config.user(interaction.user).all()
-        have = int((d.get("resources") or {}).get(res, 0))
-        if have <= 0:
-            return await interaction.response.send_message(f"❌ You don’t have any **{res}** to sell.", ephemeral=True)
-
-        price_wc = float(order.get("price_wc") or 0.0)
-
-        # Buyer (order owner) is charged price+fee in THEIR local
-        buyer_user = self.cog.bot.get_user(buyer_id)
-        if not buyer_user:
-            return await interaction.response.send_message("Buyer not present; try later.", ephemeral=True)
-
-        buyer_charge_local = await self.cog._wc_to_local(buyer_user, price_wc)
-        buyer_charge_local = trunc2(buyer_charge_local * 1.10)
-        ok = await self.cog._charge_bank_local(buyer_user, buyer_charge_local)
-        if not ok:
-            return await interaction.response.send_message("❌ Buyer lacks funds to complete this order.", ephemeral=True)
-
-        # Transfer resource: seller -> buyer
-        await self.cog._adjust_resources(interaction.user, {res: -1})
-        await self.cog._adjust_resources(buyer_user, {res: +1})
-
-        # Decrease order qty
-        for o in orders:
-            if o.get("id") == oid:
-                o["qty"] = int(o.get("qty", 0)) - 1
-                break
-        await self.cog.config._get_base_group(buyer_id).store_buy_orders.set(orders)
-
-        # Credit seller (after fee) in seller local
-        seller_payout_local = await self.cog._wc_to_local(interaction.user, price_wc)
-        seller_payout_local = trunc2(seller_payout_local * 0.90)
-        await self.cog._credit_bank_local(interaction.user, seller_payout_local)
-
-        # Confirm to seller
-        e = await self.cog.make_city_embed(interaction.user, header=f"✅ Sold **1 {res}** for **{seller_payout_local:.2f}** (your currency, after fee).")
-        await interaction.response.edit_message(embed=e, view=CityMenuView(self.cog, interaction.user, show_admin=self.cog._is_adminish(interaction.user)))
-
-
-# ====== Store helpers & embeds ======
-async def store_home_embed(self, user: discord.abc.User) -> discord.Embed:
-    e = discord.Embed(
-        title="🛒 Player Store",
-        description="Create sell listings for **bundles**, post **buy orders** for resources, "
-                    "and trade across currencies.\n\n"
-                    "Fees: Buyer +10% on conversion · Seller −10% on payout."
-    )
-    e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
-    e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
-    return e
-
-async def store_my_listings_embed(self, user: discord.abc.User, header: str | None = None) -> discord.Embed:
-    d = await self.config.user(user).all()
-    lst = list(d.get("store_sell_listings") or [])
-    orders = list(d.get("store_buy_orders") or [])
-    rate, cur = await self._get_rate_currency(user)
-    def fmt_bundle(b: Dict[str, int]) -> str:
-        if not b: return "—"
-        return ", ".join([f"{k}+{v}" for k, v in b.items()])
-    sell_lines = []
-    for it in lst:
-        p_local = trunc2(float(it.get("price_wc") or 0.0) * rate)
-        sell_lines.append(f"• **{it.get('id')}** — {it.get('name')} | {fmt_bundle(it.get('bundle') or {})} | "
-                          f"Price **{p_local:.2f} {cur}** | Stock {int(it.get('stock') or 0)}")
-    buy_lines = []
-    for o in orders:
-        p_local = trunc2(float(o.get("price_wc") or 0.0) * rate)
-        buy_lines.append(f"• **{o.get('id')}** — {o.get('resource')} ×{int(o.get('qty') or 0)} @ **{p_local:.2f} {cur}** /u")
-    desc = (header + "\n\n" if header else "") + "**Your Sell Listings**\n" + ("\n".join(sell_lines) or "—")
-    e = discord.Embed(title="🧾 My Store", description=desc)
-    e.add_field(name="Your Buy Orders", value=("\n".join(buy_lines) or "—"), inline=False)
-    return e
-
-async def store_browse_embed(self, viewer: discord.abc.User) -> discord.Embed:
-    all_users = await self.config.all_users()
-    rate, cur = await self._get_rate_currency(viewer)
-    lines = []
-    for owner_id, udata in all_users.items():
-        if int(owner_id) == viewer.id:
-            continue
-        for it in (udata.get("store_sell_listings") or []):
-            if int(it.get("stock", 0)) <= 0: 
-                continue
-            price_wc = float(it.get("price_wc") or 0.0)
-            price_local = trunc2(price_wc * rate * 1.10)  # include buyer fee
-            owner = self.bot.get_user(int(owner_id))
-            owner_name = owner.display_name if owner else f"User {owner_id}"
-            bundle = ", ".join([f"{k}+{v}" for k, v in (it.get("bundle") or {}).items()]) or "—"
-            lines.append(f"• **{it.get('id')}** — {it.get('name')} by *{owner_name}* · {bundle} · "
-                         f"**{price_local:.2f} {cur}** (incl. fee) · Stock {int(it.get('stock') or 0)}")
-    e = discord.Embed(title="🛍️ Browse Listings", description="\n".join(lines) or "No listings available.")
-    return e
-
-async def store_fulfill_embed(self, seller: discord.abc.User) -> discord.Embed:
-    all_users = await self.config.all_users()
-    rate, cur = await self._get_rate_currency(seller)
-    lines = []
-    for owner_id, udata in all_users.items():
-        if int(owner_id) == seller.id:
-            continue
-        for o in (udata.get("store_buy_orders") or []):
-            if int(o.get("qty", 0)) <= 0:
-                continue
-            res = o.get("resource")
-            price_wc = float(o.get("price_wc") or 0.0)
-            payout_local = trunc2(price_wc * rate * 0.90)  # after seller fee
-            owner = self.bot.get_user(int(owner_id))
-            owner_name = owner.display_name if owner else f"User {owner_id}"
-            lines.append(f"• **{o.get('id')}** — {res} ×{int(o.get('qty') or 0)} from *{owner_name}* "
-                         f"@ **{payout_local:.2f} {cur}** (after fee)")
-    return discord.Embed(title="📦 Fulfill Buy Orders", description="\n".join(lines) or "No open buy orders.")
-
-
+    async def callback(self, interaction: discord.Interaction):
+        view: StoreBuyView = self.view  # type: ignore
+        if view.page + 1 < view.total_pages:
+            view.page += 1
+            await view.select.refresh(interaction.user)
+            await interaction.response.edit_message(view=view)
+        else:
+            await interaction.response.send_message("Already at the last page.", ephemeral=True)
 
 # ====== Shared Back button ======
 class BackBtn(ui.Button):

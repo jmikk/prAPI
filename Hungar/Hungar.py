@@ -14,6 +14,19 @@ from discord import app_commands
 import math
 import json
 
+TOP_RANK_SURCHARGE = {1: 3.0, 2: 2.25, 3: 1.5}
+DEFAULT_RANK_MULTIPLIER = 1.0
+BET_SHARE_FACTOR = 5.0
+MIN_SPONSOR_COST = 25
+MAX_SPONSOR_COST = 500000
+
+def calc_sponsor_cost(day: int, score: float, rank: int, bet_share: float) -> int:
+    base = 10 + (day * 5) + (score / 2.0)
+    rank_mult = TOP_RANK_SURCHARGE.get(rank, DEFAULT_RANK_MULTIPLIER)
+    bet_mult = 1.0 + (BET_SHARE_FACTOR * bet_share)
+    cost = int(round(base * rank_mult * bet_mult))
+    return max(MIN_SPONSOR_COST, min(MAX_SPONSOR_COST, cost))
+
 
 class MapButton(Button):
     def __init__(self, cog):
@@ -64,7 +77,7 @@ class CheckGoldButton(Button):
         try:
             user_id = interaction.user
             gold = await self.cog.config_gold.user(user_id).master_balance()
-            await interaction.response.send_message(f"You have {gold:.2f} Wellcoins.", ephemeral=True)
+            await interaction.response.send_message(f"You have {gold:,.2f} Wellcoins.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
@@ -1120,7 +1133,7 @@ class Hungar(commands.Cog):
 
         await self.config.user(user).bets.set(user_bets)
         await interaction.response.send_message(
-            f"💰 {user.mention} bet **{bet_amount} Wellcoins** on **{tribute_data['name']}**!")
+            f"💰 {user.mention} bet **{bet_amount:,.2f} Wellcoins** on **{tribute_data['name']}**!")
 
     @place_bet.autocomplete("tribute")
     async def tribute_autocomplete(self, interaction: Interaction, current: str):
@@ -2469,14 +2482,6 @@ class Hungar(commands.Cog):
     @app_commands.command(name="sponsor", description="Sponsor a tribute with a random stat boost.")
     @app_commands.describe(tribute="Select a tribute to sponsor")
     async def sponsor(self, interaction: Interaction, tribute: str):
-
-        # --- Sponsor pricing knobs ---
-        TOP_RANK_SURCHARGE = {1: 3.0, 2: 2.25, 3: 1.5}  # multipliers for ranks 1–3
-        DEFAULT_RANK_MULTIPLIER = 1.0                   # rank > 3
-        BET_SHARE_FACTOR = 5.0                          # cost multiplier adds up to +300% at 100% pool
-        MIN_SPONSOR_COST = 25                           # hard floor
-        MAX_SPONSOR_COST = 500000                        # hard ceiling (safety)
-
         try:
             guild = interaction.guild
             user = interaction.user
@@ -2488,32 +2493,26 @@ class Hungar(commands.Cog):
                 await interaction.response.send_message("❌ That tribute doesn't exist or is no longer alive.", ephemeral=True)
                 return
     
+            # NEW: compute rank + bet share
             rankinfo = await self._rank_and_betshare(guild)
             ri = rankinfo.get(tribute, {"rank": 9999, "score": 0.0, "bet_share": 0.0})
-            
-            base = 10 + (day * 5) + (ri["score"] / 2.0)
-            
-            rank_mult = TOP_RANK_SURCHARGE.get(ri["rank"], DEFAULT_RANK_MULTIPLIER)
-            bet_mult = 1.0 + (BET_SHARE_FACTOR * ri["bet_share"])  # 1 .. 1+BET_SHARE_FACTOR
-            
-            cost = int(round(base * rank_mult * bet_mult))
-            cost = max(MIN_SPONSOR_COST, min(MAX_SPONSOR_COST, cost))
-
-            user_gold = await self.config_gold.user(user).master_balance()
     
+            cost = calc_sponsor_cost(day=day, score=ri["score"], rank=ri["rank"], bet_share=ri["bet_share"])
+    
+            user_gold = await self.config_gold.user(user).master_balance()
             if user_gold < cost:
-                await interaction.response.send_message(f"❌ You need at least {cost} Wellcoins to sponsor someone. Your balance: {user_gold}", ephemeral=True)
+                await interaction.response.send_message(
+                    f"❌ You need at least {cost} Wellcoins to sponsor someone. Your balance: {user_gold}", ephemeral=True
+                )
                 return
     
-            # Deduct cost
             await self.config_gold.user(user).master_balance.set(user_gold - cost)
     
-            # Apply random stat boost to selected tribute
+            # Apply random boost
             tribute_data = players[tribute]
             stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
             boost = random.randint(5, 15)
             tribute_data["stats"][stat] += boost
-    
             await self.config.guild(guild).players.set(players)
     
             await interaction.response.send_message(
@@ -2521,27 +2520,24 @@ class Hungar(commands.Cog):
                 ephemeral=False
             )
     
-            # 50% chance for bonus sponsor to someone else
+            # BONUS sponsor (unchanged)
             alive_others = [k for k, v in players.items() if v["alive"] and k != tribute]
-            if alive_others and random.random() < 0.5:
-                await asyncio.sleep(random.randint(5, 15))  # Delay in seconds
-    
+            if alive_others and random.random() < 0.7:
+                await asyncio.sleep(random.randint(5, 15))
                 random_tribute_key = random.choice(alive_others)
                 random_tribute = players[random_tribute_key]
                 random_stat = random.choice(["Def", "Str", "Con", "Wis", "HP"])
                 random_boost = random.randint(5, 20)
                 random_tribute["stats"][random_stat] += random_boost
-    
                 await self.config.guild(guild).players.set(players)
-    
                 await interaction.followup.send(
                     f"✨ Someone sponsored **{random_tribute['name']}** with **+{random_boost} {random_stat}**!",
                     ephemeral=False
                 )
-    
         except Exception as e:
             await interaction.response.send_message(f"⚠️ Error in `/sponsor`: `{type(e).__name__}: {e}`", ephemeral=True)
-            raise e
+            raise
+
 
 
     
@@ -2551,61 +2547,14 @@ class Hungar(commands.Cog):
         players = await self.config.guild(guild).players()
         day = await self.config.guild(guild).day_counter()
     
-        # --- safe defaults for knobs if not defined at module scope ---
-        try:
-            TOP = TOP_RANK_SURCHARGE
-        except NameError:
-            TOP = {1: 3.0, 2: 2.25, 3: 1.5}
-        try:
-            DEFAULT_MULT = DEFAULT_RANK_MULTIPLIER
-        except NameError:
-            DEFAULT_MULT = 1.0
-        try:
-            BET_FACTOR = BET_SHARE_FACTOR
-        except NameError:
-            BET_FACTOR = 3.0
-        try:
-            MINC = MIN_SPONSOR_COST
-        except NameError:
-            MINC = 25
-        try:
-            MAXC = MAX_SPONSOR_COST
-        except NameError:
-            MAXC = 50000
+        rankinfo = await self._rank_and_betshare(guild)
     
-        # --- attempt full rank+bet-share pricing; on error, use a simple fallback ---
-        rankinfo = {}
         def score_of(p):
             s = p.get("stats", {})
             return s.get("Def", 0) + s.get("Str", 0) + s.get("Con", 0) + s.get("Wis", 0) + (s.get("HP", 0) / 5)
     
-        try:
-            rankinfo = await self._rank_and_betshare(guild)  # may raise
-            def calc_cost_and_rank(pid: str):
-                ri = rankinfo.get(pid, {"rank": 9999, "score": 0.0, "bet_share": 0.0})
-                base = 10 + (day * 5) + (ri["score"] / 2.0)
-                rank_mult = TOP.get(ri["rank"], DEFAULT_MULT)
-                bet_mult = 1.0 + (BET_FACTOR * ri["bet_share"])
-                cost = int(round(base * rank_mult * bet_mult))
-                cost = max(MINC, min(MAXC, cost))
-                return cost, ri["rank"]
-        except Exception:
-            # Fallback: rank by score only, no bet pressure
-            alive = [(pid, p) for pid, p in players.items() if p.get("alive")]
-            ranked = sorted(alive, key=lambda kv: score_of(kv[1]), reverse=True)
-            fallback_rank = {pid: i + 1 for i, (pid, _) in enumerate(ranked)}
-    
-            def calc_cost_and_rank(pid: str):
-                sc = score_of(players[pid])
-                base = 10 + (day * 5) + (sc / 2.0)
-                rk = fallback_rank.get(pid, 9999)
-                rank_mult = TOP.get(rk, DEFAULT_MULT)
-                cost = int(round(base * rank_mult))
-                cost = max(MINC, min(MAXC, cost))
-                return cost, rk
-    
         query = (current or "").strip().lower()
-        opts: list[app_commands.Choice[str]] = []
+        opts = []
     
         for pid, pdata in players.items():
             if not pdata.get("alive"):
@@ -2613,24 +2562,18 @@ class Hungar(commands.Cog):
     
             member = guild.get_member(int(pid)) if pid.isdigit() else None
             display = member.display_name if member else pdata.get("name", f"Unknown [{pid}]")
-    
-            # if user typed something, filter by it; otherwise include all
             if query and query not in (display or "").lower():
                 continue
     
-            cost, rk = calc_cost_and_rank(pid)
-            label = f"{display}  •  Rank #{rk}  •  Cost: {cost}💰"
+            ri = rankinfo.get(pid, {"rank": 9999, "score": score_of(pdata), "bet_share": 0.0})
+            cost = calc_sponsor_cost(day=day, score=ri["score"], rank=ri["rank"], bet_share=ri["bet_share"])
+            label = f"{display}  •  Rank #{ri['rank']}  •  Cost: {cost}💰"
             opts.append(app_commands.Choice(name=label[:100], value=pid))
     
-        # sort by rank (using whichever rank map we have), then by name
-        def rank_for(pid: str) -> int:
-            if rankinfo:
-                return rankinfo.get(pid, {}).get("rank", 9999)
-            # if we fell back, recompute quickly:
-            return 9999
-    
-        opts.sort(key=lambda c: (rank_for(c.value), c.name))
+        # sort by rank then name
+        opts.sort(key=lambda c: (rankinfo.get(c.value, {}).get("rank", 9999), c.name))
         return opts[:25]
+
 
 
     

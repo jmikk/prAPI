@@ -1,0 +1,122 @@
+[
+  {
+    "Name": "Flameling",
+    "Type": "Fire",
+    "Total": 320,
+    "HP": 39,
+    "Attack": 52,
+    "Defense": 43,
+    "Sp. Atk": 60,
+    "Sp. Def": 50,
+    "Speed": 65,
+    "rarity": "common"
+  },
+  {
+    "Name": "Aquary",
+    "Type": "Water",
+    "Total": 310,
+    "HP": 44,
+    "Attack": 48,
+    "Defense": 50,
+    "Sp. Atk": 50,
+    "Sp. Def": 64,
+    "Speed": 43,
+    "rarity": "common"
+  },
+  {
+    "Name": "Leaflit",
+    "Type": "Grass",
+    "Total": 300,
+    "HP": 45,
+    "Attack": 49,
+    "Defense": 49,
+    "Sp. Atk": 65,
+    "Sp. Def": 65,
+    "Speed": 45,
+    "rarity": "common"
+  },
+  {
+    "Name": "Sparvolt",
+    "Type": "Electric",
+    "Total": 320,
+    "HP": 35,
+    "Attack": 55,
+    "Defense": 40,
+    "Sp. Atk": 50,
+    "Sp. Def": 50,
+    "Speed": 95,
+    "rarity": "uncommon"
+  },
+  {
+    "Name": "Brawlog",
+    "Type": "Fighting",
+    "Total": 340,
+    "HP": 60,
+    "Attack": 80,
+    "Defense": 50,
+    "Sp. Atk": 35,
+    "Sp. Def": 40,
+    "Speed": 55,
+    "rarity": "uncommon"
+  },
+  {
+    "Name": "Mindrel",
+    "Type": "Psychic",
+    "Total": 360,
+    "HP": 40,
+    "Attack": 45,
+    "Defense": 65,
+    "Sp. Atk": 90,
+    "Sp. Def": 75,
+    "Speed": 60,
+    "rarity": "rare"
+  },
+  {
+    "Name": "Crystalix",
+    "Type": "Ice",
+    "Total": 375,
+    "HP": 50,
+    "Attack": 65,
+    "Defense": 80,
+    "Sp. Atk": 80,
+    "Sp. Def": 50,
+    "Speed": 50,
+    "rarity": "rare"
+  },
+  {
+    "Name": "Terraconda",
+    "Type": "Ground",
+    "Total": 400,
+    "HP": 80,
+    "Attack": 95,
+    "Defense": 85,
+    "Sp. Atk": 45,
+    "Sp. Def": 65,
+    "Speed": 35,
+    "rarity": "epic"
+  },
+  {
+    "Name": "Phantomare",
+    "Type": "Ghost",
+    "Total": 420,
+    "HP": 60,
+    "Attack": 65,
+    "Defense": 60,
+    "Sp. Atk": 105,
+    "Sp. Def": 80,
+    "Speed": 85,
+    "rarity": "epic"
+  },
+  {
+    "Name": "Draconyx",
+    "Type": "Dragon",
+    "Total": 500,
+    "HP": 80,
+    "Attack": 105,
+    "Defense": 90,
+    "Sp. Atk": 110,
+    "Sp. Def": 85,
+    "Speed": 95,
+    "rarity": "legendary"
+  }
+]

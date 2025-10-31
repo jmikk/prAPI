@@ -8,6 +8,39 @@ import time
 import csv
 import os
 from datetime import datetime
+from discord.ext.commands import BucketType
+import discord
+
+def global_cooldown_check():
+    """Blocks the command if a global 60s window is active.
+    Sends a self-cleaning message with a Discord timestamp before raising."""
+    async def predicate(ctx):
+        cog = ctx.cog
+        if not hasattr(cog, "_next_global_ok"):
+            return True
+
+        now_mono = time.monotonic()
+        next_ok_mono = getattr(cog, "_next_global_ok", 0.0)
+
+        if now_mono < next_ok_mono:
+            remaining = max(0.0, next_ok_mono - now_mono)
+            # Compute an absolute epoch for Discord's timestamp (<t:EPOCH:R>)
+            ends_at_epoch = int(time.time() + remaining)
+
+            # Example: "try again in 53 seconds" + the exact local time
+            msg = await ctx.send(
+                f"🕒 Global lootbox cooldown is active — try again "
+                f"<t:{ends_at_epoch}:R> (at <t:{ends_at_epoch}:T>).",
+                delete_after=remaining + 1  # self-clean when timer is up
+            )
+
+            # Raise *after* sending so per-user cooldown isn't consumed
+            raise commands.CheckFailure("Global lootbox cooldown active.")
+        return True
+    return commands.check(predicate)
+
+
+
 
 tsv_file = "report.tsv"
 
@@ -15,20 +48,71 @@ class lootbox(commands.Cog):
     def __init__(self, bot: Red):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
+
+        # guild-scoped policy
+        default_guild = {
+            "cooldown_policy": {
+                "default": {"rate": 1, "per": 86400},
+                "roles": {},
+            }
+        }
         default_global = {
-            "season": 3,
-            "categories": ["common","uncommon", "rare", "ultra-rare","epic"],
+            "season": 4,
+            "categories": ["common", "uncommon", "rare", "ultra-rare", "epic"],
             "useragent": "",
             "nationName": "",
-            "cooldown": 3600,  # Default cooldown is 1 hour
             "password": "",
         }
-        default_user = {
-            "last_used": 0,
-            "uses": 0
-        }
+        self.config.register_guild(**default_guild)
         self.config.register_global(**default_global)
-        self.config.register_user(**default_user)
+        self.config.register_user()
+
+        # local in-memory cache: {guild_id: policy_dict}
+        self._policy_cache = {}
+        self._next_global_ok = 0.0  # monotonic timestamp for next allowed run
+
+
+    async def cog_load(self):
+        # Preload policies for all guilds the bot is in
+        for guild in self.bot.guilds:
+            pol = await self.config.guild(guild).cooldown_policy()
+            self._policy_cache[guild.id] = pol
+
+    def _cooldown_for_ctx_sync(self, ctx: commands.Context) -> commands.Cooldown:
+        if not ctx.guild:
+            return commands.Cooldown(1, 86400)
+    
+        policy = self._policy_cache.get(ctx.guild.id)
+        if not policy:
+            return commands.Cooldown(1, 86400)
+    
+        default_rate = policy["default"]["rate"]
+        default_per = policy["default"]["per"]
+        best_rate, best_per = default_rate, default_per
+    
+        # Use the invoking member; avoids cache/intents issues
+        member = ctx.author if isinstance(ctx.author, discord.Member) else ctx.guild.get_member(ctx.author.id)
+    
+        if member:
+            roles_policy = policy.get("roles", {})
+            for r in member.roles:
+                if not r:  # just in case
+                    continue
+                rp = roles_policy.get(str(r.id))
+                if rp:
+                    rate = rp.get("rate", default_rate)
+                    per = rp.get("per", default_per)
+                    # pick the most permissive (highest requests/second)
+                    if (rate / per) > (best_rate / best_per):
+                        best_rate, best_per = rate, per
+    
+        if best_per > 86400:
+            best_per = 86400
+    
+        return commands.Cooldown(best_rate, best_per)
+
+
+
 
     @commands.group()
     async def cardset(self, ctx):
@@ -58,8 +142,6 @@ class lootbox(commands.Cog):
         
         await ctx.send(await self.config.categories())
 
-
-
     @cardset.command()
     @checks.admin_or_permissions(manage_guild=True)
     async def useragent(self, ctx, *, useragent: str):
@@ -75,65 +157,29 @@ class lootbox(commands.Cog):
         await self.config.nationName.set(nationname)
         await ctx.send(f"Nation Name set to {nationname}")
 
-    @cardset.command()
-    @checks.admin_or_permissions(manage_guild=True)
-    async def cooldown(self, ctx, cooldown: int):
-        """Set the cooldown period for the loot box command in seconds."""
-        await self.config.cooldown.set(cooldown)
-        await ctx.send(f"Cooldown set to {cooldown} seconds")
-
     @commands.dm_only()
     @cardset.command()
     async def password(self, ctx, *, password: str):
         """Set the password for the loot box prizes in DM."""
         await self.config.password.set(password)
         await ctx.send(f"Password set to {password}")
-
-    @commands.command()
-    @commands.cooldown(1, 60, commands.BucketType.default)  # 1 use per 60 seconds
+        
+    @global_cooldown_check()
+    @commands.dynamic_cooldown(lambda ctx: ctx.cog._cooldown_for_ctx_sync(ctx), BucketType.user)
+    @commands.command()    
     async def openlootbox(self, ctx, *recipient: str):
         """Open a loot box and fetch a random card for the specified nation."""
         if len(recipient) < 1:
             await ctx.send("Make sure to put your nation in after openlootbox")
             return
         recipient =  "_".join(recipient)
+        self._next_global_ok = time.monotonic() + 60
         #await ctx.send(recipient)
         season = await self.config.season()
         nationname = await self.config.nationName()
         #await ctx.send(nationname)
         categories = await self.config.categories()
         useragent = await self.config.useragent()
-        cooldown = await self.config.cooldown()
-        if cooldown > 86400:
-            cooldown = 86400
-
-        now = ctx.message.created_at.timestamp()
-        user_data = await self.config.user(ctx.author).all()
-        last_used = user_data["last_used"]
-        uses = user_data["uses"]
-
-        if now - last_used < cooldown:
-            # Check role limits
-            max_uses = 1
-            if ctx.guild:
-                member = ctx.guild.get_member(ctx.author.id)
-                if member:
-                    if 1098646004250726420 in [role.id for role in member.roles]:
-                        max_uses = 2
-                    if 1098673767858843648 in [role.id for role in member.roles]:
-                        max_uses = 3
-            if uses >= max_uses:
-                remaining_time = cooldown - (now - last_used)
-                timestamp = int(time.time() + remaining_time)
-                await ctx.send(f"Please wait until <t:{timestamp}:R> before opening another loot box.")
-                return
-        else:
-            # Reset uses after cooldown
-            uses = 0
-
-        # Update user's last used time and uses
-        await self.config.user(ctx.author).last_used.set(now)
-        await self.config.user(ctx.author).uses.set(uses + 1)
 
         headers = {"User-Agent": useragent}
         password = await self.config.password()
@@ -194,9 +240,8 @@ class lootbox(commands.Cog):
 
                 async with session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
                     if prepare_response.status != 200:
-                        if prepare_response.status == 409 or 403:
+                        if prepare_response.status in (409 or 403):
                             await ctx.send("No loot boxes ready! Give me a minute or so to wrap one up for you.")
-                            await self.config.user(ctx.author).uses.set(uses - 1)
                             return
 
                             
@@ -233,15 +278,7 @@ class lootbox(commands.Cog):
                             await ctx.send(f"Successfully gifted the card to {recipient}!")
                         else:
                             await ctx.send("Failed to execute the gift.")
-
-    @commands.command()
-    @checks.admin_or_permissions(manage_guild=True)
-    async def resetrequests(self, ctx, user: commands.UserConverter):
-        """Reset a user's requests, allowing them to open more loot boxes."""
-        await self.config.user(user).last_used.set(0)
-        await self.config.user(user).uses.set(0)
-        await ctx.send(f"{user.display_name}'s requests have been reset.")
-
+                            
     def parse_cards(self, xml_data, season, categories):
         root = ET.fromstring(xml_data)
         cards = []
@@ -277,6 +314,105 @@ class lootbox(commands.Cog):
             "LEGENDARY": 0xFFFF00     # Yellow
         }
         return colors.get(category.upper(), 0xFFFFFF)  # Default to white if not found
+        
+    @commands.group()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def cooldownset(self, ctx):
+        """Configure lootbox cooldowns."""
+        pass
+    
+    @cooldownset.command()
+    async def default(self, ctx, rate: int, per: int):
+        pol = await self.config.guild(ctx.guild).cooldown_policy()
+        pol["default"] = {"rate": rate, "per": per}
+        await self.config.guild(ctx.guild).cooldown_policy.set(pol)
+        self._policy_cache[ctx.guild.id] = pol  # keep cache in sync
+        await ctx.send(f"Default cooldown set to {rate} uses per {per}s.")
+    
+    @cooldownset.command()
+    async def role(self, ctx, role: discord.Role, rate: int, per: int):
+        pol = await self.config.guild(ctx.guild).cooldown_policy()
+        pol.setdefault("roles", {})[str(role.id)] = {"rate": rate, "per": per}
+        await self.config.guild(ctx.guild).cooldown_policy.set(pol)
+        self._policy_cache[ctx.guild.id] = pol  # keep cache in sync
+        await ctx.send(f"Cooldown for {role.name}: {rate} uses per {per}s.")
+
+# Add this helper somewhere in your class:
+
+    def _fmt_seconds(self, seconds: int) -> str:
+        seconds = int(seconds)
+        if seconds % 86400 == 0:
+            d = seconds // 86400
+            return f"{d} day{'s' if d != 1 else ''}"
+        if seconds % 3600 == 0:
+            h = seconds // 3600
+            return f"{h} hour{'s' if h != 1 else ''}"
+        if seconds % 60 == 0:
+            m = seconds // 60
+            return f"{m} minute{'s' if m != 1 else ''}"
+        return f"{seconds} second{'s' if seconds != 1 else ''}"
+
+# Add this command near your other admin commands:
+
+    @commands.command(aliases=["cooldownrates", "cdrates", "showcooldowns"])
+    async def cooldowninfo(self, ctx):
+        """Show the lootbox cooldown policy (default + role overrides) in an embed."""
+        if not ctx.guild:
+            await ctx.send("This command must be used in a server.")
+            return
+    
+        # Pull from cache (fast) and fall back to config if missing
+        policy = self._policy_cache.get(ctx.guild.id) or await self.config.guild(ctx.guild).cooldown_policy()
+        if not policy:
+            await ctx.send("No cooldown policy found for this server.")
+            return
+    
+        default_rate = policy.get("default", {}).get("rate", 1)
+        default_per = policy.get("default", {}).get("per", 3600)
+    
+        # Build role overrides list
+        overrides = []
+        for role_id, rp in policy.get("roles", {}).items():
+            role = ctx.guild.get_role(int(role_id))
+            name = role.mention if role else f"(deleted role {role_id})"
+            rate = rp.get("rate", default_rate)
+            per = rp.get("per", default_per)
+            overrides.append(f"{name}: **{rate}** use(s) per **{self._fmt_seconds(per)}**")
+    
+        # Effective policy for the caller (using your sync helper)
+        eff = self._cooldown_for_ctx_sync(ctx)
+        eff_rate, eff_per = int(eff.rate), int(eff.per)
+    
+        embed = Embed(
+            title="Lootbox Cooldown Policy",
+            description="Current default and role-specific cooldowns.",
+        )
+        embed.add_field(
+            name="Freebiee",
+            value=f"**{default_rate}** use(s) per **{self._fmt_seconds(default_per)}**",
+            inline=False,
+        )
+    
+        if overrides:
+            # Chunk if it's super long
+            chunk = []
+            total = 0
+            for line in overrides:
+                if total + len(line) > 900:  # conservative for field limit
+                    embed.add_field(name="Role Overrides", value="\n".join(chunk), inline=False)
+                    chunk, total = [], 0
+                chunk.append(line)
+                total += len(line) + 1
+            if chunk:
+                embed.add_field(name="Role Overrides", value="\n".join(chunk), inline=False)
+        else:
+            embed.add_field(name="Role Overrides", value="*(none)*", inline=False)
+    
+        await ctx.send(embed=embed)
+
+
+
+
 
 def setup(bot):
-    bot.add_cog(Lootbox(bot))
+    bot.add_cog(lootbox(bot))

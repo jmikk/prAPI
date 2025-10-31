@@ -5,6 +5,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 import random
 from discord.ext import tasks
+import random
+import asyncio
 
 class GiveawayCog(commands.Cog):
     def __init__(self, bot):
@@ -442,6 +444,41 @@ class GiveawayCog(commands.Cog):
         await self.config.guild(ctx.guild).scheduled_giveaways.set([])
         await ctx.send("All scheduled giveaways have been cleared for this server.")
 
+    @commands.command()
+    async def rng(self, ctx, min_num: int = 1, max_num: int = 100):
+        """Generate a fun and flashy random number between two values (default: 1–100)."""
+        
+        if min_num >= max_num:
+            return await ctx.send("⚠️ Make sure your minimum is less than your maximum!")
+
+        number = random.randint(min_num, max_num)
+        
+        # Emojis to make it flashy
+        spin_emojis = ["🎲", "🎰", "🔮", "🎯", "✨", "🎉", "🎇"]
+        
+        embed = discord.Embed(
+            title="🎲 Random Number Generator 🎲",
+            description=f"Rolling a number between **{min_num}** and **{max_num}**...",
+            color=discord.Color.blurple()
+        )
+        embed.set_footer(text="Good luck!")
+        message = await ctx.send(embed=embed)
+
+        # Simulate a rolling effect
+        for i in range(5):
+            embed.description = f"{random.choice(spin_emojis)} Rolling..."
+            await message.edit(embed=embed)
+            await asyncio.sleep(0.6)
+
+        # Reveal the result
+        embed = discord.Embed(
+            title="🎉 Your Number is In! 🎉",
+            description=f"✨ **{number}** ✨",
+            color=discord.Color.gold()
+        )
+        embed.set_footer(text="Try your luck again anytime!")
+        await message.edit(embed=embed)
+
 
 
 class GiveawayButtonView(discord.ui.View):
@@ -496,4 +533,6 @@ class GiveawayButtonView(discord.ui.View):
         thumbnail_url = self.build_card_thumbnail_url(self.card_data["name"], self.card_data["season"], self.card_data["cardid"])
         embed.set_thumbnail(url=thumbnail_url)
         return embed
+
+
 

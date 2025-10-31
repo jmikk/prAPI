@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 import datetime
 import csv
 import json
+from typing import Optional
 
 
 class StockListView(View):
@@ -42,7 +43,7 @@ class StockListView(View):
             embed.add_field(
                 name=f"{emoji}{name}",
                 value=(
-                    f"Price: {data['price']:.2f} Wellcoins\n"
+                    f"Price: {data['price']:,.2f} Wellcoins\n"
                     f"🟢 {buy_remaining} shares until next price **increase**\n"
                     f"🔴 {sell_remaining} shares until next price **decrease**"
                 ),
@@ -86,6 +87,24 @@ class StockMarket(commands.Cog):
     async def cog_unload(self):
         self.bot.tree.remove_command(self.buystock.name)
         self.bot.tree.remove_command(self.sellstock.name)
+
+    async def _decay_tag_multipliers(self):
+        """Move each tag multiplier halfway back toward 0 and subtract 0.1pp."""
+        async with self.config.tags() as tag_multipliers:
+            for tag, val in list(tag_multipliers.items()):
+                if not val:  # already zero or None
+                    tag_multipliers[tag] = 0.0
+                    continue
+                sign = 1 if val > 0 else -1
+                mag = abs(val)
+                # Half the magnitude, then subtract 0.1 percentage points
+                new_mag = (mag / 2) - 0.1
+                if new_mag <= 0:
+                    tag_multipliers[tag] = 0.0
+                else:
+                    # Keep a tidy precision; adjust as you like
+                    tag_multipliers[tag] = round(sign * new_mag, 4)
+
     
     async def stock_name_autocomplete(self, interaction: discord.Interaction, current: str):
         stocks = await self.config.stocks()
@@ -96,18 +115,12 @@ class StockMarket(commands.Cog):
                 continue  # ✅ Skip delisted stocks
             if current.lower() not in name.lower():
                 continue
-            label = f"{name} - {data['price']:.2f} WC"
+            label = f"{name} - {data['price']:,.2f} WC"
             if data.get("commodity"):
                 label += " [Commodity]"
             choices.append(app_commands.Choice(name=label, value=name.upper()))
     
-        return choices[:25]
-
-
-
-    
-        
-
+        return choices[:25]        
 
     def __init__(self, bot):
         self.bot = bot
@@ -139,7 +152,7 @@ class StockMarket(commands.Cog):
             for name, data in stocks.items():
                 if data.get("delisted", False):
                     continue
-                self._hourly_start_prices[name] = data["price"]  # 🟢 FIXED: Now inside the loop
+                self._hourly_start_prices[name] = data["price"]  
     
         await self.recalculate_all_stock_prices()
         await self.apply_daily_commodity_price_update()
@@ -160,7 +173,7 @@ class StockMarket(commands.Cog):
         if gainers:
             top_3 = sorted(gainers, key=lambda x: x[1], reverse=True)[:3]
             message = "**📈 Top 3 Gainers This Hour:**\n" + "\n".join(
-                f"**{name}**: + {change:.2f}%" for name, change in top_3
+                f"**{name}**: + {change:,.2f}%" for name, change in top_3
             )
             channel_id = await self.config.announcement_channel()
             if channel_id:
@@ -435,7 +448,7 @@ class StockMarket(commands.Cog):
     
                 # Market activity influence
                 market_change = 0.01 * (self.last_day_trades / 10000)
-                market_change = max(-0.02, min(market_change, 0.02)) 
+                market_change = max(-0.05, min(market_change, 0.05)) 
     
                 # Final percent change calculation
                 total_percent_change = base_percent + tag_bonus + (market_change * 100)
@@ -445,9 +458,9 @@ class StockMarket(commands.Cog):
                 if data.get("commodity", False):
                     new_price = max(1.0, new_price)
                 else:
-                    if new_price <= 0:
+                    if new_price <= .01:
                         if random.random() < 0.5:
-                            new_price = 0.01
+                            new_price = .10
                             await self._announce_recovery(stock_name)
                         else:
                             to_delist.append(stock_name)
@@ -486,6 +499,8 @@ class StockMarket(commands.Cog):
                     stocks[stock_name]["price"] = 0.0
     
             self.last_day_trades = 0
+            await self._decay_tag_multipliers()
+
             
     # Helper announcement methods
     async def _announce_surge(self, stock_name, percent_change):
@@ -493,14 +508,14 @@ class StockMarket(commands.Cog):
         if channel_id:
             channel = self.bot.get_channel(channel_id)
             if channel:
-                await channel.send(f"🚀 **{stock_name}** surged by **{percent_change:.2f}%** this hour!")
+                await channel.send(f"🚀 **{stock_name}** surged by **{percent_change:,.2f}%** this hour!")
     
     async def _announce_recovery(self, stock_name):
         channel_id = await self.config.announcement_channel()
         if channel_id:
             channel = self.bot.get_channel(channel_id)
             if channel:
-                await channel.send(f"**{stock_name}** narrowly avoided bankruptcy and is now trading at **0.01 WC**!")
+                await channel.send(f"**{stock_name}** narrowly avoided bankruptcy and is now trading at **0.10 WC**!")
     
     async def _announce_bankruptcy(self, stock_name):
         channel_id = await self.config.announcement_channel()
@@ -529,7 +544,7 @@ class StockMarket(commands.Cog):
             }
             if min_volatility is not None and max_volatility is not None:
                 stocks[name]["volatility"] = [min_volatility, max_volatility]
-        await ctx.send(f"Stock {name} created with starting price {starting_price:.2f} Wellcoins.")
+        await ctx.send(f"Stock {name} created with starting price {starting_price:,.2f} Wellcoins.")
 
     @app_commands.command(name="viewstock", description="View details about a specific stock.")
     @app_commands.autocomplete(name=stock_name_autocomplete)
@@ -548,7 +563,7 @@ class StockMarket(commands.Cog):
         sell_remaining = 100 - (sells % 100)
     
         embed = discord.Embed(title=f"📄 Stock Info: {name}", color=discord.Color.blue())
-        embed.add_field(name="💰 Price", value=f"{price:.2f} Wellcoins", inline=True)
+        embed.add_field(name="💰 Price", value=f"{price:,.2f} Wellcoins", inline=True)
         embed.add_field(name="📈 Shares to Next Increase", value=f"{buy_remaining}", inline=True)
         embed.add_field(name="📉 Shares to Next Decrease", value=f"{sell_remaining}", inline=True)
         # Display tags if any
@@ -560,7 +575,7 @@ class StockMarket(commands.Cog):
         history = stock.get("history", [])
         if history and len(history) > 1 and history[-2] > 0:
             change = ((history[-1] - history[-2]) / history[-2]) * 100
-            embed.add_field(name="Last Hour Change", value=f"{change:+.2f}%", inline=True)
+            embed.add_field(name="Last Hour Change", value=f"{change:+,.2f}%", inline=True)
     
         # Gather stock ownership data
         owners_data = await self.config.all_users()
@@ -650,7 +665,7 @@ class StockMarket(commands.Cog):
             embed.add_field(
                 name=f"{emoji}{name}",
                 value=(
-                    f"Price: {data['price']:.2f} Wellcoins\n"
+                    f"Price: {data['price']:,.2f} Wellcoins\n"
                     f"🟢 {buy_remaining} shares until next price **increase**\n"
                     f"🔴 {sell_remaining} shares until next price **decrease**"
                 ),
@@ -737,7 +752,7 @@ class StockMarket(commands.Cog):
         
             if simulated_total_cost > balance:
                 return await interaction.response.send_message(
-                    f"💸 You need {simulated_total_cost:.2f} WC but only have {balance:.2f} WC.",
+                    f"💸 You need {simulated_total_cost:,.2f} WC but only have {balance:,.2f} WC.",
                     ephemeral=True
                 )
         
@@ -748,7 +763,7 @@ class StockMarket(commands.Cog):
             return await interaction.response.send_message("❗ Please provide either `shares` or `wc_spend`.", ephemeral=True)
     
         if total_cost > balance:
-            return await interaction.response.send_message(f"💸 You need {total_cost:.2f} WC but only have {balance:.2f} WC.", ephemeral=True)
+            return await interaction.response.send_message(f"💸 You need {total_cost:,.2f} WC but only have {balance:,.2f} WC.", ephemeral=True)
     
         # Update user balance and portfolio
         await self.economy_config.user(user).master_balance.set(balance - total_cost)
@@ -767,7 +782,7 @@ class StockMarket(commands.Cog):
     
         self.last_day_trades += total_cost
         await interaction.response.send_message(
-            f"✅ Bought {shares_bought} shares of **{name}** for **{total_cost:.2f} WC**."
+            f"✅ Bought {shares_bought} shares of **{name}** for **{total_cost:,.2f} WC**."
         )
 
 
@@ -845,7 +860,7 @@ class StockMarket(commands.Cog):
     
         self.last_day_trades -= earnings
         await interaction.response.send_message(
-            f"💰 Sold {amount} shares of **{name}** for **{earnings:.2f} WC, and paid {tax:.2f} in taxes**."
+            f"💰 Sold {amount} shares of **{name}** for **{earnings:,.2f} WC, and paid {tax:,.2f} in taxes**."
         )
 
     
@@ -863,12 +878,12 @@ class StockMarket(commands.Cog):
         embed.add_field(name="📊 Tax Rate", value="All stock sells are taxed at **5%**", inline=False)
         embed.add_field(
             name="💸 Your Tax Credit",
-            value=f"You currently have **{tax_credit:.2f} WC** in tax credit.\nEarn more by donating to community projects or scholarships!",
+            value=f"You currently have **{tax_credit:,.2f} WC** in tax credit.\nEarn more by donating to community projects or scholarships!",
             inline=False
         )
         embed.add_field(
             name="🏦 Total Tax Collected",
-            value=f"**{total_tax:.2f} WC** has been collected from all traders.",
+            value=f"**{total_tax:,.2f} WC** has been collected from all traders.",
             inline=False
         )
         embed.set_footer(text="Tax credits automatically reduce your owed tax until depleted.")
@@ -901,18 +916,18 @@ class StockMarket(commands.Cog):
     
                 embed.add_field(
                     name="✅ Payment Received",
-                    value=f"Thank you for your donation of **{payment:.2f} WC** to the Wellspring fund!",
+                    value=f"Thank you for your donation of **{payment:,.2f} WC** to the Wellspring fund!",
                     inline=False
                 )
                 embed.add_field(
                     name="🎟️ Your Tax Credit",
-                    value=f"You now have **{await self.economy_config.user(user).tax_credit():.2f} WC** in tax credit.",
+                    value=f"You now have **{await self.economy_config.user(user).tax_credit():,.2f} WC** in tax credit.",
                     inline=False
                 )
             else:
                 embed.add_field(
                     name="❌ Insufficient Funds",
-                    value=f"You tried to donate **{payment:.2f} WC**, but you only have **{balance:.2f} WC**.",
+                    value=f"You tried to donate **{payment:,.2f} WC**, but you only have **{balance:,.2f} WC**.",
                     inline=False
                 )
     
@@ -921,7 +936,7 @@ class StockMarket(commands.Cog):
         if net_balance >= 0:
             embed.add_field(
                 name="💰 Regional Surplus",
-                value=f"The Wellspring currently has a **surplus of {net_balance:.2f} WC**.",
+                value=f"The Wellspring currently has a **surplus of {net_balance:,.2f} WC**.",
                 inline=False
             )
         else:
@@ -944,6 +959,60 @@ class StockMarket(commands.Cog):
         RB = await self.config.spent_tax()
         tax = await self.config.tax()
         await ctx.send(f"The current Wellspring debt is {RB-tax:,.2f}")
+
+    async def get_spent_tax(self) -> float:
+        return float(await self.config.spent_tax())
+
+    async def get_tax_collected(self) -> float:
+        return float(await self.config.tax())
+
+    async def get_regional_debt(self) -> float:
+        """
+        By your current formula, 'debt' is spent_tax - tax.
+        """
+        spent = await self.get_spent_tax()
+        tax = await self.get_tax_collected()
+        return spent - tax
+
+    async def increase_regional_debt(self, amount: float) -> float:
+        """
+        Public API for other cogs to increase spending (thus increasing 'debt').
+        Returns the new debt.
+        """
+        if amount <= 0:
+            return await self.get_regional_debt()
+
+        current_spent = await self.get_spent_tax()
+        await self.config.spent_tax.set(current_spent + float(amount))
+        return await self.get_regional_debt()
+
+    async def decrease_regional_debt(self, amount: float, *, clamp_to_zero: bool = True) -> float:
+        """
+        Public API for other cogs to decrease spending (thus lowering 'debt').
+        Returns the new debt.
+
+        The way your numbers are set up, reducing debt means reducing 'spent_tax'.
+        If clamp_to_zero is True, we won't reduce below the point where debt < 0 (optional).
+        """
+        if amount <= 0:
+            return await self.get_regional_debt()
+
+        # Current values
+        current_spent = await self.get_spent_tax()
+        tax = await self.get_tax_collected()
+
+        # Target spent after reduction
+        target_spent = current_spent - float(amount)
+
+        if clamp_to_zero:
+            # Minimum spent such that debt (spent - tax) doesn't go below 0
+            min_spent_allowed = max(tax, 0.0)
+            if target_spent < min_spent_allowed:
+                target_spent = min_spent_allowed
+
+        await self.config.spent_tax.set(target_spent)
+        return await self.get_regional_debt()
+
 
 
         
@@ -979,7 +1048,7 @@ class StockMarket(commands.Cog):
             
             # Construct value
             value = (
-                f"{amount} shares @ {current_price:.2f} Wellcoins (Δ {percent_change:+.2f}%)\n"
+                f"{amount} shares @ {current_price:,.2f} Wellcoins (Δ {percent_change:+,.2f}%)\n"
                 f"🟢 {buy_remaining} shares until next price **increase**\n"
                 f"🔴 {sell_remaining} shares until next price **decrease**"
             )
@@ -994,7 +1063,7 @@ class StockMarket(commands.Cog):
             total_cost += avg_price * amount
     
         net_change = total_value - total_cost
-        embed.set_footer(text=f"Net Portfolio Change: {net_change:+.2f} Wellcoins\n Portfolio Value: {total_value:+.2f} Wellcoins")
+        embed.set_footer(text=f"Net Portfolio Change: {net_change:+,.2f} Wellcoins\n Portfolio Value: {total_value:+,.2f} Wellcoins")
         await ctx.send(embed=embed)
 
 
@@ -1098,7 +1167,7 @@ class StockMarket(commands.Cog):
         if affected == 0:
             await ctx.send(f"No stocks found with tag `{tag}`.")
         else:
-            await ctx.send(f"📈 Adjusted {affected} stock(s) with tag `{tag}` by {percent:+.2f}% and updated tag multiplier.")
+            await ctx.send(f"📈 Adjusted {affected} stock(s) with tag `{tag}` by {percent:+,.2f}% and updated tag multiplier.")
 
 
 
@@ -1342,7 +1411,7 @@ class TagValueView(View):
         current_page = self.entries[start:end]
         embed = discord.Embed(
             title="🔍 Active Tag Multipliers",
-            description="\n".join([f"`{tag}` → {value:+.2f}%" for tag, value in current_page]),
+            description="\n".join([f"`{tag}` → {value:+,.2f}%" for tag, value in current_page]),
             color=discord.Color.orange()
         )
         embed.set_footer(text=f"Page {self.page + 1}/{(len(self.entries) - 1) // self.per_page + 1}")

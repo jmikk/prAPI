@@ -19,13 +19,146 @@ import json
 from redbot.core.utils.chat_formatting import humanize_number
 import math
 from collections import defaultdict
-
+from typing import Optional
 
 def is_citizen():
     async def predicate(ctx):
         citizen_role_id = 1098646004250726420  
         return discord.utils.get(ctx.author.roles, id=citizen_role_id) is not None
     return commands.check(predicate)
+
+VERIFY_URL = "https://www.nationstates.net/page=verify_login"
+
+def format_nation(n: str) -> str:
+    return n.lower().replace(" ", "_").replace("<", "").replace(">", "")
+
+class VerifyNationModal(discord.ui.Modal, title="Verify your NationStates nation"):
+    nation_name = discord.ui.TextInput(
+        label="Nation name",
+        placeholder="My Cool Nation",
+        required=True,
+        max_length=50
+    )
+    code = discord.ui.TextInput(
+        label="Verification code",
+        placeholder="Paste the code from the NationStates page",
+        required=True,
+        max_length=128
+    )
+
+    def __init__(self, cog: commands.Cog):
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Who is verifying
+        user = interaction.user
+
+        # Prepare values
+        formatted_nation = format_nation(str(self.nation_name.value))
+        code = str(self.code.value).strip()
+
+        # --- Step 1: Verify with NationStates API ---
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"https://www.nationstates.net/cgi-bin/api.cgi?a=verify&nation={formatted_nation}&checksum={code}",
+                headers={"User-Agent": self.cog.USER_AGENT}
+            ) as response:
+                result = (await response.text()).strip()
+                if result != "1":
+                    await interaction.response.send_message(
+                        f"❌ Verification failed. Double-check your nation name and code. {result}", ephemeral=True
+                    )
+                    return
+
+        # --- Step 2: Save nation to user config if not already linked ---
+        async with self.cog.config.user(user).linked_nations() as nations:
+            if formatted_nation not in nations:
+                nations.append(formatted_nation)
+
+        # --- Step 3: Fetch residents from API to determine residency ---
+        async with aiohttp.ClientSession() as session:
+            async with session.get(self.cog.API_URL, headers={"User-Agent": self.cog.USER_AGENT}) as response:
+                if response.status != 200:
+                    await interaction.response.send_message(
+                        "⚠️ Verified, but I couldn't retrieve residents to set roles. Try again later.",
+                        ephemeral=True
+                    )
+                    return
+
+                xml_data = await response.text()
+
+        start_tag, end_tag = "<NATIONS>", "</NATIONS>"
+        start_index = xml_data.find(start_tag)
+        end_index = xml_data.find(end_tag)
+        residents = []
+        if start_index != -1 and end_index != -1:
+            start_index += len(start_tag)
+            resident_list_raw = xml_data[start_index:end_index].split(":")
+            residents = [n.strip().lower() for n in resident_list_raw if n]
+
+        # --- Step 4: Role assignment on your guild ---
+        guild = interaction.client.get_guild(1098644885797609492)  # Your server ID
+        if not guild:
+            await interaction.response.send_message(
+                "✅ Verified **{}**, but I couldn't find the server to update roles.".format(self.nation_name.value),
+                ephemeral=True
+            )
+            return
+
+        member = guild.get_member(user.id)
+        if not member:
+            await interaction.response.send_message(
+                "✅ Verified **{}**, but you're not in the verification server.".format(self.nation_name.value),
+                ephemeral=True
+            )
+            return
+
+        resident_role = guild.get_role(1098645868162338919)     # Resident
+        nonresident_role = guild.get_role(1098673447640518746)  # Visitor
+
+        if not resident_role or not nonresident_role:
+            await interaction.response.send_message(
+                "✅ Verified, but one or more roles are missing. Please contact an admin.",
+                ephemeral=True
+            )
+            return
+
+        # Apply roles
+        try:
+            if formatted_nation in residents:
+                changes = []
+                if resident_role not in member.roles:
+                    changes.append(member.add_roles(resident_role))
+                if nonresident_role in member.roles:
+                    changes.append(member.remove_roles(nonresident_role))
+                if changes:
+                    await asyncio.gather(*changes)
+                msg = f"✅ Successfully linked **{self.nation_name.value}** and gave you the **Resident** role."
+            else:
+                changes = []
+                if nonresident_role not in member.roles:
+                    changes.append(member.add_roles(nonresident_role))
+                if resident_role in member.roles:
+                    changes.append(member.remove_roles(resident_role))
+                if changes:
+                    await asyncio.gather(*changes)
+                msg = f"✅ Successfully linked **{self.nation_name.value}** and set you as a **Visitor**."
+        except discord.Forbidden:
+            msg = "✅ Verified, but I lack permission to manage your roles. Please contact an admin."
+
+        await interaction.response.send_message(msg, ephemeral=True)
+
+
+class VerifyButton(discord.ui.View):
+    def __init__(self, cog: commands.Cog, timeout: Optional[float] = 600):
+        super().__init__(timeout=timeout)
+        self.cog = cog
+
+    @discord.ui.button(label="Verify Nation", style=discord.ButtonStyle.primary)
+    async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(VerifyNationModal(self.cog))
+
 
 
 class NexusExchange(commands.Cog):
@@ -747,7 +880,7 @@ class NexusExchange(commands.Cog):
         bank_balance = await user_data.bank_total()
     
         if amount > bank_balance:
-            return await ctx.send(f"❌ You only have `{bank_balance:.2f}` WellCoins in your bank account.")
+            return await ctx.send(f"❌ You only have `{bank_balance:,.2f}` WellCoins in your bank account.")
     
         new_bank_balance = bank_balance - amount
         new_wallet_balance = await user_data.master_balance() + amount
@@ -756,7 +889,7 @@ class NexusExchange(commands.Cog):
         await user_data.master_balance.set(new_wallet_balance)
     
         currency = await guild_data.master_currency_name()
-        await ctx.send(f"🏧 You withdrew `{amount}` {currency} from your bank account.\n💰 New on-hand balance: `{new_wallet_balance:.2f}` {currency}.")
+        await ctx.send(f"🏧 You withdrew `{amount:,.2f}` {currency} from your bank account.\n💰 New on-hand balance: `{new_wallet_balance:,.2f}` {currency}.")
 
 
     @commands.command()
@@ -1846,10 +1979,10 @@ Helpful Resources:
         
             msg = (
                 f"**Balance for {member.display_name}:**\n"
-                f"💰 On hand: `{balance:.2f}` {currency}\n"
+                f"💰 On hand: `{balance:,.2f}` {currency}s\n"
             )
             if bank > 0:
-                msg += f"🏦 In bank: `{bank:.2f}` {currency}\n"
+                msg += f"🏦 In bank: `{bank:,.2f}` {currency}s\n"
             msg += f"⭐ XP: `{xp}`"
         
             await ctx.author.send(msg) if secret else await ctx.send(msg)
@@ -1866,7 +1999,7 @@ Helpful Resources:
             mini_currency_config = Config.get_conf(None, identifier=config_id, force_registration=True)
             user_balance = await mini_currency_config.user(member).get_raw(currency_name, default=0)
         
-            result_msg = f"💱 {member.display_name} has `{user_balance:.2f}` `{currency_name}`."
+            result_msg = f"💱 {member.display_name} has `{user_balance:,.2f}` `{currency_name}s`."
             await ctx.author.send(result_msg) if secret else await ctx.send(result_msg)
 
     def parse_cards(self, xml_data, season, categories):
@@ -1904,39 +2037,6 @@ Helpful Resources:
             "LEGENDARY": 0xFFFF00     # Yellow
         }
         return colors.get(category.upper(), 0xFFFFFF)  # Default to white if not found
-
-    @commands.guild_only()
-    @commands.command(name="richest")
-    async def richest(self, ctx):
-        """Display the top 3 richest users in WellCoins, combining wallet and bank balance."""
-        
-        all_users = await self.config.all_users()
-        balances = []
-    
-        for user_id, data in all_users.items():
-            member = ctx.guild.get_member(user_id)
-            if member is None:
-                continue
-    
-            user_data = self.config.user(member)
-            wallet = data.get("master_balance", 0)
-            bank = await user_data.bank_total()  # Assuming bank_total is an async method
-            total = round(wallet + bank, 2)
-    
-            balances.append((member, total))
-    
-        top_users = sorted(balances, key=lambda x: x[1], reverse=True)[:3]
-    
-        embed = discord.Embed(title="🏆 Top 3 Richest Users 🏆", color=discord.Color.gold())
-        
-        if not top_users:
-            embed.description = "No users have any WellCoins yet."
-        else:
-            for rank, (user, balance) in enumerate(top_users, start=1):
-                embed.add_field(name=f"#{rank} {user.display_name}", value=f"💰 `{balance:,.2f}` WellCoins", inline=False)
-    
-        await ctx.send(embed=embed)
-
 
 
     @commands.Cog.listener()
@@ -2149,81 +2249,17 @@ Helpful Resources:
             f"✅ Successfully linked **{nation_name}** to {member.mention}."
         )
 
+
     @commands.command()
-    async def linknation(self, ctx, *nation_name: str):
-        """Link your NationStates nation to your Discord account."""
-        if not nation_name:
-            nation_name = "Nation_name"
-        verify_url = f"https://www.nationstates.net/page=verify_login"
-        await ctx.send(f"To verify your NationStates nation, visit {verify_url} and copy the code in the box.")
-        await ctx.send(f"Then, DM me the following command to complete verification: `!verifynation <nation_name> <code>` \n For example `!verifynation {'_'.join(nation_name).replace('<','').replace('>','')} FWIXlb2dPZCHm1rq-4isM94FkCJ4RGPUXcjrMjFHsIc`")
-    
-    @commands.command()
-    async def verifynation(self, ctx, nation_name: str, code: str):
-        """Verify the NationStates nation using the provided verification code."""
-        formatted_nation = nation_name.lower().replace(" ", "_").replace("<","").replace(">","")
-    
-        # Verify with NationStates API
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"https://www.nationstates.net/cgi-bin/api.cgi?a=verify&nation={formatted_nation}&checksum={code}",
-                headers={"User-Agent": self.USER_AGENT}
-            ) as response:
-                result = await response.text()
-                if result.strip() != "1":
-                    await ctx.send("❌ Verification failed. Make sure you entered the correct code and try again.")
-                    return
-    
-        # Save nation to user config if not already linked
-        async with self.config.user(ctx.author).linked_nations() as nations:
-            if formatted_nation not in nations:
-                nations.append(formatted_nation)
-    
-        # Fetch residents from API
-        async with aiohttp.ClientSession() as session:
-            async with session.get(self.API_URL, headers={"User-Agent": self.USER_AGENT}) as response:
-                if response.status != 200:
-                    await ctx.send("Failed to retrieve residents. Try again later.")
-                    return
-    
-                xml_data = await response.text()
-                start_tag, end_tag = "<NATIONS>", "</NATIONS>"
-                start_index = xml_data.find(start_tag) + len(start_tag)
-                end_index = xml_data.find(end_tag)
-                resident_list_raw = xml_data[start_index:end_index].split(":")
-                residents = [n.strip().lower() for n in resident_list_raw if n]
-    
-        # Guild and Roles
-        guild = self.bot.get_guild(1098644885797609492)  # Your server ID
-        if not guild:
-            await ctx.send("❌ Verification failed. Could not find the server.")
-            return
-    
-        member = guild.get_member(ctx.author.id)
-        if not member:
-            await ctx.send("❌ You are not a member of the verification server.")
-            return
-    
-        resident_role = guild.get_role(1098645868162338919)     # Resident role
-        nonresident_role = guild.get_role(1098673447640518746)  # Visitor role
-    
-        if not resident_role or not nonresident_role:
-            await ctx.send("❌ One or more roles not found. Please check the role IDs.")
-            return
-    
-        # Assign roles based on residency
-        if formatted_nation in residents:
-            if resident_role not in member.roles:
-                await member.add_roles(resident_role)
-                await ctx.send("✅ You have been given the resident role.")
-            if nonresident_role in member.roles:
-                await member.remove_roles(nonresident_role)
-        else:
-            if nonresident_role not in member.roles:
-                await member.add_roles(nonresident_role)
-                await ctx.send("✅ You have been given the visitor role.")
-    
-        await ctx.send(f"✅ Successfully linked your NationStates nation: **{nation_name}**")
+    async def linknation(self, ctx: commands.Context, *nation_name: str):
+        """Send a message with a Verify button and the NS verify link."""
+        # Keep a small helper message so users know the flow
+        shown_nation = "_".join(nation_name).replace("<", "").replace(">", "") if nation_name else "Nation_name"
+        txt = (
+            f"To verify your NationStates nation, visit **{VERIFY_URL}** and copy the code shown there.\n\n"
+            f"Then click **Verify Nation** below to enter your nation (e.g., `{shown_nation}`) and paste the code."
+        )
+        await ctx.send(content=txt, view=VerifyButton(self))
 
 
     
