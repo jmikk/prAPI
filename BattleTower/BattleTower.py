@@ -152,6 +152,10 @@ class BattleTowerView(discord.ui.View):
         self.p_cur = self.p_max
         self.f_cur = self.f_max
 
+        self.autosim_running = False
+
+        self.autosim_delay = 2.0  # seconds between autosim actions
+
         self._arm_player_buttons()
 
         # run/session stats
@@ -163,9 +167,6 @@ class BattleTowerView(discord.ui.View):
         self.total_damage_taken: int = 0
         self.moves_used: Dict[str, int] = {}
 
-        self.autosim_running = False
-
-        self.autosim_delay = 2.0  # seconds between autosim actions
 
 
 
