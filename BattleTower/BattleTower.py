@@ -204,24 +204,7 @@ class BattleTowerView(discord.ui.View):
 
 
     def _arm_player_buttons(self):
-        self.clear_items()
-
-        # Add up to 4 damage moves (fallback to first 4 if needed)
-        candidates = []
-        for m in self.player.get("moves", [])[:4]:
-            mv = _coerce_move(self.player, m)
-            if mv[2] in ("physical", "special") and mv[3] > 0:
-                candidates.append(mv)
-        if not candidates:
-            for m in self.player.get("moves", [])[:4]:
-                candidates.append(_coerce_move(self.player, m))
-
-        for idx, mv in enumerate(candidates[:4]):
-            label = f"{mv[0].title()} ({mv[3]})"
-            self.add_item(self.MoveButton(tower=self, label=label, move=mv, row=0 if idx < 3 else 1))
-
-        self.add_item(self.AutoSimButton(tower=self))
-        self.add_item(self.GiveUpButton(tower=self))
+       self._apply_controls()
 
     class MoveButton(discord.ui.Button):
         def __init__(self, tower: "BattleTowerView", label: str, move: Tuple[str, str, str, int], row: int = 0):
@@ -428,8 +411,7 @@ class BattleTowerView(discord.ui.View):
 
     def _arm_autosim_only(self):
         """Show only the Auto-Sim toggle button while autosim is active."""
-        self.clear_items()
-        self.add_item(self.AutoSimButton(tower=self))
+        self._apply_controls()
 
 
 
@@ -572,6 +554,49 @@ class BattleTowerView(discord.ui.View):
         emb = discord.Embed(title="💀 Defeat — Run Summary", description=desc, color=discord.Color.red())
         self._arm_player_buttons()
         await self._safe_edit(interaction, embed=emb, view=self)
+
+    def _apply_controls(self, *, mode: str = "battle"):
+        """
+        mode: "battle" (normal turn UI), "victory", or "defeat"
+        Ensures only the correct buttons are on the message.
+        """
+        self.clear_items()
+
+        # While autosim is running, ALWAYS show just the toggle button.
+        if self.autosim_running:
+            btn = self.AutoSimButton(tower=self)
+            btn.label = "⏹ Stop Auto-Sim"
+            self.add_item(btn)
+            return
+
+        # Autosim not running: show the appropriate set per mode
+        if mode == "battle":
+            # normal move controls
+            candidates = []
+            for m in self.player.get("moves", [])[:4]:
+                mv = _coerce_move(self.player, m)
+                if mv[2] in ("physical", "special") and mv[3] > 0:
+                    candidates.append(mv)
+            if not candidates:
+                for m in self.player.get("moves", [])[:4]:
+                    candidates.append(_coerce_move(self.player, m))
+
+            for idx, mv in enumerate(candidates[:4]):
+                label = f"{mv[0].title()} ({mv[3]})"
+                self.add_item(self.MoveButton(tower=self, label=label, move=mv, row=0 if idx < 3 else 1))
+
+            self.add_item(self.AutoSimButton(tower=self))
+            self.add_item(self.GiveUpButton(tower=self))
+
+        elif mode == "victory":
+            # post-battle summary controls
+            self.add_item(self.RematchSame(self))
+            self.add_item(self.CloseButton())
+
+        elif mode == "defeat":
+            # defeat summary only offers close
+            self.add_item(self.CloseButton())
+
 
 
 
