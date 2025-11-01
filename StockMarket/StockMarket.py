@@ -679,7 +679,7 @@ class StockMarket(commands.Cog):
         simulated_buys = buys
         shares = int(shares)
         for _ in range(shares):
-            if simulated_buys % 100 == 0 and simulated_buys != 0:
+            if simulated_buys % 100 == 0 and simulated_buys > 0:
                 current_price += price_increase
             total_cost += current_price
             simulated_buys += 1
@@ -695,7 +695,7 @@ class StockMarket(commands.Cog):
     
         for _ in range(shares):
             # ↓ Apply price drop before the threshold, matching buy behavior
-            if simulated_sells % 100 == 0 and simulated_sells != 0:
+            if simulated_sells % 100 == 0 and simulated_sells > 0:
                 current_price = max(0.01, current_price - price_decrease)
     
             total_earnings += current_price
