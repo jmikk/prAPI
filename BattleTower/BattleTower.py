@@ -801,7 +801,7 @@ class BattleTower(commands.Cog):
     async def _reset_streak(self, user_id: int) -> None:
         await self._set_streak(user_id, 0)
 
-    def _medal(i: int) -> str:
+    def _medal(self,i: int) -> str:
         return ("🥇","🥈","🥉")[i] if i < 3 else f"#{i+1}"
 
     @commands.hybrid_command(name="btleaderboard", aliases=("btlb","btl"))
