@@ -871,7 +871,7 @@ class BattleTower(commands.Cog):
             description="\n".join(lines),
             color=discord.Color.gold(),
         )
-        emb.set_footer(text="Use /btleaderboard top:<N> scope:<global|server>")
+        emb.set_footer(text="Use $btleaderboard top: <N> scope: <global|server>")
     
         await ctx.send(embed=emb)
 
