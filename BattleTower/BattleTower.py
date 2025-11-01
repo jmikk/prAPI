@@ -9,6 +9,8 @@ from redbot.core import commands, Config
 import asyncio  # top of file
 import aiohttp
 
+from itertools import islice
+
 # Simple in-memory cache to avoid hammering PokéAPI
 MOVE_CACHE: Dict[str, Tuple[str, str, Optional[int]]] = {}
 # cache value: (type, style, power_or_None)
@@ -798,6 +800,80 @@ class BattleTower(commands.Cog):
 
     async def _reset_streak(self, user_id: int) -> None:
         await self._set_streak(user_id, 0)
+
+    def _medal(i: int) -> str:
+        return ("🥇","🥈","🥉")[i] if i < 3 else f"#{i+1}"
+
+    @commands.hybrid_command(name="btleaderboard", aliases=("btlb","btl"))
+    async def btleaderboard(
+        self,
+        ctx: commands.Context,
+        top: int = 10,
+        scope: str = "global",  # "global" or "server"
+    ):
+        """
+        Battle Tower leaderboard.
+        • scope: "global" (default) or "server" (this guild only)
+        • top: how many to show (default 10)
+        """
+        top = max(1, min(25, int(top)))  # clamp 1..25
+    
+        # Pull all stored user records from Config
+        all_users = await self.config.all_users()  # {user_id: {"bt_streak": int, "bt_highest_floor": int}}
+        if not all_users:
+            return await ctx.reply("No Battle Tower data yet. Be the first!")
+    
+        # Optional server filter
+        guild_user_ids = set()
+        if scope.lower() in ("server", "guild", "here") and ctx.guild:
+            guild_user_ids = {m.id for m in ctx.guild.members}
+        else:
+            scope = "global"
+    
+        # Build sortable list: (highest_floor, user_id)
+        entries = []
+        for uid_str, data in all_users.items():
+            try:
+                uid = int(uid_str)
+            except Exception:
+                continue
+            if scope == "server" and uid not in guild_user_ids:
+                continue
+            highest = int(data.get("bt_highest_floor", 1))
+            # Ignore completely unplayed users if you want:
+            # if highest <= 1: continue
+            entries.append((highest, uid))
+    
+        if not entries:
+            return await ctx.reply("No qualifying Battle Tower runs yet for this server." if scope == "server" else "No Battle Tower runs yet.")
+    
+        # Sort: highest floor desc, then user id for stability
+        entries.sort(key=lambda t: (-t[0], t[1]))
+        top_entries = list(islice(entries, top))
+    
+        # Format lines with medals/positions
+        lines = []
+        for i, (floor, uid) in enumerate(top_entries):
+            # Try to resolve a nice display:
+            display = None
+            if ctx.guild:
+                m = ctx.guild.get_member(uid)
+                if m:
+                    display = m.display_name
+            if not display:
+                u = ctx.bot.get_user(uid)
+                display = u.name if u else f"User {uid}"
+            lines.append(f"{_medal(i)}  **{display}** — Floor **{floor}**  (<@{uid}>)")
+    
+        title_scope = "Server" if scope == "server" else "Global"
+        emb = discord.Embed(
+            title=f"Battle Tower Leaderboard — {title_scope}",
+            description="\n".join(lines),
+            color=discord.Color.gold(),
+        )
+        emb.set_footer(text="Use /btleaderboard top:<N> scope:<global|server>")
+    
+        await ctx.send(embed=emb)
 
     @commands.hybrid_command(name="battletowerinfo", aliases=("btinfo", "bti"))
     async def battletowerinfo(self, ctx: commands.Context):
