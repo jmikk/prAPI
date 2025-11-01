@@ -944,60 +944,64 @@ class BattleTower(commands.Cog):
     @commands.hybrid_command(name="battletower")
     async def battletower(self, ctx: commands.Context, floor: int = 1):
         """Fight an endlessly scaling NPC at the given level. Buttons = your moves."""
-        level = floor
-        level_step: int = 1
         await ctx.defer()
-
+    
         await self._reset_streak(ctx.author.id)
-
-
-        # Highest floor gate
+    
+        # Highest floor gate: allow any start ≤ highest; block only if above.
         highest = await self._get_highest_floor(ctx.author.id)  # default 1
-        start_floor = highest if floor is None else min(highest, max(1, int(floor)))
-        if floor is not None and start_floor != floor:
-            await ctx.send(f"You can only start on your highest unlocked floor. Your highest **Floor {start_floor}**.", ephemeral=True)
+        floor = max(1, int(floor))
+        if floor > highest:
+            await ctx.send(
+                f"You can only start up to your highest unlocked floor. Your highest is **Floor {highest}**.",
+                ephemeral=True,
+            )
             return
+    
+        level_step: int = 1  # how much the foe level increases per floor
+        desired_level = floor  # simple mapping: 1 floor == 1 level; adjust if you want floor->level scaling
+    
         gcog = self.bot.get_cog("GachaCatchEmAll")
         if not gcog:
             return await ctx.reply("GachaCatchEmAll cog not found. Please load it first.")
-
+    
         # 1) Get full player team
         team = await gcog._get_user_team(ctx.author)
         if not team:
             return await ctx.reply("You don't have a team set up.")
-
-        # Deep-copy + ensure required keys exist for EVERY mon in the party
+    
+        # Deep-copy + ensure required keys exist
         player_team = copy.deepcopy(team)
         for mon in player_team:
             mon.setdefault("level", mon.get("level", 1))
             mon.setdefault("xp", mon.get("xp", 0))
             mon.setdefault("moves", mon.get("moves", ["tackle"]))
             mon.setdefault("types", mon.get("types", ["normal"]))
-
-        # 2) Get/scale single NPC
+    
+        # 2) Get/scale single NPC to the desired starting level
         npc_list = await gcog._generate_npc_team(1, 1)
         foe = copy.deepcopy(npc_list[0] if isinstance(npc_list, list) else npc_list)
         foe.setdefault("level", foe.get("level", 1))
         start_lv = int(foe["level"])
-        if level > start_lv:
-            foe = self._tower_scale(foe, level - start_lv)
-        
-        await self._canonicalize_team_moves(player_team)
-        await _canonicalize_mon_moves(foe)
-        
-        # 3) Send interactive view (pass the WHOLE party)
+        if desired_level > start_lv:
+            foe = self._tower_scale(foe, desired_level - start_lv)
+    
+        # 3) Send interactive view (pass the WHOLE party) and stamp the chosen floor
         view = BattleTowerView(ctx, player_team=player_team, foe=foe, level_step=level_step)
-
-        pmax = _init_hp(player_team[0])  # first active mon
+        view.current_floor = floor              # <-- make the run start on this floor
+        view.wins_since_floor_up = 0            # <-- reset progress toward next floor
+    
+        pmax = _init_hp(player_team[0])
         fmax = _init_hp(foe)
         emb = _battle_embed(
-            "Team Battle — Battle Tower",
+            f"Team Battle — Battle Tower (Floor {floor})",
             player_team[0], pmax, pmax,
             foe, fmax, fmax,
             footer="Choose a move, ⏩ Auto-Sim, or Give Up.",
         )
         msg = await ctx.send(embed=emb, view=view)
-        view.message = msg  # <— IMPORTANT: store original message
+        view.message = msg
+
 
     
     @staticmethod
