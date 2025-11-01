@@ -863,7 +863,7 @@ class BattleTower(commands.Cog):
             if not display:
                 u = ctx.bot.get_user(uid)
                 display = u.name if u else f"User {uid}"
-            lines.append(f"{_medal(i)}  **{display}** — Floor **{floor}**  (<@{uid}>)")
+            lines.append(f"{self._medal(i)}  **{display}** — Floor **{floor}**  (<@{uid}>)")
     
         title_scope = "Server" if scope == "server" else "Global"
         emb = discord.Embed(
