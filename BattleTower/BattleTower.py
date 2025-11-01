@@ -606,10 +606,13 @@ class BattleTowerView(discord.ui.View):
         diff = max(0, foe_bst - player_bst)
         base_exp = max(10, diff // 4 + lvl * 2)
 
+        # NEW: Floor multiplier
+        floor_mult = max(1, int(getattr(self, "current_floor", 1)))
+
         # Streak bonus
         current_streak = await self.cog._get_streak(self.user_id)
-        bonus_mult = min(1.0 + 0.10 * current_streak, 1.50)
-        final_exp = int(round(base_exp * bonus_mult))
+        bonus_mult = min(1.0 + 0.10 * current_streak, 2)
+        final_exp = int(round((base_exp + floor_mult) * bonus_mult))    
         new_streak = await self.cog._inc_streak(self.user_id)
 
         # Grant EXP to entire party
