@@ -746,7 +746,7 @@ class StockMarket(commands.Cog):
             total_cost, new_price, updated_buys = self.calculate_total_cost_for_buy(price, shares_bought, stock["buys"])
             stock["buys"] = updated_buys
     
-        elif shares is not None:
+        elif shares > 0:
             shares_bought = shares
             simulated_total_cost, new_price, updated_buys = self.calculate_total_cost_for_buy(price, shares_bought, stock["buys"])
         
@@ -760,7 +760,10 @@ class StockMarket(commands.Cog):
             stock["buys"] = updated_buys
     
         else:
-            return await interaction.response.send_message("❗ Please provide either `shares` or `wc_spend`.", ephemeral=True)
+            if shares < 0:
+                return await interaction.response.send_message("❗ You are unable to buy negative shares", ephemeral=True)
+            else:
+                return await interaction.response.send_message("❗ Please provide either `shares` or `wc_spend`.", ephemeral=True)
     
         if total_cost > balance:
             return await interaction.response.send_message(f"💸 You need {total_cost:,.2f} WC but only have {balance:,.2f} WC.", ephemeral=True)
@@ -800,7 +803,9 @@ class StockMarket(commands.Cog):
             return await interaction.response.send_message("❌ This stock does not exist.", ephemeral=True)
     
         async with self.config.user(user).stocks() as owned:
-            if owned.get(name, 0) < amount:
+            if amount < 0:
+                return await interaction.response.send_message("❌ You are unable to sell negative shares.", ephemeral=True)
+            elif owned.get(name, 0) < amount:
                 return await interaction.response.send_message("❌ You don't own that many shares.", ephemeral=True)
             owned[name] -= amount
             
