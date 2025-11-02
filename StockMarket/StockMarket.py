@@ -732,6 +732,9 @@ class StockMarket(commands.Cog):
     
         # Buy by amount of WC
         if wc_spend is not None:
+            if wc_spend <= 0:
+                return await interaction.response.send_message("❗ You are unable to buy negative shares", ephemeral=True)
+
             test_price = price
             test_buys = stock["buys"]
             while True:
