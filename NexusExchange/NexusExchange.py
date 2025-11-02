@@ -2770,7 +2770,7 @@ Helpful Resources:
         export_rows.sort(key=lambda r: r[2], reverse=True)
     
         # Create and send file
-        timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = "Now"
         if fmt == "csv":
             import csv
             buf = io.StringIO()
