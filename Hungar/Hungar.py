@@ -995,7 +995,37 @@ class Hungar(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {e}")
 
+    async def transfer_loot(self, victim: dict, killer: dict, zone_name: str, event_outcomes: list):
+        """
+        Transfer all items from victim to killer (if any) and add a descriptive event outcome.
+        `victim` and `killer` are the player dicts stored in players[...].
+        """
+        # Ensure items keys exist
+        v_items = victim.get("items", [])
+        if not v_items:
+            return  # nothing to transfer
 
+        # Give items to killer
+        killer_items = killer.get("items", [])
+        # extend killer items with victim items
+        killer_items.extend(v_items)
+        killer["items"] = killer_items
+
+        # clear victim's items
+        victim["items"] = []
+
+        # Create a message: number of items and simple summary
+        try:
+            item_descriptions = []
+            for stat, boost in killer_items[-len(v_items):]:  # describe only the transferred items
+                item_descriptions.append(f"+{boost} {stat}")
+
+            transferred_text = ", ".join(item_descriptions) if item_descriptions else f"{len(v_items)} item(s)"
+        except Exception:
+            transferred_text = f"{len(v_items)} item(s)"
+
+        event_outcomes.append(f"🧰 {killer['name']} looted {transferred_text} from {victim['name']}!")
+        
     async def report_error(self, channel, error):
         """Send error details to a designated channel."""
         error_message = f"An error occurred:\n```{error}```"
@@ -2019,6 +2049,8 @@ class Hungar(commands.Cog):
                                 attacker["kill_list"].append(target["name"])
                                 effect += f" 💀 {target['name']} died!"
                                 alive_set.discard(target_id)
+                                zone_name = "Cornucopia"
+                                await self.transfer_loot(target, attacker, zone_name, event_outcomes)
                             event_outcomes.append(f"{effect} (Cornucopia)")
                         else:
                             effect = f"🛡️ {target['name']} deflected an attack from {attacker['name']}."
@@ -2091,6 +2123,7 @@ class Hungar(commands.Cog):
                     )
                     zone_name = player_data["zone"]["name"] if isinstance(player_data["zone"], dict) else player_data.get("zone", "Unknown Zone")
                     event_outcomes.append(f"{effect} ({zone_name})")
+                    await self.transfer_loot(target, hunter, zone_name, event_outcomes)
     
                     if target["stats"]["HP"] <= 0:
                         target["alive"] = False
@@ -2122,6 +2155,7 @@ class Hungar(commands.Cog):
                         hunter["zone"] = {"name": "Cornucopia"}
                         zone_name = hunter["zone"]["name"] if isinstance(hunter["zone"], dict) else hunter.get("zone", "Unknown Zone")
                         event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']} ({zone_name})!")
+                        await self.transfer_loot(hunter, target, zone_name, event_outcomes)
                         stat = random.choice(["Str", "Con", "Def", "Wis", "HP"])
                         boost = random.randint(5, 10)
                         target["stats"][stat] += boost
