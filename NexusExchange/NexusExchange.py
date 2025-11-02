@@ -21,6 +21,10 @@ import math
 from collections import defaultdict
 from typing import Optional
 
+from redbot.core import commands, Config
+import json
+import io
+
 def is_citizen():
     async def predicate(ctx):
         citizen_role_id = 1098646004250726420  
@@ -2644,6 +2648,63 @@ Helpful Resources:
         await guild_data.scholarship_fund.set(school_fund - amount)
     
         await ctx.send(f"{amount} WellCoins have been withdrawn from the scholarship fund for school expenses.")
+
+    @commands.is_owner()
+    @commands.command(name="dumpuserdata")
+    async def dump_user_data(self, ctx, user: commands.UserConverter):
+        """Dump all user config data across cogs into a JSON file."""
+        data = {}
+
+        for cogname, cog in self.bot.cogs.items():
+            if hasattr(cog, "config") and isinstance(cog.config, Config):
+                try:
+                    user_data = await cog.config.user_from_id(user.id).all()
+                    if user_data:
+                        data[cogname] = user_data
+                except Exception:
+                    continue
+
+        if not data:
+            await ctx.send(f"No config data found for **{user}**.")
+            return
+
+        # Convert to JSON
+        dump = json.dumps(data, indent=4)
+        file = io.BytesIO(dump.encode("utf-8"))
+        await ctx.send(file=discord.File(file, filename=f"{user.id}_config.json"))
+
+    @commands.is_owner()
+    @commands.command(name="loaduserdata")
+    async def load_user_data(self, ctx, user: commands.UserConverter):
+        """Upload a JSON file to restore user config data across cogs."""
+        if not ctx.message.attachments:
+            await ctx.send("Please attach a JSON file to this command.")
+            return
+
+        attachment = ctx.message.attachments[0]
+        content = await attachment.read()
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            await ctx.send("Invalid JSON file.")
+            return
+
+        updated_cogs = []
+        for cogname, cogdata in data.items():
+            cog = self.bot.get_cog(cogname)
+            if cog and hasattr(cog, "config") and isinstance(cog.config, Config):
+                try:
+                    await cog.config.user_from_id(user.id).set(cogdata)
+                    updated_cogs.append(cogname)
+                except Exception as e:
+                    await ctx.send(f"⚠️ Failed to update `{cogname}`: {e}")
+
+        if updated_cogs:
+            await ctx.send(
+                f"✅ Updated configs for **{user}** in: {', '.join(updated_cogs)}"
+            )
+        else:
+            await ctx.send("No cogs were updated.")
 
 
 
