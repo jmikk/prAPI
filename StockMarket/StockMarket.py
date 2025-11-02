@@ -798,6 +798,9 @@ class StockMarket(commands.Cog):
         name = name.upper()
         stocks = await self.config.stocks()
         stock = stocks.get(name)
+
+        if amount <= 0:
+            return interaction.response.send_message("❌ Can't sell 0 or less of a stock!.", ephemeral=True)
     
         if not stock:
             return await interaction.response.send_message("❌ This stock does not exist.", ephemeral=True)
