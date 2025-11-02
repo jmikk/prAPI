@@ -1406,6 +1406,103 @@ class StockMarket(commands.Cog):
         view.message = await ctx.send("⏳ Loading tag multipliers...")
         await view.update_embed()
 
+    # --- ADMIN: View another user's portfolio ---
+    @commands.hybrid_command(name="userportfolio", with_app_command=True)
+    @commands.has_permissions(administrator=True)
+    async def userportfolio(self, ctx: commands.Context, user: discord.Member):
+        """[Admin] View a user's stock holdings and net change."""
+        user_stocks = await self.config.user(user).stocks()
+        all_stocks = await self.config.stocks()
+        avg_prices = await self.config.user(user).avg_buy_prices()
+    
+        if not user_stocks:
+            return await ctx.send(f"{user.display_name} doesn't own any stocks.")
+    
+        total_value = 0.0
+        total_cost = 0.0
+        embed = discord.Embed(
+            title=f"📁 {user.display_name}'s Portfolio",
+            color=discord.Color.blurple()
+        )
+    
+        for stock, amount in user_stocks.items():
+            stock_data = all_stocks.get(stock, {})
+            current_price = stock_data.get("price", 0.0)
+            avg_price = avg_prices.get(stock, current_price)
+            percent_change = ((current_price - avg_price) / avg_price) * 100 if avg_price else 0.0
+            status = " (Delisted)" if stock_data.get("delisted", False) else ""
+    
+            # Shares until next price movement
+            buys = stock_data.get("buys", 0)
+            sells = stock_data.get("sells", 0)
+            buy_remaining = 100 - (buys % 100)
+            sell_remaining = 100 - (sells % 100)
+    
+            value_text = (
+                f"{amount} shares @ {current_price:,.2f} Wellcoins (Δ {percent_change:+,.2f}%)\n"
+                f"🟢 {buy_remaining} shares until next price **increase**\n"
+                f"🔴 {sell_remaining} shares until next price **decrease**"
+            )
+    
+            embed.add_field(
+                name=f"{stock}{status}",
+                value=value_text,
+                inline=False
+            )
+    
+            total_value += current_price * amount
+            total_cost += avg_price * amount
+    
+        net_change = total_value - total_cost
+        embed.set_footer(
+            text=f"Net Portfolio Change: {net_change:+,.2f} Wellcoins • "
+                 f"Portfolio Value: {total_value:,.2f} Wellcoins"
+        )
+        await ctx.send(embed=embed)
+    
+    
+    # --- ADMIN: Remove shares from a user (no payout) ---
+    @commands.command(name="removestock")
+    @commands.has_permissions(administrator=True)
+    async def removestock(self, ctx: commands.Context, user: discord.Member, name: str, amount: int):
+        """
+        [Admin] Remove shares of a stock from a user (no payout).
+        Usage: [p]removestock @User STOCKNAME 10
+        """
+        if amount <= 0:
+            return await ctx.send("❌ Amount must be greater than zero.")
+    
+        name = name.upper()
+        # Validate stock exists (optional: allow removing even if delisted)
+        stocks_all = await self.config.stocks()
+        if name not in stocks_all:
+            return await ctx.send("❌ Stock not found.")
+    
+        async with self.config.user(user).stocks() as owned:
+            current = owned.get(name, 0)
+            if current <= 0:
+                return await ctx.send(f"❌ {user.mention} does not own any **{name}**.")
+            if amount > current:
+                return await ctx.send(
+                    f"❌ {user.mention} only owns **{current}** shares of **{name}**."
+                )
+    
+            # Deduct shares
+            remaining = current - amount
+            if remaining > 0:
+                owned[name] = remaining
+            else:
+                # Remove the ticker entirely and clear avg buy price entry
+                del owned[name]
+                async with self.config.user(user).avg_buy_prices() as prices:
+                    prices.pop(name, None)
+    
+        await ctx.send(
+            f"🧹 Removed **{amount}** shares of **{name}** from {user.mention}."
+            f" They now hold **{(await self.config.user(user).stocks()).get(name, 0)}**."
+        )
+
+
 
 class TagValueView(View):
     def __init__(self, cog, entries, per_page=25, timeout=120):
@@ -1460,6 +1557,8 @@ class TagValueView(View):
     async def on_timeout(self):
         if self.message:
             await self.message.edit(view=None)
+
+
 
     
     
