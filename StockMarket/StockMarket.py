@@ -707,7 +707,7 @@ class StockMarket(commands.Cog):
 
 
 
-     
+    @app_commands.guild_only()
     @app_commands.command(name="buystock", description="Buy shares of a stock.")
     @app_commands.describe(
         name="The stock you want to buy",
@@ -792,7 +792,7 @@ class StockMarket(commands.Cog):
         )
 
 
-    
+    @app_commands.guild_only()
     @app_commands.command(name="sellstock", description="Sell shares of a stock.")
     @app_commands.describe(name="The stock you want to sell", amount="Number of shares to sell")
     @app_commands.autocomplete(name=stock_name_autocomplete)
