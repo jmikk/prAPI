@@ -604,11 +604,11 @@ class BattleTowerView(discord.ui.View):
         foe_bst = _bst(self.foe)
         lvl = int(self.foe.get("level", 1))
         diff = max(0, foe_bst - player_bst)
-        base_exp = max(10, diff // 4 + lvl * 2)
+        base_exp = max(15, diff // 4 + lvl * 2)
 
         # Streak bonus
         current_streak = await self.cog._get_streak(self.user_id)
-        bonus_mult = min(1.0 + 0.10 * current_streak, 1.50)
+        bonus_mult = min(1.0 + 0.10 * current_streak, 2)
         final_exp = int(round(base_exp * bonus_mult))
         new_streak = await self.cog._inc_streak(self.user_id)
 
