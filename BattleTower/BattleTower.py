@@ -8,7 +8,7 @@ from redbot.core import commands, Config
 
 import asyncio  # top of file
 
-HP_BAR_LEN = 10
+HP_BAR_LEN = 20
 
 # --- Type chart (Gen6+ style) ---
 # Multiplier lookup: TYPE_CHART[attacking_type].get(defending_type, 1.0)
@@ -679,6 +679,7 @@ class BattleTower(commands.Cog):
     @commands.hybrid_command(name="battletower")
     async def battletower(self, ctx: commands.Context, floor: int = 1):
         """Fight an endlessly scaling NPC at the given level. Buttons = your moves."""
+        await ctx.send("Test mode")
         level = floor
         level_step: int = 1
         await ctx.defer()
