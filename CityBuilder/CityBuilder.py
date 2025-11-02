@@ -920,8 +920,6 @@ class RecycleResourceQtyModal(discord.ui.Modal, title="♻️ Recycle Resources 
 
     async def on_submit(self, interaction: discord.Interaction):
         res = self.resource_name.strip()
-        if res == "ore":
-            res = "metal"
         try:
             qty = int(str(self.qty.value))
             if qty <= 0:
@@ -2166,7 +2164,7 @@ class CityBuilder(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=987654321, force_registration=True)
         self.config.register_user(
-            resources={},      # {"food": 0, "metal": 0, ...}
+            resources={},      # {"food": 0, "ore": 0, ...}
             buildings={},      # {"farm": {"count": int}, ...}
             bank=0.0,          # Wellcoins reserved for upkeep/wages (WC)
             ns_nation=None,    # normalized nation
@@ -2992,7 +2990,7 @@ class CityBuilder(commands.Cog):
             if not io:
                 return "—"
             suf = "/t" if per_tick else ""
-            # Example: "metal+2/t, food+1/t, scrap+5/t"
+            # Example: "ore+2/t, food+1/t, scrap+5/t"
             return ", ".join(f"{k}+{int(v)}{suf}" for k, v in io.items())
     
         lines = []
@@ -3743,8 +3741,8 @@ class StoreBtn(ui.Button):
                 "Fees: Buyer **+10%** on conversion · Seller **−10%** on payout."
             ),
         )
-        e.add_field(name="What you can sell", value="Any bundle of: **food, metal, goods**", inline=False)
-        e.add_field(name="What you can buy",  value="Any produced resource: **food, metal, goods**", inline=False)
+        e.add_field(name="What you can sell", value="Any bundle of: **food, ore, goods**", inline=False)
+        e.add_field(name="What you can buy",  value="Any produced resource: **food, ore, goods**", inline=False)
 
         # ── NEW: show balances ─────────────────────────────────────────────
         e.add_field(
@@ -4089,7 +4087,7 @@ class AddSellListingModal(discord.ui.Modal, title="➕ New Sell Listing"):
     name = discord.ui.TextInput(label="Listing name", placeholder="e.g., 9003's Rock Stew", required=True, max_length=60)
     bundle = discord.ui.TextInput(
         label="Bundle (comma list)",
-        placeholder="food:1, metal:1",
+        placeholder="food:1, ore:1",
         required=True
     )
     price = discord.ui.TextInput(
@@ -4113,10 +4111,9 @@ class AddSellListingModal(discord.ui.Modal, title="➕ New Sell Listing"):
                 if ":" not in part:
                     raise ValueError("Use key:value like food:1")
                 k, v = [x.strip().lower() for x in part.split(":", 1)]
-                if k == "ore":
-                    k = "metal"
-                if k not in ("food", "metal", "goods"):
-                    raise ValueError(f"Unknown resource '{k}'. Use food, metal, goods.")
+                
+                if k not in ("food", "ore", "goods"):
+                    raise ValueError(f"Unknown resource '{k}'. Use food, ore, goods.")
                 amt = int(v)
                 if amt <= 0:
                     raise ValueError("Amounts must be positive integers.")
