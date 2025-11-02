@@ -977,6 +977,8 @@ class BattleTower(commands.Cog):
             mon.setdefault("xp", mon.get("xp", 0))
             mon.setdefault("moves", mon.get("moves", ["tackle"]))
             mon.setdefault("types", mon.get("types", ["normal"]))
+
+        await self._canonicalize_team_moves(player_team)
     
         # 2) Get/scale single NPC to the desired starting level
         npc_list = await gcog._generate_npc_team(1, 1)
@@ -985,6 +987,8 @@ class BattleTower(commands.Cog):
         start_lv = int(foe["level"])
         if desired_level > start_lv:
             foe = self._tower_scale(foe, desired_level - start_lv)
+        
+        await _canonicalize_mon_moves(foe)
     
         # 3) Send interactive view (pass the WHOLE party) and stamp the chosen floor
         view = BattleTowerView(ctx, player_team=player_team, foe=foe, level_step=level_step)
