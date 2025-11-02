@@ -2335,18 +2335,37 @@ Helpful Resources:
     @commands.admin()
     @commands.command()
     async def fine(self, ctx, user: discord.Member, amount: int):
-        """Fine a user a specific amount of WellCoins."""
+        """Fine a user a specific amount of WellCoins (uses bank first, then wallet; can go negative)."""
         if amount <= 0:
             await ctx.send("❌ Fine amount must be greater than zero.")
             return
+    
+        # Get current balances
+        user_wallet = await self.config.user(user).master_balance()
+        user_bank = await self.config.user(user).bank()
+    
+        total_funds = user_wallet + user_bank
+    
+        if total_funds >= amount:
+            # Deduct from bank first
+            if user_bank >= amount:
+                await self.config.user(user).bank.set(user_bank - amount)
+                remaining_fine = 0
+            else:
+                remaining_fine = amount - user_bank
+                await self.config.user(user).bank.set(0)
+                await self.config.user(user).master_balance.set(user_wallet - remaining_fine)
+            await ctx.send(f"🚨 {user.mention} has been fined `{amount}` WellCoins by Gob on behalf of the government!")
+        else:
+            # Not enough funds, set wallet negative for the difference
+            remaining = amount - total_funds
+            await self.config.user(user).bank.set(0)
+            await self.config.user(user).master_balance.set(-remaining)
+            await ctx.send(
+                f"🚨 {user.mention} has been fined `{amount}` WellCoins by Gob on behalf of the government! "
+                f"They didn’t have enough, so their balance is now negative `{remaining}` WellCoins."
+            )
 
-        user_balance = await self.config.user(user).master_balance()
-        if user_balance < amount:
-            await ctx.send(f"❌ {user.mention} does not have enough WellCoins to pay the fine of `{amount}`.")
-            return
-
-        await self.config.user(user).master_balance.set(user_balance - amount)
-        await ctx.send(f"🚨 {user.mention} has been fined `{amount}` WellCoins by Gob on behalf the goverment!")
     
     async def update_wellcoin_snapshots(self, total_wellcoins):
         """Updates daily and weekly WellCoin snapshots"""
