@@ -446,12 +446,8 @@ class StockMarket(commands.Cog):
                 else:
                     base_percent = random.uniform(-2, 2)
     
-                # Market activity influence
-                market_change = 0.01 * (self.last_day_trades / 10000)
-                market_change = max(-0.05, min(market_change, 0.05)) 
-    
                 # Final percent change calculation
-                total_percent_change = base_percent + tag_bonus + (market_change * 100)
+                total_percent_change = base_percent + tag_bonus 
                 new_price = round(old_price * (1 + total_percent_change / 100), 2)
     
                 # Bankruptcy/delist logic
