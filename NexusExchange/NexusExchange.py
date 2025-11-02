@@ -2342,24 +2342,24 @@ Helpful Resources:
     
         # Get current balances
         user_wallet = await self.config.user(user).master_balance()
-        user_bank = await self.config.user(user).bank()
+        user_bank = await self.config.user(user).bank_total()
     
         total_funds = user_wallet + user_bank
     
         if total_funds >= amount:
             # Deduct from bank first
             if user_bank >= amount:
-                await self.config.user(user).bank.set(user_bank - amount)
+                await self.config.user(user).bank_total.set(user_bank - amount)
                 remaining_fine = 0
             else:
                 remaining_fine = amount - user_bank
-                await self.config.user(user).bank.set(0)
+                await self.config.user(user).bank_total.set(0)
                 await self.config.user(user).master_balance.set(user_wallet - remaining_fine)
             await ctx.send(f"🚨 {user.mention} has been fined `{amount}` WellCoins by Gob on behalf of the government!")
         else:
             # Not enough funds, set wallet negative for the difference
             remaining = amount - total_funds
-            await self.config.user(user).bank.set(0)
+            await self.config.user(user).bank_total.set(0)
             await self.config.user(user).master_balance.set(-remaining)
             await ctx.send(
                 f"🚨 {user.mention} has been fined `{amount}` WellCoins by Gob on behalf of the government! "
