@@ -2753,7 +2753,8 @@ Helpful Resources:
                 continue
     
             bal = float(data.get("master_balance", 0.0))
-            total += bal
+            bank = float(data.get("bank_total",0.0))
+            total += bal + bank
     
             # Try to resolve a nice display name
             display_name = None
