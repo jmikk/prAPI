@@ -1603,6 +1603,10 @@ class GachaCatchEmAll(commands.Cog):
     @commands.hybrid_command(name="exportbox")
     async def exportbox(self, ctx: commands.Context, member: Optional[discord.Member] = None):
         """Export all your Pokémon (or another member's) to an HTML grid with sprite, stats, types, moves, and a live team builder."""
+        import io, html
+        from datetime import datetime
+        from typing import Any, Dict, List, Optional
+    
         member = member or ctx.author
         box: List[Dict[str, Any]] = await self.config.user(member).pokebox()
     
@@ -1704,59 +1708,18 @@ class GachaCatchEmAll(commands.Cog):
       </div>
     </div>''')
     
+        # --- JS/CSS as plain strings (so braces won't break Python f-string parsing) ---
+        styles = """[CSS rules trimmed for brevity in this message — keep the full block from the previous answer]"""
+        script_search = """[search filtering JS block from the previous answer]"""
+        script_team = """[team builder JS block from the previous answer]"""
+    
         html_text = f"""<!DOCTYPE html>
     <html lang="en">
     <head>
     <meta charset="utf-8">
     <title>{html.escape(member.display_name)}'s Pokémon Box</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-    :root {{
-      --bg:#101114; --card1:#1a1c22; --card2:#212530; --text:#f0f0f0; --muted:#888;
-      --accent:#ffcb05; --accent2:#2a75bb;
-    }}
-    * {{ box-sizing: border-box; }}
-    body {{ background: var(--bg); color: var(--text); font-family: 'Segoe UI',system-ui,sans-serif; margin:0; padding:2rem 1rem; }}
-    .container {{ max-width:1200px; margin:0 auto; }}
-    h1 {{ text-align:center; color:var(--accent); text-shadow:2px 2px var(--accent2); margin:0 0 .25rem; }}
-    .sub {{ text-align:center; color:#aaa; margin-bottom:1rem; }}
-    .toolbar {{ display:flex; gap:.75rem; align-items:center; justify-content:center; flex-wrap:wrap; margin:0 auto 1rem; max-width:900px; }}
-    #q {{ width:min(100%,620px); padding:.65rem .8rem; border-radius:10px; border:1px solid #2b2f3a; background:#14161a; color:var(--text); font-size:1rem; outline:none; }}
-    #q::placeholder {{ color:#9aa; }}
-    .badge {{ color:#9aa; font-size:.9rem; }}
-    .count {{ font-weight:600; color:#dbe4ff; }}
-    .grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; }}
-    .card {{ background:linear-gradient(180deg,var(--card1) 0%,var(--card2) 100%); border-radius:14px; padding:12px; box-shadow:0 2px 10px rgba(0,0,0,0.25); transition:transform .2s ease; }}
-    .card:hover {{ transform:translateY(-3px); }}
-    .sprite-wrap {{ text-align:center; }}
-    .sprite-wrap img {{ width:96px; height:96px; }}
-    .name {{ font-weight:700; margin-top:6px; }}
-    .meta {{ color:var(--muted); font-size:.82rem; margin-bottom:4px; }}
-    .types {{ margin-bottom:6px; }}
-    .chip {{ display:inline-block; padding:2px 8px; border-radius:999px; color:#111; font-weight:700; font-size:.75rem; margin:0 4px 4px 0; }}
-    .level {{ color:#dbe4ff; margin-bottom:6px; }}
-    .cols {{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }}
-    .col h4 {{ margin:6px 0; color:#dbe4ff; font-size:.9rem; }}
-    .stats td {{ padding:3px 6px; font-size:.85rem; border-bottom:1px solid rgba(255,255,255,.08); }}
-    .moves {{ list-style:none; padding:0; margin:0; }}
-    .moves li {{ padding:3px 0; border-bottom:1px dashed rgba(255,255,255,.08); font-size:.9rem; }}
-    footer {{ text-align:center; margin-top:1.5rem; color:#888; font-size:.85rem; }}
-    small.hint {{ display:block; text-align:center; color:#9aa; margin-top:.25rem; }}
-    .teambar {{ position:sticky; top:0; z-index:5; background:rgba(16,17,20,.9); backdrop-filter:blur(6px); border:1px solid #2b2f3a; border-radius:12px; padding:.75rem; margin:.75rem auto 1rem; max-width:900px; }}
-    .teamrow {{ display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem; }}
-    .teamrow:last-child {{ margin-bottom:0; }}
-    .teamtitle {{ color:#dbe4ff; }}
-    .teamcmd {{ flex:1; min-width:240px; padding:.55rem .7rem; border-radius:10px; border:1px solid #2b2f3a; background:#14161a; color:var(--text); font-size:.95rem; }}
-    .copybtn,.clearbtn {{ padding:.5rem .75rem; border-radius:10px; border:1px solid #2b2f3a; background:#1b1e25; color:#eaeaea; cursor:pointer; }}
-    .copybtn:hover,.clearbtn:hover {{ background:#232733; }}
-    .teamhint {{ color:#9aa; }}
-    .team {{ margin:6px 0 8px; }}
-    .teamlabel {{ display:inline-flex; gap:.5rem; align-items:center; color:#cfe1ff; font-weight:600; }}
-    .teamchk {{ transform:scale(1.2); }}
-    .card.selected {{ outline:2px solid var(--accent2); box-shadow:0 0 0 3px rgba(42,117,187,.25); }}
-    .card.limitshake {{ animation:shake .3s linear; }}
-    @keyframes shake {{ 0%,100%{{transform:translateX(0);}} 25%{{transform:translateX(-3px);}} 75%{{transform:translateX(3px);}} }}
-    </style>
+    <style>{styles}</style>
     </head>
     <body>
     <div class="container">
@@ -1769,11 +1732,9 @@ class GachaCatchEmAll(commands.Cog):
       <small class="hint">Tip: use spaces to combine terms (AND). Examples: <em>fire</em>, <em>pikachu thunderbolt</em>.</small>
     
       <div class="teambar" id="teambar">
+        <div class="teamrow"><strong class="teamtitle">Team <span id="teamcount">0/6</span></strong></div>
         <div class="teamrow">
-          <strong class="teamtitle">Team <span id="teamcount">0/6</span></strong>
-        </div>
-        <div class="teamrow">
-          <input id="teamcmd" class="teamcmd" type="text" readonly value='$team set ""' aria-label="Team command">
+          <input id="teamcmd" class="teamcmd" type="text" readonly value='$team set ""'>
           <button id="copybtn" class="copybtn" type="button">Copy</button>
           <button id="clearbtn" class="clearbtn" type="button">Clear</button>
         </div>
@@ -1783,52 +1744,15 @@ class GachaCatchEmAll(commands.Cog):
       <div class="grid" id="grid">{''.join(cards_html)}</div>
       <footer>PokéGacha export • Open locally in any browser</footer>
     </div>
-    
-    <script>
-    (function() {{
-      const q=document.getElementById('q'),grid=document.getElementById('grid');
-      const cards=Array.from(grid.querySelectorAll('.card'));
-      const countEls=[document.getElementById('count'),document.getElementById('count2')];
-      function norm(s){{return(s||'').toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'');}}
-      function matches(card,terms){{const hay=(card.dataset.name+' '+card.dataset.nick+' '+card.dataset.types+' '+card.dataset.moves).toLowerCase();return terms.every(t=>hay.includes(t));}}
-      function apply(){{const raw=norm(q.value.trim());const terms=raw.split(/\\s+/).filter(Boolean);let shown=0;for(const c of cards){{const ok=!terms.length||matches(c,terms);c.style.display=ok?'':'none';if(ok)shown++;}}countEls.forEach(el=>el.textContent=shown);}}
-      let to=null;q.addEventListener('input',()=>{{clearTimeout(to);to=setTimeout(apply,80);}});apply();
-    }})();
-    
-    (function() {{
-      const MAX=6;
-      const grid=document.getElementById('grid');
-      const teamcmd=document.getElementById('teamcmd');
-      const teamcount=document.getElementById('teamcount');
-      const copybtn=document.getElementById('copybtn');
-      const clearbtn=document.getElementById('clearbtn');
-      const chks=Array.from(grid.querySelectorAll('.teamchk'));
-      const cardsByUid=new Map();
-      for(const c of Array.from(grid.querySelectorAll('.card'))){const uid=c.dataset.uid||'';if(uid)cardsByUid.set(uid,c);}
-      let team=[];
-      function setSelected(uid,on){const card=cardsByUid.get(uid);if(card)card.classList.toggle('selected',!!on);}
-      function refresh(){const atMax=team.length>=MAX;for(const chk of chks){if(!chk.checked)chk.disabled=atMax;}const cmd=team.length?`$team set "${team.join(' ')}"`:'$team set ""';teamcmd.value=cmd;teamcount.textContent=`${team.length}/${MAX}`;}
-      function flashLimit(card){if(!card)return;card.classList.add('limitshake');setTimeout(()=>card.classList.remove('limitshake'),350);}
-      function onToggle(e){const chk=e.currentTarget;const uid=chk.dataset.uid||'';const card=cardsByUid.get(uid);
-        if(chk.checked){{if(team.length>=MAX){{chk.checked=false;flashLimit(card);return;}}
-          if(!uid||uid==='?'){{chk.checked=false;return;}}
-          if(!team.includes(uid)){{team.push(uid);setSelected(uid,true);}}}}
-        else{{team=team.filter(x=>x!==uid);setSelected(uid,false);}}
-        refresh();
-      }}
-      function syncFromDOM(){{team=[];for(const chk of chks){{const uid=chk.dataset.uid||'';if(chk.checked&&uid&&uid!=='?'){{team.push(uid);setSelected(uid,true);}}else setSelected(uid,false);}}refresh();}}
-      chks.forEach(chk=>chk.addEventListener('change',onToggle));
-      syncFromDOM();
-      copybtn.addEventListener('click',async()=>{{try{{await navigator.clipboard.writeText(teamcmd.value);copybtn.textContent='Copied!';setTimeout(()=>copybtn.textContent='Copy',900);}}catch{{teamcmd.select();document.execCommand('copy');}}}});
-      clearbtn.addEventListener('click',()=>{{for(const chk of chks)chk.checked=false;syncFromDOM();}});
-    }})();
-    </script>
+    <script>{script_search}</script>
+    <script>{script_team}</script>
     </body>
     </html>"""
     
         data = io.BytesIO(html_text.encode("utf-8"))
         filename = f"{member.display_name}_pokemon_box.html"
         await ctx.reply(file=discord.File(data, filename=filename))
+
 
 
 
