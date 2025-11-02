@@ -8,7 +8,7 @@ from redbot.core import commands, Config
 
 import asyncio  # top of file
 
-HP_BAR_LEN = 20
+HP_BAR_LEN = 10
 
 # --- Type chart (Gen6+ style) ---
 # Multiplier lookup: TYPE_CHART[attacking_type].get(defending_type, 1.0)
