@@ -679,7 +679,7 @@ class StockMarket(commands.Cog):
         simulated_buys = buys
         shares = int(shares)
         for _ in range(shares):
-            if simulated_buys % 100 == 0 and simulated_buys != 0:
+            if simulated_buys % 100 == 0 and simulated_buys > 0:
                 current_price += price_increase
             total_cost += current_price
             simulated_buys += 1
@@ -695,7 +695,7 @@ class StockMarket(commands.Cog):
     
         for _ in range(shares):
             # ↓ Apply price drop before the threshold, matching buy behavior
-            if simulated_sells % 100 == 0 and simulated_sells != 0:
+            if simulated_sells % 100 == 0 and simulated_sells > 0:
                 current_price = max(0.01, current_price - price_decrease)
     
             total_earnings += current_price
@@ -746,7 +746,7 @@ class StockMarket(commands.Cog):
             total_cost, new_price, updated_buys = self.calculate_total_cost_for_buy(price, shares_bought, stock["buys"])
             stock["buys"] = updated_buys
     
-        elif shares is not None:
+        elif shares > 0:
             shares_bought = shares
             simulated_total_cost, new_price, updated_buys = self.calculate_total_cost_for_buy(price, shares_bought, stock["buys"])
         
@@ -760,7 +760,10 @@ class StockMarket(commands.Cog):
             stock["buys"] = updated_buys
     
         else:
-            return await interaction.response.send_message("❗ Please provide either `shares` or `wc_spend`.", ephemeral=True)
+            if shares < 0:
+                return await interaction.response.send_message("❗ You are unable to buy negative shares", ephemeral=True)
+            else:
+                return await interaction.response.send_message("❗ Please provide either `shares` or `wc_spend`.", ephemeral=True)
     
         if total_cost > balance:
             return await interaction.response.send_message(f"💸 You need {total_cost:,.2f} WC but only have {balance:,.2f} WC.", ephemeral=True)
@@ -800,7 +803,9 @@ class StockMarket(commands.Cog):
             return await interaction.response.send_message("❌ This stock does not exist.", ephemeral=True)
     
         async with self.config.user(user).stocks() as owned:
-            if owned.get(name, 0) < amount:
+            if amount < 0:
+                return await interaction.response.send_message("❌ You are unable to sell negative shares.", ephemeral=True)
+            elif owned.get(name, 0) < amount:
                 return await interaction.response.send_message("❌ You don't own that many shares.", ephemeral=True)
             owned[name] -= amount
             
