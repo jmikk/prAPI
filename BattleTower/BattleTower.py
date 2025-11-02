@@ -7,79 +7,6 @@ import discord
 from redbot.core import commands, Config
 
 import asyncio  # top of file
-import aiohttp
-
-from itertools import islice
-
-# Simple in-memory cache to avoid hammering PokéAPI
-MOVE_CACHE: Dict[str, Tuple[str, str, Optional[int]]] = {}
-# cache value: (type, style, power_or_None)
-
-def _slugify_move_name(name: str) -> str:
-    return name.strip().lower().replace(" ", "-")
-
-def _damage_class_to_style(dc: str) -> str:
-    dc = (dc or "").lower()
-    return dc if dc in ("physical", "special") else "status"
-
-async def _fetch_move_from_pokeapi(raw_name: str) -> Optional[Tuple[str, str, Optional[int]]]:
-    """
-    Returns (type, style, power_or_None) or None if failed.
-    style ∈ {"physical","special","status"}.
-    """
-    name = _slugify_move_name(raw_name)
-    if name in MOVE_CACHE:
-        return MOVE_CACHE[name]
-
-    url = f"https://pokeapi.co/api/v2/move/{name}"
-    try:
-        timeout = aiohttp.ClientTimeout(total=6)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(url) as resp:
-                if resp.status != 200:
-                    return None
-                data = await resp.json()
-
-        mtype = (data.get("type", {}) or {}).get("name", "normal")
-        dmg_class = (data.get("damage_class", {}) or {}).get("name", "status")
-        style = _damage_class_to_style(dmg_class)
-        power = data.get("power", None)  # can be None for status moves, etc.
-
-        MOVE_CACHE[name] = (mtype, style, power)
-        return MOVE_CACHE[name]
-    except Exception:
-        return None
-
-async def _canonicalize_mon_moves(mon: Dict) -> None:
-    """
-    Convert mon['moves'] entries into structured 'name {type,style,power}' using PokéAPI.
-    On failure: primary type + special + 60. Status moves → power 0.
-    """
-    raw_moves = mon.get("moves") or []
-    new_moves: List[str] = []
-
-    for mv in raw_moves[:4]:
-        # already structured? keep it
-        if "{" in mv and "}" in mv:
-            new_moves.append(mv)
-            continue
-
-        info = await _fetch_move_from_pokeapi(mv)
-        if info:
-            mtype, style, power = info
-            if power is None:
-                power = 0 if style == "status" else 60
-            new_moves.append(f"{mv.strip()} {{{mtype},{style},{int(power)}}}")
-        else:
-            mtype = (mon.get("types") or ["normal"])[0]
-            new_moves.append(f"{mv.strip()} {{{mtype},special,60}}")
-
-    if not new_moves:
-        # ensure at least one move exists
-        mtype = (mon.get("types") or ["normal"])[0]
-        new_moves = [f"tackle {{{mtype},physical,40}}"]
-
-    mon["moves"] = new_moves
 
 HP_BAR_LEN = 20
 
@@ -440,43 +367,26 @@ class BattleTowerView(discord.ui.View):
 
     class RematchSame(discord.ui.Button):
         def __init__(self, tower: "BattleTowerView"):
-            # Compute the label from the tower's state, not the button's
+            super().__init__(style=discord.ButtonStyle.success, label="🔁 Rematch (Same Level)")
             self.tower = tower
-            remaining = max(0, 10 - tower.wins_since_floor_up)
-            label = f"🔁 Next fight {remaining}/10"
-            super().__init__(style=discord.ButtonStyle.success, label=label)
-    
+
         async def callback(self, interaction: discord.Interaction):
             if interaction.user.id != self.tower.user_id:
                 return await interaction.response.send_message("This isn't your battle.", ephemeral=True)
-    
-            # Always ACK first to avoid the "Interaction failed" banner
-            if not interaction.response.is_done():
-                await interaction.response.defer()
-    
-            # Keep the same level but fetch a different species
+
             desired = int(self.tower.foe.get("level", 1))
             self.tower.foe = await self.tower._fetch_new_foe(desired)
-    
-            # Reset foe HP for the new match; player HP stays as-is by design
+
+            # Reset foe HP and refresh UI
             self.tower.f_cur = self.tower.f_max = _init_hp(self.tower.foe)
-    
-            # Rebuild move buttons for the current active mon
             self.tower._arm_player_buttons()
-    
-            # Optional: refresh the label to reflect current progress again
-            # (useful if you reuse this button later)
-            remaining = max(0, 10 - self.tower.wins_since_floor_up)
-            self.label = f"🔁 Next fight {remaining}/10"
-    
             emb = _battle_embed(
                 "Team Battle — Battle Tower",
                 self.tower.player, self.tower.p_cur, self.tower.p_max,
                 self.tower.foe, self.tower.f_cur, self.tower.f_max,
                 footer=f"Rematch at Lv {desired} — new opponent!",
             )
-            await self.tower._safe_edit(interaction, embed=emb, view=self.tower)
-
+            await interaction.response.edit_message(embed=emb, view=self.tower)
 
 
     class CloseButton(discord.ui.Button):
@@ -514,7 +424,6 @@ class BattleTowerView(discord.ui.View):
         if diff and hasattr(self.cog, "_tower_scale"):
             candidate = self.cog._tower_scale(candidate, diff)
         candidate.setdefault("level", desired_level)
-        await _canonicalize_mon_moves(candidate)
         return candidate
 
     async def _autosim_loop(self, interaction: discord.Interaction):
@@ -606,13 +515,10 @@ class BattleTowerView(discord.ui.View):
         diff = max(0, foe_bst - player_bst)
         base_exp = max(10, diff // 4 + lvl * 2)
 
-        # NEW: Floor multiplier
-        floor_mult = max(1, int(getattr(self, "current_floor", 1)))
-
         # Streak bonus
         current_streak = await self.cog._get_streak(self.user_id)
-        bonus_mult = min(1.0 + 0.10 * current_streak, 2)
-        final_exp = int(round((base_exp + floor_mult) * bonus_mult))    
+        bonus_mult = min(1.0 + 0.10 * current_streak, 1.50)
+        final_exp = int(round(base_exp * bonus_mult))
         new_streak = await self.cog._inc_streak(self.user_id)
 
         # Grant EXP to entire party
@@ -745,41 +651,6 @@ class BattleTower(commands.Cog):
         # per-user streak
         self.config.register_user(bt_streak=0, bt_highest_floor=1)  # add bt_highest_floor
 
-    async def _canonicalize_team_moves(self, team: List[Dict]) -> None:
-        """
-        For each mon in team, convert plain move names into your structured format:
-        'name {type,style,power}'. If PokéAPI fails, default to 60 power (or 0 for status).
-        """
-        for mon in team:
-            raw_moves = mon.get("moves") or []
-            new_moves: List[str] = []
-            for mv in raw_moves[:4]:  # keep first 4 like your UI
-                # Keep already-structured moves as-is
-                if "{" in mv and "}" in mv:
-                    new_moves.append(mv)
-                    continue
-    
-                info = await _fetch_move_from_pokeapi(mv)
-                if info:
-                    mtype, style, power = info
-                    # If PokéAPI has no power, pick sensible default:
-                    # status -> 0; otherwise 60 (your requested default)
-                    if power is None:
-                        power = 0 if style == "status" else 60
-                    new_moves.append(f"{mv.strip()} {{{mtype},{style},{int(power)}}}")
-                else:
-                    # Full fallback: use mon's primary type, assume special 60 like your current default
-                    mtype = (mon.get("types") or ["normal"])[0]
-                    new_moves.append(f"{mv.strip()} {{{mtype},special,60}}")
-    
-            # If a mon had fewer than 1-4 moves, keep the remainder untouched or add a generic tackle if you like
-            if not new_moves:
-                # Ensure at least one move exists
-                mtype = (mon.get("types") or ["normal"])[0]
-                new_moves = [f"tackle {{{mtype},physical,40}}"]
-    
-            mon["moves"] = new_moves
-
         # add helpers in BattleTower class
     async def _get_highest_floor(self, user_id: int) -> int:
         return await self.config.user_from_id(user_id).bt_highest_floor()
@@ -804,207 +675,62 @@ class BattleTower(commands.Cog):
     async def _reset_streak(self, user_id: int) -> None:
         await self._set_streak(user_id, 0)
 
-    def _medal(self,i: int) -> str:
-        return ("🥇","🥈","🥉")[i] if i < 3 else f"#{i+1}"
-
-    @commands.hybrid_command(name="btleaderboard", aliases=("btlb","btl"))
-    async def btleaderboard(
-        self,
-        ctx: commands.Context,
-        top: int = 10,
-        scope: str = "global",  # "global" or "server"
-    ):
-        """
-        Battle Tower leaderboard.
-        • scope: "global" (default) or "server" (this guild only)
-        • top: how many to show (default 10)
-        """
-        top = max(1, min(25, int(top)))  # clamp 1..25
-    
-        # Pull all stored user records from Config
-        all_users = await self.config.all_users()  # {user_id: {"bt_streak": int, "bt_highest_floor": int}}
-        if not all_users:
-            return await ctx.reply("No Battle Tower data yet. Be the first!")
-    
-        # Optional server filter
-        guild_user_ids = set()
-        if scope.lower() in ("server", "guild", "here") and ctx.guild:
-            guild_user_ids = {m.id for m in ctx.guild.members}
-        else:
-            scope = "global"
-    
-        # Build sortable list: (highest_floor, user_id)
-        entries = []
-        for uid_str, data in all_users.items():
-            try:
-                uid = int(uid_str)
-            except Exception:
-                continue
-            if scope == "server" and uid not in guild_user_ids:
-                continue
-            highest = int(data.get("bt_highest_floor", 1))
-            # Ignore completely unplayed users if you want:
-            # if highest <= 1: continue
-            entries.append((highest, uid))
-    
-        if not entries:
-            return await ctx.reply("No qualifying Battle Tower runs yet for this server." if scope == "server" else "No Battle Tower runs yet.")
-    
-        # Sort: highest floor desc, then user id for stability
-        entries.sort(key=lambda t: (-t[0], t[1]))
-        top_entries = list(islice(entries, top))
-    
-        # Format lines with medals/positions
-        lines = []
-        for i, (floor, uid) in enumerate(top_entries):
-            # Try to resolve a nice display:
-            display = None
-            if ctx.guild:
-                m = ctx.guild.get_member(uid)
-                if m:
-                    display = m.display_name
-            if not display:
-                u = ctx.bot.get_user(uid)
-                display = u.name if u else f"User {uid}"
-            lines.append(f"{self._medal(i)}  **{display}** — Floor **{floor}**  (<@{uid}>)")
-    
-        title_scope = "Server" if scope == "server" else "Global"
-        emb = discord.Embed(
-            title=f"Battle Tower Leaderboard — {title_scope}",
-            description="\n".join(lines),
-            color=discord.Color.gold(),
-        )
-        emb.set_footer(text="Use $btleaderboard top: <N> scope: <global|server>")
-    
-        await ctx.send(embed=emb)
-
-    @commands.hybrid_command(name="battletowerinfo", aliases=("btinfo", "bti"))
-    async def battletowerinfo(self, ctx: commands.Context):
-        """Show your Battle Tower stats and mechanics overview."""
-        # For slash usage, defer ephemerally; classic prefix just ignores it.
-        try:
-            await ctx.defer(ephemeral=True)
-        except Exception:
-            pass
-    
-        user_id = ctx.author.id
-        highest = await self._get_highest_floor(user_id)
-        streak = await self._get_streak(user_id)
-    
-        # Mechanics summary (kept short & readable)
-        dmg_lines = [
-            "• **Damage** ≈ `power × (Atk/Def) × STAB × Type × RNG × SpeedBonus`",
-            "   — STAB: ×1.5 if move type matches attacker type",
-            "   — Type: super (×2), not very (×0.5), immune (×0) → we still deal **min 1**",
-            "   — RNG: ×0.85 ~ ×1.00; SpeedBonus: ×1.05 if attacker ≥ defender Speed",
-        ]
-    
-        autosim = [
-            "• **Auto-Sim**: instant resolve with bias (player damage ×0.65, foe ×1.10).",
-            "  Use real buttons for best results.",
-        ]
-    
-        floors = [
-            "• **Floors**: +1 floor every **10 wins** in a run.",
-            "  You can start up to your **highest unlocked floor**.",
-        ]
-    
-        emb = discord.Embed(
-            title="Battle Tower — Info & Your Stats",
-            color=discord.Color.blurple()
-        )
-        emb.add_field(
-            name="Your Stats",
-            value=f"• **Highest Floor Unlocked:** {highest}\n",
-            inline=False
-        )
-        emb.add_field(
-            name="Damage Model",
-            value="\n".join(dmg_lines),
-            inline=False
-        )
-        emb.add_field(
-            name="Auto-Sim",
-            value="\n".join(autosim),
-            inline=False
-        )
-        emb.add_field(
-            name="Floors & Progression",
-            value="\n".join(floors),
-            inline=False
-        )
-        emb.set_footer(text="Use $battletower to start. Choose a move, ⏩ Auto-Sim, or Give Up.")
-    
-        # Send ephemerally if slash; otherwise normal send.
-        try:
-            await ctx.send(embed=emb, ephemeral=True)
-        except TypeError:
-            # Fallback for prefix command contexts that don't support ephemeral arg
-            await ctx.send(embed=emb)
-
-
 
     @commands.hybrid_command(name="battletower")
     async def battletower(self, ctx: commands.Context, floor: int = 1):
         """Fight an endlessly scaling NPC at the given level. Buttons = your moves."""
+        await ctx.send("Test mode")
+        level = floor
+        level_step: int = 1
         await ctx.defer()
-    
+
         await self._reset_streak(ctx.author.id)
-    
-        # Highest floor gate: allow any start ≤ highest; block only if above.
+
+
+        # Highest floor gate
         highest = await self._get_highest_floor(ctx.author.id)  # default 1
-        floor = max(1, int(floor))
-        if floor > highest:
-            await ctx.send(
-                f"You can only start up to your highest unlocked floor. Your highest is **Floor {highest}**.",
-                ephemeral=True,
-            )
+        start_floor = highest if floor is None else min(highest, max(1, int(floor)))
+        if floor is not None and start_floor != floor:
+            await ctx.send(f"You can only start on your highest unlocked floor. Your highest **Floor {start_floor}**.", ephemeral=True)
             return
-    
-        level_step: int = 1  # how much the foe level increases per floor
-        desired_level = floor  # simple mapping: 1 floor == 1 level; adjust if you want floor->level scaling
-    
         gcog = self.bot.get_cog("GachaCatchEmAll")
         if not gcog:
             return await ctx.reply("GachaCatchEmAll cog not found. Please load it first.")
-    
+
         # 1) Get full player team
         team = await gcog._get_user_team(ctx.author)
         if not team:
             return await ctx.reply("You don't have a team set up.")
-    
-        # Deep-copy + ensure required keys exist
+
+        # Deep-copy + ensure required keys exist for EVERY mon in the party
         player_team = copy.deepcopy(team)
         for mon in player_team:
             mon.setdefault("level", mon.get("level", 1))
             mon.setdefault("xp", mon.get("xp", 0))
             mon.setdefault("moves", mon.get("moves", ["tackle"]))
             mon.setdefault("types", mon.get("types", ["normal"]))
-    
-        # 2) Get/scale single NPC to the desired starting level
+
+        # 2) Get/scale single NPC
         npc_list = await gcog._generate_npc_team(1, 1)
         foe = copy.deepcopy(npc_list[0] if isinstance(npc_list, list) else npc_list)
         foe.setdefault("level", foe.get("level", 1))
         start_lv = int(foe["level"])
-        if desired_level > start_lv:
-            foe = self._tower_scale(foe, desired_level - start_lv)
-    
-        # 3) Send interactive view (pass the WHOLE party) and stamp the chosen floor
+        if level > start_lv:
+            foe = self._tower_scale(foe, level - start_lv)
+
+        # 3) Send interactive view (pass the WHOLE party)
         view = BattleTowerView(ctx, player_team=player_team, foe=foe, level_step=level_step)
-        view.current_floor = floor              # <-- make the run start on this floor
-        view.wins_since_floor_up = 0            # <-- reset progress toward next floor
-    
-        pmax = _init_hp(player_team[0])
+
+        pmax = _init_hp(player_team[0])  # first active mon
         fmax = _init_hp(foe)
         emb = _battle_embed(
-            f"Team Battle — Battle Tower (Floor {floor})",
+            "Team Battle — Battle Tower",
             player_team[0], pmax, pmax,
             foe, fmax, fmax,
             footer="Choose a move, ⏩ Auto-Sim, or Give Up.",
         )
         msg = await ctx.send(embed=emb, view=view)
-        view.message = msg
-
+        view.message = msg  # <— IMPORTANT: store original message
 
     
     @staticmethod
