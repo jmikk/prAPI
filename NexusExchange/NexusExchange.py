@@ -2764,8 +2764,8 @@ Helpful Resources:
             else:
                 uo = self.bot.get_user(uid)
                 display_name = uo.name if uo else ""
-    
-            export_rows.append((uid_str, display_name, bal))
+            both = bal + bank
+            export_rows.append((uid_str, display_name, both))
     
         # Sort by balance, descending (optional, but nice)
         export_rows.sort(key=lambda r: r[2], reverse=True)
