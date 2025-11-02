@@ -707,7 +707,6 @@ class StockMarket(commands.Cog):
 
 
 
-    @app_commands.guild_only()
     @app_commands.command(name="buystock", description="Buy shares of a stock.")
     @app_commands.describe(
         name="The stock you want to buy",
@@ -716,6 +715,10 @@ class StockMarket(commands.Cog):
     )
     @app_commands.autocomplete(name=stock_name_autocomplete)
     async def buystock(self, interaction: discord.Interaction, name: str, shares: int = None, wc_spend: float = None):
+
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
         user = interaction.user
         name = name.upper()
         stocks = await self.config.stocks()
@@ -797,6 +800,10 @@ class StockMarket(commands.Cog):
     @app_commands.describe(name="The stock you want to sell", amount="Number of shares to sell")
     @app_commands.autocomplete(name=stock_name_autocomplete)
     async def sellstock(self, interaction: discord.Interaction, name: str, amount: int):
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used in a server.", ephemeral=True)
+            return
+        
         user = interaction.user
         name = name.upper()
         stocks = await self.config.stocks()
