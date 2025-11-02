@@ -2725,6 +2725,76 @@ Helpful Resources:
         else:
             await ctx.send("No cogs were updated.")
 
+    @commands.command(name="dumpbalances")
+    @commands.has_permissions(administrator=True)
+    async def dumpbalances(self, ctx: commands.Context, fmt: str = "csv"):
+        """
+        [Admin] Export every user's master_balance from the shared economy config.
+        Usage:
+          [p]dumpbalances            -> CSV (default)
+          [p]dumpbalances json       -> JSON
+        """
+        fmt = fmt.lower().strip()
+        if fmt not in {"csv", "json"}:
+            return await ctx.send("❌ Invalid format. Use `csv` or `json`.")
+    
+        users = await self.economy_config.all_users()
+        # users is a dict: { "user_id": { "master_balance": <num>, ... }, ... }
+    
+        # Build rows and compute total
+        total = 0.0
+        export_rows = []  # (user_id, display_name, master_balance)
+    
+        for uid_str, data in users.items():
+            try:
+                uid = int(uid_str)
+            except (TypeError, ValueError):
+                # Skip malformed keys
+                continue
+    
+            bal = float(data.get("master_balance", 0.0))
+            total += bal
+    
+            # Try to resolve a nice display name
+            display_name = None
+            member = ctx.guild.get_member(uid) if ctx.guild else None
+            if member:
+                display_name = member.display_name
+            else:
+                uo = self.bot.get_user(uid)
+                display_name = uo.name if uo else ""
+    
+            export_rows.append((uid_str, display_name, bal))
+    
+        # Sort by balance, descending (optional, but nice)
+        export_rows.sort(key=lambda r: r[2], reverse=True)
+    
+        # Create and send file
+        timestamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        if fmt == "csv":
+            import csv
+            buf = io.StringIO()
+            writer = csv.writer(buf)
+            writer.writerow(["user_id", "display_name", "master_balance"])
+            for uid_str, name, bal in export_rows:
+                writer.writerow([uid_str, name, f"{bal:.2f}"])
+            buf.seek(0)
+            file_bytes = io.BytesIO(buf.getvalue().encode("utf-8"))
+            filename = f"master_balances_{timestamp}.csv"
+        else:  # json
+            import json
+            payload = [
+                {"user_id": uid_str, "display_name": name, "master_balance": round(bal, 2)}
+                for uid_str, name, bal in export_rows
+            ]
+            file_bytes = io.BytesIO(json.dumps(payload, indent=2).encode("utf-8"))
+            filename = f"master_balances_{timestamp}.json"
+    
+        # Footer summary
+        summary = f"🧾 Exported {len(export_rows)} users • Total WC: {total:,.2f}"
+        await ctx.send(content=summary, file=discord.File(file_bytes, filename=filename))
+    
+    
 
 
 
