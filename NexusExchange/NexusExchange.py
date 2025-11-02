@@ -2738,7 +2738,7 @@ Helpful Resources:
         if fmt not in {"csv", "json"}:
             return await ctx.send("❌ Invalid format. Use `csv` or `json`.")
     
-        users = await self.economy_config.all_users()
+        users = await self.config.all_users()
         # users is a dict: { "user_id": { "master_balance": <num>, ... }, ... }
     
         # Build rows and compute total
