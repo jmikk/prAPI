@@ -1,7 +1,7 @@
 # battle_tower.py
 import copy
 import random
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Any 
 
 import discord
 from redbot.core import commands, Config
@@ -14,6 +14,8 @@ from itertools import islice
 # Simple in-memory cache to avoid hammering PokéAPI
 MOVE_CACHE: Dict[str, Tuple[str, str, Optional[int]]] = {}
 # cache value: (type, style, power_or_None)
+
+STAT_KEYS = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
 
 def _slugify_move_name(name: str) -> str:
     return name.strip().lower().replace(" ", "-")
@@ -620,6 +622,26 @@ class BattleTowerView(discord.ui.View):
                 before_xp = int(mon.get("xp", 0))
                 new_lvl, new_xp, _ = gcog._add_xp_to_entry(mon, final_exp)
                 # green bar + “arrow only if leveled up”
+                    # 2) If the mon leveled up, ask for stat points & auto-allocate (other cog)
+                if new_lvl > before_lvl:
+                    # Safely call the helpers only if the cog provides them
+                    if hasattr(gcog, "_give_stat_points_for_levels") and hasattr(gcog, "_auto_allocate_points"):
+                        try:
+                            pts = gcog._give_stat_points_for_levels(before_lvl, new_lvl)
+                            gcog._auto_allocate_points(mon, int(pts))
+                        except Exception:
+                            # If anything goes wrong, don't break the run—just skip growth
+                            pass
+            
+                    # If the active battler leveled, refresh its in-fight HP pool to reflect new HP stat
+                    if mon is self.player:
+                        old_max = self.p_max
+                        self.p_max = _init_hp(self.player)
+                        if old_max > 0:
+                            # keep current % HP, cap at new max
+                            self.p_cur = min(self.p_max, max(1, int(self.p_cur * (self.p_max / old_max))))
+                        else:
+                            self.p_cur = self.p_max
                 lvl_text = f"Lv {before_lvl} → {new_lvl}" if new_lvl > before_lvl else f"Lv {new_lvl}"
                 bar = self._green_xp_bar(gcog, new_lvl, new_xp)
                 lines.append(f"**{mon['name'].title()}** — {lvl_text}  {bar}")
@@ -1037,7 +1059,7 @@ class BattleTower(commands.Cog):
         if levels <= 0:
             return copy.deepcopy(target) if copy_input else target
 
-        growth_choices = [0, 1, 1, 2, 2, 3]
+        growth_choices = [0, 3, 3, 4, 4, 5]
 
         def scale_one(mon: Dict) -> Dict:
             b = copy.deepcopy(mon) if copy_input else mon
