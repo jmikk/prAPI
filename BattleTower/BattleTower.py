@@ -2,6 +2,7 @@
 import copy
 import random
 from typing import Dict, List, Optional, Tuple, Union, Any 
+from discord import User, Member
 
 import discord
 from redbot.core import commands, Config
