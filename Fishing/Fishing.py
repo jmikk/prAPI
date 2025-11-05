@@ -14,7 +14,7 @@ from redbot.core.bot import Red
 
 __all__ = ["Fishing"]
 
-COOLDOWN_SECONDS = 5.0
+COOLDOWN_SECONDS = 1.0
 
 # ---------- Data Models ----------
 @dataclass(frozen=True)
