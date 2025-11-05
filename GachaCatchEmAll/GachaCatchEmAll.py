@@ -160,6 +160,24 @@ class GachaCatchEmAll(commands.Cog):
 
     # Inside your GachaCatchEmAll cog:
 
+    # on GachaCatchEmAll
+    async def _apply_stats_bulk(self, user, updates):
+        """
+        updates: list of (uid, stats_dict, bst_int)
+        """
+        # example: using your config model where entries live under a user
+        conf = self.config.user(user)
+        all_entries = await conf.entries()  # or whatever your collection key is
+        changed = False
+        for uid, stats, bst in updates:
+            if uid in all_entries:
+                all_entries[uid]["stats"] = stats
+                all_entries[uid]["bst"] = int(bst)
+                changed = True
+        if changed:
+            await conf.entries.set(all_entries)
+
+
     async def _apply_exp_bulk(self, member, updates: Iterable[Tuple[str, int, int]]) -> None:
         """
         updates: iterable of (uid, new_level, new_xp)
