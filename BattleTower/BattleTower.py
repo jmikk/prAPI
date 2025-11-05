@@ -11,6 +11,8 @@ import aiohttp
 
 from itertools import islice
 
+from redbot.core import checks
+
 # Simple in-memory cache to avoid hammering PokéAPI
 MOVE_CACHE: Dict[str, Tuple[str, str, Optional[int]]] = {}
 # cache value: (type, style, power_or_None)
@@ -754,6 +756,129 @@ class BattleTower(commands.Cog):
         self.config = Config.get_conf(self, identifier="0xBATTLETOWER", force_registration=True)
         # per-user streak
         self.config.register_user(bt_streak=0, bt_highest_floor=1)  # add bt_highest_floor
+
+    # --- helper: find a user's mon by uid from Gacha cog storage ---
+    async def _gcog_get_mon_by_uid(self, user, uid: str) -> Optional[Dict]:
+        gcog = self.bot.get_cog("GachaCatchEmAll")
+        if not gcog:
+            return None
+        conf = gcog.config.user(user)
+        pokebox = await conf.pokebox()  # list
+        team    = await conf.team()     # list
+
+        # search pokebox first
+        for m in pokebox or []:
+            if isinstance(m, dict) and m.get("uid") == uid:
+                return m
+
+        # team might be dicts or UID strings
+        for t in team or []:
+            if isinstance(t, dict) and t.get("uid") == uid:
+                return t
+        return None
+
+    # --- command: grant X levels worth of stat points, no level change ---
+    @commands.hybrid_command(name="btgrantstats", aliases=("btfixstats", "btgrant"))
+    @checks.admin_or_permissions(manage_guild=True)
+    async def btgrantstats(self, ctx: commands.Context, uid: str, levels: int):
+        """
+        Grant *levels* worth of stat points to the mon with the given UID.
+        Does NOT change level/xp—only allocates the equivalent stat points.
+        Requires Manage Server (admin) permission.
+
+        Example:
+          $btgrantstats 19239d251d01 3
+        """
+        await ctx.defer()
+
+        levels = int(levels)
+        if levels <= 0:
+            return await ctx.reply("Levels must be a positive integer.")
+
+        gcog = self.bot.get_cog("GachaCatchEmAll")
+        if not gcog:
+            return await ctx.reply("GachaCatchEmAll cog not found.")
+
+        # locate target mon in user storage
+        mon = await self._gcog_get_mon_by_uid(ctx.author, uid)
+        if not mon:
+            return await ctx.reply(f"Couldn't find a mon with UID `{uid}` in your storage.")
+
+        # sanity: required helpers
+        if not hasattr(gcog, "_give_stat_points_for_levels") or not hasattr(gcog, "_auto_allocate_points"):
+            return await ctx.reply("Stat allocation helpers are missing on GachaCatchEmAll (_give_stat_points_for_levels / _auto_allocate_points).")
+
+        # compute how many points this mon *would have earned* over X levels
+        before_lvl = int(mon.get("level", 1))
+        pts = int(gcog._give_stat_points_for_levels(before_lvl, before_lvl + levels))
+        if pts <= 0:
+            return await ctx.reply("No points to grant for the specified levels (check your point schedule).")
+
+        # snapshot before
+        before_stats = dict(mon.get("stats", {}))
+        before_bst = self._recalc_bst(before_stats)
+
+        # allocate points in-place on the mon dict
+        try:
+            gcog._auto_allocate_points(mon, pts)
+        except Exception:
+            return await ctx.reply("Allocation failed while calling _auto_allocate_points.")
+
+        # refresh bst
+        mon["bst"] = self._recalc_bst(mon.get("stats", {}))
+
+        # persist changes (stats+bst) to both pokebox/team containers where applicable
+        if hasattr(gcog, "_apply_stats_bulk"):
+            await gcog._apply_stats_bulk(
+                ctx.author,
+                [(uid, mon.get("stats", {}), int(mon["bst"]))],
+            )
+        else:
+            # fallback: write directly into user config if bulk helper isn't present
+            conf = gcog.config.user(ctx.author)
+            pokebox = await conf.pokebox()
+            team    = await conf.team()
+            changed_box = False
+            changed_team = False
+            if isinstance(pokebox, list):
+                for i, m in enumerate(pokebox):
+                    if isinstance(m, dict) and m.get("uid") == uid:
+                        pokebox[i]["stats"] = mon.get("stats", {})
+                        pokebox[i]["bst"] = int(mon["bst"])
+                        changed_box = True
+            if isinstance(team, list):
+                for i, t in enumerate(team):
+                    if isinstance(t, dict) and t.get("uid") == uid:
+                        team[i]["stats"] = mon.get("stats", {})
+                        team[i]["bst"] = int(mon["bst"])
+                        changed_team = True
+            if changed_box:
+                await conf.pokebox.set(pokebox)
+            if changed_team:
+                await conf.team.set(team)
+
+        # pretty diff
+        after_stats = mon.get("stats", {})
+        after_bst = int(mon["bst"])
+        lines = []
+        for k in ("hp","attack","defense","special-attack","special-defense","speed"):
+            b = int(before_stats.get(k, 0))
+            a = int(after_stats.get(k, 0))
+            delta = a - b
+            lines.append(f"**{k.title().replace('-',' ')}:** {b} → {a}  ({'+' if delta>=0 else ''}{delta})")
+        lines.append(f"**BST:** {before_bst} → {after_bst}  ({'+' if (after_bst-before_bst)>=0 else ''}{after_bst-before_bst})")
+
+        emb = discord.Embed(
+            title="✅ Granted Stats",
+            description=(
+                f"UID: `{uid}`\n"
+                f"Mon: **{mon.get('name','?').title()}** (Lv {mon.get('level','?')})\n"
+                f"Levels worth applied: **{levels}**\n"
+                f"Allocated points: **{pts}**\n\n" + "\n".join(lines)
+            ),
+            color=discord.Color.green()
+        )
+        await ctx.reply(embed=emb)
 
     async def _canonicalize_team_moves(self, team: List[Dict]) -> None:
         """
