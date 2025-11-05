@@ -995,7 +995,7 @@ class Hungar(commands.Cog):
         except Exception as e:
             await ctx.send(f"An error occurred: {e}")
 
-    async def transfer_loot(self, victim: dict, killer: dict, event_outcomes: list):
+    def transfer_loot(self, victim: dict, killer: dict, event_outcomes: list):
         """
         Transfer all items from victim to killer (if any) and add a descriptive event outcome.
         `victim` and `killer` are the player dicts stored in players[...].
@@ -2050,7 +2050,7 @@ class Hungar(commands.Cog):
                                 effect += f" 💀 {target['name']} died!"
                                 alive_set.discard(target_id)
                                 zone_name = "Cornucopia"
-                                await self.transfer_loot(target, attacker, event_outcomes)
+                                self.transfer_loot(target, attacker, event_outcomes)
                             event_outcomes.append(f"{effect} (Cornucopia)")
                         else:
                             effect = f"🛡️ {target['name']} deflected an attack from {attacker['name']}."
@@ -2135,7 +2135,7 @@ class Hungar(commands.Cog):
                         stat = random.choice(["Str", "Con", "Def", "Wis", "HP"])
                         boost = random.randint(5, 10)
                         hunter["stats"][stat] += boost
-                        await self.transfer_loot(target, hunter, event_outcomes)
+                        self.transfer_loot(target, hunter, event_outcomes)
                 else:
                     backlash = abs(damage)
                     hunter["stats"]["HP"] -= backlash
@@ -2156,7 +2156,7 @@ class Hungar(commands.Cog):
                         hunter["zone"] = {"name": "Cornucopia"}
                         zone_name = hunter["zone"]["name"] if isinstance(hunter["zone"], dict) else hunter.get("zone", "Unknown Zone")
                         event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']} ({zone_name})!")
-                        await self.transfer_loot(hunter, target, event_outcomes)
+                        self.transfer_loot(hunter, target, event_outcomes)
                         stat = random.choice(["Str", "Con", "Def", "Wis", "HP"])
                         boost = random.randint(5, 10)
                         target["stats"][stat] += boost
