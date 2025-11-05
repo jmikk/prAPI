@@ -164,18 +164,48 @@ class GachaCatchEmAll(commands.Cog):
     async def _apply_stats_bulk(self, user, updates):
         """
         updates: list of (uid, stats_dict, bst_int)
+        Applies stats/bst to all matching mons in pokebox and team.
         """
-        # example: using your config model where entries live under a user
         conf = self.config.user(user)
-        all_entries = await conf.entries()  # or whatever your collection key is
-        changed = False
+        pokebox = await conf.pokebox()  # list[dict]
+        team    = await conf.team()     # list[dict]
+    
+        # Build quick lookup: uid -> list of (container, index)
+        locs = {}
+        for i, m in enumerate(pokebox or []):
+            u = m.get("uid")
+            if u:
+                locs.setdefault(u, []).append(("pokebox", i))
+        for i, m in enumerate(team or []):
+            u = m.get("uid")
+            if u:
+                locs.setdefault(u, []).append(("team", i))
+    
+        changed_box = False
+        changed_team = False
+    
         for uid, stats, bst in updates:
-            if uid in all_entries:
-                all_entries[uid]["stats"] = stats
-                all_entries[uid]["bst"] = int(bst)
-                changed = True
-        if changed:
-            await conf.entries.set(all_entries)
+            for where in locs.get(uid, []):
+                container, idx = where
+                if container == "pokebox":
+                    try:
+                        pokebox[idx]["stats"] = dict(stats or {})
+                        pokebox[idx]["bst"]   = int(bst)
+                        changed_box = True
+                    except Exception:
+                        pass
+                else:  # team
+                    try:
+                        team[idx]["stats"] = dict(stats or {})
+                        team[idx]["bst"]   = int(bst)
+                        changed_team = True
+                    except Exception:
+                        pass
+    
+        if changed_box:
+            await conf.pokebox.set(pokebox)
+        if changed_team:
+            await conf.team.set(team)
 
 
     async def _apply_exp_bulk(self, member, updates: Iterable[Tuple[str, int, int]]) -> None:
