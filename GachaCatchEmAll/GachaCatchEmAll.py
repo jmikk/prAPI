@@ -399,7 +399,7 @@ class MoveTutorView(discord.ui.View):
         self.uid = uid
         self.invoked_by_id = invoked_by_id
 
-    @discord.ui.button(label="Teach another (1000 WC)", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Teach another (100 WC)", style=discord.ButtonStyle.primary)
     async def teach_again(self, interaction: discord.Interaction, button: discord.ui.Button):
         # only the invoker can press
         if interaction.user.id != self.invoked_by_id:
