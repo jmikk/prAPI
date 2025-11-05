@@ -165,47 +165,53 @@ class GachaCatchEmAll(commands.Cog):
         """
         updates: list of (uid, stats_dict, bst_int)
         Applies stats/bst to all matching mons in pokebox and team.
+        Works whether 'team' holds dict mons or UID strings.
         """
         conf = self.config.user(user)
-        pokebox = await conf.pokebox()  # list[dict]
-        team    = await conf.team()     # list[dict]
+        pokebox = await conf.pokebox()  # list
+        team    = await conf.team()     # list
     
-        # Build quick lookup: uid -> list of (container, index)
-        locs = {}
+        # Build map of UID -> pokebox index (dict entries only)
+        uid_to_pb_index = {}
         for i, m in enumerate(pokebox or []):
-            u = m.get("uid")
-            if u:
-                locs.setdefault(u, []).append(("pokebox", i))
-        for i, m in enumerate(team or []):
-            u = m.get("uid")
-            if u:
-                locs.setdefault(u, []).append(("team", i))
+            if isinstance(m, dict):
+                u = m.get("uid")
+                if u:
+                    uid_to_pb_index[u] = i
+    
+        # For quick lookup of the new values
+        update_map = {uid: (dict(stats or {}), int(bst)) for uid, stats, bst in updates}
     
         changed_box = False
         changed_team = False
     
-        for uid, stats, bst in updates:
-            for where in locs.get(uid, []):
-                container, idx = where
-                if container == "pokebox":
-                    try:
-                        pokebox[idx]["stats"] = dict(stats or {})
-                        pokebox[idx]["bst"]   = int(bst)
-                        changed_box = True
-                    except Exception:
-                        pass
-                else:  # team
-                    try:
-                        team[idx]["stats"] = dict(stats or {})
-                        team[idx]["bst"]   = int(bst)
-                        changed_team = True
-                    except Exception:
-                        pass
+        # Apply to pokebox
+        for uid, (stats, bst) in update_map.items():
+            i = uid_to_pb_index.get(uid)
+            if i is not None and isinstance(pokebox[i], dict):
+                pokebox[i]["stats"] = stats
+                pokebox[i]["bst"]   = bst
+                changed_box = True
+    
+        # Apply to team
+        # If team entries are dicts: update in place.
+        # If they are strings (UIDs), skip (they'll resolve from pokebox when loaded).
+        for i, t in enumerate(team or []):
+            if isinstance(t, dict):
+                tuid = t.get("uid")
+                if tuid in update_map:
+                    stats, bst = update_map[tuid]
+                    t["stats"] = stats
+                    t["bst"]   = bst
+                    changed_team = True
+            # elif isinstance(t, str):  # UID-only team entries — nothing to change
+            #     pass
     
         if changed_box:
             await conf.pokebox.set(pokebox)
         if changed_team:
             await conf.team.set(team)
+
 
 
     async def _apply_exp_bulk(self, member, updates: Iterable[Tuple[str, int, int]]) -> None:
