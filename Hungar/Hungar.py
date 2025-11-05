@@ -1533,7 +1533,7 @@ class Hungar(commands.Cog):
                     players = await self.config.guild(guild).players()
                     alive_players = [player for player in players.values() if player["alive"]]
                     day_length = len(alive_players) * 20 + 20 #day speed settings
-                    if config["day_counter"] % 10 == 0:
+                    if config["day_counter"] == 0 or config["day_counter"] == 1:
                         day_length = day_length * 1.5
                     await self.config.guild(guild).day_duration.set(day_length)
                     await self.announce_new_day(ctx, guild)
@@ -1634,12 +1634,12 @@ class Hungar(commands.Cog):
         # Calculate the next day start time
         day_start = datetime.utcnow()
         alive_count = len(alive_players)
-        day_duration = min(max(int(alive_count) * 20 + 20,60),300)
+        day_duration = min(max(int(alive_count) * 20 + 20,60),240)
         day_counter = config.get("day_counter", 0)
-        if day_counter > 0 and day_counter % 10 == 0:
-            day_duration = int(day_duration * 1.5)  # Feast days are longer
+        if day_counter == 0 or day_counter == 1:
+            day_duration = 300  # Feast days are longer
     
-        next_day_start = day_start + timedelta(seconds=day_duration) - timedelta(hours=5)
+        next_day_start = day_start + timedelta(seconds=day_duration)
         next_day_start_timestamp = int(next_day_start.timestamp())  # Convert to Unix timestamp
 
                 # Save the updated day start time and duration
