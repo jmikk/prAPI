@@ -624,15 +624,15 @@ class BattleTowerView(discord.ui.View):
                 # green bar + “arrow only if leveled up”
                     # 2) If the mon leveled up, ask for stat points & auto-allocate (other cog)
                 if new_lvl > before_lvl:
-                    # Safely call the helpers only if the cog provides them
-                    if hasattr(gcog, "_give_stat_points_for_levels") and hasattr(gcog, "_auto_allocate_points"):
-                        try:
-                            pts = gcog._give_stat_points_for_levels(before_lvl, new_lvl)
-                            gcog._auto_allocate_points(mon, int(pts))
-                        except Exception:
-                            # If anything goes wrong, don't break the run—just skip growth
-                            pass
+                    try:
+                        pts = int(gcog._give_stat_points_for_levels(before_lvl, new_lvl))
+                        gcog._auto_allocate_points(mon, pts)
             
+                        # make sure bst is consistent even if the allocator didn't set it
+                        mon["bst"] = self.cog._recalc_bst(mon.get("stats", {}))
+                    except Exception:
+                        pass    
+
                     # If the active battler leveled, refresh its in-fight HP pool to reflect new HP stat
                     if mon is self.player:
                         old_max = self.p_max
@@ -642,6 +642,10 @@ class BattleTowerView(discord.ui.View):
                             self.p_cur = min(self.p_max, max(1, int(self.p_cur * (self.p_max / old_max))))
                         else:
                             self.p_cur = self.p_max
+                
+                mon["level"] = new_lvl
+                mon["xp"]    = new_xp
+
                 lvl_text = f"Lv {before_lvl} → {new_lvl}" if new_lvl > before_lvl else f"Lv {new_lvl}"
                 bar = self._green_xp_bar(gcog, new_lvl, new_xp)
                 lines.append(f"**{mon['name'].title()}** — {lvl_text}  {bar}")
@@ -649,6 +653,12 @@ class BattleTowerView(discord.ui.View):
             if hasattr(gcog, "_apply_exp_bulk"):
                 updates = [(mon["uid"], mon["level"], mon["xp"]) for mon in self.team if "uid" in mon]
                 await gcog._apply_exp_bulk(self.ctx.author, updates)
+            if hasattr(gcog, "_apply_stats_bulk"):
+                stat_updates = [
+                    (m["uid"], m.get("stats", {}), int(m.get("bst", self.cog._recalc_bst(m.get("stats", {})))))
+                    for m in self.team if "uid" in m
+                ]
+                await gcog._apply_stats_bulk(self.ctx.author, stat_updates)
         else:
             for mon in self.team:
                 lines.append(f"**{mon.get('name','?').title()}** +{final_exp} EXP")
