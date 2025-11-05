@@ -2156,7 +2156,7 @@ class Hungar(commands.Cog):
                         hunter["zone"] = {"name": "Cornucopia"}
                         zone_name = hunter["zone"]["name"] if isinstance(hunter["zone"], dict) else hunter.get("zone", "Unknown Zone")
                         event_outcomes.append(f"{hunter['name']} has been eliminated by {target['name']} ({zone_name})!")
-                        await self.transfer_loot(hunter, target, zone_name, event_outcomes)
+                        await self.transfer_loot(hunter, target, event_outcomes)
                         stat = random.choice(["Str", "Con", "Def", "Wis", "HP"])
                         boost = random.randint(5, 10)
                         target["stats"][stat] += boost
