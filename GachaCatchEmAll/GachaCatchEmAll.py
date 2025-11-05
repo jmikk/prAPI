@@ -121,6 +121,7 @@ TYPE_BEATS = {
 NICKNAME_RE = re.compile(r"^[A-Za-z]{1,20}$")  # “letters only, max 20”
 
 # ---- If you don't have a shared fetcher in this cog, include these (or import from BattleTower) ----
+# --- small local helpers (remove if you already have shared versions in this cog) ---
 def _slugify_move_name(name: str) -> str:
     return name.strip().lower().replace(" ", "-")
 
@@ -132,6 +133,7 @@ async def _fetch_move_from_pokeapi(raw_name: str) -> Optional[Tuple[str, str, Op
     """
     Returns (type, style, power_or_None) or None if failed.
     """
+    import aiohttp
     name = _slugify_move_name(raw_name)
     url = f"https://pokeapi.co/api/v2/move/{name}"
     try:
@@ -141,7 +143,6 @@ async def _fetch_move_from_pokeapi(raw_name: str) -> Optional[Tuple[str, str, Op
                 if resp.status != 200:
                     return None
                 data = await resp.json()
-
         mtype = (data.get("type", {}) or {}).get("name", "normal")
         dmg_class = (data.get("damage_class", {}) or {}).get("name", "status")
         style = _damage_class_to_style(dmg_class)
@@ -149,6 +150,271 @@ async def _fetch_move_from_pokeapi(raw_name: str) -> Optional[Tuple[str, str, Op
         return (mtype, style, power)
     except Exception:
         return None
+
+async def _pokeapi_moves_for_type(type_name: str) -> List[str]:
+    """Fetch a big pool of moves for a type; we’ll filter later."""
+    import aiohttp
+    url = f"https://pokeapi.co/api/v2/type/{type_name.lower()}"
+    try:
+        timeout = aiohttp.ClientTimeout(total=8)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    return []
+                data = await resp.json()
+        return [m.get("name") for m in (data.get("moves") or []) if isinstance(m, dict)]
+    except Exception:
+        return []
+
+def _format_structured_move(name: str, mtype: str, style: str, power: int) -> str:
+    return f"{name.strip()} {{{mtype},{style},{int(power)}}}"
+
+def _parse_structured_or_plain(s: str) -> Tuple[str, Optional[str], Optional[str], Optional[int]]:
+    """
+    Returns (name, type|None, style|None, power|None) for display.
+    """
+    s = (s or "").strip()
+    if not s:
+        return "", None, None, None
+    if "{" in s and "}" in s:
+        nm, rest = s.split("{", 1)
+        nm = nm.strip()
+        inside = rest.strip().rstrip("}")
+        parts = [p.strip() for p in inside.split(",")]
+        mtype = parts[0] if parts else None
+        style = None
+        if len(parts) > 1:
+            style = "physical" if "physical" in parts[1].lower() else ("special" if "special" in parts[1].lower() else "status")
+        power = None
+        if len(parts) > 2:
+            try:
+                power = int(parts[2])
+            except Exception:
+                power = None
+        return nm, mtype, style, power
+    return s, None, None, None
+
+def _format_for_list(s: str) -> str:
+    nm, t, st, pw = _parse_structured_or_plain(s)
+    base = nm.title()
+    extra = []
+    if t: extra.append(t.title())
+    if st: extra.append(st.title())
+    if pw is not None: extra.append(str(pw))
+    return f"{base} ({', '.join(extra)})" if extra else base
+
+def _extract_known_move_names(move_list: List[str]) -> List[str]:
+    names = []
+    for s in move_list or []:
+        s = (s or "").strip()
+        if not s:
+            continue
+        if "{" in s:
+            nm = s.split("{", 1)[0].strip().lower()
+        else:
+            nm = s.lower()
+        names.append(nm)
+    return names
+
+async def _pick_random_damage_move_of_type(type_name: str, avoid: List[str]) -> Optional[Tuple[str, str, str, int]]:
+    """
+    Returns (name, type, style, power) or None. Avoids 'avoid' names if possible.
+    """
+    import random
+    pool = await _pokeapi_moves_for_type(type_name)
+    if not pool:
+        return None
+
+    # pass 1: avoid duplicates
+    random.shuffle(pool)
+    tries = 0
+    for mv in pool:
+        if tries >= 40:
+            break
+        tries += 1
+        info = await _fetch_move_from_pokeapi(mv)
+        if not info:
+            continue
+        mtype, style, power = info
+        if style not in ("physical", "special"):
+            continue
+        if power is None or int(power) <= 0:
+            continue
+        if mtype.lower() != type_name.lower():
+            continue
+        if mv.strip().lower() in avoid:
+            continue
+        return (mv.strip(), mtype, style, int(power))
+
+    # pass 2: allow duplicates if needed
+    random.shuffle(pool)
+    for mv in pool:
+        info = await _fetch_move_from_pokeapi(mv)
+        if not info:
+            continue
+        mtype, style, power = info
+        if style in ("physical", "special") and power and int(power) > 0 and mtype.lower() == type_name.lower():
+            return (mv.strip(), mtype, style, int(power))
+    return None
+
+async def _get_mon_by_uid(cog, user: discord.abc.User, uid: str) -> Optional[Dict]:
+    conf = cog.config.user(user)
+    pokebox = await conf.pokebox()
+    for m in pokebox or []:
+        if isinstance(m, dict) and m.get("uid") == uid:
+            return m
+    team = await conf.team()
+    for t in team or []:
+        if isinstance(t, dict) and t.get("uid") == uid:
+            return t
+    return None
+
+async def _save_mon_moves(cog, user: discord.abc.User, uid: str, new_moves: List[str]) -> bool:
+    conf = cog.config.user(user)
+    pokebox = await conf.pokebox()
+    team = await conf.team()
+    changed_box = False
+    changed_team = False
+
+    if isinstance(pokebox, list):
+        for i, m in enumerate(pokebox):
+            if isinstance(m, dict) and m.get("uid") == uid:
+                pokebox[i]["moves"] = new_moves
+                changed_box = True
+                break
+    if isinstance(team, list):
+        for i, t in enumerate(team):
+            if isinstance(t, dict) and t.get("uid") == uid:
+                team[i]["moves"] = new_moves
+                changed_team = True
+                break
+
+    if changed_box:
+        await conf.pokebox.set(pokebox)
+    if changed_team:
+        await conf.team.set(team)
+    return changed_box or changed_team
+
+# --- core "one tutoring attempt" routine (charge, pick, teach, save, embed parts) ---
+async def _do_tutor_once(cog, ctx: commands.Context, uid: str, *, invoked_by_id: int) -> Tuple[discord.Embed, List[str]]:
+    import random
+
+    target = ctx.author  # you said it always defaults to the caller
+
+    # Load mon
+    mon = await _get_mon_by_uid(cog, target, uid)
+    if not mon:
+        raise RuntimeError(f"Couldn't find a mon with UID `{uid}`.")
+
+    types = mon.get("types") or []
+    if not types:
+        types = ["normal"]
+
+    # Charge
+    try:
+        await cog._charge(target, MOVE_TUTOR_COST)
+    except ValueError:
+        raise RuntimeError(f"Not enough Wellcoins (needs {int(MOVE_TUTOR_COST)}).")
+    except Exception as e:
+        raise RuntimeError(f"Unable to charge Wellcoins: {e!s}")
+
+    # Pick type -> move
+    rng_types = list(types)
+    random.shuffle(rng_types)
+
+    known_moves = list(mon.get("moves") or [])
+    known_names = _extract_known_move_names(known_moves)
+
+    taught = None
+    for t in rng_types:
+        taught = await _pick_random_damage_move_of_type(t, avoid=known_names)
+        if taught:
+            break
+
+    if not taught:
+        await cog._refund(target, MOVE_TUTOR_COST)
+        raise RuntimeError("Couldn’t find a valid damage move to teach. You’ve been refunded.")
+
+    mv_name, mv_type, mv_style, mv_power = taught
+    structured = _format_structured_move(mv_name, mv_type, mv_style, mv_power)
+
+    before = list(known_moves)
+    after = list(before)
+
+    # avoid dup; if duplicate anyway, replace one at random so they still get the structured form
+    if mv_name.lower() in known_names:
+        if after:
+            rep_idx = random.randrange(len(after))
+            after[rep_idx] = structured
+    else:
+        if len(after) >= 4:
+            forget_idx = random.randrange(len(after))
+            after[forget_idx] = structured
+        else:
+            after.append(structured)
+
+    # Save
+    saved = await _save_mon_moves(cog, target, uid, after)
+    if not saved:
+        await cog._refund(target, MOVE_TUTOR_COST)
+        raise RuntimeError("Failed to save the taught move. You’ve been refunded.")
+
+    # Figure out what was forgotten (best-effort)
+    forgot_text = ""
+    if len(before) >= 4 and mv_name.lower() not in _extract_known_move_names(before):
+        replaced = None
+        if len(before) == len(after):
+            for b, a in zip(before, after):
+                if b != a:
+                    replaced = b
+                    break
+        if replaced:
+            nm = replaced.split("{", 1)[0].strip().title()
+            forgot_text = f"\nForgot **{nm}**."
+
+    # Build embed (show power + type clearly)
+    taught_line = f"**{mv_name.title()}** ({mv_type.title()}, {mv_style.title()} {mv_power})"
+    emb = discord.Embed(
+        title="📚 Move Tutor",
+        description=(
+            f"**{mon.get('name','?').title()}** learned {taught_line}.{forgot_text}\n"
+            f"Cost: **{int(MOVE_TUTOR_COST)} Wellcoins**"
+        ),
+        color=discord.Color.blurple()
+    )
+    if before:
+        emb.add_field(name="Before", value=", ".join(_format_for_list(m) for m in before), inline=False)
+    emb.add_field(name="After", value=", ".join(_format_for_list(m) for m in after), inline=False)
+    emb.set_footer(text=f"UID: {uid} • {ctx.author.display_name}")
+
+    # Return embed + the new moves (so the View can know the latest state if needed)
+    return emb, after
+
+# --- the View with “Teach another” button ---
+class MoveTutorView(discord.ui.View):
+    def __init__(self, cog, ctx: commands.Context, uid: str, *, invoked_by_id: int, timeout: int = 90):
+        super().__init__(timeout=timeout)
+        self.cog = cog
+        self.ctx = ctx
+        self.uid = uid
+        self.invoked_by_id = invoked_by_id
+
+    @discord.ui.button(label="Teach another (1000 WC)", style=discord.ButtonStyle.primary)
+    async def teach_again(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # only the invoker can press
+        if interaction.user.id != self.invoked_by_id:
+            return await interaction.response.send_message("This isn’t your session.", ephemeral=True)
+        # ACK early
+        await interaction.response.defer()
+
+        try:
+            emb, _ = await _do_tutor_once(self.cog, self.ctx, self.uid, invoked_by_id=self.invoked_by_id)
+            # refresh the message with the new result and keep the button
+            await interaction.edit_original_response(embed=emb, view=self)
+        except Exception as e:
+            # show error but keep the view so they can try again later if they want
+            err = discord.Embed(title="Move Tutor", description=str(e), color=discord.Color.red())
+            await interaction.edit_original_response(embed=err, view=self)
 
 
 
@@ -374,111 +640,28 @@ class GachaCatchEmAll(commands.Cog):
                 return t
         return None
 
+    # --- the command (defaults to the caller) ---
     @commands.hybrid_command(name="movetutor", aliases=("teachmove", "tutor"))
     async def movetutor(self, ctx: commands.Context, uid: str):
         """
-        Move Tutor: teaches a random **damage** move of one of the mon's types.
-        • Costs 100 Wellcoins.
-        • If the mon already knows 4 moves, it forgets one at random.
-        • Avoids duplicates when possible.
-
-        Usage:
-          /movetutor <uid> [user]    (defaults to yourself if user omitted)
+        Move Tutor: teaches a random **damage** move of one of your mon's types.
+        • Costs 1000 Wellcoins each time.
+        • If already knows 4 moves, replaces one at random.
+        • Shows Type / Style / Power.
         """
-        target = ctx.author
-
-        # Load the mon
-        mon = await self._get_mon_by_uid(target, uid)
-        if not mon:
-            return await ctx.reply(f"Couldn't find a mon with UID `{uid}` for {target.mention}.")
-
-        types = mon.get("types") or []
-        if not types:
-            types = ["normal"]
-
-        # Charge first (so people can't spam free rolls)
         try:
-            await self._charge(target, MOVE_TUTOR_COST)
-        except ValueError:
-            return await ctx.reply(f"{target.mention} doesn't have enough Wellcoins (needs {MOVE_TUTOR_COST:.0f}).")
+            await ctx.defer()
+        except Exception:
+            pass
+    
+        try:
+            emb, _ = await _do_tutor_once(self, ctx, uid, invoked_by_id=ctx.author.id)
         except Exception as e:
-            return await ctx.reply(f"Unable to charge Wellcoins right now: {e!s}")
-
-        # Try to pick a random type, then a random damage move of that type
-        rng_types = list(types)
-        random.shuffle(rng_types)
-
-        known_moves = mon.get("moves") or []
-        known_names = self._extract_known_move_names(known_moves)
-
-        taught: Optional[Tuple[str, str, str, int]] = None
-        for t in rng_types:
-            taught = await self._pick_random_damage_move_of_type(t, avoid=known_names)
-            if taught:
-                break
-
-        if not taught:
-            # Refund if we couldn't find any valid move
-            await self._refund(target, MOVE_TUTOR_COST)
-            return await ctx.reply("Couldn’t find a valid damage move to teach. You’ve been refunded.")
-
-        mv_name, mv_type, mv_style, mv_power = taught
-        structured = self._format_structured_move(mv_name, mv_type, mv_style, mv_power)
-
-        before = list(known_moves)
-        after = list(before)
-
-        # Avoid duplicates; if duplicate anyway, just replace a random existing move with the structured one
-        if mv_name.lower() in known_names:
-            # replace a random slot with the structured (ensures canonical form)
-            if after:
-                rep_idx = random.randrange(len(after))
-                after[rep_idx] = structured
-        else:
-            if len(after) >= 4:
-                forget_idx = random.randrange(len(after))
-                after[forget_idx] = structured
-            else:
-                after.append(structured)
-
-        # Persist
-        saved = await self._save_mon_moves(target, uid, after)
-        if not saved:
-            # if for some reason nothing got saved, refund
-            await self._refund(target, MOVE_TUTOR_COST)
-            return await ctx.reply("Failed to save the taught move. You’ve been refunded.")
-
-        # Pretty response
-        def short(m: str) -> str:
-            return m.split("{", 1)[0].strip().title() if "{" in m else m.strip().title()
-
-        forgot_text = ""
-        if len(before) >= 4 and mv_name.lower() not in self._extract_known_move_names(before):
-            # we replaced a random existing move
-            # find the diff to guess which one got replaced (best-effort)
-            replaced = None
-            if len(before) == len(after):
-                for i, (b, a) in enumerate(zip(before, after)):
-                    if b != a:
-                        replaced = b
-                        break
-            if replaced:
-                forgot_text = f"\nForgot **{short(replaced)}**."
-
-        emb = discord.Embed(
-            title="📚 Move Tutor",
-            description=(
-                f"**{mon.get('name','?').title()}** learned **{mv_name.title()}** "
-                f"({mv_type.title()}, {mv_style.title()} {mv_power}).{forgot_text}"
-                f"\nCost: **{int(MOVE_TUTOR_COST)} Wellcoins**"
-            ),
-            color=discord.Color.blurple()
-        )
-        if before:
-            emb.add_field(name="Before", value=", ".join(short(m) for m in before), inline=False)
-        emb.add_field(name="After", value=", ".join(short(m) for m in after), inline=False)
-        emb.set_footer(text=f"UID: {uid} • Taught to {target.display_name if hasattr(target,'display_name') else str(target)}")
-        await ctx.reply(embed=emb)
+            return await ctx.reply(str(e))
+    
+        view = MoveTutorView(self, ctx, uid, invoked_by_id=ctx.author.id)
+        msg = await ctx.reply(embed=emb, view=view)
+        view.message = msg
 
 
 
