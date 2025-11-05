@@ -18,7 +18,7 @@ import html
 
 from discord import Member, User
 
-MOVE_TUTOR_COST = 1000.0
+MOVE_TUTOR_COST = 100.0
 
 __red_end_user_data_statement__ = (
     "This cog stores Pokémon you catch (per-catch entries with UID, species id/name, types, stats, "
@@ -375,17 +375,17 @@ class GachaCatchEmAll(commands.Cog):
         return None
 
     @commands.hybrid_command(name="movetutor", aliases=("teachmove", "tutor"))
-    async def movetutor(self, ctx: commands.Context, uid: str, user: Optional[Union[Member, User]] = None):
+    async def movetutor(self, ctx: commands.Context, uid: str):
         """
         Move Tutor: teaches a random **damage** move of one of the mon's types.
-        • Costs 1000 Wellcoins.
+        • Costs 100 Wellcoins.
         • If the mon already knows 4 moves, it forgets one at random.
         • Avoids duplicates when possible.
 
         Usage:
           /movetutor <uid> [user]    (defaults to yourself if user omitted)
         """
-        target = user or ctx.author
+        target = ctx.author
 
         # Load the mon
         mon = await self._get_mon_by_uid(target, uid)
