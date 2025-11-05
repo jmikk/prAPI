@@ -383,8 +383,8 @@ async def _do_tutor_once(cog, ctx: commands.Context, uid: str, *, invoked_by_id:
         color=discord.Color.blurple()
     )
     if before:
-        emb.add_field(name="Before", value=", ".join(_format_for_list(m) for m in before), inline=False)
-    emb.add_field(name="After", value=", ".join(_format_for_list(m) for m in after), inline=False)
+        emb.add_field(name="Before", value="\n".join(_format_for_list(m) for m in before), inline=False)
+    emb.add_field(name="After", value="\n".join(_format_for_list(m) for m in after), inline=False)
     emb.set_footer(text=f"UID: {uid} • {ctx.author.display_name}")
 
     # Return embed + the new moves (so the View can know the latest state if needed)
