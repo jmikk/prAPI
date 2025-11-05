@@ -6,7 +6,7 @@ import random
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import discord
 from redbot.core import commands, Config, checks
@@ -16,6 +16,9 @@ import io
 from datetime import datetime
 import html
 
+from discord import Member, User
+
+MOVE_TUTOR_COST = 1000.0
 
 __red_end_user_data_statement__ = (
     "This cog stores Pokémon you catch (per-catch entries with UID, species id/name, types, stats, "
@@ -117,6 +120,37 @@ TYPE_BEATS = {
 
 NICKNAME_RE = re.compile(r"^[A-Za-z]{1,20}$")  # “letters only, max 20”
 
+# ---- If you don't have a shared fetcher in this cog, include these (or import from BattleTower) ----
+def _slugify_move_name(name: str) -> str:
+    return name.strip().lower().replace(" ", "-")
+
+def _damage_class_to_style(dc: str) -> str:
+    dc = (dc or "").lower()
+    return dc if dc in ("physical", "special") else "status"
+
+async def _fetch_move_from_pokeapi(raw_name: str) -> Optional[Tuple[str, str, Optional[int]]]:
+    """
+    Returns (type, style, power_or_None) or None if failed.
+    """
+    name = _slugify_move_name(raw_name)
+    url = f"https://pokeapi.co/api/v2/move/{name}"
+    try:
+        timeout = aiohttp.ClientTimeout(total=8)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    return None
+                data = await resp.json()
+
+        mtype = (data.get("type", {}) or {}).get("name", "normal")
+        dmg_class = (data.get("damage_class", {}) or {}).get("name", "status")
+        style = _damage_class_to_style(dmg_class)
+        power = data.get("power", None)
+        return (mtype, style, power)
+    except Exception:
+        return None
+
+
 
 class GachaCatchEmAll(commands.Cog):
     """Pokémon encounter & multi-throw gacha using Wellcoins + PokéAPI."""
@@ -211,6 +245,240 @@ class GachaCatchEmAll(commands.Cog):
             await conf.pokebox.set(pokebox)
         if changed_team:
             await conf.team.set(team)
+
+    async def _pokeapi_moves_for_type(self, type_name: str) -> List[str]:
+        """
+        Get a broad pool of move names for a given type via PokéAPI.
+        We'll filter to damage moves later.
+        """
+        url = f"https://pokeapi.co/api/v2/type/{type_name.lower()}"
+        try:
+            timeout = aiohttp.ClientTimeout(total=8)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url) as resp:
+                    if resp.status != 200:
+                        return []
+                    data = await resp.json()
+            # 'moves' is a list of {"name": "...", "url": "..."}
+            return [m.get("name") for m in (data.get("moves") or []) if isinstance(m, dict)]
+        except Exception:
+            return []
+
+    def _format_structured_move(self, name: str, mtype: str, style: str, power: int) -> str:
+        return f"{name.strip()} {{{mtype},{style},{int(power)}}}"
+
+    def _extract_known_move_names(self, move_list: List[str]) -> List[str]:
+        """
+        From stored move strings (which may be structured like 'name {type,style,power}'),
+        extract just the canonical lowercase names for duplicate checks.
+        """
+        names = []
+        for s in move_list or []:
+            s = (s or "").strip()
+            if not s:
+                continue
+            if "{" in s:
+                # everything before '{' is the name
+                nm = s.split("{", 1)[0].strip().lower()
+            else:
+                nm = s.lower()
+            names.append(nm)
+        return names
+
+    async def _pick_random_damage_move_of_type(self, type_name: str, avoid: List[str]) -> Optional[Tuple[str, str, str, int]]:
+        """
+        Try to pick a damage move (physical/special, power > 0) of the given type.
+        'avoid' is a list of lowercase names we should try not to duplicate.
+        Returns (name, type, style, power) or None.
+        """
+        pool = await self._pokeapi_moves_for_type(type_name)
+        if not pool:
+            return None
+
+        # Shuffle and try a bunch
+        random.shuffle(pool)
+        tries = 0
+        for mv in pool:
+            if tries >= 40:  # be reasonable
+                break
+            tries += 1
+
+            info = await _fetch_move_from_pokeapi(mv)
+            if not info:
+                continue
+            mtype, style, power = info
+            if style not in ("physical", "special"):
+                continue
+            if power is None or int(power) <= 0:
+                continue
+            # must match requested type (sometimes API can be quirky)
+            if mtype.lower() != type_name.lower():
+                continue
+
+            name_lc = mv.strip().lower()
+            if name_lc in avoid:
+                continue
+
+            return (mv.strip(), mtype, style, int(power))
+
+        # As a fallback, allow duplicates if absolutely necessary (second pass)
+        random.shuffle(pool)
+        for mv in pool:
+            info = await _fetch_move_from_pokeapi(mv)
+            if not info:
+                continue
+            mtype, style, power = info
+            if style in ("physical", "special") and power and int(power) > 0 and mtype.lower() == type_name.lower():
+                return (mv.strip(), mtype, style, int(power))
+        return None
+
+    async def _save_mon_moves(self, user: Union[Member, User], uid: str, new_moves: List[str]) -> bool:
+        """
+        Write the new move list back into both pokebox and team where applicable.
+        """
+        conf = self.config.user(user)
+        pokebox = await conf.pokebox()
+        team = await conf.team()
+        changed_box = False
+        changed_team = False
+
+        if isinstance(pokebox, list):
+            for i, m in enumerate(pokebox):
+                if isinstance(m, dict) and m.get("uid") == uid:
+                    pokebox[i]["moves"] = new_moves
+                    changed_box = True
+                    break
+        if isinstance(team, list):
+            for i, t in enumerate(team):
+                if isinstance(t, dict) and t.get("uid") == uid:
+                    team[i]["moves"] = new_moves
+                    changed_team = True
+                    break
+
+        if changed_box:
+            await conf.pokebox.set(pokebox)
+        if changed_team:
+            await conf.team.set(team)
+
+        return changed_box or changed_team
+
+    async def _get_mon_by_uid(self, user: Union[Member, User], uid: str) -> Optional[Dict]:
+        conf = self.config.user(user)
+        pokebox = await conf.pokebox()
+        for m in pokebox or []:
+            if isinstance(m, dict) and m.get("uid") == uid:
+                return m
+        team = await conf.team()
+        for t in team or []:
+            if isinstance(t, dict) and t.get("uid") == uid:
+                return t
+        return None
+
+    @commands.hybrid_command(name="movetutor", aliases=("teachmove", "tutor"))
+    async def movetutor(self, ctx: commands.Context, uid: str, user: Optional[Union[Member, User]] = None):
+        """
+        Move Tutor: teaches a random **damage** move of one of the mon's types.
+        • Costs 1000 Wellcoins.
+        • If the mon already knows 4 moves, it forgets one at random.
+        • Avoids duplicates when possible.
+
+        Usage:
+          /movetutor <uid> [user]    (defaults to yourself if user omitted)
+        """
+        target = user or ctx.author
+
+        # Load the mon
+        mon = await self._get_mon_by_uid(target, uid)
+        if not mon:
+            return await ctx.reply(f"Couldn't find a mon with UID `{uid}` for {target.mention}.")
+
+        types = mon.get("types") or []
+        if not types:
+            types = ["normal"]
+
+        # Charge first (so people can't spam free rolls)
+        try:
+            await self._charge(target, MOVE_TUTOR_COST)
+        except ValueError:
+            return await ctx.reply(f"{target.mention} doesn't have enough Wellcoins (needs {MOVE_TUTOR_COST:.0f}).")
+        except Exception as e:
+            return await ctx.reply(f"Unable to charge Wellcoins right now: {e!s}")
+
+        # Try to pick a random type, then a random damage move of that type
+        rng_types = list(types)
+        random.shuffle(rng_types)
+
+        known_moves = mon.get("moves") or []
+        known_names = self._extract_known_move_names(known_moves)
+
+        taught: Optional[Tuple[str, str, str, int]] = None
+        for t in rng_types:
+            taught = await self._pick_random_damage_move_of_type(t, avoid=known_names)
+            if taught:
+                break
+
+        if not taught:
+            # Refund if we couldn't find any valid move
+            await self._refund(target, MOVE_TUTOR_COST)
+            return await ctx.reply("Couldn’t find a valid damage move to teach. You’ve been refunded.")
+
+        mv_name, mv_type, mv_style, mv_power = taught
+        structured = self._format_structured_move(mv_name, mv_type, mv_style, mv_power)
+
+        before = list(known_moves)
+        after = list(before)
+
+        # Avoid duplicates; if duplicate anyway, just replace a random existing move with the structured one
+        if mv_name.lower() in known_names:
+            # replace a random slot with the structured (ensures canonical form)
+            if after:
+                rep_idx = random.randrange(len(after))
+                after[rep_idx] = structured
+        else:
+            if len(after) >= 4:
+                forget_idx = random.randrange(len(after))
+                after[forget_idx] = structured
+            else:
+                after.append(structured)
+
+        # Persist
+        saved = await self._save_mon_moves(target, uid, after)
+        if not saved:
+            # if for some reason nothing got saved, refund
+            await self._refund(target, MOVE_TUTOR_COST)
+            return await ctx.reply("Failed to save the taught move. You’ve been refunded.")
+
+        # Pretty response
+        def short(m: str) -> str:
+            return m.split("{", 1)[0].strip().title() if "{" in m else m.strip().title()
+
+        forgot_text = ""
+        if len(before) >= 4 and mv_name.lower() not in self._extract_known_move_names(before):
+            # we replaced a random existing move
+            # find the diff to guess which one got replaced (best-effort)
+            replaced = None
+            if len(before) == len(after):
+                for i, (b, a) in enumerate(zip(before, after)):
+                    if b != a:
+                        replaced = b
+                        break
+            if replaced:
+                forgot_text = f"\nForgot **{short(replaced)}**."
+
+        emb = discord.Embed(
+            title="📚 Move Tutor",
+            description=(
+                f"**{mon.get('name','?').title()}** learned **{mv_name.title()}** "
+                f"({mv_type.title()}, {mv_style.title()} {mv_power}).{forgot_text}"
+                f"\nCost: **{int(MOVE_TUTOR_COST)} Wellcoins**"
+            ),
+            color=discord.Color.blurple()
+        )
+        if before:
+            emb.add_field(name="Before", value=", ".join(short(m) for m in before), inline=False)
+        emb.add_field(name="After", value=", ".join(short(m) for m in after), inline=False)
+        emb.set_footer(text=f"UID: {uid} • Taught to {target.display_name if hasattr(target,'display_name') else str(target)}")
+        await ctx.reply(embed=emb)
 
 
 
@@ -2329,7 +2597,7 @@ class GachaCatchEmAll(commands.Cog):
         # no encounter yet → show habitat picker
         pick_embed = discord.Embed(
             title="Where do you want to search?",
-            description=("Pick a **habitat** to explore (or choose **All** to search everywhere).\n\n"
+            description=("Pick a **habitat** to explore.\n\n"
                          "You’ll get an encounter right after you choose."),
             color=discord.Color.blurple(),
         )
