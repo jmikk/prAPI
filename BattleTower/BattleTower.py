@@ -523,11 +523,9 @@ class BattleTowerView(discord.ui.View):
         while self.autosim_running and self.f_cur > 0 and self.p_cur > 0:
             mv = _pick_damage_move(self.player) or _coerce_move(self.player, (self.player.get("moves") or ["tackle"])[0])
             await self._turn(interaction, mv, autosim=True)
-            await asyncio.sleep(self.autosim_delay)  # 1 second between actions
 
             if self.f_cur <= 0:
                 # brief pause before next battle handoff
-                await asyncio.sleep(self.autosim_delay)
                 if hasattr(self, "foe") and self.f_cur == self.f_max:
                     continue
                 self.autosim_running = False
@@ -621,6 +619,8 @@ class BattleTowerView(discord.ui.View):
                 before_lvl = int(mon.get("level", 1))
                 before_xp = int(mon.get("xp", 0))
                 new_lvl, new_xp, _ = gcog._add_xp_to_entry(mon, final_exp)
+                mon["level"] = new_lvl
+                mon["xp"]    = new_xp
                 # green bar + “arrow only if leveled up”
                     # 2) If the mon leveled up, ask for stat points & auto-allocate (other cog)
                 if new_lvl > before_lvl:
@@ -643,8 +643,7 @@ class BattleTowerView(discord.ui.View):
                         else:
                             self.p_cur = self.p_max
                 
-                mon["level"] = new_lvl
-                mon["xp"]    = new_xp
+
 
                 lvl_text = f"Lv {before_lvl} → {new_lvl}" if new_lvl > before_lvl else f"Lv {new_lvl}"
                 bar = self._green_xp_bar(gcog, new_lvl, new_xp)
@@ -695,24 +694,6 @@ class BattleTowerView(discord.ui.View):
         summary.set_footer(text=f"+{final_exp} EXP to each (base {base_exp}, streak x{bonus_mult:.2f}; current streak {new_streak})")
         
         # First, show the victory summary on the SAME message
-        await self._safe_edit(interaction, embed=summary, view=self)
-
-        if self.autosim_running:
-            await asyncio.sleep(self.autosim_delay)  # 1 second
-            desired = int(self.foe.get("level", 1))
-            self.foe = await self._fetch_new_foe(desired)
-            self.f_cur = self.f_max = _init_hp(self.foe)
-            emb = _battle_embed(
-                "Team Battle — Battle Tower (AutoSim)",
-                self.player, self.p_cur, self.p_max,
-                self.foe, self.f_cur, self.f_max,
-                footer=f"AutoSim continues... Lv {desired} opponent.",
-            )
-            await self._safe_edit(interaction, embed=emb, view=self)
-            await self._autosim_loop(interaction)
-            return
-
-
         await self._safe_edit(interaction, embed=summary, view=self)
 
     async def _safe_edit(self, interaction: discord.Interaction, *, embed: discord.Embed, view: Optional[discord.ui.View] = None):
