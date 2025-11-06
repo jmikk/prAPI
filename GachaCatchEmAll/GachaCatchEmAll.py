@@ -6,7 +6,7 @@ import random
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Callable
 
 import discord
 from redbot.core import commands, Config, checks
@@ -17,6 +17,7 @@ from datetime import datetime
 import html
 
 from discord import Member, User
+
 
 MOVE_TUTOR_COST = 100.0
 
@@ -31,6 +32,11 @@ ALL_BADGES = [f"gym{i}" for i in range(1, 9)]
 
 
 POKEAPI_BASE = "https://pokeapi.co/api/v2"
+
+def is_admin():
+    async def predicate(ctx: commands.Context):
+        return ctx.author.guild_permissions.manage_guild or await ctx.bot.is_owner(ctx.author)
+    return commands.check(predicate)
 
 # Default per-zone media (use GIFs or static images). Keys can be habitat names,
 # Pokémon types, or "all"/"default". Admins can override at runtime.
@@ -489,9 +495,12 @@ class GachaCatchEmAll(commands.Cog):
             last_roll=None,
             active_encounter=None,
             team=[],
-            badges=[],
+            gyms_defeated={},
             tower_max_floor=1,
-        )   
+        )  
+        
+        self.GYM_COST = 500
+        self.ELITE_COST = 5000
         
         self.config.register_global(
         costs=DEFAULT_COSTS,
@@ -499,6 +508,12 @@ class GachaCatchEmAll(commands.Cog):
         auto_stat_up=True,
         zone_media=DEFAULT_ZONE_MEDIA,   
         move_db={},                    
+    )
+
+        self.config.register_guild(
+        gyms={},                # { "Pewter": [entry, ... up to 6], "Cerulean": [...] }
+        elite_four=[],          # [ [team1 entries], [team2 entries], [team3 entries], [team4 entries] ]
+        champion=None           # {"user_id": int, "display": str, "team": [entries]}
     )
 
         self._type_cache: Dict[str, List[int]] = {}
@@ -516,7 +531,331 @@ class GachaCatchEmAll(commands.Cog):
         self._pokemon_cache: Dict[int, Dict[str, Any]] = {}  # id -> pokemon data
         self._list_lock = asyncio.Lock()
 
-    # Inside your GachaCatchEmAll cog:
+
+
+    # ---- Preset team helpers (NPC-like entries) ----
+    async def _clone_entries_for_battle(self, entries: list[dict]) -> list[dict]:
+        """Return deep copies with `_npc` set, and ensure moves exist."""
+        out = []
+        for e in entries:
+            c = dict(e)
+            c["_npc"] = True
+            # make sure UID exists
+            c["uid"] = str(c.get("uid") or c.get("id") or random.randint(10_000_000, 99_999_999))
+            await self._ensure_moves_on_entry(c)
+            out.append(c)
+        return out
+    
+    async def _get_guild_gyms(self, guild: discord.Guild) -> dict[str, list[dict]]:
+        gyms = await self.config.guild(guild).gyms()
+        return gyms or {}
+    
+    async def _get_elite_four(self, guild: discord.Guild) -> list[list[dict]]:
+        e4 = await self.config.guild(guild).elite_four()
+        return e4 or []
+    
+    async def _get_champion(self, guild: discord.Guild) -> Optional[dict]:
+        return await self.config.guild(guild).champion()
+
+    @commands.hybrid_command(name="gymchallenge")
+    @commands.cooldown(1, 10, commands.BucketType.user)
+    async def gymchallenge(self, ctx: commands.Context, *, gym_name: str):
+        """Pay 500 WC to fight a preset Gym."""
+        gyms = await self._get_guild_gyms(ctx.guild)
+        team = gyms.get(gym_name)
+        if not team:
+            await ctx.reply(f"No preset team found for gym **{gym_name}**.")
+            return
+    
+        # charge
+        try:
+            await self._charge(ctx.author, self.GYM_COST)
+        except ValueError:
+            await ctx.reply(f"❌ You need {self.GYM_COST} Wellcoins to attempt this gym.")
+            return
+        except Exception as e:
+            await ctx.reply(f"Payment error: `{e}`")
+            return
+    
+        # prepare NPC team
+        opp_team = await self._clone_entries_for_battle(team)
+    
+        # start battle (interactive)
+        try:
+            await self._start_named_battle(ctx, opp_team, title=f"Gym: {gym_name}",
+                                           on_finish=lambda win: self.bot.loop.create_task(
+                                               self._post_gym_results(ctx, gym_name, win)))
+        except Exception as e:
+            await ctx.reply(f"❌ Failed to start: `{e}`")
+            # (no refund on start failure after charge? optional: refund here)
+            try:
+                await self._refund(ctx.author, self.GYM_COST)
+                await ctx.send("You were refunded due to a startup error.")
+            except Exception:
+                pass
+    
+    async def _post_gym_results(self, ctx: commands.Context, gym_name: str, caller_won: bool):
+        if caller_won:
+            data = await self.config.user(ctx.author).gyms_defeated()
+            key = str(ctx.guild.id)
+            done = set(data.get(key, []))
+            if gym_name not in done:
+                done.add(gym_name)
+                data[key] = sorted(done)
+                await self.config.user(ctx.author).gyms_defeated.set(data)
+            await ctx.send(f"🏆 **Gym {gym_name} cleared!**")
+        else:
+            await ctx.send(f"💥 You lost the **{gym_name}** challenge.")
+    
+    @commands.hybrid_command(name="elitechallenge")
+    @commands.cooldown(1, 30, commands.BucketType.user)
+    async def elitechallenge(self, ctx: commands.Context):
+        """Pay 5,000 WC to run the Elite Four gauntlet (4 teams). Champion fight follows on success."""
+        e4 = await self._get_elite_four(ctx.guild)
+        if len([t for t in e4 if t]) < 4:
+            await ctx.reply("Elite Four is not fully configured (need 4 teams).")
+            return
+    
+        # charge once up front
+        try:
+            await self._charge(ctx.author, self.ELITE_COST)
+        except ValueError:
+            await ctx.reply(f"❌ You need {self.ELITE_COST} Wellcoins to challenge the Elite Four.")
+            return
+        except Exception as e:
+            await ctx.reply(f"Payment error: `{e}`")
+            return
+    
+        # Run gauntlet (sequential)
+        await self._run_elite_gauntlet(ctx, e4)
+    
+    async def _run_elite_gauntlet(self, ctx: commands.Context, e4_raw: List[List[Dict[str, Any]]]):
+        # Work on deep-copied lists
+        e4_teams = [await self._clone_entries_for_battle(t) for t in e4_raw]
+    
+        async def step(i: int):
+            if i >= 4:
+                # E4 cleared → Champion
+                await self._start_champion_fight(ctx)
+                return
+    
+            title = f"Elite Four — Member {i+1}"
+            await self._start_named_battle(
+                ctx, e4_teams[i], title=title,
+                on_finish=lambda win: self.bot.loop.create_task(step(i+1)) if win
+                                       else self.bot.loop.create_task(ctx.send(f"💥 Defeated at E4 member {i+1}."))
+            )
+    
+        await step(0)
+    
+    async def _start_named_battle(self, ctx: commands.Context, opp_team: List[Dict[str, Any]], title: str,
+                                  on_finish: Optional[Callable[[bool], None]] = None):
+        """Start a one-off 6v6 vs provided team. Calls on_finish(caller_won: bool) when done."""
+        # caller team
+        caller = ctx.author
+        caller_uids = await self._get_team(caller)
+        caller_box: List[Dict[str, Any]] = await self.config.user(caller).pokebox()
+        caller_team = self._team_entries_from_uids(caller_box, caller_uids)
+        if not caller_team:
+            caller_team = sorted(caller_box, key=lambda e: int(e.get("level",1)), reverse=True)[:6]
+        if not caller_team:
+            await ctx.reply("You have no Pokémon to battle with.")
+            return
+        for e in caller_team:
+            await self._ensure_moves_on_entry(e)
+    
+        # simple loading embed
+        em = discord.Embed(title=f"{title}", description="Preparing the arena…", color=discord.Color.blurple())
+        msg = await ctx.reply(embed=em)
+    
+        # build and show view
+        view = InteractiveTeamBattleView(
+            cog=self,
+            caller=caller,
+            caller_team=caller_team,
+            opp_team=opp_team,
+            opponent=None
+        )
+        # hook
+        view.on_finish = on_finish  # set dynamically (we'll add support below)
+        await view._rebuild_move_buttons()
+        await msg.edit(embed=view._current_embed(), view=view)
+        view.message = msg
+    
+        
+    async def _start_champion_fight(self, ctx: commands.Context):
+        champ = await self._get_champion(ctx.guild)
+        if not champ:
+            await ctx.send("No Champion set—crowning first victor as Champion by default!")
+            await self._crown_new_champion_from_user(ctx, ctx.author)
+            return
+    
+        opp_team = await self._clone_entries_for_battle(champ["team"])
+        await self._start_named_battle(
+            ctx, opp_team, title=f"Champion {champ.get('display','?')}",
+            on_finish=lambda win: self.bot.loop.create_task(self._post_champion_result(ctx, win))
+        )
+    
+    async def _post_champion_result(self, ctx: commands.Context, caller_won: bool):
+        if caller_won:
+            await ctx.send("👑 **You defeated the Champion! You are the new Champion.**")
+            await self._crown_new_champion_from_user(ctx, ctx.author)
+        else:
+            await ctx.send("💥 You lost to the Champion. Train up and try again!")
+    
+    async def _crown_new_champion_from_user(self, ctx: commands.Context, user: discord.Member):
+        box = await self.config.user(user).pokebox()
+        uids = await self._get_team(user)
+        team = self._team_entries_from_uids(box, uids) or sorted(box, key=lambda e: int(e.get("level",1)), reverse=True)[:6]
+        snap = []
+        for e in team:
+            snap.append({
+                "uid": str(e.get("uid") or e.get("id") or random.randint(10_000_000, 99_999_999)),
+                "id": e.get("id"),
+                "name": e.get("name"),
+                "nickname": e.get("nickname"),
+                "level": int(e.get("level",1)),
+                "moves": list(e.get("moves") or []),
+                "types": list(e.get("types") or []),
+                "sprite": e.get("sprite"),
+                "stats": dict(e.get("stats") or {}),
+            })
+        await self.config.guild(ctx.guild).champion.set({
+            "user_id": user.id,
+            "display": user.display_name,
+            "team": snap
+        })
+        await ctx.send(f"👑 **{user.display_name}** recorded as the Champion!")
+
+    @commands.group(name="league", invoke_without_command=True)
+    @is_admin()
+    async def league(self, ctx: commands.Context):
+        """League setup & info."""
+        gyms = await self._get_guild_gyms(ctx.guild)
+        e4 = await self._get_elite_four(ctx.guild)
+        champ = await self._get_champion(ctx.guild)
+        gym_list = ", ".join(sorted(gyms)) or "_none_"
+        e4_count = sum(1 for t in e4 if t)
+        champ_txt = f"{champ.get('display')} (team {len(champ.get('team',[]))})" if champ else "_none_"
+        await ctx.reply(f"**Gyms:** {gym_list}\n**Elite Four teams:** {e4_count}/4\n**Champion:** {champ_txt}")
+    
+    @league.command(name="setgym")
+    @is_admin()
+    async def league_setgym(self, ctx: commands.Context, gym_name: str):
+        """
+        Save your current top-6 (or chosen team via /team) as the preset for a gym.
+        Pulls from your box like teambattle's fallback (top levels).
+        """
+        box: List[Dict[str, Any]] = await self.config.user(ctx.author).pokebox()
+        if not box:
+            await ctx.reply("You have no Pokémon saved; cannot snapshot a gym team.")
+            return
+        # prefer your chosen team if you have one
+        uids = await self._get_team(ctx.author)
+        team = self._team_entries_from_uids(box, uids)
+        if not team:
+            team = sorted(box, key=lambda e: int(e.get("level",1)), reverse=True)[:6]
+        if not team:
+            await ctx.reply("Couldn't determine a team.")
+            return
+        # freeze snapshot (lightweight copy w/ essential fields)
+        snap = []
+        for e in team:
+            snap.append({
+                "uid": str(e.get("uid") or e.get("id") or random.randint(10_000_000, 99_999_999)),
+                "id": e.get("id"),
+                "name": e.get("name"),
+                "nickname": e.get("nickname"),
+                "level": int(e.get("level",1)),
+                "moves": list(e.get("moves") or []),
+                "types": list(e.get("types") or []),
+                "sprite": e.get("sprite"),
+                "stats": dict(e.get("stats") or {}),
+            })
+        gyms = await self._get_guild_gyms(ctx.guild)
+        gyms[gym_name] = snap
+        await self.config.guild(ctx.guild).gyms.set(gyms)
+        await ctx.reply(f"✅ Set gym **{gym_name}** team with {len(snap)} mon.")
+    
+    @league.command(name="setelite")
+    @is_admin()
+    async def league_setelite(self, ctx: commands.Context, index: int):
+        """
+        Save your current top-6 (or chosen team) as the preset for Elite Four slot (1-4).
+        """
+        if index < 1 or index > 4:
+            await ctx.reply("Index must be 1-4.")
+            return
+        box = await self.config.user(ctx.author).pokebox()
+        if not box:
+            await ctx.reply("You have no Pokémon saved; cannot snapshot E4.")
+            return
+        uids = await self._get_team(ctx.author)
+        team = self._team_entries_from_uids(box, uids)
+        if not team:
+            team = sorted(box, key=lambda e: int(e.get("level",1)), reverse=True)[:6]
+        if not team:
+            await ctx.reply("Couldn't determine a team.")
+            return
+        snap = []
+        for e in team:
+            snap.append({
+                "uid": str(e.get("uid") or e.get("id") or random.randint(10_000_000, 99_999_999)),
+                "id": e.get("id"),
+                "name": e.get("name"),
+                "nickname": e.get("nickname"),
+                "level": int(e.get("level",1)),
+                "moves": list(e.get("moves") or []),
+                "types": list(e.get("types") or []),
+                "sprite": e.get("sprite"),
+                "stats": dict(e.get("stats") or {}),
+            })
+        e4 = await self._get_elite_four(ctx.guild)
+        while len(e4) < 4:
+            e4.append([])
+        e4[index-1] = snap
+        await self.config.guild(ctx.guild).elite_four.set(e4)
+        await ctx.reply(f"✅ Set Elite Four team {index} with {len(snap)} mon.")
+    
+    @league.command(name="setchampion")
+    @is_admin()
+    async def league_setchampion(self, ctx: commands.Context, member: Optional[discord.Member] = None):
+        """
+        Manually set the Champion from someone's current team snapshot (admin override).
+        If no member passed, uses your team.
+        """
+        member = member or ctx.author
+        box = await self.config.user(member).pokebox()
+        if not box:
+            await ctx.reply("Target has no Pokémon saved; cannot snapshot champion.")
+            return
+        uids = await self._get_team(member)
+        team = self._team_entries_from_uids(box, uids) or sorted(box, key=lambda e: int(e.get("level",1)), reverse=True)[:6]
+        if not team:
+            await ctx.reply("Couldn't determine a team.")
+            return
+        snap = []
+        for e in team:
+            snap.append({
+                "uid": str(e.get("uid") or e.get("id") or random.randint(10_000_000, 99_999_999)),
+                "id": e.get("id"),
+                "name": e.get("name"),
+                "nickname": e.get("nickname"),
+                "level": int(e.get("level",1)),
+                "moves": list(e.get("moves") or []),
+                "types": list(e.get("types") or []),
+                "sprite": e.get("sprite"),
+                "stats": dict(e.get("stats") or {}),
+            })
+        await self.config.guild(ctx.guild).champion.set({
+            "user_id": member.id,
+            "display": member.display_name,
+            "team": snap
+        })
+        await ctx.reply(f"👑 Champion set to **{member.display_name}** with {len(snap)} mon.")
+    
+
+    
 
     # on GachaCatchEmAll
     async def _apply_stats_bulk(self, user, updates):
@@ -3753,6 +4092,7 @@ class InteractiveTeamBattleView(discord.ui.View):
 
         # live message
         self.message: Optional[discord.Message] = None
+        self.on_finish: Optional[Callable[[bool], None]] = None  # caller_won bool
 
     # ---------- guards / boilerplate ----------
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -4186,6 +4526,14 @@ class InteractiveTeamBattleView(discord.ui.View):
             except Exception:
                 pass
         await self.message.edit(embed=results, view=self)
+                # let orchestrators continue
+        try:
+            if self.on_finish:
+                await asyncio.sleep(0)  # yield to ensure message edit lands
+                self.on_finish(match_winner == "caller")
+        except Exception:
+            pass
+
 
     @discord.ui.button(label="⏭ Auto-Sim to Results", style=discord.ButtonStyle.primary, custom_id="auto")
     async def auto_sim(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -4267,6 +4615,12 @@ class InteractiveTeamBattleView(discord.ui.View):
     
         # Show result instantly
         await self.message.edit(embed=em, view=self, attachments=[])
+        try:
+            if self.on_finish:
+                await asyncio.sleep(0)
+                self.on_finish(caller_alive)
+        except Exception:
+            pass
 
 
 
