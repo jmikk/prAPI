@@ -20,6 +20,23 @@ MOVE_CACHE: Dict[str, Tuple[str, str, Optional[int]]] = {}
 
 STAT_KEYS = ("hp", "attack", "defense", "special-attack", "special-defense", "speed")
 
+# --- Effectiveness emojis ---
+EFFECT_EMOJI = {
+    "super": "💥",      # super effective
+    "notvery": "⬇️",   # not very effective
+    "immune": "⛔",     # no effect
+    "neutral": ""       # neutral (no emoji)
+}
+
+def _effect_emoji(mult: float) -> str:
+    if mult == 0.0:
+        return EFFECT_EMOJI["immune"]
+    if mult > 1.0:
+        return EFFECT_EMOJI["super"]
+    if 0.0 < mult < 1.0:
+        return EFFECT_EMOJI["notvery"]
+    return EFFECT_EMOJI["neutral"]
+
 def _slugify_move_name(name: str) -> str:
     return name.strip().lower().replace(" ", "-")
 
@@ -381,7 +398,6 @@ class BattleTowerView(discord.ui.View):
     def _arm_player_buttons(self):
         self.clear_items()
 
-        # Add up to 4 damage moves (fallback to first 4 if needed)
         candidates = []
         for m in self.player.get("moves", [])[:4]:
             mv = _coerce_move(self.player, m)
@@ -392,11 +408,15 @@ class BattleTowerView(discord.ui.View):
                 candidates.append(_coerce_move(self.player, m))
 
         for idx, mv in enumerate(candidates[:4]):
-            label = f"{mv[0].title()} ({mv[3]})"
+            # Add effectiveness emoji vs the *current foe*
+            eff_mult, _ = _type_effectiveness(mv[1], self.foe.get("types") or [])
+            emoji = _effect_emoji(eff_mult)
+            label = f"{emoji} {mv[0].title()} ({mv[3]})" if emoji else f"{mv[0].title()} ({mv[3]})"
             self.add_item(self.MoveButton(tower=self, label=label, move=mv, row=0 if idx < 3 else 1))
 
         self.add_item(self.AutoSimButton(tower=self))
         self.add_item(self.GiveUpButton(tower=self))
+
 
     class MoveButton(discord.ui.Button):
         def __init__(self, tower: "BattleTowerView", label: str, move: Tuple[str, str, str, int], row: int = 0):
@@ -575,9 +595,11 @@ class BattleTowerView(discord.ui.View):
         if self.p_cur <= 0:
             # Try to send next party mon
             if self._advance_next_player():
+                p_icon = _effect_emoji(p_eff_mult)
+                f_icon = _effect_emoji(f_eff_mult)
                 footer = (
-                f"You used {move[0]} ({p_dmg}). {p_eff_desc}\n"
-                f"Foe used {foe_move[0]} ({f_dmg}). {f_eff_desc}"
+                    f"You used {p_icon} {move[0]} ({p_dmg}). {p_eff_desc}\n"
+                    f"Foe used {f_icon} {foe_move[0]} ({f_dmg}). {f_eff_desc}"
                 ).strip()
                 emb = _battle_embed(
                     "Team Battle — Battle Tower",
@@ -589,7 +611,12 @@ class BattleTowerView(discord.ui.View):
             else:
                 return await self._defeat(interaction, foe_used=foe_move[0], dealt=f_dmg)
 
-        footer = f"You used {move[0]} ({p_dmg}).\n Foe used {foe_move[0]} ({f_dmg})."
+        p_icon = _effect_emoji(p_eff_mult)
+        f_icon = _effect_emoji(f_eff_mult)
+        footer = (
+            f"You used {p_icon} {move[0]} ({p_dmg}). {p_eff_desc}\n"
+            f"Foe used {f_icon} {foe_move[0]} ({f_dmg}). {f_eff_desc}"
+        )
         emb = _battle_embed(
             "Team Battle — Battle Tower",
             self.player, self.p_cur, self.p_max,
