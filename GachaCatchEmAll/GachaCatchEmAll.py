@@ -120,6 +120,64 @@ TYPE_BEATS = {
 
 NICKNAME_RE = re.compile(r"^[A-Za-z]{1,20}$")  # “letters only, max 20”
 
+
+# Put these near the top of your cog/file.
+# Map Pokémon types to the *custom emoji IDs* (ints) from the server that hosts them.
+TYPE_EMOJI_IDS = {
+    "normal":   123456789012345678,
+    "fire":     123456789012345679,
+    "water":    123456789012345680,
+    "electric": 123456789012345681,
+    "grass":    123456789012345682,
+    "ice":      123456789012345683,
+    "fighting": 123456789012345684,
+    "poison":   123456789012345685,
+    "ground":   1435718669672910938,
+    "flying":   123456789012345687,
+    "psychic":  123456789012345688,
+    "bug":      123456789012345689,
+    "rock":     123456789012345690,
+    "ghost":    123456789012345691,
+    "dragon":   123456789012345692,
+    "dark":     123456789012345693,
+    "steel":    123456789012345694,
+    "fairy":    123456789012345695,
+}
+
+# Optional unicode fallback if bot can't use external emoji
+TYPE_UNICODE_FALLBACK = {
+    "fire": "🔥", "water": "💧", "electric": "⚡", "grass": "🌿", "ice": "❄️",
+    "fighting": "🥊", "poison": "☠️", "ground": "🌋", "flying": "🪽",
+    "psychic": "🔮", "bug": "🐛", "rock": "🪨", "ghost": "👻", "dragon": "🐉",
+    "dark": "🌑", "steel": "⚙️", "fairy": "✨", "normal": "🔘",
+}
+
+# Simple cache so we only resolve once per ID during runtime
+_RESOLVED_EMOJI_CACHE = {}  # id(int) -> str("<:name:id>") or ""
+
+def type_emoji(bot: discord.Client, type_name: str) -> str:
+    """
+    Return the custom emoji string for a given type, or a unicode fallback, or "".
+    Works across servers if:
+      - the bot is in the emoji's home server, and
+      - the bot has 'Use External Emojis' in the target server.
+    """
+    t = (type_name or "").strip().lower()
+    eid = TYPE_EMOJI_IDS.get(t)
+    if eid:
+        # cached?
+        emj = _RESOLVED_EMOJI_CACHE.get(eid)
+        if emj is None:
+            eobj = bot.get_emoji(eid)  # discord.Emoji or None
+            emj = str(eobj) if eobj else ""
+            _RESOLVED_EMOJI_CACHE[eid] = emj
+        if emj:
+            return emj
+
+    # fallback to unicode if available
+    return TYPE_UNICODE_FALLBACK.get(t, "")
+
+
 # ---- If you don't have a shared fetcher in this cog, include these (or import from BattleTower) ----
 # --- small local helpers (remove if you already have shared versions in this cog) ---
 def _slugify_move_name(name: str) -> str:
@@ -4285,7 +4343,10 @@ class TeamViewPaginator(discord.ui.View):
             name = e.get("nickname") or e.get("name", "?")
             lvl  = int(e.get("level", 1))
             uid  = e.get("uid", "?")
-            types = " / ".join(t.title() for t in (e.get("types") or [])) or "Unknown"
+            types = " / ".join(
+                f"{type_emoji(ctx.bot, t)} {t.title()}" if type_emoji(ctx.bot, t) else t.title()
+                for t in (e.get("types") or [])
+            ) or "Unknown"
             moves = ", ".join(m.title() for m in (e.get("moves") or [])[:4]) or "—"
             lines.append(
                 f"**{i}.** `{uid}` • **{name}** (Lv {lvl})\n"
