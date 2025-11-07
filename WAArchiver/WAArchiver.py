@@ -254,6 +254,7 @@ class WAArchiver(commands.Cog):
         name = None
         desc = None
         repealed_by = None
+        councilID = None
 
         for child in list(res_el):
             tag = child.tag.upper()
@@ -268,12 +269,14 @@ class WAArchiver(commands.Cog):
                 desc = val_md
             elif tag == "REPEALED_BY":
                 repealed_by = val_md
+            elif tag == "COUNCILID":
+                councilID = val_md
 
         if not resid:
             resid = tagmap.get("COUNCILID", "unknown")
 
-        title = name or f"Resolution {resid}"
-        url = f"{BASE}/page=WA_past_resolution/id={resid}/council={council}"
+        title = name or f"Resolution {councilID}"
+        url = f"{BASE}/page=WA_past_resolution/id={councilID}/council={council}"
         color = COLOR_RED if repealed_by else COLOR_GREEN
 
         prepared_fields: List[Tuple[str, str]] = []
