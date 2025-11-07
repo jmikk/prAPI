@@ -122,6 +122,7 @@ class WAArchiver(commands.Cog):
             "threads_wa2": {},
             "forum_wa1_channel_id":0,
             "forum_wa2_channel_id":0,
+            "ns_user_agent":0
         }
         self.config.register_guild(**default_guild)
         self._http: Optional[aiohttp.ClientSession] = None
