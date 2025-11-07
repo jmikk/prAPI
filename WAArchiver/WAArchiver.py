@@ -393,33 +393,46 @@ class WAArchiver(commands.Cog):
             await ctx.send(f"(warn) Could not update target thread {thread_id}: {e}")
 
 
-    async def post_resolution_as_forum_thread(self, guild: discord.Guild, council: int, res_el) -> Optional[int]:
+    async def post_resolution_as_forum_thread(
+        self, guild: discord.Guild, council: int, res_el
+    ) -> Optional[int]:
+        """Create a forum thread for a single resolution and post embeds."""
         forum = await self._get_forum(guild, council)
         embeds = self.build_embeds_from_resolution(council, res_el)
         if not embeds:
+            await self.bot.send_to_owners(f"[WAArchiver] No embeds for council {council}. Skipping.")
             return None
     
-        # Build tagmap and pick forum tags
+        # --- Safely determine title ---
+        title = getattr(embeds[0], "title", None) or "WA Resolution"
+    
+        # --- Collect tags and classify ---
         tagmap = self._extract_tagmap_from_res_el(res_el)
-        tag_names = self._classify_tags(tagmap)  # e.g., ["Repeal"] or ["Proposal"]
-        tag_ids_map = self._find_forum_tags(forum, ["Proposal", "Repeal", "Repealed"])
-        applied_tags = [tag_ids_map[name] for name in tag_names if name in tag_ids_map]
-        
-        created = await forum.create_thread(
-            name=title,
-            content=f"World Assembly Council {council}",
-            embeds=[embeds[0]],
-            applied_tags=applied_tags or discord.utils.MISSING,
-        )
+        tag_names = self._classify_tags(tagmap)
+        forum_tags = self._find_forum_tags(forum, ["Proposal", "Repeal", "Repealed"])
+        applied_tags = [forum_tags[t] for t in tag_names if t in forum_tags]
+    
+        # --- Create the new thread ---
+        try:
+            created = await forum.create_thread(
+                name=title,
+                content=f"World Assembly Council {council}",
+                embeds=[embeds[0]],
+                applied_tags=applied_tags or discord.utils.MISSING,
+            )
+        except Exception as e:
+            # Defensive guard in case something unexpected happens
+            raise RuntimeError(f"Failed to create thread for {title}: {e}")
+    
         thread: discord.Thread = created.thread
     
-        # Post any remaining embeds in batches of 10
+        # --- Post any remaining embeds in batches of 10 ---
         for i in range(1, len(embeds), DISCORD_MAX_EMBEDS_PER_MESSAGE):
             batch = embeds[i : i + DISCORD_MAX_EMBEDS_PER_MESSAGE]
             await thread.send(embeds=batch)
             await asyncio.sleep(0.4)
     
-        # Remember mapping RESID -> thread_id
+        # --- Save thread reference in config ---
         resid = tagmap.get("RESID") or tagmap.get("COUNCILID")
         if resid and resid.isdigit():
             key = "threads_wa1" if council == 1 else "threads_wa2"
@@ -428,6 +441,7 @@ class WAArchiver(commands.Cog):
             await self.config.guild(guild).set_raw(key, value=threads_map)
     
         return thread.id
+
 
 
     # ------------- Commands -------------
