@@ -38,16 +38,15 @@ def bbcode_to_discord(text: str) -> str:
 
     # styles
     s = re.sub(r"\[b\](.*?)\[/b\]", r"**\1**", s, flags=re.I | re.S)
-    s = re.sub(r"\[i\](.*?)\[/i\]", r"*\1*", flags=re.I | re.S)
-    s = re.sub(r"\[u\](.*?)\[/u\]", r"__\1__", flags=re.I | re.S)
-    s = re.sub(r"\[s\](.*?)\[/s\]", r"~~\1~~", flags=re.I | re.S)
+    s = re.sub(r"\[i\](.*?)\[/i\]", r"*\1*", s, flags=re.I | re.S)   # ← added s
+    s = re.sub(r"\[u\](.*?)\[/u\]", r"__\1__", s, flags=re.I | re.S) # ← added s
+    s = re.sub(r"\[s\](.*?)\[/s\]", r"~~\1~~", s, flags=re.I | re.S) # ← added s
 
     # [quote] -> blockquote
     def _quote_repl(m):
         body = m.group(1).strip()
         return "\n".join("> " + line for line in body.splitlines())
-
-    s = re.sub(r"\[quote\](.*?)\[/quote\]", _quote_repl, flags=re.I | re.S)
+    s = re.sub(r"\[quote\](.*?)\[/quote\]", _quote_repl, s, flags=re.I | re.S)
 
     # lists
     s = re.sub(r"\[list(?:=[^\]]+)?\]", "", s, flags=re.I)  # [list], [list=1], [list=a]
@@ -57,6 +56,7 @@ def bbcode_to_discord(text: str) -> str:
     # remove any leftover bbcode-ish tags
     s = re.sub(r"\[(?:/?[a-zA-Z][^\]]*)\]", "", s)
     return s
+
 
 
 def split_text(text: str, limit: int) -> List[str]:
