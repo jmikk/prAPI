@@ -433,6 +433,50 @@ class WAArchiver(commands.Cog):
             await asyncio.sleep(delay)
 
         await ctx.send(f"Council {council}: posted {posted} thread(s).")
+    
+    @commands.command(name="wa_update")
+    @commands.guild_only()
+    @commands.admin_or_permissions(manage_guild=True)
+    async def wa_update(self, ctx: commands.Context, council: int):
+        """
+        Post only new resolutions since the last archived one for the given council.
+        Example: [p]wa_update 1
+        """
+        if council not in (1, 2):
+            return await ctx.send("Council must be 1 (GA) or 2 (SC).")
+    
+        last_key = "last_posted_resid_wa1" if council == 1 else "last_posted_resid_wa2"
+        last_posted = await self.config.guild(ctx.guild).get_attr(last_key)()
+        latest = await self.get_last_resolution_id(ctx.guild, council)
+    
+        if last_posted == latest:
+            return await ctx.send(f"No new resolutions for council {council} (latest = {latest}).")
+    
+        if last_posted > latest:
+            # If something odd happened (e.g., cleared config), just reset baseline
+            await self.config.guild(ctx.guild).set_raw(last_key, value=latest)
+            return await ctx.send(f"Reset baseline for council {council} to {latest}.")
+    
+        new_count = latest - last_posted
+        await ctx.send(f"Found **{new_count}** new resolution(s) since RESID {last_posted} → {latest}. Archiving...")
+    
+        # Go forward from last_posted + 1 up to latest
+        posted = 0
+        for resid in range(last_posted + 1, latest + 1):
+            el = await self.get_resolution_xml_el(ctx.guild, council, resid)
+            if el is None:
+                continue
+            try:
+                await self.post_resolution_as_forum_thread(ctx.guild, council, el)
+                posted += 1
+                await asyncio.sleep(await self.config.guild(ctx.guild).discord_post_delay())
+            except Exception as e:
+                await ctx.send(f"Error posting RESID {resid}: {e}")
+    
+        if posted > 0:
+            await self.config.guild(ctx.guild).set_raw(last_key, value=latest)
+        await ctx.send(f"Council {council}: added {posted} new thread(s). Now up to RESID {latest}.")
+
 
 async def setup(bot):
     await bot.add_cog(WAArchiver(bot))
