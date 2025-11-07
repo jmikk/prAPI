@@ -120,8 +120,8 @@ class WAArchiver(commands.Cog):
             "last_posted_resid_wa2": 0,
             "threads_wa1": {},
             "threads_wa2": {},
-            forum_wa1_channel_id:0,
-            forum_wa2_channel_id:0,
+            "forum_wa1_channel_id":0,
+            "forum_wa2_channel_id":0,
         }
         self.config.register_guild(**default_guild)
         self._http: Optional[aiohttp.ClientSession] = None
