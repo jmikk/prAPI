@@ -26,7 +26,6 @@ DISCORD_MAX_EMBEDS_PER_MESSAGE = 10
 COLOR_GREEN = 0x2ECC71
 COLOR_RED = 0xE74C3C
 
-
 def bbcode_to_discord(text: str) -> str:
     """Convert basic BBCode to Discord markdown."""
     if not text:
@@ -34,28 +33,29 @@ def bbcode_to_discord(text: str) -> str:
     s = text
 
     # [url=...]...[/url]
-    s = re.sub(r"\[url=(.+?)\](.*?)\[/url\]", r"[\2](\1)", s, flags=re.I | re.S)
+    s = re.sub(r"\[url=(.+?)\](.*?)\[/url\]", r"[\2](\1)", s, 0, re.I | re.S)
 
     # styles
-    s = re.sub(r"\[b\](.*?)\[/b\]", r"**\1**", s, flags=re.I | re.S)
-    s = re.sub(r"\[i\](.*?)\[/i\]", r"*\1*", s, flags=re.I | re.S)   # ← added s
-    s = re.sub(r"\[u\](.*?)\[/u\]", r"__\1__", s, flags=re.I | re.S) # ← added s
-    s = re.sub(r"\[s\](.*?)\[/s\]", r"~~\1~~", s, flags=re.I | re.S) # ← added s
+    s = re.sub(r"\[b\](.*?)\[/b\]", r"**\1**", s, 0, re.I | re.S)
+    s = re.sub(r"\[i\](.*?)\[/i\]", r"*\1*", s, 0, re.I | re.S)
+    s = re.sub(r"\[u\](.*?)\[/u\]", r"__\1__", s, 0, re.I | re.S)
+    s = re.sub(r"\[s\](.*?)\[/s\]", r"~~\1~~", s, 0, re.I | re.S)
 
     # [quote] -> blockquote
     def _quote_repl(m):
-        body = m.group(1).strip()
+        body = (m.group(1) or "").strip()
         return "\n".join("> " + line for line in body.splitlines())
-    s = re.sub(r"\[quote\](.*?)\[/quote\]", _quote_repl, s, flags=re.I | re.S)
+    s = re.sub(r"\[quote\](.*?)\[/quote\]", _quote_repl, s, 0, re.I | re.S)
 
     # lists
-    s = re.sub(r"\[list(?:=[^\]]+)?\]", "", s, flags=re.I)  # [list], [list=1], [list=a]
-    s = re.sub(r"\[/list\]", "", s, flags=re.I)
-    s = re.sub(r"(?m)^\s*\[\*\]\s*", "- ", s)
+    s = re.sub(r"\[list(?:=[^\]]+)?\]", "", s, 0, re.I)  # [list], [list=1], [list=a]
+    s = re.sub(r"\[/list\]", "", s, 0, re.I)
+    s = re.sub(r"(?m)^\s*\[\*\]\s*", "- ", s, 0)
 
     # remove any leftover bbcode-ish tags
-    s = re.sub(r"\[(?:/?[a-zA-Z][^\]]*)\]", "", s)
+    s = re.sub(r"\[(?:/?[a-zA-Z][^\]]*)\]", "", s, 0)
     return s
+
 
 
 
@@ -292,7 +292,7 @@ class WAArchiver(commands.Cog):
         # First message becomes the forum post content
         title = embeds[0].title or "WA Resolution"
         # Create the thread with first embed
-        created = await forum.create_thread(name=title, content=f"World Assembly Council {council}", embed=embeds[0])
+        created = await forum.create_thread(name=title, content=f"World Assembly Council {council}", embeds=[embeds[0]])
         thread: discord.Thread = created.thread
 
         # Post any remaining embeds in batches of 10
