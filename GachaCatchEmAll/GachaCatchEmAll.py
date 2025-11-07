@@ -4697,10 +4697,7 @@ class TeamViewPaginator(discord.ui.View):
             name = e.get("nickname") or e.get("name", "?")
             lvl  = int(e.get("level", 1))
             uid  = e.get("uid", "?")
-            types = " / ".join(
-                f"{type_emoji(ctx.bot, t)} {t.title()}" if type_emoji(ctx.bot, t) else t.title()
-                for t in (e.get("types") or [])
-            ) or "Unknown"
+            types = " / ".join(t.title() for t in (e.get("types") or [])) or "Unknown"
             moves = ", ".join(m.title() for m in (e.get("moves") or [])[:4]) or "—"
             lines.append(
                 f"**{i}.** `{uid}` • **{name}** (Lv {lvl})\n"
