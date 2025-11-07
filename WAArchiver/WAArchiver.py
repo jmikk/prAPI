@@ -137,15 +137,16 @@ class WAArchiver(commands.Cog):
         if self._http and not self._http.closed:
             await self._http.close()
 
-    def _find_forum_tags(self, forum: discord.ForumChannel, wanted: List[str]) -> Dict[str, int]:
-        """Map wanted tag names (case-insensitive) to forum tag IDs if present."""
-        name_to_id = {t.name.lower(): t.id for t in forum.available_tags}
-        out = {}
+    def _find_forum_tags(self, forum: discord.ForumChannel, wanted: List[str]) -> Dict[str, discord.ForumTag]:
+        """Map wanted tag names (case-insensitive) to ForumTag objects if present."""
+        by_lname = {t.name.lower(): t for t in forum.available_tags}
+        out: Dict[str, discord.ForumTag] = {}
         for w in wanted:
-            _id = name_to_id.get(w.lower())
-            if _id:
-                out[w] = _id
+            t = by_lname.get(w.lower())
+            if t:
+                out[w] = t
         return out
+
 
     def _classify_tags(self, tagmap: Dict[str, str]) -> List[str]:
         """
@@ -367,16 +368,22 @@ class WAArchiver(commands.Cog):
             thread = ctx.guild.get_thread(thread_id) or await self.bot.fetch_channel(thread_id)
             # Apply 'Repealed' tag if present in the forum
             forum = await self._get_forum(ctx.guild, council)
-            tag_ids = self._find_forum_tags(forum, ["Proposal", "Repeal", "Repealed"])
-            if isinstance(thread, discord.Thread) and isinstance(thread.parent, discord.ForumChannel):
-                current_tags = set(thread.applied_tags)
-                repealed_id = tag_ids.get("Repealed")
-                if repealed_id:
-                    # Replace Proposal/Repeal with Repealed
-                    current_tags.discard(tag_ids.get("Proposal", 0))
-                    current_tags.discard(tag_ids.get("Repeal", 0))
-                    current_tags.add(repealed_id)
-                    await thread.edit(applied_tags=list(current_tags))
+            wanted = ["Proposal", "Repeal", "Repealed"]
+            avail = {t.name.lower(): t for t in forum.available_tags}
+            
+            # Start from current thread tags (ForumTag objects) -> set of names
+            current_names = {t.name.lower() for t in getattr(thread, "applied_tags", [])}
+            
+            # Ensure "repealed" is present; drop "proposal" and "repeal"
+            current_names.discard("proposal")
+            current_names.discard("repeal")
+            current_names.add("repealed")
+            
+            # Build new tag object list
+            new_tags = [avail[name] for name in current_names if name in avail]
+            
+            await thread.edit(applied_tags=new_tags)
+
             # Send updated embeds
             for i in range(0, len(embeds), DISCORD_MAX_EMBEDS_PER_MESSAGE):
                 batch = embeds[i : i + DISCORD_MAX_EMBEDS_PER_MESSAGE]
@@ -397,13 +404,12 @@ class WAArchiver(commands.Cog):
         tag_names = self._classify_tags(tagmap)  # e.g., ["Repeal"] or ["Proposal"]
         tag_ids_map = self._find_forum_tags(forum, ["Proposal", "Repeal", "Repealed"])
         applied_tags = [tag_ids_map[name] for name in tag_names if name in tag_ids_map]
-    
-        title = embeds[0].title or "WA Resolution"
+        
         created = await forum.create_thread(
             name=title,
             content=f"World Assembly Council {council}",
             embeds=[embeds[0]],
-            applied_tags=applied_tags or discord.utils.MISSING,  # only pass if found
+            applied_tags=applied_tags or discord.utils.MISSING,
         )
         thread: discord.Thread = created.thread
     
