@@ -402,6 +402,92 @@ class NationStatesLinker(commands.Cog):
                     await self.apply_roles(ctx.guild, ctx.author)
             else:
                 await ctx.send(f"❌ You do not have **{self.display_nation(nation_name)}** linked to your account.")
+
+    @commands.command(name="nslauditmember")
+    @commands.guild_only()
+    @commands.has_permissions(manage_roles=True)
+    async def nslauditmember(self, ctx: commands.Context, member: discord.Member):
+        """Audit a single member and update their Visitor/Resident/WA roles.
+        Uses NS API against the configured region.
+        """
+        allowed_none = discord.AllowedMentions.none()
+        guild = ctx.guild
+    
+        # ---- preflight checks
+        gconf = self.config.guild(guild)
+        region = await gconf.region_name()
+        visitor_id = await gconf.visitor_role()
+        resident_id = await gconf.resident_role()
+        wa_resident_id = await gconf.wa_resident_role()
+    
+        # bot perms & hierarchy checks
+        me = guild.me
+        if not me.guild_permissions.manage_roles:
+            return await ctx.send("❌ I’m missing the **Manage Roles** permission.", allowed_mentions=allowed_none)
+    
+        missing = []
+        def _get(role_id):
+            return guild.get_role(role_id) if role_id else None
+    
+        visitor_role = _get(visitor_id)
+        resident_role = _get(resident_id)
+        wa_resident_role = _get(wa_resident_id)
+    
+        if not visitor_role: missing.append("Visitor")
+        if not resident_role: missing.append("Resident")
+        if not wa_resident_role: missing.append("WA Resident")
+    
+        if missing:
+            return await ctx.send(
+                f"⚠️ Missing configured roles: {', '.join(missing)}. "
+                f"Set them with `[p]nslroles visitor|resident|wa_resident <role>`.",
+                allowed_mentions=allowed_none
+            )
+    
+        too_high = []
+        for r, name in [(visitor_role, "Visitor"), (resident_role, "Resident"), (wa_resident_role, "WA Resident")]:
+            if r and r >= me.top_role:
+                too_high.append(name)
+        if too_high:
+            return await ctx.send(
+                f"❌ My highest role must be **above**: {', '.join(too_high)}.",
+                allowed_mentions=allowed_none
+            )
+    
+        if not region:
+            return await ctx.send("❌ No region configured. Set one with `[p]nslset region <region>`.", allowed_mentions=allowed_none)
+    
+        await ctx.send(f"🔎 Fetching region membership for `{region}`…", allowed_mentions=allowed_none)
+    
+        # ---- fetch region data with error surfacing
+        try:
+            residents, wa_residents = await self.fetch_region_members(region)
+        except Exception as e:
+            return await ctx.send(
+                f"❌ Failed to fetch region data for `{region}`: `{type(e).__name__}: {e}`",
+                allowed_mentions=allowed_none
+            )
+    
+        await ctx.send(f"🔁 Auditing **{member.display_name}** for region `{region}`…", allowed_mentions=allowed_none)
+    
+        try:
+            changed = await self.apply_roles(
+                guild,
+                member,
+                residents=residents,
+                wa_residents=wa_residents,
+                ctx=ctx,
+            )
+            if changed:
+                await ctx.send(f"✅ Roles updated for **{member.display_name}**.", allowed_mentions=allowed_none)
+            else:
+                await ctx.send(f"ℹ️ No changes needed for **{member.display_name}**.", allowed_mentions=allowed_none)
+        except Exception as e:
+            await ctx.send(
+                f"⚠️ Failed to audit **{member.display_name}**: `{type(e).__name__}: {e}`",
+                allowed_mentions=allowed_none
+            )
+
    
     @commands.command(name="nslaudit")
     @commands.guild_only()
@@ -760,7 +846,7 @@ class NationStatesLinker(commands.Cog):
     
     @commands.command(name="nsladminlink")
     @commands.guild_only()
-    @commands.has_permissions(manage_guild=True)
+    @commands.has_permissions(manage_roles=True)
     async def nsladminlink(self, ctx: commands.Context, member: discord.Member, nation: str, *, flag: Optional[str] = None):
         """Admin command to link a nation to a user. Use --force to skip verify."""
         nation_norm = self.normalize_nation(nation)
