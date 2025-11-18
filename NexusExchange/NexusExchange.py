@@ -1296,7 +1296,6 @@ First Steps to Jump into the Spring:
 
     Endorse our Keepers:
     [nation=islands_of_ventro]Islands of Ventro[/nation]
-    [nation=kakastania]Kakastania[/nation]
 
 Joining the World Assembly and endorsing our keepers helps protect [region]The Wellspring[/region] from outside threats and gives us more influence in shaping the world around us. It makes our region stronger, safer, and more united.
 
