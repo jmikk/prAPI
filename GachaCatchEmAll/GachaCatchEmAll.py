@@ -559,11 +559,11 @@ class GachaCatchEmAll(commands.Cog):
 
     @commands.hybrid_command(name="gymchallenge")
     @commands.cooldown(1, 10, commands.BucketType.user)
-    async def gymchallenge(self, ctx: commands.Context, *, gym_name: str):
+    async def gymchallenge(self, ctx: commands.Context, *, gym_name: str=None):
         """Pay 500 WC to fight a preset Gym."""
         gyms = await self._get_guild_gyms(ctx.guild)
         team = gyms.get(gym_name)
-        if not team:
+        if not team or gym_name == None:
             await ctx.reply(f"No preset team found for gym **{gym_name}**. The following gyms are available {gyms}")
             return
     
