@@ -564,7 +564,7 @@ class GachaCatchEmAll(commands.Cog):
         gyms = await self._get_guild_gyms(ctx.guild)
         team = gyms.get(gym_name)
         if not team:
-            await ctx.reply(f"No preset team found for gym **{gym_name}**.")
+            await ctx.reply(f"No preset team found for gym **{gym_name}**. The following gyms are available {gyms}")
             return
     
         # charge
