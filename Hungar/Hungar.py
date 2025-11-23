@@ -2013,7 +2013,7 @@ class Hungar(commands.Cog):
 
         feasters = [pid for pid, p in players.items() if p.get("action") == "Feast" and p.get("alive")]
     
-        if feasters:
+        if feasters and config.get("feast_active"):
     
             feast_log = ["🍖 The Feast begins at the Cornucopia..."]
         
