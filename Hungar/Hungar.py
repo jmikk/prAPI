@@ -1898,7 +1898,7 @@ class Hungar(commands.Cog):
         hunted = set()
     
         # Shrink zones after Day 15
-        if day_counter % 3 == 2 and len(zones) > 1:
+        if day_counter % 4 == 2 and len(zones) > 1:
             zone_to_remove = random.choice(zones)
             zones.remove(zone_to_remove)
             event_outcomes.append(f"⚠️ The zone **{zone_to_remove['name']}** has collapsed and is no longer safe!")
@@ -1938,6 +1938,18 @@ class Hungar(commands.Cog):
             action = player_data["action"]
             if action == "Hunt":
                 hunters.append(player_id)
+
+            elif action == "Feast" and not config.get("feast_active"):
+                player_data["stats"]["HP"] -= 20
+                effect = f"{player_data['name']} thought they could outsmart the gamemasters, by hiding inside the cornucopia, unfortunately for them it is not a safe space and they lost 20 HP!"
+                zone_name = "🤡 Cornucopia 🤡"
+                if player_data["stats"]["HP"] <= 0:
+                    player_data["alive"] = False
+                    effect += f" \n 💀 {player_data['name']} died!"
+
+                event_outcomes.append(f"{effect} ({zone_name})")
+
+                
             elif action == "Rest":
                 resters.append(player_id)
                 used_item = None
@@ -1995,7 +2007,7 @@ class Hungar(commands.Cog):
                         zone_name = player_data["zone"]["name"] if isinstance(player_data["zone"], dict) else player_data.get("zone", "Unknown Zone")
                         event_outcomes.append(f"{effect} ({zone_name})")
 
-            elif action == "Feast":
+            elif action == "Feast" and config.get("feast_active"):
                 feast_participants.append(player_id)
                 players[player_id]["zone"] = {"name": "Cornucopia"}
 
