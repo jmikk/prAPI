@@ -16,7 +16,7 @@ log = logging.getLogger("red.wa_proposal_watcher")
 WA_BASE_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 
 
-class WAProposalWatcher(commands.Cog):
+class WAO(commands.Cog):
     """
     Watches the NationStates WA proposal queues for both chambers,
     creates a forum thread for each proposal, and locks the thread
