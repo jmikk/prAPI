@@ -671,7 +671,7 @@ class WAO(commands.Cog):
         category = info.get("category") or "Unknown Category"
         proposed_by = info.get("proposed_by") or "Unknown"
         proposal_url = f"https://www.nationstates.net/page=UN_view_proposal/id={proposal_id}"
-        # No jump_url on thread; use canonical Discord thread URL
+        # Thread URL – works even if the bot isn't in the webhook's guild
         thread_url = f"https://discord.com/channels/{guild.id}/{thread.id}"
 
         if self.session is None or self.session.closed:
@@ -688,6 +688,9 @@ class WAO(commands.Cog):
             if not url:
                 continue
 
+            # Always format as a raw role mention by ID.
+            # If the role exists in the webhook's server, it pings.
+            # If not, Discord shows it as an unknown/deleted role mention.
             role_mention = f"<@&{role_id}>" if role_id else ""
 
             try:
@@ -722,6 +725,8 @@ class WAO(commands.Cog):
                     guild.id,
                     e,
                 )
+
+
 
     # -------------- API FETCHING & PARSING --------------
 
