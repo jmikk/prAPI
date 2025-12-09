@@ -29,7 +29,7 @@ class WAO(commands.Cog):
       active/inactive state instead of deleting the record.
     """
 
-    __author__ = "Jeremy + ChatGPT"
+    __author__ = "9005 + ChatGPT"
     __version__ = "1.3.0"
 
     def __init__(self, bot):
