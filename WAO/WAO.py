@@ -22,15 +22,19 @@ class WAO(commands.Cog):
     creates a forum thread for each proposal, and locks the thread
     when the proposal disappears from the queue.
 
+    Extras:
     - UA is configurable via command and REQUIRED (no default).
     - Each proposal gets a detailed forum thread with NS link.
     - Optional webhooks fire on new proposals with custom messages & role pings.
     - Each proposal ID will only ever create ONE thread per guild; we track
       active/inactive state instead of deleting the record.
+    - In proposal threads, messages starting with For/Against/Abstain become
+      votes with emoji + live tallies (counts and percentages).
+    - Optional voter role: if set, only that role can vote; otherwise anyone can.
     """
 
     __author__ = "9005"
-    __version__ = "1.3.0"
+    __version__ = "1.4.0"
 
     def __init__(self, bot):
         self.bot = bot
@@ -59,11 +63,19 @@ class WAO(commands.Cog):
         # webhooks: {
         #   "name": {"url": str, "role_id": int, "template": str}
         # }
+        # votes: {
+        #   "<thread_id>": {
+        #       "<user_id>": "for" | "against" | "abstain"
+        #   }
+        # }
+        # voter_role_id: int or None
         self.config.register_guild(
             ga_forum_channel=None,
             sc_forum_channel=None,
             proposals={"1": {}, "2": {}},
             webhooks={},
+            votes={},
+            voter_role_id=None,
         )
 
         self.session: Optional[ClientSession] = None
@@ -128,6 +140,29 @@ class WAO(commands.Cog):
             f"Security Council proposals will now post in forum: {channel.mention}"
         )
 
+    # --- VOTER ROLE ---
+
+    @waobserver_group.command(name="setvoterrole")
+    async def set_voter_role(self, ctx: commands.Context, role: discord.Role):
+        """
+        Set a voter role for WA proposal threads.
+
+        If set, only members with this role may cast votes in proposal threads.
+        If no voter role is set, anyone can vote.
+        """
+        await self.config.guild(ctx.guild).voter_role_id.set(role.id)
+        await ctx.send(
+            f"Voter role set to {role.mention}. Only members with this role may vote."
+        )
+
+    @waobserver_group.command(name="clearvoterrole")
+    async def clear_voter_role(self, ctx: commands.Context):
+        """Clear the voter role so that anyone can vote in proposal threads."""
+        await self.config.guild(ctx.guild).voter_role_id.clear()
+        await ctx.send(
+            "Voter role cleared. Anyone can now vote in proposal threads."
+        )
+
     # --- WEBHOOKS ---
 
     @waobserver_group.command(name="addwebhook")
@@ -136,7 +171,7 @@ class WAO(commands.Cog):
         ctx: commands.Context,
         name: str,
         url: str,
-        role: discord.Role,
+        role: int,
         *,
         template: str,
     ):
@@ -146,10 +181,11 @@ class WAO(commands.Cog):
         Arguments:
         - name: Short identifier for this webhook config (no spaces recommended).
         - url: Webhook URL.
-        - role: Role to ping when sending the message.
+        - role: Role ID to ping when sending the message (use the ID of the role
+                in the server where the webhook lives).
         - template: Custom message. Supports placeholders:
 
-          {role}        -> role mention
+          {role}        -> role mention (<@&id>)
           {chamber}     -> 'General Assembly' or 'Security Council'
           {name}        -> proposal name
           {category}    -> proposal category
@@ -158,7 +194,7 @@ class WAO(commands.Cog):
           {thread}      -> Discord thread URL
 
         Example:
-        [p]waobserver addwebhook alerts https://... @WA-Pings \
+        [p]waobserver addwebhook alerts https://... 123456789012345678 \
           {role} New {chamber} proposal: **{name}** by {proposed_by} - {link}
         """
         name = name.strip()
@@ -174,12 +210,12 @@ class WAO(commands.Cog):
         async with self.config.guild(ctx.guild).webhooks() as hooks:
             hooks[name] = {
                 "url": url,
-                "role_id": role.id,
+                "role_id": int(role),
                 "template": template,
             }
 
         await ctx.send(
-            f"Webhook `{name}` added. It will ping {role.mention} on new proposals."
+            f"Webhook `{name}` added. It will ping role ID `{role}` on new proposals."
         )
 
     @waobserver_group.command(name="delwebhook")
@@ -205,12 +241,12 @@ class WAO(commands.Cog):
         lines = ["**Configured WA webhooks:**"]
         for name, data in hooks.items():
             role_id = data.get("role_id")
-            role = ctx.guild.get_role(role_id) if role_id else None
-            role_str = role.mention if role else f"`{role_id}`"
             template = data.get("template", "")
             if len(template) > 80:
                 template = template[:77] + "..."
-            lines.append(f"- `{name}` → role: {role_str} | template: `{template}`")
+            lines.append(
+                f"- `{name}` → role ID: `{role_id}` | template: `{template}`"
+            )
 
         await ctx.send("\n".join(lines))
 
@@ -228,11 +264,21 @@ class WAO(commands.Cog):
         ua = await self.config.ns_user_agent()
         ua_display = ua if ua else "*Not set (required!)*"
 
+        voter_role_id = data.get("voter_role_id")
+        voter_role = ctx.guild.get_role(voter_role_id) if voter_role_id else None
+        if voter_role:
+            voter_role_str = f"{voter_role.mention}"
+        elif voter_role_id:
+            voter_role_str = f"`{voter_role_id}` (not found)"
+        else:
+            voter_role_str = "None (anyone can vote)"
+
         msg = [
             f"**WA Proposal Watcher Status for {ctx.guild.name}**",
             f"User-Agent: {ua_display}",
             f"GA (WA=1) forum: {ga.mention if ga else 'Not set'}",
             f"SC (WA=2) forum: {sc.mention if sc else 'Not set'}",
+            f"Voter role: {voter_role_str}",
         ]
         await ctx.send("\n".join(msg))
 
@@ -424,7 +470,7 @@ class WAO(commands.Cog):
 
         return text
 
-    # -------------- CORE LOGIC --------------
+    # -------------- CORE LOGIC: PROPOSALS --------------
 
     async def _check_for_council(
         self,
@@ -671,7 +717,7 @@ class WAO(commands.Cog):
         category = info.get("category") or "Unknown Category"
         proposed_by = info.get("proposed_by") or "Unknown"
         proposal_url = f"https://www.nationstates.net/page=UN_view_proposal/id={proposal_id}"
-        # Thread URL – works even if the bot isn't in the webhook's guild
+        # No jump_url on thread; use canonical Discord thread URL
         thread_url = f"https://discord.com/channels/{guild.id}/{thread.id}"
 
         if self.session is None or self.session.closed:
@@ -725,8 +771,6 @@ class WAO(commands.Cog):
                     guild.id,
                     e,
                 )
-
-
 
     # -------------- API FETCHING & PARSING --------------
 
@@ -844,6 +888,123 @@ class WAO(commands.Cog):
         except Exception:
             # if anything is weird, just ignore; our load is tiny anyway
             return
+
+    # -------------- VOTING IN THREADS --------------
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        """
+        Watch proposal threads for vote messages.
+
+        Any message that starts with "For", "Against", or "Abstain"
+        (case-insensitive) will:
+        - Record/update that user's vote for this thread.
+        - React with a specific emoji.
+        - Edit the message to include the current tally for this thread.
+        """
+        if message.author.bot:
+            return
+        if not isinstance(message.channel, discord.Thread):
+            return
+
+        guild = message.guild
+        if guild is None:
+            return
+
+        # Check if this thread is one of our proposal threads
+        proposals = await self.config.guild(guild).proposals()
+        thread_id = message.channel.id
+        is_tracked = False
+
+        for council_data in proposals.values():
+            for entry in council_data.values():
+                if entry.get("thread_id") == thread_id:
+                    is_tracked = True
+                    break
+            if is_tracked:
+                break
+
+        if not is_tracked:
+            return
+
+        # Check voter role, if any
+        voter_role_id = await self.config.guild(guild).voter_role_id()
+        if voter_role_id:
+            if not any(r.id == voter_role_id for r in message.author.roles):
+                return
+
+        # Parse vote keyword
+        text = message.content.strip()
+        if not text:
+            return
+
+        m = re.match(r"^(for|against|abstain)\b", text, flags=re.IGNORECASE)
+        if not m:
+            return
+
+        choice_raw = m.group(1).lower()
+        if choice_raw == "for":
+            choice = "for"
+            emoji = "🟢"
+        elif choice_raw == "against":
+            choice = "against"
+            emoji = "🔴"
+        else:
+            choice = "abstain"
+            emoji = "⚪"
+
+        # Update votes in config
+        votes_conf = self.config.guild(guild).votes
+        async with votes_conf() as all_votes:
+            tkey = str(thread_id)
+            user_key = str(message.author.id)
+            thread_votes = all_votes.get(tkey, {})
+            thread_votes[user_key] = choice
+            all_votes[tkey] = thread_votes
+
+            # Compute tallies
+            total = len(thread_votes)
+            for_count = sum(1 for v in thread_votes.values() if v == "for")
+            against_count = sum(1 for v in thread_votes.values() if v == "against")
+            abstain_count = sum(1 for v in thread_votes.values() if v == "abstain")
+
+        def pct(count: int) -> float:
+            return round(count * 100.0 / total, 1) if total > 0 else 0.0
+
+        for_pct = pct(for_count)
+        against_pct = pct(against_count)
+        abstain_pct = pct(abstain_count)
+
+        # React with emoji (ignore failures)
+        try:
+            await message.add_reaction(emoji)
+        except Exception as e:
+            log.debug("Failed to add reaction to vote message: %s", e)
+
+        # Edit message with tally
+        base_content = message.content
+        marker = "\nVote tally:"
+        if "Vote tally:" in base_content:
+            base_content = base_content.split(marker)[0].rstrip()
+
+        tally_line = (
+            f"\n\nVote tally: "
+            f"For {for_count} ({for_pct}%), "
+            f"Against {against_count} ({against_pct}%), "
+            f"Abstain {abstain_count} ({abstain_pct}%)"
+        )
+        new_content = base_content + tally_line
+
+        if len(new_content) > 2000:
+            # Trim base content if needed
+            max_base = 2000 - len(tally_line) - 3
+            base_trim = base_content[:max_base] + "..."
+            new_content = base_trim + tally_line
+
+        try:
+            await message.edit(content=new_content)
+        except Exception as e:
+            log.debug("Failed to edit vote message for tally: %s", e)
 
 
 async def setup(bot):
