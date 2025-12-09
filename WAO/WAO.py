@@ -32,10 +32,14 @@ class WAO(commands.Cog):
       votes with emoji + live tallies (counts and percentages).
     - Optional voter role: if set, only that role can vote; otherwise anyone can.
     - Dump command to lock/delete all tracked threads and clear memory.
+    - IFV system:
+        * 2nd post in each thread reserved for an IFV.
+        * `waobserver ifv <thread_id> <text>` updates that reserved post.
+        * `setifvroles` defines which roles can write IFVs.
     """
 
     __author__ = "9005"
-    __version__ = "1.5.0"
+    __version__ = "1.6.0"
 
     def __init__(self, bot):
         self.bot = bot
@@ -53,6 +57,8 @@ class WAO(commands.Cog):
         #   "1": {
         #       proposal_id: {
         #           "thread_id": int,
+        #           "starter_message_id": int | None,
+        #           "ifv_message_id": int | None,
         #           "name": str,
         #           "category": str,
         #           "created": int,
@@ -70,6 +76,7 @@ class WAO(commands.Cog):
         #   }
         # }
         # voter_role_id: int or None
+        # ifv_role_ids: list[int] (roles allowed to use IFV)
         self.config.register_guild(
             ga_forum_channel=None,
             sc_forum_channel=None,
@@ -77,6 +84,7 @@ class WAO(commands.Cog):
             webhooks={},
             votes={},
             voter_role_id=None,
+            ifv_role_ids=[],
         )
 
         self.session: Optional[ClientSession] = None
@@ -164,92 +172,124 @@ class WAO(commands.Cog):
             "Voter role cleared. Anyone can now vote in proposal threads."
         )
 
-    # --- WEBHOOKS ---
+    # --- IFV ROLES ---
 
-    @waobserver_group.command(name="addwebhook")
-    async def add_webhook(
-        self,
-        ctx: commands.Context,
-        name: str,
-        url: str,
-        role: int,
-        *,
-        template: str,
+    @waobserver_group.command(name="setifvroles")
+    async def set_ifv_roles(
+        self, ctx: commands.Context, *roles: discord.Role
     ):
         """
-        Add a webhook that fires when a NEW proposal is found.
+        Set which roles are allowed to write IFVs.
 
-        Arguments:
-        - name: Short identifier for this webhook config (no spaces recommended).
-        - url: Webhook URL.
-        - role: Role ID to ping when sending the message (use the ID of the role
-                in the server where the webhook lives).
-        - template: Custom message. Supports placeholders:
-
-          {role}        -> role mention (<@&id>)
-          {chamber}     -> 'General Assembly' or 'Security Council'
-          {name}        -> proposal name
-          {category}    -> proposal category
-          {proposed_by} -> proposer nation
-          {link}        -> NationStates proposal link
-          {thread}      -> Discord thread URL
+        If at least one IFV role is set:
+          - Only those roles (or admins/managers) may use [p]waobserver ifv.
+        If none are set:
+          - Only admins/managers may use [p]waobserver ifv.
 
         Example:
-        [p]waobserver addwebhook alerts https://... 123456789012345678 \
-          {role} New {chamber} proposal: **{name}** by {proposed_by} - {link}
+        [p]waobserver setifvroles @WA-Staff @Delegate
         """
-        name = name.strip()
-        if not name:
-            await ctx.send("Webhook name cannot be empty.")
-            return
-
-        template = template.strip()
-        if not template:
-            await ctx.send("Template cannot be empty.")
-            return
-
-        async with self.config.guild(ctx.guild).webhooks() as hooks:
-            hooks[name] = {
-                "url": url,
-                "role_id": int(role),
-                "template": template,
-            }
-
-        await ctx.send(
-            f"Webhook `{name}` added. It will ping role ID `{role}` on new proposals."
-        )
-
-    @waobserver_group.command(name="delwebhook")
-    async def delete_webhook(self, ctx: commands.Context, name: str):
-        """Delete a configured webhook by name."""
-        name = name.strip()
-        async with self.config.guild(ctx.guild).webhooks() as hooks:
-            if name not in hooks:
-                await ctx.send(f"No webhook named `{name}` is configured.")
-                return
-            hooks.pop(name)
-
-        await ctx.send(f"Webhook `{name}` removed.")
-
-    @waobserver_group.command(name="listwebhooks")
-    async def list_webhooks(self, ctx: commands.Context):
-        """List configured webhooks for this server."""
-        hooks = await self.config.guild(ctx.guild).webhooks()
-        if not hooks:
-            await ctx.send("No webhooks are configured for this server.")
-            return
-
-        lines = ["**Configured WA webhooks:**"]
-        for name, data in hooks.items():
-            role_id = data.get("role_id")
-            template = data.get("template", "")
-            if len(template) > 80:
-                template = template[:77] + "..."
-            lines.append(
-                f"- `{name}` → role ID: `{role_id}` | template: `{template}`"
+        ids = [r.id for r in roles]
+        await self.config.guild(ctx.guild).ifv_role_ids.set(ids)
+        if ids:
+            mentions = ", ".join(r.mention for r in roles)
+            await ctx.send(
+                f"IFV roles set to: {mentions}. Only these roles (plus admins) can write IFVs."
+            )
+        else:
+            await ctx.send(
+                "IFV roles set to empty. Only admins/managers may write IFVs."
             )
 
-        await ctx.send("\n".join(lines))
+    @waobserver_group.command(name="clearifvroles")
+    async def clear_ifv_roles(self, ctx: commands.Context):
+        """Clear IFV roles. Only admins/managers may write IFVs."""
+        await self.config.guild(ctx.guild).ifv_role_ids.set([])
+        await ctx.send(
+            "IFV roles cleared. Only admins/managers may write IFVs."
+        )
+
+    # --- IFV COMMAND ---
+
+    @waobserver_group.command(name="ifv")
+    async def set_ifv(
+        self, ctx: commands.Context, thread_id: int, *, text: str
+    ):
+        """
+        Set the IFV (In-Forum Vote) text for a proposal thread.
+
+        Usage:
+            [p]waobserver ifv <thread_id> <text>
+
+        The IFV will be placed (or updated) in the reserved second post
+        of that proposal thread.
+        """
+        guild = ctx.guild
+        if guild is None:
+            await ctx.send("This command can only be used in a server.")
+            return
+
+        # Permission check: IFV roles OR admin/manage_guild
+        conf = self.config.guild(guild)
+        ifv_role_ids = await conf.ifv_role_ids()
+        allowed = False
+
+        if any(
+            r.id in ifv_role_ids for r in ctx.author.roles
+        ) and ifv_role_ids:
+            allowed = True
+        elif ctx.author.guild_permissions.administrator or ctx.author.guild_permissions.manage_guild:
+            allowed = True
+
+        if not allowed:
+            if ifv_role_ids:
+                await ctx.send(
+                    "You do not have a role that is allowed to write IFVs."
+                )
+            else:
+                await ctx.send(
+                    "Only administrators or members with Manage Server may write IFVs."
+                )
+            return
+
+        # Fetch thread
+        thread = guild.get_thread(thread_id) or guild.get_channel(thread_id)
+        if not isinstance(thread, discord.Thread):
+            await ctx.send("That ID is not a valid thread.")
+            return
+
+        # Is it a tracked proposal thread?
+        proposals = await conf.proposals()
+        target_entry = None
+        for council_data in proposals.values():
+            for entry in council_data.values():
+                if entry.get("thread_id") == thread_id:
+                    target_entry = entry
+                    break
+            if target_entry:
+                break
+
+        if not target_entry:
+            await ctx.send("That thread is not tracked as a WA proposal thread.")
+            return
+
+        ifv_message_id = target_entry.get("ifv_message_id")
+        msg: Optional[discord.Message] = None
+
+        if ifv_message_id:
+            try:
+                msg = await thread.fetch_message(ifv_message_id)
+            except discord.NotFound:
+                msg = None
+
+        if msg is None:
+            # Create a new IFV message if somehow missing
+            msg = await thread.send("IFV will be posted here.")
+            target_entry["ifv_message_id"] = msg.id
+            await conf.proposals.set(proposals)
+
+        await msg.edit(content=text)
+        await ctx.send(f"IFV updated for thread {thread.mention}.")
 
     # --- STATUS & FORCE CHECK ---
 
@@ -274,12 +314,24 @@ class WAO(commands.Cog):
         else:
             voter_role_str = "None (anyone can vote)"
 
+        ifv_ids = data.get("ifv_role_ids", [])
+        ifv_roles = [
+            ctx.guild.get_role(rid) for rid in ifv_ids if ctx.guild.get_role(rid)
+        ]
+        if ifv_roles:
+            ifv_str = ", ".join(r.mention for r in ifv_roles)
+        elif ifv_ids:
+            ifv_str = ", ".join(f"`{rid}`" for rid in ifv_ids)
+        else:
+            ifv_str = "None (only admins/managers)"
+
         msg = [
             f"**WA Proposal Watcher Status for {ctx.guild.name}**",
             f"User-Agent: {ua_display}",
             f"GA (WA=1) forum: {ga.mention if ga else 'Not set'}",
             f"SC (WA=2) forum: {sc.mention if sc else 'Not set'}",
             f"Voter role: {voter_role_str}",
+            f"IFV roles: {ifv_str}",
         ]
         await ctx.send("\n".join(msg))
 
@@ -329,7 +381,6 @@ class WAO(commands.Cog):
                 if not thread_id:
                     continue
 
-                # get_thread works for active / archived; fallback to get_channel
                 thread = guild.get_thread(thread_id) or guild.get_channel(thread_id)
                 if not isinstance(thread, discord.Thread):
                     continue
@@ -510,13 +561,9 @@ class WAO(commands.Cog):
         if not raw:
             return "No description provided."
 
-        # Decode HTML entities like &#147; etc.
         text = html.unescape(raw)
-
-        # Convert NS BBCode to Discord formatting
         text = self._ns_bbcode_to_discord(text)
 
-        # Embed description limit is 4096 chars.
         limit = 4096
         notice = "\n\n*(Description truncated; see proposal gameside for full text.)*"
 
@@ -554,30 +601,23 @@ class WAO(commands.Cog):
             str(council), {}
         )
 
-        # stored_ids_all: every proposal we've EVER seen for this council
         stored_ids_all = set(stored_by_council.keys())
-
-        # active_ids: currently considered "active" in this guild (for closure)
         active_ids = {
             pid
             for pid, entry in stored_by_council.items()
             if entry.get("active", True)
         }
 
-        # New proposals are those in the API but not in stored history at all
         new_ids = current_ids - stored_ids_all
-
-        # Gone proposals are those we previously had as active, but now not present
         gone_ids = active_ids - current_ids
 
         # Handle new proposals
         for pid in new_ids:
             info = proposals[pid]
             try:
-                thread, starter_message_id = await self._create_thread_for_proposal(
+                thread, starter_message_id, ifv_message_id = await self._create_thread_for_proposal(
                     forum=forum, council=council, proposal_id=pid, info=info
                 )
-                # Fire webhooks for this new proposal
                 await self._notify_webhooks_for_new_proposal(
                     guild=guild,
                     thread=thread,
@@ -597,12 +637,12 @@ class WAO(commands.Cog):
             stored_by_council[pid] = {
                 "thread_id": thread.id,
                 "starter_message_id": starter_message_id,
+                "ifv_message_id": ifv_message_id,
                 "name": info.get("name"),
                 "category": info.get("category"),
                 "created": info.get("created"),
                 "active": True,
             }
-
 
         # Handle disappeared proposals -> lock threads & mark inactive
         for pid in gone_ids:
@@ -616,7 +656,6 @@ class WAO(commands.Cog):
 
             thread = guild.get_thread(thread_id)
             if thread is None:
-                # maybe deleted manually; still mark inactive
                 entry["active"] = False
                 continue
 
@@ -636,7 +675,6 @@ class WAO(commands.Cog):
 
             entry["active"] = False
 
-        # Save updated mapping
         all_data["proposals"][str(council)] = stored_by_council
         await guild_conf.proposals.set(all_data["proposals"])
 
@@ -646,8 +684,8 @@ class WAO(commands.Cog):
         council: int,
         proposal_id: str,
         info: Dict[str, Any],
-    ) -> Tuple[discord.Thread, Optional[int]]:
-        """Create a new forum thread for a proposal with rich info and NS link."""
+    ) -> Tuple[discord.Thread, Optional[int], Optional[int]]:
+        """Create a new forum thread for a proposal with rich info and NS link, plus reserve IFV post."""
         chamber_name = "General Assembly" if council == 1 else "Security Council"
         category = info.get("category") or "Unknown Category"
         name = info.get("name") or proposal_id
@@ -660,7 +698,6 @@ class WAO(commands.Cog):
         option = info.get("option") or ""
         approvals = info.get("approvals_raw") or ""
 
-        # Format timestamps and other fields
         try:
             created_dt = datetime.datetime.utcfromtimestamp(created_ts)
             created_str = created_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -670,7 +707,6 @@ class WAO(commands.Cog):
         approvals_list = [a for a in approvals.split(":") if a]
         approvals_count = len(approvals_list)
 
-        # Proposed by: link to nation if we can
         if proposed_by != "Unknown":
             pb_slug = self._ns_slug(proposed_by)
             proposed_by_value = (
@@ -679,7 +715,6 @@ class WAO(commands.Cog):
         else:
             proposed_by_value = proposed_by
 
-        # Coauthors: each linked to their nation page
         if coauthors:
             coauthor_links = []
             for c in coauthors:
@@ -694,9 +729,7 @@ class WAO(commands.Cog):
         else:
             coauthor_str = "None"
 
-        # Option / Target, try to make it useful
         option_str = option if option else "N/A"
-        # e.g. N:nation or R:region
         if option.upper().startswith("N:"):
             target = option[2:]
             slug = self._ns_slug(target)
@@ -712,7 +745,6 @@ class WAO(commands.Cog):
 
         proposal_url = f"https://www.nationstates.net/page=UN_view_proposal/id={proposal_id}"
 
-        # Prepare embed
         embed = discord.Embed(
             title=name,
             url=proposal_url,
@@ -742,7 +774,6 @@ class WAO(commands.Cog):
 
         title = f"[{chamber_name}] {name}"
 
-        # On some discord.py/Red versions this returns a Thread, on others a ThreadWithMessage.
         created = await forum.create_thread(
             name=title,
             embed=embed,
@@ -750,6 +781,7 @@ class WAO(commands.Cog):
 
         thread: discord.Thread
         starter_message_id: Optional[int] = None
+        ifv_message_id: Optional[int] = None
 
         # ThreadWithMessage-like: has .thread and .message
         if hasattr(created, "thread") and hasattr(created, "message"):
@@ -759,13 +791,19 @@ class WAO(commands.Cog):
                 starter_message_id = starter_msg.id
         elif isinstance(created, discord.Thread):
             thread = created
-            # we'll find the starter later if we need to
         else:
-            # Fallback, just treat it as a Thread
             thread = created  # type: ignore
 
-        return thread, starter_message_id
+        # Reserve second post for IFV
+        try:
+            ifv_placeholder = await thread.send(
+                "*This post is reserved for the IFV. Use the `waobserver ifv` command to set it.*"
+            )
+            ifv_message_id = ifv_placeholder.id
+        except Exception as e:
+            log.exception("Failed to reserve IFV post in thread %s: %s", thread.id, e)
 
+        return thread, starter_message_id, ifv_message_id
 
     # -------------- WEBHOOK NOTIFICATIONS --------------
 
@@ -787,7 +825,6 @@ class WAO(commands.Cog):
         category = info.get("category") or "Unknown Category"
         proposed_by = info.get("proposed_by") or "Unknown"
         proposal_url = f"https://www.nationstates.net/page=UN_view_proposal/id={proposal_id}"
-        # No jump_url on thread; use canonical Discord thread URL
         thread_url = f"https://discord.com/channels/{guild.id}/{thread.id}"
 
         if self.session is None or self.session.closed:
@@ -804,9 +841,6 @@ class WAO(commands.Cog):
             if not url:
                 continue
 
-            # Always format as a raw role mention by ID.
-            # If the role exists in the webhook's server, it pings.
-            # If not, Discord shows it as an unknown/deleted role mention.
             role_mention = f"<@&{role_id}>" if role_id else ""
 
             try:
@@ -847,27 +881,17 @@ class WAO(commands.Cog):
     async def _fetch_proposals(
         self, council: int, user_agent: str
     ) -> Dict[str, Dict[str, Any]]:
-        """
-        Fetch proposals for a WA council from NationStates API.
-
-        Returns:
-            dict mapping proposal_id -> info dict
-        """
+        """Fetch proposals for a WA council from NationStates API."""
         if self.session is None or self.session.closed:
             self.session = ClientSession()
 
-        params = {
-            "wa": str(council),
-            "q": "proposals",
-        }
+        params = {"wa": str(council), "q": "proposals"}
         headers = {"User-Agent": user_agent}
 
         async with self.session.get(
             WA_BASE_URL, params=params, headers=headers
         ) as resp:
             text = await resp.text()
-
-            # Handle rate limiting according to your strategy
             await self._handle_rate_limit(resp)
 
             try:
@@ -882,10 +906,8 @@ class WAO(commands.Cog):
 
         proposals: Dict[str, Dict[str, Any]] = {}
         for prop in proposals_elem.findall("PROPOSAL"):
-            # Prefer <ID> field to be safe
             pid = (prop.findtext("ID") or "").strip()
             if not pid:
-                # fallback to attribute id
                 pid = prop.get("id", "").strip()
             if not pid:
                 continue
@@ -902,13 +924,11 @@ class WAO(commands.Cog):
             proposed_by = (prop.findtext("PROPOSED_BY") or "").strip()
             approvals_raw = (prop.findtext("APPROVALS") or "").strip()
 
-            # Co-authors (could be multiple COAUTHOR tags)
             coauthors = [
                 (c.text or "").strip() for c in prop.findall("COAUTHOR")
             ]
             coauthors = [c for c in coauthors if c]
 
-            # Option / Target (e.g., N:some_nation)
             option = (prop.findtext("OPTION") or "").strip()
 
             info = {
@@ -927,36 +947,26 @@ class WAO(commands.Cog):
         return proposals
 
     async def _handle_rate_limit(self, resp):
-        """
-        Handle NationStates API rate limiting based on response headers.
-
-        Pattern based on your existing approach:
-        remaining = int(Ratelimit-Remaining) - 10
-        wait_time = reset_time / remaining if remaining > 0 else reset_time
-        """
+        """Handle NationStates API rate limiting based on response headers."""
         headers = resp.headers
         try:
             remaining_raw = headers.get("Ratelimit-Remaining")
             reset_raw = headers.get("Ratelimit-Reset")
-
             if remaining_raw is None or reset_raw is None:
                 return
 
             remaining = int(remaining_raw)
             reset_time = int(reset_raw)
 
-            # match your snippet's behavior
             remaining -= 10
             if remaining > 0:
                 wait_time = reset_time / remaining
             else:
                 wait_time = reset_time
 
-            # don't sleep for huge nonsense values
             if 0 < wait_time < 60:
                 await asyncio.sleep(wait_time)
         except Exception:
-            # if anything is weird, just ignore; our load is tiny anyway
             return
 
     # -------------- VOTING IN THREADS --------------
@@ -971,6 +981,7 @@ class WAO(commands.Cog):
         - Record/update that user's vote for this thread.
         - React with a specific emoji.
         - Edit the message to include the current tally for this thread.
+        - Update the original embed with overall thread tallies.
         """
         if message.author.bot:
             return
@@ -981,7 +992,6 @@ class WAO(commands.Cog):
         if guild is None:
             return
 
-        # Check if this thread is one of our proposal threads
         proposals = await self.config.guild(guild).proposals()
         thread_id = message.channel.id
         is_tracked = False
@@ -997,13 +1007,11 @@ class WAO(commands.Cog):
         if not is_tracked:
             return
 
-        # Check voter role, if any
         voter_role_id = await self.config.guild(guild).voter_role_id()
         if voter_role_id:
             if not any(r.id == voter_role_id for r in message.author.roles):
                 return
 
-        # Parse vote keyword
         text = message.content.strip()
         if not text:
             return
@@ -1023,7 +1031,6 @@ class WAO(commands.Cog):
             choice = "abstain"
             emoji = "⚪"
 
-        # Update votes in config
         votes_conf = self.config.guild(guild).votes
         async with votes_conf() as all_votes:
             tkey = str(thread_id)
@@ -1032,7 +1039,6 @@ class WAO(commands.Cog):
             thread_votes[user_key] = choice
             all_votes[tkey] = thread_votes
 
-            # Compute tallies
             total = len(thread_votes)
             for_count = sum(1 for v in thread_votes.values() if v == "for")
             against_count = sum(1 for v in thread_votes.values() if v == "against")
@@ -1045,13 +1051,17 @@ class WAO(commands.Cog):
         against_pct = pct(against_count)
         abstain_pct = pct(abstain_count)
 
-                # Update the starter embed with overall thread votes
+        try:
+            await message.add_reaction(emoji)
+        except Exception as e:
+            log.debug("Failed to add reaction to vote message: %s", e)
+
+        # Update the starter embed with overall thread votes
         try:
             guild_conf = self.config.guild(guild)
             proposals = await guild_conf.proposals()
             starter_message_id = None
 
-            # Find this thread's proposal entry and starter message
             for council_data in proposals.values():
                 for entry in council_data.values():
                     if entry.get("thread_id") == thread_id:
@@ -1068,8 +1078,7 @@ class WAO(commands.Cog):
                 except discord.NotFound:
                     starter_msg = None
 
-            # Fallback: if we never stored starter_message_id (old threads),
-            # fetch the first message in the thread and cache it.
+            # Fallback: find first message in thread and store it
             if starter_msg is None:
                 try:
                     async for msg in message.channel.history(limit=1, oldest_first=True):
@@ -1080,7 +1089,6 @@ class WAO(commands.Cog):
                     starter_msg = None
 
                 if starter_msg and starter_message_id:
-                    # Save this so we don't need to look it up again later
                     for council_key, council_data in proposals.items():
                         for pid, entry in council_data.items():
                             if entry.get("thread_id") == thread_id:
@@ -1091,7 +1099,6 @@ class WAO(commands.Cog):
                 base_embed = starter_msg.embeds[0]
                 embed = base_embed.copy()
 
-                # Remove any existing "Thread Votes" field
                 existing_fields = list(embed.fields)
                 embed.clear_fields()
                 for f in existing_fields:
@@ -1109,14 +1116,7 @@ class WAO(commands.Cog):
         except Exception as e:
             log.debug("Failed to update starter embed votes: %s", e)
 
-
-        # React with emoji (ignore failures)
-        try:
-            await message.add_reaction(emoji)
-        except Exception as e:
-            log.debug("Failed to add reaction to vote message: %s", e)
-
-        # Edit message with tally
+        # Edit the vote message with its own tally line
         base_content = message.content
         marker = "\nVote tally:"
         if "Vote tally:" in base_content:
@@ -1131,7 +1131,6 @@ class WAO(commands.Cog):
         new_content = base_content + tally_line
 
         if len(new_content) > 2000:
-            # Trim base content if needed
             max_base = 2000 - len(tally_line) - 3
             base_trim = base_content[:max_base] + "..."
             new_content = base_trim + tally_line
