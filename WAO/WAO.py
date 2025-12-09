@@ -796,14 +796,15 @@ class WAO(commands.Cog):
 
         # Reserve second post for IFV
         try:
+            command_example = f"[p]waobserver ifv {thread.id} Your IFV text here"
             ifv_placeholder = await thread.send(
-                "*This post is reserved for the IFV. Use the `waobserver ifv` command to set it.*"
+                f"*This post is reserved for the IFV.*\n\n"
+                f"Use this command to set it:\n`{command_example}`"
             )
             ifv_message_id = ifv_placeholder.id
         except Exception as e:
             log.exception("Failed to reserve IFV post in thread %s: %s", thread.id, e)
 
-        return thread, starter_message_id, ifv_message_id
 
     # -------------- WEBHOOK NOTIFICATIONS --------------
 
