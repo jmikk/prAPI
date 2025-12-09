@@ -31,10 +31,11 @@ class WAO(commands.Cog):
     - In proposal threads, messages starting with For/Against/Abstain become
       votes with emoji + live tallies (counts and percentages).
     - Optional voter role: if set, only that role can vote; otherwise anyone can.
+    - Dump command to lock/delete all tracked threads and clear memory.
     """
 
-    __author__ = "9005"
-    __version__ = "1.4.0"
+    __author__ = "Jeremy + ChatGPT"
+    __version__ = "1.5.0"
 
     def __init__(self, bot):
         self.bot = bot
@@ -296,6 +297,63 @@ class WAO(commands.Cog):
         await ctx.send("Checking WA proposals now...")
         await self._run_full_check()
         await ctx.send("Done checking proposals.")
+
+    # --- DUMP / RESET ---
+
+    @waobserver_group.command(name="dump")
+    async def dump_data(self, ctx: commands.Context, lock: bool = True):
+        """
+        Dump all WAO tracking data for this server.
+
+        If lock is True (default):
+          - Lock + archive all threads tracked by this cog.
+          - Clear stored proposals and votes.
+        If lock is False:
+          - Delete all threads tracked by this cog.
+          - Clear stored proposals and votes.
+
+        GA/SC forum channel settings and webhooks are NOT touched.
+        """
+        guild = ctx.guild
+        data = await self.config.guild(guild).all()
+        proposals = data.get("proposals", {"1": {}, "2": {}})
+
+        action_word = "Locking and archiving" if lock else "Deleting"
+        await ctx.send(
+            f"{action_word} all tracked proposal threads and clearing WAO memory for this server..."
+        )
+
+        for council_key, council_data in proposals.items():
+            for pid, entry in list(council_data.items()):
+                thread_id = entry.get("thread_id")
+                if not thread_id:
+                    continue
+
+                # get_thread works for active / archived; fallback to get_channel
+                thread = guild.get_thread(thread_id) or guild.get_channel(thread_id)
+                if not isinstance(thread, discord.Thread):
+                    continue
+
+                try:
+                    if lock:
+                        await thread.edit(locked=True, archived=True)
+                    else:
+                        await thread.delete(reason="WAO dump command")
+                except Exception as e:
+                    log.exception(
+                        "Failed to %s thread %s for proposal %s in guild %s: %s",
+                        "lock/archive" if lock else "delete",
+                        thread_id,
+                        pid,
+                        guild.id,
+                        e,
+                    )
+
+        # Clear memory: proposals + votes; keep forum/webhook settings
+        await self.config.guild(guild).proposals.set({"1": {}, "2": {}})
+        await self.config.guild(guild).votes.clear()
+
+        await ctx.send("Done. WAO tracking data has been reset for this server.")
 
     # -------------- BACKGROUND LOOP --------------
 
