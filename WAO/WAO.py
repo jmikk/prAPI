@@ -105,8 +105,93 @@ class WAO(commands.Cog):
     @checks.admin_or_permissions(manage_guild=True)
     async def waobserver_group(self, ctx: commands.Context):
         """Configure and manage the WA proposal watcher."""
-        if ctx.invoked_subcommand is None:
-            await ctx.send_help(ctx.command)
+        pass
+
+        # --- WEBHOOKS ---
+
+    @waobserver_group.command(name="addwebhook")
+    async def add_webhook(
+        self,
+        ctx: commands.Context,
+        name: str,
+        url: str,
+        role: int,
+        *,
+        template: str,
+    ):
+        """
+        Add a webhook that fires when a NEW proposal is found.
+
+        Arguments:
+        - name: Short identifier for this webhook config (no spaces recommended).
+        - url: Webhook URL.
+        - role: Role ID to ping when sending the message (use the ID of the role
+                in the server where the webhook lives).
+        - template: Custom message. Supports placeholders:
+
+          {role}        -> role mention (<@&id>)
+          {chamber}     -> 'General Assembly' or 'Security Council'
+          {name}        -> proposal name
+          {category}    -> proposal category
+          {proposed_by} -> proposer nation
+          {link}        -> NationStates proposal link
+          {thread}      -> Discord thread URL
+        """
+        name = name.strip()
+        if not name:
+            await ctx.send("Webhook name cannot be empty.")
+            return
+
+        template = template.strip()
+        if not template:
+            await ctx.send("Template cannot be empty.")
+            return
+
+        async with self.config.guild(ctx.guild).webhooks() as hooks:
+            hooks[name] = {
+                "url": url,
+                "role_id": int(role),
+                "template": template,
+            }
+
+        await ctx.send(
+            f"Webhook `{name}` added. It will ping role ID `{role}` on new proposals."
+        )
+
+    @waobserver_group.command(name="delwebhook")
+    async def delete_webhook(self, ctx: commands.Context, name: str):
+        """Delete a configured webhook by name."""
+        name = name.strip()
+        async with self.config.guild(ctx.guild).webhooks() as hooks:
+            if name not in hooks:
+                await ctx.send(f"No webhook named `{name}` is configured.")
+                return
+            hooks.pop(name)
+
+        await ctx.send(f"Webhook `{name}` removed.")
+
+    @waobserver_group.command(name="listwebhooks")
+    async def list_webhooks(self, ctx: commands.Context):
+        """List configured webhooks for this server."""
+        hooks = await self.config.guild(ctx.guild).webhooks()
+        if not hooks:
+            await ctx.send("No webhooks are configured for this server.")
+            return
+
+        lines = ["**Configured WA webhooks:**"]
+        for name, data in hooks.items():
+            role_id = data.get("role_id")
+            template = data.get("template", "")
+            if len(template) > 80:
+                template = template[:77] + "..."
+            lines.append(
+                f"- `{name}` → role ID: `{role_id}` | template: `{template}`"
+            )
+
+        await ctx.send("\n".join(lines))
+
+
+    
 
     # --- UA CONFIG ---
 
