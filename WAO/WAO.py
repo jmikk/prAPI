@@ -25,10 +25,12 @@ class WAO(commands.Cog):
     - UA is configurable via command and REQUIRED (no default).
     - Each proposal gets a detailed forum thread with NS link.
     - Optional webhooks fire on new proposals with custom messages & role pings.
+    - Each proposal ID will only ever create ONE thread per guild; we track
+      active/inactive state instead of deleting the record.
     """
 
     __author__ = "Jeremy + ChatGPT"
-    __version__ = "1.2.0"
+    __version__ = "1.3.0"
 
     def __init__(self, bot):
         self.bot = bot
@@ -43,7 +45,15 @@ class WAO(commands.Cog):
         # ga_forum_channel: forum channel ID for GA (wa=1)
         # sc_forum_channel: forum channel ID for SC (wa=2)
         # proposals: {
-        #   "1": {proposal_id: {"thread_id": int, "name": str, "category": str}},
+        #   "1": {
+        #       proposal_id: {
+        #           "thread_id": int,
+        #           "name": str,
+        #           "category": str,
+        #           "created": int,
+        #           "active": bool,
+        #       }
+        #   },
         #   "2": {...}
         # }
         # webhooks: {
@@ -145,7 +155,7 @@ class WAO(commands.Cog):
           {category}    -> proposal category
           {proposed_by} -> proposer nation
           {link}        -> NationStates proposal link
-          {thread}      -> Discord thread link
+          {thread}      -> Discord thread URL
 
         Example:
         [p]waobserver addwebhook alerts https://... @WA-Pings \
@@ -260,9 +270,7 @@ class WAO(commands.Cog):
         ua = await self.config.ns_user_agent()
         if not ua:
             # UA not set; do nothing.
-            log.warning(
-                "WAProposalWatcher: ns_user_agent is not set. Skipping checks."
-            )
+            log.warning("WAO: ns_user_agent is not set. Skipping checks.")
             return
 
         all_guilds = await self.config.all_guilds()
@@ -428,8 +436,10 @@ class WAO(commands.Cog):
         """
         Check proposals for a given council (1 = GA, 2 = SC) and sync threads.
 
-        - New proposals -> create new thread + fire webhooks.
-        - Proposals no longer present -> lock + archive thread.
+        - New proposals (never seen before) -> create new thread + fire webhooks.
+        - Proposals no longer present (were active) -> lock + archive thread and
+          mark as inactive, but keep the record so we never create a second thread
+          for the same proposal ID.
         """
         proposals = await self._fetch_proposals(council, ua)
         current_ids = set(proposals.keys())
@@ -439,10 +449,22 @@ class WAO(commands.Cog):
         stored_by_council: Dict[str, Dict[str, Any]] = all_data["proposals"].get(
             str(council), {}
         )
-        stored_ids = set(stored_by_council.keys())
 
-        new_ids = current_ids - stored_ids
-        gone_ids = stored_ids - current_ids
+        # stored_ids_all: every proposal we've EVER seen for this council
+        stored_ids_all = set(stored_by_council.keys())
+
+        # active_ids: currently considered "active" in this guild (for closure)
+        active_ids = {
+            pid
+            for pid, entry in stored_by_council.items()
+            if entry.get("active", True)
+        }
+
+        # New proposals are those in the API but not in stored history at all
+        new_ids = current_ids - stored_ids_all
+
+        # Gone proposals are those we previously had as active, but now not present
+        gone_ids = active_ids - current_ids
 
         # Handle new proposals
         for pid in new_ids:
@@ -473,20 +495,23 @@ class WAO(commands.Cog):
                 "name": info.get("name"),
                 "category": info.get("category"),
                 "created": info.get("created"),
+                "active": True,
             }
 
-        # Handle disappeared proposals -> lock threads
+        # Handle disappeared proposals -> lock threads & mark inactive
         for pid in gone_ids:
             entry = stored_by_council.get(pid)
             if not entry:
                 continue
             thread_id = entry.get("thread_id")
             if not thread_id:
+                entry["active"] = False
                 continue
 
             thread = guild.get_thread(thread_id)
             if thread is None:
-                # maybe deleted manually
+                # maybe deleted manually; still mark inactive
+                entry["active"] = False
                 continue
 
             try:
@@ -503,8 +528,7 @@ class WAO(commands.Cog):
                     e,
                 )
 
-            # Remove from stored proposals
-            stored_by_council.pop(pid, None)
+            entry["active"] = False
 
         # Save updated mapping
         all_data["proposals"][str(council)] = stored_by_council
@@ -612,10 +636,19 @@ class WAO(commands.Cog):
 
         title = f"[{chamber_name}] {name}"
 
-        thread = await forum.create_thread(
+        # On some discord.py/Red versions this returns a Thread, on others a ThreadWithMessage.
+        created = await forum.create_thread(
             name=title,
             embed=embed,
         )
+
+        # Normalize to Thread
+        if isinstance(created, discord.Thread):
+            thread = created
+        else:
+            # ThreadWithMessage-like object
+            thread = getattr(created, "thread", created)
+
         return thread
 
     # -------------- WEBHOOK NOTIFICATIONS --------------
@@ -638,7 +671,8 @@ class WAO(commands.Cog):
         category = info.get("category") or "Unknown Category"
         proposed_by = info.get("proposed_by") or "Unknown"
         proposal_url = f"https://www.nationstates.net/page=UN_view_proposal/id={proposal_id}"
-        thread_url = thread.jump_url
+        # No jump_url on thread; use canonical Discord thread URL
+        thread_url = f"https://discord.com/channels/{guild.id}/{thread.id}"
 
         if self.session is None or self.session.closed:
             self.session = ClientSession()
@@ -808,4 +842,4 @@ class WAO(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(WAProposalWatcher(bot))
+    await bot.add_cog(WAO(bot))
