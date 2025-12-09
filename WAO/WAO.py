@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 import discord
 from aiohttp import ClientSession
@@ -574,7 +574,7 @@ class WAO(commands.Cog):
         for pid in new_ids:
             info = proposals[pid]
             try:
-                thread = await self._create_thread_for_proposal(
+                thread, starter_message_id = await self._create_thread_for_proposal(
                     forum=forum, council=council, proposal_id=pid, info=info
                 )
                 # Fire webhooks for this new proposal
@@ -596,11 +596,13 @@ class WAO(commands.Cog):
 
             stored_by_council[pid] = {
                 "thread_id": thread.id,
+                "starter_message_id": starter_message_id,
                 "name": info.get("name"),
                 "category": info.get("category"),
                 "created": info.get("created"),
                 "active": True,
             }
+
 
         # Handle disappeared proposals -> lock threads & mark inactive
         for pid in gone_ids:
@@ -644,7 +646,7 @@ class WAO(commands.Cog):
         council: int,
         proposal_id: str,
         info: Dict[str, Any],
-    ) -> discord.Thread:
+    ) -> Tuple[discord.Thread, Optional[int]]:
         """Create a new forum thread for a proposal with rich info and NS link."""
         chamber_name = "General Assembly" if council == 1 else "Security Council"
         category = info.get("category") or "Unknown Category"
@@ -746,14 +748,24 @@ class WAO(commands.Cog):
             embed=embed,
         )
 
-        # Normalize to Thread
-        if isinstance(created, discord.Thread):
-            thread = created
-        else:
-            # ThreadWithMessage-like object
-            thread = getattr(created, "thread", created)
+        thread: discord.Thread
+        starter_message_id: Optional[int] = None
 
-        return thread
+        # ThreadWithMessage-like: has .thread and .message
+        if hasattr(created, "thread") and hasattr(created, "message"):
+            thread = created.thread
+            starter_msg = created.message
+            if isinstance(starter_msg, discord.Message):
+                starter_message_id = starter_msg.id
+        elif isinstance(created, discord.Thread):
+            thread = created
+            # we'll find the starter later if we need to
+        else:
+            # Fallback, just treat it as a Thread
+            thread = created  # type: ignore
+
+        return thread, starter_message_id
+
 
     # -------------- WEBHOOK NOTIFICATIONS --------------
 
@@ -1032,6 +1044,71 @@ class WAO(commands.Cog):
         for_pct = pct(for_count)
         against_pct = pct(against_count)
         abstain_pct = pct(abstain_count)
+
+                # Update the starter embed with overall thread votes
+        try:
+            guild_conf = self.config.guild(guild)
+            proposals = await guild_conf.proposals()
+            starter_message_id = None
+
+            # Find this thread's proposal entry and starter message
+            for council_data in proposals.values():
+                for entry in council_data.values():
+                    if entry.get("thread_id") == thread_id:
+                        starter_message_id = entry.get("starter_message_id")
+                        break
+                if starter_message_id:
+                    break
+
+            starter_msg: Optional[discord.Message] = None
+
+            if starter_message_id:
+                try:
+                    starter_msg = await message.channel.fetch_message(starter_message_id)
+                except discord.NotFound:
+                    starter_msg = None
+
+            # Fallback: if we never stored starter_message_id (old threads),
+            # fetch the first message in the thread and cache it.
+            if starter_msg is None:
+                try:
+                    async for msg in message.channel.history(limit=1, oldest_first=True):
+                        starter_msg = msg
+                        starter_message_id = msg.id
+                        break
+                except Exception:
+                    starter_msg = None
+
+                if starter_msg and starter_message_id:
+                    # Save this so we don't need to look it up again later
+                    for council_key, council_data in proposals.items():
+                        for pid, entry in council_data.items():
+                            if entry.get("thread_id") == thread_id:
+                                entry["starter_message_id"] = starter_message_id
+                    await guild_conf.proposals.set(proposals)
+
+            if starter_msg and starter_msg.embeds:
+                base_embed = starter_msg.embeds[0]
+                embed = base_embed.copy()
+
+                # Remove any existing "Thread Votes" field
+                existing_fields = list(embed.fields)
+                embed.clear_fields()
+                for f in existing_fields:
+                    if f.name != "Thread Votes":
+                        embed.add_field(name=f.name, value=f.value, inline=f.inline)
+
+                votes_value = (
+                    f"For {for_count} ({for_pct}%)\n"
+                    f"Against {against_count} ({against_pct}%)\n"
+                    f"Abstain {abstain_count} ({abstain_pct}%)"
+                )
+                embed.add_field(name="Thread Votes", value=votes_value, inline=False)
+
+                await starter_msg.edit(embed=embed)
+        except Exception as e:
+            log.debug("Failed to update starter embed votes: %s", e)
+
 
         # React with emoji (ignore failures)
         try:
