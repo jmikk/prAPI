@@ -6,8 +6,7 @@ from typing import Dict, Any, Optional
 import discord
 from aiohttp import ClientSession
 from redbot.core import commands, Config, checks
-from redbot.core import tasks
-import xml.etree.ElementTree as ET
+from discord.ext import tasksimport xml.etree.ElementTree as ET
 
 log = logging.getLogger("red.wa_proposal_watcher")
 
@@ -26,7 +25,7 @@ class WAO(commands.Cog):
     """
 
     __author__ = "9005 + ChatGPT"
-    __version__ = "1.1.0"
+    __version__ = "1.1.1"
 
     def __init__(self, bot):
         self.bot = bot
