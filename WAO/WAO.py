@@ -796,7 +796,7 @@ class WAO(commands.Cog):
 
         # Reserve second post for IFV
         try:
-            command_example = f"[p]waobserver ifv {thread.id}"
+            command_example = f"waobserver ifv {thread.id}"
             ifv_placeholder = await thread.send(
                 f"*This post is reserved for the IFV.*\n\n"
                 f"Use this command to set it:\n`{command_example}`"
