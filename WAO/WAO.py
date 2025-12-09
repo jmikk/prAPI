@@ -34,7 +34,7 @@ class WAO(commands.Cog):
     - Dump command to lock/delete all tracked threads and clear memory.
     """
 
-    __author__ = "Jeremy + ChatGPT"
+    __author__ = "9005"
     __version__ = "1.5.0"
 
     def __init__(self, bot):
