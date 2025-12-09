@@ -6,7 +6,8 @@ from typing import Dict, Any, Optional
 import discord
 from aiohttp import ClientSession
 from redbot.core import commands, Config, checks
-from discord.ext import tasksimport xml.etree.ElementTree as ET
+from discord.ext import tasks
+import xml.etree.ElementTree as ET
 
 log = logging.getLogger("red.wa_proposal_watcher")
 
