@@ -8,13 +8,15 @@ from aiohttp import ClientSession
 from redbot.core import commands, Config, checks
 from discord.ext import tasks
 import xml.etree.ElementTree as ET
+import html
+import re
 
 log = logging.getLogger("red.wa_proposal_watcher")
 
 WA_BASE_URL = "https://www.nationstates.net/cgi-bin/api.cgi"
 
 
-class WAO(commands.Cog):
+class WAProposalWatcher(commands.Cog):
     """
     Watches the NationStates WA proposal queues for both chambers,
     creates a forum thread for each proposal, and locks the thread
@@ -25,8 +27,8 @@ class WAO(commands.Cog):
     - Optional webhooks fire on new proposals with custom messages & role pings.
     """
 
-    __author__ = "9005 + ChatGPT"
-    __version__ = "1.1.1"
+    __author__ = "Jeremy + ChatGPT"
+    __version__ = "1.2.0"
 
     def __init__(self, bot):
         self.bot = bot
@@ -137,13 +139,13 @@ class WAO(commands.Cog):
         - role: Role to ping when sending the message.
         - template: Custom message. Supports placeholders:
 
-          {role}      -> role mention
-          {chamber}   -> 'General Assembly' or 'Security Council'
-          {name}      -> proposal name
-          {category}  -> proposal category
+          {role}        -> role mention
+          {chamber}     -> 'General Assembly' or 'Security Council'
+          {name}        -> proposal name
+          {category}    -> proposal category
           {proposed_by} -> proposer nation
-          {link}      -> NationStates proposal link
-          {thread}    -> Discord thread link
+          {link}        -> NationStates proposal link
+          {thread}      -> Discord thread link
 
         Example:
         [p]waobserver addwebhook alerts https://... @WA-Pings \
@@ -257,7 +259,7 @@ class WAO(commands.Cog):
         """Check proposals for all guilds that have channels configured."""
         ua = await self.config.ns_user_agent()
         if not ua:
-            # UA not set; do nothing. First real use will nudge via commands.
+            # UA not set; do nothing.
             log.warning(
                 "WAProposalWatcher: ns_user_agent is not set. Skipping checks."
             )
@@ -294,6 +296,125 @@ class WAO(commands.Cog):
                         guild_id,
                         sc_forum_id,
                     )
+
+    # -------------- HELPERS: NS TEXT PROCESSING --------------
+
+    def _ns_slug(self, name: str) -> str:
+        """Convert a nation/region name to a NS URL slug."""
+        return name.strip().replace(" ", "_")
+
+    def _ns_bbcode_to_discord(self, text: str) -> str:
+        """Convert common NationStates BBCode to Discord markdown."""
+        # Basic formatting tags
+        text = re.sub(r"\[b\](.*?)\[/b\]", r"**\1**", text, flags=re.IGNORECASE | re.DOTALL)
+        text = re.sub(r"\[i\](.*?)\[/i\]", r"*\1*", text, flags=re.IGNORECASE | re.DOTALL)
+        text = re.sub(r"\[u\](.*?)\[/u\]", r"__\1__", text, flags=re.IGNORECASE | re.DOTALL)
+
+        # [nation]Name[/nation]
+        def repl_nation_simple(m):
+            name = (m.group(1) or "").strip()
+            if not name:
+                return ""
+            slug = self._ns_slug(name)
+            return f"[{name}](https://www.nationstates.net/nation={slug})"
+
+        text = re.sub(
+            r"\[nation\](.*?)\[/nation\]", repl_nation_simple,
+            text, flags=re.IGNORECASE | re.DOTALL
+        )
+
+        # [nation=slug]Label[/nation]
+        def repl_nation_param(m):
+            slug = (m.group(1) or "").strip()
+            label = (m.group(2) or "").strip() or slug
+            return f"[{label}](https://www.nationstates.net/nation={self._ns_slug(slug)})"
+
+        text = re.sub(
+            r"\[nation=(.*?)\](.*?)\[/nation\]", repl_nation_param,
+            text, flags=re.IGNORECASE | re.DOTALL
+        )
+
+        # [region]Name[/region]
+        def repl_region_simple(m):
+            name = (m.group(1) or "").strip()
+            if not name:
+                return ""
+            slug = self._ns_slug(name)
+            return f"[{name}](https://www.nationstates.net/region={slug})"
+
+        text = re.sub(
+            r"\[region\](.*?)\[/region\]", repl_region_simple,
+            text, flags=re.IGNORECASE | re.DOTALL
+        )
+
+        # [region=slug]Label[/region]
+        def repl_region_param(m):
+            slug = (m.group(1) or "").strip()
+            label = (m.group(2) or "").strip() or slug
+            return f"[{label}](https://www.nationstates.net/region={self._ns_slug(slug)})"
+
+        text = re.sub(
+            r"\[region=(.*?)\](.*?)\[/region\]", repl_region_param,
+            text, flags=re.IGNORECASE | re.DOTALL
+        )
+
+        # [url=link]text[/url]
+        text = re.sub(
+            r"\[url=(.*?)\](.*?)\[/url\]", r"[\2](\1)",
+            text, flags=re.IGNORECASE | re.DOTALL
+        )
+        # [url]link[/url]
+        text = re.sub(
+            r"\[url\](.*?)\[/url\]", r"<\1>",
+            text, flags=re.IGNORECASE | re.DOTALL
+        )
+
+        # Lists: [list], [*], [/list]
+        text = re.sub(r"\[list\]", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\[/list\]", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\[\*\]", "• ", text)
+
+        # [quote]...[/quote]
+        def repl_quote(m):
+            inner = (m.group(1) or "").strip()
+            if not inner:
+                return ""
+            lines = inner.splitlines()
+            lines = ["> " + ln for ln in lines]
+            return "\n".join(lines)
+
+        text = re.sub(
+            r"\[quote\](.*?)\[/quote\]", repl_quote,
+            text, flags=re.IGNORECASE | re.DOTALL
+        )
+
+        return text
+
+    def _process_description(self, raw: str) -> str:
+        """
+        Decode HTML entities, convert NS BBCode to Discord markdown,
+        and truncate safely for embed description.
+        """
+        if not raw:
+            return "No description provided."
+
+        # Decode HTML entities like &#147; etc.
+        text = html.unescape(raw)
+
+        # Convert NS BBCode to Discord formatting
+        text = self._ns_bbcode_to_discord(text)
+
+        # Embed description limit is 4096 chars.
+        limit = 4096
+        notice = "\n\n*(Description truncated; see proposal gameside for full text.)*"
+
+        if len(text) > limit:
+            cutoff = limit - len(notice)
+            if cutoff < 0:
+                cutoff = 0
+            text = text[:cutoff] + notice
+
+        return text
 
     # -------------- CORE LOGIC --------------
 
@@ -400,7 +521,9 @@ class WAO(commands.Cog):
         chamber_name = "General Assembly" if council == 1 else "Security Council"
         category = info.get("category") or "Unknown Category"
         name = info.get("name") or proposal_id
-        desc = info.get("desc") or "No description provided."
+        raw_desc = info.get("desc") or "No description provided."
+        desc = self._process_description(raw_desc)
+
         proposed_by = info.get("proposed_by") or "Unknown"
         created_ts = info.get("created") or 0
         coauthors = info.get("coauthors") or []
@@ -417,8 +540,45 @@ class WAO(commands.Cog):
         approvals_list = [a for a in approvals.split(":") if a]
         approvals_count = len(approvals_list)
 
-        coauthor_str = ", ".join(coauthors) if coauthors else "None"
+        # Proposed by: link to nation if we can
+        if proposed_by != "Unknown":
+            pb_slug = self._ns_slug(proposed_by)
+            proposed_by_value = (
+                f"[{proposed_by}](https://www.nationstates.net/nation={pb_slug})"
+            )
+        else:
+            proposed_by_value = proposed_by
+
+        # Coauthors: each linked to their nation page
+        if coauthors:
+            coauthor_links = []
+            for c in coauthors:
+                c = c.strip()
+                if not c:
+                    continue
+                slug = self._ns_slug(c)
+                coauthor_links.append(
+                    f"[{c}](https://www.nationstates.net/nation={slug})"
+                )
+            coauthor_str = ", ".join(coauthor_links) if coauthor_links else "None"
+        else:
+            coauthor_str = "None"
+
+        # Option / Target, try to make it useful
         option_str = option if option else "N/A"
+        # e.g. N:nation or R:region
+        if option.upper().startswith("N:"):
+            target = option[2:]
+            slug = self._ns_slug(target)
+            option_str = (
+                f"Nation: [{target}](https://www.nationstates.net/nation={slug})"
+            )
+        elif option.upper().startswith("R:"):
+            target = option[2:]
+            slug = self._ns_slug(target)
+            option_str = (
+                f"Region: [{target}](https://www.nationstates.net/region={slug})"
+            )
 
         proposal_url = f"https://www.nationstates.net/page=UN_view_proposal/id={proposal_id}"
 
@@ -426,11 +586,11 @@ class WAO(commands.Cog):
         embed = discord.Embed(
             title=name,
             url=proposal_url,
-            description=desc[:4000],  # embed description limit safety
+            description=desc,
         )
         embed.add_field(name="Chamber", value=chamber_name, inline=True)
         embed.add_field(name="Category", value=category, inline=True)
-        embed.add_field(name="Proposed by", value=proposed_by, inline=True)
+        embed.add_field(name="Proposed by", value=proposed_by_value, inline=True)
         embed.add_field(name="Co-authors", value=coauthor_str, inline=False)
         embed.add_field(name="Option / Target", value=option_str, inline=False)
         embed.add_field(name="Created", value=created_str, inline=True)
