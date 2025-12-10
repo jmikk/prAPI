@@ -898,11 +898,12 @@ class WAO(commands.Cog):
             thread = created  # type: ignore
 
         # Reserve second post for IFV
+        prefix = ctx.clean_prefix
         try:
             command_example = f"waobserver ifv {thread.id}"
             ifv_placeholder = await thread.send(
                 f"*This post is reserved for the IFV.*\n\n"
-                f"Use this command to set it:\n`{ctx.clean_prefix + command_example}`"
+                f"Use this command to set it:\n`{prefix}{command_example}`"
             )
             ifv_message_id = ifv_placeholder.id
         except Exception as e:
