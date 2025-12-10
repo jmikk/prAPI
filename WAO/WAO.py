@@ -910,6 +910,8 @@ class WAO(commands.Cog):
         except Exception as e:
             log.exception("Failed to reserve IFV post in thread %s: %s", thread.id, e)
 
+        return thread, starter_message_id, ifv_message_id
+
 
 
     # -------------- WEBHOOK NOTIFICATIONS --------------
