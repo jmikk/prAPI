@@ -898,7 +898,7 @@ class WAO(commands.Cog):
             thread = created  # type: ignore
 
         # Reserve second post for IFV
-        prefix = ctx.clean_prefix
+        prefix = (await self.bot.get_valid_prefixes())[0]
         try:
             command_example = f"waobserver ifv {thread.id}"
             ifv_placeholder = await thread.send(
