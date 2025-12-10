@@ -898,19 +898,21 @@ class WAO(commands.Cog):
             thread = created  # type: ignore
 
         # Reserve second post for IFV
-        prefix = (await self.bot.get_valid_prefixes())[0]
         try:
-            command_example = f"waobserver ifv {thread.id}"
+            prefixes = await self.bot.get_valid_prefixes()
+            prefix = prefixes[0]
+
+            command_example = f"{prefix}waobserver ifv {thread.id}"
+
             ifv_placeholder = await thread.send(
                 f"*This post is reserved for the IFV.*\n\n"
-                f"Use this command to set it:\n`{prefix}{command_example}`"
+                f"Use this command to set it:\n`{command_example} Your IFV text here`"
             )
             ifv_message_id = ifv_placeholder.id
+
         except Exception as e:
             log.exception("Failed to reserve IFV post in thread %s: %s", thread.id, e)
 
-        # IMPORTANT: return the values so tracking & webhooks work
-        return thread, starter_message_id, ifv_message_id
 
 
     # -------------- WEBHOOK NOTIFICATIONS --------------
