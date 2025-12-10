@@ -50,33 +50,6 @@ class WAO(commands.Cog):
         # Global config: NS User-Agent (required)
         self.config.register_global(ns_user_agent=None)
 
-        # Per-guild config:
-        # ga_forum_channel: forum channel ID for GA (wa=1)
-        # sc_forum_channel: forum channel ID for SC (wa=2)
-        # proposals: {
-        #   "1": {
-        #       proposal_id: {
-        #           "thread_id": int,
-        #           "starter_message_id": int | None,
-        #           "ifv_message_id": int | None,
-        #           "name": str,
-        #           "category": str,
-        #           "created": int,
-        #           "active": bool,
-        #       }
-        #   },
-        #   "2": {...}
-        # }
-        # webhooks: {
-        #   "name": {"url": str, "role_id": int, "template": str}
-        # }
-        # votes: {
-        #   "<thread_id>": {
-        #       "<user_id>": "for" | "against" | "abstain"
-        #   }
-        # }
-        # voter_role_id: int or None
-        # ifv_role_ids: list[int] (roles allowed to use IFV)
         self.config.register_guild(
             ga_forum_channel=None,
             sc_forum_channel=None,
@@ -85,7 +58,10 @@ class WAO(commands.Cog):
             votes={},
             voter_role_id=None,
             ifv_role_ids=[],
+            current_resolution_ids={"1": None, "2": None},
+            resolution_messages={"1": "", "2": ""},
         )
+
 
         self.session: Optional[ClientSession] = None
         self.check_proposals_loop.start()
@@ -98,6 +74,162 @@ class WAO(commands.Cog):
         self.check_proposals_loop.cancel()
         if self.session and not self.session.closed:
             asyncio.create_task(self.session.close())
+
+    async def _check_resolution_for_council(
+        self,
+        guild: discord.Guild,
+        council: int,
+        ua: str,
+    ):
+        """
+        Check current resolution for the given council (1 = GA, 2 = SC).
+
+        If the resolution's ID matches a known proposal:
+          - Pin that proposal's thread.
+          - Optionally send a 'goes to vote' message (once per resolution).
+        When the resolution changes or disappears:
+          - Unpin the previous thread (if known).
+        """
+        guild_conf = self.config.guild(guild)
+        data = await guild_conf.all()
+
+        # Make sure our new keys exist
+        current_resolution_ids = data.get("current_resolution_ids") or {"1": None, "2": None}
+        resolution_messages = data.get("resolution_messages") or {"1": "", "2": ""}
+        proposals_by_council: Dict[str, Dict[str, Any]] = data["proposals"].get(str(council), {})
+
+        old_id = current_resolution_ids.get(str(council))
+        res = await self._fetch_resolution(council, ua)
+        new_id = res["id"] if res else None
+
+        # If nothing changed, do nothing
+        if new_id == old_id:
+            return
+
+        chamber_name = "General Assembly" if council == 1 else "Security Council"
+
+        # 1) Unpin old resolution thread, if any
+        if old_id and old_id in proposals_by_council:
+            old_entry = proposals_by_council[old_id]
+            thread_id = old_entry.get("thread_id")
+            if thread_id:
+                thread = guild.get_thread(thread_id) or guild.get_channel(thread_id)
+                if isinstance(thread, discord.Thread):
+                    try:
+                        await thread.edit(pinned=False)
+                    except Exception as e:
+                        log.debug(
+                            "Failed to unpin old resolution thread %s in guild %s: %s",
+                            thread_id,
+                            guild.id,
+                            e,
+                        )
+            # You could also flip a flag on the entry if you want
+            old_entry["at_vote"] = False
+
+        # 2) If there is a new resolution, pin its thread and send message
+        if new_id and new_id in proposals_by_council:
+            entry = proposals_by_council[new_id]
+            thread_id = entry.get("thread_id")
+            if thread_id:
+                thread = guild.get_thread(thread_id) or guild.get_channel(thread_id)
+                if isinstance(thread, discord.Thread):
+                    try:
+                        await thread.edit(pinned=True)
+                    except Exception as e:
+                        log.debug(
+                            "Failed to pin resolution thread %s in guild %s: %s",
+                            thread_id,
+                            guild.id,
+                            e,
+                        )
+
+                    entry["at_vote"] = True
+
+                    # Optional "goes to vote" message
+                    template = resolution_messages.get(str(council), "") or ""
+                    if template:
+                        proposal_url = (
+                            f"https://www.nationstates.net/page=UN_view_proposal/id={new_id}"
+                        )
+                        thread_url = f"https://discord.com/channels/{guild.id}/{thread.id}"
+                        name = entry.get("name") or new_id
+                        category = entry.get("category") or "Unknown Category"
+                        proposed_by = entry.get("proposed_by") or "Unknown"
+
+                        try:
+                            content = template.format(
+                                chamber=chamber_name,
+                                name=name,
+                                category=category,
+                                proposed_by=proposed_by,
+                                link=proposal_url,
+                                thread=thread_url,
+                            )
+                            await thread.send(content)
+                        except Exception as e:
+                            log.debug(
+                                "Failed to send resolution message in thread %s: %s",
+                                thread.id,
+                                e,
+                            )
+
+        # 3) Persist current resolution ID + proposals updates
+        current_resolution_ids[str(council)] = new_id
+        data["current_resolution_ids"] = current_resolution_ids
+        data["proposals"][str(council)] = proposals_by_council
+
+        await guild_conf.current_resolution_ids.set(current_resolution_ids)
+        await guild_conf.proposals.set(data["proposals"])
+
+
+    async def _fetch_resolution(
+        self, council: int, user_agent: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch CURRENT resolution for a WA council from the NationStates API.
+
+        Returns:
+            dict with keys: id, name, category, proposed_by
+            or None if no active resolution / parse failure.
+        """
+        if self.session is None or self.session.closed:
+            self.session = ClientSession()
+
+        params = {"wa": str(council), "q": "resolution"}
+        headers = {"User-Agent": user_agent}
+
+        async with self.session.get(
+            WA_BASE_URL, params=params, headers=headers
+        ) as resp:
+            text = await resp.text()
+            await self._handle_rate_limit(resp)
+
+            try:
+                root = ET.fromstring(text)
+            except ET.ParseError:
+                log.exception("Failed to parse WA resolution XML for council %s", council)
+                return None
+
+        res_elem = root.find("RESOLUTION")
+        if res_elem is None:
+            return None
+
+        pid = (res_elem.findtext("ID") or "").strip()
+        if not pid:
+            return None
+
+        name = (res_elem.findtext("NAME") or "").strip()
+        category = (res_elem.findtext("CATEGORY") or "").strip()
+        proposed_by = (res_elem.findtext("PROPOSED_BY") or "").strip()
+
+        return {
+            "id": pid,
+            "name": name,
+            "category": category,
+            "proposed_by": proposed_by,
+        }
+
 
     # -------------- CONFIG COMMANDS --------------
 
@@ -376,6 +508,72 @@ class WAO(commands.Cog):
         await msg.edit(content=text)
         await ctx.send(f"IFV updated for thread {thread.mention}.")
 
+    @waobserver_group.command(name="setresmsg")
+    async def set_resolution_message(
+        self, ctx: commands.Context, chamber: str, *, template: str
+    ):
+        """
+        Set the message posted in a proposal thread when it goes to vote.
+
+        chamber: ga, sc, 1, 2, or both
+        template placeholders:
+          {chamber}     -> 'General Assembly' or 'Security Council'
+          {name}        -> proposal name
+          {category}    -> category
+          {proposed_by} -> proposer
+          {link}        -> NationStates proposal link
+          {thread}      -> Discord thread URL
+        """
+        chamber = chamber.lower()
+        if chamber in ("ga", "1"):
+            keys = ["1"]
+        elif chamber in ("sc", "2"):
+            keys = ["2"]
+        elif chamber == "both":
+            keys = ["1", "2"]
+        else:
+            await ctx.send("Chamber must be one of: ga, sc, 1, 2, both.")
+            return
+
+        async with self.config.guild(ctx.guild).resolution_messages() as res_msgs:
+            for k in keys:
+                res_msgs[k] = template
+
+        nice = ", ".join(
+            "General Assembly" if k == "1" else "Security Council" for k in keys
+        )
+        await ctx.send(f"Resolution message set for: {nice}.")
+
+    @waobserver_group.command(name="clearresmsg")
+    async def clear_resolution_message(
+        self, ctx: commands.Context, chamber: str
+    ):
+        """
+        Clear the 'goes to vote' message template.
+
+        chamber: ga, sc, 1, 2, or both
+        """
+        chamber = chamber.lower()
+        if chamber in ("ga", "1"):
+            keys = ["1"]
+        elif chamber in ("sc", "2"):
+            keys = ["2"]
+        elif chamber == "both":
+            keys = ["1", "2"]
+        else:
+            await ctx.send("Chamber must be one of: ga, sc, 1, 2, both.")
+            return
+
+        async with self.config.guild(ctx.guild).resolution_messages() as res_msgs:
+            for k in keys:
+                res_msgs[k] = ""
+
+        nice = ", ".join(
+            "General Assembly" if k == "1" else "Security Council" for k in keys
+        )
+        await ctx.send(f"Resolution message cleared for: {nice}.")
+
+
     # --- STATUS & FORCE CHECK ---
 
     @waobserver_group.command(name="status")
@@ -527,6 +725,7 @@ class WAO(commands.Cog):
                 channel = guild.get_channel(ga_forum_id)
                 if isinstance(channel, discord.ForumChannel):
                     await self._check_for_council(guild, channel, council=1, ua=ua)
+                    await self._check_resolution_for_council(guild, council=1, ua=ua)
                 else:
                     log.warning(
                         "Guild %s GA forum channel ID %s is not a forum.",
@@ -538,6 +737,7 @@ class WAO(commands.Cog):
                 channel = guild.get_channel(sc_forum_id)
                 if isinstance(channel, discord.ForumChannel):
                     await self._check_for_council(guild, channel, council=2, ua=ua)
+                    await self._check_resolution_for_council(guild, council=2, ua=ua)
                 else:
                     log.warning(
                         "Guild %s SC forum channel ID %s is not a forum.",
