@@ -906,7 +906,7 @@ class WAO(commands.Cog):
 
             ifv_placeholder = await thread.send(
                 f"*This post is reserved for the IFV.*\n\n"
-                f"Use this command to set it:\n`{command_example} Your IFV text here`"
+                f"Use this command to set it:\n`{command_example}`"
             )
             ifv_message_id = ifv_placeholder.id
 
