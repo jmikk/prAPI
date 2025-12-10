@@ -771,6 +771,7 @@ class WAO(commands.Cog):
         info: Dict[str, Any],
     ) -> Tuple[discord.Thread, Optional[int], Optional[int]]:
         """Create a new forum thread for a proposal with rich info and NS link, plus reserve IFV post."""
+
         chamber_name = "General Assembly" if council == 1 else "Security Council"
         category = info.get("category") or "Unknown Category"
         name = info.get("name") or proposal_id
@@ -859,9 +860,26 @@ class WAO(commands.Cog):
 
         title = f"[{chamber_name}] {name}"
 
+        # ---------- NEW: pick a tag based on chamber ----------
+        applied_tags = []
+        try:
+            desired_names = (
+                ("ga", "general assembly") if council == 1
+                else ("sc", "security council")
+            )
+
+            for tag in forum.available_tags:
+                if tag.name.lower() in desired_names:
+                    applied_tags.append(tag)
+                    break  # we only need one
+        except Exception as e:
+            log.debug("Failed to pick forum tag for council %s: %s", council, e)
+        # ------------------------------------------------------
+
         created = await forum.create_thread(
             name=title,
             embed=embed,
+            applied_tags=applied_tags or None,
         )
 
         thread: discord.Thread
@@ -884,12 +902,15 @@ class WAO(commands.Cog):
             command_example = f"waobserver ifv {thread.id}"
             ifv_placeholder = await thread.send(
                 f"*This post is reserved for the IFV.*\n\n"
-                f"Use this command to set it:\n`{command_example}`"
+                f"Use this command to set it:\n`{command_example} Your IFV text here`"
             )
             ifv_message_id = ifv_placeholder.id
         except Exception as e:
             log.exception("Failed to reserve IFV post in thread %s: %s", thread.id, e)
+
+        # IMPORTANT: return the values so tracking & webhooks work
         return thread, starter_message_id, ifv_message_id
+
 
     # -------------- WEBHOOK NOTIFICATIONS --------------
 
