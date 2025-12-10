@@ -902,7 +902,7 @@ class WAO(commands.Cog):
             prefixes = await self.bot.get_valid_prefixes()
             prefix = prefixes[0]
 
-            command_example = f"{prefix}waobserver ifv {thread.id}"
+            command_example = f"waobserver ifv {thread.id}"
 
             ifv_placeholder = await thread.send(
                 f"*This post is reserved for the IFV.*\n\n"
