@@ -895,6 +895,9 @@ class WAO(commands.Cog):
 
         new_ids = current_ids - stored_ids_all
         gone_ids = active_ids - current_ids
+        current_resolution = await self._fetch_resolution(council, ua)
+        current_resolution_id = current_resolution["id"] if current_resolution else None
+
 
         # Handle new proposals
         for pid in new_ids:
@@ -931,6 +934,13 @@ class WAO(commands.Cog):
 
         # Handle disappeared proposals -> lock threads & mark inactive
         for pid in gone_ids:
+            if current_resolution_id and pid == current_resolution_id:
+                entry = stored_by_council.get(pid)
+                if entry:
+                    entry["active"] = True        # still considered active
+                    entry["at_vote"] = True       # optional: keep state consistent
+                continue
+                
             entry = stored_by_council.get(pid)
             if not entry:
                 continue
