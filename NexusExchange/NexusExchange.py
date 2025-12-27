@@ -916,63 +916,65 @@ class NexusExchange(commands.Cog):
 
         await ctx.send(f"Rewards have been distributed for substantial RMB posts in The Wellspring!{count}/{scan}  {last_time}")
 
-    @tasks.loop(hours=1)
+    @tasks.loop(days=1)
     async def daily_task(self):
-        now = datetime.utcnow()
-        if now.hour == 20:
-            channel = self.bot.get_channel(1214216647976554556)
-            if channel:
-                loan_log = []
+        channel = self.bot.get_channel(1214216647976554556)
+        if channel:
+            loan_log = []
+            try:
+                message = await channel.send("Starting daily cycle")
+                ctx = await self.bot.get_context(message)
+                await self.serverChk(channel)
                 try:
-                    message = await channel.send("Starting daily cycle")
-                    ctx = await self.bot.get_context(message)
-                    await self.serverChk(channel)
-                    try:
-                        await self.wanderChk(channel)
-                    except Exception as e:
-                        await channel.send(e)
-                    try:
-                        await self.resChk(channel)
-                    except Exception as e:
-                        await channel.send(e)
-                    try:
-                        await self.pay_endorsers(channel)
-                    except Exception as e:
-                        await channel.send(e)
-                    try:
-                        await self.reward_voters(channel)
-                    except Exception as e:
-                        await channel.send(e)
-                    try: 
-                        await self.newNation(channel)
-                    except Exception as e:
-                        await channel.send(e)
-                    await asyncio.sleep(10)
-                    try:
-                        await self.post_bank_dispatch(channel)
-                    except Exception as e:
-                        await channel.send(e)
-                    try:
-                        await self.citChk(channel)
-                    except Exception as e:
-                        await channel.send(e)
-                    try: 
-                        await self.truncate_balances(channel)
-                    except Exception as e:
-                        await self.channel.send(e)
-                    # Loan processing
-                    all_users = await self.config.all_users()
-                    for user_id in all_users:
-                        await self.process_user_loan(int(user_id), loan_log)
-                    if loan_log:
-                        await channel.send("📋 **Loan Status Summary**\n" + "\n".join(loan_log))
-                    
-                    try:
-                        await self.apply_bank_interest(channel)
-                    except Exception as e:
-                        await channel.send(f"Error applying bank interest: {e}")
+                #    await self.wanderChk(channel)
+                    pass
                 except Exception as e:
                     await channel.send(e)
+                try:
+                    #await self.resChk(channel)
+                    pass
+                except Exception as e:
+                    await channel.send(e)
+                try:
+                    await self.pay_endorsers(channel)
+                except Exception as e:
+                    await channel.send(e)
+                try:
+                    await self.reward_voters(channel)
+                except Exception as e:
+                    await channel.send(e)
+                try: 
+                    #await self.newNation(channel)
+                    pass
+                except Exception as e:
+                    await channel.send(e)
+                await asyncio.sleep(10)
+                try:
+                    await self.post_bank_dispatch(channel)
+                except Exception as e:
+                    await channel.send(e)
+                try:
+                    #await self.citChk(channel)
+                    pass
+                except Exception as e:
+                    await channel.send(e)
+                try: 
+                    await self.truncate_balances(channel)
+                except Exception as e:
+                    await self.channel.send(e)
+                    # Loan processing
+                all_users = await self.config.all_users()
+                for user_id in all_users:
+                    await self.process_user_loan(int(user_id), loan_log)
+                if loan_log:
+                    await channel.send("📋 **Loan Status Summary**\n" + "\n".join(loan_log))
+                    
+                try:
+                    await self.apply_bank_interest(channel)
+                except Exception as e:
+                    await channel.send(f"Error applying bank interest: {e}")
+            except Exception as e:
+                await channel.send(e)
 
     def parse_token(self, xml_data: str) -> str:
         """Extracts the token from XML response."""
