@@ -310,6 +310,7 @@ class NexusExchange(commands.Cog):
         interaction: discord.Interaction,
         member: discord.Member,
         nation_name: str,
+        overwrite: bool = False
     ):
         formatted_nation = format_nation(nation_name)
         # Write to user config
