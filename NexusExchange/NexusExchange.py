@@ -302,6 +302,28 @@ class NexusExchange(commands.Cog):
     async def on_ready(self):
         if not self.daily_task.is_running():
             self.daily_task.start()
+    
+    @commands.command()
+    @commands.admin()
+    async def adminlink(self,ctx,user,nation *)    
+        async def nation_link_manual(
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member,
+        nation_name: str,
+    ):
+        formatted_nation = format_nation(nation_name)
+        # Write to user config
+        async with self.config.user(member).linked_nations() as nations:
+            if overwrite:
+                nations.clear()
+            if formatted_nation not in nations:
+                nations.append(formatted_nation)
+                action_msg = f"✅ Linked **{nation_name}** to {member.mention} (stored as `{formatted_nation}`)."
+            else:
+                action_msg = f"ℹ️ **{nation_name}** is already linked to {member.mention} (stored as `{formatted_nation}`)."
+
+
 
     @commands.command()
     @commands.admin()
