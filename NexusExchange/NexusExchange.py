@@ -305,7 +305,7 @@ class NexusExchange(commands.Cog):
     
     @commands.command()
     @commands.admin()
-    async def adminlink(self,ctx,user,nation *)    
+    async def adminlink(self,ctx,user,nation)    
         async def nation_link_manual(
         self,
         interaction: discord.Interaction,
