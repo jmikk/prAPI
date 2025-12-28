@@ -322,7 +322,7 @@ class NexusExchange(commands.Cog):
                 action_msg = f"✅ Linked **{nation_name}** to {member.mention} (stored as `{formatted_nation}`)."
             else:
                 action_msg = f"ℹ️ **{nation_name}** is already linked to {member.mention} (stored as `{formatted_nation}`)."
-        await ctx.send(action_msg)
+        await interaction.send(action_msg)
 
 
 
