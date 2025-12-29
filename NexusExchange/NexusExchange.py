@@ -205,7 +205,7 @@ class NexusExchange(commands.Cog):
         self.config.register_global(
             season=[3,4],
             categories=["common", "uncommon", "rare", "ultra-rare", "epic"],
-            useragent="",
+            useragent="9006",
             nationName="",
             password="",
             daily_wellcoins=0,  # Total WellCoins from the last dispatch
