@@ -949,13 +949,11 @@ class NexusExchange(commands.Cog):
                 ctx = await self.bot.get_context(message)
                 await self.serverChk(channel)
                 try:
-                #    await self.wanderChk(channel)
-                    pass
+                    await self.wanderChk(channel)
                 except Exception as e:
                     await channel.send(e)
                 try:
-                    #await self.resChk(channel)
-                    pass
+                    await self.resChk(channel)
                 except Exception as e:
                     await channel.send(e)
                 try:
@@ -967,8 +965,7 @@ class NexusExchange(commands.Cog):
                 except Exception as e:
                     await channel.send(e)
                 try: 
-                    #await self.newNation(channel)
-                    pass
+                    await self.newNation(channel)
                 except Exception as e:
                     await channel.send(e)
                 await asyncio.sleep(10)
@@ -977,8 +974,7 @@ class NexusExchange(commands.Cog):
                 except Exception as e:
                     await channel.send(e)
                 try:
-                    #await self.citChk(channel)
-                    pass
+                    await self.citChk(channel)
                 except Exception as e:
                     await channel.send(e)
                 try: 
