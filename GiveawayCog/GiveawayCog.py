@@ -240,7 +240,7 @@ class GiveawayCog(commands.Cog):
             if not user_claims:
                 return await ctx.send("You have no unclaimed giveaways.")
 
-            useragent = "9007"
+            useragent = "Vibonia running Giveaways"
             password = await self.config.guild(ctx.guild).password()
             nationname = await self.config.guild(ctx.guild).nationname()
             if not password or not nationname:
