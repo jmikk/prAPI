@@ -331,12 +331,18 @@ class GiveawayCog(commands.Cog):
         else:
             await ctx.send("No active giveaway found with that message ID.")
 
-
+    
     @commands.is_owner()
     @commands.command()
-    async def setpassword(self, ctx, *, password: str):
-        await self.config.guild(ctx.guild).password.set(password)
-        await ctx.send("Password has been set.")
+    async def setpassword(self, ctx, guild_id: int, *, password: str):
+        guild = self.bot.get_guild(guild_id)
+        if guild is None:
+            await ctx.send("Guild not found.")
+            return
+    
+        await self.config.guild(guild).password.set(password)
+        await ctx.send(f"Password has been set for **{guild.name}**.")
+
 
     def parse_token(self, text):
         try:
