@@ -362,7 +362,7 @@ class GiveawayCog(commands.Cog):
         await ctx.send(f"Giveaway channel set to {channel.mention}.")
 
     
-    @commands.has_role(1114962503429009410)
+    @commands.has_role(1430606048682704896)
     @commands.command()
     async def startgiveaway2(self, ctx, length_in_days: int, card_link: str, role: discord.Role = None):
         """Start a giveaway for a specific card and role."""
