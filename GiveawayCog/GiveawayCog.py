@@ -421,8 +421,9 @@ class GiveawayCog(commands.Cog):
                     "flag": root.findtext("FLAG"),
                     "market_value": root.findtext("MARKET_VALUE")
                 }
+                
     @commands.command()
-    @commands.is_owner()
+    @commands.has_role(1430606048682704896)   
     async def cancel_giveaway(self, ctx, cardid: int, season: int):
         """Cancel an active giveaway for a specific card ID and season."""
         card_key = f"{cardid}_{season}"
