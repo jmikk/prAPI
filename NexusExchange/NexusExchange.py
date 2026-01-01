@@ -336,9 +336,9 @@ class NexusExchange(commands.Cog):
             self.daily_task.start()
             await ctx.send("🔄 Daily task loop has been started.")
 
-    @commands.command(name="setpassword")
+    @commands.command(name="setpassword2")
     @commands.is_owner()
-    async def set_password(self, ctx):
+    async def set_password2(self, ctx):
         """Securely set the password via DMs."""
         try:
             dm = await ctx.author.create_dm()
