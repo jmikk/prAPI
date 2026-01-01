@@ -2194,12 +2194,7 @@ class CityBuilder(commands.Cog):
         if task:
             task.cancel()
 
-    @commands.group()
-    async def city(self, ctx: commands.Context):
-        """CityBuilder commands."""
-        pass
-
-    @city.command(name="rates")
+    @commands.command(name="cityrates", aliases=["rates", "conversionrates"])    
     async def city_rates(self, ctx: commands.Context):
         """
         Display all users' Wellcoin ↔ local currency conversion rates.
