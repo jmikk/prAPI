@@ -334,7 +334,35 @@ class NexusExchange(commands.Cog):
             await ctx.send("✅ The daily task loop is already running.")
         else:
             self.daily_task.start()
-            await ctx.send("🔄 Daily task loop has been started.")    
+            await ctx.send("🔄 Daily task loop has been started.")
+
+    @commands.command(name="setpassword")
+    @commands.is_owner()
+    async def set_password(self, ctx):
+        """Securely set the password via DMs."""
+        try:
+            dm = await ctx.author.create_dm()
+            await dm.send("Please reply with the new password. This message will not be logged.")
+
+            def check(m):
+                return (
+                    m.author == ctx.author
+                    and m.channel == dm
+                )
+
+            msg = await self.bot.wait_for(
+                "message",
+                check=check,
+                timeout=60
+            )
+
+            await self.config.password.set(msg.content.strip())
+            await dm.send("Password successfully saved.")
+            await ctx.send("Password has been set via DMs.")
+
+        except asyncio.TimeoutError:
+            await ctx.send("Password setup timed out. Please try again.")
+
 
 
     
