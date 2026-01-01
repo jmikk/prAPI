@@ -2194,6 +2194,59 @@ class CityBuilder(commands.Cog):
         if task:
             task.cancel()
 
+    @commands.group()
+    async def city(self, ctx: commands.Context):
+        """CityBuilder commands."""
+        pass
+
+    @city.command(name="rates")
+    @commands.admin_or_permissions(administrator=True)
+    async def city_rates(self, ctx: commands.Context):
+        """
+        Display all users' Wellcoin ↔ local currency conversion rates.
+        """
+        users_data = await self.config.all_users()
+
+        lines = []
+
+        for user_id, data in users_data.items():
+            rate = data.get("wc_to_local_rate")
+            currency = data.get("ns_currency")
+            nation = data.get("ns_nation")
+
+            if rate is None or currency is None:
+                continue
+
+            user = ctx.guild.get_member(user_id)
+            user_name = user.display_name if user else f"User ID {user_id}"
+
+            nation_str = f" ({nation})" if nation else ""
+
+            lines.append(
+                f"**{user_name}**{nation_str}\n"
+                f"• 1 WC = {rate} {currency}"
+            )
+
+        if not lines:
+            await ctx.send("No users currently have a conversion rate set.")
+            return
+
+        pages = list(pagify("\n\n".join(lines), page_length=3500))
+
+        embeds = []
+        for i, page in enumerate(pages, start=1):
+            embed = discord.Embed(
+                title="Wellcoin Conversion Rates",
+                description=page,
+                color=discord.Color.gold()
+            )
+            embed.set_footer(text=f"Page {i}/{len(pages)}")
+            embeds.append(embed)
+
+        await ctx.send(embed=embeds[0])
+        for embed in embeds[1:]:
+            await ctx.send(embed=embed)
+
     def _build_producer_index(self):
         """
         Map resource -> list of (building_name, qty_out, building_tier).
