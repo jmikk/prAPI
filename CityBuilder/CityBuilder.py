@@ -9,6 +9,7 @@ from discord import ui
 from redbot.core import commands, Config
 import random
 import time
+from redbot.core.utils.chat_formatting import pagify
 
 SCRAP_PRICE_LOCAL = 5.0  # how much local currency per scrap
 
