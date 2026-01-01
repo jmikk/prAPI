@@ -2200,7 +2200,6 @@ class CityBuilder(commands.Cog):
         pass
 
     @city.command(name="rates")
-    @commands.admin_or_permissions(administrator=True)
     async def city_rates(self, ctx: commands.Context):
         """
         Display all users' Wellcoin ↔ local currency conversion rates.
