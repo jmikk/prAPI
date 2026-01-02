@@ -737,8 +737,9 @@ class NexusExchange(commands.Cog):
 
     
     def cog_unload(self):
-        self.daily_task.cancel()
-
+        if self.daily_task.is_running():
+            self.daily_task.cancel()
+            
     async def fetch_endorsements(self):
         """Fetches the list of nations endorsing well-spring_jack"""
         url = "https://www.nationstates.net/cgi-bin/api.cgi?nation=9005&q=endorsements"
