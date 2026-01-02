@@ -43,35 +43,7 @@ class GiveawayCog(commands.Cog):
                     await self.run_giveaway(giveaway, guild)
                     giveaway['started'] = True
                 updated.append(giveaway)
-            await self.config.guild(guild).scheduled_giveaways.set(updated)
-
-
-
-
-    @commands.command()
-    @commands.is_owner()
-    async def schedule_giveaway(self, ctx, day: str, role: discord.Role = None, length_days: int = 2, value: str = "any"):
-        """Schedule a recurring giveaway on a day of the week for a specific role and value tier."""
-        days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-        if day.lower() not in days:
-            return await ctx.send("Invalid day. Please choose a valid day.")
-
-        value = value.lower()
-        if value not in ["low", "mid", "high", "any"]:
-            return await ctx.send("Invalid value. Choose from low, mid, high, or any.")
-
-        next_run = self.next_weekday(datetime.utcnow(), days.index(day.lower()))
-        scheduled = await self.config.guild(ctx.guild).scheduled_giveaways()
-        scheduled.append({
-            'day': day.lower(),
-            'role_id': role.id if role else None,
-            'length_days': length_days,
-            'value_tier': value,
-            'start_time': next_run.isoformat(),
-            'started': False
-        })
-        await self.config.guild(ctx.guild).scheduled_giveaways.set(scheduled)
-        
+            await self.config.guild(guild).scheduled_giveaways.set(updated)        
             
     def next_weekday(self, d, weekday):
         days_ahead = weekday - d.weekday()
@@ -148,28 +120,6 @@ class GiveawayCog(commands.Cog):
             if log_channel:
                 await log_channel.send(f"Error in auto giveaway: {e}")
 
-
-    async def fetch_deck(self, nationname):
-        url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname={nationname}"
-        headers = {"User-Agent": "9005"}
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as response:
-                if response.status != 200:
-                    return []
-                data = await response.text()
-                root = ET.fromstring(data)
-                cards = []
-                for card in root.find("DECK"):
-                    cards.append({
-                        "cardid": card.findtext("CARDID"),
-                        "category": card.findtext("CATEGORY"),
-                        "market_value": card.findtext("MARKET_VALUE"),
-                        "season": card.findtext("SEASON")
-                    })
-                return cards
-
-
-
     async def log_error(self, ctx, error):
         log_channel_id = await self.config.guild(ctx.guild).log_channel()
         log_channel = ctx.guild.get_channel(log_channel_id) if log_channel_id else None
@@ -198,7 +148,7 @@ class GiveawayCog(commands.Cog):
         else:
             await message.reply("Giveaway ended! No entrants.")
 
-    @commands.command()
+    @commands.command() 
     async def showgiveaways(self, ctx):
         """Show global claimed cards and active giveaways"""
         claimed = await self.config.claimed_cards()
@@ -316,22 +266,6 @@ class GiveawayCog(commands.Cog):
         await self.config.guild(ctx.guild).nationname.set(nationname)
         await ctx.send(f"Nation name set to: {nationname}")
     
-    @commands.admin_or_permissions(administrator=True)
-    @commands.command()
-    async def cancelgiveaway(self, ctx, message_id: int):
-        """Cancel an active giveaway by its message ID."""
-        task = self.giveaway_tasks.pop(message_id, None)
-        if task:
-            task.cancel()
-            await ctx.send(f"Giveaway with message ID {message_id} has been canceled.")
-            log_channel_id = await self.config.guild(ctx.guild).log_channel()
-            log_channel = ctx.guild.get_channel(log_channel_id) if log_channel_id else None
-            if log_channel:
-                await log_channel.send(f"Giveaway canceled manually for message ID {message_id}.")
-        else:
-            await ctx.send("No active giveaway found with that message ID.")
-
-    
     @commands.is_owner()
     @commands.command()
     async def setpassword(self, ctx, guild_id: int, *, password: str):
@@ -434,22 +368,6 @@ class GiveawayCog(commands.Cog):
             await ctx.send(f"Giveaway for card ID {cardid} season {season} has been canceled.")
         else:
             await ctx.send("No active giveaway found for that card.")
-
-    @commands.command()
-    async def viewscheduled(self, ctx):
-        scheduled = await self.config.guild(ctx.guild).scheduled_giveaways()
-        if not scheduled:
-            await ctx.send("No scheduled giveaways.")
-            return
-        msg = "\n".join([f"{g['day'].title()} | Role ID: {g['role_id']} | Value: {g['value_tier']} | Starts: {g['start_time']}" for g in scheduled])
-        await ctx.send(f"Scheduled Giveaways:\n{msg}")
-
-    @commands.command()
-    @commands.admin_or_permissions(administrator=True)
-    async def clearscheduled(self, ctx):
-        """Clear all scheduled giveaways for this server."""
-        await self.config.guild(ctx.guild).scheduled_giveaways.set([])
-        await ctx.send("All scheduled giveaways have been cleared for this server.")
 
     @commands.command()
     async def rng(self, ctx, min_num: int = 1, max_num: int = 100):
