@@ -171,16 +171,15 @@ class NationStatesLinker2(commands.Cog):
                     await self.sync_member(m, region_data)
                     await asyncio.sleep(0.1)
 
-    # ==========================
-    # Commands
-    # ==========================
     @commands.command()
     async def linknation(self, ctx: commands.Context):
         view = self.VerifyView(self)
         await ctx.send(
-            f"Visit {VERIFY_URL} to get your code, then click below.",
-            view=view
+            f"Visit {VERIFY_URL} to get your code, then click below to verify.",
+            view=view,
+            allowed_mentions=discord.AllowedMentions.none(),
         )
+
 
     @commands.command()
     async def unlinknation(self, ctx: commands.Context, nation: str):
