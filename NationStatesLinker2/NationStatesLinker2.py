@@ -9,8 +9,7 @@ import aiohttp
 import discord
 import xml.etree.ElementTree as ET
 from redbot.core import commands, Config
-from redbot.core.utils import tasks  # ✅ correct import for Redbot v3
-
+from discord.ext import tasks  
 # ==========================
 # Constants
 # ==========================
