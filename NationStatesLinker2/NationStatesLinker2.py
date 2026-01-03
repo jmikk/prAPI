@@ -221,26 +221,57 @@ class NationStatesLinker2(commands.Cog):
         await self.daily_sync()
         await ctx.send("Done.")
 
-class VerifyView(discord.ui.View):
-    def __init__(self, cog: "NationStatesLinker2"):
-        super().__init__(timeout=None)  # ✅ persistent
-        self.cog = cog
+    # ==========================
+    # UI
+    # ==========================
+    class VerifyView(discord.ui.View):
+        def __init__(self, cog: "NationStatesLinker2"):
+            super().__init__(timeout=None)  # ✅ persistent
+            self.cog = cog
+    
+        @discord.ui.button(
+            label="Verify Nation",
+            style=discord.ButtonStyle.primary,
+            custom_id="nsl2_verify_nation",  # ✅ required for persistence
+        )
+        async def verify(self, interaction: discord.Interaction, button: discord.ui.Button):
+            try:
+                await interaction.response.send_modal(NationStatesLinker2.VerifyModal(self.cog))
+            except Exception as e:
+                # Always respond so Discord doesn't show "Interaction failed"
+                if interaction.response.is_done():
+                    await interaction.followup.send(f"⚠️ Error opening modal: `{type(e).__name__}: {e}`", ephemeral=True)
+                else:
+                    await interaction.response.send_message(f"⚠️ Error opening modal: `{type(e).__name__}: {e}`", ephemeral=True)
 
-    @discord.ui.button(
-        label="Verify Nation",
-        style=discord.ButtonStyle.primary,
-        custom_id="nsl2_verify_nation",  # ✅ required for persistence
-    )
-    async def verify(self, interaction: discord.Interaction, button: discord.ui.Button):
-        try:
-            await interaction.response.send_modal(NationStatesLinker2.VerifyModal(self.cog))
-        except Exception as e:
-            # Always respond so Discord doesn't show "Interaction failed"
-            if interaction.response.is_done():
-                await interaction.followup.send(f"⚠️ Error opening modal: `{type(e).__name__}: {e}`", ephemeral=True)
-            else:
-                await interaction.response.send_message(f"⚠️ Error opening modal: `{type(e).__name__}: {e}`", ephemeral=True)
 
+    class VerifyModal(discord.ui.Modal):
+        def __init__(self, cog: "NationStatesLinker2"):
+            super().__init__(title="Verify Nation")
+            self.cog = cog
+
+            self.nation = discord.ui.TextInput(label="Nation", max_length=NATION_MAX_LEN)
+            self.code = discord.ui.TextInput(label="Verify Code", max_length=128)
+            self.add_item(self.nation)
+            self.add_item(self.code)
+
+        async def on_submit(self, interaction: discord.Interaction):
+            ok = await self.cog.verify_with_ns(self.nation.value, self.code.value)
+            if not ok:
+                return await interaction.response.send_message("❌ Verification failed.", ephemeral=True)
+
+            nation_norm = normalize(self.nation.value)
+            async with self.cog.config.user(interaction.user).linked_nations() as ln:
+                if nation_norm not in ln:
+                    ln.append(nation_norm)
+
+            await interaction.response.send_message(
+                f"✅ Linked **[{display(nation_norm)}](https://www.nationstates.net/nation={nation_norm})**",
+                ephemeral=True,
+            )
+
+            if interaction.guild and isinstance(interaction.user, discord.Member):
+                await self.cog.run_member_sync(interaction.user)
 
 
 async def setup(bot):
