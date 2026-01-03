@@ -297,12 +297,6 @@ class NexusExchange(commands.Cog):
         return await self.modify_wellcoins(user, -amount, force=force)
 
         
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if not self.daily_task.is_running():
-            self.daily_task.start()
-    
     @commands.command()
     @commands.admin()
     async def adminlink(
