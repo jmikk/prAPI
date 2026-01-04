@@ -369,6 +369,99 @@ SPECIES: Dict[str, Dict[str, List[str]]] = {
     },
 }
 
+PART_RENAMES: Dict[str, str] = {
+    # A set
+    "A1": "Map Fragment: Lilybanks",
+    "A2": "Map Fragment: Reed Hollow",
+    "A3": "Map Fragment: Stillwater Bend",
+    "A4": "Map Fragment: Frogfen",
+    "A5": "Map Fragment: Sunken Roots",
+    "A6": "Map Fragment: Mossmere",
+    "A7": "Map Fragment: Quiet Cove",
+    "A8": "Map Fragment: Greenveil",
+
+    # B set
+    "B1": "Map Fragment: Shallow Run",
+    "B2": "Map Fragment: Stone Crossing",
+    "B3": "Map Fragment: Silver Reach",
+    "B4": "Map Fragment: Driftbank",
+    "B5": "Map Fragment: Old Ford",
+    "B6": "Map Fragment: Rapid Gate",
+    "B7": "Map Fragment: Foamwake",
+    "B8": "Map Fragment: Currentfall",
+
+    # C set
+    "C1": "Map Fragment: Saltpoint",
+    "C2": "Map Fragment: Breaker Shoal",
+    "C3": "Map Fragment: Gullrock",
+    "C4": "Map Fragment: Tideglass Bay",
+    "C5": "Map Fragment: Kelpstrand",
+    "C6": "Map Fragment: Whitecap Edge",
+    "C7": "Map Fragment: Opal Shoals",
+    "C8": "Map Fragment: Mariner’s Reach",
+
+    # D set
+    "D1": "Map Fragment: Thunder Shoals",
+    "D2": "Map Fragment: Blackwave",
+    "D3": "Map Fragment: Barnacle Reach",
+    "D4": "Map Fragment: Surfbreak",
+    "D5": "Map Fragment: Marlin Deep",
+    "D6": "Map Fragment: Whitewake",
+    "D7": "Map Fragment: Riptide Pass",
+    "D8": "Map Fragment: Seaflare Point",
+
+    # E set
+    "E1": "Map Fragment: Gloom Trench",
+    "E2": "Map Fragment: Blackwater Rift",
+    "E3": "Map Fragment: Lightless Shelf",
+    "E4": "Map Fragment: Void Drop",
+    "E5": "Map Fragment: Starless Reach",
+    "E6": "Map Fragment: Eelway",
+    "E7": "Map Fragment: Nightcoil",
+    "E8": "Map Fragment: Trench Crown",
+
+    # F set
+    "F1": "Map Fragment: Prism Scar",
+    "F2": "Map Fragment: Moonfold",
+    "F3": "Map Fragment: Leybreak",
+    "F4": "Map Fragment: Arc Split",
+    "F5": "Map Fragment: Warped Crossing",
+    "F6": "Map Fragment: Sigil Drift",
+    "F7": "Map Fragment: Etherfall",
+    "F8": "Map Fragment: Spectral Divide",
+
+    # G set
+    "G1": "Map Fragment: Mythreach",
+    "G2": "Map Fragment: Chromatic Verge",
+    "G3": "Map Fragment: Rune Lattice",
+    "G4": "Map Fragment: Aurora Span",
+    "G5": "Map Fragment: Core Fault",
+    "G6": "Map Fragment: Glitterway",
+    "G7": "Map Fragment: Prism Wake",
+    "G8": "Map Fragment: Flux Edge",
+
+    # H set
+    "H1": "Map Fragment: Hollow Tide",
+    "H2": "Map Fragment: Dawn Rift",
+    "H3": "Map Fragment: Wyrmglass Way",
+    "H4": "Map Fragment: Starcoil Path",
+    "H5": "Map Fragment: Nebula Crossing",
+    "H6": "Map Fragment: Astral Reach",
+    "H7": "Map Fragment: Gilded Arc",
+    "H8": "Map Fragment: Crown of Currents",
+}
+# Update image dictionary keys
+FISH_IMAGES_BY_SPECIES = {
+    PART_RENAMES.get(k, k): v
+    for k, v in FISH_IMAGES_BY_SPECIES.items()
+}
+
+# Update SPECIES "part" lists
+for zone_key, rarity_map in SPECIES.items():
+    if "part" in rarity_map:
+        rarity_map["part"] = [PART_RENAMES.get(x, x) for x in rarity_map["part"]]
+
+
 
 # Snapshot of the original, built-in species (so we know what's override-only)
 BASE_SPECIES_SNAPSHOT: Dict[str, Dict[str, List[str]]] = {
