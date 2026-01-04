@@ -125,7 +125,7 @@ FISH_IMAGES_BY_SPECIES: Dict[str, str] = {
     "Stone Shiner": "https://thumbs.dreamstime.com/b/cartoon-stonefish-illustration-vector-textured-brown-patterns-bold-fins-set-against-blue-background-perfect-394794606.jpg",
     "Silver Chub": "https://www.shutterstock.com/image-vector/silver-carp-color-icon-vector-260nw-2612774453.jpg",
     "Swift Darter": "https://www.shutterstock.com/image-vector/darter-fish-etheosomatidae-north-america-600nw-2127404258.jpg",
-    "Bronze Trout": "https://static.wixstatic.com/media/ad2f54_3d6a80a453f6447a85a071a6b70fd69b~mv2.png/v1/fill/w_520,h_237,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/ad2f54_3d6a80a453f6447a85a071a6b70fd69b~mv2.png",
+    "Bronze Trout": "https://static.wixstatic.com/media/ad2f54_3d6a80a453f6447a85a071a6b70fd69b~mv2.png",
     "Runebrook Salmon": "https://i.imgur.com/9F65Vk0.png",
     "King of Currents": "https://i.imgur.com/Ngk4Vsn.png",
 
@@ -144,10 +144,91 @@ FISH_IMAGES_BY_SPECIES: Dict[str, str] = {
     "Nightfang Eel": "https://i.imgur.com/JPXa10g.png",
     "Phantom Angler": "https://i.imgur.com/mOJgImO.png",
     "Abyssal Sovereign": "https://i.imgur.com/Qo9HmZz.png",
-    
-    #Parts
-    "Fishing Map": "https://i.ibb.co/gFdC2Mgw/57d76c68-ab77-4363-839b-53e821344cd4.png"
+
+    # Parts
+    "Fishing Map": "https://i.ibb.co/gFdC2Mgw/57d76c68-ab77-4363-839b-53e821344cd4.png",
+
+    # A set
+    "A1": "https://i.ibb.co/Gf0BB29Y/A1.png",
+    "A2": "https://i.ibb.co/spHr8BrQ/A2.png",
+    "A3": "https://i.ibb.co/C3cLmnGS/A3.png",
+    "A4": "https://i.ibb.co/FqmpWf6S/A4.png",
+    "A5": "https://i.ibb.co/XfmGkMmS/A5.png",
+    "A6": "https://i.ibb.co/hQystd6/A6.png",
+    "A7": "https://i.ibb.co/q316g7LG/A7.png",
+    "A8": "https://i.ibb.co/VpzdY5qC/A8.png",
+
+    # B set
+    "B1": "https://i.ibb.co/XrnJmysD/B1.png",
+    "B2": "https://i.ibb.co/pjMnq89w/B2.png",
+    "B3": "https://i.ibb.co/3mkqM813/B3.png",
+    "B4": "https://i.ibb.co/p9ZCM99/B4.png",
+    "B5": "https://i.ibb.co/1FbJmh8/B5.png",
+    "B6": "https://i.ibb.co/3mJCx64y/B6.png",
+    "B7": "https://i.ibb.co/Ngy2P2WK/B7.png",
+    "B8": "https://i.ibb.co/jk0nZMQZ/B8.png",
+
+    # C set
+    "C1": "https://i.ibb.co/MDjLjVfs/C1.png",
+    "C2": "https://i.ibb.co/HDjrD7jy/C2.png",
+    "C3": "https://i.ibb.co/1YMzYLcz/C3.png",
+    "C4": "https://i.ibb.co/w84PYQ8/C4.png",
+    "C5": "https://i.ibb.co/jv7jBsvw/C5.png",
+    "C6": "https://i.ibb.co/wFkLV1WP/C6.png",
+    "C7": "https://i.ibb.co/Rkz2PwJR/C7.png",
+    "C8": "https://i.ibb.co/pNH6QXt/C8.png",
+
+    # D set
+    "D1": "https://i.ibb.co/Ggr08Qc/D1.png",
+    "D2": "https://i.ibb.co/zTG7ZwRG/D2.png",
+    "D3": "https://i.ibb.co/pjh7PMvZ/D3.png",
+    "D4": "https://i.ibb.co/HTHWbXT5/D4.png",
+    "D5": "https://i.ibb.co/yFXYSjxf/D5.png",
+    "D6": "https://i.ibb.co/N62Vwtbx/D6.png",
+    "D7": "https://i.ibb.co/GQW06yNs/D7.png",
+    "D8": "https://i.ibb.co/v6nfH5mm/D8.png",
+
+    # E set
+    "E1": "https://i.ibb.co/N60FGfz4/E1.png",
+    "E2": "https://i.ibb.co/rRL5dBJb/E2.png",
+    "E3": "https://i.ibb.co/YTLp9yry/E3.png",
+    "E4": "https://i.ibb.co/h12pfCV3/E4.png",
+    "E5": "https://i.ibb.co/0R18wM6z/E5.png",
+    "E6": "https://i.ibb.co/VWhtL1Hh/E6.png",
+    "E7": "https://i.ibb.co/W4jgCvb7/E7.png",
+    "E8": "https://i.ibb.co/TBTGDnmB/E8.png",
+
+    # F set
+    "F1": "https://i.ibb.co/Vpxf7DsG/F1.png",
+    "F2": "https://i.ibb.co/b5ZLMmb4/F2.png",
+    "F3": "https://i.ibb.co/9kStFxyX/F3.png",
+    "F4": "https://i.ibb.co/SXg5JHP1/F4.png",
+    "F5": "https://i.ibb.co/QjPPSs7v/F5.png",
+    "F6": "https://i.ibb.co/0jzjSz4D/F6.png",
+    "F7": "https://i.ibb.co/ZRKFJbQb/F7.png",
+    "F8": "https://i.ibb.co/BVBF9RLj/F8.png",
+
+    # G set
+    "G1": "https://i.ibb.co/G4jyj2P4/G1.png",
+    "G2": "https://i.ibb.co/WNNVmHvZ/G2.png",
+    "G3": "https://i.ibb.co/C35cLntt/G3.png",
+    "G4": "https://i.ibb.co/9HZB9gXB/G4.png",
+    "G5": "https://i.ibb.co/HT5Yf89N/G5.png",
+    "G6": "https://i.ibb.co/cKXC9JS7/G6.png",
+    "G7": "https://i.ibb.co/9kk4VncX/G7.png",
+    "G8": "https://i.ibb.co/DDKGDpSQ/G8.png",
+
+    # H set
+    "H1": "https://i.ibb.co/bgM5SshR/H1.png",
+    "H2": "https://i.ibb.co/dJQFRBwV/H2.png",
+    "H3": "https://i.ibb.co/6Jwpf9sg/H3.png",
+    "H4": "https://i.ibb.co/7NLCRjxj/H4.png",
+    "H5": "https://i.ibb.co/sd9QNQQH/H5.png",
+    "H6": "https://i.ibb.co/Kk0yzDK/H6.png",
+    "H7": "https://i.ibb.co/7x0t9x2G/H7.png",
+    "H8": "https://i.ibb.co/1JPFYTBr/H8.png",
 }
+
 
     
 
@@ -191,9 +272,15 @@ FISH_IMAGES_BY_ZONE_RARITY: Dict[str, Dict[str, str]] = {
 
 
 # Zone-specific species names per rarity (flavor-only; does not affect pricing)
+from typing import Dict, List
+
 SPECIES: Dict[str, Dict[str, List[str]]] = {
     "pond": {
-        "part":      ["Fishing Map"],
+        "part": [
+            "Fishing Map",
+            "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8",
+            "B1", "B2", "B3", "B4", "B5",
+        ],
         "common":    ["Bluegill", "Muddy Carp", "Lilypad Perch"],
         "uncommon":  ["Speckled Sunfish", "Dusk Minnow"],
         "rare":      ["Moonlit Koi"],
@@ -201,7 +288,12 @@ SPECIES: Dict[str, Dict[str, List[str]]] = {
         "legendary": ["Pond Guardian"],
     },
     "river": {
-        "part":      ["Fishing Map"],
+        "part": [
+            "Fishing Map",
+            "B6", "B7", "B8",
+            "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8",
+            "D1", "D2",
+        ],
         "common":    ["River Perch", "Stone Shiner"],
         "uncommon":  ["Silver Chub", "Swift Darter"],
         "rare":      ["Bronze Trout"],
@@ -209,7 +301,11 @@ SPECIES: Dict[str, Dict[str, List[str]]] = {
         "legendary": ["King of Currents"],
     },
     "coast": {
-        "part":      ["Fishing Map"],
+        "part": [
+            "Fishing Map",
+            "D3", "D4", "D5", "D6", "D7", "D8",
+            "E1", "E2", "E3", "E4", "E5", "E6", "E7",
+        ],
         "common":    ["Tide Sardine", "Pebble Mackerel"],
         "uncommon":  ["Sea Bream", "Glimmer Hake"],
         "rare":      ["Opal Snapper"],
@@ -217,7 +313,12 @@ SPECIES: Dict[str, Dict[str, List[str]]] = {
         "legendary": ["Leviathan Fry"],
     },
     "abyss": {
-        "part":      ["Fishing Map"],
+        "part": [
+            "Fishing Map",
+            "E8",
+            "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8",
+            "G1", "G2", "G3", "G4",
+        ],
         "common":    ["Gloom Smelt"],
         "uncommon":  ["Twilight Cod"],
         "rare":      ["Nightfang Eel"],
@@ -225,46 +326,51 @@ SPECIES: Dict[str, Dict[str, List[str]]] = {
         "legendary": ["Abyssal Sovereign"],
     },
     "rift": {
-    "part": ["Fishing Map"],
-    "common": [
-      "Bluegill",
-      "Muddy Carp",
-      "Lilypad Perch",
-      "River Perch",
-      "Stone Shiner",
-      "Tide Sardine",
-      "Pebble Mackerel",
-      "Gloom Smelt"
-    ],
-    "uncommon": [
-      "Speckled Sunfish",
-      "Dusk Minnow",
-      "Silver Chub",
-      "Swift Darter",
-      "Sea Bream",
-      "Glimmer Hake",
-      "Twilight Cod"
-    ],
-    "rare": [
-      "Moonlit Koi",
-      "Bronze Trout",
-      "Opal Snapper",
-      "Nightfang Eel"
-    ],
-    "epic": [
-      "Verdant Arowana",
-      "Runebrook Salmon",
-      "Storm Marlin",
-      "Phantom Angler"
-    ],
-    "legendary": [
-      "Pond Guardian",
-      "King of Currents",
-      "Leviathan Fry",
-      "Abyssal Sovereign"
-    ]
+        "part": [
+            "Fishing Map",
+            "G5", "G6", "G7", "G8",
+            "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8",
+        ],
+        "common": [
+            "Bluegill",
+            "Muddy Carp",
+            "Lilypad Perch",
+            "River Perch",
+            "Stone Shiner",
+            "Tide Sardine",
+            "Pebble Mackerel",
+            "Gloom Smelt",
+        ],
+        "uncommon": [
+            "Speckled Sunfish",
+            "Dusk Minnow",
+            "Silver Chub",
+            "Swift Darter",
+            "Sea Bream",
+            "Glimmer Hake",
+            "Twilight Cod",
+        ],
+        "rare": [
+            "Moonlit Koi",
+            "Bronze Trout",
+            "Opal Snapper",
+            "Nightfang Eel",
+        ],
+        "epic": [
+            "Verdant Arowana",
+            "Runebrook Salmon",
+            "Storm Marlin",
+            "Phantom Angler",
+        ],
+        "legendary": [
+            "Pond Guardian",
+            "King of Currents",
+            "Leviathan Fry",
+            "Abyssal Sovereign",
+        ],
     },
 }
+
 
 # Snapshot of the original, built-in species (so we know what's override-only)
 BASE_SPECIES_SNAPSHOT: Dict[str, Dict[str, List[str]]] = {
@@ -1104,136 +1210,136 @@ class Fishing(commands.Cog):
         await user_conf.set(data)
         return e, None
 
-        @commands.hybrid_command(name="fish_info")
-        async def fish_info(self, ctx: commands.Context, *, species_name: str):
-            """
-            Show info for a fish you have caught:
-            image, rarity, zones it exists in, and base price.
-            """
-            data = await self.config.user(ctx.author).all()
-            fishdex = data.get("fishdex") or {}
-            if not isinstance(fishdex, dict):
-                fishdex = {}
+    @commands.hybrid_command(name="fish_info")
+    async def fish_info(self, ctx: commands.Context, *, species_name: str):
+        """
+        Show info for a fish you have caught:
+        image, rarity, zones it exists in, and base price.
+        """
+        data = await self.config.user(ctx.author).all()
+        fishdex = data.get("fishdex") or {}
+        if not isinstance(fishdex, dict):
+            fishdex = {}
     
-            # Build a set of all caught fish across all zones
-            caught_all = set()
-            for zk, lst in fishdex.items():
-                if isinstance(lst, list):
-                    caught_all.update(lst)
+        # Build a set of all caught fish across all zones
+        caught_all = set()
+        for zk, lst in fishdex.items():
+            if isinstance(lst, list):
+                caught_all.update(lst)
     
-            canonical = _canonical_species_name(species_name)
+        canonical = _canonical_species_name(species_name)
     
-            if canonical not in caught_all:
-                return await ctx.reply(
-                    f"📖 You have not caught **{canonical}** yet. Catch it first to view its details."
-                )
+        if canonical not in caught_all:
+            return await ctx.reply(
+                f"📖 You have not caught **{canonical}** yet. Catch it first to view its details."
+            )
     
-            records = _find_species_records(canonical)
-            if not records:
-                # Fish exists in fishdex but not in SPECIES anymore (removed/renamed)
-                e = discord.Embed(
-                    title=f"🐟 {canonical}",
-                    description="You have caught this fish, but it no longer exists in the current species table.",
-                    colour=discord.Colour.orange(),
-                )
-                img = FISH_IMAGES_BY_SPECIES.get(canonical)
-                if img:
-                    e.set_image(url=img)
-                return await ctx.reply(embed=e)
-    
-            # Prefer a record that matches where they actually caught it (if possible)
-            caught_zone_key = None
-            for zk, lst in fishdex.items():
-                if isinstance(lst, list) and canonical in lst:
-                    caught_zone_key = zk
-                    break
-    
-            zone_key, rarity = records[0]
-            if caught_zone_key:
-                for zk, r in records:
-                    if zk == caught_zone_key:
-                        zone_key, rarity = zk, r
-                        break
-    
-            zone = ZONES.get(zone_key)
-            zone_name = zone.name if zone else zone_key
-    
+        records = _find_species_records(canonical)
+        if not records:
+            # Fish exists in fishdex but not in SPECIES anymore (removed/renamed)
             e = discord.Embed(
                 title=f"🐟 {canonical}",
-                description=f"Rarity: **{rarity.title()}**\nPrimary Zone: **{zone_name}**",
-                colour=RARITY_COLOR.get(rarity, discord.Colour.blurple()),
+                description="You have caught this fish, but it no longer exists in the current species table.",
+                colour=discord.Colour.orange(),
             )
-    
-            # Image
-            img = _fish_image_for(zone_key, canonical, rarity)
+            img = FISH_IMAGES_BY_SPECIES.get(canonical)
             if img:
                 e.set_image(url=img)
+            return await ctx.reply(embed=e)
+    
+        # Prefer a record that matches where they actually caught it (if possible)
+        caught_zone_key = None
+        for zk, lst in fishdex.items():
+            if isinstance(lst, list) and canonical in lst:
+                caught_zone_key = zk
+                break
+    
+        zone_key, rarity = records[0]
+        if caught_zone_key:
+            for zk, r in records:
+                if zk == caught_zone_key:
+                    zone_key, rarity = zk, r
+                    break
+    
+        zone = ZONES.get(zone_key)
+        zone_name = zone.name if zone else zone_key
+    
+        e = discord.Embed(
+            title=f"🐟 {canonical}",
+            description=f"Rarity: **{rarity.title()}**\nPrimary Zone: **{zone_name}**",
+            colour=RARITY_COLOR.get(rarity, discord.Colour.blurple()),
+        )
+    
+        # Image
+        img = _fish_image_for(zone_key, canonical, rarity)
+        if img:
+            e.set_image(url=img)
     
             # Zones list (some fish can exist in multiple zones—rift case)
-            zone_lines = []
-            for zk, r in records:
-                z = ZONES.get(zk)
-                zone_lines.append(f"• {z.name if z else zk} (*{r.title()}*)")
-            e.add_field(name="Appears In", value="\n".join(zone_lines), inline=False)
+        zone_lines = []
+        for zk, r in records:
+            z = ZONES.get(zk)
+            zone_lines.append(f"• {z.name if z else zk} (*{r.title()}*)")
+        e.add_field(name="Appears In", value="\n".join(zone_lines), inline=False)
     
             # Pricing info
-            base = float(RARITY_PRICES.get(rarity, 0.0))
-            e.add_field(name="Base Sell Value", value=f"{base:.2f} WC", inline=True)
-            if zone:
-                e.add_field(name="Sell Value (in primary zone)", value=f"{base * zone.sell_multiplier:.2f} WC", inline=True)
+        base = float(RARITY_PRICES.get(rarity, 0.0))
+        e.add_field(name="Base Sell Value", value=f"{base:.2f} WC", inline=True)
+        if zone:
+            e.add_field(name="Sell Value (in primary zone)", value=f"{base * zone.sell_multiplier:.2f} WC", inline=True)
     
-            await ctx.reply(embed=e)
+        await ctx.reply(embed=e)
     
     
-        @commands.hybrid_command(name="fish_caught")
-        async def fish_caught(self, ctx: commands.Context):
-            """
-            Browse every fish you have caught across all zones (from fishdex),
-            with images and details.
-            """
-            data = await self.config.user(ctx.author).all()
-            fishdex = data.get("fishdex") or {}
-            if not isinstance(fishdex, dict):
-                fishdex = {}
+    @commands.hybrid_command(name="fish_caught")
+    async def fish_caught(self, ctx: commands.Context):
+        """
+        Browse every fish you have caught across all zones (from fishdex),
+        with images and details.
+        """
+        data = await self.config.user(ctx.author).all()
+        fishdex = data.get("fishdex") or {}
+        if not isinstance(fishdex, dict):
+            fishdex = {}
     
-            # Build entries: one per caught fish per zone.
-            # (If you catch the same fish in multiple zones, you'll see multiple entries.)
-            entries: List[Dict[str, str]] = []
-            idx = _species_to_rarity_zones()
+        # Build entries: one per caught fish per zone.
+        # (If you catch the same fish in multiple zones, you'll see multiple entries.)
+        entries: List[Dict[str, str]] = []
+        idx = _species_to_rarity_zones()
     
-            for zone_key, caught_list in fishdex.items():
-                if not isinstance(caught_list, list):
+        for zone_key, caught_list in fishdex.items():
+            if not isinstance(caught_list, list):
+                continue
+            for species in caught_list:
+                if not isinstance(species, str):
                     continue
-                for species in caught_list:
-                    if not isinstance(species, str):
-                        continue
     
-                    # Determine rarity (prefer this zone's rarity if known)
-                    rarity = None
-                    for zk, r in idx.get(species, []):
-                        if zk == zone_key:
-                            rarity = r
-                            break
-                    if rarity is None:
+                # Determine rarity (prefer this zone's rarity if known)
+                rarity = None
+                for zk, r in idx.get(species, []):
+                    if zk == zone_key:
+                        rarity = r
+                        break
+                if rarity is None:
                         # fallback: first known rarity, else "common"
-                        rarity = idx.get(species, [(zone_key, "common")])[0][1] if idx.get(species) else "common"
+                    rarity = idx.get(species, [(zone_key, "common")])[0][1] if idx.get(species) else "common"
     
-                    entries.append({"species": species, "zone_key": zone_key, "rarity": rarity})
+                entries.append({"species": species, "zone_key": zone_key, "rarity": rarity})
     
             # Stable ordering: by zone order in SPECIES, then rarity tier, then name
-            rarity_order = {"part": 0, "common": 1, "uncommon": 2, "rare": 3, "epic": 4, "legendary": 5}
-            zone_order = {zk: i for i, zk in enumerate(SPECIES.keys())}
+        rarity_order = {"part": 0, "common": 1, "uncommon": 2, "rare": 3, "epic": 4, "legendary": 5}
+        zone_order = {zk: i for i, zk in enumerate(SPECIES.keys())}
     
-            entries.sort(
-                key=lambda d: (
-                    zone_order.get(d["zone_key"], 999),
-                    rarity_order.get(d["rarity"], 999),
-                    d["species"].lower()
-                )
+        entries.sort(
+            key=lambda d: (
+                zone_order.get(d["zone_key"], 999),
+                rarity_order.get(d["rarity"], 999),
+                d["species"].lower()
             )
+        )
     
-            view = CaughtFishView(self, ctx.author.id, entries)
-            await ctx.reply(embed=view._embed(), view=view)
+        view = CaughtFishView(self, ctx.author.id, entries)
+        await ctx.reply(embed=view._embed(), view=view)
 
 
     @commands.hybrid_command(name="fish")
