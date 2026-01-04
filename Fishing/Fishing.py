@@ -14,7 +14,7 @@ from redbot.core.bot import Red
 
 __all__ = ["Fishing"]
 
-COOLDOWN_SECONDS = 1.0
+COOLDOWN_SECONDS = 0.5
 
 # ---------- Data Models ----------
 @dataclass(frozen=True)
@@ -48,15 +48,17 @@ class Catch:
 
 # ---------- Static Data ----------
 RARITY_PRICES: Dict[str, float] = {
-    "common": 1.00,
-    "uncommon": 2.50,
-    "rare": 6.00,
-    "epic": 15.00,
-    "legendary": 40.00,
+    "common": 2.00,
+    "uncommon": 4.50,
+    "part": 10,
+    "rare": 12.00,
+    "epic": 30.00,
+    "legendary": 100.00,
 }
 
 BASE_RARITY_TABLE: Dict[str, float] = {
     "common": 70.0,
+    "part": 30.0,
     "uncommon": 22.0,
     "rare": 6.0,
     "epic": 1.8,
@@ -71,10 +73,10 @@ RODS: Dict[str, Rod] = {
 }
 
 BAITS: Dict[str, Bait] = {
-    "worm":    Bait("worm",    "Worm Bait",     rarity_boost=0.01,  price=1.0),
-    "minnow":  Bait("minnow",  "Minnow Bait",   rarity_boost=0.02,  price=2.5),
-    "shrimp":  Bait("shrimp",  "Shrimp Bait",   rarity_boost=0.035, price=5.0),
-    "goldfly": Bait("goldfly", "Goldfly Bait",  rarity_boost=0.06,  price=10.0),
+    "worm":    Bait("worm",    "Worm Bait",     rarity_boost=0.02,  price=0.5),
+    "minnow":  Bait("minnow",  "Minnow Bait",   rarity_boost=0.04,  price=1.5),
+    "shrimp":  Bait("shrimp",  "Shrimp Bait",   rarity_boost=0.06, price=4.0),
+    "goldfly": Bait("goldfly", "Goldfly Bait",  rarity_boost=0.1,  price=8.0),
 }
 
 ZONES: Dict[str, Zone] = {
@@ -94,6 +96,10 @@ ZONES: Dict[str, Zone] = {
         "abyss", "Midnight Abyss", unlock_price=1000.0, sell_multiplier=1.5,
         base_table={"epic": +0.8, "legendary": +0.2}
     ),
+    "rift": Zone(
+        "rift", "The Magic Rift", unlock_price=5000.0, sell_multiplier=3,
+        base_table={"part": +3, "legendary": +1}
+    ),
 }
 
 ZONE_IMAGES = {
@@ -101,6 +107,7 @@ ZONE_IMAGES = {
     "river": "https://i.imgur.com/yntvP05.png",
     "coast": "https://i.imgur.com/PX4Nosp.png",
     "abyss": "https://i.imgur.com/AnBi2vR.png",
+    "rift": "https://i.ibb.co/bRjyRMfm/8a256adc-f383-4569-835b-1389ad1eb5f6.png",
 }
 
 FISH_IMAGES_BY_SPECIES: Dict[str, str] = {
@@ -137,6 +144,9 @@ FISH_IMAGES_BY_SPECIES: Dict[str, str] = {
     "Nightfang Eel": "https://i.imgur.com/JPXa10g.png",
     "Phantom Angler": "https://i.imgur.com/mOJgImO.png",
     "Abyssal Sovereign": "https://i.imgur.com/Qo9HmZz.png",
+    
+    #Parts
+    "Fishing Map": "https://i.ibb.co/gFdC2Mgw/57d76c68-ab77-4363-839b-53e821344cd4.png"
 }
 
     
@@ -144,6 +154,7 @@ FISH_IMAGES_BY_SPECIES: Dict[str, str] = {
 
 FISH_IMAGES_BY_ZONE_RARITY: Dict[str, Dict[str, str]] = {
     "pond": {
+        "part": "https://i.ibb.co/gFdC2Mgw/57d76c68-ab77-4363-839b-53e821344cd4.png",
         "common": "https://thumbs.dreamstime.com/b/cartoon-gray-fish-illustration-digital-art-cartoon-gray-fish-illustration-digital-art-380198597.jpg",
         "uncommon": "https://i.pinimg.com/736x/82/0e/82/820e828e963939f2a91e940e55d61ad3.jpg",
         "rare": "https://ih1.redbubble.net/image.1197727643.6143/raf,360x360,075,t,fafafa:ca443f4786.jpg",
@@ -151,6 +162,7 @@ FISH_IMAGES_BY_ZONE_RARITY: Dict[str, Dict[str, str]] = {
         "legendary": "https://ih1.redbubble.net/image.4938759497.5127/flat,750x,075,f-pad,750x1000,f8f8f8.jpg",
     },
     "river": {
+        "part": "https://i.ibb.co/gFdC2Mgw/57d76c68-ab77-4363-839b-53e821344cd4.png",
         "common": "https://thumbs.dreamstime.com/b/cartoon-gray-fish-illustration-digital-art-cartoon-gray-fish-illustration-digital-art-380198597.jpg",
         "uncommon": "https://i.pinimg.com/736x/82/0e/82/820e828e963939f2a91e940e55d61ad3.jpg",
         "rare": "https://ih1.redbubble.net/image.1197727643.6143/raf,360x360,075,t,fafafa:ca443f4786.jpg",
@@ -158,6 +170,7 @@ FISH_IMAGES_BY_ZONE_RARITY: Dict[str, Dict[str, str]] = {
         "legendary": "https://ih1.redbubble.net/image.4938759497.5127/flat,750x,075,f-pad,750x1000,f8f8f8.jpg",
     },
     "coast": {
+        "part": "https://i.ibb.co/gFdC2Mgw/57d76c68-ab77-4363-839b-53e821344cd4.png",
         "common": "https://thumbs.dreamstime.com/b/cartoon-gray-fish-illustration-digital-art-cartoon-gray-fish-illustration-digital-art-380198597.jpg",
         "uncommon": "https://i.pinimg.com/736x/82/0e/82/820e828e963939f2a91e940e55d61ad3.jpg",
         "rare": "https://ih1.redbubble.net/image.1197727643.6143/raf,360x360,075,t,fafafa:ca443f4786.jpg",
@@ -165,6 +178,7 @@ FISH_IMAGES_BY_ZONE_RARITY: Dict[str, Dict[str, str]] = {
         "legendary": "https://ih1.redbubble.net/image.4938759497.5127/flat,750x,075,f-pad,750x1000,f8f8f8.jpg",
     },
     "abyss": {
+        "part": "https://i.ibb.co/gFdC2Mgw/57d76c68-ab77-4363-839b-53e821344cd4.png",
         "common": "https://thumbs.dreamstime.com/b/cartoon-gray-fish-illustration-digital-art-cartoon-gray-fish-illustration-digital-art-380198597.jpg",
         "uncommon": "https://i.pinimg.com/736x/82/0e/82/820e828e963939f2a91e940e55d61ad3.jpg",
         "rare": "https://ih1.redbubble.net/image.1197727643.6143/raf,360x360,075,t,fafafa:ca443f4786.jpg",
@@ -179,6 +193,7 @@ FISH_IMAGES_BY_ZONE_RARITY: Dict[str, Dict[str, str]] = {
 # Zone-specific species names per rarity (flavor-only; does not affect pricing)
 SPECIES: Dict[str, Dict[str, List[str]]] = {
     "pond": {
+        "part":      ["Fishing Map"],
         "common":    ["Bluegill", "Muddy Carp", "Lilypad Perch"],
         "uncommon":  ["Speckled Sunfish", "Dusk Minnow"],
         "rare":      ["Moonlit Koi"],
@@ -186,6 +201,7 @@ SPECIES: Dict[str, Dict[str, List[str]]] = {
         "legendary": ["Pond Guardian"],
     },
     "river": {
+        "part":      ["Fishing Map"],
         "common":    ["River Perch", "Stone Shiner"],
         "uncommon":  ["Silver Chub", "Swift Darter"],
         "rare":      ["Bronze Trout"],
@@ -193,6 +209,7 @@ SPECIES: Dict[str, Dict[str, List[str]]] = {
         "legendary": ["King of Currents"],
     },
     "coast": {
+        "part":      ["Fishing Map"],
         "common":    ["Tide Sardine", "Pebble Mackerel"],
         "uncommon":  ["Sea Bream", "Glimmer Hake"],
         "rare":      ["Opal Snapper"],
@@ -200,11 +217,52 @@ SPECIES: Dict[str, Dict[str, List[str]]] = {
         "legendary": ["Leviathan Fry"],
     },
     "abyss": {
+        "part":      ["Fishing Map"],
         "common":    ["Gloom Smelt"],
         "uncommon":  ["Twilight Cod"],
         "rare":      ["Nightfang Eel"],
         "epic":      ["Phantom Angler"],
         "legendary": ["Abyssal Sovereign"],
+    },
+    "rift": {
+    "part": ["Fishing Map"],
+    "common": [
+      "Bluegill",
+      "Muddy Carp",
+      "Lilypad Perch",
+      "River Perch",
+      "Stone Shiner",
+      "Tide Sardine",
+      "Pebble Mackerel",
+      "Gloom Smelt"
+    ],
+    "uncommon": [
+      "Speckled Sunfish",
+      "Dusk Minnow",
+      "Silver Chub",
+      "Swift Darter",
+      "Sea Bream",
+      "Glimmer Hake",
+      "Twilight Cod"
+    ],
+    "rare": [
+      "Moonlit Koi",
+      "Bronze Trout",
+      "Opal Snapper",
+      "Nightfang Eel"
+    ],
+    "epic": [
+      "Verdant Arowana",
+      "Runebrook Salmon",
+      "Storm Marlin",
+      "Phantom Angler"
+    ],
+    "legendary": [
+      "Pond Guardian",
+      "King of Currents",
+      "Leviathan Fry",
+      "Abyssal Sovereign"
+    ]
     },
 }
 
@@ -390,14 +448,13 @@ def _get_economy(bot: Red) -> Economy:
 
 # ---------- Embeds ----------
 RARITY_COLOR = {
+    "part": discord.Colour.light_grey(),
     "common": discord.Colour.light_grey(),
     "uncommon": discord.Colour.green(),
     "rare": discord.Colour.blue(),
     "epic": discord.Colour.purple(),
     "legendary": discord.Colour.gold(),
 }
-
-# replace your current _catch_embed with this:
 
 def _fishdex_zone_embed(zone_key: str, fishdex: Dict[str, List[str]]) -> discord.Embed:
     zone = ZONES[zone_key]
@@ -414,7 +471,7 @@ def _fishdex_zone_embed(zone_key: str, fishdex: Dict[str, List[str]]) -> discord
     if zone.key in ZONE_IMAGES:
         e.set_thumbnail(url=ZONE_IMAGES[zone.key])
 
-    for rarity in ("common", "uncommon", "rare", "epic", "legendary"):
+    for rarity in ("part", "common", "uncommon", "rare", "epic", "legendary"):
         species_list = SPECIES[zone_key].get(rarity, [])
         if not species_list:
             continue
