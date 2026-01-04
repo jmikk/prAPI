@@ -272,8 +272,6 @@ FISH_IMAGES_BY_ZONE_RARITY: Dict[str, Dict[str, str]] = {
 
 
 # Zone-specific species names per rarity (flavor-only; does not affect pricing)
-from typing import Dict, List
-
 SPECIES: Dict[str, Dict[str, List[str]]] = {
     "pond": {
         "part": [
@@ -1395,7 +1393,7 @@ class Fishing(commands.Cog):
 
         if zone_key not in SPECIES:
             return await ctx.reply(f"Unknown zone key. Valid: {', '.join(SPECIES.keys())}")
-        if rarity not in ("common", "uncommon", "rare", "epic", "legendary"):
+        if rarity not in ("part", "common", "uncommon", "rare", "epic", "legendary"):
             return await ctx.reply("Rarity must be one of: common, uncommon, rare, epic, legendary.")
 
         text = species_and_img.strip()
@@ -1478,7 +1476,7 @@ class Fishing(commands.Cog):
         # Validate
         if zone_key not in SPECIES:
             return await ctx.reply(f"Unknown zone key. Valid: {', '.join(SPECIES.keys())}")
-        if rarity not in ("common", "uncommon", "rare", "epic", "legendary"):
+        if rarity not in ("part","common", "uncommon", "rare", "epic", "legendary"):
             return await ctx.reply("Rarity must be one of: common, uncommon, rare, epic, legendary.")
     
         # --- Remove from persistent overrides ---
