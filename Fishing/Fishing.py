@@ -271,6 +271,49 @@ BASE_SPECIES_SNAPSHOT: Dict[str, Dict[str, List[str]]] = {
     zk: {rk: list(lst) for rk, lst in rmap.items()} for zk, rmap in SPECIES.items()
 }
 
+def _species_to_rarity_zones() -> Dict[str, List[Tuple[str, str]]]:
+    """
+    Build an index:
+      species_name -> list[(zone_key, rarity)]
+    Uses SPECIES (current runtime table, including overrides).
+    """
+    idx: Dict[str, List[Tuple[str, str]]] = {}
+    for zk, rmap in SPECIES.items():
+        for rarity, lst in rmap.items():
+            for s in lst:
+                idx.setdefault(s, []).append((zk, rarity))
+    return idx
+
+
+def _find_species_records(species_name: str) -> List[Tuple[str, str]]:
+    """
+    Return list[(zone_key, rarity)] where this species exists in SPECIES.
+    Case-insensitive match with fallback to exact.
+    """
+    idx = _species_to_rarity_zones()
+    if species_name in idx:
+        return idx[species_name]
+
+    # Case-insensitive fallback
+    lower = species_name.lower()
+    for k, v in idx.items():
+        if k.lower() == lower:
+            return v
+    return []
+
+
+def _canonical_species_name(species_name: str) -> str:
+    """Return canonical species spelling from SPECIES if case-insensitive match exists."""
+    idx = _species_to_rarity_zones()
+    if species_name in idx:
+        return species_name
+    lower = species_name.lower()
+    for k in idx.keys():
+        if k.lower() == lower:
+            return k
+    return species_name
+
+
 
 def _fish_image_for(zone_key: str, species: str, rarity: str) -> Optional[str]:
     # Try exact species first
@@ -1061,6 +1104,136 @@ class Fishing(commands.Cog):
         await user_conf.set(data)
         return e, None
 
+        @commands.hybrid_command(name="fish_info")
+        async def fish_info(self, ctx: commands.Context, *, species_name: str):
+            """
+            Show info for a fish you have caught:
+            image, rarity, zones it exists in, and base price.
+            """
+            data = await self.config.user(ctx.author).all()
+            fishdex = data.get("fishdex") or {}
+            if not isinstance(fishdex, dict):
+                fishdex = {}
+    
+            # Build a set of all caught fish across all zones
+            caught_all = set()
+            for zk, lst in fishdex.items():
+                if isinstance(lst, list):
+                    caught_all.update(lst)
+    
+            canonical = _canonical_species_name(species_name)
+    
+            if canonical not in caught_all:
+                return await ctx.reply(
+                    f"📖 You have not caught **{canonical}** yet. Catch it first to view its details."
+                )
+    
+            records = _find_species_records(canonical)
+            if not records:
+                # Fish exists in fishdex but not in SPECIES anymore (removed/renamed)
+                e = discord.Embed(
+                    title=f"🐟 {canonical}",
+                    description="You have caught this fish, but it no longer exists in the current species table.",
+                    colour=discord.Colour.orange(),
+                )
+                img = FISH_IMAGES_BY_SPECIES.get(canonical)
+                if img:
+                    e.set_image(url=img)
+                return await ctx.reply(embed=e)
+    
+            # Prefer a record that matches where they actually caught it (if possible)
+            caught_zone_key = None
+            for zk, lst in fishdex.items():
+                if isinstance(lst, list) and canonical in lst:
+                    caught_zone_key = zk
+                    break
+    
+            zone_key, rarity = records[0]
+            if caught_zone_key:
+                for zk, r in records:
+                    if zk == caught_zone_key:
+                        zone_key, rarity = zk, r
+                        break
+    
+            zone = ZONES.get(zone_key)
+            zone_name = zone.name if zone else zone_key
+    
+            e = discord.Embed(
+                title=f"🐟 {canonical}",
+                description=f"Rarity: **{rarity.title()}**\nPrimary Zone: **{zone_name}**",
+                colour=RARITY_COLOR.get(rarity, discord.Colour.blurple()),
+            )
+    
+            # Image
+            img = _fish_image_for(zone_key, canonical, rarity)
+            if img:
+                e.set_image(url=img)
+    
+            # Zones list (some fish can exist in multiple zones—rift case)
+            zone_lines = []
+            for zk, r in records:
+                z = ZONES.get(zk)
+                zone_lines.append(f"• {z.name if z else zk} (*{r.title()}*)")
+            e.add_field(name="Appears In", value="\n".join(zone_lines), inline=False)
+    
+            # Pricing info
+            base = float(RARITY_PRICES.get(rarity, 0.0))
+            e.add_field(name="Base Sell Value", value=f"{base:.2f} WC", inline=True)
+            if zone:
+                e.add_field(name="Sell Value (in primary zone)", value=f"{base * zone.sell_multiplier:.2f} WC", inline=True)
+    
+            await ctx.reply(embed=e)
+    
+    
+        @commands.hybrid_command(name="fish_caught")
+        async def fish_caught(self, ctx: commands.Context):
+            """
+            Browse every fish you have caught across all zones (from fishdex),
+            with images and details.
+            """
+            data = await self.config.user(ctx.author).all()
+            fishdex = data.get("fishdex") or {}
+            if not isinstance(fishdex, dict):
+                fishdex = {}
+    
+            # Build entries: one per caught fish per zone.
+            # (If you catch the same fish in multiple zones, you'll see multiple entries.)
+            entries: List[Dict[str, str]] = []
+            idx = _species_to_rarity_zones()
+    
+            for zone_key, caught_list in fishdex.items():
+                if not isinstance(caught_list, list):
+                    continue
+                for species in caught_list:
+                    if not isinstance(species, str):
+                        continue
+    
+                    # Determine rarity (prefer this zone's rarity if known)
+                    rarity = None
+                    for zk, r in idx.get(species, []):
+                        if zk == zone_key:
+                            rarity = r
+                            break
+                    if rarity is None:
+                        # fallback: first known rarity, else "common"
+                        rarity = idx.get(species, [(zone_key, "common")])[0][1] if idx.get(species) else "common"
+    
+                    entries.append({"species": species, "zone_key": zone_key, "rarity": rarity})
+    
+            # Stable ordering: by zone order in SPECIES, then rarity tier, then name
+            rarity_order = {"part": 0, "common": 1, "uncommon": 2, "rare": 3, "epic": 4, "legendary": 5}
+            zone_order = {zk: i for i, zk in enumerate(SPECIES.keys())}
+    
+            entries.sort(
+                key=lambda d: (
+                    zone_order.get(d["zone_key"], 999),
+                    rarity_order.get(d["rarity"], 999),
+                    d["species"].lower()
+                )
+            )
+    
+            view = CaughtFishView(self, ctx.author.id, entries)
+            await ctx.reply(embed=view._embed(), view=view)
 
 
     @commands.hybrid_command(name="fish")
@@ -1255,6 +1428,72 @@ class Fishing(commands.Cog):
                             f"Still purged from **{purged_users}** Fishdex(es).")
 
 
+class CaughtFishView(ui.View):
+    def __init__(self, cog: "Fishing", user_id: int, entries: List[Dict[str, str]], start: int = 0):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.user_id = user_id
+        self.entries = entries
+        self.index = max(0, min(start, len(entries) - 1)) if entries else 0
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user and interaction.user.id == self.user_id
+
+    def _embed(self) -> discord.Embed:
+        if not self.entries:
+            return discord.Embed(
+                title="🎣 Caught Fish",
+                description="You have not caught any fish yet.",
+                colour=discord.Colour.light_grey(),
+            )
+
+        item = self.entries[self.index]
+        species = item["species"]
+        zone_key = item["zone_key"]
+        rarity = item["rarity"]
+
+        zone = ZONES.get(zone_key)
+        zone_name = zone.name if zone else zone_key
+
+        e = discord.Embed(
+            title=f"🐟 {species}",
+            description=f"Rarity: **{rarity.title()}**\nCaught in: **{zone_name}**",
+            colour=RARITY_COLOR.get(rarity, discord.Colour.blurple()),
+        )
+
+        # Show best image we can
+        img = _fish_image_for(zone_key, species, rarity)
+        if img:
+            e.set_image(url=img)
+
+        # Helpful pricing info
+        base = float(RARITY_PRICES.get(rarity, 0.0))
+        if zone:
+            e.add_field(name="Sell Value (here)", value=f"{base * zone.sell_multiplier:.2f} WC", inline=True)
+            e.add_field(name="Zone Multiplier", value=f"×{zone.sell_multiplier:.2f}", inline=True)
+        else:
+            e.add_field(name="Base Sell Value", value=f"{base:.2f} WC", inline=True)
+
+        e.set_footer(text=f"{self.index+1}/{len(self.entries)} • Use buttons to browse")
+        return e
+
+    @ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, interaction: discord.Interaction, button: ui.Button):
+        if not self.entries:
+            return await interaction.response.edit_message(embed=self._embed(), view=self)
+        self.index = (self.index - 1) % len(self.entries)
+        await interaction.response.edit_message(embed=self._embed(), view=self)
+
+    @ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
+    async def next_btn(self, interaction: discord.Interaction, button: ui.Button):
+        if not self.entries:
+            return await interaction.response.edit_message(embed=self._embed(), view=self)
+        self.index = (self.index + 1) % len(self.entries)
+        await interaction.response.edit_message(embed=self._embed(), view=self)
+
+    @ui.button(label="Close", style=discord.ButtonStyle.danger)
+    async def close_btn(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.edit_message(content="Closed.", embed=None, view=None)
 
 
 
