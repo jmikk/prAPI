@@ -75,6 +75,62 @@ class WAO(commands.Cog):
         if self.session and not self.session.closed:
             asyncio.create_task(self.session.close())
 
+    async def _update_starter_embed_link_for_vote(
+        self,
+        guild: discord.Guild,
+        entry: Dict[str, Any],
+        council: int,
+    ):
+        """When a proposal reaches vote, update its starter embed links to GA/SC page."""
+        thread_id = entry.get("thread_id")
+        starter_message_id = entry.get("starter_message_id")
+    
+        if not thread_id or not starter_message_id:
+            return
+    
+        thread = guild.get_thread(thread_id) or guild.get_channel(thread_id)
+        if not isinstance(thread, discord.Thread):
+            return
+    
+        try:
+            starter_msg = await thread.fetch_message(starter_message_id)
+        except discord.NotFound:
+            return
+        except Exception as e:
+            log.debug("Failed to fetch starter message %s in thread %s: %s", starter_message_id, thread_id, e)
+            return
+    
+        if not starter_msg.embeds:
+            return
+    
+        vote_url = "https://www.nationstates.net/page=ga" if council == 1 else "https://www.nationstates.net/page=sc"
+    
+        base = starter_msg.embeds[0]
+        embed = base.copy()
+    
+        # Update the clickable title link
+        embed.url = vote_url
+    
+        # Update the "NationStates Link" field if present
+        existing_fields = list(embed.fields)
+        embed.clear_fields()
+    
+        for f in existing_fields:
+            if f.name == "NationStates Link":
+                embed.add_field(
+                    name=f.name,
+                    value=f"[View chamber page on NationStates]({vote_url})",
+                    inline=f.inline,
+                )
+            else:
+                embed.add_field(name=f.name, value=f.value, inline=f.inline)
+    
+        try:
+            await starter_msg.edit(embed=embed)
+        except Exception as e:
+            log.debug("Failed to edit starter embed in thread %s: %s", thread_id, e)
+
+
     async def _check_resolution_for_council(
         self,
         guild: discord.Guild,
@@ -145,6 +201,7 @@ class WAO(commands.Cog):
                         )
 
                     entry["at_vote"] = True
+                    await self._update_starter_embed_link_for_vote(guild=guild, entry=entry, council=council)
 
                     # Optional "goes to vote" message
                     template = resolution_messages.get(str(council), "") or ""
