@@ -1001,7 +1001,7 @@ class WAO(commands.Cog):
             entry = stored_by_council.get(pid)
             if not entry:
                 continue
-            thread_id = entry.get("thread_id")
+            thread_id= entry.get("thread_id")
             if not thread_id:
                 entry["active"] = False
                 continue
@@ -1013,10 +1013,11 @@ class WAO(commands.Cog):
 
             try:
                 if not thread.locked or not thread.archived:
-                    await thread.edit(locked=True, archived=True)
                     await thread.send(
                         "This proposal is no longer in the WA queue. Locking this thread."
                     )
+                    await thread.edit(locked=True)
+                    await thread.edit(archived=True)
             except Exception as e:
                 log.exception(
                     "Failed to lock/archive thread %s for proposal %s: %s",
