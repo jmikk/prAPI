@@ -691,7 +691,7 @@ class WAO(commands.Cog):
 
     # -------------- BACKGROUND LOOP --------------
 
-    @tasks.loop(hours=1)
+    @tasks.loop(minutes=1)
     async def check_proposals_loop(self):
         """Background loop that runs every hour."""
         try:
