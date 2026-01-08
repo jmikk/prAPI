@@ -1002,6 +1002,8 @@ class WAO(commands.Cog):
 
         approvals_list = [a for a in approvals.split(":") if a]
         approvals_count = len(approvals_list)
+        if approvals_count < 20:
+            return
 
         if proposed_by != "Unknown":
             pb_slug = self._ns_slug(proposed_by)
