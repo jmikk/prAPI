@@ -344,9 +344,7 @@ class NationStatesLinker2(commands.Cog):
                 f"Linked **[{display(nation_norm)}](https://www.nationstates.net/nation={nation_norm})**",
                 ephemeral=True,
             )
-
-            if interaction.guild and isinstance(interaction.user, discord.Member):
-                await self.cog.run_member_sync(interaction.user)
+            await self.cog.run_member_sync(interaction.user)
 
 
 async def setup(bot):
