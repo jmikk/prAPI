@@ -184,52 +184,86 @@ class WAO(commands.Cog):
             old_entry["at_vote"] = False
 
         # 2) If there is a new resolution, pin its thread and send message
-        if new_id and new_id in proposals_by_council:
-            entry = proposals_by_council[new_id]
-            thread_id = entry.get("thread_id")
-            if thread_id:
-                thread = guild.get_thread(thread_id) or guild.get_channel(thread_id)
-                if isinstance(thread, discord.Thread):
+        if new_id:
+            # Determine the correct forum channel for this council
+            forum_id = data.get("ga_forum_channel") if council == 1 else data.get("sc_forum_channel")
+            forum = guild.get_channel(forum_id) if forum_id else None
+            if not isinstance(forum, discord.ForumChannel):
+                log.warning(
+                    "Guild %s: cannot pin/create resolution thread for council %s because forum channel is not valid.",
+                    guild.id, council
+                )
+            else:
+                entry = proposals_by_council.get(new_id)
+
+                # Try to resolve an existing thread from stored entry
+                thread: Optional[discord.Thread] = None
+                if entry:
+                    thread_id = entry.get("thread_id")
+                    if thread_id:
+                        maybe_thread = guild.get_thread(thread_id) or guild.get_channel(thread_id)
+                        if isinstance(maybe_thread, discord.Thread):
+                            thread = maybe_thread
+
+                # If no thread exists (not tracked or deleted), create it now
+                if thread is None:
+                    thread, starter_message_id, ifv_message_id = await self._create_thread_for_resolution(
+                        forum=forum,
+                        council=council,
+                        res=res,  # res is the resolution dict you already fetched
+                    )
+
+                    proposals_by_council[new_id] = {
+                        "thread_id": thread.id,
+                        "starter_message_id": starter_message_id,
+                        "ifv_message_id": ifv_message_id,
+                        "name": res.get("name") if res else new_id,
+                        "category": res.get("category") if res else "Unknown Category",
+                        "proposed_by": res.get("proposed_by") if res else "Unknown",
+                        "created": 0,
+                        "active": True,
+                        "at_vote": True,
+                    }
+                    entry = proposals_by_council[new_id]
+
+                # Pin the thread
+                try:
+                    await thread.edit(pinned=True)
+                except Exception as e:
+                    log.debug(
+                        "Failed to pin resolution thread %s in guild %s: %s",
+                        thread.id,
+                        guild.id,
+                        e,
+                    )
+
+                # Mark state + update embed link
+                entry["at_vote"] = True
+                entry["active"] = True
+                await self._update_starter_embed_link_for_vote(guild=guild, entry=entry, council=council)
+
+                # Optional "goes to vote" message
+                template = resolution_messages.get(str(council), "") or ""
+                if template:
+                    proposal_url = f"https://www.nationstates.net/page=UN_view_proposal/id={new_id}"
+                    thread_url = f"https://discord.com/channels/{guild.id}/{thread.id}"
+                    name = entry.get("name") or new_id
+                    category = entry.get("category") or "Unknown Category"
+                    proposed_by = entry.get("proposed_by") or "Unknown"
+
                     try:
-                        await thread.edit(pinned=True)
+                        content = template.format(
+                            chamber=chamber_name,
+                            name=name,
+                            category=category,
+                            proposed_by=proposed_by,
+                            link=proposal_url,
+                            thread=thread_url,
+                        )
+                        await thread.send(content)
                     except Exception as e:
-                        log.debug(
-                            "Failed to pin resolution thread %s in guild %s: %s",
-                            thread_id,
-                            guild.id,
-                            e,
-                        )
+                        log.debug("Failed to send resolution message in thread %s: %s", thread.id, e)
 
-                    entry["at_vote"] = True
-                    await self._update_starter_embed_link_for_vote(guild=guild, entry=entry, council=council)
-
-                    # Optional "goes to vote" message
-                    template = resolution_messages.get(str(council), "") or ""
-                    if template:
-                        proposal_url = (
-                            f"https://www.nationstates.net/page=UN_view_proposal/id={new_id}"
-                        )
-                        thread_url = f"https://discord.com/channels/{guild.id}/{thread.id}"
-                        name = entry.get("name") or new_id
-                        category = entry.get("category") or "Unknown Category"
-                        proposed_by = entry.get("proposed_by") or "Unknown"
-
-                        try:
-                            content = template.format(
-                                chamber=chamber_name,
-                                name=name,
-                                category=category,
-                                proposed_by=proposed_by,
-                                link=proposal_url,
-                                thread=thread_url,
-                            )
-                            await thread.send(content)
-                        except Exception as e:
-                            log.debug(
-                                "Failed to send resolution message in thread %s: %s",
-                                thread.id,
-                                e,
-                            )
 
         # 3) Persist current resolution ID + proposals updates
         current_resolution_ids[str(council)] = new_id
@@ -279,12 +313,14 @@ class WAO(commands.Cog):
         name = (res_elem.findtext("NAME") or "").strip()
         category = (res_elem.findtext("CATEGORY") or "").strip()
         proposed_by = (res_elem.findtext("PROPOSED_BY") or "").strip()
+        desc = res_elem.findtext("DESC") or ""
 
         return {
             "id": pid,
             "name": name,
             "category": category,
             "proposed_by": proposed_by,
+            "desc": desc,
         }
 
 
@@ -1030,6 +1066,102 @@ class WAO(commands.Cog):
 
         all_data["proposals"][str(council)] = stored_by_council
         await guild_conf.proposals.set(all_data["proposals"])
+
+    async def _create_thread_for_resolution(
+        self,
+        forum: discord.ForumChannel,
+        council: int,
+        res: Dict[str, Any],
+    ) -> Tuple[discord.Thread, Optional[int], Optional[int]]:
+        """
+        Create a new forum thread for an at-vote resolution when we do not already
+        have a proposal thread tracked (e.g., bot started mid-vote or record lost).
+        """
+        chamber_name = "General Assembly" if council == 1 else "Security Council"
+
+        proposal_id = (res.get("id") or "").strip()
+        name = (res.get("name") or proposal_id or "Unknown Resolution").strip()
+        category = (res.get("category") or "Unknown Category").strip()
+        proposed_by = (res.get("proposed_by") or "Unknown").strip()
+
+        raw_desc = res.get("desc") or ""
+        desc = self._process_description(raw_desc) if raw_desc else "No description provided."
+
+        proposal_url = f"https://www.nationstates.net/page=UN_view_proposal/id={proposal_id}"
+        vote_url = "https://www.nationstates.net/page=ga" if council == 1 else "https://www.nationstates.net/page=sc"
+
+        if proposed_by != "Unknown":
+            pb_slug = self._ns_slug(proposed_by)
+            proposed_by_value = f"[{proposed_by}](https://www.nationstates.net/nation={pb_slug})"
+        else:
+            proposed_by_value = proposed_by
+
+        embed = discord.Embed(
+            title=name,
+            url=vote_url,  # at vote: link title to chamber page
+            description=desc,
+        )
+        embed.add_field(name="Chamber", value=chamber_name, inline=True)
+        embed.add_field(name="Category", value=category, inline=True)
+        embed.add_field(name="Proposed by", value=proposed_by_value, inline=True)
+        embed.add_field(name="Proposal ID", value=f"`{proposal_id}`", inline=False)
+        embed.add_field(
+            name="NationStates Link",
+            value=f"[View chamber page on NationStates]({vote_url})",
+            inline=False,
+        )
+        embed.add_field(
+            name="Proposal Link",
+            value=f"[View proposal on NationStates]({proposal_url})",
+            inline=False,
+        )
+
+        title = f"[{chamber_name}] {name}"
+
+        # Optional: apply GA/SC tag if present
+        applied_tags = []
+        try:
+            desired_names = (("ga", "general assembly") if council == 1 else ("sc", "security council"))
+            for tag in forum.available_tags:
+                if tag.name.lower() in desired_names:
+                    applied_tags.append(tag)
+                    break
+        except Exception as e:
+            log.debug("Failed to pick forum tag for council %s: %s", council, e)
+
+        created = await forum.create_thread(
+            name=title,
+            embed=embed,
+            applied_tags=applied_tags or None,
+        )
+
+        thread: discord.Thread
+        starter_message_id: Optional[int] = None
+        ifv_message_id: Optional[int] = None
+
+        if hasattr(created, "thread") and hasattr(created, "message"):
+            thread = created.thread
+            starter_msg = created.message
+            if isinstance(starter_msg, discord.Message):
+                starter_message_id = starter_msg.id
+        elif isinstance(created, discord.Thread):
+            thread = created
+        else:
+            thread = created  # type: ignore
+
+        # Reserve IFV post
+        try:
+            command_example = f"waobserver ifv {thread.id}"
+            ifv_placeholder = await thread.send(
+                f"*This post is reserved for the IFV.*\n\n"
+                f"Use this command to set it:\n`{command_example}`"
+            )
+            ifv_message_id = ifv_placeholder.id
+        except Exception as e:
+            log.exception("Failed to reserve IFV post in thread %s: %s", thread.id, e)
+
+        return thread, starter_message_id, ifv_message_id
+
 
     async def _create_thread_for_proposal(
         self,
