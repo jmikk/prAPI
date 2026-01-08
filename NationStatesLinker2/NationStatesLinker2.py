@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, time as dtime
-from typing import Dict, List, Optional, Set
+from typing import Dict, Set
 
 import aiohttp
 import discord
 import xml.etree.ElementTree as ET
 from redbot.core import commands, Config
-from discord.ext import tasks  
+from discord.ext import tasks
+
 # ==========================
 # Constants
 # ==========================
@@ -40,19 +40,15 @@ class NationStatesLinker2(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=0xA1C3BEEF, force_registration=True)
 
-        self.config.register_user(
-            linked_nations=[]
-        )
+        self.config.register_user(linked_nations=[])
 
-        self.config.register_global(
-            user_agent=DEFAULT_UA
-        )
+        self.config.register_global(user_agent=DEFAULT_UA)
 
         self.config.register_guild(
             access_role_id=None,
             visitor_role_id=None,
             verified_role_id=None,
-            regions={},  # region_norm -> mask_role_id
+            regions={},  # region_norm -> role_id
             update_hour=4,
             log_channel_id=None,
         )
@@ -87,7 +83,9 @@ class NationStatesLinker2(commands.Cog):
             el = root.find("NATIONS")
             if el is not None and el.text:
                 for n in el.text.replace(",", ":").split(":"):
-                    nations.add(normalize(n))
+                    nn = normalize(n)
+                    if nn:
+                        nations.add(nn)
         except ET.ParseError:
             pass
         return nations
@@ -101,6 +99,24 @@ class NationStatesLinker2(commands.Cog):
                 return (await resp.text()).strip() == "1"
 
     # ==========================
+    # Region Data Builder
+    # ==========================
+    async def build_region_data_for_guild(self, guild: discord.Guild) -> Dict[str, Set[str]]:
+        gconf = self.config.guild(guild)
+        regions = await gconf.regions()
+        if not regions:
+            return {}
+
+        headers = {"User-Agent": await self.config.user_agent()}
+        region_data: Dict[str, Set[str]] = {}
+
+        async with aiohttp.ClientSession(headers=headers) as session:
+            for region_norm in regions.keys():
+                region_data[region_norm] = await self.fetch_region_nations(session, region_norm)
+
+        return region_data
+
+    # ==========================
     # Role Sync Logic
     # ==========================
     async def sync_member(self, member: discord.Member, region_data: Dict[str, Set[str]]):
@@ -111,24 +127,50 @@ class NationStatesLinker2(commands.Cog):
         visitor = guild.get_role(await gconf.visitor_role_id())
         verified = guild.get_role(await gconf.verified_role_id())
 
-        linked = {normalize(n) for n in await self.config.user(member).linked_nations()}
-        qualifies = set()
+        linked = {normalize(n) for n in await self.config.user(member).linked_nations() if n}
 
+        # RULE: No mask/roles unless you link a nation
+        if not linked:
+            to_remove = []
+            if access and access in member.roles:
+                to_remove.append(access)
+            if visitor and visitor in member.roles:
+                to_remove.append(visitor)
+
+            regions = await gconf.regions()
+            for _, role_id in regions.items():
+                role = guild.get_role(role_id)
+                if role and role in member.roles:
+                    to_remove.append(role)
+
+            if verified and verified in member.roles:
+                # Optional: keep verified only if you want "verified" to imply "has linked at least once".
+                # If you want verified removed when no linked nations exist, keep this line.
+                to_remove.append(verified)
+
+            if to_remove:
+                await member.remove_roles(*to_remove, reason="NS unlink/no-linked cleanup")
+            return
+
+        qualifies = set()
         for region, nations in region_data.items():
             if linked & nations:
                 qualifies.add(region)
 
         to_add, to_remove = [], []
 
-        if linked and verified and verified not in member.roles:
+        # If they have linked nations, ensure verified role exists (successful verification is what adds linked nations)
+        if verified and verified not in member.roles:
             to_add.append(verified)
 
         if qualifies:
+            # In-region: Access + region role(s), no visitor
             if access and access not in member.roles:
                 to_add.append(access)
             if visitor and visitor in member.roles:
                 to_remove.append(visitor)
         else:
+            # Not in-region: Visitor only, no access or region roles
             if visitor and visitor not in member.roles:
                 to_add.append(visitor)
             if access and access in member.roles:
@@ -139,15 +181,29 @@ class NationStatesLinker2(commands.Cog):
             role = guild.get_role(role_id)
             if not role:
                 continue
-            if region in qualifies and role not in member.roles:
-                to_add.append(role)
-            if region not in qualifies and role in member.roles:
-                to_remove.append(role)
+
+            if qualifies:
+                # Add only the region roles they qualify for
+                if region in qualifies and role not in member.roles:
+                    to_add.append(role)
+                if region not in qualifies and role in member.roles:
+                    to_remove.append(role)
+            else:
+                # If they qualify for none, remove all region roles
+                if role in member.roles:
+                    to_remove.append(role)
 
         if to_add:
             await member.add_roles(*to_add, reason="NS region sync")
         if to_remove:
             await member.remove_roles(*to_remove, reason="NS region sync")
+
+    async def run_member_sync(self, member: discord.Member):
+        """Fetch current region memberships and sync a single member immediately."""
+        if not member.guild:
+            return
+        region_data = await self.build_region_data_for_guild(member.guild)
+        await self.sync_member(member, region_data)
 
     # ==========================
     # Daily Sync
@@ -160,17 +216,16 @@ class NationStatesLinker2(commands.Cog):
             if not regions:
                 continue
 
-            headers = {"User-Agent": await self.config.user_agent()}
-            async with aiohttp.ClientSession(headers=headers) as session:
-                region_data = {}
-                for r in regions:
-                    region_data[r] = await self.fetch_region_nations(session, r)
+            region_data = await self.build_region_data_for_guild(guild)
 
             for m in guild.members:
                 if not m.bot:
                     await self.sync_member(m, region_data)
                     await asyncio.sleep(0.1)
 
+    # ==========================
+    # Commands
+    # ==========================
     @commands.command()
     async def linknation(self, ctx: commands.Context):
         view = self.VerifyView(self)
@@ -180,15 +235,22 @@ class NationStatesLinker2(commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
-
     @commands.command()
     async def unlinknation(self, ctx: commands.Context, nation: str):
         n = normalize(nation)
+        changed = False
         async with self.config.user(ctx.author).linked_nations() as ln:
             if n in ln:
                 ln.remove(n)
-                await ctx.send(f"Unlinked {display(n)}")
-        await self.daily_sync()
+                changed = True
+
+        if changed:
+            await ctx.send(f"Unlinked {display(n)}")
+        else:
+            await ctx.send(f"{display(n)} was not linked.")
+
+        if isinstance(ctx.author, discord.Member):
+            await self.run_member_sync(ctx.author)
 
     @commands.group()
     async def nslset(self, ctx):
@@ -217,8 +279,17 @@ class NationStatesLinker2(commands.Cog):
 
     @commands.command()
     async def nslupdate(self, ctx):
-        await ctx.send("Running sync…")
-        await self.daily_sync()
+        await ctx.send("Running sync...")
+        # Trigger one full pass (don’t call the task function directly)
+        for guild in self.bot.guilds:
+            regions = await self.config.guild(guild).regions()
+            if not regions:
+                continue
+            region_data = await self.build_region_data_for_guild(guild)
+            for m in guild.members:
+                if not m.bot:
+                    await self.sync_member(m, region_data)
+                    await asyncio.sleep(0.1)
         await ctx.send("Done.")
 
     # ==========================
@@ -226,24 +297,28 @@ class NationStatesLinker2(commands.Cog):
     # ==========================
     class VerifyView(discord.ui.View):
         def __init__(self, cog: "NationStatesLinker2"):
-            super().__init__(timeout=None)  # ✅ persistent
+            super().__init__(timeout=None)  # persistent
             self.cog = cog
-    
+
         @discord.ui.button(
             label="Verify Nation",
             style=discord.ButtonStyle.primary,
-            custom_id="nsl2_verify_nation",  # ✅ required for persistence
+            custom_id="nsl2_verify_nation",
         )
         async def verify(self, interaction: discord.Interaction, button: discord.ui.Button):
             try:
                 await interaction.response.send_modal(NationStatesLinker2.VerifyModal(self.cog))
             except Exception as e:
-                # Always respond so Discord doesn't show "Interaction failed"
                 if interaction.response.is_done():
-                    await interaction.followup.send(f"⚠️ Error opening modal: `{type(e).__name__}: {e}`", ephemeral=True)
+                    await interaction.followup.send(
+                        f"Error opening modal: `{type(e).__name__}: {e}`",
+                        ephemeral=True,
+                    )
                 else:
-                    await interaction.response.send_message(f"⚠️ Error opening modal: `{type(e).__name__}: {e}`", ephemeral=True)
-
+                    await interaction.response.send_message(
+                        f"Error opening modal: `{type(e).__name__}: {e}`",
+                        ephemeral=True,
+                    )
 
     class VerifyModal(discord.ui.Modal):
         def __init__(self, cog: "NationStatesLinker2"):
@@ -258,7 +333,7 @@ class NationStatesLinker2(commands.Cog):
         async def on_submit(self, interaction: discord.Interaction):
             ok = await self.cog.verify_with_ns(self.nation.value, self.code.value)
             if not ok:
-                return await interaction.response.send_message("❌ Verification failed.", ephemeral=True)
+                return await interaction.response.send_message("Verification failed.", ephemeral=True)
 
             nation_norm = normalize(self.nation.value)
             async with self.cog.config.user(interaction.user).linked_nations() as ln:
@@ -266,7 +341,7 @@ class NationStatesLinker2(commands.Cog):
                     ln.append(nation_norm)
 
             await interaction.response.send_message(
-                f"✅ Linked **[{display(nation_norm)}](https://www.nationstates.net/nation={nation_norm})**",
+                f"Linked **[{display(nation_norm)}](https://www.nationstates.net/nation={nation_norm})**",
                 ephemeral=True,
             )
 
@@ -275,4 +350,4 @@ class NationStatesLinker2(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(NationStatesLinker(bot))
+    await bot.add_cog(NationStatesLinker2(bot))
