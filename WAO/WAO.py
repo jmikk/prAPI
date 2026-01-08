@@ -1023,6 +1023,7 @@ class WAO(commands.Cog):
                 "category": info.get("category"),
                 "created": info.get("created"),
                 "active": True,
+                "proposed_by": info.get("proposed_by"),
             }
 
         # Handle disappeared proposals -> lock threads & mark inactive
