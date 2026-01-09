@@ -207,12 +207,15 @@ class NationStatesLinker2(commands.Cog):
         target = await gconf.target_nation()
         if not target:
             return  # not configured
+        await log_channel.send("Target set")
+
 
         log_channel_id = await gconf.log_channel_id()
         log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
         if log_channel is None:
             return  # nowhere to log
-        
+        await log_channel.send("log set")
+
         last_ts = await gconf.trade_last_timestamp()
 
         last_ts = 0 
@@ -220,9 +223,10 @@ class NationStatesLinker2(commands.Cog):
         headers = {"User-Agent": await self.config.user_agent()}
 
         linked_nations = await self.build_linked_nations_for_guild(guild)
-
+        
         async with aiohttp.ClientSession(headers=headers) as session:
             xml_text = await self.fetch_recent_trades(session, limit=1000, sincetime=last_ts)
+            await log_channel.send(xml_text[1000:])
 
         trades = self.parse_trades_xml(xml_text)
         if not trades:
