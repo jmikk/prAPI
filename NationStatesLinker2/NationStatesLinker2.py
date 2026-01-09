@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Dict, Set
+from typing import Dict, Set, Iterable, List, Tuple
+import re
 
 import aiohttp
 import discord
@@ -28,6 +29,17 @@ def normalize(value: str) -> str:
 
 def display(value: str) -> str:
     return value.replace("_", " ").title()
+
+def split_nations_blob(blob: str) -> List[str]:
+    """
+    Split a user-provided blob into nation tokens.
+    Accepts commas, semicolons, pipes, newlines, and whitespace.
+    """
+    if not blob:
+        return []
+    # Split on commas/semicolons/pipes/newlines OR any whitespace
+    parts = re.split(r"[,\n;|]+|\s{1,}", blob.strip())
+    return [p for p in (x.strip() for x in parts) if p]
 
 
 # ==========================
@@ -235,6 +247,26 @@ class NationStatesLinker2(commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
+    @commands.command(name="mynations")
+    async def mynations(self, ctx: commands.Context):
+        """Show your currently linked NationStates nations."""
+        linked = [normalize(n) for n in await self.config.user(ctx.author).linked_nations()]
+        linked = [n for n in linked if n]
+
+        if not linked:
+            return await ctx.send(
+                "You do not have any linked nations yet. Use `linknation` to verify one, "
+                "or use `addnations` to add multiple without verification."
+            )
+
+        # Display as clickable links
+        lines = [
+            f"- **{display(n)}** — https://www.nationstates.net/nation={n}"
+            for n in sorted(set(linked))
+        ]
+        await ctx.send("**Your linked nations:**\n" + "\n".join(lines))
+
+
     @commands.command()
     async def unlinknation(self, ctx: commands.Context, nation: str):
         n = normalize(nation)
@@ -251,6 +283,63 @@ class NationStatesLinker2(commands.Cog):
 
         if isinstance(ctx.author, discord.Member):
             await self.run_member_sync(ctx.author)
+
+    @commands.command(name="addnations")
+    async def addnations(self, ctx: commands.Context, *, nations: str):
+        """
+        Bulk-add nations to your linked list WITHOUT verification.
+        Accepts comma/space/newline separated lists.
+        """
+        tokens = split_nations_blob(nations)
+        if not tokens:
+            return await ctx.send("No nations found in your input. Example: `addnations testlandia, my nation, another_nation`")
+
+        # Normalize + validate length
+        cleaned = []
+        for t in tokens:
+            nn = normalize(t)
+            if not nn:
+                continue
+            if len(nn) > NATION_MAX_LEN:
+                continue
+            cleaned.append(nn)
+
+        if not cleaned:
+            return await ctx.send("No valid nations were found after cleaning/normalizing.")
+
+        added = []
+        already = []
+        async with self.config.user(ctx.author).linked_nations() as ln:
+            existing = set(normalize(x) for x in ln if x)
+            for nn in cleaned:
+                if nn in existing:
+                    already.append(nn)
+                    continue
+                ln.append(nn)
+                existing.add(nn)
+                added.append(nn)
+
+        # Feedback
+        msg_parts = []
+        if added:
+            msg_parts.append(
+                "**Added (no verification):**\n" +
+                "\n".join(f"- {display(n)}" for n in added[:25]) +
+                (f"\n…and {len(added) - 25} more." if len(added) > 25 else "")
+            )
+        if already:
+            msg_parts.append(
+                "**Already linked (skipped):**\n" +
+                "\n".join(f"- {display(n)}" for n in already[:25]) +
+                (f"\n…and {len(already) - 25} more." if len(already) > 25 else "")
+            )
+
+        await ctx.send("\n\n".join(msg_parts) if msg_parts else "Nothing changed.")
+
+        # Sync roles immediately
+        if isinstance(ctx.author, discord.Member):
+            await self.run_member_sync(ctx.author)
+
 
     @commands.group()
     async def nslset(self, ctx):
