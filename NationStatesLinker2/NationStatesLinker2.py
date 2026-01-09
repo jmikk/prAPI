@@ -207,8 +207,6 @@ class NationStatesLinker2(commands.Cog):
         target = await gconf.target_nation()
         if not target:
             return  # not configured
-        await log_channel.send("Target set")
-
 
         log_channel_id = await gconf.log_channel_id()
         log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
