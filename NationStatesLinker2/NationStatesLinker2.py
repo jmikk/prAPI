@@ -63,7 +63,11 @@ class NationStatesLinker2(commands.Cog):
             regions={},  # region_norm -> role_id
             update_hour=4,
             log_channel_id=None,
+            target_nation=None,              # normalized nation name
+            trade_last_timestamp=0,          # int unix timestamp
+            trade_stats={},                  # seller -> {"legendary": int, "nonlegendary": int}
         )
+
 
         self.daily_sync.start()
         self.bot.add_view(self.VerifyView(self))
@@ -74,6 +78,214 @@ class NationStatesLinker2(commands.Cog):
     # ==========================
     # API Helpers
     # ==========================
+
+    # ==========================
+    # Trades Processing
+    # ==========================
+    async def fetch_recent_trades(
+        self,
+        session: aiohttp.ClientSession,
+        limit: int = 1000,
+        sincetime: int | None = None,
+    ) -> str:
+        """
+        Fetch trades XML for all cards. Uses the documented format:
+          ?q=cards+trades;limit=...;sincetime=...
+        Returns raw XML text.
+        """
+        q = f"cards trades;limit={int(limit)}"
+        if sincetime and sincetime > 0:
+            q += f";sincetime={int(sincetime)}"
+
+        # Important: NS expects the semicolon syntax as part of q
+        params = {"q": q}
+
+        async with session.get(API_URL, params=params) as resp:
+            text = await resp.text()
+            await self._respect_rate_limit(resp.headers)
+            return text
+
+    def parse_trades_xml(self, xml_text: str) -> List[dict]:
+        """
+        Parses the trades response into a list of dicts.
+        Defensive: fields vary across API versions and shards; we treat missing tags gracefully.
+        Expected tags commonly include:
+          TRADE/CARDID, TRADE/SEASON, TRADE/BUYER, TRADE/SELLER, TRADE/PRICE, TRADE/TIMESTAMP
+          and sometimes CATEGORY or RARITY.
+        """
+        trades: List[dict] = []
+        try:
+            root = ET.fromstring(xml_text)
+        except ET.ParseError:
+            return trades
+
+        # The trades entries are typically under <TRADES><TRADE>...</TRADE></TRADES>
+        for t in root.findall(".//TRADE"):
+            def get_text(tag: str) -> str:
+                el = t.find(tag)
+                return (el.text or "").strip() if el is not None else ""
+
+            cardid = get_text("CARDID")
+            season = get_text("SEASON")
+            buyer = normalize(get_text("BUYER")) if get_text("BUYER") else ""
+            seller = normalize(get_text("SELLER")) if get_text("SELLER") else ""
+            price_raw = get_text("PRICE")
+            timestamp_raw = get_text("TIMESTAMP")
+
+            category = get_text("CATEGORY")
+            rarity = get_text("RARITY")
+
+            # Normalize timestamp/price
+            try:
+                ts = int(timestamp_raw) if timestamp_raw else 0
+            except ValueError:
+                ts = 0
+
+            # price can be blank or numeric
+            price_blank = (price_raw == "")
+
+            price_val = 0
+            if not price_blank:
+                try:
+                    price_val = int(price_raw)
+                except ValueError:
+                    price_val = 0
+
+            trades.append(
+                {
+                    "cardid": cardid,
+                    "season": season,
+                    "buyer": buyer,
+                    "seller": seller,
+                    "price_blank": price_blank,
+                    "price": price_val,
+                    "timestamp": ts,
+                    "category": category.strip().lower(),
+                    "rarity": rarity.strip().lower(),
+                }
+            )
+
+        return trades
+
+    def trade_is_legendary(self, trade: dict) -> bool:
+        """
+        Determine legendary-ness as robustly as possible across possible tags.
+        """
+        # Some APIs/clients use rarity; some use category; sometimes numeric categories exist.
+        if trade.get("rarity") == "legendary":
+            return True
+        if trade.get("category") == "legendary":
+            return True
+        return False
+
+    async def build_linked_nations_for_guild(self, guild: discord.Guild) -> Set[str]:
+        """
+        Build a set of all linked nations for members of THIS guild.
+        This is used to decide whether a seller is "in the linked nations list".
+        """
+        linked: Set[str] = set()
+        for m in guild.members:
+            if m.bot:
+                continue
+            try:
+                ln = await self.config.user(m).linked_nations()
+            except Exception:
+                continue
+            for n in ln or []:
+                nn = normalize(n)
+                if nn:
+                    linked.add(nn)
+        return linked
+
+    async def process_trade_records_for_guild(self, guild: discord.Guild):
+        """
+        Process the cards trades feed:
+          - find trades where buyer==target_nation and (PRICE blank or 0)
+          - if seller not in linked nations, log it and update leaderboards
+        """
+        gconf = self.config.guild(guild)
+        target = await gconf.target_nation()
+        if not target:
+            return  # not configured
+
+        log_channel_id = await gconf.log_channel_id()
+        log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
+        if log_channel is None:
+            return  # nowhere to log
+
+        last_ts = await gconf.trade_last_timestamp()
+        headers = {"User-Agent": await self.config.user_agent()}
+
+        linked_nations = await self.build_linked_nations_for_guild(guild)
+
+        async with aiohttp.ClientSession(headers=headers) as session:
+            xml_text = await self.fetch_recent_trades(session, limit=1000, sincetime=last_ts)
+
+        trades = self.parse_trades_xml(xml_text)
+        if not trades:
+            return
+
+        # Track max timestamp to advance our cursor
+        max_ts = last_ts
+
+        alerts: List[str] = []
+
+        async with gconf.trade_stats() as stats:
+            for tr in trades:
+                ts = tr.get("timestamp", 0)
+                if ts and ts > max_ts:
+                    max_ts = ts
+
+                if tr.get("buyer") != target:
+                    continue
+
+                # PRICE blank or 0
+                if not (tr.get("price_blank") or tr.get("price", 0) == 0):
+                    continue
+
+                seller = tr.get("seller") or ""
+                if not seller:
+                    continue
+
+                # If seller is NOT linked, alert
+                if seller not in linked_nations:
+                    cardid = tr.get("cardid") or ""
+                    season = tr.get("season") or ""
+                    if not cardid or not season:
+                        continue
+
+                    url = f"https://www.nationstates.net/page=deck/card={cardid}/season={season}/trades_history=1"
+
+                    price_display = "blank" if tr.get("price_blank") else str(tr.get("price", 0))
+                    alerts.append(
+                        f"- Unlinked seller **{display(seller)}** sold to **{display(target)}** at price **{price_display}**: {url}"
+                    )
+
+                    # Update leaderboards (per seller)
+                    entry = stats.get(seller, {"legendary": 0, "nonlegendary": 0})
+                    if self.trade_is_legendary(tr):
+                        entry["legendary"] = int(entry.get("legendary", 0)) + 1
+                    else:
+                        entry["nonlegendary"] = int(entry.get("nonlegendary", 0)) + 1
+                    stats[seller] = entry
+
+        # Persist cursor forward (only if it advanced)
+        if max_ts > last_ts:
+            await gconf.trade_last_timestamp.set(max_ts)
+
+        # Log alerts (chunk to avoid Discord limits)
+        if alerts:
+            header = f"**NS Trades Monitor** — Buyer: **{display(target)}** — Unlinked seller alerts:\n"
+            chunk = header
+            for line in alerts:
+                if len(chunk) + len(line) + 1 > 1900:
+                    await log_channel.send(chunk, allowed_mentions=discord.AllowedMentions.none())
+                    chunk = header + line + "\n"
+                else:
+                    chunk += line + "\n"
+            if chunk.strip() != header.strip():
+                await log_channel.send(chunk, allowed_mentions=discord.AllowedMentions.none())
+
     async def _respect_rate_limit(self, headers):
         try:
             r = int(headers.get("Ratelimit-Remaining", 1)) - 10
@@ -233,7 +445,7 @@ class NationStatesLinker2(commands.Cog):
             for m in guild.members:
                 if not m.bot:
                     await self.sync_member(m, region_data)
-                    await asyncio.sleep(0.1)
+            await self.process_trade_records_for_guild(guild)
 
     # ==========================
     # Commands
@@ -246,6 +458,75 @@ class NationStatesLinker2(commands.Cog):
             view=view,
             allowed_mentions=discord.AllowedMentions.none(),
         )
+
+    @nslset.command(name="logchannel")
+    @commands.has_permissions(manage_guild=True)
+    async def nslset_logchannel(self, ctx: commands.Context, channel: discord.TextChannel):
+        await self.config.guild(ctx.guild).log_channel_id.set(channel.id)
+        await ctx.send(f"Log channel set to {channel.mention}")
+
+    @nslset.command(name="targetnation")
+    @commands.has_permissions(manage_guild=True)
+    async def nslset_targetnation(self, ctx: commands.Context, *, nation: str):
+        nn = normalize(nation)
+        if not nn or len(nn) > NATION_MAX_LEN:
+            return await ctx.send("Invalid nation name.")
+        await self.config.guild(ctx.guild).target_nation.set(nn)
+        await ctx.send(f"Target nation set to **{display(nn)}**")
+
+    @nslset.command(name="test_loop")
+    @commands.has_permissions(manage_guild=True)
+    async def test_loop(self):
+        self.daily_sync()
+
+    @commands.command(name="nsltradelb")
+    async def nsltradelb(self, ctx: commands.Context):
+        """
+        Show two leaderboards:
+          - Non-legendary count
+          - Legendary count
+        Counts are for flagged trades (buyer==target_nation and price blank/0 and seller not linked).
+        """
+        gconf = self.config.guild(ctx.guild)
+        target = await gconf.target_nation()
+        stats = await gconf.trade_stats()
+
+        if not target:
+            return await ctx.send("No target nation configured. Set it with `nslset targetnation <nation>`.")
+        if not stats:
+            return await ctx.send("No trade alerts have been recorded yet.")
+
+        # Build sorted lists
+        nonleg = sorted(((k, int(v.get("nonlegendary", 0))) for k, v in stats.items()), key=lambda x: x[1], reverse=True)
+        leg = sorted(((k, int(v.get("legendary", 0))) for k, v in stats.items()), key=lambda x: x[1], reverse=True)
+
+        # Trim to top N
+        top_n = 15
+        nonleg = [(k, c) for k, c in nonleg if c > 0][:top_n]
+        leg = [(k, c) for k, c in leg if c > 0][:top_n]
+
+        lines = [f"**NS Trades Monitor Leaderboards** — Buyer: **{display(target)}**", ""]
+
+        lines.append("**Non-Legendary (Top 15):**")
+        if nonleg:
+            lines.extend([f"{i+1}. **{display(k)}** — {c}" for i, (k, c) in enumerate(nonleg)])
+        else:
+            lines.append("_No non-legendary counts recorded._")
+
+        lines.append("")
+        lines.append("**Legendary (Top 15):**")
+        if leg:
+            lines.extend([f"{i+1}. **{display(k)}** — {c}" for i, (k, c) in enumerate(leg)])
+        else:
+            lines.append("_No legendary counts recorded._")
+
+        msg = "\n".join(lines)
+        # Ensure size safety
+        if len(msg) > 1900:
+            msg = msg[:1900] + "\n…"
+        await ctx.send(msg)
+
+
 
     @commands.command(name="mynations")
     async def mynations(self, ctx: commands.Context, *args: str):
