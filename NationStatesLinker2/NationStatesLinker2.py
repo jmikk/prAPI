@@ -710,7 +710,7 @@ class NationStatesLinker2(commands.Cog):
 
     @nslset.command(name="test_loop")
     @commands.has_permissions(manage_guild=True)
-    async def test_loop(self):
+    async def test_loop(self,ctx):
         self.daily_sync()
 
     @nslset.command()
