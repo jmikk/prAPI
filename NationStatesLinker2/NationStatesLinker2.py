@@ -326,7 +326,7 @@ class NationStatesLinker2(commands.Cog):
                 else:
                     chunk += line + "\n"
             if chunk.strip() != header.strip():
-                await log_channel.send(chunk, allowed_mentions=discord.AllowedMentions.none()
+                await log_channel.send(chunk, allowed_mentions=discord.AllowedMentions.none())
 
 
     async def _respect_rate_limit(self, headers):
