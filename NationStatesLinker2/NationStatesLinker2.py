@@ -459,6 +459,14 @@ class NationStatesLinker2(commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
+    @commands.command(name="nsltradescan")
+    @commands.has_permissions(manage_guild=True)
+    async def nsltradescan(self, ctx: commands.Context):
+        """Run trade processing immediately for this guild."""
+        await ctx.send("Scanning recent trades...")
+        await self.process_trade_records_for_guild(ctx.guild)
+        await ctx.send("Done.")
+
 
     @commands.command(name="nsltradelb")
     async def nsltradelb(self, ctx: commands.Context):
