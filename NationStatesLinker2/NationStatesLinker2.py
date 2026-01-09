@@ -93,12 +93,16 @@ class NationStatesLinker2(commands.Cog):
           ?q=cards+trades;limit=...;sincetime=...
         Returns raw XML text.
         """
-        q = f"cards+trades;limit={int(limit)}"
+        params = {
+            "q": "cards+trades",
+            "limit": str(limit),
+        }
         if sincetime and sincetime > 0:
-            q += f";sincetime={int(sincetime)}"
+            params["sincetime"] = str(sincetime)
+        
+        async with session.get(API_URL, params=params) as resp:
+            text = await resp.text()
 
-        # Important: NS expects the semicolon syntax as part of q
-        params = {"q": q}
 
         async with session.get(API_URL, params=params) as resp:
             text = await resp.text()
