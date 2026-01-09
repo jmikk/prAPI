@@ -93,7 +93,7 @@ class NationStatesLinker2(commands.Cog):
           ?q=cards+trades;limit=...;sincetime=...
         Returns raw XML text.
         """
-        q = f"cards trades;limit={int(limit)}"
+        q = f"cards+trades;limit={int(limit)}"
         if sincetime and sincetime > 0:
             q += f";sincetime={int(sincetime)}"
 
