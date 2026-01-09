@@ -57,17 +57,19 @@ class NationStatesLinker2(commands.Cog):
         self.config.register_global(user_agent=DEFAULT_UA)
 
         self.config.register_guild(
-            access_role_id=None,
-            visitor_role_id=None,
-            verified_role_id=None,
-            regions={},  # region_norm -> role_id
-            update_hour=4,
-            log_channel_id=None,
-            target_nation=None,              # normalized nation name
-            trade_last_timestamp=0,          # int unix timestamp
-            trade_stats={},
-            trade_region_stats={},# seller -> {"legendary": int, "nonlegendary": int}
-        )
+        access_role_id=None,
+        visitor_role_id=None,
+        verified_role_id=None,
+        regions={},  # region_norm -> role_id
+        update_hour=4,
+        log_channel_id=None,
+        target_nation=None,              # normalized nation name
+        trade_last_timestamp=0,          # int unix timestamp
+        trade_stats={},                  # seller -> {"legendary": int, "nonlegendary": int}
+    
+        # FIX: region_norm -> {"legendary": int, "nonlegendary": int}
+        trade_region_stats={},
+    )
 
 
         self.daily_sync.start()
@@ -103,32 +105,25 @@ class NationStatesLinker2(commands.Cog):
     # ==========================
     # Trades Processing
     # ==========================
-    async def fetch_recent_trades(
-        self,
-        session: aiohttp.ClientSession,
-        limit: int = 1000,
-        sincetime: int | None = None,
-    ) -> str:
+    async def fetch_recent_trades(self,session: aiohttp.ClientSession,limit: int = 1000, sincetime: int | None = None,) -> str:
         """
-        Fetch trades XML for all cards. Uses the documented format:
-          ?q=cards+trades;limit=...;sincetime=...
-        Returns raw XML text.
+        Fetch trades XML for all cards using:
+          q=cards+trades
+          limit=...
+          sincetime=... (optional)
         """
         params = {
             "q": "cards+trades",
-            "limit": str(limit),
+            "limit": str(int(limit)),
         }
-        if sincetime and sincetime > 0:
-            params["sincetime"] = str(sincetime)
-        
-        async with session.get(API_URL, params=params) as resp:
-            text = await resp.text()
-
-
+        if sincetime and int(sincetime) > 0:
+            params["sincetime"] = str(int(sincetime))
+    
         async with session.get(API_URL, params=params) as resp:
             text = await resp.text()
             await self._respect_rate_limit(resp.headers)
             return text
+
 
     def parse_trades_xml(self, xml_text: str) -> List[dict]:
         """
@@ -222,122 +217,116 @@ class NationStatesLinker2(commands.Cog):
         return linked
 
     async def process_trade_records_for_guild(self, guild: discord.Guild):
-        """
-        Process the cards trades feed:
-          - find trades where buyer = target_nation and (PRICE blank or 0)
-          - if seller not in linked nations, log it and update leaderboards
-          - credit region(s) for qualifying inbound trades when seller maps to a member with region role(s)
-        """
-        gconf = self.config.guild(guild)
-        target = await gconf.target_nation()
-        if not target:
-            return  # not configured
-    
-        log_channel_id = await gconf.log_channel_id()
-        log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
-        if log_channel is None:
-            return  # nowhere to log
-    
-        last_ts = await gconf.trade_last_timestamp()
-    
-        # IMPORTANT: do NOT force this to 0, or you'll re-scan the same window every run.
-        # last_ts = 0
-    
-        headers = {"User-Agent": await self.config.user_agent()}
-    
-        # Build lookups needed for filtering + attribution
-        linked_nations = await self.build_linked_nations_for_guild(guild)
-        nation_to_member = await self.build_nation_to_member_index(guild)  # you must add this helper
-        regions_map = await gconf.regions()  # region_norm -> role_id
-    
-        async with aiohttp.ClientSession(headers=headers) as session:
-            xml_text = await self.fetch_recent_trades(session, limit=1000, sincetime=last_ts)
-    
-        trades = self.parse_trades_xml(xml_text)
-        if not trades:
-            return
-    
-        max_ts = last_ts
-        alerts: List[str] = []
-    
-        # You need trade_region_stats registered in guild config:
-        # trade_region_stats = {}  # region_norm -> {"legendary": int, "nonlegendary": int}
-        async with gconf.trade_stats() as stats:
-            async with gconf.trade_region_stats() as region_stats:
-                for tr in trades:
-                    ts = tr.get("timestamp", 0)
-                    if ts and ts > max_ts:
-                        max_ts = ts
-    
-                    if tr.get("buyer") != target:
+    """
+    Process the cards trades feed:
+      - find trades where buyer = target_nation and (PRICE blank or 0)
+      - if seller not in linked nations, alert + update seller leaderboard
+      - credit region(s) for qualifying inbound trades when seller maps to a member with region role(s)
+    """
+    gconf = self.config.guild(guild)
+    target = await gconf.target_nation()
+    if not target:
+        return
+
+    log_channel_id = await gconf.log_channel_id()
+    log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
+    if log_channel is None:
+        return
+
+    last_ts = await gconf.trade_last_timestamp()
+    last_ts=0
+
+    headers = {"User-Agent": await self.config.user_agent()}
+
+    # Lookups
+    linked_nations = await self.build_linked_nations_for_guild(guild)
+    nation_to_member = await self.build_nation_to_member_index(guild)
+    regions_map = await gconf.regions()  # region_norm -> role_id
+
+    async with aiohttp.ClientSession(headers=headers) as session:
+        xml_text = await self.fetch_recent_trades(session, limit=1000, sincetime=last_ts)
+
+    trades = self.parse_trades_xml(xml_text)
+    if not trades:
+        return
+
+    max_ts = last_ts
+    alerts: List[str] = []
+
+    async with gconf.trade_stats() as stats:
+        async with gconf.trade_region_stats() as region_stats:
+            for tr in trades:
+                ts = tr.get("timestamp", 0)
+                if ts and ts > max_ts:
+                    max_ts = ts
+
+                if tr.get("buyer") != target:
+                    continue
+
+                # PRICE blank or 0
+                if not (tr.get("price_blank") or tr.get("price", 0) == 0):
+                    continue
+
+                seller = tr.get("seller") or ""
+                if not seller:
+                    continue
+
+                # -------------------------
+                # Region crediting (for any qualifying inbound trade we can attribute)
+                # -------------------------
+                member = nation_to_member.get(seller)
+                if member and regions_map:
+                    is_leg = self.trade_is_legendary(tr)
+                    for region_norm, role_id in regions_map.items():
+                        role = guild.get_role(role_id)
+                        if role and role in member.roles:
+                            entry = region_stats.get(region_norm, {"legendary": 0, "nonlegendary": 0})
+                            if is_leg:
+                                entry["legendary"] = int(entry.get("legendary", 0)) + 1
+                            else:
+                                entry["nonlegendary"] = int(entry.get("nonlegendary", 0)) + 1
+                            region_stats[region_norm] = entry
+
+                # -------------------------
+                # Existing: unlinked seller alerts + seller leaderboard
+                # -------------------------
+                if seller not in linked_nations:
+                    cardid = tr.get("cardid") or ""
+                    season = tr.get("season") or ""
+                    if not cardid or not season:
                         continue
-    
-                    # PRICE blank or 0
-                    if not (tr.get("price_blank") or tr.get("price", 0) == 0):
-                        continue
-    
-                    seller = tr.get("seller") or ""
-                    if not seller:
-                        continue
-    
-                    # -------------------------
-                    # Credit region(s) if seller maps to a member with region role(s)
-                    # -------------------------
-                    member = nation_to_member.get(seller)
-                    if member and regions_map:
-                        is_leg = self.trade_is_legendary(tr)
-    
-                        # Credit ALL region roles the member has (change if you want "only one")
-                        for region_norm, role_id in regions_map.items():
-                            role = guild.get_role(role_id)
-                            if role and role in member.roles:
-                                entry = region_stats.get(region_norm, {"legendary": 0, "nonlegendary": 0})
-                                if is_leg:
-                                    entry["legendary"] = int(entry.get("legendary", 0)) + 1
-                                else:
-                                    entry["nonlegendary"] = int(entry.get("nonlegendary", 0)) + 1
-                                region_stats[region_norm] = entry
-    
-                    # -------------------------
-                    # Existing: alert + seller leaderboard only if seller NOT linked
-                    # -------------------------
-                    if seller not in linked_nations:
-                        cardid = tr.get("cardid") or ""
-                        season = tr.get("season") or ""
-                        if not cardid or not season:
-                            continue
-    
-                        url = f"https://www.nationstates.net/page=deck/card={cardid}/season={season}/trades_history=1"
-                        price_display = "blank" if tr.get("price_blank") else str(tr.get("price", 0))
-    
-                        alerts.append(
-                            f"- Unlinked seller **{display(seller)}** sold to **{display(target)}** "
-                            f"at price **{price_display}**: {url}"
-                        )
-    
-                        entry = stats.get(seller, {"legendary": 0, "nonlegendary": 0})
-                        if self.trade_is_legendary(tr):
-                            entry["legendary"] = int(entry.get("legendary", 0)) + 1
-                        else:
-                            entry["nonlegendary"] = int(entry.get("nonlegendary", 0)) + 1
-                        stats[seller] = entry
-    
-        # Persist cursor forward (only if it advanced)
-        if max_ts > last_ts:
-            await gconf.trade_last_timestamp.set(max_ts)
-    
-        # Log alerts (chunk to avoid Discord limits)
-        if alerts:
-            header = f"**NS Trades Monitor** — Buyer: **{display(target)}** — Unlinked seller alerts:\n"
-            chunk = header
-            for line in alerts:
-                if len(chunk) + len(line) + 1 > 1900:
-                    await log_channel.send(chunk, allowed_mentions=discord.AllowedMentions.none())
-                    chunk = header + line + "\n"
-                else:
-                    chunk += line + "\n"
-            if chunk.strip() != header.strip():
+
+                    url = f"https://www.nationstates.net/page=deck/card={cardid}/season={season}/trades_history=1"
+                    price_display = "blank" if tr.get("price_blank") else str(tr.get("price", 0))
+
+                    alerts.append(
+                        f"- Unlinked seller **{display(seller)}** sold to **{display(target)}** "
+                        f"at price **{price_display}**: {url}"
+                    )
+
+                    entry = stats.get(seller, {"legendary": 0, "nonlegendary": 0})
+                    if self.trade_is_legendary(tr):
+                        entry["legendary"] = int(entry.get("legendary", 0)) + 1
+                    else:
+                        entry["nonlegendary"] = int(entry.get("nonlegendary", 0)) + 1
+                    stats[seller] = entry
+
+    # Persist cursor forward
+    if max_ts > last_ts:
+        await gconf.trade_last_timestamp.set(max_ts)
+
+    # Send alerts
+    if alerts:
+        header = f"**NS Trades Monitor** — Buyer: **{display(target)}** — Unlinked seller alerts:\n"
+        chunk = header
+        for line in alerts:
+            if len(chunk) + len(line) + 1 > 1900:
                 await log_channel.send(chunk, allowed_mentions=discord.AllowedMentions.none())
+                chunk = header + line + "\n"
+            else:
+                chunk += line + "\n"
+        if chunk.strip() != header.strip():
+            await log_channel.send(chunk, allowed_mentions=discord.AllowedMentions.none()
 
 
     async def _respect_rate_limit(self, headers):
