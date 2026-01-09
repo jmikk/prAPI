@@ -248,23 +248,108 @@ class NationStatesLinker2(commands.Cog):
         )
 
     @commands.command(name="mynations")
-    async def mynations(self, ctx: commands.Context):
-        """Show your currently linked NationStates nations."""
-        linked = [normalize(n) for n in await self.config.user(ctx.author).linked_nations()]
-        linked = [n for n in linked if n]
+    async def mynations(self, ctx: commands.Context, *args: str):
+        """
+        Show linked nations in ~1900-char pages.
+
+        Usage:
+          - mynations
+          - mynations 2
+          - mynations @User
+          - mynations @User 2
+        """
+        target: discord.Member = ctx.author if isinstance(ctx.author, discord.Member) else None
+        page: int = 1
+
+        # -------- Parse args --------
+        # Accept patterns:
+        #   [] -> self, page 1
+        #   [page] -> self, page
+        #   [member] -> member, page 1
+        #   [member, page] -> member, page
+        if len(args) == 1:
+            token = args[0]
+            if token.isdigit():
+                page = int(token)
+            else:
+                try:
+                    target = await commands.MemberConverter().convert(ctx, token)
+                except commands.BadArgument:
+                    return await ctx.send(
+                        "I couldn't resolve that user. Use `mynations 2`, `mynations @User`, or `mynations @User 2`."
+                    )
+        elif len(args) >= 2:
+            member_token = args[0]
+            page_token = args[1]
+
+            try:
+                target = await commands.MemberConverter().convert(ctx, member_token)
+            except commands.BadArgument:
+                return await ctx.send(
+                    "I couldn't resolve that user. Try `mynations @User 2` (ping them or use their ID)."
+                )
+
+            if page_token.isdigit():
+                page = int(page_token)
+            else:
+                return await ctx.send("Page must be a number, e.g. `mynations @User 2`.")
+
+        if not isinstance(target, discord.Member):
+            return await ctx.send("This command must be used in a server.")
+
+        if page < 1:
+            page = 1
+
+        # -------- Load linked nations for target --------
+        linked = [normalize(n) for n in await self.config.user(target).linked_nations()]
+        linked = sorted({n for n in linked if n})
 
         if not linked:
+            if target.id == ctx.author.id:
+                return await ctx.send("You do not have any linked nations yet.")
+            return await ctx.send(f"{target.display_name} does not have any linked nations yet.")
+
+        # -------- Build pages up to ~1900 chars --------
+        header_base = "**Linked nations:**\n"
+        chunks = []
+        current = ""
+
+        for n in linked:
+            line = f"- **{display(n)}** — https://www.nationstates.net/nation={n}\n"
+
+            # Extremely defensive: prevent a pathological single-line overflow
+            if len(line) > 1800:
+                line = line[:1800] + "…\n"
+
+            if not current:
+                current = header_base + line
+            elif len(current) + len(line) > 1900:
+                chunks.append(current)
+                current = header_base + line
+            else:
+                current += line
+
+        if current:
+            chunks.append(current)
+
+        total_pages = len(chunks)
+
+        if page > total_pages:
             return await ctx.send(
-                "You do not have any linked nations yet. Use `linknation` to verify one, "
-                "or use `addnations` to add multiple without verification."
+                f"Page {page} is out of range. {target.display_name} has **{total_pages}** page(s). "
+                f"Try `mynations {target.mention} {total_pages}`."
             )
 
-        # Display as clickable links
-        lines = [
-            f"- **{display(n)}** — https://www.nationstates.net/nation={n}"
-            for n in sorted(set(linked))
-        ]
-        await ctx.send("**Your linked nations:**\n" + "\n".join(lines))
+        # -------- Add page indicator + whose list --------
+        who = "Your" if target.id == ctx.author.id else f"{target.display_name}'s"
+        msg = chunks[page - 1].replace(
+            header_base,
+            f"**{who} linked nations (page {page}/{total_pages}):**\n",
+            1,
+        )
+
+        await ctx.send(msg)
+
 
 
     @commands.command()
