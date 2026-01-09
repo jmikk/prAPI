@@ -459,25 +459,6 @@ class NationStatesLinker2(commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @nslset.command(name="logchannel")
-    @commands.has_permissions(manage_guild=True)
-    async def nslset_logchannel(self, ctx: commands.Context, channel: discord.TextChannel):
-        await self.config.guild(ctx.guild).log_channel_id.set(channel.id)
-        await ctx.send(f"Log channel set to {channel.mention}")
-
-    @nslset.command(name="targetnation")
-    @commands.has_permissions(manage_guild=True)
-    async def nslset_targetnation(self, ctx: commands.Context, *, nation: str):
-        nn = normalize(nation)
-        if not nn or len(nn) > NATION_MAX_LEN:
-            return await ctx.send("Invalid nation name.")
-        await self.config.guild(ctx.guild).target_nation.set(nn)
-        await ctx.send(f"Target nation set to **{display(nn)}**")
-
-    @nslset.command(name="test_loop")
-    @commands.has_permissions(manage_guild=True)
-    async def test_loop(self):
-        self.daily_sync()
 
     @commands.command(name="nsltradelb")
     async def nsltradelb(self, ctx: commands.Context):
@@ -711,6 +692,26 @@ class NationStatesLinker2(commands.Cog):
     @commands.group()
     async def nslset(self, ctx):
         pass
+
+    @nslset.command(name="logchannel")
+    @commands.has_permissions(manage_guild=True)
+    async def nslset_logchannel(self, ctx: commands.Context, channel: discord.TextChannel):
+        await self.config.guild(ctx.guild).log_channel_id.set(channel.id)
+        await ctx.send(f"Log channel set to {channel.mention}")
+
+    @nslset.command(name="targetnation")
+    @commands.has_permissions(manage_guild=True)
+    async def nslset_targetnation(self, ctx: commands.Context, *, nation: str):
+        nn = normalize(nation)
+        if not nn or len(nn) > NATION_MAX_LEN:
+            return await ctx.send("Invalid nation name.")
+        await self.config.guild(ctx.guild).target_nation.set(nn)
+        await ctx.send(f"Target nation set to **{display(nn)}**")
+
+    @nslset.command(name="test_loop")
+    @commands.has_permissions(manage_guild=True)
+    async def test_loop(self):
+        self.daily_sync()
 
     @nslset.command()
     async def accessrole(self, ctx, role: discord.Role):
