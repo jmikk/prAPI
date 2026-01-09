@@ -65,7 +65,8 @@ class NationStatesLinker2(commands.Cog):
             log_channel_id=None,
             target_nation=None,              # normalized nation name
             trade_last_timestamp=0,          # int unix timestamp
-            trade_stats={},                  # seller -> {"legendary": int, "nonlegendary": int}
+            trade_stats={},
+            trade_region_stats={},# seller -> {"legendary": int, "nonlegendary": int}
         )
 
 
@@ -78,6 +79,26 @@ class NationStatesLinker2(commands.Cog):
     # ==========================
     # API Helpers
     # ==========================
+
+    async def build_nation_to_member_index(self, guild: discord.Guild) -> Dict[str, discord.Member]:
+        """
+        Build a mapping of linked nation -> Discord member for THIS guild.
+        If multiple members share a nation (shouldn't happen), last one wins.
+        """
+        out: Dict[str, discord.Member] = {}
+        for m in guild.members:
+            if m.bot:
+                continue
+            try:
+                ln = await self.config.user(m).linked_nations()
+            except Exception:
+                continue
+            for n in ln or []:
+                nn = normalize(n)
+                if nn:
+                    out[nn] = m
+        return out
+
 
     # ==========================
     # Trades Processing
@@ -205,82 +226,106 @@ class NationStatesLinker2(commands.Cog):
         Process the cards trades feed:
           - find trades where buyer = target_nation and (PRICE blank or 0)
           - if seller not in linked nations, log it and update leaderboards
+          - credit region(s) for qualifying inbound trades when seller maps to a member with region role(s)
         """
         gconf = self.config.guild(guild)
         target = await gconf.target_nation()
         if not target:
             return  # not configured
-
+    
         log_channel_id = await gconf.log_channel_id()
         log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
         if log_channel is None:
             return  # nowhere to log
-        await log_channel.send("log set")
-
+    
         last_ts = await gconf.trade_last_timestamp()
-
-        last_ts = 0 
-        
+    
+        # IMPORTANT: do NOT force this to 0, or you'll re-scan the same window every run.
+        # last_ts = 0
+    
         headers = {"User-Agent": await self.config.user_agent()}
-
+    
+        # Build lookups needed for filtering + attribution
         linked_nations = await self.build_linked_nations_for_guild(guild)
-        
+        nation_to_member = await self.build_nation_to_member_index(guild)  # you must add this helper
+        regions_map = await gconf.regions()  # region_norm -> role_id
+    
         async with aiohttp.ClientSession(headers=headers) as session:
             xml_text = await self.fetch_recent_trades(session, limit=1000, sincetime=last_ts)
-        
-        await log_channel.send(xml_text)
+    
         trades = self.parse_trades_xml(xml_text)
         if not trades:
             return
-
-        # Track max timestamp to advance our cursor
+    
         max_ts = last_ts
-
         alerts: List[str] = []
-
+    
+        # You need trade_region_stats registered in guild config:
+        # trade_region_stats = {}  # region_norm -> {"legendary": int, "nonlegendary": int}
         async with gconf.trade_stats() as stats:
-            for tr in trades:
-                ts = tr.get("timestamp", 0)
-                if ts and ts > max_ts:
-                    max_ts = ts
-
-                if tr.get("buyer") != target:
-                    continue
-
-                # PRICE blank or 0
-                if not (tr.get("price_blank") or tr.get("price", 0) == 0):
-                    continue
-
-                seller = tr.get("seller") or ""
-                if not seller:
-                    continue
-
-                # If seller is NOT linked, alert
-                if seller not in linked_nations:
-                    cardid = tr.get("cardid") or ""
-                    season = tr.get("season") or ""
-                    if not cardid or not season:
+            async with gconf.trade_region_stats() as region_stats:
+                for tr in trades:
+                    ts = tr.get("timestamp", 0)
+                    if ts and ts > max_ts:
+                        max_ts = ts
+    
+                    if tr.get("buyer") != target:
                         continue
-
-                    url = f"https://www.nationstates.net/page=deck/card={cardid}/season={season}/trades_history=1"
-
-                    price_display = "blank" if tr.get("price_blank") else str(tr.get("price", 0))
-                    alerts.append(
-                        f"- Unlinked seller **{display(seller)}** sold to **{display(target)}** at price **{price_display}**: {url}"
-                    )
-
-                    # Update leaderboards (per seller)
-                    entry = stats.get(seller, {"legendary": 0, "nonlegendary": 0})
-                    if self.trade_is_legendary(tr):
-                        entry["legendary"] = int(entry.get("legendary", 0)) + 1
-                    else:
-                        entry["nonlegendary"] = int(entry.get("nonlegendary", 0)) + 1
-                    stats[seller] = entry
-
+    
+                    # PRICE blank or 0
+                    if not (tr.get("price_blank") or tr.get("price", 0) == 0):
+                        continue
+    
+                    seller = tr.get("seller") or ""
+                    if not seller:
+                        continue
+    
+                    # -------------------------
+                    # Credit region(s) if seller maps to a member with region role(s)
+                    # -------------------------
+                    member = nation_to_member.get(seller)
+                    if member and regions_map:
+                        is_leg = self.trade_is_legendary(tr)
+    
+                        # Credit ALL region roles the member has (change if you want "only one")
+                        for region_norm, role_id in regions_map.items():
+                            role = guild.get_role(role_id)
+                            if role and role in member.roles:
+                                entry = region_stats.get(region_norm, {"legendary": 0, "nonlegendary": 0})
+                                if is_leg:
+                                    entry["legendary"] = int(entry.get("legendary", 0)) + 1
+                                else:
+                                    entry["nonlegendary"] = int(entry.get("nonlegendary", 0)) + 1
+                                region_stats[region_norm] = entry
+    
+                    # -------------------------
+                    # Existing: alert + seller leaderboard only if seller NOT linked
+                    # -------------------------
+                    if seller not in linked_nations:
+                        cardid = tr.get("cardid") or ""
+                        season = tr.get("season") or ""
+                        if not cardid or not season:
+                            continue
+    
+                        url = f"https://www.nationstates.net/page=deck/card={cardid}/season={season}/trades_history=1"
+                        price_display = "blank" if tr.get("price_blank") else str(tr.get("price", 0))
+    
+                        alerts.append(
+                            f"- Unlinked seller **{display(seller)}** sold to **{display(target)}** "
+                            f"at price **{price_display}**: {url}"
+                        )
+    
+                        entry = stats.get(seller, {"legendary": 0, "nonlegendary": 0})
+                        if self.trade_is_legendary(tr):
+                            entry["legendary"] = int(entry.get("legendary", 0)) + 1
+                        else:
+                            entry["nonlegendary"] = int(entry.get("nonlegendary", 0)) + 1
+                        stats[seller] = entry
+    
         # Persist cursor forward (only if it advanced)
         if max_ts > last_ts:
             await gconf.trade_last_timestamp.set(max_ts)
-
+    
         # Log alerts (chunk to avoid Discord limits)
         if alerts:
             header = f"**NS Trades Monitor** — Buyer: **{display(target)}** — Unlinked seller alerts:\n"
@@ -293,6 +338,7 @@ class NationStatesLinker2(commands.Cog):
                     chunk += line + "\n"
             if chunk.strip() != header.strip():
                 await log_channel.send(chunk, allowed_mentions=discord.AllowedMentions.none())
+
 
     async def _respect_rate_limit(self, headers):
         try:
@@ -522,6 +568,46 @@ class NationStatesLinker2(commands.Cog):
         if len(msg) > 1900:
             msg = msg[:1900] + "\n…"
         await ctx.send(msg)
+
+    @commands.command(name="nsltraderegions")
+    async def nsltraderegions(self, ctx: commands.Context):
+        """Show region credited inbound trades (legendary/non-legendary)."""
+        gconf = self.config.guild(ctx.guild)
+        target = await gconf.target_nation()
+        regions_map = await gconf.regions()
+        region_stats = await gconf.trade_region_stats()
+    
+        if not target:
+            return await ctx.send("No target nation configured.")
+        if not regions_map:
+            return await ctx.send("No regions configured.")
+        if not region_stats:
+            return await ctx.send("No region trade credits recorded yet.")
+    
+        # Build display list in configured region order
+        rows = []
+        for region_norm in regions_map.keys():
+            entry = region_stats.get(region_norm, {"legendary": 0, "nonlegendary": 0})
+            leg = int(entry.get("legendary", 0))
+            non = int(entry.get("nonlegendary", 0))
+            total = leg + non
+            if total > 0:
+                rows.append((region_norm, total, non, leg))
+    
+        if not rows:
+            return await ctx.send("No region trade credits recorded yet.")
+    
+        rows.sort(key=lambda x: x[1], reverse=True)
+    
+        lines = [f"**NS Trades Region Credits** — Buyer: **{display(target)}**", ""]
+        for i, (region_norm, total, non, leg) in enumerate(rows[:20], start=1):
+            lines.append(f"{i}. **{display(region_norm)}** — Total: {total} (Non-Leg: {non}, Leg: {leg})")
+    
+        msg = "\n".join(lines)
+        if len(msg) > 1900:
+            msg = msg[:1900] + "\n…"
+        await ctx.send(msg)
+    
 
 
 
