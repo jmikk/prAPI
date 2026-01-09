@@ -133,7 +133,6 @@ class NationStatesLinker2(commands.Cog):
             timestamp_raw = get_text("TIMESTAMP")
 
             category = get_text("CATEGORY")
-            rarity = get_text("RARITY")
 
             # Normalize timestamp/price
             try:
@@ -161,7 +160,7 @@ class NationStatesLinker2(commands.Cog):
                     "price": price_val,
                     "timestamp": ts,
                     "category": category.strip().lower(),
-                    "rarity": rarity.strip().lower(),
+                    "rarity": category.strip().lower(),
                 }
             )
 
