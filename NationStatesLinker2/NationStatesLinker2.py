@@ -285,6 +285,7 @@ class NationStatesLinker2(commands.Cog):
             await self.run_member_sync(ctx.author)
 
     @commands.command(name="addnations")
+    @commands.has_role("Board of Directors")
     async def addnations(self, ctx: commands.Context, *, nations: str):
         """
         Bulk-add nations to your linked list WITHOUT verification.
