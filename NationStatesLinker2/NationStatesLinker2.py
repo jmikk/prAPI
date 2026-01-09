@@ -225,7 +225,7 @@ class NationStatesLinker2(commands.Cog):
         async with aiohttp.ClientSession(headers=headers) as session:
             xml_text = await self.fetch_recent_trades(session, limit=1000, sincetime=last_ts)
         
-        await log_channel.send(xml_text[1000:])
+        await log_channel.send(xml_text[])
         trades = self.parse_trades_xml(xml_text)
         if not trades:
             return
