@@ -200,7 +200,7 @@ class NationStatesLinker2(commands.Cog):
     async def process_trade_records_for_guild(self, guild: discord.Guild):
         """
         Process the cards trades feed:
-          - find trades where buyer==target_nation and (PRICE blank or 0)
+          - find trades where buyer = target_nation and (PRICE blank or 0)
           - if seller not in linked nations, log it and update leaderboards
         """
         gconf = self.config.guild(guild)
@@ -212,8 +212,11 @@ class NationStatesLinker2(commands.Cog):
         log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
         if log_channel is None:
             return  # nowhere to log
-
+        
         last_ts = await gconf.trade_last_timestamp()
+
+        last_ts = 0 
+        
         headers = {"User-Agent": await self.config.user_agent()}
 
         linked_nations = await self.build_linked_nations_for_guild(guild)
