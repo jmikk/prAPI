@@ -786,6 +786,103 @@ class NationStatesLinker2(commands.Cog):
             await channel.send(f"Welcome to {member.guild.name}, {member.mention} please use ```$linknation``` to get more access!")
 
 
+    @commands.command(name="unlinknations")
+    async def unlinknations(self, ctx: commands.Context, *, nations: str):
+        """
+        Bulk-unlink nations from your linked list.
+
+        Usage:
+          - unlinknations testlandia, my nation, another_nation
+          - unlinknations testlandia my_nation another_nation
+          - unlinknations all
+          - unlinknations *
+        """
+        raw = (nations or "").strip()
+        if not raw:
+            return await ctx.send(
+                "Provide nations to unlink, or use `unlinknations all`.\n"
+                "Example: `unlinknations testlandia, my nation, another_nation`"
+            )
+
+        # Special: wipe all
+        if raw.lower() in {"all", "*"}:
+            async with self.config.user(ctx.author).linked_nations() as ln:
+                count = len(ln)
+                ln.clear()
+
+            await ctx.send(f"Unlinked **{count}** nation(s). (All cleared.)")
+
+            if isinstance(ctx.author, discord.Member):
+                await self.run_member_sync(ctx.author)
+            return
+
+        tokens = split_nations_blob(raw)
+        if not tokens:
+            return await ctx.send(
+                "No nations found in your input. Example: `unlinknations testlandia, my nation, another_nation`"
+            )
+
+        # Normalize + validate
+        cleaned = []
+        invalid = []
+        for t in tokens:
+            nn = normalize(t)
+            if not nn or len(nn) > NATION_MAX_LEN:
+                invalid.append(t)
+                continue
+            cleaned.append(nn)
+
+        # De-dupe while preserving order
+        seen = set()
+        cleaned_unique = []
+        for nn in cleaned:
+            if nn not in seen:
+                cleaned_unique.append(nn)
+                seen.add(nn)
+
+        removed = []
+        not_linked = []
+
+        async with self.config.user(ctx.author).linked_nations() as ln:
+            existing = set(normalize(x) for x in ln if x)
+            for nn in cleaned_unique:
+                if nn in existing:
+                    # remove all occurrences defensively (shouldn't be duplicates, but safe)
+                    while nn in ln:
+                        ln.remove(nn)
+                    existing.discard(nn)
+                    removed.append(nn)
+                else:
+                    not_linked.append(nn)
+
+        # Build response (avoid Discord 2k limit)
+        parts = []
+        if removed:
+            parts.append(
+                "**Removed:**\n" +
+                "\n".join(f"- {display(n)}" for n in removed[:25]) +
+                (f"\n…and {len(removed) - 25} more." if len(removed) > 25 else "")
+            )
+        if not_linked:
+            parts.append(
+                "**Not linked (skipped):**\n" +
+                "\n".join(f"- {display(n)}" for n in not_linked[:25]) +
+                (f"\n…and {len(not_linked) - 25} more." if len(not_linked) > 25 else "")
+            )
+        if invalid:
+            parts.append(
+                "**Invalid (skipped):**\n" +
+                "\n".join(f"- {str(x)[:60]}" for x in invalid[:25]) +
+                (f"\n…and {len(invalid) - 25} more." if len(invalid) > 25 else "")
+            )
+
+        await ctx.send("\n\n".join(parts) if parts else "Nothing changed.")
+
+        # Sync roles once after bulk update
+        if isinstance(ctx.author, discord.Member):
+            await self.run_member_sync(ctx.author)
+
+
 
     @commands.group()
     async def nslset(self, ctx):
