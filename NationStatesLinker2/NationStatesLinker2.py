@@ -779,6 +779,13 @@ class NationStatesLinker2(commands.Cog):
         if isinstance(ctx.author, discord.Member):
             await self.run_member_sync(ctx.author)
 
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        channel = member.guild.system_channel
+        if channel:
+            await channel.send(f"Welcome to {member.guild.name}, {member.mention} please use ```$linknation``` to get more access!")
+
+
 
     @commands.group()
     async def nslset(self, ctx):
