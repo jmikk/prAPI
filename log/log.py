@@ -60,7 +60,7 @@ class log(commands.Cog):
 
         return (
             f"{m.id}\t{created}\t{m.author.id}\t{_sanitize_cell(author_tag)}\t"
-            f"{_sanitize_cell(author_display)}\t{content}\t{attachments_joined}\t{m.jump_url}\n"
+            f"{_sanitize_cell(author_display)}\n{content}\n{attachments_joined}\n{m.jump_url}\n"
         )
 
     async def _send_tsv_file(
