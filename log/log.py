@@ -24,7 +24,7 @@ def _sanitize_cell(value: Optional[str]) -> str:
 ChannelLike = Union[discord.TextChannel, discord.Thread]
 
 
-class ChannelLogger(commands.Cog):
+class log(commands.Cog):
     """
     Per-channel incremental logger.
 
@@ -239,4 +239,4 @@ class ChannelLogger(commands.Cog):
 
 
 async def setup(bot: Red):
-    await bot.add_cog(ChannelLogger(bot))
+    await bot.add_cog(log(bot))
