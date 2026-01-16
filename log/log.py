@@ -191,4 +191,4 @@ class log(commands.Cog):
 
 
 async def setup(bot: Red):
-    await bot.add_cog(ChannelLogger(bot))
+    await bot.add_cog(log(bot))
