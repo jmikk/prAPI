@@ -128,7 +128,7 @@ class log(commands.Cog):
         # Columns: message_id, created_at_iso, author_id, author_tag, author_display, content, attachments, jump_url
         out = io.StringIO()
         out.write(
-            "message_id\tcreated_at_iso\tauthor_id\tauthor_tag\tauthor_display\tcontent\tattachments\tjump_url\n"
+            "message_id\tcreated_at_iso\tauthor_id\tauthor_tag\tauthor_display\t"
         )
 
         for m in exported:
