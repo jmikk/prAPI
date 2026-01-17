@@ -37,7 +37,7 @@ def _parse_date(date_str: str) -> datetime:
     raise ValueError("Invalid date format.")
 
 
-class ChannelLogger(commands.Cog):
+class log(commands.Cog):
     __author__ = "ChatGPT"
     __version__ = "1.5.0"
 
@@ -274,4 +274,4 @@ class ChannelLogger(commands.Cog):
 
 
 async def setup(bot: Red):
-    await bot.add_cog(ChannelLogger(bot))
+    await bot.add_cog(log(bot))
