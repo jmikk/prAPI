@@ -12,7 +12,7 @@ class GiveawayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=9006)
-        self.config.register_guild(giveaway_channel=None, log_channel=None,scheduled_giveaways=[],nationname=None, password=None,)
+        self.config.register_guild(giveaway_channel=None, log_channel=None,scheduled_giveaways=[],nationname=None, password=None,hostrole=None)
         self.config.register_user(wins=[])
         self.config.register_global( claimed_cards=[], active_giveaways=[])
         self.session = aiohttp.ClientSession()
@@ -22,7 +22,6 @@ class GiveawayCog(commands.Cog):
     async def cog_unload(self):
         await self.session.close()
         self.scheduler.cancel()
-
 
 
     async def cog_load(self):
@@ -265,6 +264,14 @@ class GiveawayCog(commands.Cog):
     async def setnation(self, ctx, *, nationname: str):
         await self.config.guild(ctx.guild).nationname.set(nationname)
         await ctx.send(f"Nation name set to: {nationname}")
+
+    @commands.is_owner()
+    @commands.command()
+    async def setgiveawayhostrole(self, ctx, role: discord.Role):
+        """Set the role required to start giveaways."""
+        await self.config.guild(ctx.guild).giveaway_host_role.set(role.id)
+        await ctx.send(f"Giveaway Host role set to {role.mention}.")
+
     
     @commands.is_owner()
     @commands.command()
@@ -295,12 +302,22 @@ class GiveawayCog(commands.Cog):
         await self.config.guild(ctx.guild).giveaway_channel.set(channel.id)
         await ctx.send(f"Giveaway channel set to {channel.mention}.")
 
-    
-    @commands.has_role(1457734622917034146)
     @commands.command()
     async def startgiveaway2(self, ctx, length_in_days: int, card_link: str, role: discord.Role = None):
         """Start a giveaway for a specific card and role."""
         try:
+
+            host_role_id = await self.config.guild(ctx.guild).giveaway_host_role()
+
+            # ✅ if a host role is set, require it
+            if not host_role_id:
+                return await ctx.send("Please Set a giveaway host role with setgiveawayhostrole")
+            if host_role_id:
+                if host_role_id not in [r.id for r in ctx.author.roles]:
+                    host_role = ctx.guild.get_role(host_role_id)
+                    mention = host_role.mention if host_role else "the Giveaway Host role"
+                    return await ctx.send(f"You do not have permission to start giveaways. Required: {mention}")
+
             channel_id = await self.config.guild(ctx.guild).giveaway_channel()
             if not channel_id:
                 return await ctx.send("Giveaway channel not set. Use `setgiveawaychannel` first.")
