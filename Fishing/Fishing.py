@@ -1448,6 +1448,7 @@ class Fishing(commands.Cog):
 
             quest_cog = self.bot.get_cog("QuestBoard")
             if quest_cog:
+                await ctx.send("here")
                 await quest_cog.record_progress(
                     member=ctx.member,
                     game="Fishing",
