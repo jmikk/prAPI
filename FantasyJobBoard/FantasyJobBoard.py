@@ -151,6 +151,7 @@ class FantasyJobBoard(commands.Cog):
         game: str,
         objective: str,
         amount: int = 1,
+        debug = False
     ) -> None:
         """
         Call this from other cogs whenever a player does something relevant.
@@ -197,7 +198,11 @@ class FantasyJobBoard(commands.Cog):
         # Persist once
         await user_conf.progress.set(progress)
         await user_conf.completed.set(completed)
-
+        if debug:
+            channel = await self._get_announce_channel(guild)
+            if channel:
+                await channel.send("DEBUG: Counted 1")
+            
         # Announce completions
         if newly_completed:
             channel = await self._get_announce_channel(guild)
