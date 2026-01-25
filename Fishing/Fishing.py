@@ -1271,6 +1271,14 @@ class Fishing(commands.Cog):
         data["last_fished_ts"] = now
     
         if caught_junk:
+            quest_cog = self.bot.get_cog("FantasyJobBoard")
+            if quest_cog:
+              await quest_cog.record_progress(
+              member=interaction.user,
+              game="Fishing",
+              objective="junk",
+              amount=1,
+            )
             await econ.add_wellcoins(interaction.user, 1.0)
             e = discord.Embed(
                 title=f"You fished in {zone.name}!",
