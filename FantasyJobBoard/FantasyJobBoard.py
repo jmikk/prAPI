@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 import discord
 from redbot.core import commands, Config
 
+import asyncio
 
 ROLE_ID_QUEST_ADMIN = 1113108765315715092  # your admin role for managing quests
 
@@ -94,6 +95,52 @@ class FantasyJobBoard(commands.Cog):
         emb.set_footer(text="Use /quest progress or the quest commands to track your progress.")
         return emb
 
+    async def _backfill_quest_for_guild(self, guild: discord.Guild, quest_id: str) -> int:
+        """
+        Scan all guild members and award quest completion to anyone whose stored progress
+        already meets/exceeds the target. Returns number of newly-awarded completions.
+        """
+        quests_raw = await self.config.guild(guild).quests()
+        qdata = quests_raw.get(quest_id)
+        if not qdata:
+            return 0
+    
+        q = self._quest_from_dict(quest_id, qdata)
+        if not q.enabled:
+            return 0  # only backfill when enabled
+    
+        announce_channel = await self._get_announce_channel(guild)
+        newly_awarded = 0
+    
+        # Ensure member cache is available; if you use member intents, this should work.
+        for member in guild.members:
+            if member.bot:
+                continue
+    
+            user_conf = self.config.user(member)
+            completed = await user_conf.completed()
+            if quest_id in completed:
+                continue
+    
+            progress = await user_conf.progress()
+            cur = int(progress.get(quest_id, 0))
+    
+            if cur >= q.target:
+                completed[quest_id] = int(time.time())
+                await user_conf.completed.set(completed)
+                newly_awarded += 1
+    
+                if announce_channel:
+                    await announce_channel.send(
+                        f"🏁 {member.mention} completed **{q.title}** "
+                        f"(Game: `{q.game}`, Objective: `{q.objective}`)!"
+                    )
+    
+                # Light throttle to avoid hammering Discord if many users complete at once
+                await asyncio.sleep(0.2)
+    
+        return newly_awarded
+
     # -----------------------------
     # Public API for other cogs
     # -----------------------------
@@ -131,20 +178,21 @@ class FantasyJobBoard(commands.Cog):
 
         for quest_id, qdata in quests_raw.items():
             q = self._quest_from_dict(quest_id, qdata)
-            if not q.enabled:
-                continue
+
             if q.game != game or q.objective != objective:
                 continue
             if quest_id in completed:
-                continue  # already completed
-
+                continue
+            
             current = int(progress.get(quest_id, 0))
             current += amount
             progress[quest_id] = current
-
-            if current >= q.target:
+            
+            # Only award completion if enabled
+            if q.enabled and current >= q.target:
                 completed[quest_id] = int(time.time())
                 newly_completed.append(q)
+
 
         # Persist once
         await user_conf.progress.set(progress)
@@ -242,14 +290,20 @@ class FantasyJobBoard(commands.Cog):
     @quest_group.command(name="enable")
     @has_quest_permission()
     async def quest_enable(self, ctx: commands.Context, quest_id: str):
-        """Enable a quest (admins only)."""
+        """Enable a quest (admins only) and retro-award it to members who already qualify."""
         guild_conf = self.config.guild(ctx.guild)
         quests = await guild_conf.quests()
         if quest_id not in quests:
             return await ctx.send("❌ No quest found with that ID.")
+    
         quests[quest_id]["enabled"] = True
         await guild_conf.quests.set(quests)
-        await ctx.send(f"✅ Enabled quest `{quest_id}`.")
+    
+        # Backfill scan
+        awarded = await self._backfill_quest_for_guild(ctx.guild, quest_id)
+    
+        await ctx.send(f"✅ Enabled quest `{quest_id}`. Retro-awarded to **{awarded}** member(s).")
+
 
     @quest_group.command(name="disable")
     @has_quest_permission()
