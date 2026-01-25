@@ -28,7 +28,7 @@ class Quest:
     enabled: bool = True
 
 
-class Quest(commands.Cog):
+class FantasyJobBoard(commands.Cog):
     """
     Guild quest system with:
     - Admin quest creation/removal
