@@ -156,8 +156,7 @@ class FantasyJobBoard(commands.Cog):
             if channel:
                 for q in newly_completed:
                     await channel.send(
-                        f"🏁 {member.mention} completed **{q.title}** "
-                        f"(Game: `{q.game}`, Objective: `{q.objective}`)!"
+                        f"🏁 {member.mention} completed the **{q.title}** quest!"
                     )
 
     # -----------------------------
