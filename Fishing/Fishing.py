@@ -1450,7 +1450,7 @@ class Fishing(commands.Cog):
             if quest_cog:
                 await ctx.send("here")
                 await quest_cog.record_progress(
-                    member=ctx.member,
+                    member=ctx.author,
                     game="Fishing",
                     objective="open_menu",
                     amount=1,
