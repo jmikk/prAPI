@@ -370,7 +370,7 @@ class FantasyJobBoard(commands.Cog):
             if quest_id in completed:
                 continue
             cur = int(progress.get(quest_id, 0))
-            active_lines.append(f"• **{q.title}** (`{q.quest_id}`): {cur}/{q.target}")
+            active_lines.append(f"• **{q.title}**: {cur}/{q.target}")
 
         # Completed quests
         completed_lines = []
