@@ -5,4 +5,5 @@ if quest_cog:
   game="Fill_in",
   objective="NAME",
   amount=1,
+  debug=True
 )
