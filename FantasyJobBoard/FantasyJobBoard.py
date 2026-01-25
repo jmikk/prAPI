@@ -9,6 +9,9 @@ from redbot.core import commands, Config
 
 import asyncio
 
+import math
+from discord import ui
+
 ROLE_ID_QUEST_ADMIN = 1113108765315715092  # your admin role for managing quests
 
 
@@ -395,3 +398,150 @@ class FantasyJobBoard(commands.Cog):
         )
 
         await ctx.send(embed=emb)
+
+
+class QuestListView(ui.View):
+    def __init__(
+        self,
+        cog,
+        author_id: int,
+        guild: discord.Guild,
+        quests_raw: dict,
+        *,
+        game_filter: str | None = None,
+        per_page: int = 10,
+    ):
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.author_id = author_id
+        self.guild = guild
+        self.quests_raw = quests_raw
+        self.game_filter = game_filter  # None = all
+        self.per_page = per_page
+        self.page = 0
+
+        # Build filter options from existing quests
+        games = sorted({(q.get("game") or "unknown") for q in quests_raw.values()})
+        options = [discord.SelectOption(label="All Games", value="__all__", default=(game_filter is None))]
+        for g in games[:24]:  # Discord limit: 25 options
+            options.append(discord.SelectOption(label=g, value=g, default=(g == game_filter)))
+
+        self.add_item(QuestGameFilterSelect(self, options))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user and interaction.user.id == self.author_id
+
+    def _filtered_items(self) -> list[tuple[str, dict]]:
+        items = list(self.quests_raw.items())
+
+        # Filter by game if set
+        if self.game_filter:
+            items = [(qid, q) for (qid, q) in items if (q.get("game") or "unknown") == self.game_filter]
+
+        # Stable sort: enabled first, then by game, then title
+        def key_fn(item):
+            qid, q = item
+            enabled = bool(q.get("enabled", True))
+            game = q.get("game") or "unknown"
+            title = q.get("title") or qid
+            return (0 if enabled else 1, game.lower(), title.lower())
+
+        items.sort(key=key_fn)
+        return items
+
+    async def render_embed(self, viewer: discord.Member) -> discord.Embed:
+        items = self._filtered_items()
+        total = len(items)
+        pages = max(1, math.ceil(total / self.per_page))
+        self.page = max(0, min(self.page, pages - 1))
+
+        start = self.page * self.per_page
+        end = start + self.per_page
+        page_items = items[start:end]
+
+        # Load viewer progress/completions to show personal status
+        user_conf = self.cog.config.user(viewer)
+        progress = await user_conf.progress()
+        completed = await user_conf.completed()
+
+        title = "📜 Quest Board"
+        subtitle = f"Showing: {self.game_filter if self.game_filter else 'All Games'} • Page {self.page + 1}/{pages}"
+
+        e = discord.Embed(title=title, description=subtitle, color=discord.Color.gold())
+
+        if not page_items:
+            e.add_field(name="No quests found", value="Try selecting a different game filter.", inline=False)
+            return e
+
+        lines = []
+        for quest_id, qdata in page_items:
+            q = self.cog._quest_from_dict(quest_id, qdata)  # uses your helper
+
+            is_completed = quest_id in completed
+            is_enabled = q.enabled
+            cur = int(progress.get(quest_id, 0))
+            tgt = int(q.target)
+
+            if is_completed:
+                icon = "✅"
+                status = "Completed"
+            elif not is_enabled:
+                icon = "⏸️"
+                status = "Disabled"
+            elif cur > 0:
+                icon = "🟦"
+                status = f"In Progress ({cur}/{tgt})"
+            else:
+                icon = "🟨"
+                status = f"Not Started (0/{tgt})"
+
+            # Keep each entry compact; long descriptions get messy fast
+            short_desc = (q.description or "").strip()
+            if len(short_desc) > 80:
+                short_desc = short_desc[:77] + "..."
+
+            lines.append(
+                f"{icon} **{q.title}** `({q.quest_id})`\n"
+                f"• Game: `{q.game}` • Objective: `{q.objective}` • Target: **{q.target}**\n"
+                f"• Status: {status}"
+                + (f"\n• {short_desc}" if short_desc else "")
+            )
+
+        e.add_field(name="Quests", value="\n\n".join(lines), inline=False)
+        e.set_footer(text="Use the dropdown to filter. Use Prev/Next to browse.")
+        return e
+
+    def _update_button_states(self):
+        items = self._filtered_items()
+        total = len(items)
+        pages = max(1, math.ceil(total / self.per_page))
+        self.prev_btn.disabled = self.page <= 0
+        self.next_btn.disabled = self.page >= pages - 1
+
+    @ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, interaction: discord.Interaction, button: ui.Button):
+        self.page -= 1
+        self._update_button_states()
+        embed = await self.render_embed(interaction.user)  # type: ignore[arg-type]
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
+    async def next_btn(self, interaction: discord.Interaction, button: ui.Button):
+        self.page += 1
+        self._update_button_states()
+        embed = await self.render_embed(interaction.user)  # type: ignore[arg-type]
+        await interaction.response.edit_message(embed=embed, view=self)
+
+
+class QuestGameFilterSelect(ui.Select):
+    def __init__(self, parent_view: QuestListView, options: list[discord.SelectOption]):
+        super().__init__(placeholder="Filter by game...", min_values=1, max_values=1, options=options)
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: discord.Interaction):
+        val = self.values[0]
+        self.parent_view.game_filter = None if val == "__all__" else val
+        self.parent_view.page = 0
+        self.parent_view._update_button_states()
+        embed = await self.parent_view.render_embed(interaction.user)  # type: ignore[arg-type]
+        await interaction.response.edit_message(embed=embed, view=self.parent_view)
