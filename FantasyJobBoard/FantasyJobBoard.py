@@ -201,7 +201,7 @@ class FantasyJobBoard(commands.Cog):
         if debug:
             channel = await self._get_announce_channel(guild)
             if channel:
-                await channel.send("DEBUG: Counted 1")
+                await channel.send(f"DEBUG: Counted 1 Game: {game}, obj: {objective}, amount: {amount}")
             
         # Announce completions
         if newly_completed:
