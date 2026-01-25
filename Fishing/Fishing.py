@@ -1446,7 +1446,7 @@ class Fishing(commands.Cog):
             inv = dict(data["inventory"])
             bait_inv = data["bait"]
 
-            quest_cog = self.bot.get_cog("QuestBoard")
+            quest_cog = self.bot.get_cog("FantasyJobBoard")
             if quest_cog:
                 await ctx.send("here")
                 await quest_cog.record_progress(
