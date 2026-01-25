@@ -1,5 +1,5 @@
-from .FantasyJobBoard import FantasyJobBoard
+from .Quest import Quest
 
 
 async def setup(bot):
-    await bot.add_cog(FantasyJobBoard(bot))
+    await bot.add_cog(Quest(bot))
