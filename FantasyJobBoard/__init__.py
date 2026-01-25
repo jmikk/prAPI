@@ -1,4 +1,4 @@
-from .Quest import Quest
+from .FantasyJobBoard import FantasyJobBoard
 
 
 async def setup(bot):
