@@ -1227,7 +1227,16 @@ class Fishing(commands.Cog):
             )
             # auto-delete when cooldown is up (at least 1s so it doesn't insta-vanish)
             return e, max(1.0, remaining)
-    
+       
+        quest_cog = self.bot.get_cog("FantasyJobBoard")
+        if quest_cog:
+          await quest_cog.record_progress(
+          member=interaction.user,
+          game="Fishing",
+          objective="attempt",
+          amount=1,
+        )
+            
         # Ensure fishdex exists
         fishdex = await self._ensure_fishdex(interaction.user)
     
