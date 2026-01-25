@@ -1235,6 +1235,7 @@ class Fishing(commands.Cog):
           game="Fishing",
           objective="attempt",
           amount=1,
+          debug=True
         )
             
         # Ensure fishdex exists
