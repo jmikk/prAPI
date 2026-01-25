@@ -1446,6 +1446,15 @@ class Fishing(commands.Cog):
             inv = dict(data["inventory"])
             bait_inv = data["bait"]
 
+            quest_cog = self.bot.get_cog("QuestBoard")
+            if quest_cog:
+                await quest_cog.record_progress(
+                    member=ctx.member,
+                    game="Fishing",
+                    objective="open_menu",
+                    amount=1,
+                )
+
             emb = _inventory_embed(rod=rod, zone=zone, inv=inv, bait_inv=bait_inv, dur=data["rod_durability"])
             await ctx.reply(embed=emb, view=MainMenu(self, ctx.author.id))
 
