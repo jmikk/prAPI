@@ -327,30 +327,81 @@ class FantasyJobBoard(commands.Cog):
 
     @quest_group.command(name="list")
     async def quest_list(self, ctx: commands.Context, game: Optional[str] = None):
-        """List available quests (optionally filter by game)."""
+        """List available quests (paginated). Optionally filter by game."""
         quests_raw = await self.config.guild(ctx.guild).quests()
         if not quests_raw:
             return await ctx.send("📭 There are currently no quests configured.")
+    
+        view = QuestListView(self, ctx.author.id, ctx.guild, quests_raw, game_filter=game, per_page=10)
+        view._update_button_states()
+        embed = await view.render_embed(ctx.author)
+        await ctx.send(embed=embed, view=view)
 
-        # Build a compact list embed
-        emb = discord.Embed(title="📜 Quest Board", color=discord.Color.gold())
-        count = 0
+    @quest_group.command(name="search")
+    async def quest_search(self, ctx: commands.Context, *, query: str):
+        """Search quests by ID/title/description/game/objective."""
+        query = query.strip().lower()
+        if not query:
+            return await ctx.send("❌ Provide a search term.")
+    
+        quests_raw = await self.config.guild(ctx.guild).quests()
+        if not quests_raw:
+            return await ctx.send("📭 There are currently no quests configured.")
+    
+        hits: list[tuple[str, dict]] = []
         for quest_id, qdata in quests_raw.items():
+            haystack = " ".join([
+                quest_id,
+                str(qdata.get("title", "")),
+                str(qdata.get("description", "")),
+                str(qdata.get("game", "")),
+                str(qdata.get("objective", "")),
+            ]).lower()
+    
+            if query in haystack:
+                hits.append((quest_id, qdata))
+    
+        if not hits:
+            return await ctx.send(f"🔎 No quests matched `{query}`.")
+    
+        # Show first 25 matches (keep it simple; can paginate later)
+        hits = hits[:25]
+    
+        user_conf = self.config.user(ctx.author)
+        progress = await user_conf.progress()
+        completed = await user_conf.completed()
+    
+        e = discord.Embed(
+            title="🔎 Quest Search Results",
+            description=f"Query: `{query}` • Matches: **{len(hits)}** (showing up to 25)",
+            color=discord.Color.gold(),
+        )
+    
+        lines = []
+        for quest_id, qdata in hits:
             q = self._quest_from_dict(quest_id, qdata)
-            if game and q.game != game:
-                continue
-            status = "Enabled" if q.enabled else "Disabled"
-            emb.add_field(
-                name=f"{q.title} ({status})",
-                value=f"ID: `{q.quest_id}`\nGame: `{q.game}`\nObjective: `{q.objective}` Target: `{q.target}`",
-                inline=False,
+    
+            if quest_id in completed:
+                status = "✅ Completed"
+            elif not q.enabled:
+                status = "⏸️ Disabled"
+            else:
+                cur = int(progress.get(quest_id, 0))
+                status = f"🟦 {cur}/{q.target}" if cur > 0 else f"🟨 0/{q.target}"
+    
+            lines.append(
+                f"• **{q.title}** `({q.quest_id})` — {status}\n"
+                f"  `{q.game}` • `{q.objective}` • target **{q.target}**"
             )
-            count += 1
+    
+        text = "\n".join(lines)
+        if len(text) > 3500:
+            text = text[:3490] + "…"
+    
+        e.add_field(name="Matches", value=text, inline=False)
+        await ctx.send(embed=e)
 
-        if count == 0:
-            return await ctx.send("📭 No quests matched that filter.")
 
-        await ctx.send(embed=emb)
 
     @quest_group.command(name="progress")
     async def quest_progress(self, ctx: commands.Context):
