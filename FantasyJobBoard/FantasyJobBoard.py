@@ -552,7 +552,7 @@ class QuestListView(ui.View):
                 short_desc = short_desc[:77] + "..."
 
             lines.append(
-                f"{icon} **{q.title}** `({q.quest_id})`\n"
+                f"{icon} **{q.title}**\n"
                 f"• Status: {status}"
                 + (f"\n• {short_desc}" if short_desc else "")
             )
