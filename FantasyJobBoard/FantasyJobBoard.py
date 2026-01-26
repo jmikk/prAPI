@@ -553,7 +553,7 @@ class QuestListView(ui.View):
 
             lines.append(
                 f"{icon} **{q.title}** `({q.quest_id})`\n"
-                f"• Game: `{q.game}` • Objective: `{q.objective}` • Target: **{q.target}**\n"
+                f"Target: **{q.target}**\n"
                 f"• Status: {status}"
                 + (f"\n• {short_desc}" if short_desc else "")
             )
