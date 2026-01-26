@@ -332,7 +332,7 @@ class FantasyJobBoard(commands.Cog):
         if not quests_raw:
             return await ctx.send("📭 There are currently no quests configured.")
     
-        view = QuestListView(self, ctx.author.id, ctx.guild, quests_raw, game_filter=game, per_page=10)
+        view = QuestListView(self, ctx.author.id, ctx.guild, quests_raw, game_filter=game, per_page=3)
         view._update_button_states()
         embed = await view.render_embed(ctx.author)
         await ctx.send(embed=embed, view=view)
