@@ -1603,94 +1603,176 @@ class cardMini(commands.Cog):
     
     @commands.command(name='new_season')
     @commands.is_owner()
-    async def new_season(self, ctx, series: str,legendary_limit=None,epic_limit=None,ultra_rare_limit=None,rare_limit=None,uncommon_limit=None):
-        """Creates a new season you can pass the limits for each rarity or it will take the default values"""
-        file = os.path.join(data_manager.cog_data_path(self), f'on_season.txt')
-        with open(file,"w+") as f:
+    async def new_season(
+        self,
+        ctx,
+        series: str,
+        legendary_limit=None,
+        epic_limit=None,
+        ultra_rare_limit=None,
+        rare_limit=None,
+        uncommon_limit=None
+    ):
+        """Creates a new season based on a CSV attachment:
+        user_id,username,display_name,message_count
+        Attach the CSV to the command message.
+        """
+    
+        # --- Require attachment ---
+        if not ctx.message.attachments:
+            await ctx.send("Please attach a CSV file with columns: user_id, username, display_name, message_count.")
+            return
+    
+        attachment = ctx.message.attachments[0]
+        if not attachment.filename.lower().endswith(".csv"):
+            await ctx.send("Attachment must be a .csv file.")
+            return
+    
+        # Persist "current season" marker (as you had it)
+        season_marker = os.path.join(data_manager.cog_data_path(self), "on_season.txt")
+        with open(season_marker, "w+", encoding="utf-8") as f:
             f.write(series)
-        series = "Season_"+series
-        # Get the list of all server members
+    
+        # Build safe table name
+        series_table = f"Season_{series}"
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", series_table):
+            await ctx.send("Invalid season name. Use letters/numbers/underscore, and don't start with a number.")
+            return
+    
+        # --- Download attachment to disk ---
+        tmp_csv_path = os.path.join(data_manager.cog_data_path(self), f"post_counts_{ctx.guild.id}.csv")
+        try:
+            await attachment.save(tmp_csv_path)
+        except Exception as e:
+            await ctx.send(f"Failed to download attachment: {e}")
+            return
+    
+        # --- Load CSV post counts ---
+        guild_member_ids = {m.id for m in ctx.guild.members}
+    
+        rows = []
+        try:
+            with open(tmp_csv_path, "r", encoding="utf-8", newline="") as f:
+                reader = csv.DictReader(f)
+                required = {"user_id", "username", "display_name", "message_count"}
+                if not required.issubset(set(reader.fieldnames or [])):
+                    await ctx.send(f"CSV must contain columns: {', '.join(sorted(required))}")
+                    return
+    
+                for r in reader:
+                    try:
+                        uid = int(r["user_id"])
+                        msg_count = int(r["message_count"])
+                    except (ValueError, TypeError):
+                        continue
+    
+                    if uid not in guild_member_ids:
+                        continue
+    
+                    rows.append({
+                        "user_id": uid,
+                        "username": (r.get("username") or "").strip(),
+                        "display_name": (r.get("display_name") or "").strip(),
+                        "message_count": msg_count,
+                    })
+        finally:
+            # Optional: remove temp file (comment out if you want to keep it)
+            try:
+                os.remove(tmp_csv_path)
+            except OSError:
+                pass
+    
+        if not rows:
+            await ctx.send("No valid rows found for current guild members in that CSV.")
+            return
+    
+        # Sort by message_count DESC, tie-break for deterministic ordering
+        sorted_rows = sorted(rows, key=lambda r: (-r["message_count"], r["username"].lower()))
+    
+        n = len(sorted_rows)
+    
+        # ---- Thresholds (cumulative ranks) ----
+        mythic_limit = 1
+    
+        def _default_cutoff(pct: float) -> int:
+            return max(1, int(n * pct))
+    
+        legendary_cutoff = int(legendary_limit) if legendary_limit is not None else _default_cutoff(0.05)
+        epic_cutoff = int(epic_limit) if epic_limit is not None else _default_cutoff(0.15)
+        ultra_rare_cutoff = int(ultra_rare_limit) if ultra_rare_limit is not None else _default_cutoff(0.30)
+        rare_cutoff = int(rare_limit) if rare_limit is not None else _default_cutoff(0.45)
+        uncommon_cutoff = int(uncommon_limit) if uncommon_limit is not None else _default_cutoff(0.70)
+    
+        # Enforce monotonicity
+        legendary_cutoff = max(legendary_cutoff, mythic_limit)
+        epic_cutoff = max(epic_cutoff, legendary_cutoff)
+        ultra_rare_cutoff = max(ultra_rare_cutoff, epic_cutoff)
+        rare_cutoff = max(rare_cutoff, ultra_rare_cutoff)
+        uncommon_cutoff = max(uncommon_cutoff, rare_cutoff)
+    
+        # --- DB setup ---
         server_id = str(ctx.guild.id)
-        # Connect to the SQLite database for the server
-        db_path = os.path.join(data_manager.cog_data_path(self), f'{server_id}.db')
+        db_path = os.path.join(data_manager.cog_data_path(self), f"{server_id}.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-
-        if not series.isidentifier():
-            return
-        
-        cursor.execute(f'''
-            CREATE TABLE IF NOT EXISTS {series} (
-                userID INTEGER ,
+    
+        cursor.execute(f"""
+            CREATE TABLE IF NOT EXISTS {series_table} (
+                userID INTEGER,
                 name TEXT,
                 season TEXT,
                 rarity TEXT,
                 MV REAL,
                 Stock INTEGER
             )
-        ''')
+        """)
         conn.commit()
     
-        members = ctx.guild.members
-        
-        # Sort members based on their join date
-        sorted_members = sorted(members, key=lambda x: x.joined_at)
-        cursor = conn.cursor()
-        # Calculate rarities based on the specified percentages
-        mythic_limit = 1
-        if not legendary_limit:
-            legendary_limit = int(len(sorted_members) * 0.05)
-        if not epic_limit:
-            epic_limit = int(len(sorted_members) * 0.15)
-        if not ultra_rare_limit:
-            ultra_rare_limit = int(len(sorted_members) * 0.30)
-        if not rare_limit:
-            rare_limit = int(len(sorted_members) * 0.45)
-        if not uncommon_limit:
-            uncommon_limit = int(len(sorted_members) * 0.70)
-
-    
-        # Store user information in a dictionary
+        # ---- Insert rows ----
         user_data = {}
-        for i, member in enumerate(sorted_members):
+        season_value = series_table
+    
+        cursor.execute("BEGIN")
+        for i, r in enumerate(sorted_rows):
             if i < mythic_limit:
-                rarity = "Mythic"
-                MV = 10
-            elif i < legendary_limit:
-                rarity = "Legendary"
-                MV = 1
-            elif i < epic_limit:
-                rarity = "Epic"
-                MV = .5
-            elif i < ultra_rare_limit:
-                rarity = "Ultra-Rare"
-                MV = .25
-            elif i < rare_limit:
-                rarity = "Rare"
-                MV = .10
-            elif i < uncommon_limit:
-                rarity = "Uncommon"
-                MV = .05
+                rarity, MV = "Mythic", 10
+            elif i < legendary_cutoff:
+                rarity, MV = "Legendary", 1
+            elif i < epic_cutoff:
+                rarity, MV = "Epic", 0.5
+            elif i < ultra_rare_cutoff:
+                rarity, MV = "Ultra-Rare", 0.25
+            elif i < rare_cutoff:
+                rarity, MV = "Rare", 0.10
+            elif i < uncommon_cutoff:
+                rarity, MV = "Uncommon", 0.05
             else:
-                rarity = "Common"
-                MV = .01
+                rarity, MV = "Common", 0.01
     
-            user_data[member.id] = {'userID': member.id, 'season': series, 'rarity': rarity,'MV': MV,'Stock':10}
-            # Insert user information into the table
-
-            if not series.isidentifier():
-                return
-            cursor.execute(f'''
-                INSERT INTO {series} (userID,name, season, rarity, MV, Stock)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (member.id,member.name, series, rarity, MV, 10))
+            name = r["display_name"] or r["username"] or str(r["user_id"])
     
-        # You can now use the user_data dictionary for further processing or storage.
+            user_data[r["user_id"]] = {
+                "userID": r["user_id"],
+                "season": season_value,
+                "rarity": rarity,
+                "MV": MV,
+                "Stock": 10,
+                "message_count": r["message_count"],
+            }
+    
+            cursor.execute(
+                f"INSERT INTO {series_table} (userID, name, season, rarity, MV, Stock) VALUES (?, ?, ?, ?, ?, ?)",
+                (r["user_id"], name, season_value, rarity, MV, 10),
+            )
+    
         conn.commit()
         conn.close()
-        # Respond to the user
-        await ctx.send(f"New season '{series}' started! User information stored.")
-        await ctx.send(user_data[ctx.author.id])
+    
+        await ctx.send(f"New season '{series_table}' started! User information stored from attached CSV post counts.")
+        if ctx.author.id in user_data:
+            await ctx.send(user_data[ctx.author.id])
+        else:
+            await ctx.send("Note: you weren't found in the CSV for this guild, so no entry was created for you.")
 
     def get_table_stats(self, table_name,server_id):
         try:
