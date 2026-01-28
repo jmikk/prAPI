@@ -18,6 +18,7 @@ from collections import Counter
 from redbot.core.utils.chat_formatting import humanize_list
 
 import io
+import csv
 
 
 def is_owner_overridable():
