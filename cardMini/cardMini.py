@@ -17,6 +17,8 @@ from collections import Counter
 
 from redbot.core.utils.chat_formatting import humanize_list
 
+import io
+
 
 def is_owner_overridable():
     # Similar to @commands.is_owner()
