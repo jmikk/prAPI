@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import requests
 from redbot.core import commands, data_manager
 import random
@@ -9,8 +11,6 @@ import math
 import asyncio
 import re
 import time
-
-from __future__ import annotations
 
 from datetime import timezone
 from collections import Counter
