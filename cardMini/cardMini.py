@@ -10,6 +10,13 @@ import asyncio
 import re
 import time
 
+from __future__ import annotations
+
+from datetime import timezone
+from collections import Counter
+
+from redbot.core.utils.chat_formatting import humanize_list
+
 
 def is_owner_overridable():
     # Similar to @commands.is_owner()
@@ -26,6 +33,130 @@ class cardMini(commands.Cog):
         self.steal_mod = 1
         self.cooldowns = {}  # Dictionary to store last execution time for each user
         self.payout_time=300
+
+    @commands.guild_only()
+    @commands.admin_or_permissions(administrator=True)
+    @commands.command(name="scanposts1ycsv")
+    async def scan_posts_1y_csv(self, ctx: commands.Context):
+        """
+        Scan the last 1 year of messages and export per-user counts to CSV.
+        """
+        guild: discord.Guild = ctx.guild
+        me = guild.me
+
+        after = datetime.now(timezone.utc) - timedelta(days=365)
+        counts = Counter()
+
+        scanned_messages = 0
+        scanned_locations = 0
+
+        await ctx.send(
+            f"📊 Scanning messages from **{after.date()} → now**.\n"
+            "This may take a while on large servers."
+        )
+
+        def can_read(ch: discord.abc.GuildChannel) -> bool:
+            perms = ch.permissions_for(me)
+            return perms.view_channel and perms.read_message_history
+
+        async def scan_history(history):
+            nonlocal scanned_messages
+            async for msg in history:
+                if msg.author and not msg.author.bot:
+                    counts[msg.author.id] += 1
+                scanned_messages += 1
+                if scanned_messages % 2000 == 0:
+                    await asyncio.sleep(0)
+
+        # ---------- TEXT CHANNELS ----------
+        for channel in guild.text_channels:
+            if not can_read(channel):
+                continue
+            scanned_locations += 1
+            try:
+                await scan_history(
+                    channel.history(after=after, oldest_first=True, limit=None)
+                )
+            except (discord.Forbidden, discord.HTTPException):
+                continue
+
+            # ---------- THREADS ----------
+            try:
+                async for thread in channel.archived_threads(limit=None):
+                    if not can_read(thread):
+                        continue
+                    scanned_locations += 1
+                    try:
+                        await scan_history(
+                            thread.history(after=after, oldest_first=True, limit=None)
+                        )
+                    except (discord.Forbidden, discord.HTTPException):
+                        continue
+            except (discord.Forbidden, discord.HTTPException):
+                pass
+
+        # ---------- FORUM CHANNELS ----------
+        for forum in guild.forums:
+            if not can_read(forum):
+                continue
+
+            # Active threads
+            for thread in forum.threads:
+                if not can_read(thread):
+                    continue
+                scanned_locations += 1
+                try:
+                    await scan_history(
+                        thread.history(after=after, oldest_first=True, limit=None)
+                    )
+                except (discord.Forbidden, discord.HTTPException):
+                    continue
+
+            # Archived threads
+            try:
+                async for thread in forum.archived_threads(limit=None):
+                    if not can_read(thread):
+                        continue
+                    scanned_locations += 1
+                    try:
+                        await scan_history(
+                            thread.history(after=after, oldest_first=True, limit=None)
+                        )
+                    except (discord.Forbidden, discord.HTTPException):
+                        continue
+            except (discord.Forbidden, discord.HTTPException):
+                pass
+
+        # ---------- BUILD CSV ----------
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["user_id", "username", "display_name", "message_count"])
+
+        for user_id, count in counts.most_common():
+            member = guild.get_member(user_id)
+            if member:
+                username = member.name
+                display_name = member.display_name
+            else:
+                username = "Unknown"
+                display_name = "Unknown"
+
+            writer.writerow([user_id, username, display_name, count])
+
+        output.seek(0)
+
+        file = discord.File(
+            fp=io.BytesIO(output.getvalue().encode("utf-8")),
+            filename=f"{guild.name}_post_counts_1y.csv",
+        )
+
+        await ctx.send(
+            f"✅ Done!\n"
+            f"• Users counted: **{len(counts)}**\n"
+            f"• Messages scanned: **{scanned_messages:,}**\n"
+            f"• Channels/threads scanned: **{scanned_locations}**",
+            file=file,
+        )
 
 
     @commands.command(name='list_tables')
