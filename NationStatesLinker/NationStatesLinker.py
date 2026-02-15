@@ -29,6 +29,10 @@ import aiohttp
 import xml.etree.ElementTree as ET
 import discord
 from redbot.core import commands, Config
+import os
+import tarfile
+import io
+from redbot.core import checks, data_manager
 
 # Constants
 VERIFY_URL = "https://www.nationstates.net/page=verify_login"
@@ -915,6 +919,58 @@ class NationStatesLinker(commands.Cog):
 
         await ctx.send(f"✅ Done. Checked: {checked} | Newly given Verified: {updated}.")
 
+    @commands.group()
+    @checks.is_owner()
+    async def migrate(self, ctx):
+        """Instance migration tools."""
+        pass
+
+    @migrate.command(name="pack")
+    async def pack_instance(self, ctx):
+        """Zips the entire instance and uploads it to the channel."""
+        instance_path = data_manager.instance_dir()
+        instance_name = data_manager.instance_name()
+        archive_name = f"{instance_name}_backup.tar.gz"
+
+        await ctx.send("📦 Packing instance data... this may take a moment.")
+
+        # Create tarball in memory to avoid disk clutter
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+            tar.add(instance_path, arcname=instance_name)
+        
+        buf.seek(0)
+        file_to_send = discord.File(buf, filename=archive_name)
+        
+        await ctx.send("✅ Pack complete. Uploading to Discord...", file=file_to_send)
+
+    @migrate.command(name="unpack")
+    async def unpack_instance(self, ctx):
+        """Downloads an attached .tar.gz and extracts it to the current instance path."""
+        if not ctx.message.attachments:
+            return await ctx.send("❌ Please attach the `.tar.gz` file to this command.")
+
+        attachment = ctx.message.attachments[0]
+        if not attachment.filename.endswith(".tar.gz"):
+            return await ctx.send("❌ Attachment must be a `.tar.gz` file.")
+
+        instance_path = data_manager.instance_dir()
+        # We go one level up because the tar contains the instance folder name
+        parent_dir = os.path.dirname(instance_path)
+
+        await ctx.send(f"📥 Downloading and overwriting data in `{instance_path}`...")
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(attachment.url) as resp:
+                if resp.status != 200:
+                    return await ctx.send("❌ Failed to download file.")
+                data = await resp.read()
+
+        # Extracting
+        with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
+            tar.extractall(path=parent_dir)
+
+        await ctx.send("✅ Data unpacked! Please **restart the bot** to apply changes.")
     
 
 
