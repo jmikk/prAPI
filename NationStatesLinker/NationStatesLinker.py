@@ -928,49 +928,50 @@ class NationStatesLinker(commands.Cog):
     @migrate.command(name="pack")
     async def pack_instance(self, ctx):
         """Zips the entire instance and uploads it to the channel."""
-        instance_path = data_manager.instance_dir()
+        # FIX: Changed instance_dir() to data_path()
+        instance_path = data_manager.data_path()
         instance_name = data_manager.instance_name()
         archive_name = f"{instance_name}_backup.tar.gz"
 
         await ctx.send("📦 Packing instance data... this may take a moment.")
 
-        # Create tarball in memory to avoid disk clutter
+        # Filter to skip the bulky/error-prone RepoManager cache and logs
+        def migration_filter(tarinfo):
+            if "RepoManager/repos" in tarinfo.name or "logs" in tarinfo.name or ".git" in tarinfo.name:
+                return None
+            return tarinfo
+
         buf = io.BytesIO()
         with tarfile.open(fileobj=buf, mode="w:gz") as tar:
-            tar.add(instance_path, arcname=instance_name)
+            # We add the instance_path directly
+            tar.add(instance_path, arcname=instance_name, filter=migration_filter)
         
         buf.seek(0)
         file_to_send = discord.File(buf, filename=archive_name)
         
-        await ctx.send("✅ Pack complete. Uploading to Discord...", file=file_to_send)
+        await ctx.send(f"✅ Pack complete for `{instance_name}`. Uploading...", file=file_to_send)
 
     @migrate.command(name="unpack")
     async def unpack_instance(self, ctx):
-        """Downloads an attached .tar.gz and extracts it to the current instance path."""
+        """Downloads an attached .tar.gz and extracts it."""
         if not ctx.message.attachments:
-            return await ctx.send("❌ Please attach the `.tar.gz` file to this command.")
+            return await ctx.send("❌ Please attach the `.tar.gz` file.")
 
         attachment = ctx.message.attachments[0]
-        if not attachment.filename.endswith(".tar.gz"):
-            return await ctx.send("❌ Attachment must be a `.tar.gz` file.")
+        # FIX: Ensure we extract to the directory ABOVE the data folder
+        # because the tar contains the instance name folder
+        target_dir = os.path.dirname(data_manager.data_path())
 
-        instance_path = data_manager.instance_dir()
-        # We go one level up because the tar contains the instance folder name
-        parent_dir = os.path.dirname(instance_path)
-
-        await ctx.send(f"📥 Downloading and overwriting data in `{instance_path}`...")
+        await ctx.send(f"📥 Downloading and extracting to `{target_dir}`...")
 
         async with aiohttp.ClientSession() as session:
             async with session.get(attachment.url) as resp:
-                if resp.status != 200:
-                    return await ctx.send("❌ Failed to download file.")
                 data = await resp.read()
 
-        # Extracting
         with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
-            tar.extractall(path=parent_dir)
+            tar.extractall(path=target_dir)
 
-        await ctx.send("✅ Data unpacked! Please **restart the bot** to apply changes.")
+        await ctx.send("✅ Data unpacked! Restart the bot to see your old data.")
     
 
 
