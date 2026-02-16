@@ -61,19 +61,25 @@ class log(commands.Cog):
 
         header = f"{author_display} ({author_id}) | {created_utc} UTC\n"
         
-        # --- NEW REPLY LOGGING LOGIC ---
+        # --- FIXED REPLY LOGGING ---
         reply_info = ""
-        if msg.reference and msg.reference.message_id:
-            ref = msg.referenced_message
-            if ref:
-                ref_author = getattr(ref.author, "display_name", ref.author.name)
-                # Truncate preview to keep the log clean
-                preview = (ref.clean_content[:50] + "...") if len(ref.clean_content) > 50 else ref.clean_content
+        # Check if msg.reference exists (this is the object that holds reply metadata)
+        ref = getattr(msg, "reference", None)
+        
+        if ref and ref.message_id:
+            # We try to see if the message object itself was resolved/cached
+            # In Red/discord.py, this is often msg.referenced_message (if enabled)
+            ref_obj = getattr(msg, "referenced_message", None)
+            
+            if ref_obj and isinstance(ref_obj, discord.Message):
+                ref_author = getattr(ref_obj.author, "display_name", "Unknown User")
+                # Truncate preview
+                preview = (ref_obj.clean_content[:50] + "...") if len(ref_obj.clean_content) > 50 else (ref_obj.clean_content or "[Embed/Image]")
                 reply_info = f"-> Replying to {ref_author}: \"{preview}\"\n"
             else:
-                # Fallback if the replied-to message was deleted or not in cache
-                reply_info = f"-> Replying to message ID: {msg.reference.message_id} (Original message unavailable)\n"
-        # -------------------------------
+                # If the message isn't cached, we at least provide the ID for the audit trail
+                reply_info = f"-> Replying to Message ID: {ref.message_id}\n"
+        # ---------------------------
 
         content = msg.clean_content or ""
 
