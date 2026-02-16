@@ -82,6 +82,15 @@ class DiceOfKalma(commands.Cog):
 
     # --- Shared Helper Methods ---
 
+    def get_hand_details(self, total: int) -> tuple:
+        """Returns (Hand Name, Rank Description) based on total."""
+        if total == 7: return ("The Kalma", "Rank 1 - Unbeatable")
+        elif total == 11: return ("Merchant's Boon", "Rank 2 - Very Strong")
+        elif total == 12: return ("Midnight Twelve", "Rank 3 - Strong")
+        elif total == 2: return ("Snake Eyes", "Rank 4 - Tricky")
+        elif total > 7: return ("High Standard", "Rank 5 - Average")
+        else: return ("Low Dregs", "Rank 6 - Weak")
+
     async def determine_winner(self, players, rolls, channel):
         """Finds the winner, resolving ties recursively."""
         
@@ -311,7 +320,13 @@ class GameSession:
             d1, d2 = self.rolls.get(p.id, (0,0))
             status = ""
             if p.id in self.folded: status = "(Folded)"
-            text += f"**{p.display_name}**: {d1} & {d2} (Total: {d1+d2}) {status}\n"
+            
+            # Show the hand name in the reveal too
+            if p.id not in self.folded:
+                h_name, h_rank = self.cog.get_hand_details(d1 + d2)
+                text += f"**{p.display_name}**: {d1} & {d2} - *{h_name}* (Total: {d1+d2})\n"
+            else:
+                text += f"**{p.display_name}**: (Folded)\n"
         
         try:
             new_bal = await self.cog.add_wellcoins(winner, self.pot)
@@ -398,13 +413,13 @@ class JoinView(View):
             "**Dice of Kalma Rules**\n"
             "1. Everyone rolls 2 dice (hidden).\n"
             "2. Betting happens in rounds. You can Call, Raise, or Fold.\n"
-            "3. **Hand Rankings:**\n"
-            "   - **7** (Total 7) - The Kalma! (Highest)\n"
-            "   - **11** (Total 11)\n"
-            "   - **12** (Total 12)\n"
-            "   - **2** (Total 2)\n"
-            "   - **High Total** (8, 9, 10)\n"
-            "   - **Low Total** (3, 4, 5, 6)\n"
+            "3. **Hand Rankings (Best to Worst):**\n"
+            "   - **7** : *The Kalma* (Unbeatable)\n"
+            "   - **11**: *Merchant's Boon*\n"
+            "   - **12**: *Midnight Twelve*\n"
+            "   - **2** : *Snake Eyes*\n"
+            "   - **8, 9, 10**: *High Standard*\n"
+            "   - **3, 4, 5, 6**: *Low Dregs*\n"
             "4. Winner takes the pot!"
         )
         await interaction.response.send_message(rules, ephemeral=True)
@@ -492,7 +507,9 @@ class TurnView(View):
         if interaction.user.id not in self.game.rolls:
             return await interaction.response.send_message("You aren't in this game.", ephemeral=True)
         d1, d2 = self.game.rolls[interaction.user.id]
-        await interaction.response.send_message(f"Your Roll: **{d1}** & **{d2}** (Total: {d1+d2})", ephemeral=True)
+        total = d1 + d2
+        name, rank = self.game.cog.get_hand_details(total)
+        await interaction.response.send_message(f"Your Roll: **{d1}** & **{d2}**\nTotal: **{total}**\nHand: **{name}** ({rank})", ephemeral=True)
 
     @discord.ui.button(label="Check Balance", style=discord.ButtonStyle.secondary, emoji="💰")
     async def check_bal(self, interaction: discord.Interaction, button: Button):
