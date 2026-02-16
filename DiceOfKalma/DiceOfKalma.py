@@ -17,7 +17,7 @@ class DiceOfKalma(commands.Cog):
         self.active_games = {} # {channel_id: GameSession}
 
     # =========================================================================
-    #                       EXTERNAL ECONOMY WRAPPERS
+    #                        EXTERNAL ECONOMY WRAPPERS
     # =========================================================================
 
     @property
@@ -44,7 +44,7 @@ class DiceOfKalma(commands.Cog):
         return await self.nexus.take_wellcoins(user, amount, force=force)
 
     # =========================================================================
-    #                             GAME LOGIC
+    #                                  GAME LOGIC
     # =========================================================================
 
     @commands.guild_only()
@@ -158,6 +158,8 @@ class GameSession:
             description=f"**Ante:** {self.ante} Wellcoins\n\nClick **Join** to buy in.",
             color=discord.Color.gold()
         )
+        # CRITICAL FIX: Add the field initially so set_field_at(0) works later
+        embed.add_field(name="Pot", value="0.0 Wellcoins", inline=True)
         embed.set_footer(text="Game hosted by " + self.ctx.author.display_name)
         
         view = JoinView(self)
@@ -242,7 +244,12 @@ class GameSession:
     async def update_game_board(self, status_text):
         embed = self.message.embeds[0]
         embed.description = status_text
-        embed.set_field_at(0, name="Pot", value=f"{self.pot} Wellcoins")
+        # Ensure field 0 exists before setting it, though start_join_phase ensures this now
+        if len(embed.fields) > 0:
+            embed.set_field_at(0, name="Pot", value=f"{self.pot} Wellcoins")
+        else:
+            embed.add_field(name="Pot", value=f"{self.pot} Wellcoins")
+            
         await self.message.edit(embed=embed)
 
     async def showdown(self):
@@ -281,7 +288,7 @@ class GameSession:
             del self.cog.active_games[self.ctx.channel.id]
 
 # =========================================================================
-#                               VIEWS
+#                                VIEWS
 # =========================================================================
 
 class JoinView(View):
@@ -291,7 +298,7 @@ class JoinView(View):
 
     @discord.ui.button(label="Join Game", style=discord.ButtonStyle.green)
     async def join(self, interaction: discord.Interaction, button: Button):
-        # 1. Acknowledge the interaction immediately to prevent "Interaction Failed"
+        # 1. Acknowledge the interaction immediately
         await interaction.response.defer()
 
         if interaction.user in self.game.players:
@@ -310,13 +317,13 @@ class JoinView(View):
             embed = interaction.message.embeds[0]
             player_names = [p.display_name for p in self.game.players]
             
-            # We reconstruct the description so it looks clean
-            embed.description = f"**Ante:** {self.game.ante} Wellcoins\n\n**Players Joined:**\n{', '.join(player_names)}"
+            # Updates description to show list of players
+            embed.description = f"**Ante:** {self.game.ante} Wellcoins\n\n**Players Joined:**\n{', '.join(player_names)}\n\nClick **Join** to buy in."
             embed.set_field_at(0, name="Pot", value=f"{self.game.pot} Wellcoins")
             
             await interaction.message.edit(embed=embed)
             
-            # 5. Send Public Confirmation (as requested)
+            # 5. Send Public Confirmation (ephemeral=False sends to channel)
             await interaction.followup.send(f"🎲 **{interaction.user.display_name}** has joined the table! (Bal: {bal})", ephemeral=False)
             
         except ValueError:
