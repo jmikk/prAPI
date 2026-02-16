@@ -50,12 +50,6 @@ class log(commands.Cog):
         self._cancel_flags: Dict[int, bool] = {}
 
     def _format_message_block(self, msg: discord.Message) -> str:
-        """
-        "Rendered-looking" representation:
-          - msg.clean_content resolves mentions to readable text
-          - custom emoji will appear as :name: in many cases (not image-rendered, but readable)
-          - markdown remains as markdown (closest faithful portable representation)
-        """
         author_display = getattr(msg.author, "display_name", msg.author.name)
         author_id = msg.author.id
 
@@ -66,29 +60,38 @@ class log(commands.Cog):
         )
 
         header = f"{author_display} ({author_id}) | {created_utc} UTC\n"
+        
+        # --- NEW REPLY LOGGING LOGIC ---
+        reply_info = ""
+        if msg.reference and msg.reference.message_id:
+            ref = msg.referenced_message
+            if ref:
+                ref_author = getattr(ref.author, "display_name", ref.author.name)
+                # Truncate preview to keep the log clean
+                preview = (ref.clean_content[:50] + "...") if len(ref.clean_content) > 50 else ref.clean_content
+                reply_info = f"-> Replying to {ref_author}: \"{preview}\"\n"
+            else:
+                # Fallback if the replied-to message was deleted or not in cache
+                reply_info = f"-> Replying to message ID: {msg.reference.message_id} (Original message unavailable)\n"
+        # -------------------------------
 
-        # This is the key change vs raw content:
-        # clean_content turns <@id> into @Name, <#id> into #channel, <@&id> into @Role (as text)
         content = msg.clean_content or ""
 
         block = header
+        if reply_info:
+            block += reply_info
+            
         block += content + "\n"
 
-        # Attachments (URLs)
         if msg.attachments:
             urls = " ".join(a.url for a in msg.attachments)
             block += f"[Attachments: {urls}]\n"
 
-        # Stickers (if present)
-        # (Not "rendered", but provides the name + id for traceability)
-        if getattr(msg, "stickers", None):
-            if msg.stickers:
-                sticker_bits = " ".join(f"{s.name}({s.id})" for s in msg.stickers)
-                block += f"[Stickers: {sticker_bits}]\n"
+        if getattr(msg, "stickers", None) and msg.stickers:
+            sticker_bits = " ".join(f"{s.name}({s.id})" for s in msg.stickers)
+            block += f"[Stickers: {sticker_bits}]\n"
 
-        # Jump link (handy for auditing)
         block += f"[Jump: {msg.jump_url}]\n"
-
         block += "-" * 60 + "\n"
         return block
 
