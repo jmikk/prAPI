@@ -343,7 +343,12 @@ class GameSession:
         # Calculate expiry for relative timestamp (60s timeout matching TurnView)
         expiry = int(time.time() + 60)
         
-        embed = self.message.embeds[0]
+        # Reuse existing embed style or create new one
+        if self.message and self.message.embeds:
+            embed = self.message.embeds[0]
+        else:
+            embed = discord.Embed(title="🎲 Dice of Kalma", color=discord.Color.gold())
+
         embed.description = f"It is {player.mention}'s turn to act.\nAuto-fold <t:{expiry}:R>."
         embed.clear_fields()
         
@@ -367,7 +372,14 @@ class GameSession:
         embed.add_field(name="High Bet", value=str(self.current_high_bet), inline=True)
         embed.add_field(name="Status", value=player_status, inline=False)
 
-        await self.message.edit(embed=embed, view=view)
+        # RESEND LOGIC: Delete old message, send new one to be at the bottom
+        if self.message:
+            try:
+                await self.message.delete()
+            except (discord.NotFound, discord.Forbidden):
+                pass
+        
+        self.message = await self.ctx.send(embed=embed, view=view)
         
         # PING logic: Ping player, delete after 10s
         try:
