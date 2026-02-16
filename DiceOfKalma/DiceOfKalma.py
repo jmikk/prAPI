@@ -70,6 +70,10 @@ class DiceOfKalma(commands.Cog):
     async def stop(self, ctx):
         """Force stop a game in this channel."""
         if ctx.channel.id in self.active_games:
+            # Try to stop any running view to prevent timeouts firing after stop
+            game = self.active_games[ctx.channel.id]
+            if game.current_view:
+                game.current_view.stop()
             del self.active_games[ctx.channel.id]
             await ctx.send("Game force-stopped.")
         else:
@@ -151,6 +155,8 @@ class GameSession:
         self.current_high_bet = 0.0
         self.message = None     # The main game message
         self.is_betting = False
+        self.started = False    # Prevents race conditions with timeouts
+        self.current_view = None # Tracks active view to stop it properly
 
     async def start_join_phase(self):
         embed = discord.Embed(
@@ -158,15 +164,19 @@ class GameSession:
             description=f"**Ante:** {self.ante} Wellcoins\n\nClick **Join** to buy in.",
             color=discord.Color.gold()
         )
-        # CRITICAL FIX: Add the field initially so set_field_at(0) works later
         embed.add_field(name="Pot", value="0.0 Wellcoins", inline=True)
         embed.set_footer(text="Game hosted by " + self.ctx.author.display_name)
         
         view = JoinView(self)
+        self.current_view = view
         self.message = await self.ctx.send(embed=embed, view=view)
 
     async def start_round(self):
         """ transitions from joining to playing """
+        self.started = True
+        if self.current_view:
+            self.current_view.stop()
+            
         if len(self.players) < 2:
             return await self.ctx.send("Not enough players! Game cancelled.")
 
@@ -184,6 +194,10 @@ class GameSession:
 
     async def next_turn(self):
         """Determines whose turn it is or if the round is over."""
+        # Clean up previous view to prevent timeout listeners from lingering
+        if self.current_view:
+            self.current_view.stop()
+
         # 1. Check Win by default (everyone else folded)
         remaining = [p for p in self.players if p.id not in self.folded]
         if len(remaining) == 1:
@@ -218,6 +232,8 @@ class GameSession:
 
         # Update View for the specific player's turn
         view = TurnView(self, player)
+        self.current_view = view
+        
         embed = self.message.embeds[0]
         embed.description = f"It is {player.mention}'s turn to act."
         embed.clear_fields()
@@ -240,11 +256,16 @@ class GameSession:
         embed.add_field(name="Status", value=player_status, inline=False)
 
         await self.message.edit(embed=embed, view=view)
+        
+        # PING logic: Ping player, delete after 10s
+        try:
+            await self.ctx.send(f"🔔 {player.mention}, it's your turn!", delete_after=10)
+        except:
+            pass # Ignore permission errors
 
     async def update_game_board(self, status_text):
         embed = self.message.embeds[0]
         embed.description = status_text
-        # Ensure field 0 exists before setting it, though start_join_phase ensures this now
         if len(embed.fields) > 0:
             embed.set_field_at(0, name="Pot", value=f"{self.pot} Wellcoins")
         else:
@@ -255,6 +276,9 @@ class GameSession:
     async def showdown(self):
         """Reveals dice and determines winner."""
         self.is_betting = False
+        if self.current_view:
+            self.current_view.stop()
+            
         contenders = [p for p in self.players if p.id not in self.folded]
         
         if not contenders:
@@ -296,42 +320,78 @@ class JoinView(View):
         super().__init__(timeout=120)
         self.game = game
 
+    async def on_timeout(self):
+        # If game already started manually, do nothing
+        if self.game.started:
+            return
+
+        if len(self.game.players) >= 2:
+            await self.game.ctx.send("⏳ **Join time expired!** Auto-starting the game...")
+            await self.game.start_round()
+        else:
+            # Not enough players, refund everyone
+            for p in self.game.players:
+                try:
+                    await self.game.cog.add_wellcoins(p, self.game.ante)
+                except:
+                    pass # Ignore errors during cleanup
+            
+            await self.game.ctx.send("⏳ **Join time expired!** Not enough players. Game cancelled and antes refunded.")
+            if self.game.ctx.channel.id in self.game.cog.active_games:
+                del self.game.cog.active_games[self.game.ctx.channel.id]
+            
+            # Disable buttons
+            try:
+                await self.game.message.edit(view=None)
+            except:
+                pass
+
     @discord.ui.button(label="Join Game", style=discord.ButtonStyle.green)
     async def join(self, interaction: discord.Interaction, button: Button):
-        # 1. Acknowledge the interaction immediately
         await interaction.response.defer()
 
         if interaction.user in self.game.players:
             return await interaction.followup.send("You are already joined.", ephemeral=True)
         
         try:
-            # 2. Process Economy
             bal = await self.game.cog.take_wellcoins(interaction.user, self.game.ante)
             
-            # 3. Update State
             self.game.players.append(interaction.user)
             self.game.pot += self.game.ante
             self.game.bets[interaction.user.id] = 0.0
             
-            # 4. Update Embed List
             embed = interaction.message.embeds[0]
             player_names = [p.display_name for p in self.game.players]
             
-            # Updates description to show list of players
             embed.description = f"**Ante:** {self.game.ante} Wellcoins\n\n**Players Joined:**\n{', '.join(player_names)}\n\nClick **Join** to buy in."
             embed.set_field_at(0, name="Pot", value=f"{self.game.pot} Wellcoins")
             
             await interaction.message.edit(embed=embed)
-            
-            # 5. Send Public Confirmation (ephemeral=False sends to channel)
-            await interaction.followup.send(f"🎲 **{interaction.user.display_name}** has joined the table!)", ephemeral=False)
+            await interaction.followup.send(f"🎲 **{interaction.user.display_name}** has joined the table!", ephemeral=False)
             
         except ValueError:
             await interaction.followup.send(f"You don't have enough Wellcoins to join! (Need {self.game.ante})", ephemeral=True)
         except RuntimeError:
              await interaction.followup.send("The Economy system (NexusExchange) is offline.", ephemeral=True)
 
-    @discord.ui.button(label="Check Balance", style=discord.ButtonStyle.grey)
+    @discord.ui.button(label="How to Play", style=discord.ButtonStyle.secondary, row=1)
+    async def how_to_play(self, interaction: discord.Interaction, button: Button):
+        rules = (
+            "**Dice of Kalma Rules**\n"
+            "1. Everyone rolls 2 dice (hidden).\n"
+            "2. Betting happens in rounds. You can Call, Raise, or Fold.\n"
+            "3. **Hand Rankings:**\n"
+            "   - **7** (Total 7) - The Kalma! (Highest)\n"
+            "   - **11** (Total 11)\n"
+            "   - **12** (Total 12)\n"
+            "   - **2** (Total 2)\n"
+            "   - **High Total** (8, 9, 10)\n"
+            "   - **Low Total** (3, 4, 5, 6)\n"
+            "4. Winner takes the pot!"
+        )
+        await interaction.response.send_message(rules, ephemeral=True)
+
+    @discord.ui.button(label="Check Balance", style=discord.ButtonStyle.grey, row=1)
     async def check_bal(self, interaction: discord.Interaction, button: Button):
         await interaction.response.defer(ephemeral=True)
         try:
@@ -340,13 +400,13 @@ class JoinView(View):
         except RuntimeError:
             await interaction.followup.send("The Economy system (NexusExchange) is offline.", ephemeral=True)
 
-    @discord.ui.button(label="Start Round", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Start Round", style=discord.ButtonStyle.blurple, row=0)
     async def start(self, interaction: discord.Interaction, button: Button):
         if interaction.user != self.game.ctx.author:
             return await interaction.response.send_message("Only the host can start the game.", ephemeral=True)
         
         await interaction.response.defer()
-        self.stop()
+        # Manually triggering start needs to handle stopping this view, which start_round does.
         await self.game.start_round()
 
 class RaiseModal(Modal, title="Raise Bet"):
@@ -358,7 +418,6 @@ class RaiseModal(Modal, title="Raise Bet"):
         self.player = player
 
     async def on_submit(self, interaction: discord.Interaction):
-        # Ack immediately because economy calls can be slow
         await interaction.response.defer(ephemeral=True)
         try:
             raise_amount = float(self.amount.value)
@@ -371,7 +430,6 @@ class RaiseModal(Modal, title="Raise Bet"):
         total_needed = call_diff + raise_amount
 
         try:
-            # Check Balance using NexusExchange (via cog wrapper)
             bal = await self.game.cog.get_balance(self.player)
             
             if bal < total_needed:
@@ -397,10 +455,20 @@ class TurnView(View):
         self.game = game
         self.active_player = active_player
 
+    async def on_timeout(self):
+        # Auto-fold logic if timeout is reached
+        if self.game.ctx.channel.id not in self.game.cog.active_games:
+            return # Game already deleted
+
+        if self.active_player.id not in self.game.folded and self.active_player.id not in self.game.tapped_out:
+            self.game.folded.append(self.active_player.id)
+            await self.game.ctx.send(f"⏰ **{self.active_player.display_name}** ran out of time and folded automatically.")
+            
+            self.game.turn_index = (self.game.turn_index + 1) % len(self.game.players)
+            await self.game.next_turn()
+
     @discord.ui.button(label="Check Dice", style=discord.ButtonStyle.secondary, emoji="🎲")
     async def check_dice(self, interaction: discord.Interaction, button: Button):
-        # This can remain ephemeral=True and no defer needed if no DB call, 
-        # but deferring is safer if the bot is lagging.
         if interaction.user.id not in self.game.rolls:
             return await interaction.response.send_message("You aren't in this game.", ephemeral=True)
         d1, d2 = self.game.rolls[interaction.user.id]
@@ -420,7 +488,7 @@ class TurnView(View):
         if interaction.user != self.active_player:
             return await interaction.response.send_message("Not your turn!", ephemeral=True)
 
-        await interaction.response.defer(ephemeral=True) # Ack first
+        await interaction.response.defer(ephemeral=True) 
 
         current_bet = self.game.bets[interaction.user.id]
         diff = self.game.current_high_bet - current_bet
@@ -455,7 +523,6 @@ class TurnView(View):
         if interaction.user != self.active_player:
             return await interaction.response.send_message("Not your turn!", ephemeral=True)
         
-        # Modals cannot be deferred! They must be the direct response.
         await interaction.response.send_modal(RaiseModal(self.game, interaction.user))
 
     @discord.ui.button(label="Fold", style=discord.ButtonStyle.danger)
