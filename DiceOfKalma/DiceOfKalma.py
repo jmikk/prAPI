@@ -291,43 +291,54 @@ class JoinView(View):
 
     @discord.ui.button(label="Join Game", style=discord.ButtonStyle.green)
     async def join(self, interaction: discord.Interaction, button: Button):
+        # 1. Acknowledge the interaction immediately to prevent "Interaction Failed"
+        await interaction.response.defer()
+
         if interaction.user in self.game.players:
-            return await interaction.response.send_message("You are already joined.", ephemeral=True)
+            return await interaction.followup.send("You are already joined.", ephemeral=True)
         
         try:
+            # 2. Process Economy
             bal = await self.game.cog.take_wellcoins(interaction.user, self.game.ante)
             
+            # 3. Update State
             self.game.players.append(interaction.user)
             self.game.pot += self.game.ante
             self.game.bets[interaction.user.id] = 0.0
             
+            # 4. Update Embed List
             embed = interaction.message.embeds[0]
+            player_names = [p.display_name for p in self.game.players]
+            
+            # We reconstruct the description so it looks clean
+            embed.description = f"**Ante:** {self.game.ante} Wellcoins\n\n**Players Joined:**\n{', '.join(player_names)}"
             embed.set_field_at(0, name="Pot", value=f"{self.game.pot} Wellcoins")
             
-            player_names = [p.display_name for p in self.game.players]
-            embed.description = f"**Ante:** {self.game.ante} Wellcoins\n**Players:** {', '.join(player_names)}"
-            
             await interaction.message.edit(embed=embed)
-            await interaction.response.send_message(f"Joined! Balance remaining: {bal}", ephemeral=True)
+            
+            # 5. Send Public Confirmation (as requested)
+            await interaction.followup.send(f"🎲 **{interaction.user.display_name}** has joined the table! (Bal: {bal})", ephemeral=False)
             
         except ValueError:
-            await interaction.response.send_message(f"You don't have enough Wellcoins (Need {self.game.ante})", ephemeral=True)
+            await interaction.followup.send(f"You don't have enough Wellcoins to join! (Need {self.game.ante})", ephemeral=True)
         except RuntimeError:
-             await interaction.response.send_message("The Economy system (NexusExchange) is offline.", ephemeral=True)
+             await interaction.followup.send("The Economy system (NexusExchange) is offline.", ephemeral=True)
 
     @discord.ui.button(label="Check Balance", style=discord.ButtonStyle.grey)
     async def check_bal(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.defer(ephemeral=True)
         try:
             bal = await self.game.cog.get_balance(interaction.user)
-            await interaction.response.send_message(f"💰 Your Wallet: **{bal} Wellcoins**", ephemeral=True)
+            await interaction.followup.send(f"💰 Your Wallet: **{bal} Wellcoins**", ephemeral=True)
         except RuntimeError:
-            await interaction.response.send_message("The Economy system (NexusExchange) is offline.", ephemeral=True)
+            await interaction.followup.send("The Economy system (NexusExchange) is offline.", ephemeral=True)
 
     @discord.ui.button(label="Start Round", style=discord.ButtonStyle.blurple)
     async def start(self, interaction: discord.Interaction, button: Button):
         if interaction.user != self.game.ctx.author:
             return await interaction.response.send_message("Only the host can start the game.", ephemeral=True)
         
+        await interaction.response.defer()
         self.stop()
         await self.game.start_round()
 
@@ -340,11 +351,13 @@ class RaiseModal(Modal, title="Raise Bet"):
         self.player = player
 
     async def on_submit(self, interaction: discord.Interaction):
+        # Ack immediately because economy calls can be slow
+        await interaction.response.defer(ephemeral=True)
         try:
             raise_amount = float(self.amount.value)
             if raise_amount <= 0: raise ValueError
         except ValueError:
-            return await interaction.response.send_message("Invalid amount.", ephemeral=True)
+            return await interaction.followup.send("Invalid amount.", ephemeral=True)
 
         current_bet = self.game.bets[self.player.id]
         call_diff = self.game.current_high_bet - current_bet
@@ -355,7 +368,7 @@ class RaiseModal(Modal, title="Raise Bet"):
             bal = await self.game.cog.get_balance(self.player)
             
             if bal < total_needed:
-                return await interaction.response.send_message(f"You don't have enough to raise that much! You have {bal}.", ephemeral=True)
+                return await interaction.followup.send(f"You don't have enough to raise that much! You have {bal}.", ephemeral=True)
 
             await self.game.cog.take_wellcoins(self.player, total_needed)
             
@@ -363,13 +376,13 @@ class RaiseModal(Modal, title="Raise Bet"):
             self.game.bets[self.player.id] += total_needed
             self.game.current_high_bet += raise_amount
             
-            await interaction.response.send_message(f"Raised by {raise_amount}!", ephemeral=True)
+            await interaction.followup.send(f"Raised by {raise_amount}!", ephemeral=True)
             
             self.game.turn_index = (self.game.turn_index + 1) % len(self.game.players)
             await self.game.next_turn()
 
         except Exception as e:
-            await interaction.response.send_message(f"Error: {e}", ephemeral=True)
+            await interaction.followup.send(f"Error: {e}", ephemeral=True)
 
 class TurnView(View):
     def __init__(self, game, active_player):
@@ -379,6 +392,8 @@ class TurnView(View):
 
     @discord.ui.button(label="Check Dice", style=discord.ButtonStyle.secondary, emoji="🎲")
     async def check_dice(self, interaction: discord.Interaction, button: Button):
+        # This can remain ephemeral=True and no defer needed if no DB call, 
+        # but deferring is safer if the bot is lagging.
         if interaction.user.id not in self.game.rolls:
             return await interaction.response.send_message("You aren't in this game.", ephemeral=True)
         d1, d2 = self.game.rolls[interaction.user.id]
@@ -386,28 +401,31 @@ class TurnView(View):
 
     @discord.ui.button(label="Check Balance", style=discord.ButtonStyle.secondary, emoji="💰")
     async def check_bal(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.defer(ephemeral=True)
         try:
             bal = await self.game.cog.get_balance(interaction.user)
-            await interaction.response.send_message(f"Your Wallet: **{bal} Wellcoins**", ephemeral=True)
+            await interaction.followup.send(f"Your Wallet: **{bal} Wellcoins**", ephemeral=True)
         except RuntimeError:
-             await interaction.response.send_message("Economy system offline.", ephemeral=True)
+             await interaction.followup.send("Economy system offline.", ephemeral=True)
 
     @discord.ui.button(label="Call / Check", style=discord.ButtonStyle.success)
     async def call(self, interaction: discord.Interaction, button: Button):
         if interaction.user != self.active_player:
             return await interaction.response.send_message("Not your turn!", ephemeral=True)
 
+        await interaction.response.defer(ephemeral=True) # Ack first
+
         current_bet = self.game.bets[interaction.user.id]
         diff = self.game.current_high_bet - current_bet
 
         if diff == 0:
-            await interaction.response.send_message("Checked.", ephemeral=True)
+            await interaction.followup.send("Checked.", ephemeral=True)
         else:
             try:
                 await self.game.cog.take_wellcoins(interaction.user, diff)
                 self.game.pot += diff
                 self.game.bets[interaction.user.id] += diff
-                await interaction.response.send_message(f"Called {diff}.", ephemeral=True)
+                await interaction.followup.send(f"Called {diff}.", ephemeral=True)
             except ValueError:
                 # TAPPED OUT LOGIC
                 try:
@@ -418,9 +436,9 @@ class TurnView(View):
                     self.game.tapped_out.append(interaction.user.id)
                     
                     await interaction.channel.send(f"⚠️ **{interaction.user.display_name}** is TAPPED OUT! They are all-in with {bal}.")
-                    await interaction.response.send_message("You are all-in.", ephemeral=True)
+                    await interaction.followup.send("You are all-in.", ephemeral=True)
                 except Exception as e:
-                     await interaction.response.send_message(f"Error processing tap out: {e}", ephemeral=True)
+                     await interaction.followup.send(f"Error processing tap out: {e}", ephemeral=True)
 
         self.game.turn_index = (self.game.turn_index + 1) % len(self.game.players)
         await self.game.next_turn()
@@ -430,16 +448,18 @@ class TurnView(View):
         if interaction.user != self.active_player:
             return await interaction.response.send_message("Not your turn!", ephemeral=True)
         
+        # Modals cannot be deferred! They must be the direct response.
         await interaction.response.send_modal(RaiseModal(self.game, interaction.user))
 
     @discord.ui.button(label="Fold", style=discord.ButtonStyle.danger)
     async def fold(self, interaction: discord.Interaction, button: Button):
         if interaction.user != self.active_player:
             return await interaction.response.send_message("Not your turn!", ephemeral=True)
-
+        
+        await interaction.response.defer(ephemeral=True)
         self.game.folded.append(interaction.user.id)
         await interaction.channel.send(f"🏳️ **{interaction.user.display_name}** folded.")
-        await interaction.response.send_message("You folded.", ephemeral=True)
+        await interaction.followup.send("You folded.", ephemeral=True)
         
         self.game.turn_index = (self.game.turn_index + 1) % len(self.game.players)
         await self.game.next_turn()
