@@ -75,10 +75,78 @@ class DiceOfKalma(commands.Cog):
             game = self.active_games[ctx.channel.id]
             if game.current_view:
                 game.current_view.stop()
+            
+            # Refund ante if game hasn't started yet
+            if not game.started:
+                for p in game.players:
+                    try:
+                        await self.add_wellcoins(p, game.ante)
+                    except:
+                        pass
+                await ctx.send("Game cancelled and antes refunded.")
+            else:
+                await ctx.send("Game force-stopped. Pot remains in the void (no refund logic for mid-game stop).")
+
             del self.active_games[ctx.channel.id]
-            await ctx.send("Game force-stopped.")
+            
+            # Disable view
+            if game.message:
+                try:
+                    await game.message.edit(view=None)
+                except:
+                    pass
         else:
             await ctx.send("No game running.")
+
+    @kalma.command()
+    @commands.is_owner()
+    async def stopall(self, ctx):
+        """
+        Force stops ALL active Dice of Kalma games across all channels.
+        Refunding logic:
+        - If in Lobby: Refunds Ante.
+        - If In-Game: Splits the pot evenly among active (non-folded) players.
+        """
+        if not self.active_games:
+            return await ctx.send("No active games found.")
+
+        count = 0
+        for channel_id, game in list(self.active_games.items()):
+            if game.current_view:
+                game.current_view.stop()
+            
+            # Refund Logic
+            if not game.started:
+                # Refund Ante
+                for p in game.players:
+                    try:
+                        await self.add_wellcoins(p, game.ante)
+                    except:
+                        pass
+            else:
+                # Split pot among remaining players
+                remaining = [p for p in game.players if p.id not in game.folded]
+                if remaining and game.pot > 0:
+                    share = game.pot / len(remaining)
+                    for p in remaining:
+                        try:
+                            await self.add_wellcoins(p, share)
+                        except:
+                            pass
+            
+            # Notify channel
+            try:
+                # We need to fetch the channel or use the stored message
+                if game.message:
+                    await game.message.channel.send("⚠️ **Admin has force-stopped all active games.** Funds have been returned/split.")
+                    await game.message.edit(view=None)
+            except:
+                pass
+
+            count += 1
+        
+        self.active_games.clear()
+        await ctx.send(f"✅ Force stopped {count} games.")
 
     # --- Shared Helper Methods ---
 
@@ -189,7 +257,24 @@ class GameSession:
             self.current_view.stop()
             
         if len(self.players) < 2:
-            return await self.ctx.send("Not enough players! Game cancelled.")
+            # REFUND & CANCEL LOGIC
+            for p in self.players:
+                try:
+                    await self.cog.add_wellcoins(p, self.ante)
+                except:
+                    pass
+            
+            await self.ctx.send("⚠️ **Not enough players to start!** Game cancelled and antes refunded.")
+            
+            if self.ctx.channel.id in self.cog.active_games:
+                del self.cog.active_games[self.ctx.channel.id]
+            
+            # Disable buttons
+            try:
+                await self.message.edit(view=None)
+            except:
+                pass
+            return
 
         self.is_betting = True
         self.turn_index = 0
