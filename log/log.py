@@ -49,7 +49,7 @@ class log(commands.Cog):
         # Cancel flags keyed by INVOCATION channel id (where you run /logchannel)
         self._cancel_flags: Dict[int, bool] = {}
 
-    def _format_message_block(self, msg: discord.Message) -> str:
+    async def _format_message_block(self, msg: discord.Message) -> str:
         author_display = getattr(msg.author, "display_name", msg.author.name)
         author_id = msg.author.id
 
@@ -61,33 +61,31 @@ class log(commands.Cog):
 
         header = f"{author_display} ({author_id}) | {created_utc} UTC\n"
         
-        # --- FIXED REPLY LOGGING ---
         reply_info = ""
-        # Check if msg.reference exists (this is the object that holds reply metadata)
-        ref = getattr(msg, "reference", None)
+        ref = msg.reference
         
         if ref and ref.message_id:
-            # We try to see if the message object itself was resolved/cached
-            # In Red/discord.py, this is often msg.referenced_message (if enabled)
-            ref_obj = getattr(msg, "referenced_message", None)
+            # 1. Try to get it from the internal cache first
+            ref_obj = ref.cached_message
             
-            if ref_obj and isinstance(ref_obj, discord.Message):
+            # 2. If not in cache, try to fetch it from the API
+            if not ref_obj:
+                try:
+                    # We use the channel the current message is in
+                    ref_obj = await msg.channel.fetch_message(ref.message_id)
+                except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                    ref_obj = None
+
+            if ref_obj:
                 ref_author = getattr(ref_obj.author, "display_name", "Unknown User")
-                # Truncate preview
+                # Truncate preview to keep the text file readable
                 preview = (ref_obj.clean_content[:50] + "...") if len(ref_obj.clean_content) > 50 else (ref_obj.clean_content or "[Embed/Image]")
                 reply_info = f"-> Replying to {ref_author}: \"{preview}\"\n"
             else:
-                # If the message isn't cached, we at least provide the ID for the audit trail
-                reply_info = f"-> Replying to Message ID: {ref.message_id}\n"
-        # ---------------------------
+                reply_info = f"-> Replying to Message ID: {ref.message_id} (Message Deleted or Inaccessible)\n"
 
         content = msg.clean_content or ""
-
-        block = header
-        if reply_info:
-            block += reply_info
-            
-        block += content + "\n"
+        block = header + reply_info + content + "\n"
 
         if msg.attachments:
             urls = " ".join(a.url for a in msg.attachments)
@@ -209,7 +207,7 @@ class log(commands.Cog):
                 if target_channel.id == inv_id and getattr(ctx, "message", None) and msg.id == ctx.message.id:
                     continue
 
-                buf.write(self._format_message_block(msg))
+                buf.write(await self._format_message_block(msg))       
                 chunk_count += 1
                 exported_total += 1
 
