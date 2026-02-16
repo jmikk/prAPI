@@ -350,7 +350,7 @@ class SSE(commands.Cog):
             return None, {}
 
         # Build UA: pick first configured UA or safe default
-        ua = uas[0] if uas else "Elderscry/1.0 (contact: your-discord#0000)"
+        ua = uas[0] if uas else "Elderscry/1.0 (contact: 9005)"
 
         url = "https://www.nationstates.net/api/" + "+".join(f"region:{r}" for r in regions)
         headers = {"User-Agent": ua}
@@ -629,7 +629,11 @@ class SSE(commands.Cog):
                 title="New RMB Post",
                 url=f"https://www.nationstates.net/region={region_slug}/page=display_region_rmb?postid={post_id}#p{post_id}",
                 colour=discord.Colour(0x3498DB),
-                timestamp=datetime.fromtimestamp(data.get("time", int(datetime.now(timezone.utc).timestamp())), tz=timezone.utc)
+# Convert the 'time' string to an int before passing it to fromtimestamp
+                timestamp = datetime.fromtimestamp(
+                    int(data.get("time", datetime.now(timezone.utc).timestamp())), 
+                    tz=timezone.utc
+                )            
             )
             if flag_url:
                 embed.set_thumbnail(url=flag_url)
