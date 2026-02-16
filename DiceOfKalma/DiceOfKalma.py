@@ -2,63 +2,46 @@ import discord
 import asyncio
 import random
 from collections import defaultdict
-from redbot.core import commands, Config
+from redbot.core import commands
 from discord.ui import View, Button, Modal, TextInput
 
 class DiceOfKalma(commands.Cog):
     """
     Play the Dice of Kalma.
-    High-stakes bluffing with specific hand rankings and economy integration.
+    High-stakes bluffing with specific hand rankings.
+    Currency is handled by the NexusExchange cog.
     """
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.get_conf(self, identifier=894723847230, force_registration=True)
-        self.config.register_user(master_balance=100.0)
-        # FIX: defaultdict is from collections, using asyncio.Lock as the factory
-        self._balance_locks = defaultdict(asyncio.Lock)
         self.active_games = {} # {channel_id: GameSession}
 
     # =========================================================================
-    #                               ECONOMY API
+    #                       EXTERNAL ECONOMY WRAPPERS
     # =========================================================================
 
+    @property
+    def nexus(self):
+        return self.bot.get_cog("NexusExchange")
+
+    def _check_nexus(self):
+        if not self.nexus:
+            raise RuntimeError("NexusExchange cog is not loaded. Please load it to play.")
+
     async def get_balance(self, user: discord.abc.User) -> float:
-        """Return the user's current Wellcoin balance."""
-        return await self.config.user(user).master_balance()
-
-    async def modify_wellcoins(self, user: discord.abc.User, delta: float, *, force: bool = False) -> float:
-        """Modify a user's Wellcoin balance safely."""
-        try:
-            delta = float(delta)
-        except (TypeError, ValueError):
-            raise ValueError("delta must be a number")
-
-        delta = int(delta * 100) / 100.0
-        
-        async with self._balance_locks[user.id]:
-            data = await self.config.user(user).all()
-            bal = float(data.get("master_balance", 0))
-
-            if delta < 0 and not force:
-                if bal < -delta:
-                    raise ValueError(f"Insufficient funds: tried to remove {-delta}, only {bal} available.")
-                new_bal = bal + delta
-            else:
-                new_bal = bal + delta
-
-            new_bal = int(new_bal * 100) / 100.0
-            data["master_balance"] = new_bal
-            await self.config.user(user).set(data)
-            return new_bal
+        """Return the user's current Wellcoin balance via NexusExchange."""
+        self._check_nexus()
+        return await self.nexus.get_balance(user)
 
     async def add_wellcoins(self, user: discord.abc.User, amount: float) -> float:
-        if amount < 0: raise ValueError("Amount must be non-negative")
-        return await self.modify_wellcoins(user, amount, force=False)
+        """Add coins via NexusExchange."""
+        self._check_nexus()
+        return await self.nexus.add_wellcoins(user, amount)
 
     async def take_wellcoins(self, user: discord.abc.User, amount: float, force: bool = False) -> float:
-        if amount < 0: raise ValueError("Amount must be non-negative")
-        return await self.modify_wellcoins(user, -amount, force=force)
+        """Remove coins via NexusExchange. Raises ValueError if insufficient."""
+        self._check_nexus()
+        return await self.nexus.take_wellcoins(user, amount, force=force)
 
     # =========================================================================
     #                             GAME LOGIC
@@ -73,6 +56,10 @@ class DiceOfKalma(commands.Cog):
         
         if ante <= 0:
             return await ctx.send("The ante must be greater than 0.")
+
+        # Check if Nexus is loaded before starting
+        if not self.nexus:
+            return await ctx.send("Error: The `NexusExchange` cog is required for currency but is not loaded.")
 
         # Initialize Game Session
         game = GameSession(self, ctx, ante)
@@ -195,17 +182,12 @@ class GameSession:
 
     async def next_turn(self):
         """Determines whose turn it is or if the round is over."""
-        active_players = [p for p in self.players if p.id not in self.folded and p.id not in self.tapped_out]
+        # 1. Check Win by default (everyone else folded)
         remaining = [p for p in self.players if p.id not in self.folded]
-
-        # 1. Win by default (everyone else folded)
         if len(remaining) == 1:
             return await self.end_game(winner=remaining[0])
 
         # 2. Check Betting Complete Condition
-        # If everyone remaining has either matched the high bet OR is tapped out
-        # AND everyone has had at least one chance to act (bets > -1, though simplified here)
-        
         all_bets_aligned = True
         for p in remaining:
             if p.id in self.tapped_out:
@@ -213,16 +195,6 @@ class GameSession:
             if self.bets.get(p.id, 0.0) < self.current_high_bet:
                 all_bets_aligned = False
                 break
-        
-        # If bets are aligned, we need to ensure the round doesn't end immediately 
-        # before the first player acts. We check if the current player has acted.
-        # Logic: If it's the start of the round (high_bet == 0) we must play.
-        # If high_bet > 0 and we return to the person who set it (or everyone called), we show down.
-        
-        # We'll use a simplified check:
-        # If we loop through players and everyone called/folded/tapped, Showdown.
-        # This is handled implicitly: if the logic finds the next player has ALREADY matched the high bet,
-        # it usually means the round is over.
         
         player = self.players[self.turn_index]
         
@@ -232,7 +204,7 @@ class GameSession:
             self.turn_index = (self.turn_index + 1) % len(self.players)
             player = self.players[self.turn_index]
             
-            # If we looped all the way around, everyone is out/tapped
+            # If we looped all the way around, everyone is out/tapped -> Showdown
             if self.turn_index == start_index:
                 return await self.showdown()
 
@@ -241,10 +213,7 @@ class GameSession:
         if self.current_high_bet > 0 and self.bets.get(player.id, 0.0) == self.current_high_bet:
             if all_bets_aligned:
                 return await self.showdown()
-        # If high bet is 0 and everyone has checked (bets=0), we need a flag to track if we circled.
-        # For simplicity in this version: We assume if we return to index 0 and everyone checked, it's over.
-        # (This is a naive implementation; full poker logic requires an 'acted' set, but this works for basic flow)
-        
+
         # Update View for the specific player's turn
         view = TurnView(self, player)
         embed = self.message.embeds[0]
@@ -335,7 +304,6 @@ class JoinView(View):
             embed = interaction.message.embeds[0]
             embed.set_field_at(0, name="Pot", value=f"{self.game.pot} Wellcoins")
             
-            # Simple list update
             player_names = [p.display_name for p in self.game.players]
             embed.description = f"**Ante:** {self.game.ante} Wellcoins\n**Players:** {', '.join(player_names)}"
             
@@ -344,11 +312,16 @@ class JoinView(View):
             
         except ValueError:
             await interaction.response.send_message(f"You don't have enough Wellcoins (Need {self.game.ante})", ephemeral=True)
+        except RuntimeError:
+             await interaction.response.send_message("The Economy system (NexusExchange) is offline.", ephemeral=True)
 
     @discord.ui.button(label="Check Balance", style=discord.ButtonStyle.grey)
     async def check_bal(self, interaction: discord.Interaction, button: Button):
-        bal = await self.game.cog.get_balance(interaction.user)
-        await interaction.response.send_message(f"💰 Your Wallet: **{bal} Wellcoins**", ephemeral=True)
+        try:
+            bal = await self.game.cog.get_balance(interaction.user)
+            await interaction.response.send_message(f"💰 Your Wallet: **{bal} Wellcoins**", ephemeral=True)
+        except RuntimeError:
+            await interaction.response.send_message("The Economy system (NexusExchange) is offline.", ephemeral=True)
 
     @discord.ui.button(label="Start Round", style=discord.ButtonStyle.blurple)
     async def start(self, interaction: discord.Interaction, button: Button):
@@ -378,6 +351,7 @@ class RaiseModal(Modal, title="Raise Bet"):
         total_needed = call_diff + raise_amount
 
         try:
+            # Check Balance using NexusExchange (via cog wrapper)
             bal = await self.game.cog.get_balance(self.player)
             
             if bal < total_needed:
@@ -412,8 +386,11 @@ class TurnView(View):
 
     @discord.ui.button(label="Check Balance", style=discord.ButtonStyle.secondary, emoji="💰")
     async def check_bal(self, interaction: discord.Interaction, button: Button):
-        bal = await self.game.cog.get_balance(interaction.user)
-        await interaction.response.send_message(f"Your Wallet: **{bal} Wellcoins**", ephemeral=True)
+        try:
+            bal = await self.game.cog.get_balance(interaction.user)
+            await interaction.response.send_message(f"Your Wallet: **{bal} Wellcoins**", ephemeral=True)
+        except RuntimeError:
+             await interaction.response.send_message("Economy system offline.", ephemeral=True)
 
     @discord.ui.button(label="Call / Check", style=discord.ButtonStyle.success)
     async def call(self, interaction: discord.Interaction, button: Button):
@@ -433,14 +410,17 @@ class TurnView(View):
                 await interaction.response.send_message(f"Called {diff}.", ephemeral=True)
             except ValueError:
                 # TAPPED OUT LOGIC
-                bal = await self.game.cog.get_balance(interaction.user)
-                await self.game.cog.take_wellcoins(interaction.user, bal)
-                self.game.pot += bal
-                self.game.bets[interaction.user.id] += bal
-                self.game.tapped_out.append(interaction.user.id)
-                
-                await interaction.channel.send(f"⚠️ **{interaction.user.display_name}** is TAPPED OUT! They are all-in with {bal}.")
-                await interaction.response.send_message("You are all-in.", ephemeral=True)
+                try:
+                    bal = await self.game.cog.get_balance(interaction.user)
+                    await self.game.cog.take_wellcoins(interaction.user, bal)
+                    self.game.pot += bal
+                    self.game.bets[interaction.user.id] += bal
+                    self.game.tapped_out.append(interaction.user.id)
+                    
+                    await interaction.channel.send(f"⚠️ **{interaction.user.display_name}** is TAPPED OUT! They are all-in with {bal}.")
+                    await interaction.response.send_message("You are all-in.", ephemeral=True)
+                except Exception as e:
+                     await interaction.response.send_message(f"Error processing tap out: {e}", ephemeral=True)
 
         self.game.turn_index = (self.game.turn_index + 1) % len(self.game.players)
         await self.game.next_turn()
