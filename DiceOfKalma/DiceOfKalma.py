@@ -1,6 +1,7 @@
 import discord
 import asyncio
 import random
+import time
 from collections import defaultdict
 from redbot.core import commands
 from discord.ui import View, Button, Modal, TextInput
@@ -151,6 +152,7 @@ class GameSession:
         self.bets = {}          # {user_id: amount_bet_this_round}
         self.tapped_out = []    # List of user_ids who are all-in/tapped
         self.folded = []        # List of user_ids who folded
+        self.checks = set()     # List of user_ids who have checked (for 0 bet rounds)
         self.turn_index = 0
         self.current_high_bet = 0.0
         self.message = None     # The main game message
@@ -183,6 +185,7 @@ class GameSession:
         self.is_betting = True
         self.turn_index = 0
         self.current_high_bet = 0.0
+        self.checks = set()
         
         # Roll Dice
         for p in self.players:
@@ -225,8 +228,17 @@ class GameSession:
                 return await self.showdown()
 
         # SHOWDOWN CHECK:
-        # If the current player has already matched the high bet, AND everyone else has too, it's over.
-        if self.current_high_bet > 0 and self.bets.get(player.id, 0.0) == self.current_high_bet:
+        # Determine if we should end the game (Showdown)
+        
+        # Case A: Pot has been raised (>0), current player matches, and everyone else is aligned.
+        pot_matched_end = (self.current_high_bet > 0 and self.bets.get(player.id, 0.0) == self.current_high_bet)
+        
+        # Case B: Pot is 0 (Check-Check situation), and everyone remaining has checked.
+        # We check if self.checks (set of IDs) contains all IDs in remaining players.
+        active_ids = {p.id for p in remaining}
+        zero_bet_end = (self.current_high_bet == 0 and self.checks.issuperset(active_ids))
+
+        if (pot_matched_end or zero_bet_end):
             if all_bets_aligned:
                 return await self.showdown()
 
@@ -234,8 +246,11 @@ class GameSession:
         view = TurnView(self, player)
         self.current_view = view
         
+        # Calculate expiry for relative timestamp (60s timeout matching TurnView)
+        expiry = int(time.time() + 60)
+        
         embed = self.message.embeds[0]
-        embed.description = f"It is {player.mention}'s turn to act."
+        embed.description = f"It is {player.mention}'s turn to act.\nAuto-fold <t:{expiry}:R>."
         embed.clear_fields()
         
         player_status = ""
@@ -246,7 +261,10 @@ class GameSession:
             elif p.id in self.tapped_out: status = "⚠️ Tapped Out"
             elif p == player: status = "🤔 Thinking..."
             elif bet_amt == self.current_high_bet and self.current_high_bet > 0: status = "✅ Matched"
-            elif bet_amt == 0 and self.current_high_bet == 0: status = "Waiting" 
+            elif bet_amt == 0 and self.current_high_bet == 0: 
+                # Differentiate between "Waiting to act" and "Checked"
+                if p.id in self.checks: status = "Checked"
+                else: status = "Waiting"
             else: status = f"Needs {self.current_high_bet - bet_amt:.2f}"
             
             player_status += f"**{p.display_name}**: {status} (Bet: {bet_amt})\n"
@@ -259,7 +277,7 @@ class GameSession:
         
         # PING logic: Ping player, delete after 10s
         try:
-            await self.ctx.send(f"🔔 {player.mention}, it's your turn!", delete_after=5)
+            await self.ctx.send(f"🔔 {player.mention}, it's your turn!", delete_after=10)
         except:
             pass # Ignore permission errors
 
@@ -440,6 +458,8 @@ class RaiseModal(Modal, title="Raise Bet"):
             self.game.pot += total_needed
             self.game.bets[self.player.id] += total_needed
             self.game.current_high_bet += raise_amount
+            # Clear checks because a raise resets the "everyone checked" condition
+            self.game.checks.clear()
             
             await interaction.followup.send(f"Raised by {raise_amount}!", ephemeral=True)
             
@@ -494,6 +514,8 @@ class TurnView(View):
         diff = self.game.current_high_bet - current_bet
 
         if diff == 0:
+            # Player is checking
+            self.game.checks.add(interaction.user.id)
             await interaction.followup.send("Checked.", ephemeral=True)
         else:
             try:
