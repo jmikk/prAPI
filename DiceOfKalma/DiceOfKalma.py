@@ -324,7 +324,7 @@ class JoinView(View):
             await interaction.message.edit(embed=embed)
             
             # 5. Send Public Confirmation (ephemeral=False sends to channel)
-            await interaction.followup.send(f"🎲 **{interaction.user.display_name}** has joined the table! (Bal: {bal})", ephemeral=False)
+            await interaction.followup.send(f"🎲 **{interaction.user.display_name}** has joined the table!)", ephemeral=False)
             
         except ValueError:
             await interaction.followup.send(f"You don't have enough Wellcoins to join! (Need {self.game.ante})", ephemeral=True)
