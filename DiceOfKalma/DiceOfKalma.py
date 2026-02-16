@@ -259,7 +259,7 @@ class GameSession:
         
         # PING logic: Ping player, delete after 10s
         try:
-            await self.ctx.send(f"🔔 {player.mention}, it's your turn!", delete_after=10)
+            await self.ctx.send(f"🔔 {player.mention}, it's your turn!", delete_after=5)
         except:
             pass # Ignore permission errors
 
