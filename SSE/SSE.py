@@ -480,10 +480,10 @@ class SSE(commands.Cog):
                             title=title or "Move-In",
                             description=desc or event_str,
                             colour=discord.Colour(mi_color),
-                            timestamp=datetime.fromtimestamp(
-                                data.get("time", int(datetime.now(timezone.utc).timestamp())),
-                                tz=timezone.utc,
-                            ),
+                            timestamp = datetime.fromtimestamp(
+                    int(data.get("time", datetime.now(timezone.utc).timestamp())), 
+                    tz=timezone.utc
+                )   
                         )
                         if flag_url:
                             embed.set_thumbnail(url=flag_url)
@@ -541,10 +541,10 @@ class SSE(commands.Cog):
                         title=title or "NationStates Event",
                         description=desc or event_str,
                         colour=discord.Colour(color),
-                        timestamp=datetime.fromtimestamp(
-                            data.get("time", int(datetime.now(timezone.utc).timestamp())),
-                            tz=timezone.utc,
-                        ),
+                        timestamp = datetime.fromtimestamp(
+                    int(data.get("time", datetime.now(timezone.utc).timestamp())), 
+                    tz=timezone.utc
+                )   
                     )
                     if flag_url:
                         embed.set_thumbnail(url=flag_url)
@@ -570,10 +570,10 @@ class SSE(commands.Cog):
                         title=title or "NationStates Event",
                         description=desc or event_str,
                         colour=discord.Colour(0x2F3136),
-                        timestamp=datetime.fromtimestamp(
-                            data.get("time", int(datetime.now(timezone.utc).timestamp())),
-                            tz=timezone.utc,
-                        ),
+                        timestamp = datetime.fromtimestamp(
+                    int(data.get("time", datetime.now(timezone.utc).timestamp())), 
+                    tz=timezone.utc
+                )   
                     )
                     if flag_url:
                         embed.set_thumbnail(url=flag_url)
