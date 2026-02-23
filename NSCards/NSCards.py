@@ -32,22 +32,22 @@ class NSThrottler:
         if ret: self.retry_after = int(ret)
 
 class NSCards(commands.Cog):
-    """NationStates Cards with Season-specific Flags and Category Colors."""
+    """NationStates Card Poker - Pulling from 9005."""
 
     def __init__(self, bot):
         self.bot = bot
         self.session = aiohttp.ClientSession()
-        self.headers = {"User-Agent": "RedBot Cog - NSCards v6.0 - Used by [YourNation]"}
+        self.headers = {"User-Agent": "RedBot Cog - CardPoker v7.0 - Used by [YourNation]"}
         self.throttler = NSThrottler()
         
-        # Color mapping based on card category
-        self.rarity_colors = {
-            "common": 0x929292,      # Grey
-            "uncommon": 0x47b547,    # Green
-            "rare": 0x3d76b8,        # Blue
-            "ultra-rare": 0x8a2be2,  # Purple
-            "epic": 0xff8c00,        # Orange
-            "legendary": 0xffd700    # Gold
+        # Color & Emoji mapping for Rarity/Category
+        self.rarity_data = {
+            "common": {"c": 0x929292, "e": "⚪"},
+            "uncommon": {"c": 0x47b547, "e": "🟢"},
+            "rare": {"c": 0x3d76b8, "e": "🔵"},
+            "ultra-rare": {"c": 0x8a2be2, "e": "🟣"},
+            "epic": {"c": 0xff8c00, "e": "🟠"},
+            "legendary": {"c": 0xffd700, "e": "🟡"}
         }
 
     def cog_unload(self):
@@ -66,68 +66,70 @@ class NSCards(commands.Cog):
             return ET.fromstring(text)
 
     @commands.command()
-    async def draw(self, ctx, nation: str):
-        """Fetch 5 random cards with season-accurate flags and MV."""
+    async def draw(self, ctx):
+        """Draw 5 cards from 9005 and display as a poker hand."""
         async with ctx.typing():
-            deck_url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname={nation}"
+            # Locked to nation 9005
+            deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9005"
             root = await self.fetch_xml(deck_url)
             
             if root is None:
-                return await ctx.send("Could not access API.")
+                return await ctx.send("Could not access the NationStates API.")
 
-            cards = root.findall(".//CARD")
-            if not cards:
-                return await ctx.send("Deck is empty or nation doesn't exist.")
+            cards_elements = root.findall(".//CARD")
+            if not cards_elements:
+                return await ctx.send("Deck 9005 is empty or unavailable.")
 
-            sampled = random.sample(cards, min(len(cards), 5))
-            pages = []
+            sampled = random.sample(cards_elements, min(len(cards_elements), 5))
+            card_pages = []
+            overview_lines = []
 
             for i, card_data in enumerate(sampled, 1):
-                # Season and ID from the first request
                 cid = card_data.find("CARDID").text
                 season = card_data.find("SEASON").text
                 
-                # Detailed info from the second request
                 info_url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={cid};season={season}"
                 card_root = await self.fetch_xml(info_url)
                 
                 if card_root is None: continue
 
-                # Extraction from card_info
-                name = card_root.find(".//NAME").text if card_root.find(".//NAME") is not None else "Unknown"
-                category = card_root.find(".//CATEGORY").text if card_root.find(".//CATEGORY") is not None else "common"
-                mv = card_root.find(".//MARKET_VALUE").text if card_root.find(".//MARKET_VALUE") is not None else "0.00"
-                flag_path = card_root.find(".//FLAG").text if card_root.find(".//FLAG") is not None else ""
-                owners_count = len(card_root.findall(".//OWNER"))
+                name = card_root.find(".//NAME").text or "Unknown"
+                cat = (card_root.find(".//CATEGORY").text or "common").lower()
+                mv = card_root.find(".//MARKET_VALUE").text or "0.00"
+                flag_path = card_root.find(".//FLAG").text or ""
+                owners = len(card_root.findall(".//OWNER"))
 
-                # Constructing the dynamic Flag URL
-                # Format: https://www.nationstates.net/images/cards/s[SEASON]/[FLAG_PATH]
-                full_flag_url = f"https://www.nationstates.net/images/cards/s{season}/{flag_path}"
-                
-                # Card link for the title
+                data = self.rarity_data.get(cat, self.rarity_data["common"])
                 card_link = f"https://www.nationstates.net/page=deck/card={cid}/season={season}"
                 
-                # Embed Setup
-                embed_color = self.rarity_colors.get(category.lower(), 0x929292)
-                
-                embed = discord.Embed(
-                    title=f"{name} (S{season})",
-                    url=card_link,
-                    color=embed_color
-                )
-                embed.set_thumbnail(url=full_flag_url)
-                embed.set_image(url=f"https://www.nationstates.net/images/cards/s{season}/{cid}.jpg")
-                
-                embed.add_field(name="Category", value=category.capitalize(), inline=True)
-                embed.add_field(name="MV", value=f"🪙 {mv}", inline=True)
-                embed.add_field(name="Owner Count", value=f"👥 {owners_count}", inline=True)
-                
-                embed.set_footer(text=f"Limit: {self.throttler.remaining} | {i}/{len(sampled)}")
-                pages.append(embed)
+                # Add to Summary Page
+                overview_lines.append(f"{i}. {data['e']} **[{name}]({card_link})** ({cat.capitalize()})")
 
-        if not pages:
-            return await ctx.send("Failed to retrieve card data.")
-        await menus.menu(ctx, pages, menus.DEFAULT_CONTROLS)
+                # Individual Detail Page
+                embed = discord.Embed(title=f"{name} (S{season})", url=card_link, color=data['c'])
+                embed.set_thumbnail(url=f"https://www.nationstates.net/images/cards/s{season}/{flag_path}")
+                embed.set_image(url=f"https://www.nationstates.net/images/cards/s{season}/{cid}.jpg")
+                embed.add_field(name="Category", value=f"{data['e']} {cat.capitalize()}", inline=True)
+                embed.add_field(name="MV", value=f"🪙 {mv}", inline=True)
+                embed.add_field(name="Owners", value=f"👥 {owners}", inline=True)
+                embed.set_footer(text=f"Card {i}/5 | Limit: {self.throttler.remaining}")
+                card_pages.append(embed)
+
+            if not card_pages:
+                return await ctx.send("Failed to retrieve card data.")
+
+            # Create the First (Overview) Page
+            overview_embed = discord.Embed(
+                title="🎴 Your Poker Hand - Nation 9005",
+                description="\n".join(overview_lines),
+                color=0x2f3136
+            )
+            overview_embed.set_footer(text="Legend: ⚪C 🟢U 🔵R 🟣UR 🟠E 🟡L")
+            
+            # Combine Overview with Detail Pages
+            final_pages = [overview_embed] + card_pages
+
+        await menus.menu(ctx, final_pages, menus.DEFAULT_CONTROLS)
 
 async def setup(bot):
     await bot.add_cog(NSCards(bot))
