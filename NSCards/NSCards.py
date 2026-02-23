@@ -26,7 +26,7 @@ class NSThrottler:
             # Proactive Throttling: 
             # If we have < 5 requests left, force a 1-second pause between calls
             # to let the rolling 30-second window "breathe".
-            if self.remaining < 5:
+            if self.remaining < 10:
                 delay = max(0, 1.0 - (now - self.last_request))
                 await asyncio.sleep(delay)
             
