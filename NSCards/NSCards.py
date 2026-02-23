@@ -32,11 +32,23 @@ class NSThrottler:
         if ret: self.retry_after = int(ret)
 
 class NSCards(commands.Cog):
+    """NationStates Cards with Season-specific Flags and Category Colors."""
+
     def __init__(self, bot):
         self.bot = bot
         self.session = aiohttp.ClientSession()
-        self.headers = {"User-Agent": "RedBot Cog - NSCards v4.0 - Used by [YourNation]"}
+        self.headers = {"User-Agent": "RedBot Cog - NSCards v6.0 - Used by [YourNation]"}
         self.throttler = NSThrottler()
+        
+        # Color mapping based on card category
+        self.rarity_colors = {
+            "common": 0x929292,      # Grey
+            "uncommon": 0x47b547,    # Green
+            "rare": 0x3d76b8,        # Blue
+            "ultra-rare": 0x8a2be2,  # Purple
+            "epic": 0xff8c00,        # Orange
+            "legendary": 0xffd700    # Gold
+        }
 
     def cog_unload(self):
         self.bot.loop.create_task(self.session.close())
@@ -55,7 +67,7 @@ class NSCards(commands.Cog):
 
     @commands.command()
     async def draw(self, ctx, nation: str):
-        """Fetch 5 random cards using native XML parsing."""
+        """Fetch 5 random cards with season-accurate flags and MV."""
         async with ctx.typing():
             deck_url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname={nation}"
             root = await self.fetch_xml(deck_url)
@@ -63,7 +75,6 @@ class NSCards(commands.Cog):
             if root is None:
                 return await ctx.send("Could not access API.")
 
-            # Find all CARD elements
             cards = root.findall(".//CARD")
             if not cards:
                 return await ctx.send("Deck is empty or nation doesn't exist.")
@@ -71,29 +82,51 @@ class NSCards(commands.Cog):
             sampled = random.sample(cards, min(len(cards), 5))
             pages = []
 
-            for i, card in enumerate(sampled, 1):
-                cid = card.find("CARDID").text
-                season = card.find("SEASON").text
+            for i, card_data in enumerate(sampled, 1):
+                # Season and ID from the first request
+                cid = card_data.find("CARDID").text
+                season = card_data.find("SEASON").text
                 
+                # Detailed info from the second request
                 info_url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={cid};season={season}"
                 card_root = await self.fetch_xml(info_url)
                 
                 if card_root is None: continue
 
-                # Extraction using ElementTree
+                # Extraction from card_info
                 name = card_root.find(".//NAME").text if card_root.find(".//NAME") is not None else "Unknown"
-                rarity = card_root.find(".//RARITY").text.capitalize() if card_root.find(".//RARITY") is not None else "Unknown"
-                owners = len(card_root.findall(".//OWNER"))
+                category = card_root.find(".//CATEGORY").text if card_root.find(".//CATEGORY") is not None else "common"
+                mv = card_root.find(".//MARKET_VALUE").text if card_root.find(".//MARKET_VALUE") is not None else "0.00"
+                flag_path = card_root.find(".//FLAG").text if card_root.find(".//FLAG") is not None else ""
+                owners_count = len(card_root.findall(".//OWNER"))
 
-                embed = discord.Embed(title=f"{name} (S{season})", color=await ctx.embed_color())
-                embed.set_thumbnail(url=f"https://www.nationstates.net/images/cards/s{season}/{cid}.jpg")
-                embed.add_field(name="Rarity", value=rarity, inline=True)
-                embed.add_field(name="Owners", value=str(owners), inline=True)
+                # Constructing the dynamic Flag URL
+                # Format: https://www.nationstates.net/images/cards/s[SEASON]/[FLAG_PATH]
+                full_flag_url = f"https://www.nationstates.net/images/cards/s{season}/{flag_path}"
+                
+                # Card link for the title
+                card_link = f"https://www.nationstates.net/page=deck/card={cid}/season={season}"
+                
+                # Embed Setup
+                embed_color = self.rarity_colors.get(category.lower(), 0x929292)
+                
+                embed = discord.Embed(
+                    title=f"{name} (S{season})",
+                    url=card_link,
+                    color=embed_color
+                )
+                embed.set_thumbnail(url=full_flag_url)
+                embed.set_image(url=f"https://www.nationstates.net/images/cards/s{season}/{cid}.jpg")
+                
+                embed.add_field(name="Category", value=category.capitalize(), inline=True)
+                embed.add_field(name="MV", value=f"🪙 {mv}", inline=True)
+                embed.add_field(name="Owner Count", value=f"👥 {owners_count}", inline=True)
+                
                 embed.set_footer(text=f"Limit: {self.throttler.remaining} | {i}/{len(sampled)}")
                 pages.append(embed)
 
         if not pages:
-            return await ctx.send("No card data found.")
+            return await ctx.send("Failed to retrieve card data.")
         await menus.menu(ctx, pages, menus.DEFAULT_CONTROLS)
 
 async def setup(bot):
