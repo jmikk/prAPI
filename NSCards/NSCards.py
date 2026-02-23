@@ -69,7 +69,7 @@ class NSCards(commands.Cog):
             return BeautifulSoup(await response.text(), "xml")
 
     @commands.command()
-    async def draw(self, ctx, nation: str):
+    async def draw(self, ctx, nation: str = 9006):
         """Fetch 5 random cards from a nation's deck."""
         
         # 'trigger_typing' is now 'typing' and used as a context manager
