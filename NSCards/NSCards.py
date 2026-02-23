@@ -5,7 +5,25 @@ import random
 import time
 import xml.etree.ElementTree as ET
 from redbot.core import commands
-from redbot.core.utils import menus
+
+class CardPaginator(discord.ui.View):
+    def __init__(self, pages):
+        super().__init__(timeout=60)
+        self.pages = pages
+        self.current_page = 0
+
+    async def update_page(self, interaction: discord.Interaction):
+        await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
+
+    @discord.ui.button(label="Prev", style=discord.ButtonStyle.grey)
+    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page = (self.current_page - 1) % len(self.pages)
+        await self.update_page(interaction)
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.grey)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page = (self.current_page + 1) % len(self.pages)
+        await self.update_page(interaction)
 
 class NSThrottler:
     def __init__(self):
@@ -32,15 +50,13 @@ class NSThrottler:
         if ret: self.retry_after = int(ret)
 
 class NSCards(commands.Cog):
-    """NationStates Card Poker - Pulling from 9005."""
+    """NationStates Card Poker with Buttons."""
 
     def __init__(self, bot):
         self.bot = bot
         self.session = aiohttp.ClientSession()
-        self.headers = {"User-Agent": "RedBot Cog - CardPoker v7.0 - Used by [YourNation]"}
+        self.headers = {"User-Agent": "RedBot Cog - CardPokerButtons v8.0 - Used by [YourNation]"}
         self.throttler = NSThrottler()
-        
-        # Color & Emoji mapping for Rarity/Category
         self.rarity_data = {
             "common": {"c": 0x929292, "e": "⚪"},
             "uncommon": {"c": 0x47b547, "e": "🟢"},
@@ -62,25 +78,19 @@ class NSCards(commands.Cog):
                 return await self.fetch_xml(url)
             if response.status != 200:
                 return None
-            text = await response.text()
-            return ET.fromstring(text)
+            return ET.fromstring(await response.text())
 
     @commands.command()
     async def draw(self, ctx):
-        """Draw 5 cards from 9005 and display as a poker hand."""
+        """Draw a poker hand from 9005 using Buttons."""
         async with ctx.typing():
-            # Locked to nation 9005
             deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9005"
             root = await self.fetch_xml(deck_url)
             
-            if root is None:
-                return await ctx.send("Could not access the NationStates API.")
+            if root is None or not root.findall(".//CARD"):
+                return await ctx.send("Could not access deck 9005.")
 
-            cards_elements = root.findall(".//CARD")
-            if not cards_elements:
-                return await ctx.send("Deck 9005 is empty or unavailable.")
-
-            sampled = random.sample(cards_elements, min(len(cards_elements), 5))
+            sampled = random.sample(root.findall(".//CARD"), 5)
             card_pages = []
             overview_lines = []
 
@@ -90,7 +100,6 @@ class NSCards(commands.Cog):
                 
                 info_url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={cid};season={season}"
                 card_root = await self.fetch_xml(info_url)
-                
                 if card_root is None: continue
 
                 name = card_root.find(".//NAME").text or "Unknown"
@@ -100,13 +109,11 @@ class NSCards(commands.Cog):
                 owners = len(card_root.findall(".//OWNER"))
 
                 data = self.rarity_data.get(cat, self.rarity_data["common"])
-                card_link = f"https://www.nationstates.net/page=deck/card={cid}/season={season}"
+                link = f"https://www.nationstates.net/page=deck/card={cid}/season={season}"
                 
-                # Add to Summary Page
-                overview_lines.append(f"{i}. {data['e']} **[{name}]({card_link})** ({cat.capitalize()})")
+                overview_lines.append(f"{i}. {data['e']} **[{name}]({link})** ({cat.capitalize()})")
 
-                # Individual Detail Page
-                embed = discord.Embed(title=f"{name} (S{season})", url=card_link, color=data['c'])
+                embed = discord.Embed(title=f"{name} (S{season})", url=link, color=data['c'])
                 embed.set_thumbnail(url=f"https://www.nationstates.net/images/cards/s{season}/{flag_path}")
                 embed.set_image(url=f"https://www.nationstates.net/images/cards/s{season}/{cid}.jpg")
                 embed.add_field(name="Category", value=f"{data['e']} {cat.capitalize()}", inline=True)
@@ -115,10 +122,6 @@ class NSCards(commands.Cog):
                 embed.set_footer(text=f"Card {i}/5 | Limit: {self.throttler.remaining}")
                 card_pages.append(embed)
 
-            if not card_pages:
-                return await ctx.send("Failed to retrieve card data.")
-
-            # Create the First (Overview) Page
             overview_embed = discord.Embed(
                 title="🎴 Your Poker Hand - Nation 9005",
                 description="\n".join(overview_lines),
@@ -126,10 +129,9 @@ class NSCards(commands.Cog):
             )
             overview_embed.set_footer(text="Legend: ⚪C 🟢U 🔵R 🟣UR 🟠E 🟡L")
             
-            # Combine Overview with Detail Pages
             final_pages = [overview_embed] + card_pages
-
-        await menus.menu(ctx, final_pages, menus.DEFAULT_CONTROLS)
+            view = CardPaginator(final_pages)
+            await ctx.send(embed=final_pages[0], view=view)
 
 async def setup(bot):
     await bot.add_cog(NSCards(bot))
