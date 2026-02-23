@@ -71,45 +71,52 @@ class NSCards(commands.Cog):
     @commands.command()
     async def draw(self, ctx, nation: str):
         """Fetch 5 random cards from a nation's deck."""
-        await ctx.trigger_typing()
         
-        deck_url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname={nation}"
-        soup = await self.fetch(deck_url)
-        
-        if not soup or not soup.find("DECK"):
-            return await ctx.send("Could not access deck. Check the nation name.")
-
-        cards = soup.find_all("CARD")
-        if not cards:
-            return await ctx.send("This nation's deck is empty.")
-
-        sampled = random.sample(cards, min(len(cards), 5))
-        pages = []
-
-        for i, card in enumerate(sampled, 1):
-            cid = card.find("CARDID").text
-            season = card.find("SEASON").text
+        # 'trigger_typing' is now 'typing' and used as a context manager
+        async with ctx.typing():
+            # Request 1: Get the deck
+            deck_url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname={nation}"
+            soup = await self.fetch(deck_url)
             
-            info_url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={cid};season={season}"
-            card_soup = await self.fetch(info_url)
-            
-            if not card_soup: continue
+            if not soup or not soup.find("DECK"):
+                return await ctx.send("Could not access deck. Check the nation name or API status.")
 
-            name = card_soup.find("NAME").text
-            rarity = card_soup.find("RARITY").text.capitalize()
-            owners = len(card_soup.find_all("OWNER"))
+            cards = soup.find_all("CARD")
+            if not cards:
+                return await ctx.send("This nation's deck is empty.")
 
-            embed = discord.Embed(title=f"{name} (S{season})", color=await ctx.embed_color())
-            embed.set_thumbnail(url=f"https://www.nationstates.net/images/cards/s{season}/{cid}.jpg")
-            embed.add_field(name="Rarity", value=rarity, inline=True)
-            embed.add_field(name="Owners", value=str(owners), inline=True)
-            embed.set_footer(text=f"Limit Remaining: {self.throttler.remaining} | Card {i}/{len(sampled)}")
-            pages.append(embed)
+            sampled = random.sample(cards, min(len(cards), 5))
+            pages = []
+
+            for i, card in enumerate(sampled, 1):
+                cid = card.find("CARDID").text
+                season = card.find("SEASON").text
+                
+                # Requests 2-6: Individual card info
+                info_url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={cid};season={season}"
+                card_soup = await self.fetch(info_url)
+                
+                if not card_soup: 
+                    continue
+
+                name = card_soup.find("NAME").text if card_soup.find("NAME") else "Unknown"
+                rarity = card_soup.find("RARITY").text.capitalize() if card_soup.find("RARITY") else "Unknown"
+                owners = len(card_soup.find_all("OWNER"))
+
+                embed = discord.Embed(
+                    title=f"{name} (S{season})", 
+                    color=await ctx.embed_color(),
+                    description=f"**Card ID:** {cid}"
+                )
+                embed.set_thumbnail(url=f"https://www.nationstates.net/images/cards/s{season}/{cid}.jpg")
+                embed.add_field(name="Rarity", value=rarity, inline=True)
+                embed.add_field(name="Owners", value=f"{owners} nations", inline=True)
+                embed.set_footer(text=f"Limit Remaining: {self.throttler.remaining} | Card {i}/{len(sampled)}")
+                pages.append(embed)
 
         if not pages:
             return await ctx.send("Failed to retrieve card data from the API.")
 
-        # Updated Menu Call:
         await menus.menu(ctx, pages, menus.DEFAULT_CONTROLS)
 
 async def setup(bot):
