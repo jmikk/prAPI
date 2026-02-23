@@ -66,7 +66,7 @@ class NSCards(commands.Cog):
             if response.status != 200:
                 return None
                 
-            return BeautifulSoup(await response.text(), "xml")
+            return BeautifulSoup(await response.text(), "lxml")
 
     @commands.command()
     async def draw(self, ctx, nation: str = 9006):
