@@ -1541,6 +1541,44 @@ Helpful Resources:
                 new_balance = data["master_balance"] + 10
                 await self.config.user_from_id(user_id).master_balance.set(new_balance)
                 paid_users += 1
+
+    @commands.guild_only()
+    @commands.command()
+    async def richest(self, ctx: commands.Context):
+        """Show the top 3 richest users in the server."""
+        all_balances = []
+
+        # Loop through members to calculate total wealth
+        for member in ctx.guild.members:
+            if member.bot:
+                continue
+            
+            # Get values from config
+            master_bal = await self.config.user(member).master_balance()
+            bank_total = await self.config.user(member).bank_total()
+            
+            total_wealth = master_bal + bank_total
+            all_balances.append((member.display_name, total_wealth))
+
+        # Sort by wealth (index 1) in descending order and take top 3
+        top_three = sorted(all_balances, key=lambda x: x[1], reverse=True)[:3]
+
+        # Create the embed
+        embed = discord.Embed(
+            title=f"💰 Richest Users in {ctx.guild.name}",
+            color=discord.Color.gold()
+        )
+
+        if not top_three:
+            embed.description = "No data found."
+        else:
+            # Join names with a numbered list, omitting the actual balance
+            description = "\n".join(
+                f"{i+1}. **{user[0]}**" for i, user in enumerate(top_three)
+            )
+            embed.description = description
+
+        await ctx.send(embed=embed)
         
    
     @commands.command()
