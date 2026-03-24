@@ -140,7 +140,7 @@ class NexusCards(commands.Cog):
             return await ctx.send("No eligible cards found in 9006.")
 
         target = random.choice(eligible)
-        await ctx.send(target)
+        await ctx.send(target.text)
         card_id = target.find("ID").text
         season = target.find("SEASON").text
         name = target.find("NAME").text if target.find("NAME") is not None else "Unknown Name"
