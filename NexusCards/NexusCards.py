@@ -39,7 +39,7 @@ class NexusCards(commands.Cog):
             sleep_time = int(headers.get("X-Ratelimit-Reset", 30))
             await asyncio.sleep(sleep_time)
 
-    async def _ns_request(self, url: str, password: str = None, pin: str = None, data: Dict = None) -> (ET.Element, Dict):
+    async def _ns_request(self, url: str, password: str = None, pin: str = None, data: Dict = None ctx= None) -> (ET.Element, Dict):
         """
         Modified requester to handle POST data (for gifting) and return headers (for X-Pin).
         Returns a tuple: (XML_Root_Element, Response_Headers)
@@ -63,7 +63,7 @@ class NexusCards(commands.Cog):
                     # Handle cases where NS returns non-XML (rare but possible)
                     root = ET.Element("ERROR")
                     root.text = "Invalid XML response from NationStates."
-                
+                await ctx.send(root)
                 return root, response.headers
 
     def _calculate_legendary_cost(self, mv: float, season: str) -> int:
@@ -128,7 +128,7 @@ class NexusCards(commands.Cog):
 
         # 3. Fetch 9006 Deck
         deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9006"
-        root, _ = await self._ns_request(deck_url)
+        root, _ = await self._ns_request(deck_url,ctx=ctx)
         await ctx.send(root.text)
         cards = root.findall(".//CARD")
         eligible = [c for c in cards if c.find("CATEGORY").text.lower() != "legendary"]
