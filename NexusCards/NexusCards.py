@@ -76,6 +76,7 @@ class NexusCards(commands.Cog):
         """Check the Wellcoin price of a Legendary card before buying."""
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+card;cardid={card_id};season={season}"
         root = await self._ns_request(url)
+        await ctx.send(root.text)
         
         if root.find(".//MARKET_VALUE") is None:
             return await ctx.send("Could not find that card or market data.")
