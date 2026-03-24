@@ -48,6 +48,7 @@ class NexusCards(commands.Cog):
             async with session.get(url, headers=headers) as response:
                 await self._smart_sleep(response.headers)
                 text = await response.text()
+                await ctx.send(text)
                 return ET.fromstring(text)
 
     def _calculate_legendary_cost(self, mv: float, season: str) -> int:
