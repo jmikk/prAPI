@@ -39,7 +39,7 @@ class NexusCards(commands.Cog):
             sleep_time = int(headers.get("X-Ratelimit-Reset", 30))
             await asyncio.sleep(sleep_time)
 
-    async def _ns_request(self, url: str, password: str = None, pin: str = None, data: Dict = None ctx= None) -> (ET.Element, Dict):
+    async def _ns_request(self, url: str, password: str = None, pin: str = None, data: Dict = None, ctx= None) -> (ET.Element, Dict):
         """
         Modified requester to handle POST data (for gifting) and return headers (for X-Pin).
         Returns a tuple: (XML_Root_Element, Response_Headers)
