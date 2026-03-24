@@ -129,6 +129,7 @@ class NexusCards(commands.Cog):
         # 3. Fetch 9006 Deck
         deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9006"
         root, _ = await self._ns_request(deck_url)
+        await ctx.send(root.text)
         cards = root.findall(".//CARD")
         eligible = [c for c in cards if c.find("CATEGORY").text.lower() != "legendary"]
         
