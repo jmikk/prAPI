@@ -130,7 +130,7 @@ class NexusCards(commands.Cog):
             return await ctx.send("Error checking balance.")
 
         # 3. Fetch 9006 Deck
-        deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9006"
+        deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9005"
         root, _ = await self._ns_request(deck_url, ctx=ctx)
         
         cards = root.findall(".//CARD")
