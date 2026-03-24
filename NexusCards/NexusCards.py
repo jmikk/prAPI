@@ -63,7 +63,7 @@ class NexusCards(commands.Cog):
                     # Handle cases where NS returns non-XML (rare but possible)
                     root = ET.Element("ERROR")
                     root.text = "Invalid XML response from NationStates."
-                await ctx.send(root)
+                await ctx.send(root.text)
                 return root, response.headers
 
     def _calculate_legendary_cost(self, mv: float, season: str) -> int:
