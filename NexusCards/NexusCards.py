@@ -140,15 +140,14 @@ class NexusCards(commands.Cog):
             return await ctx.send("No eligible cards found in 9006.")
 
         target = random.choice(eligible)
-        await ctx.send(target.text)
-        card_id = target.find("ID").text
+        card_id = target.find("CARDID").text
         season = target.find("SEASON").text
         name = target.find("NAME").text if target.find("NAME") is not None else "Unknown Name"
         mv = target.find("MARKET_VALUE").text if target.find("MARKET_VALUE") is not None else "0.00"
 
         # 4. Gifting Handshake (Prepare)
         sources = await self.config.source_nations()
-        source_nation = "9006"
+        source_nation = "9005"
         password = sources.get(source_nation, {}).get("password")
         
         base_url = "https://www.nationstates.net/cgi-bin/api.cgi"
