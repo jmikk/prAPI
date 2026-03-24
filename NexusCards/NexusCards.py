@@ -66,7 +66,7 @@ class NexusCards(commands.Cog):
                 # If an error happens and ctx is passed, print it
                 if ctx and root.tag == "ERROR":
                     await ctx.send(root.text)
-                
+                await ctx.send(root.text)
                 return root, response.headers
 
     def _calculate_legendary_cost(self, mv: float, season: str) -> int:
