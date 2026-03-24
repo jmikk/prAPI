@@ -37,7 +37,7 @@ class NexusCards(commands.Cog):
             sleep_time = int(headers.get("X-Ratelimit-Reset", 30))
             await asyncio.sleep(sleep_time)
 
-    async def _ns_request(self, url: str, password: str = None):
+    async def _ns_request(self, url: str, password: str = None,ctx= None):
         """Standardized NS API requester."""
         ua = await self.config.user_agent()
         headers = {"User-Agent": ua}
@@ -75,7 +75,7 @@ class NexusCards(commands.Cog):
     async def pricecheck(self, ctx, card_id: int, season: str):
         """Check the Wellcoin price of a Legendary card before buying."""
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=cards+card;cardid={card_id};season={season}"
-        root = await self._ns_request(url)
+        root = await self._ns_request(url,ctx = ctx)
         await ctx.send(root.text)
         
         if root.find(".//MARKET_VALUE") is None:
