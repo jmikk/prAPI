@@ -4,10 +4,9 @@ import aiohttp
 import time
 import math
 import xml.etree.ElementTree as ET
-from typing import Optional, List, Dict
-from redbot.core import commands, Config, checks
 import random
-
+from typing import Optional, List, Dict, Tuple
+from redbot.core import commands, Config, checks
 
 class NexusCards(commands.Cog):
     """Purchase cards from 9006 and The Phoenix of the Spring using Wellcoins."""
@@ -39,7 +38,7 @@ class NexusCards(commands.Cog):
             sleep_time = int(headers.get("X-Ratelimit-Reset", 30))
             await asyncio.sleep(sleep_time)
 
-    async def _ns_request(self, url: str, password: str = None, pin: str = None, data: Dict = None, ctx= None) -> (ET.Element, Dict):
+    async def _ns_request(self, url: str, password: str = None, pin: str = None, data: Dict = None, ctx=None) -> Tuple[ET.Element, Dict]:
         """
         Modified requester to handle POST data (for gifting) and return headers (for X-Pin).
         Returns a tuple: (XML_Root_Element, Response_Headers)
@@ -63,7 +62,11 @@ class NexusCards(commands.Cog):
                     # Handle cases where NS returns non-XML (rare but possible)
                     root = ET.Element("ERROR")
                     root.text = "Invalid XML response from NationStates."
-                await ctx.send(root.text)
+                
+                # If an error happens and ctx is passed, print it
+                if ctx and root.tag == "ERROR":
+                    await ctx.send(root.text)
+                
                 return root, response.headers
 
     def _calculate_legendary_cost(self, mv: float, season: str) -> int:
@@ -91,7 +94,7 @@ class NexusCards(commands.Cog):
     async def pricecheck(self, ctx, card_id: int, season: str):
         """Check the Wellcoin price of a Legendary card before buying."""
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info;cardid={card_id};season={season}"
-        root = await self._ns_request(url,ctx = ctx)
+        root, _ = await self._ns_request(url, ctx=ctx)
         
         if root.find(".//MARKET_VALUE") is None:
             return await ctx.send("Could not find that card or market data.")
@@ -128,8 +131,8 @@ class NexusCards(commands.Cog):
 
         # 3. Fetch 9006 Deck
         deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9006"
-        root, _ = await self._ns_request(deck_url,ctx=ctx)
-        await ctx.send(root.text)
+        root, _ = await self._ns_request(deck_url, ctx=ctx)
+        
         cards = root.findall(".//CARD")
         eligible = [c for c in cards if c.find("CATEGORY").text.lower() != "legendary"]
         
@@ -157,7 +160,7 @@ class NexusCards(commands.Cog):
             "mode": "prepare"
         }
 
-        prep_root, prep_headers = await self._ns_request(base_url, password=password, data=prepare_data)
+        prep_root, prep_headers = await self._ns_request(base_url, password=password, data=prepare_data, ctx=ctx)
         
         success_tag = prep_root.find("SUCCESS")
         if success_tag is None:
@@ -173,7 +176,7 @@ class NexusCards(commands.Cog):
         execute_data["mode"] = "execute"
         execute_data["token"] = token
 
-        exec_root, _ = await self._ns_request(base_url, pin=x_pin, data=execute_data)
+        exec_root, _ = await self._ns_request(base_url, pin=x_pin, data=execute_data, ctx=ctx)
 
         if exec_root.find("SUCCESS") is not None:
             # 6. Finalize Transaction
@@ -212,7 +215,7 @@ class NexusCards(commands.Cog):
 
         for nation in sources_to_check:
             url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info;cardid={card_id};season={season}"
-            root = await self._ns_request(url)
+            root, _ = await self._ns_request(url, ctx=ctx)
             owners = [o.text.lower() for o in root.findall(".//OWNER")]
             
             if nation in owners:
@@ -237,7 +240,7 @@ class NexusCards(commands.Cog):
         passw = source_creds.get(found_in, {}).get("password")
         gift_url = f"https://www.nationstates.net/cgi-bin/api.cgi?a=sendcard&cardid={card_id}&season={season}&to={ctx.author.display_name.replace(' ', '_')}"
         
-        result = await self._ns_request(gift_url, password=passw)
+        result, _ = await self._ns_request(gift_url, password=passw, ctx=ctx)
         
         if result.find("SUCCESS") is not None:
             await nexus.take_wellcoins(ctx.author, cost)
@@ -264,3 +267,4 @@ class NexusCards(commands.Cog):
         async with self.config.source_nations() as sources:
             sources[nation] = {"password": password}
         await ctx.send(f"Stored credentials for {nation}.")
+        
