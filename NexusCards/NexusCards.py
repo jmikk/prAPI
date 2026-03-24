@@ -6,6 +6,8 @@ import math
 import xml.etree.ElementTree as ET
 from typing import Optional, List, Dict
 from redbot.core import commands, Config, checks
+import random
+
 
 class NexusCards(commands.Cog):
     """Purchase cards from 9006 and The Phoenix of the Spring using Wellcoins."""
@@ -37,19 +39,32 @@ class NexusCards(commands.Cog):
             sleep_time = int(headers.get("X-Ratelimit-Reset", 30))
             await asyncio.sleep(sleep_time)
 
-    async def _ns_request(self, url: str, password: str = None, ctx= None):
-        """Standardized NS API requester."""
+    async def _ns_request(self, url: str, password: str = None, pin: str = None, data: Dict = None) -> (ET.Element, Dict):
+        """
+        Modified requester to handle POST data (for gifting) and return headers (for X-Pin).
+        Returns a tuple: (XML_Root_Element, Response_Headers)
+        """
         ua = await self.config.user_agent()
         headers = {"User-Agent": ua}
         if password:
             headers["X-Password"] = password
+        if pin:
+            headers["X-Pin"] = pin
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as response:
+            # If data is provided, it becomes a POST request
+            method = session.post if data else session.get
+            async with method(url, headers=headers, data=data) as response:
                 await self._smart_sleep(response.headers)
                 text = await response.text()
-                #await ctx.send(text)
-                return ET.fromstring(text)
+                try:
+                    root = ET.fromstring(text)
+                except ET.ParseError:
+                    # Handle cases where NS returns non-XML (rare but possible)
+                    root = ET.Element("ERROR")
+                    root.text = "Invalid XML response from NationStates."
+                
+                return root, response.headers
 
     def _calculate_legendary_cost(self, mv: float, season: str) -> int:
         """Logic: Up to 50 MV = 10k. Every 25.00 after = +5k. Apply multipliers."""
@@ -93,55 +108,92 @@ class NexusCards(commands.Cog):
 
     @commands.command()
     @commands.cooldown(1, 5, commands.BucketType.user)
-    async def getcard(self, ctx):
+    async def getcard(self, ctx, recipient: str):
         """Purchase a random non-legendary card from 9006 (400 Wellcoins)."""
         nexus = self.bot.get_cog("NexusExchange")
-        if not nexus: return await ctx.send("NexusExchange cog not found.")
+        if not nexus: 
+            return await ctx.send("NexusExchange cog not found.")
 
+        # 1. Check Weekly Limits
         if not await self._check_weekly_limit(ctx.author, "common_uses", 15):
             return await ctx.send("You have reached your limit of 15 cards this week.")
 
+        # 2. Check Balance
         try:
             bal = await nexus.get_balance(ctx.author)
-            if bal < 400: return await ctx.send(f"Insufficient funds. (Current: {bal})")
-        except: return await ctx.send("Error checking balance.")
+            if bal < 400: 
+                return await ctx.send(f"Insufficient funds. (Current: {bal} Wellcoins)")
+        except: 
+            return await ctx.send("Error checking balance.")
 
-        # Fetch 9006 Deck
-        url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9006"
-        root = await self._ns_request(url)
+        # 3. Fetch 9006 Deck
+        deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9006"
+        root, _ = await self._ns_request(deck_url)
         cards = root.findall(".//CARD")
         eligible = [c for c in cards if c.find("CATEGORY").text.lower() != "legendary"]
         
-        if not eligible: return await ctx.send("No eligible cards found in 9006.")
+        if not eligible: 
+            return await ctx.send("No eligible cards found in 9006.")
 
-        import random
         target = random.choice(eligible)
         card_id = target.find("ID").text
         season = target.find("SEASON").text
         name = target.find("NAME").text if target.find("NAME") is not None else "Unknown Name"
         mv = target.find("MARKET_VALUE").text if target.find("MARKET_VALUE") is not None else "0.00"
 
-        # Transfer Logic
+        # 4. Gifting Handshake (Prepare)
         sources = await self.config.source_nations()
-        passw = sources.get("9006", {}).get("password")
-        gift_url = f"https://www.nationstates.net/cgi-bin/api.cgi?a=sendcard&cardid={card_id}&season={season}&to={ctx.author.display_name.replace(' ', '_')}"
+        source_nation = "9006"
+        password = sources.get(source_nation, {}).get("password")
         
-        result = await self._ns_request(gift_url, password=passw)
+        base_url = "https://www.nationstates.net/cgi-bin/api.cgi"
+        prepare_data = {
+            "nation": source_nation,
+            "c": "giftcard",
+            "cardid": card_id,
+            "season": season,
+            "to": recipient.replace(" ", "_"),
+            "mode": "prepare"
+        }
+
+        prep_root, prep_headers = await self._ns_request(base_url, password=password, data=prepare_data)
         
-        if result.find("SUCCESS") is not None:
+        success_tag = prep_root.find("SUCCESS")
+        if success_tag is None:
+            error_msg = prep_root.find("ERROR").text if prep_root.find("ERROR") is not None else "Unknown error during Prepare."
+            return await ctx.send(f"❌ Transfer failed during Prepare: {error_msg}")
+
+        # Extract Token and Pin
+        token = success_tag.text
+        x_pin = prep_headers.get("X-Pin")
+
+        # 5. Gifting Handshake (Execute)
+        execute_data = prepare_data.copy()
+        execute_data["mode"] = "execute"
+        execute_data["token"] = token
+
+        exec_root, _ = await self._ns_request(base_url, pin=x_pin, data=execute_data)
+
+        if exec_root.find("SUCCESS") is not None:
+            # 6. Finalize Transaction
             await nexus.take_wellcoins(ctx.author, 400)
             async with self.config.user(ctx.author).common_uses() as uses:
                 uses.append(time.time())
 
             # Specific requested Embed format
-            embed = discord.Embed(title="Loot Box Opened!", description="You received a card!", color=discord.Color.gold())
+            embed = discord.Embed(
+                title="Loot Box Opened!", 
+                description="You received a card!", 
+                color=discord.Color.gold()
+            )
             embed.add_field(name="Card Name", value=name, inline=False)
             embed.add_field(name="Card ID", value=card_id, inline=True)
             embed.add_field(name="Season", value=season, inline=True)
             embed.add_field(name="Market Value", value=mv, inline=True)
             await ctx.send(embed=embed)
         else:
-            await ctx.send("❌ Transfer failed. Ensure your Discord name matches your Nation name exactly.")
+            error_msg = exec_root.find("ERROR").text if exec_root.find("ERROR") is not None else "Unknown error during Execution."
+            await ctx.send(f"❌ Transfer failed during Execution: {error_msg}")
 
     @commands.command()
     async def buylegendary(self, ctx, card_id: int, season: str):
