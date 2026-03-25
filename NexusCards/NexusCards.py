@@ -61,7 +61,7 @@ class NexusCards(commands.Cog):
                 except ET.ParseError:
                     # Handle cases where NS returns non-XML (rare but possible)
                     root = ET.Element("ERROR")
-                    root.text = "Invalid XML response from NationStates."
+                    root.text = f"{text} Invalid XML response from NationStates."
                 
                 # If an error happens and ctx is passed, print it
                 if ctx and root.tag == "ERROR":
