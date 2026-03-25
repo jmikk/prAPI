@@ -195,7 +195,7 @@ class NexusCards(commands.Cog):
 
             # Specific requested Embed format
             embed = discord.Embed(
-                title=f"[Loot Box Opened!](https://www.nationstates.net/page=deck/card={card_id}/season={season})", 
+                title=f"Loot Box Opened!", 
                 description="You received a card!", 
                 color=embed_color
             )
