@@ -83,7 +83,7 @@ class NexusCards(commands.Cog):
 
     async def _check_weekly_limit(self, user: discord.Member, limit_type: str, max_uses: int):
         now = time.time()
-        one_week = 120
+        one_week = 604800
         async with self.config.user(user).all() as data:
             data[limit_type] = [t for t in data[limit_type] if now - t < one_week]
             return len(data[limit_type]) < max_uses
@@ -118,7 +118,7 @@ class NexusCards(commands.Cog):
             return await ctx.send("NexusExchange cog not found.")
 
         # 1. Check Weekly Limits
-        if not await self._check_weekly_limit(ctx.author, "common_uses", 3):
+        if not await self._check_weekly_limit(ctx.author, "common_uses", 15):
             return await ctx.send("You have reached your limit of 15 cards this week.")
 
         # 2. Check Balance
