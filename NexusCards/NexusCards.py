@@ -246,11 +246,36 @@ class NexusCards(commands.Cog):
             return await ctx.send(f"This costs {cost:,} WC. You have {bal:,}.")
 
         passw = source_creds.get(found_in, {}).get("password")
-        gift_url = f"https://www.nationstates.net/cgi-bin/api.cgi?a=sendcard&nation={found_in}&cardid={card_id}&season={season}&to={recipient}"
         
-        result, _ = await self._ns_request(gift_url, password=passw, ctx=ctx)
+        base_url = "https://www.nationstates.net/cgi-bin/api.cgi"
+        prepare_data = {
+            "nation": found_in,
+            "c": "giftcard",
+            "cardid": card_id,
+            "season": season,
+            "to": recipient.replace(" ", "_"),
+            "mode": "prepare"
+        }
+
+        prep_root, prep_headers = await self._ns_request(base_url, password=password, data=prepare_data, ctx=ctx)
         
-        if result.find("SUCCESS") is not None:
+        success_tag = prep_root.find("SUCCESS")
+        if success_tag is None:
+            error_msg = prep_root.find("ERROR").text if prep_root.find("ERROR") is not None else "Unknown error during Prepare."
+            return await ctx.send(f"❌ Transfer failed during Prepare: {error_msg}")
+
+        # Extract Token and Pin
+        token = success_tag.text
+        x_pin = prep_headers.get("X-Pin")
+
+        # 5. Gifting Handshake (Execute)
+        execute_data = prepare_data.copy()
+        execute_data["mode"] = "execute"
+        execute_data["token"] = token
+
+        exec_root, _ = await self._ns_request(base_url, pin=x_pin, data=execute_data, ctx=ctx)
+        
+        if exec_root.find("SUCCESS") is not None:
             await nexus.take_wellcoins(ctx.author, cost)
             async with self.config.user(ctx.author).legendary_uses() as uses:
                 uses.append(time.time())
