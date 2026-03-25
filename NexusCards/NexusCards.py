@@ -275,3 +275,30 @@ class NexusCards(commands.Cog):
         async with self.config.source_nations() as sources:
             sources[nation] = {"password": password}
         await ctx.send(f"Stored credentials for {nation}.")
+
+    @commands.command(name="cardlimits")
+    async def cardlimits(self, ctx):
+        """Check your weekly card purchase limits."""
+        now = time.time()
+        one_week = 604800
+        
+        async with self.config.user(ctx.author).all() as data:
+            # Clean up old timestamps
+            common_uses = [t for t in data["common_uses"] if now - t < one_week]
+            legendary_uses = [t for t in data["legendary_uses"] if now - t < one_week]
+            data["common_uses"] = common_uses
+            data["legendary_uses"] = legendary_uses
+
+        common_left = max(0, 15 - len(common_uses))
+        legendary_left = max(0, 1 - len(legendary_uses))
+
+        embed = discord.Embed(
+            title="Weekly Card Limits", 
+            description="Limits reset exactly 7 days after each individual purchase.",
+            color=discord.Color.green()
+        )
+        embed.set_author(name=ctx.author.display_name)
+        embed.add_field(name="Loot Boxes (`getcard`)", value=f"**{common_left} / 15** remaining", inline=False)
+        embed.add_field(name="Legendaries (`buylegendary`)", value=f"**{legendary_left} / 1** remaining", inline=False)
+        
+        await ctx.send(embed=embed)
