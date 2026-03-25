@@ -195,7 +195,7 @@ class NexusCards(commands.Cog):
 
             # Specific requested Embed format
             embed = discord.Embed(
-                title=f"Loot Box Opened!", 
+                title=f"Thank you for your purchase it cost 400 Wellcoins!", 
                 description="You received a card!", 
                 color=embed_color
             )
