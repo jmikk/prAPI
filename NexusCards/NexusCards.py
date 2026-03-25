@@ -125,7 +125,7 @@ class NexusCards(commands.Cog):
         try:
             bal = await nexus.get_balance(ctx.author)
             if bal < 400: 
-                return await ctx.send(f"Insufficient funds. This costs 400 wellcoins! (Current: {bal} Wellcoins)")
+                return await ctx.send(f"Insufficient funds. This costs 400 wellcoins! (Current: {bal:,} Wellcoins)")
         except: 
             return await ctx.send("Error checking balance.")
 
@@ -243,7 +243,7 @@ class NexusCards(commands.Cog):
         
         bal = await nexus.get_balance(ctx.author)
         if bal < cost:
-            return await ctx.send(f"This costs {cost:,} WC. You have {bal}.")
+            return await ctx.send(f"This costs {cost:,} WC. You have {bal:,}.")
 
         passw = source_creds.get(found_in, {}).get("password")
         gift_url = f"https://www.nationstates.net/cgi-bin/api.cgi?a=sendcard&cardid={card_id}&season={season}&to={ctx.author.display_name.replace(' ', '_')}"
