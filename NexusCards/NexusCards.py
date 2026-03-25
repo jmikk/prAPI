@@ -118,14 +118,14 @@ class NexusCards(commands.Cog):
             return await ctx.send("NexusExchange cog not found.")
 
         # 1. Check Weekly Limits
-        if not await self._check_weekly_limit(ctx.author, "common_uses", 15):
+        if not await self._check_weekly_limit(ctx.author, "common_uses", 3):
             return await ctx.send("You have reached your limit of 15 cards this week.")
 
         # 2. Check Balance
         try:
             bal = await nexus.get_balance(ctx.author)
             if bal < 400: 
-                return await ctx.send(f"Insufficient funds. (Current: {bal} Wellcoins)")
+                return await ctx.send(f"Insufficient funds. This costs 400 wellcoins! (Current: {bal} Wellcoins)")
         except: 
             return await ctx.send("Error checking balance.")
 
