@@ -318,9 +318,9 @@ class NexusCards(commands.Cog):
         one_week = 604800
         
         async with self.config.user(ctx.author).all() as data:
-            # Clean up old timestamps
-            common_uses = [t for t in data["common_uses"] if now - t < one_week]
-            legendary_uses = [t for t in data["legendary_uses"] if now - t < one_week]
+            # Clean up old timestamps and sort them to find the oldest easily
+            common_uses = sorted([t for t in data["common_uses"] if now - t < one_week])
+            legendary_uses = sorted([t for t in data["legendary_uses"] if now - t < one_week])
             data["common_uses"] = common_uses
             data["legendary_uses"] = legendary_uses
 
@@ -333,7 +333,18 @@ class NexusCards(commands.Cog):
             color=discord.Color.green()
         )
         embed.set_author(name=ctx.author.display_name)
-        embed.add_field(name="Loot Boxes (`getcard`)", value=f"**{common_left} / 15** remaining", inline=False)
-        embed.add_field(name="Legendaries (`buylegendary`)", value=f"**{legendary_left} / 1** remaining", inline=False)
+        
+        common_value = f"**{common_left} / 15** remaining"
+        if common_left < 15 and common_uses:
+            next_refresh = int(common_uses[0] + one_week)
+            common_value += f"\n*Next use available:* <t:{next_refresh}:R>"
+            
+        legendary_value = f"**{legendary_left} / 1** remaining"
+        if legendary_left < 1 and legendary_uses:
+            next_refresh = int(legendary_uses[0] + one_week)
+            legendary_value += f"\n*Next use available:* <t:{next_refresh}:R>"
+
+        embed.add_field(name="Loot Boxes (`getcard`)", value=common_value, inline=False)
+        embed.add_field(name="Legendaries (`buylegendary`)", value=legendary_value, inline=False)
         
         await ctx.send(embed=embed)
