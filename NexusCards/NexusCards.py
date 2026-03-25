@@ -257,7 +257,7 @@ class NexusCards(commands.Cog):
             "mode": "prepare"
         }
 
-        prep_root, prep_headers = await self._ns_request(base_url, password=password, data=prepare_data, ctx=ctx)
+        prep_root, prep_headers = await self._ns_request(base_url, password=passw, data=prepare_data, ctx=ctx)
         
         success_tag = prep_root.find("SUCCESS")
         if success_tag is None:
@@ -279,9 +279,19 @@ class NexusCards(commands.Cog):
             await nexus.take_wellcoins(ctx.author, cost)
             async with self.config.user(ctx.author).legendary_uses() as uses:
                 uses.append(time.time())
-            await ctx.send(f"💎 Sent Season {season} #{card_id} to you for {cost} Wellcoins.")
+                
+            embed = discord.Embed(
+                title=f"Thank you for your purchase it cost {cost:,} Wellcoins!", 
+                description="You received a Legendary card!", 
+                color=discord.Color.gold()
+            )
+            embed.add_field(name="Card ID", value=card_id, inline=True)
+            embed.add_field(name="Season", value=season, inline=True)
+            embed.add_field(name="Market Value", value=mv, inline=True)
+            await ctx.send(embed=embed)
         else:
             await ctx.send("❌ Transfer failed. Check Nation name or password.")
+
 
     @commands.group()
     @checks.admin_or_permissions(manage_guild=True)
