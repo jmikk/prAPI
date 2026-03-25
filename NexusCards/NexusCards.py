@@ -142,7 +142,6 @@ class NexusCards(commands.Cog):
         target = random.choice(eligible)
         card_id = target.find("CARDID").text
         season = target.find("SEASON").text
-        name = target.find("NAME").text if target.find("NAME") is not None else "Unknown Name"
         mv = target.find("MARKET_VALUE").text if target.find("MARKET_VALUE") is not None else "0.00"
         category = target.find("CATEGORY").text.lower() if target.find("CATEGORY") is not None else "common"
 
@@ -196,11 +195,10 @@ class NexusCards(commands.Cog):
 
             # Specific requested Embed format
             embed = discord.Embed(
-                title="Loot Box Opened!", 
+                title=f"[Loot Box Opened!](https://www.nationstates.net/page=deck/card={card_id}/season={season})", 
                 description="You received a card!", 
                 color=embed_color
             )
-            embed.add_field(name="Card Name", value=name, inline=False)
             embed.add_field(name="Card ID", value=card_id, inline=True)
             embed.add_field(name="Season", value=season, inline=True)
             embed.add_field(name="Market Value", value=mv, inline=True)
