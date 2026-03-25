@@ -246,7 +246,7 @@ class NexusCards(commands.Cog):
             return await ctx.send(f"This costs {cost:,} WC. You have {bal:,}.")
 
         passw = source_creds.get(found_in, {}).get("password")
-        gift_url = f"https://www.nationstates.net/cgi-bin/api.cgi?a=sendcard&cardid={card_id}&season={season}&to={ctx.author.display_name.replace(' ', '_')}"
+        gift_url = f"https://www.nationstates.net/cgi-bin/api.cgi?a=sendcard&cardid={card_id}&season={season}&to={recipient}"
         
         result, _ = await self._ns_request(gift_url, password=passw, ctx=ctx)
         
