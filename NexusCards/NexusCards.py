@@ -61,12 +61,12 @@ class NexusCards(commands.Cog):
                 except ET.ParseError:
                     # Handle cases where NS returns non-XML (rare but possible)
                     root = ET.Element("ERROR")
-                    root.text = f"{text} Invalid XML response from NationStates."
+                    root.text = "Invalid XML response from NationStates."
                 
                 # If an error happens and ctx is passed, print it
                 if ctx and root.tag == "ERROR":
                     await ctx.send(root.text)
-               # await ctx.send(root.text)
+                
                 return root, response.headers
 
     def _calculate_legendary_cost(self, mv: float, season: str) -> int:
@@ -130,7 +130,7 @@ class NexusCards(commands.Cog):
             return await ctx.send("Error checking balance.")
 
         # 3. Fetch 9006 Deck
-        deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9005"
+        deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9006"
         root, _ = await self._ns_request(deck_url, ctx=ctx)
         
         cards = root.findall(".//CARD")
@@ -144,10 +144,20 @@ class NexusCards(commands.Cog):
         season = target.find("SEASON").text
         name = target.find("NAME").text if target.find("NAME") is not None else "Unknown Name"
         mv = target.find("MARKET_VALUE").text if target.find("MARKET_VALUE") is not None else "0.00"
+        category = target.find("CATEGORY").text.lower() if target.find("CATEGORY") is not None else "common"
+
+        color_mapping = {
+            "common": discord.Color.light_grey(),
+            "uncommon": discord.Color.green(),
+            "rare": discord.Color.blue(),
+            "ultra-rare": discord.Color.purple(),
+            "epic": discord.Color.orange()
+        }
+        embed_color = color_mapping.get(category, discord.Color.light_grey())
 
         # 4. Gifting Handshake (Prepare)
         sources = await self.config.source_nations()
-        source_nation = "9005"
+        source_nation = "9006"
         password = sources.get(source_nation, {}).get("password")
         
         base_url = "https://www.nationstates.net/cgi-bin/api.cgi"
@@ -188,7 +198,7 @@ class NexusCards(commands.Cog):
             embed = discord.Embed(
                 title="Loot Box Opened!", 
                 description="You received a card!", 
-                color=discord.Color.gold()
+                color=embed_color
             )
             embed.add_field(name="Card Name", value=name, inline=False)
             embed.add_field(name="Card ID", value=card_id, inline=True)
@@ -267,4 +277,3 @@ class NexusCards(commands.Cog):
         async with self.config.source_nations() as sources:
             sources[nation] = {"password": password}
         await ctx.send(f"Stored credentials for {nation}.")
-        
