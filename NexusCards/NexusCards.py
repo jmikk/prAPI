@@ -9,7 +9,7 @@ from typing import Optional, List, Dict, Tuple
 from redbot.core import commands, Config, checks
 
 class NexusCards(commands.Cog):
-    """Purchase cards from 9006 and The Phoenix of the Spring using Wellcoins."""
+    """Purchase cards from 9005 and The Phoenix of the Spring using Wellcoins."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -18,7 +18,7 @@ class NexusCards(commands.Cog):
         default_global = {
             "user_agent": "Red-Bot NexusCards Cog - Used by [YourNation]",
             "source_nations": {
-                "9006": {"password": ""},
+                "9005": {"password": ""},
                 "the_phoenix_of_the_spring": {"password": ""}
             },
             "giveaway_nation": "The_Well_Giveaways"
@@ -112,7 +112,7 @@ class NexusCards(commands.Cog):
     @commands.command()
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def getcard(self, ctx, recipient: str):
-        """Purchase a random non-legendary card from 9006 (400 Wellcoins)."""
+        """Purchase a random non-legendary card from 9005 (400 Wellcoins)."""
         nexus = self.bot.get_cog("NexusExchange")
         if not nexus: 
             return await ctx.send("NexusExchange cog not found.")
@@ -129,15 +129,15 @@ class NexusCards(commands.Cog):
         except: 
             return await ctx.send("Error checking balance.")
 
-        # 3. Fetch 9006 Deck
-        deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9006"
+        # 3. Fetch 9005 Deck
+        deck_url = "https://www.nationstates.net/cgi-bin/api.cgi?q=cards+deck;nationname=9005"
         root, _ = await self._ns_request(deck_url, ctx=ctx)
         
         cards = root.findall(".//CARD")
         eligible = [c for c in cards if c.find("CATEGORY").text.lower() != "legendary"]
         
         if not eligible: 
-            return await ctx.send("No eligible cards found in 9006.")
+            return await ctx.send("No eligible cards found in 9005.")
 
         target = random.choice(eligible)
         card_id = target.find("CARDID").text
@@ -157,7 +157,7 @@ class NexusCards(commands.Cog):
 
         # 4. Gifting Handshake (Prepare)
         sources = await self.config.source_nations()
-        source_nation = "9006"
+        source_nation = "9005"
         password = sources.get(source_nation, {}).get("password")
         
         base_url = "https://www.nationstates.net/cgi-bin/api.cgi"
@@ -218,7 +218,7 @@ class NexusCards(commands.Cog):
         if not await self._check_weekly_limit(ctx.author, "legendary_uses", 1):
             return await ctx.send("Limit: 1 Legendary per week.")
 
-        sources_to_check = ["9006", "the_phoenix_of_the_spring"]
+        sources_to_check = ["9005", "the_phoenix_of_the_spring"]
         source_creds = await self.config.source_nations()
         found_in = None
         card_data = None
