@@ -208,7 +208,7 @@ class NexusCards(commands.Cog):
             await ctx.send(f"❌ Transfer failed during Execution: {error_msg}")
 
     @commands.command()
-    async def buylegendary(self, ctx, card_id: int, season: str):
+    async def buylegendary(self, ctx, card_id: int, season: str, recipient):
         """Purchase a specific Legendary artwork."""
         nexus = self.bot.get_cog("NexusExchange")
         if not nexus: return await ctx.send("NexusExchange cog not found.")
@@ -222,7 +222,7 @@ class NexusCards(commands.Cog):
         card_data = None
 
         for nation in sources_to_check:
-            url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info;cardid={card_id};season={season}"
+            url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
             root, _ = await self._ns_request(url, ctx=ctx)
             owners = [o.text.lower() for o in root.findall(".//OWNER")]
             
