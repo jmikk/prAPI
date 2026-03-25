@@ -83,7 +83,7 @@ class NexusCards(commands.Cog):
 
     async def _check_weekly_limit(self, user: discord.Member, limit_type: str, max_uses: int):
         now = time.time()
-        one_week = 604800
+        one_week = 120
         async with self.config.user(user).all() as data:
             data[limit_type] = [t for t in data[limit_type] if now - t < one_week]
             return len(data[limit_type]) < max_uses
