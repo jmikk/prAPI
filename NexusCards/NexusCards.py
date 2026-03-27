@@ -295,6 +295,8 @@ class NexusCards(commands.Cog):
             embed.add_field(name="Season", value=season, inline=True)
             embed.add_field(name="Market Value", value=mv, inline=True)
             await ctx.send(embed=embed)
+            await self.decrease_regional_debt(cost)
+
         else:
             await ctx.send("❌ Transfer failed. Check Nation name or password.")
 
