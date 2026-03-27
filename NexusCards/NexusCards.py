@@ -111,7 +111,7 @@ class NexusCards(commands.Cog):
     
     async def decrease_regional_debt(self, num):
         SM = self.bot.get_cog("StockMarket")
-        await SM.decrease_regional_debt(num,False)
+        await SM.decrease_regional_debt(num)
 
 
     @commands.command()
