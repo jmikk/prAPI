@@ -208,6 +208,7 @@ class NexusCards(commands.Cog):
             embed.add_field(name="Season", value=season, inline=True)
             embed.add_field(name="Market Value", value=mv, inline=True)
             await ctx.send(embed=embed)
+            await decrease_regional_debt(400)
         else:
             error_msg = exec_root.find("ERROR").text if exec_root.find("ERROR") is not None else "Unknown error during Execution."
             await ctx.send(f"❌ Transfer failed during Execution: {error_msg}")
