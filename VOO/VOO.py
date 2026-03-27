@@ -551,7 +551,8 @@ class VOO(commands.Cog):
                 f"Targets: `{tgto}`"
             ),
             view=view,
-            ephemeral=True,
+            ephemeral=True,   
+            delete_after=45
         )
 
 
