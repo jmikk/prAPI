@@ -552,7 +552,7 @@ class VOO(commands.Cog):
             ),
             view=view,
             ephemeral=True,   
-            delete_after=45
+            delete_after=41
         )
 
 
