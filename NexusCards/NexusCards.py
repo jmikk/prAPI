@@ -111,7 +111,7 @@ class NexusCards(commands.Cog):
 
     @commands.command()
     @commands.cooldown(1, 60, commands.BucketType.user)
-    async def getcard(self, ctx, recipient: str):
+    async def buylootbox(self, ctx, recipient: str):
         """Purchase a random non-legendary card from 9005 (400 Wellcoins)."""
         nexus = self.bot.get_cog("NexusExchange")
         if not nexus: 
