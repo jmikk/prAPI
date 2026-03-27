@@ -108,6 +108,11 @@ class NexusCards(commands.Cog):
         embed.add_field(name="Market Value", value=f"{mv}", inline=True)
         embed.add_field(name="Wellcoin Cost", value=f"**{cost:,} WC**", inline=True)
         await ctx.send(embed=embed)
+    
+    async def decrease_regional_debt(self, num):
+        SM = self.bot.get_cog("StockMarket")
+        await sm.decrease_regional_debt(num,False)
+
 
     @commands.command()
     @commands.cooldown(1, 60, commands.BucketType.user)
