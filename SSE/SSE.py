@@ -8,7 +8,7 @@ from aiohttp_sse_client import client as sse_client
 
 log = logging.getLogger("red.nsevents")
 
-class NSEvents(commands.Cog):
+class SSE(commands.Cog):
     """NationStates SSE Watcher with Region Filtering"""
 
     def __init__(self, bot):
