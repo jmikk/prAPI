@@ -23,6 +23,7 @@ class prAPI(commands.Cog):
             "password": "",
             "last_wa_nations": [],
             "last_all_nations": [],
+            "qotd_queue": []
         }
         self.config.register_global(**default_global)
         self.session = aiohttp.ClientSession()
