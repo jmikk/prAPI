@@ -209,18 +209,20 @@ class prAPI(commands.Cog):
     # --- THE BACKGROUND LOOP ---
     @tasks.loop(hours=24)
     async def qotd_loop(self):
-        # Retrieve the queue from your config (assuming a list of strings)
         queue = await self.config.qotd_queue()
         
         if not queue:
-            # Optional: Log to your log channel that the queue is empty
+            # Alert the log channel if you're out of questions!
+            log_channel = self.bot.get_channel(1405569526329774200)
+            if log_channel:
+                await log_channel.send("⚠️ **The QOTD Queue is empty!** Please add more questions.")
             return
 
-        # Pop the first question
+        # Pop the first question and update config
         next_q = queue.pop(0)
         await self.config.qotd_queue.set(queue)
 
-        # Call your posting logic (extracted to a helper method)
+        # Execute the post
         await self.post_to_nationstates(next_q)
 
     @qotd_loop.before_loop
@@ -233,6 +235,21 @@ class prAPI(commands.Cog):
         """Shows the current QOTD queue status."""
         queue = await self.config.qotd_queue()
         await ctx.send(f"📋 There are currently **{len(queue)}** questions in the queue.")
+
+    @qotd.command(name="force")
+    @has_specific_role()
+    async def qotd_force(self, ctx):
+        """Force the next question in the queue to post immediately."""
+        queue = await self.config.qotd_queue()
+        if not queue:
+            return await ctx.send("The queue is empty.")
+
+        next_q = queue.pop(0)
+        await self.config.qotd_queue.set(queue)
+        
+        await ctx.send("🚀 Manually triggering next QOTD...")
+        await self.post_to_nationstates(next_q)
+        await ctx.send(f"✅ Posted. {len(queue)} questions remain.")
 
     @qotd.command(name="add")
     @has_specific_role()
@@ -256,43 +273,63 @@ class prAPI(commands.Cog):
         await ctx.send(f"**Upcoming Queue:**\n{formatted_list}")
 
     async def post_to_nationstates(self, message: str):
+        """Internal helper to handle the NS API and Discord logging."""
         region = "the_wellspring"
         useragent = await self.config.useragent()
         password = await self.config.password()
         nationname = await self.config.nationName()
 
         if not all([useragent, password, nationname]):
-            return # Log error
+            # Optional: Log to console or a bot-owner channel that config is missing
+            return
 
-        # --- Your Prepare Logic ---
-        prepare_data = {"nation": nationname, "c": "rmbpost", "region": region, "text": message, "mode": "prepare"}
+        # 1. Prepare Phase
+        prepare_data = {
+            "nation": nationname, "c": "rmbpost", "region": region, 
+            "text": message, "mode": "prepare"
+        }
         prepare_headers = {"User-Agent": useragent, "X-Password": password}
 
-        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
-            if prepare_response.status != 200:
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prep_res:
+            if prep_res.status != 200:
                 return 
+            
+            prep_text = await prep_res.text()
+            token = self.parse_token(prep_text)
+            x_pin = prep_res.headers.get("X-Pin")
 
-            prepare_text = await prepare_response.text()
-            token = self.parse_token(prepare_text)
-            x_pin = prepare_response.headers.get("X-Pin")
+        if not token or not x_pin:
+            return
 
-            if not token or not x_pin:
-                return
-
-        # --- Your Execute Logic ---
-        execute_data = {"nation": nationname, "c": "rmbpost", "region": region, "text": message, "mode": "execute", "token": token}
+        # 2. Execute Phase
+        execute_data = {
+            "nation": nationname, "c": "rmbpost", "region": region,
+            "text": message, "mode": "execute", "token": token
+        }
         execute_headers = {"User-Agent": useragent, "X-Pin": x_pin}
 
-        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
-            if execute_response.status == 200:
-                execute_text = await execute_response.text()
-                # ... (Insert your re.search and XML logic here to get full_url) ...
-                
-                # Log to Discord
-                log_channel = self.bot.get_channel(1405569526329774200)
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as exec_res:
+            exec_text = await exec_res.text()
+            
+            if exec_res.status == 200:
+                # Extract URL from response
+                try:
+                    match = re.search(r'href="([^"]+)"', exec_text)
+                    full_url = f"https://www.nationstates.net{match.group(1)}" if match else "URL parse failed."
+                except Exception:
+                    full_url = "URL parse failed."
+
+                # Discord Logging / Ping (The "Old Command" behavior)
+                log_channel_id = 1405569526329774200
+                ping_role_id = 1115271309404942439
+                log_channel = self.bot.get_channel(log_channel_id)
+
                 if log_channel:
                     allowed_mentions = discord.AllowedMentions(roles=True)
-                    await log_channel.send(f"{full_url} <@&1115271309404942439>", allowed_mentions=allowed_mentions)
+                    await log_channel.send(
+                        f"**New QOTD Posted!**\n{full_url} <@&{ping_role_id}>",
+                        allowed_mentions=allowed_mentions
+                    )
 
 
 
