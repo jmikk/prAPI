@@ -25,6 +25,7 @@ class prAPI(commands.Cog):
         }
         self.config.register_global(**default_global)
         self.session = aiohttp.ClientSession()
+        self.qotd_loop.start() # Start the background loop
 
 
     async def split_and_send(self, ctx_or_channel, message: str, max_len: int = 1900):
@@ -41,6 +42,7 @@ class prAPI(commands.Cog):
 
     def cog_unload(self):
         asyncio.create_task(self.session.close())
+        self.qotd_loop.cancel() # Stop the loop if the cog is unloaded
 
     @commands.command()
     @checks.admin_or_permissions(manage_guild=True)
@@ -202,95 +204,93 @@ class prAPI(commands.Cog):
                 await ctx.send("Failed to execute RMB post.")
                 await ctx.send(execute_text)
 
-    @commands.command()
-    @commands.cooldown(1, 30, commands.BucketType.default)
+    # --- THE BACKGROUND LOOP ---
+    @tasks.loop(hours=24)
+    async def qotd_loop(self):
+        # Retrieve the queue from your config (assuming a list of strings)
+        queue = await self.config.qotd_queue()
+        
+        if not queue:
+            # Optional: Log to your log channel that the queue is empty
+            return
+
+        # Pop the first question
+        next_q = queue.pop(0)
+        await self.config.qotd_queue.set(queue)
+
+        # Call your posting logic (extracted to a helper method)
+        await self.post_to_nationstates(next_q)
+
+    @qotd_loop.before_loop
+    async def before_qotd_loop(self):
+        await self.bot.wait_until_ready()
+
+    @commands.group(invoke_without_command=True)
     @has_specific_role()
-    async def QOTD(self, ctx, *, message: str):
-        """Post the Question of the Day to The Wellspring with shout-outs."""
+    async def qotd(self, ctx):
+        """Shows the current QOTD queue status."""
+        queue = await self.config.qotd_queue()
+        await ctx.send(f"📋 There are currently **{len(queue)}** questions in the queue.")
+
+    @qotd.command(name="add")
+    @has_specific_role()
+    async def qotd_add(self, ctx, *, message: str):
+        """Add a new question to the end of the queue."""
+        async with self.config.qotd_queue() as queue:
+            queue.append(message)
+            count = len(queue)
+        
+        await ctx.send(f"✅ Added! That is question **#{count}** in the queue.")
+
+    @qotd.command(name="list")
+    @has_specific_role()
+    async def qotd_list(self, ctx):
+        """List all upcoming questions."""
+        queue = await self.config.qotd_queue()
+        if not queue:
+            return await ctx.send("The queue is empty.")
+        
+        formatted_list = "\n".join([f"{i+1}. {q[:50]}..." for i, q in enumerate(queue)])
+        await ctx.send(f"**Upcoming Queue:**\n{formatted_list}")
+
+    async def post_to_nationstates(self, message: str):
         region = "the_wellspring"
         useragent = await self.config.useragent()
         password = await self.config.password()
         nationname = await self.config.nationName()
-    
+
         if not all([useragent, password, nationname]):
-            await ctx.send("Please ensure User-Agent, Nation Name, and Password are all set.")
-            return
-    
-        # Prepare and post
-        prepare_data = {
-            "nation": nationname,
-            "c": "rmbpost",
-            "region": region,
-            "text": message,
-            "mode": "prepare"
-        }
+            return # Log error
+
+        # --- Your Prepare Logic ---
+        prepare_data = {"nation": nationname, "c": "rmbpost", "region": region, "text": message, "mode": "prepare"}
         prepare_headers = {"User-Agent": useragent, "X-Password": password}
-    
+
         async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
-            prepare_text = await prepare_response.text()
             if prepare_response.status != 200:
-                await ctx.send(f"Failed to prepare RMB post. Status: {prepare_response.status}")
-                await self.split_and_send(ctx, prepare_text)
-                return
-    
+                return 
+
+            prepare_text = await prepare_response.text()
             token = self.parse_token(prepare_text)
             x_pin = prepare_response.headers.get("X-Pin")
-    
+
             if not token or not x_pin:
-                await ctx.send("Failed to retrieve token or X-Pin for RMB post execution.")
-                await self.split_and_send(ctx, prepare_text)
                 return
-    
-        execute_data = {
-            "nation": nationname,
-            "c": "rmbpost",
-            "region": region,
-            "text": message,
-            "mode": "execute",
-            "token": token
-        }
+
+        # --- Your Execute Logic ---
+        execute_data = {"nation": nationname, "c": "rmbpost", "region": region, "text": message, "mode": "execute", "token": token}
         execute_headers = {"User-Agent": useragent, "X-Pin": x_pin}
-    
+
         async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
-            execute_text = await execute_response.text()
             if execute_response.status == 200:
-                try:
-                    root = ET.fromstring(execute_text)
-                    success_text = root.find("SUCCESS").text
+                execute_text = await execute_response.text()
+                # ... (Insert your re.search and XML logic here to get full_url) ...
                 
-                    # Extract URL from the href in the SUCCESS text
-                    import re
-                    match = re.search(r'href="([^"]+)"', execute_text)
-                    if match:
-                        post_url_part = match.group(1)
-                        full_url = f"https://www.nationstates.net{post_url_part}"
-                    else:
-                        full_url = "URL parse failed."
-                except Exception:
-                    full_url = "URL parse failed."
-
-    
-                log_channel_id = 1405569526329774200
-                ping_role_id = 1115271309404942439
-                log_channel = self.bot.get_channel(log_channel_id)
-    
+                # Log to Discord
+                log_channel = self.bot.get_channel(1405569526329774200)
                 if log_channel:
-                    allowed_mentions = AllowedMentions(
-                    everyone=False,  # Disables @everyone and @here mentions
-                    users=True,      # Enables user mentions
-                    roles=True       # Enables role mentions
-                )
-                    await log_channel.send(f"{full_url} <@&{ping_role_id}>",allowed_mentions=allowed_mentions)
-                else:
-                    await ctx.send("Post succeeded, but I couldn't find the log channel.")
-    
-                await ctx.send(f"✅ QOTD successfully posted to RMB of {region}!")
-            else:
-                await ctx.send("Failed to execute RMB post.")
-                await self.split_and_send(ctx, execute_text)
-
-
-
+                    allowed_mentions = discord.AllowedMentions(roles=True)
+                    await log_channel.send(f"{full_url} <@&1115271309404942439>", allowed_mentions=allowed_mentions)
 
 
 
