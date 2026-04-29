@@ -1,7 +1,8 @@
 import aiohttp
 import random
 import xml.etree.ElementTree as ET
-from redbot.core import commands, Config, checks, tasks
+from redbot.core import commands, Config, checks
+from discord.ext import tasks
 from redbot.core.bot import Red
 import discord
 import time
