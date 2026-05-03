@@ -330,7 +330,21 @@ class VOO(commands.Cog):
             return
 
         # --- LOGGING LOGIC ---
-        if rmb_msg:            
+        if rmb_msg:
+
+            post_match = re.search(r"postid=(\d+)", html)
+            post_id = post_match.group(1) if post_match else None
+
+
+            # Construct the direct link (falls back to region link if post_id fails)
+            if post_id and region:
+                msg_url = f"https://www.nationstates.net/region={region}/page=display_region_rmb?postid={post_id}#p{post_id}"
+            elif region:
+                msg_url = f"https://www.nationstates.net/region={region}"
+            else:
+                msg_url = None
+
+            
             # 1. Extract flag from HTML
             # Look for: src="/images/flags/uploads/darkening_empire__187828t2.png"
             flag_match = re.search(r'src="([^"]+)"', html)
@@ -345,9 +359,9 @@ class VOO(commands.Cog):
                 title=f"New Message from {nation.replace('_', ' ').title()}",
                 description=clean_msg[:2048], # Discord limit
                 color=discord.Color.blue(),
-                url=f"https://www.nationstates.net/region={region}" if region else None
-            )
-            if flag_url:
+                url=msg_url  # Now links directly to the message!            )
+            
+                if flag_url:
                 embed.set_thumbnail(url=flag_url)
             if region:
                 embed.set_footer(text=f"Region: {region.replace('_', ' ').title()}")
