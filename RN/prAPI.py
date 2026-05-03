@@ -260,6 +260,22 @@ class prAPI(commands.Cog):
         if not qotd:
             await ctx.send(f"✅ Posted. {len(queue)} questions remain.")
 
+    @qotd.command(name="drop")
+    @has_specific_role()
+    async def qotd_drop(self,ctx,dump_all=0):
+        """dumps one or all QOTD lists"""
+        if dump_all == "all":
+            queue=[]
+        else if dump_all > 0:
+            queue = await self.config.qotd_queue()
+            queue = queue.pop(dump_all+1)
+        else:
+            queue = await self.config.qotd_queue()
+            queue = queue.pop(0)
+        await self.config.qotd_queue.set(queue)
+
+
+                        
     @qotd.command(name="add")
     @has_specific_role()
     async def qotd_add(self, ctx, *, message: str):
