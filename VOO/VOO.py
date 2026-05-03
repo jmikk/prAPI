@@ -354,6 +354,7 @@ class VOO(commands.Cog):
 
             for guild in self.bot.guilds:
                 chan_id = await self.config.guild(guild).rmb_log_channel()
+                guild_config = self.config.guild(guild)
                 if chan_id:
                     # Check if this guild has a specific region filter
                     target_region = await guild_config.rmb_region_filter()
