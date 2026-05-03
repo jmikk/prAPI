@@ -359,10 +359,7 @@ class VOO(commands.Cog):
                     # Check if this guild has a specific region filter
                     target_region = await guild_config.rmb_region_filter()
                     
-                    channel = guild.get_channel(chan_id)
-                    await channel.send(target_region)
-                    
-                    # If target_region is set, only proceed if it matches the current message
+                     # If target_region is set, only proceed if it matches the current message
                     if target_region and (not region or region.lower() != target_region.lower()):
                         continue
 
