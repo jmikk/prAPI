@@ -359,7 +359,8 @@ class VOO(commands.Cog):
                 title=f"New Message from {nation.replace('_', ' ').title()}",
                 description=clean_msg[:2048], # Discord limit
                 color=discord.Color.blue(),
-                url=msg_url  # Now links directly to the message!            )
+                url=msg_url  # Now links directly to the message!           
+            )
             
                 if flag_url:
                 embed.set_thumbnail(url=flag_url)
