@@ -262,17 +262,28 @@ class prAPI(commands.Cog):
 
     @qotd.command(name="drop")
     @has_specific_role()
-    async def qotd_drop(self,ctx,dump_all=0):
-        """dumps one or all QOTD lists"""
-        if dump_all == "all":
-            queue=[]
-        else if dump_all > 0:
-            queue = await self.config.qotd_queue()
-            queue = queue.pop(dump_all+1)
+    async def qotd_drop(self, ctx, index: str = "0"):
+        """Dumps one specific index or 'all' QOTD entries"""
+        
+        queue = await self.config.qotd_queue()
+    
+        if index.lower() == "all":
+            queue = []
+            message = "Cleared the entire QOTD queue."
         else:
-            queue = await self.config.qotd_queue()
-            queue = queue.pop(0)
+            try:
+                # Convert input to integer for index-based popping
+                idx = int(index)
+                # Remove the item at the index (pop modifies the list in place)
+                removed = queue.pop(idx)
+                message = f"Removed: '{removed}' at index {idx}."
+            except (ValueError, IndexError):
+                await ctx.send("Please provide a valid number index or 'all'.")
+                return
+    
+        # Save the modified list back to your config
         await self.config.qotd_queue.set(queue)
+        await ctx.send(message)
 
 
                         
