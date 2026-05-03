@@ -18,7 +18,7 @@ TOP_RANK_SURCHARGE = {1: 3.0, 2: 2.25, 3: 1.5}
 DEFAULT_RANK_MULTIPLIER = 1.0
 BET_SHARE_FACTOR = 5.0
 MIN_SPONSOR_COST = 25
-MAX_SPONSOR_COST = 500000
+MAX_SPONSOR_COST = 500000000000
 
 def calc_sponsor_cost(day: int, score: float, rank: int, bet_share: float) -> int:
     base = 10 + (day * 5) + (score / 2.0)
@@ -1403,7 +1403,7 @@ class Hungar(commands.Cog):
         WLboard = await self.config.guild(ctx.guild).WLboard()
         # If each game has one winner:
         games_ran = sum(data.get("wins", 0) for data in WLboard.values())
-        await ctx.send(f"Welcome to the: **{games_ran}** weekly game of The Wellspring")
+        await ctx.send(f"Welcome to the: **{games_ran+83}** weekly game of The Wellspring")
         await ctx.send("🌍 The arena has been divided into zones. Let the Hunger Games begin!")
 
         for player_id, player_data in players.items():
@@ -1426,7 +1426,7 @@ class Hungar(commands.Cog):
                 continue
         
             ai_name = random.choice(npc_names)
-            bet_amount = random.randint(5, 50)  # Random bet between 50 and 500 gold
+            bet_amount = random.randint(500, 1000)  # Random bet between 50 and 500 gold
         
             # Save the bet to the AI bettors dictionary for announcements
             ai_bettors[ai_name] = {
