@@ -245,7 +245,7 @@ class prAPI(commands.Cog):
     @has_specific_role()
     async def qotd_force(self, ctx, *, qotd: str = ""):
         """Force the next question in the queue to post immediately."""
-        if not QOTD:    
+        if not qotd:    
             queue = await self.config.qotd_queue()
             if not queue:
                 return await ctx.send("The queue is empty.")
@@ -253,11 +253,11 @@ class prAPI(commands.Cog):
             next_q = queue.pop(0)
             await self.config.qotd_queue.set(queue)
         else: 
-            next_q = QOTD
+            next_q = qotd
         
         await ctx.send("🚀 Manually triggering next QOTD...")
         await self.post_to_nationstates(next_q)
-        if not QOTD:
+        if not qotd:
             await ctx.send(f"✅ Posted. {len(queue)} questions remain.")
 
     @qotd.command(name="add")
