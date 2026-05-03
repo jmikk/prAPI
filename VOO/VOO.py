@@ -123,7 +123,7 @@ class VOO(commands.Cog):
             "last_panic_at_ts": 0,         # unix timestamp of last panic
             "recruiter_role_id": None,
             "rmb_log_channel":None, 
-            "rmb_region_filter""None,  # New: stores the lowercase name of the region# Add this# role to ping on alerts; given on Register
+            "rmb_region_filter":None,  # New: stores the lowercase name of the region# Add this# role to ping on alerts; given on Register
                 }
         
         default_user = {
