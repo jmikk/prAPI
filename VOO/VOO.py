@@ -330,11 +330,7 @@ class VOO(commands.Cog):
             return
 
         # --- LOGGING LOGIC ---
-        if rmb_msg:
-            channel = guild.get_channel(chan_id)
-            await channel.send("RMB_message found")
-            
-            
+        if rmb_msg:            
             # 1. Extract flag from HTML
             # Look for: src="/images/flags/uploads/darkening_empire__187828t2.png"
             flag_match = re.search(r'src="([^"]+)"', html)
@@ -351,8 +347,6 @@ class VOO(commands.Cog):
                 color=discord.Color.blue(),
                 url=f"https://www.nationstates.net/region={region}" if region else None
             )
-            channel = guild.get_channel(chan_id)
-            await channel.send(embed=embed)
             if flag_url:
                 embed.set_thumbnail(url=flag_url)
             if region:
