@@ -243,7 +243,7 @@ class prAPI(commands.Cog):
 
     @qotd.command(name="force")
     @has_specific_role()
-    async def qotd_force(self, ctx, *QOTD=None):
+    async def qotd_force(self, ctx, *, qotd: str = ""):
         """Force the next question in the queue to post immediately."""
         if not QOTD:    
             queue = await self.config.qotd_queue()
