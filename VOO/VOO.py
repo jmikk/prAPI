@@ -326,8 +326,6 @@ class VOO(commands.Cog):
             return
 
         nation_clean = nation.lower()
-        if re.search(r"\d+$", nation_clean):
-            return
 
         # --- LOGGING LOGIC ---
         if rmb_msg:
@@ -385,7 +383,9 @@ class VOO(commands.Cog):
                         except Exception:
                             pass
         # --- END LOGGING LOGIC ---
-
+        if re.search(r"\d+$", nation_clean):
+            return
+        
         if region:
             region_norm = region.lower()
             for guild in self.bot.guilds:
