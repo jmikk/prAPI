@@ -362,7 +362,7 @@ class VOO(commands.Cog):
                 url=msg_url  # Now links directly to the message!           
             )
             
-                if flag_url:
+            if flag_url:
                 embed.set_thumbnail(url=flag_url)
             if region:
                 embed.set_footer(text=f"Region: {region.replace('_', ' ').title()}")
