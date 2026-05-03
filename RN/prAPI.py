@@ -28,6 +28,7 @@ class prAPI(commands.Cog):
         self.config.register_global(**default_global)
         self.session = aiohttp.ClientSession()
         self.qotd_loop.start() # Start the background loop
+        self.skip_QOTD = False
 
 
     async def split_and_send(self, ctx_or_channel, message: str, max_len: int = 1900):
@@ -209,6 +210,10 @@ class prAPI(commands.Cog):
     # --- THE BACKGROUND LOOP ---
     @tasks.loop(hours=24)
     async def qotd_loop(self):
+        if self.skip_QOTD:
+            self.skip_QOTD = False
+            return
+            
         queue = await self.config.qotd_queue()
         
         if not queue:
@@ -238,18 +243,22 @@ class prAPI(commands.Cog):
 
     @qotd.command(name="force")
     @has_specific_role()
-    async def qotd_force(self, ctx):
+    async def qotd_force(self, ctx, *QOTD=None):
         """Force the next question in the queue to post immediately."""
-        queue = await self.config.qotd_queue()
-        if not queue:
-            return await ctx.send("The queue is empty.")
-
-        next_q = queue.pop(0)
-        await self.config.qotd_queue.set(queue)
+        if not QOTD:    
+            queue = await self.config.qotd_queue()
+            if not queue:
+                return await ctx.send("The queue is empty.")
+    
+            next_q = queue.pop(0)
+            await self.config.qotd_queue.set(queue)
+        else: 
+            next_q = QOTD
         
         await ctx.send("🚀 Manually triggering next QOTD...")
         await self.post_to_nationstates(next_q)
-        await ctx.send(f"✅ Posted. {len(queue)} questions remain.")
+        if not QOTD:
+            await ctx.send(f"✅ Posted. {len(queue)} questions remain.")
 
     @qotd.command(name="add")
     @has_specific_role()
