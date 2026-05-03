@@ -19,7 +19,7 @@ from datetime import timedelta
 
 log = logging.getLogger("red.vigil_of_origins")
 
-FOUNDING_SSE_URL = "https://www.nationstates.net/api/founding"
+FOUNDING_SSE_URL = "https://www.nationstates.net/api/founding+rmb"
 GENERATED_BY = "Vigil_of_origins___by_9005____instance_run_by_By_9005"
 MAX_TG_BATCH = 8
 REGION_RE = re.compile(r"region=([a-z0-9_]+)", re.I)
@@ -122,7 +122,8 @@ class VOO(commands.Cog):
             "last_defcon_index": -1,       # last announced index
             "last_panic_at_ts": 0,         # unix timestamp of last panic
             "recruiter_role_id": None,
-            "rmb_log_channel"=None  # Add this# role to ping on alerts; given on Register
+            "rmb_log_channel"=None 
+            "rmb_region_filter"=None  # New: stores the lowercase name of the region# Add this# role to ping on alerts; given on Register
                 }
         
         default_user = {
@@ -354,6 +355,13 @@ class VOO(commands.Cog):
             for guild in self.bot.guilds:
                 chan_id = await self.config.guild(guild).rmb_log_channel()
                 if chan_id:
+                    # Check if this guild has a specific region filter
+                    target_region = await guild_config.rmb_region_filter()
+                    
+                    # If target_region is set, only proceed if it matches the current message
+                    if target_region and (not region or region.lower() != target_region.lower()):
+                        continue
+
                     channel = guild.get_channel(chan_id)
                     if channel:
                         try:
@@ -595,6 +603,22 @@ class VOO(commands.Cog):
         else:
             await self.config.guild(ctx.guild).rmb_log_channel.set(None)
             await ctx.send("RMB logging disabled.")
+
+    @sseset.command(name="region")
+    async def set_log_region(self, ctx, region_name: str = None):
+        """
+        Set a specific region to filter RMB logs.
+        Only messages from this region will be sent to the log channel.
+        Use without argument to clear the filter (logs all regions).
+        """
+        if region_name:
+            # Clean up the name (replace spaces with underscores for NS format)
+            formatted_region = region_name.lower().replace(" ", "_")
+            await self.config.guild(ctx.guild).rmb_region_filter.set(formatted_region)
+            await ctx.send(f"RMB logging filtered to region: **{region_name}**")
+        else:
+            await self.config.guild(ctx.guild).rmb_region_filter.set(None)
+            await ctx.send("RMB region filter cleared. Logging all regions.")
 
     @voo_group.command(name="setchannel")
     async def set_channel(self, ctx: commands.Context, channel: Optional[discord.TextChannel] = None):
