@@ -121,7 +121,8 @@ class VOO(commands.Cog):
             "panic_cooldown_minutes": 30,  # minimum minutes between panic alerts
             "last_defcon_index": -1,       # last announced index
             "last_panic_at_ts": 0,         # unix timestamp of last panic
-            "recruiter_role_id": None,  # role to ping on alerts; given on Register
+            "recruiter_role_id": None,
+            "rmb_log_channel"=None  # Add this# role to ping on alerts; given on Register
                 }
         
         default_user = {
@@ -301,13 +302,6 @@ class VOO(commands.Cog):
 
 
     async def _handle_sse_data(self, data_line: str):
-        """
-        Parse one SSE 'data:' line, extract nation/region, and queue if allowed.
-        Rules:
-          - ignore nations whose names end with digits (e.g., 'testlandia123')
-          - ignore nations from any blacklisted region (per-guild blacklists)
-          - keep newest-first; no duplicates
-        """
         try:
             obj = json.loads(data_line)
         except json.JSONDecodeError:
@@ -316,49 +310,72 @@ class VOO(commands.Cog):
 
         html = obj.get("htmlStr") or ""
         text = obj.get("str") or ""
+        # Extract the raw message if it exists
+        rmb_msg = obj.get("rmbMessage") or ""
 
-        # Extract nation from html first:  <a href="nation=the_parya" ...>
         m_n_html = NATION_RE.search(html)
-        # Fallback from text form: @@the_parya@@
         m_n_text = re.search(r"@@([a-z0-9_]+)@@", text, re.I)
         nation = (m_n_html.group(1) if m_n_html else (m_n_text.group(1) if m_n_text else None))
 
-        # Extract region similarly:
-        # from html: <a href="region=osiris" ...>
         m_r_html = REGION_RE.search(html) if 'REGION_RE' in globals() else None
-        # from text: %%osiris%%
         m_r_text = re.search(r"%%([a-z0-9_]+)%%", text, re.I)
         region = (m_r_html.group(1) if m_r_html else (m_r_text.group(1) if m_r_text else None))
 
         if not nation:
             return
 
-        nation = nation.lower()
-
-        # Skip any nation whose name ends with digits
-        if re.search(r"\d+$", nation):
+        nation_clean = nation.lower()
+        if re.search(r"\d+$", nation_clean):
             return
 
-        # Regional blacklist check (global effect across guilds)
+        # --- LOGGING LOGIC ---
+        if rmb_msg:
+            # 1. Extract flag from HTML
+            # Look for: src="/images/flags/uploads/darkening_empire__187828t2.png"
+            flag_match = re.search(r'src="([^"]+)"', html)
+            flag_url = f"https://www.nationstates.net{flag_match.group(1)}" if flag_match else None
+
+            # 2. Clean up BBCode slightly for Discord (NationStates specific)
+            clean_msg = rmb_msg.replace("[nation]", "**").replace("[/nation]", "**")
+            clean_msg = re.sub(r"\[quote=.*?;.*?\]", "> ", clean_msg)
+            clean_msg = clean_msg.replace("[/quote]", "\n")
+
+            embed = discord.Embed(
+                title=f"New Message from {nation.replace('_', ' ').title()}",
+                description=clean_msg[:2048], # Discord limit
+                color=discord.Color.blue(),
+                url=f"https://www.nationstates.net/region={region}" if region else None
+            )
+            if flag_url:
+                embed.set_thumbnail(url=flag_url)
+            if region:
+                embed.set_footer(text=f"Region: {region.replace('_', ' ').title()}")
+
+            for guild in self.bot.guilds:
+                chan_id = await self.config.guild(guild).rmb_log_channel()
+                if chan_id:
+                    channel = guild.get_channel(chan_id)
+                    if channel:
+                        try:
+                            await channel.send(embed=embed)
+                        except Exception:
+                            pass
+        # --- END LOGGING LOGIC ---
+
         if region:
             region_norm = region.lower()
-            try:
-                for guild in self.bot.guilds:
-                    bl = await self.config.guild(guild).region_blacklist()
-                    if region_norm in bl:
-                        return
-            except Exception:
-                # If config read fails, fail open (don't queue) to be safe
-                return
+            for guild in self.bot.guilds:
+                bl = await self.config.guild(guild).region_blacklist()
+                if region_norm in bl:
+                    return
 
-        # De-dup and queue (newest first)
-        if nation in self.queue:
+        if nation_clean in self.queue:
             return
 
-        self.queue.appendleft(nation)
+        self.queue.appendleft(nation_clean)
         for guild in self.bot.guilds:
             await self._maybe_panic_on_rise(guild, len(self.queue))
-        # Persist and refresh UI
+        
         await self._persist_queue_snapshot()
         await self._refresh_all_embeds()
 
@@ -562,6 +579,22 @@ class VOO(commands.Cog):
     async def voo_group(self, ctx: commands.Context):
         """Vigil of Origins controls."""
         pass
+
+    @commands.group()
+    @checks.admin_or_permissions(manage_guild=True)
+    async def sseset(self, ctx):
+        """Settings for SSE listener"""
+        pass
+
+    @sseset.command(name="channel")
+    async def set_log_channel(self, ctx, channel: discord.TextChannel = None):
+        """Set the channel where RMB messages are logged. Use without argument to disable."""
+        if channel:
+            await self.config.guild(ctx.guild).rmb_log_channel.set(channel.id)
+            await ctx.send(f"RMB messages will now be logged to {channel.mention}")
+        else:
+            await self.config.guild(ctx.guild).rmb_log_channel.set(None)
+            await ctx.send("RMB logging disabled.")
 
     @voo_group.command(name="setchannel")
     async def set_channel(self, ctx: commands.Context, channel: Optional[discord.TextChannel] = None):
