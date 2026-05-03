@@ -313,7 +313,8 @@ class VOO(commands.Cog):
         text = obj.get("str") or ""
         # Extract the raw message if it exists
         rmb_msg = obj.get("rmbMessage") or ""
-
+        is_founding_present = "founding" in obj.get("buckets")
+        
         m_n_html = NATION_RE.search(html)
         m_n_text = re.search(r"@@([a-z0-9_]+)@@", text, re.I)
         nation = (m_n_html.group(1) if m_n_html else (m_n_text.group(1) if m_n_text else None))
@@ -383,6 +384,9 @@ class VOO(commands.Cog):
                         except Exception:
                             pass
         # --- END LOGGING LOGIC ---
+        if not is_founding_present:
+            return
+        
         if re.search(r"\d+$", nation_clean):
             return
         
