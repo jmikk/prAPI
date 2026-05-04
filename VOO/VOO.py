@@ -587,7 +587,18 @@ class VOO(commands.Cog):
             
                 # 2) schedule the reminder; it will send the ephemeral followup later
                 await self.cog._schedule_reminder(interaction, max(1, int(seconds)))
+        
         view = RecruitView(self, link)
+
+        quest_cog = self.bot.get_cog("FantasyJobBoard")
+        if quest_cog:
+          await quest_cog.record_progress(
+          member=ctx.author,
+          game="VOO",
+          objective="TG_SET",
+          amount=len(batch),
+          debug=True
+        )
 
 
         await interaction.response.send_message(
