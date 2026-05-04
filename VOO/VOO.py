@@ -591,16 +591,6 @@ class VOO(commands.Cog):
         
         view = RecruitView(self, link)
 
-        quest_cog = self.bot.get_cog("FantasyJobBoard")
-        if quest_cog:
-          await quest_cog.record_progress(
-          member=interaction.user,
-          game="VOO",
-          objective="TG_SENT",
-          amount=len(batch),
-          debug=True
-            )
-            
         await interaction.response.send_message(
             content=(
                 f"Here’s your recruitment link for **{len(batch)}** nation(s).\n"
@@ -611,6 +601,16 @@ class VOO(commands.Cog):
             ephemeral=True,   
             delete_after=41
         )
+        quest_cog = self.bot.get_cog("FantasyJobBoard")
+        if quest_cog:
+          await quest_cog.record_progress(
+          member=interaction.user,
+          game="VOO",
+          objective="TG_SENT",
+          amount=len(batch),
+          debug=False
+            )
+            
 
 
     # ---------- Commands ----------
