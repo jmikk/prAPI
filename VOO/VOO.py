@@ -25,7 +25,8 @@ MAX_TG_BATCH = 8
 REGION_RE = re.compile(r"region=([a-z0-9_]+)", re.I)
 
 
-NATION_RE = re.compile(r"nation=([a-z0-9_]+)", re.I)
+# Added the dash after the underscore
+NATION_RE = re.compile(r"nation=([a-z0-9_-]+)", re.I)
 
 class VOOControlView(ui.View):
     """Persistent control view with three buttons."""
