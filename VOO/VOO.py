@@ -595,7 +595,7 @@ class VOO(commands.Cog):
           await quest_cog.record_progress(
           member=ctx.author,
           game="VOO",
-          objective="TG_SET",
+          objective="TG_SENT",
           amount=len(batch),
           debug=True
         )
