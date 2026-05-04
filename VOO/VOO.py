@@ -488,6 +488,17 @@ class VOO(commands.Cog):
 
     async def handle_recruit(self, interaction: discord.Interaction):
         user_conf = self.config.user(interaction.user)
+
+        quest_cog = self.bot.get_cog("FantasyJobBoard")
+        if quest_cog:
+          await quest_cog.record_progress(
+          member=interaction.user),
+          game="VOO",
+          objective="TG_SENT",
+          amount=len(batch),
+          debug=True
+        )
+        
         template = await user_conf.template()
         if not template:
             await interaction.response.send_message(
@@ -589,16 +600,6 @@ class VOO(commands.Cog):
                 await self.cog._schedule_reminder(interaction, max(1, int(seconds)))
         
         view = RecruitView(self, link)
-
-        quest_cog = self.bot.get_cog("FantasyJobBoard")
-        if quest_cog:
-          await quest_cog.record_progress(
-          member=ctx.author,
-          game="VOO",
-          objective="TG_SENT",
-          amount=len(batch),
-          debug=True
-        )
 
 
         await interaction.response.send_message(
