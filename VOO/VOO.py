@@ -492,12 +492,12 @@ class VOO(commands.Cog):
         quest_cog = self.bot.get_cog("FantasyJobBoard")
         if quest_cog:
           await quest_cog.record_progress(
-          member=interaction.user),
+          member=interaction.user,
           game="VOO",
           objective="TG_SENT",
           amount=len(batch),
           debug=True
-        )
+            )
         
         template = await user_conf.template()
         if not template:
