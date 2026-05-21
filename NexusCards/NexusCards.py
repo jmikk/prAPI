@@ -222,7 +222,7 @@ class NexusCards(commands.Cog):
         if not await self._check_weekly_limit(ctx.author, "legendary_uses", 1):
             return await ctx.send("Limit: 1 Legendary per week.")
 
-        sources_to_check = ["9005", "the_phoenix_of_the_spring"]
+        sources_to_check = ["9005"]
         source_creds = await self.config.source_nations()
         found_in = None
         card_data = None
