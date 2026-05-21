@@ -143,8 +143,6 @@ class VerifyNationModal(discord.ui.Modal, title="Verify your NationStates nation
                 changes = []
                 if nonresident_role not in member.roles:
                     changes.append(member.add_roles(nonresident_role))
-                if resident_role in member.roles:
-                    changes.append(member.remove_roles(resident_role))
                 if changes:
                     await asyncio.gather(*changes)
                 msg = f"✅ Successfully linked **{self.nation_name.value}** and set you as a **Visitor**."
@@ -1424,10 +1422,6 @@ Helpful Resources:
         resendents = await self.fetch_nations()
         if not resendents:
             await ctx.send("Failed to retrieve resendents. Try again later.")
-            return
-
-        if not resendents:
-            await ctx.send("No resendents found.")
             return
     
         # Role ID to be assigned/removed
