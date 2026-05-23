@@ -930,13 +930,7 @@ class NexusExchange(commands.Cog):
         if amount > bank_balance:
             return await ctx.send(f"❌ You only have `{bank_balance:,.2f}` WellCoins in your bank account.")
     
-        new_bank_balance = bank_balance - amount
-
-        #await user_data.master_balance.set(balance - deposit)
-        #current_bank = await user_data.bank_total()
-        #await user_data.bank_total.set(current_bank + deposit)
-
-        await user_data.master_balance.set(balance + amount)
+        await user_data.master_balance.set(bank_balance + amount)
         current_bank = await user_data.bank_total()
         await user_data.bank_total.set(current_bank - amount)
 
