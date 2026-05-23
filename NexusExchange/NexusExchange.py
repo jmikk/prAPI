@@ -926,11 +926,12 @@ class NexusExchange(commands.Cog):
             return await ctx.send("❌ You must withdraw a positive amount.")
     
         bank_balance = await user_data.bank_total()
+        wallet = await user_data.master_balance()
     
         if amount > bank_balance:
             return await ctx.send(f"❌ You only have `{bank_balance:,.2f}` WellCoins in your bank account.")
     
-        await user_data.master_balance.set(bank_balance + amount)
+        await user_data.master_balance.set(wallet + amount)
         current_bank = await user_data.bank_total()
         await user_data.bank_total.set(current_bank - amount)
 
