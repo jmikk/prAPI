@@ -931,13 +931,19 @@ class NexusExchange(commands.Cog):
             return await ctx.send(f"❌ You only have `{bank_balance:,.2f}` WellCoins in your bank account.")
     
         new_bank_balance = bank_balance - amount
-        new_wallet_balance = await user_data.master_balance() + amount
-    
-        # Instead of calling .set() on the attributes, call it directly on the user configuration context
-        await self.config.user(user).bank_total.set(new_bank_balance)
-        await self.config.user(user).master_balance.set(new_wallet_balance)
+
+        #await user_data.master_balance.set(balance - deposit)
+        #current_bank = await user_data.bank_total()
+        #await user_data.bank_total.set(current_bank + deposit)
+
+        await user_data.master_balance.set(balance + amount)
+        current_bank = await user_data.bank_total()
+        await user_data.bank_total.set(current_bank - amount)
+
     
         currency = await guild_data.master_currency_name()
+        new_wallet_balance = await user_data.master_balance()
+
         await ctx.send(f"🏧 You withdrew `{amount:,.2f}` {currency} from your bank account.\n💰 New on-hand balance: `{new_wallet_balance:,.2f}` {currency}.")
 
 
