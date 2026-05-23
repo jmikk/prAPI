@@ -933,8 +933,9 @@ class NexusExchange(commands.Cog):
         new_bank_balance = bank_balance - amount
         new_wallet_balance = await user_data.master_balance() + amount
     
-        await user_data.bank_total.set(new_bank_balance)
-        await user_data.master_balance.set(new_wallet_balance)
+        # Instead of calling .set() on the attributes, call it directly on the user configuration context
+        await self.config.user(user).bank_total.set(new_bank_balance)
+        await self.config.user(user).master_balance.set(new_wallet_balance)
     
         currency = await guild_data.master_currency_name()
         await ctx.send(f"🏧 You withdrew `{amount:,.2f}` {currency} from your bank account.\n💰 New on-hand balance: `{new_wallet_balance:,.2f}` {currency}.")
