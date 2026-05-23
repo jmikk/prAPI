@@ -2397,7 +2397,7 @@ class Hungar(commands.Cog):
             name="3. Betting (Days 0 & 1 Only)",
             value=(
                 "Place bets on your favorite tributes using the action buttons. "
-                "Earn 20% of your bet back each day the tribute survives, and double your bet if they win!"
+                "Earn up to 20% of your bet back each day the tribute survives, and double your bet if they win! Daily payout increases with each passing day."
             ),
             inline=False
         )
