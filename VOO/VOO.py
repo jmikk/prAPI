@@ -980,64 +980,75 @@ class VOO(commands.Cog):
 
 
     async def _run_weekly_payout(self, guild: discord.Guild):
-        """Distribute weekly pot, post leaderboard with % breakdown, then reset."""
+        """Distribute weekly pot, post global leaderboard with % breakdown, then reset."""
+        # --- GLOBAL AGGREGATION ---
+        # We need to collect recruitment data from ALL guilds to build a global leaderboard
+        global_weekly_sent = {}  # user_id (int) -> combined total sent across all servers
+        total_global_sent = 0
+        
+        # Loop through all guilds to aggregate cross-server data
+        for g in self.bot.guilds:
+            ws = await self.config.guild(g).weekly_sent()
+            for uid_str, cnt in (ws or {}).items():
+                try:
+                    cnt = int(cnt)
+                    if cnt > 0:
+                        uid = int(uid_str)
+                        global_weekly_sent[uid] = global_weekly_sent.get(uid, 0) + cnt
+                        total_global_sent += cnt
+                except Exception:
+                    continue
+
+        # Fetch local configurations for the current server
         gconf = self.config.guild(guild)
-        ws: dict = await gconf.weekly_sent()
         pot = int(await gconf.weekly_pot())
         min_payout = int(await gconf.min_weekly_payout())
         channel_id = await gconf.channel_id()
         channel = guild.get_channel(channel_id) if channel_id else None
-    
-        # Aggregate rows
-        rows = []
-        total_sent = 0
-        for uid_str, cnt in (ws or {}).items():
-            try:
-                cnt = int(cnt)
-                if cnt > 0:
-                    uid = int(uid_str)
-                    rows.append((uid, cnt))
-                    total_sent += cnt
-            except Exception:
-                continue
-    
-        embed = discord.Embed(title="Weekly Recruitment Results", color=discord.Color.gold())
-    
-        if not rows or total_sent == 0:
-            embed.description = "No recruiters this week."
+
+        embed = discord.Embed(title="Global Weekly Recruitment Results", color=discord.Color.gold())
+
+        # If nobody recruited globally or this server has no pot, handle early exit gracefully
+        if not global_weekly_sent or total_global_sent == 0:
+            embed.description = "No recruiters across the network this week."
             try:
                 if channel:
                     await channel.send(embed=embed)
             except Exception:
                 pass
-            # Reset anyway
+            # Reset local tracking anyway
             await gconf.weekly_pot.set(0)
             await gconf.weekly_sent.set({})
             await self._clear_active_role_all(guild)
             return
-    
-        # Sort; build payouts
-        rows.sort(key=lambda x: (-x[1], x[0]))
-    
-        # Compute pot shares (rounded); last user absorbs rounding drift
+
+        # Sort the aggregated global rows
+        # Format: (user_id, total_sent_globally)
+        global_rows = list(global_weekly_sent.items())
+        global_rows.sort(key=lambda x: (-x[1], x[0]))
+
+        # Compute global pot shares based on this server's specific pot sizing
         payouts = []  # (uid, cnt, pct, share_from_pot, min_bonus)
         pot_paid_total = 0
-        for idx, (uid, cnt) in enumerate(rows):
-            pct = (cnt / total_sent) * 100.0
-            share = round((cnt / total_sent) * pot)
-            if idx == len(rows) - 1:
+        for idx, (uid, cnt) in enumerate(global_rows):
+            pct = (cnt / total_global_sent) * 100.0
+            share = round((cnt / total_global_sent) * pot)
+            if idx == len(global_rows) - 1:
                 share = pot - pot_paid_total
             pot_paid_total += max(0, share)
+            
+            # Bonus qualification applies based on global output
             bonus = min_payout if cnt >= 100 else 0
             payouts.append((uid, cnt, pct, max(0, share), max(0, bonus)))
-    
-        # Pay with NexusExchange
+
+        # Pay out to users who are members of THIS server (other servers handle their own members)
         nexus = self._get_nexus()
         if nexus:
             for uid, cnt, pct, share, bonus in payouts:
                 member = guild.get_member(uid)
                 if not member:
-                    continue
+                    continue # Skip if they are not in this specific server (handled by their home server payout loop)
+                
                 # Share from pot
                 if share > 0:
                     try:
@@ -1050,33 +1061,35 @@ class VOO(commands.Cog):
                         await nexus.add_wellcoins(member, float(bonus))
                     except Exception:
                         log.exception("Minimum payout failed for %s", member)
-    
-        # Build nice per-user lines: Name — TGs • xx.xx% → share WC (+min WC)
+
+        # Build cross-server global lines to display in the embed description
         lines = []
         for i, (uid, cnt, pct, share, bonus) in enumerate(payouts, start=1):
+            # Attempt to resolve member locally, fallback to basic global mention if they aren't here
             member = guild.get_member(uid)
             name = member.display_name if member else f"<@{uid}>"
             pct_str = f"{pct:,.2f}%"
+            
             if bonus > 0:
                 line = f"**{i}.** {name} — **{cnt}** TGs • {pct_str} → **{share}** WC + **{bonus}** WC"
             else:
                 line = f"**{i}.** {name} — **{cnt}** TGs • {pct_str} → **{share}** WC"
             lines.append(line)
-    
-        # Compose embed
+
+        # Compose the embed layout using global calculation context
         embed.description = "\n".join(lines[:50])  # safety cap
         embed.add_field(name="Weekly Pot (distributed)", value=f"{pot} WC (paid {pot_paid_total} WC)", inline=True)
-        embed.add_field(name="Salary (Must send at least 100", value=f"{min_payout} WC (not from pot)", inline=True)
-        embed.set_footer(text=f"Total TGs: {total_sent} • Recruiters paid: {len(payouts)}")
-    
-        # Announce
+        embed.add_field(name="Salary (Must send at least 100)", value=f"{min_payout} WC (not from pot)", inline=True)
+        embed.set_footer(text=f"Total Global TGs: {total_global_sent} • Total Network Recruiters paid: {len(payouts)}")
+
+        # Announce to this server's designated tracking channel
         try:
             if channel:
                 await channel.send(embed=embed)
         except Exception:
             pass
-    
-        # Cleanup
+
+        # Cleanup local server states
         await gconf.weekly_pot.set(0)
         await gconf.weekly_sent.set({})
         await self._clear_active_role_all(guild)
