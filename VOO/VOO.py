@@ -1001,11 +1001,11 @@ class VOO(commands.Cog):
                     guild_now = datetime.now(guild_tz)
                     key = f"weekly_marker_{guild_now.date().isoformat()}"
                     
-                    if guild_now.hour == 0 and guild_now.minute < 5:
-                        try:
-                            await self.bot.db.guild(guild).set_raw(key, value=False)
-                        except Exception:
-                            pass
+                    #if guild_now.hour == 0 and guild_now.minute < 5:
+                    #    try:
+                    #        await self.bot.db.guild(guild).set_raw(key, value=False)
+                    #    except Exception:
+                    #        pass
 
                 await asyncio.sleep(poll_seconds)
     
