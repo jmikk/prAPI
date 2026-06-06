@@ -818,7 +818,7 @@ class VOO(commands.Cog):
         return embed
 
 
-async def _edit_control_message(self, guild: discord.Guild):
+    async def _edit_control_message(self, guild: discord.Guild):
         """Edit the existing control embed in place (no bump). If missing, post once."""
         channel_id = await self.config.guild(guild).channel_id()
         if not channel_id:
