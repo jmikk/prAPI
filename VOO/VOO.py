@@ -83,16 +83,19 @@ class VOO(commands.Cog):
         self.config = Config.get_conf(self, identifier=0x9005_0001, force_registration=True)
         self.session: Optional[aiohttp.ClientSession] = None
         self.listener_task: Optional[asyncio.Task] = None
-        self.queue: Deque[str] = deque()
         self.last_event_at: Optional[datetime] = None
         self.weekly_task: Optional[asyncio.Task] = None
         self._err_last_notice_ts: dict[int, int] = {}  # guild_id -> unix ts
+
+        # 1. Register a global dictionary default for the shared queue
+        default_global = {
+            "shared_queue": []
+        }
 
         default_guild = {
             "channel_id": None,
             "control_message_id": None,
             "user_agent": "9003",
-            "queue_snapshot": [],
             "region_blacklist": [],   
             "active_recruiter_role_id": None,
             "weekly_pot": 0,                         # grows +pot_increment each Recruit action
@@ -131,24 +134,21 @@ class VOO(commands.Cog):
             "template": None,
             "sent_count": 0,  # nations counted
         }
+        
+        self.config.register_global(**default_global)  # Register global config block
         self.config.register_guild(**default_guild)
         self.config.register_user(**default_user)
 
         # Register persistent view on startup
         self.bot.add_view(VOOControlView(self))
 
-    # ---------- Lifecycle ----------
     async def cog_load(self):
-        # Restore queue from guilds that have snapshots
-        for guild in self.bot.guilds:
-            snap = await self.config.guild(guild).queue_snapshot()
-            if snap:
-                for n in snap:
-                    if n not in self.queue:
-                        self.queue.append(n)
+        # The queue automatically references config data now!
         await self.start_listener()
         if self.weekly_task is None or self.weekly_task.done():
-            self.weekly_task = asyncio.create_task(self._weekly_scheduler(), name="VOO_WeeklyPayout")
+            self.weekly_task = asyncio.create_task(
+                self._weekly_scheduler(), name="VOO_WeeklyPayout"
+            )
 
 
     async def cog_unload(self):
@@ -398,23 +398,29 @@ class VOO(commands.Cog):
                 if region_norm in bl:
                     return
 
-        if nation_clean in self.queue:
-            return
+        
 
-        self.queue.appendleft(nation_clean)
+
+
+        async with self.config.shared_queue() as shared_q:
+            if nation_clean in shared_q:
+                return
+            
+            shared_q.insert(0, nation_clean)
+            current_q_len = len(shared_q)
+
+        # Triggers alerts and updates embeds for all guilds with the new queue length
         for guild in self.bot.guilds:
-            await self._maybe_panic_on_rise(guild, len(self.queue))
+            await self._maybe_panic_on_rise(guild, current_q_len)
+            
+        await self._refresh_all_embeds()
         
         await self._persist_queue_snapshot()
         await self._refresh_all_embeds()
 
 
     async def _persist_queue_snapshot(self):
-        # Persist only up to, say, 300 to avoid bloating config
-        snapshot = list(self.queue)[:300]
-        # Store to all guilds that have the cog configured
-        for guild in self.bot.guilds:
-            await self.config.guild(guild).queue_snapshot.set(snapshot)
+        pass
 
     async def _get_user_agent_global(self) -> str:
         # Use first configured guild UA; if none, default
@@ -488,7 +494,6 @@ class VOO(commands.Cog):
 
     async def handle_recruit(self, interaction: discord.Interaction):
         user_conf = self.config.user(interaction.user)
-        
         template = await user_conf.template()
         if not template:
             await interaction.response.send_message(
@@ -497,26 +502,26 @@ class VOO(commands.Cog):
             )
             return
 
-       # Build list of up to 8 newest nations
-        if not self.queue:
-            await interaction.response.send_message("The queue is empty right now.", ephemeral=True)
-            return
-        
-        qlen_before = len(self.queue)
+        # Atomic dequeue block from the cross-server shared queue
+        async with self.config.shared_queue() as shared_q:
+            qlen_before = len(shared_q)
+            if qlen_before == 0:
+                await interaction.response.send_message(
+                    "The queue is currently empty! Waiting for new nations...", 
+                    ephemeral=True
+                )
+                return
+                
+            # Grab up to MAX_TG_BATCH from the tail/end of the list (matching old deque queue pop architecture)
+            batch = []
+            for _ in range(min(MAX_TG_BATCH, qlen_before)):
+                if shared_q:
+                    batch.append(shared_q.pop())
 
-        batch: List[str] = []
-        while self.queue and len(batch) < MAX_TG_BATCH:
-            batch.append(self.queue.popleft())
-
-        await self._persist_queue_snapshot()
-        await self._refresh_all_embeds()
+        # Construct comma-separated targets for NationStates URL parameters
         tgto = ",".join(batch)
-
-        # IMPORTANT: do NOT pre-encode message or tgto.
-        # Let the client encode once so % -> %25 and commas -> %2C (once).
-        message_raw = template.strip()  # e.g. "%TEMPLATE-35972625%"
-
-        # generated_by is safe as-is (only underscores), but encode if you ever add spaces.
+        message_raw = template.strip()
+        
         link = (
             "https://www.nationstates.net/page=compose_telegram"
             f"?tgto={tgto}"
@@ -685,21 +690,23 @@ class VOO(commands.Cog):
 
     @voo_group.command(name="queue")
     async def show_queue(self, ctx: commands.Context, peek: int = 10):
-        """Show queue length and a peek at the upcoming nations."""
-        qlen = len(self.queue)
-        preview = list(self.queue)[:max(0, min(peek, 25))]
-        msg = f"Queue length: **{qlen}**"
+        """Show shared queue length and a peek at the upcoming nations."""
+        shared_q = await self.config.shared_queue()
+        qlen = len(shared_q)
+        preview = shared_q[-max(0, min(peek, 25)):]  # grab upcoming from the tail end
+        preview.reverse() # Reverse so tail end outputs sequentially
+        
+        msg = f"Global Queue length: **{qlen}**"
         if preview:
             msg += "\nNext up: " + ", ".join(preview)
         await ctx.send(msg)
 
     @voo_group.command(name="clearqueue")
     async def clear_queue(self, ctx: commands.Context):
-        """Clear the entire queue."""
-        self.queue.clear()
-        await self._persist_queue_snapshot()
+        """Clear the entire global shared queue."""
+        await self.config.shared_queue.set([])
         await self._refresh_all_embeds()
-        await ctx.send("Queue cleared.")
+        await ctx.send("Global shared queue cleared.")
 
     @voo_group.command(name="resetstats")
     async def reset_stats(self, ctx: commands.Context):
@@ -719,7 +726,10 @@ class VOO(commands.Cog):
         if not isinstance(channel, (discord.TextChannel, discord.Thread)):
             return
 
-        qlen = len(self.queue)
+        # Fetch the shared queue from global config and determine its length
+        shared_q = await self.config.shared_queue()
+        qlen = len(shared_q)
+        
         status = await self._get_status_text()
         reward, lvl_name, lvl_emoji, idx, total = await self._current_reward_and_defcon(guild, qlen)
         embed = self._build_control_embed(qlen, status, reward, lvl_name, lvl_emoji, idx, total)
@@ -808,7 +818,7 @@ class VOO(commands.Cog):
         return embed
 
 
-    async def _edit_control_message(self, guild: discord.Guild):
+async def _edit_control_message(self, guild: discord.Guild):
         """Edit the existing control embed in place (no bump). If missing, post once."""
         channel_id = await self.config.guild(guild).channel_id()
         if not channel_id:
@@ -817,7 +827,10 @@ class VOO(commands.Cog):
         if not isinstance(channel, (discord.TextChannel, discord.Thread)):
             return
 
-        qlen = len(self.queue)
+        # Fetch the shared queue from global config and determine its length
+        shared_q = await self.config.shared_queue()
+        qlen = len(shared_q)
+        
         status = await self._get_status_text()
         reward, lvl_name, lvl_emoji, idx, total = await self._current_reward_and_defcon(guild, qlen)
         embed = self._build_control_embed(qlen, status, reward, lvl_name, lvl_emoji, idx, total)
@@ -1430,7 +1443,10 @@ class VOO(commands.Cog):
             except Exception:
                 pass
     
-        qlen = len(self.queue)
+        # Fetch the shared queue from global config and determine its length
+        shared_q = await self.config.shared_queue()
+        qlen = len(shared_q)
+        
         status = await self._get_status_text()
         reward, lvl_name, lvl_emoji, idx, total = await self._current_reward_and_defcon(guild, qlen)
         embed = self._build_control_embed(qlen, status, reward, lvl_name, lvl_emoji, idx, total)
