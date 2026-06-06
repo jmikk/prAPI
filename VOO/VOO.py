@@ -903,90 +903,13 @@ class VOO(commands.Cog):
             bl.remove(r)
         await ctx.send(f"Removed `{r}` from the regional blacklist.")
 
-    @voo_blacklist.command(name="clear")
-    async def voo_blacklist_clear(self, ctx: commands.Context):
-        """Clear the regional blacklist."""
-        await self.config.guild(ctx.guild).region_blacklist.set([])
-        await ctx.send("Cleared the regional blacklist.")
-
-    async def _weekly_scheduler(self):
-        """
-        Polls every ~30s and triggers the weekly payout once per scheduled window.
-        Window = target minute ±60s in the configured timezone.
-    
-        Uses a per-day idempotency marker so it won't double-run if the loop
-        ticks multiple times inside the window.
-        """
-        poll_seconds = 60
-    
-        while True:
-            try:
-                for guild in self.bot.guilds:
-                    gconf = self.config.guild(guild)
-                    if not await gconf.auto_weekly_enabled():
-                        continue
-    
-                    # Resolve timezone safely
-                    try:
-                        tzname = await gconf.auto_weekly_tz()
-                        tz = ZoneInfo(tzname)
-                    except Exception:
-                        tz = ZoneInfo("America/Chicago")
-    
-                    now_local = datetime.now(tz)
-                    dow = int(await gconf.auto_weekly_dow())
-                    hh = int(await gconf.auto_weekly_hour())
-                    mm = int(await gconf.auto_weekly_minute())
-    
-                    # Build today's target time in local tz
-                    target = now_local.replace(hour=hh, minute=mm, second=0, microsecond=0)
-    
-                    # Per-day idempotency key (matches your existing logic)
-                    key = f"weekly_marker_{now_local.date().isoformat()}"
-                    try:
-                        ran_today = await self.bot.db.guild(guild).get_raw(key, default=False)
-                    except Exception:
-                        ran_today = False  # if bot.db not available, try to run
-    
-                    # Only fire on the configured weekday, within ±60s of target minute
-                    within_window = (
-                        now_local.weekday() == dow and
-                        abs((now_local - target).total_seconds()) <= 60
-                    )
-    
-                    if within_window and not ran_today:
-                        await self._run_weekly_payout(guild)
-                        try:
-                            await self.bot.db.guild(guild).set_raw(key, value=True)
-                        except Exception:
-                            pass  # keep going even if marker write fails
-    
-                    # Clear marker shortly after midnight local so the next eligible day can run
-                    if now_local.hour == 0 and now_local.minute < 5 and ran_today:
-                        try:
-                            await self.bot.db.guild(guild).set_raw(key, value=False)
-                        except Exception:
-                            pass
-    
-                await asyncio.sleep(poll_seconds)
-    
-            except asyncio.CancelledError:
-                # Task was cancelled (e.g., cog unload) — exit cleanly
-                break
-            except Exception:
-                log.exception("Weekly scheduler error")
-                # keep the loop alive but don't spin
-                await asyncio.sleep(poll_seconds)
-
-
-    async def _run_weekly_payout(self, guild: discord.Guild):
-        """Distribute weekly pot, post global leaderboard with % breakdown, then reset."""
-        # --- GLOBAL AGGREGATION ---
-        # We need to collect recruitment data from ALL guilds to build a global leaderboard
-        global_weekly_sent = {}  # user_id (int) -> combined total sent across all servers
+    @voo_group.command(name="weeklypayout")
+    @checks.admin_or_permissions(manage_guild=True)
+    async def manual_weekly_payout(self, ctx: commands.Context):
+        """Manually trigger the weekly payout right now using current global stats."""
+        # Calculate snapshot data manually for the test execution
+        global_weekly_sent = {}
         total_global_sent = 0
-        
-        # Loop through all guilds to aggregate cross-server data
         for g in self.bot.guilds:
             ws = await self.config.guild(g).weekly_sent()
             for uid_str, cnt in (ws or {}).items():
@@ -999,7 +922,123 @@ class VOO(commands.Cog):
                 except Exception:
                     continue
 
-        # Fetch local configurations for the current server
+        # Pass it safely to the payout code
+        await self._run_weekly_payout(ctx.guild, global_weekly_sent, total_global_sent)
+        await ctx.send("Manual weekly payout routine completed successfully.")
+
+    @voo_blacklist.command(name="clear")
+    async def voo_blacklist_clear(self, ctx: commands.Context):
+        """Clear the regional blacklist."""
+        await self.config.guild(ctx.guild).region_blacklist.set([])
+        await ctx.send("Cleared the regional blacklist.")
+
+    async def _weekly_scheduler(self):
+        """
+        Polls every ~60s and triggers the global weekly payout once per scheduled window.
+        Generates a cross-server global snapshot BEFORE resetting any databases,
+        ensuring all servers deliver the exact same identical leaderboard.
+        """
+        poll_seconds = 60
+    
+        while True:
+            try:
+                # Primary timezone anchor to evaluate general time
+                tz = ZoneInfo("America/Chicago")
+                
+                guilds_to_pay = []
+                
+                # Step 1: Find out which guilds are eligible for a payout right now
+                for guild in self.bot.guilds:
+                    gconf = self.config.guild(guild)
+                    if not await gconf.auto_weekly_enabled():
+                        continue
+                        
+                    try:
+                        guild_tzname = await gconf.auto_weekly_tz()
+                        guild_tz = ZoneInfo(guild_tzname)
+                    except Exception:
+                        guild_tz = tz
+                        
+                    guild_now = datetime.now(guild_tz)
+                    dow = int(await gconf.auto_weekly_dow())
+                    hh = int(await gconf.auto_weekly_hour())
+                    mm = int(await gconf.auto_weekly_minute())
+                    
+                    target = guild_now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+                    
+                    key = f"weekly_marker_{guild_now.date().isoformat()}"
+                    try:
+                        ran_today = await self.bot.db.guild(guild).get_raw(key, default=False)
+                    except Exception:
+                        ran_today = False
+                        
+                    within_window = (
+                        guild_now.weekday() == dow and
+                        abs((guild_now - target).total_seconds()) <= 60
+                    )
+                    
+                    if within_window and not ran_today:
+                        guilds_to_pay.append((guild, key))
+
+                # Step 2: UNIFIED SWEEP - Generate the report first IF any guild is due
+                if guilds_to_pay:
+                    log.info(f"Generating global weekly report for {len(guilds_to_pay)} guild(s).")
+                    
+                    # Compile the global layout statistics ONCE from all available data
+                    global_weekly_sent = {}
+                    total_global_sent = 0
+                    
+                    for g in self.bot.guilds:
+                        ws = await self.config.guild(g).weekly_sent()
+                        for uid_str, cnt in (ws or {}).items():
+                            try:
+                                cnt = int(cnt)
+                                if cnt > 0:
+                                    uid = int(uid_str)
+                                    global_weekly_sent[uid] = global_weekly_sent.get(uid, 0) + cnt
+                                    total_global_sent += cnt
+                            except Exception:
+                                continue
+
+                    # Step 3: Deliver the frozen report data to every eligible guild and THEN reset them
+                    for guild, key in guilds_to_pay:
+                        try:
+                            # Pass the immutable data straight into the delivery processor
+                            await self._run_weekly_payout(guild, global_weekly_sent, total_global_sent)
+                            
+                            # Mark as successfully processed for today
+                            await self.bot.db.guild(guild).set_raw(key, value=True)
+                        except Exception:
+                            log.exception(f"Failed executing payout loop for guild {guild.id}")
+
+                # Step 4: Midnight Idempotency Marker Cleanups
+                for guild in self.bot.guilds:
+                    try:
+                        gconf = self.config.guild(guild)
+                        guild_tzname = await gconf.auto_weekly_tz()
+                        guild_tz = ZoneInfo(guild_tzname)
+                    except Exception:
+                        guild_tz = tz
+                        
+                    guild_now = datetime.now(guild_tz)
+                    key = f"weekly_marker_{guild_now.date().isoformat()}"
+                    
+                    if guild_now.hour == 0 and guild_now.minute < 5:
+                        try:
+                            await self.bot.db.guild(guild).set_raw(key, value=False)
+                        except Exception:
+                            pass
+
+                await asyncio.sleep(poll_seconds)
+    
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                log.exception("Weekly scheduler error")
+                await asyncio.sleep(poll_seconds)
+
+    async def _run_weekly_payout(self, guild: discord.Guild, global_weekly_sent: dict, total_global_sent: int):
+        """Processes payments, delivers the report, and resets stats for a specific server using a frozen global snapshot."""
         gconf = self.config.guild(guild)
         pot = int(await gconf.weekly_pot())
         min_payout = int(await gconf.min_weekly_payout())
@@ -1008,7 +1047,7 @@ class VOO(commands.Cog):
 
         embed = discord.Embed(title="Global Weekly Recruitment Results", color=discord.Color.gold())
 
-        # If nobody recruited globally or this server has no pot, handle early exit gracefully
+        # Early safety exit if no data exists network-wide
         if not global_weekly_sent or total_global_sent == 0:
             embed.description = "No recruiters across the network this week."
             try:
@@ -1016,18 +1055,16 @@ class VOO(commands.Cog):
                     await channel.send(embed=embed)
             except Exception:
                 pass
-            # Reset local tracking anyway
             await gconf.weekly_pot.set(0)
             await gconf.weekly_sent.set({})
             await self._clear_active_role_all(guild)
             return
 
-        # Sort the aggregated global rows
-        # Format: (user_id, total_sent_globally)
+        # Sort the shared dataset (Guaranteed identical placement on all servers)
         global_rows = list(global_weekly_sent.items())
         global_rows.sort(key=lambda x: (-x[1], x[0]))
 
-        # Compute global pot shares based on this server's specific pot sizing
+        # Calculate exact shares using this specific guild's pot balance
         payouts = []  # (uid, cnt, pct, share_from_pot, min_bonus)
         pot_paid_total = 0
         for idx, (uid, cnt) in enumerate(global_rows):
@@ -1037,35 +1074,31 @@ class VOO(commands.Cog):
                 share = pot - pot_paid_total
             pot_paid_total += max(0, share)
             
-            # Bonus qualification applies based on global output
             bonus = min_payout if cnt >= 100 else 0
             payouts.append((uid, cnt, pct, max(0, share), max(0, bonus)))
 
-        # Pay out to users who are members of THIS server (other servers handle their own members)
+        # Distribute Bank/Nexus currency ONLY to members present inside this server roster
         nexus = self._get_nexus()
         if nexus:
             for uid, cnt, pct, share, bonus in payouts:
                 member = guild.get_member(uid)
                 if not member:
-                    continue # Skip if they are not in this specific server (handled by their home server payout loop)
+                    continue  # Handled safely when the loop hits their home server
                 
-                # Share from pot
                 if share > 0:
                     try:
                         await nexus.add_wellcoins(member, float(share))
                     except Exception:
                         log.exception("Pot share payout failed for %s", member)
-                # Minimum (not from pot)
                 if bonus > 0:
                     try:
                         await nexus.add_wellcoins(member, float(bonus))
                     except Exception:
                         log.exception("Minimum payout failed for %s", member)
 
-        # Build cross-server global lines to display in the embed description
+        # Generate report text lines
         lines = []
         for i, (uid, cnt, pct, share, bonus) in enumerate(payouts, start=1):
-            # Attempt to resolve member locally, fallback to basic global mention if they aren't here
             member = guild.get_member(uid)
             name = member.display_name if member else f"<@{uid}>"
             pct_str = f"{pct:,.2f}%"
@@ -1076,20 +1109,19 @@ class VOO(commands.Cog):
                 line = f"**{i}.** {name} — **{cnt}** TGs • {pct_str} → **{share}** WC"
             lines.append(line)
 
-        # Compose the embed layout using global calculation context
-        embed.description = "\n".join(lines[:50])  # safety cap
+        # Assemble and send the finalized report embed 
+        embed.description = "\n".join(lines[:50])  # Cap at top 50 to fit Discord's limits
         embed.add_field(name="Weekly Pot (distributed)", value=f"{pot} WC (paid {pot_paid_total} WC)", inline=True)
         embed.add_field(name="Salary (Must send at least 100)", value=f"{min_payout} WC (not from pot)", inline=True)
         embed.set_footer(text=f"Total Global TGs: {total_global_sent} • Total Network Recruiters paid: {len(payouts)}")
 
-        # Announce to this server's designated tracking channel
         try:
             if channel:
                 await channel.send(embed=embed)
         except Exception:
             pass
 
-        # Cleanup local server states
+        # Cleanup stats AFTER delivery is complete
         await gconf.weekly_pot.set(0)
         await gconf.weekly_sent.set({})
         await self._clear_active_role_all(guild)
@@ -1175,50 +1207,7 @@ class VOO(commands.Cog):
         state = "enabled" if enabled else "disabled"
         await ctx.send(f"Auto weekly payout {state} — schedule set to DOW={dow} {hour:02d}:{minute:02d} {tz}")
 
-    @voo_group.command(name="testpayout")
-    @checks.admin_or_permissions(manage_guild=True)
-    async def test_payout(self, ctx: commands.Context, minutes: int = 5, tz: str = "America/Chicago"):
-        """
-        Schedule the weekly payout to run X minutes from now (default 5).
-        Also enables auto-settlement and clears the run marker for that date.
-        Usage: [p]voo testpayout 5 America/Chicago
-        """
-        minutes = max(1, int(minutes))  # at least 1 minute
     
-        # Compute target time in the requested timezone
-        try:
-            zone = ZoneInfo(tz)
-        except Exception:
-            await ctx.send(f"Unknown timezone `{tz}`. Using America/Chicago.")
-            tz = "America/Chicago"
-            zone = ZoneInfo(tz)
-    
-        now_local = datetime.now(zone)
-        target = now_local + timedelta(minutes=minutes)
-    
-        # Configure auto settlement to the target minute
-        await self.config.guild(ctx.guild).auto_weekly_enabled.set(True)
-        await self.config.guild(ctx.guild).auto_weekly_tz.set(tz)
-        await self.config.guild(ctx.guild).auto_weekly_dow.set(target.weekday())  # 0=Mon...6=Sun
-        await self.config.guild(ctx.guild).auto_weekly_hour.set(target.hour)
-        await self.config.guild(ctx.guild).auto_weekly_minute.set(target.minute)
-    
-        # Clear the "already ran" marker for the target date so it will fire
-        # (This matches the marker logic used in _weekly_scheduler)
-        key = f"weekly_marker_{target.date().isoformat()}"
-        try:
-            await self.bot.db.guild(ctx.guild).set_raw(key, value=False)
-        except Exception:
-            # If your bot.db isn't available, silently ignore; it will likely still trigger.
-            pass
-    
-        # Confirm to user
-        when_str = target.strftime("%Y-%m-%d %H:%M")
-        await ctx.send(
-            f"✅ Auto settlement scheduled **{minutes} min** from now at **{when_str} {tz}** "
-            f"(DoW={target.weekday()}, {target.hour:02d}:{target.minute:02d}).\n"
-            f"It will run once when the scheduler ticks that minute."
-        )
     
     async def _schedule_reminder(self, interaction: discord.Interaction, seconds: int):
         """
