@@ -903,7 +903,7 @@ class VOO(commands.Cog):
             bl.remove(r)
         await ctx.send(f"Removed `{r}` from the regional blacklist.")
 
-    @voo_group.command(name="weeklypayout")
+    @voo_group.command(name="testweeklypayout")
     @checks.admin_or_permissions(manage_guild=True)
     async def manual_weekly_payout(self, ctx: commands.Context):
         """Manually trigger the weekly payout right now using current global stats."""
