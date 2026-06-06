@@ -615,6 +615,7 @@ class VOO(commands.Cog):
           amount=len(batch),
           debug=False
             )
+        await self._refresh_all_embeds()
             
 
 
