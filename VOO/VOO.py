@@ -911,112 +911,95 @@ class VOO(commands.Cog):
 
     async def _weekly_scheduler(self):
         """
-        Polls every ~60s and triggers the global weekly payout once per scheduled window.
+        Polls every ~30s and triggers the weekly payout once per scheduled window.
         Window = target minute ±60s in the configured timezone.
+    
+        Uses a per-day idempotency marker so it won't double-run if the loop
+        ticks multiple times inside the window.
         """
         poll_seconds = 60
     
         while True:
             try:
-                # We need a primary timezone to anchor our "payout day" evaluation.
-                # We will check if it's payout time based on a default timezone (e.g. America/Chicago).
-                # Alternatively, you can use the timezone of the first guild.
-                tz = ZoneInfo("America/Chicago")
-                now_local = datetime.now(tz)
-                
-                # Check if ANY configured guild needs a payout right now
-                # and group them up so we execute them all inside a single unified data loop
-                guilds_to_pay = []
-                
                 for guild in self.bot.guilds:
                     gconf = self.config.guild(guild)
                     if not await gconf.auto_weekly_enabled():
                         continue
-                        
+    
+                    # Resolve timezone safely
                     try:
-                        guild_tzname = await gconf.auto_weekly_tz()
-                        guild_tz = ZoneInfo(guild_tzname)
+                        tzname = await gconf.auto_weekly_tz()
+                        tz = ZoneInfo(tzname)
                     except Exception:
-                        guild_tz = tz
-                        
-                    guild_now = datetime.now(guild_tz)
+                        tz = ZoneInfo("America/Chicago")
+    
+                    now_local = datetime.now(tz)
                     dow = int(await gconf.auto_weekly_dow())
                     hh = int(await gconf.auto_weekly_hour())
                     mm = int(await gconf.auto_weekly_minute())
-                    
-                    target = guild_now.replace(hour=hh, minute=mm, second=0, microsecond=0)
-                    
-                    key = f"weekly_marker_{guild_now.date().isoformat()}"
+    
+                    # Build today's target time in local tz
+                    target = now_local.replace(hour=hh, minute=mm, second=0, microsecond=0)
+    
+                    # Per-day idempotency key (matches your existing logic)
+                    key = f"weekly_marker_{now_local.date().isoformat()}"
                     try:
                         ran_today = await self.bot.db.guild(guild).get_raw(key, default=False)
                     except Exception:
-                        ran_today = False
-                        
+                        ran_today = False  # if bot.db not available, try to run
+    
+                    # Only fire on the configured weekday, within ±60s of target minute
                     within_window = (
-                        guild_now.weekday() == dow and
-                        abs((guild_now - target).total_seconds()) <= 60
+                        now_local.weekday() == dow and
+                        abs((now_local - target).total_seconds()) <= 60
                     )
-                    
+    
                     if within_window and not ran_today:
-                        guilds_to_pay.append((guild, key))
-
-                # --- UNIFIED CROSS-SERVER SWEEP ---
-                if guilds_to_pay:
-                    # 1. Compile the global layout stats ONCE before clearing any databases
-                    global_weekly_sent = {}
-                    total_global_sent = 0
-                    
-                    for g in self.bot.guilds:
-                        ws = await self.config.weekly_sent(g)() # or self.config.guild(g).weekly_sent()
-                        for uid_str, cnt in (ws or {}).items():
-                            try:
-                                cnt = int(cnt)
-                                if cnt > 0:
-                                    uid = int(uid_str)
-                                    global_weekly_sent[uid] = global_weekly_sent.get(uid, 0) + cnt
-                                    total_global_sent += cnt
-                            except Exception:
-                                continue
-
-                    # 2. Process each server using the immutable snapshots we compiled above
-                    for guild, key in guilds_to_pay:
+                        await self._run_weekly_payout(guild)
                         try:
-                            # Pass our frozen global telemetry straight into our helper function
-                            await self._execute_global_payout_for_guild(guild, global_weekly_sent, total_global_sent)
-                            
-                            # Mark as completed successfully
                             await self.bot.db.guild(guild).set_raw(key, value=True)
                         except Exception:
-                            log.exception(f"Failed executing payout for guild {guild.id}")
-
-                # --- MINIDGHT CLEANUP BLOCK ---
-                for guild in self.bot.guilds:
-                    try:
-                        gconf = self.config.guild(guild)
-                        guild_tzname = await gconf.auto_weekly_tz()
-                        guild_tz = ZoneInfo(guild_tzname)
-                    except Exception:
-                        guild_tz = tz
-                        
-                    guild_now = datetime.now(guild_tz)
-                    key = f"weekly_marker_{guild_now.date().isoformat()}"
-                    
-                    if guild_now.hour == 0 and guild_now.minute < 5:
+                            pass  # keep going even if marker write fails
+    
+                    # Clear marker shortly after midnight local so the next eligible day can run
+                    if now_local.hour == 0 and now_local.minute < 5 and ran_today:
                         try:
                             await self.bot.db.guild(guild).set_raw(key, value=False)
                         except Exception:
                             pass
-
+    
                 await asyncio.sleep(poll_seconds)
     
             except asyncio.CancelledError:
+                # Task was cancelled (e.g., cog unload) — exit cleanly
                 break
             except Exception:
                 log.exception("Weekly scheduler error")
+                # keep the loop alive but don't spin
                 await asyncio.sleep(poll_seconds)
 
-    async def _execute_global_payout_for_guild(self, guild: discord.Guild, global_weekly_sent: dict, total_global_sent: int):
-        """Executes leaderboard distributions based on a frozen snapshot of global stats."""
+
+    async def _run_weekly_payout(self, guild: discord.Guild):
+        """Distribute weekly pot, post global leaderboard with % breakdown, then reset."""
+        # --- GLOBAL AGGREGATION ---
+        # We need to collect recruitment data from ALL guilds to build a global leaderboard
+        global_weekly_sent = {}  # user_id (int) -> combined total sent across all servers
+        total_global_sent = 0
+        
+        # Loop through all guilds to aggregate cross-server data
+        for g in self.bot.guilds:
+            ws = await self.config.guild(g).weekly_sent()
+            for uid_str, cnt in (ws or {}).items():
+                try:
+                    cnt = int(cnt)
+                    if cnt > 0:
+                        uid = int(uid_str)
+                        global_weekly_sent[uid] = global_weekly_sent.get(uid, 0) + cnt
+                        total_global_sent += cnt
+                except Exception:
+                    continue
+
+        # Fetch local configurations for the current server
         gconf = self.config.guild(guild)
         pot = int(await gconf.weekly_pot())
         min_payout = int(await gconf.min_weekly_payout())
@@ -1025,6 +1008,7 @@ class VOO(commands.Cog):
 
         embed = discord.Embed(title="Global Weekly Recruitment Results", color=discord.Color.gold())
 
+        # If nobody recruited globally or this server has no pot, handle early exit gracefully
         if not global_weekly_sent or total_global_sent == 0:
             embed.description = "No recruiters across the network this week."
             try:
@@ -1032,15 +1016,19 @@ class VOO(commands.Cog):
                     await channel.send(embed=embed)
             except Exception:
                 pass
+            # Reset local tracking anyway
             await gconf.weekly_pot.set(0)
             await gconf.weekly_sent.set({})
             await self._clear_active_role_all(guild)
             return
 
+        # Sort the aggregated global rows
+        # Format: (user_id, total_sent_globally)
         global_rows = list(global_weekly_sent.items())
         global_rows.sort(key=lambda x: (-x[1], x[0]))
 
-        payouts = []
+        # Compute global pot shares based on this server's specific pot sizing
+        payouts = []  # (uid, cnt, pct, share_from_pot, min_bonus)
         pot_paid_total = 0
         for idx, (uid, cnt) in enumerate(global_rows):
             pct = (cnt / total_global_sent) * 100.0
@@ -1048,50 +1036,60 @@ class VOO(commands.Cog):
             if idx == len(global_rows) - 1:
                 share = pot - pot_paid_total
             pot_paid_total += max(0, share)
+            
+            # Bonus qualification applies based on global output
             bonus = min_payout if cnt >= 100 else 0
             payouts.append((uid, cnt, pct, max(0, share), max(0, bonus)))
 
+        # Pay out to users who are members of THIS server (other servers handle their own members)
         nexus = self._get_nexus()
         if nexus:
             for uid, cnt, pct, share, bonus in payouts:
                 member = guild.get_member(uid)
                 if not member:
-                    continue  # Only pay them if they are in this server
+                    continue # Skip if they are not in this specific server (handled by their home server payout loop)
                 
+                # Share from pot
                 if share > 0:
                     try:
                         await nexus.add_wellcoins(member, float(share))
                     except Exception:
                         log.exception("Pot share payout failed for %s", member)
+                # Minimum (not from pot)
                 if bonus > 0:
                     try:
                         await nexus.add_wellcoins(member, float(bonus))
                     except Exception:
                         log.exception("Minimum payout failed for %s", member)
 
+        # Build cross-server global lines to display in the embed description
         lines = []
         for i, (uid, cnt, pct, share, bonus) in enumerate(payouts, start=1):
+            # Attempt to resolve member locally, fallback to basic global mention if they aren't here
             member = guild.get_member(uid)
             name = member.display_name if member else f"<@{uid}>"
             pct_str = f"{pct:,.2f}%"
+            
             if bonus > 0:
                 line = f"**{i}.** {name} — **{cnt}** TGs • {pct_str} → **{share}** WC + **{bonus}** WC"
             else:
                 line = f"**{i}.** {name} — **{cnt}** TGs • {pct_str} → **{share}** WC"
             lines.append(line)
 
-        embed.description = "\n".join(lines[:50])
+        # Compose the embed layout using global calculation context
+        embed.description = "\n".join(lines[:50])  # safety cap
         embed.add_field(name="Weekly Pot (distributed)", value=f"{pot} WC (paid {pot_paid_total} WC)", inline=True)
         embed.add_field(name="Salary (Must send at least 100)", value=f"{min_payout} WC (not from pot)", inline=True)
         embed.set_footer(text=f"Total Global TGs: {total_global_sent} • Total Network Recruiters paid: {len(payouts)}")
 
+        # Announce to this server's designated tracking channel
         try:
             if channel:
                 await channel.send(embed=embed)
         except Exception:
             pass
 
-        # Clear the database for this server cleanly
+        # Cleanup local server states
         await gconf.weekly_pot.set(0)
         await gconf.weekly_sent.set({})
         await self._clear_active_role_all(guild)
