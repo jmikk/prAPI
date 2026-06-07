@@ -233,16 +233,15 @@ class NexusCards(commands.Cog):
             owners = [o.text.lower() for o in root.findall(".//OWNER")]
             
             if nation in owners:
-                giveaway_nation = await self.config.giveaway_nation()
-                if giveaway_nation.lower() in owners:
-                    return await ctx.send("This card is reserved for a giveaway.")
+                if "the_phoenix_of_the_spring" in owners:
+                    return await ctx.send("This card is on the_phoenix_of_the_spring but the good news is 9005 can move it for you as long as it is not part of a giveaway.")
                 
                 found_in = nation
                 card_data = root
                 break
         
         if not found_in:
-            return await ctx.send("Legendary not found in stockpiles.")
+            return await ctx.send("Legendary not found in stockpiles. Check out 9005 and The Phoenix of the Spring's deck for the cards you can claim")
 
         mv = float(card_data.find(".//MARKET_VALUE").text)
         cost = self._calculate_legendary_cost(mv, season)
