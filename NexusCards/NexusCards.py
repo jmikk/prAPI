@@ -222,20 +222,19 @@ class NexusCards(commands.Cog):
         if not await self._check_weekly_limit(ctx.author, "legendary_uses", 1):
             return await ctx.send("Limit: 1 Legendary per week.")
 
-        sources_to_check = ["9005"]
+        sources_to_check = ["9005","the_phoenix_of_the_spring"]
         source_creds = await self.config.source_nations()
         found_in = None
         card_data = None
 
+        url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
+        root, _ = await self._ns_request(url, ctx=ctx)
+        owners = [o.text.lower() for o in root.findall(".//OWNER")]
         for nation in sources_to_check:
-            url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
-            root, _ = await self._ns_request(url, ctx=ctx)
-            owners = [o.text.lower() for o in root.findall(".//OWNER")]
-            
             if nation in owners:
                 if "the_phoenix_of_the_spring" in owners:
                     return await ctx.send("This card is on the_phoenix_of_the_spring but the good news is 9005 can move it for you as long as it is not part of a giveaway.")
-                
+                    
                 found_in = nation
                 card_data = root
                 break
