@@ -180,84 +180,59 @@ class GiveawayCog(commands.Cog):
     
         await ctx.send(embed=embed)
 
+    async def send_gift_card(self, ctx, card_id, season, destination):
+        """Helper to send a gift card via NS API."""
+        useragent = "Vibonia running Giveaways"
+        password = await self.config.guild(ctx.guild).password()
+        nationname = await self.config.guild(ctx.guild).nationname()
+        
+        if not password or not nationname:
+            return False, "Nation name or password not set."
+
+        # Prepare
+        prepare_data = {
+            "nation": nationname, "c": "giftcard", "cardid": card_id, 
+            "season": season, "to": destination, "mode": "prepare"
+        }
+        prepare_headers = {"User-Agent": useragent, "X-Password": password}
+
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as resp:
+            text = await resp.text()
+            token = self.parse_token(text)
+            x_pin = resp.headers.get("X-Pin")
+
+        if not token or not x_pin:
+            return False, f"Failed to prepare card: {text}"
+
+        # Execute
+        execute_data = {
+            "nation": nationname, "c": "giftcard", "cardid": card_id, 
+            "season": season, "to": destination, "mode": "execute", "token": token
+        }
+        execute_headers = {"User-Agent": useragent, "X-Pin": x_pin}
+
+        async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as resp:
+            if resp.status == 200:
+                return True, f"Successfully sent card {card_id} (S{season}) to {destination}."
+            return False, f"Execution failed: {await resp.text()}"
+
 
 
     @commands.command()
     async def claimcards(self, ctx, *, destination: str):
-        try:
-            user_claims = await self.config.user(ctx.author).wins()
-            if not user_claims:
-                return await ctx.send("You have no unclaimed giveaways.")
+        user_claims = await self.config.user(ctx.author).wins()
+        if not user_claims:
+            return await ctx.send("You have no unclaimed giveaways.")
 
-            useragent = "Vibonia running Giveaways"
-            password = await self.config.guild(ctx.guild).password()
-            nationname = await self.config.guild(ctx.guild).nationname()
-            if not password or not nationname:
-                return await ctx.send("Nation name or password not set. Use `setnation` and `setpassword`.")
-
-            log_channel_id = await self.config.guild(ctx.guild).log_channel()
-            log_channel = ctx.guild.get_channel(log_channel_id) if log_channel_id else None
-            x_pin = None
-
-            for idx, claim_info in enumerate(user_claims):
-                card_id = claim_info["cardid"]
-                season = claim_info["season"]
-
-                prepare_data = {
-                    "nation": nationname, "c": "giftcard", "cardid": card_id, "season": season,
-                    "to": destination, "mode": "prepare"
-                }
-                if not x_pin:
-                    prepare_headers = {"User-Agent": useragent, "X-Password": password}
-                else: 
-                    prepare_headers = {"User-Agent": useragent, "X-Pin": x_pin}
-
-
-                async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
-                    prepare_text = await prepare_response.text()
-                    if prepare_response.status != 200:
-                        await ctx.send(f"Failed to prepare gift for card {card_id}.")
-                        if log_channel:
-                            await log_channel.send(f"Prepare failed for {ctx.author.mention}: {prepare_text}")
-                        continue
-
-                    token = self.parse_token(prepare_text)
-                    if not token:
-                        await ctx.send(f"Token missing for card {card_id}.")
-                        if log_channel:
-                            await log_channel.send(f"Token error for {ctx.author.mention}: {prepare_text}")
-                        continue
-
-                    if idx == 0:
-                        x_pin = prepare_response.headers.get("X-Pin")
-                        if not x_pin:
-                            await ctx.send("X-Pin missing.")
-                            if log_channel:
-                                await log_channel.send("X-Pin missing in header.")
-                            return
-
-                execute_data = {
-                    "nation": nationname, "c": "giftcard", "cardid": card_id, "season": season,
-                    "to": destination, "mode": "execute", "token": token
-                }
-                execute_headers = {"User-Agent": useragent, "X-Pin": x_pin}
-
-                async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=execute_data, headers=execute_headers) as execute_response:
-                    execute_text = await execute_response.text()
-                    if execute_response.status != 200:
-                        await ctx.send(f"Failed to send card {card_id}.")
-                        if log_channel:
-                            await log_channel.send(f"Send failed for {ctx.author.mention}: {execute_text}")
-                        continue
-
-                    await ctx.send(f"Sent card {card_id} (Season {season}) to {destination}.")
-                    if log_channel:
-                        await log_channel.send(f"Gifted card {card_id} (S{season}) to {destination} for {ctx.author.mention}.")
-
-            await self.config.user(ctx.author).wins.set([])
-
-        except Exception as e:
-            await self.log_error(ctx, str(e))
+        for claim in user_claims:
+            success, message = await self.send_gift_card(ctx, claim["cardid"], claim["season"], destination)
+            if success:
+                await ctx.send(f"✅ {message}")
+            else:
+                await ctx.send(f"❌ Error sending {claim['cardid']}: {message}")
+                return
+        
+        await self.config.user(ctx.author).wins.set([])
 
     @commands.is_owner()
     @commands.command()
@@ -420,6 +395,31 @@ class GiveawayCog(commands.Cog):
         )
         embed.set_footer(text="Try your luck again anytime!")
         await message.edit(embed=embed)
+
+    @commands.command()
+    async def potsgiveaway(self, ctx, cardid: int, season: int, *, destination: str):
+        """
+        Manually gift a card to a specific nation.
+        Usage: [prefix]potsgiveaway [cardid] [season] [nation_name]
+        """
+        # 1. Check for the configured host role
+        host_role_id = await self.config.guild(ctx.guild).giveaway_host_role()
+        
+        if not host_role_id:
+            return await ctx.send("The Giveaway Host role has not been set yet. Please use `setgiveawayhostrole`.")
+            
+        # 2. Validate user has the role
+        role = ctx.guild.get_role(host_role_id)
+        
+        if role and role not in ctx.author.roles:
+            return await ctx.send(f"You do not have permission to use this. Required role: {role.mention}")
+        
+        async with ctx.typing():
+            success, message = await self.send_gift_card(ctx, cardid, season, destination)
+            if success:
+                await ctx.send(f"✅ {message}")
+            else:
+                await ctx.send(f"❌ {message}")
 
 
 
