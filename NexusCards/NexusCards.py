@@ -230,16 +230,12 @@ class NexusCards(commands.Cog):
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
         root, _ = await self._ns_request(url, ctx=ctx)
         owners = [o.text.lower() for o in root.findall(".//OWNER")]
-        for nation in sources_to_check:
-            if nation in owners:
-                if "the_phoenix_of_the_spring" in owners:
-                    return await ctx.send("This card is on the_phoenix_of_the_spring but the good news is 9005 can move it for you as long as it is not part of a giveaway.")
-                    
-                found_in = nation
-                card_data = root
-                break
-        
-        if not found_in:
+        if "9005" in owners:        
+            found_in = "9005"
+            card_data = root
+        elif "the_phoenix_of_the_spring" in owners:
+            return await ctx.send("This card is on the_phoenix_of_the_spring but the good news is 9005 can move it for you as long as it is not part of a giveaway.")
+        else: 
             return await ctx.send("Legendary not found in stockpiles. Check out 9005 and The Phoenix of the Spring's deck for the cards you can claim")
 
         mv = float(card_data.find(".//MARKET_VALUE").text)
