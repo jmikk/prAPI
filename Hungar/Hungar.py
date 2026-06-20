@@ -1,9 +1,10 @@
-from redbot.core import commands, Config, tasks
+from redbot.core import commands, Config
 import random
 import asyncio
 from datetime import datetime, timedelta
 import os
 import discord
+from discord.ext import tasks
 from discord.ext.commands import CheckFailure
 from discord.ui import View, Button, Modal, Select, TextInput
 from discord import Interaction, TextStyle, SelectOption
