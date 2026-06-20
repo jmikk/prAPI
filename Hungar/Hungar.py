@@ -1,4 +1,4 @@
-from redbot.core import commands, Config
+from redbot.core import commands, Config, tasks
 import random
 import asyncio
 from datetime import datetime, timedelta
@@ -13,6 +13,7 @@ from discord.utils import get
 from discord import app_commands
 import math
 import json
+from zoneinfo import ZoneInfo
 
 TOP_RANK_SURCHARGE = {1: 3.0, 2: 2.25, 3: 1.5}
 DEFAULT_RANK_MULTIPLIER = 1.0
@@ -26,6 +27,66 @@ def calc_sponsor_cost(day: int, score: float, rank: int, bet_share: float) -> in
     bet_mult = 1.0 + (BET_SHARE_FACTOR * bet_share)
     cost = int(round(base * rank_mult * bet_mult))
     return max(MIN_SPONSOR_COST, min(MAX_SPONSOR_COST, cost))
+
+class PollView(discord.ui.View):
+    def __init__(self, hours_timestamps: list):
+        super().__init__(timeout=172800) # 48 hours in seconds
+        self.votes = {ts: 0 for ts in hours_timestamps}
+        self.user_votes = {} # Tracks user_id: timestamp to prevent double voting
+        
+        # Populate the dropdown menu
+        options = []
+        for ts in hours_timestamps:
+            # Note: Discord Select Menu options cannot parse markdown like <t:ts:t>, 
+            # so we use a standard UTC string format for the dropdown label, 
+            # but the actual relative timestamp will show up cleanly in the embed.
+            dt_utc = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
+            options.append(discord.SelectOption(
+                label=f"{dt_utc.strftime('%H:%M')} UTC (Saturday)",
+                value=str(ts),
+                description="Vote for this hour slot"
+            ))
+            
+        self.add_item(PollDropdown(options))
+
+    async def update_embed(self, message: discord.Message):
+        # Sort votes to find the current standings
+        sorted_votes = sorted(self.votes.items(), key=lambda item: item[1], reverse=True)
+        
+        embed = discord.Embed(
+            title="📅 Saturday Event Scheduling Poll",
+            description="Select the hours that work best for you below. The options will automatically show in your local timezone!",
+            color=discord.Color.blue()
+        )
+        
+        leaderboard = ""
+        for rank, (ts, count) in enumerate(sorted_votes[:5], 1): # Show top 5
+            leaderboard += f"{rank}. <t:{ts}:F> — **{count} votes**\n"
+            
+        embed.add_field(name="Current Standings", value=leaderboard or "No votes yet!", inline=False)
+        embed.set_footer(text="Poll ends in 48 hours.")
+        
+        await message.edit(embed=embed, view=self)
+
+class PollDropdown(discord.ui.Select):
+    def __init__(self, options):
+        super().__init__(placeholder="Choose a time slot...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        user_id = interaction.user.id
+        chosen_ts = int(self.values[0])
+        
+        # Handle vote changing or initial voting
+        if user_id in view.user_votes:
+            old_ts = view.user_votes[user_id]
+            view.votes[old_ts] -= 1
+            
+        view.user_votes[user_id] = chosen_ts
+        view.votes[chosen_ts] += 1
+        
+        await interaction.response.send_message("Your vote has been counted!", ephemeral=True)
+        await view.update_embed(interaction.message)
 
 
 class MapButton(Button):
@@ -943,9 +1004,82 @@ class Hungar(commands.Cog):
             kill_count=0,
             zone=""
         )
+        default_global = {
+            "target_run_timestamp": None,
+            "event_has_run": True
+        }
+        self.config.register_global(**default_global)
+        self.check_trigger_loop.start()
 
 
         self.ai_manager = HungerGamesAI(self)
+    
+    def cog_unload(self):
+        self.check_trigger_loop.cancel()
+
+    def get_upcoming_saturday_hours():
+        # Target Saturday in your local timezone (e.g., 'America/Chicago' for Central Time)
+        tz = ZoneInfo("America/Chicago") 
+        now = datetime.datetime.now(tz)
+        
+        # Calculate days until next Saturday
+        days_ahead = (5 - now.weekday()) % 7
+        if days_ahead == 0 and now.hour >= 0: # If it's already Saturday, look to next week or current day depending on needs
+            days_ahead = 7
+            
+        target_saturday = now.date() + datetime.timedelta(days=days_ahead)
+        
+        timestamps = []
+        for hour in range(24):
+            dt = datetime.datetime.combine(target_saturday, datetime.time(hour=hour), tzinfo=tz)
+            timestamps.append(int(dt.timestamp()))
+            
+        return timestamps
+
+    @tasks.loop(seconds=60)
+    async def check_trigger_loop(self):
+        """Background task checking if it's time to run the function."""
+        has_run = await self.config.event_has_run()
+        if has_run:
+            return
+            
+        target_ts = await self.config.target_run_timestamp()
+        if target_ts and datetime.datetime.now().timestamp() >= target_ts:
+            # Trigger your custom function here
+            #async def startgame(self, ctx, npcs: int = 0, dashboard_channel: discord.TextChannel = None):
+            dashboard_channel = self.bot.get_channel("1334249740694585385")
+            async await self.startgame(ctx,0,dashboard_channel)
+            await self.config.event_has_run.set(True)
+
+    @commands.command()
+    @commands.is_owner() # Or specific permissions
+    async def startpoll(self, ctx: commands.Context):
+        """Starts the 48-hour event scheduling poll."""
+        hours = get_upcoming_saturday_hours()
+        view = PollView(hours)
+        
+        # Initial embed build
+        embed = discord.Embed(title="📅 Saturday Event Scheduling Poll", description="Generating options...")
+        message = await ctx.send(embed=embed, view=view)
+        await view.update_embed(message)
+        
+        # Wait 48 hours for the poll to conclude
+        await asyncio.sleep(172800) 
+        
+        # Lock the view
+        view.stop()
+        for item in view.children:
+            item.disabled = True
+        await message.edit(view=view)
+        
+        # Determine winning timestamp
+        winning_ts = max(view.votes, key=view.votes.get)
+        
+        await ctx.send(f"📊 The poll has ended! The function is scheduled to run on Saturday at: <t:{winning_ts}:F>")
+        
+        # Save to config so the background loop picks it up
+        await self.config.target_run_timestamp.set(winning_ts)
+        await self.config.event_has_run.set(False)
 
 
     async def Equalizer(self, ctx):
