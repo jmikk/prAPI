@@ -1048,7 +1048,7 @@ class Hungar(commands.Cog):
             # Trigger your custom function here
             #async def startgame(self, ctx, npcs: int = 0, dashboard_channel: discord.TextChannel = None):
             dashboard_channel = self.bot.get_channel("1334249740694585385")
-            async await self.startgame(ctx,0,dashboard_channel)
+            await self.startgame(ctx,0,dashboard_channel)
             await self.config.event_has_run.set(True)
 
     @commands.command()
