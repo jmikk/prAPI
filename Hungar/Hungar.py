@@ -1041,7 +1041,7 @@ class Hungar(commands.Cog):
     def cog_unload(self):
         self.check_trigger_loop.cancel()
 
-    def get_upcoming_saturday_hours():
+    def get_upcoming_saturday_hours(self):
         # Target Saturday in your local timezone (e.g., 'America/Chicago' for Central Time)
         tz = ZoneInfo("America/Chicago") 
         now = datetime.datetime.now(tz)
