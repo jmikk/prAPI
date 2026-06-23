@@ -30,17 +30,17 @@ def calc_sponsor_cost(day: int, score: float, rank: int, bet_share: float) -> in
     return max(MIN_SPONSOR_COST, min(MAX_SPONSOR_COST, cost))
 
 class PollView(discord.ui.View):
-    def __init__(self, hours_timestamps: list):
+    def __init__(self, hours_timestamps: list, config, ctx: commands.Context):
         super().__init__(timeout=172800) # 48 hours in seconds
         self.votes = {ts: 0 for ts in hours_timestamps}
         self.user_votes = {} # Tracks user_id: timestamp to prevent double voting
+        self.config = config # Pass the config data down to the view
+        self.ctx = ctx
+        self.message = None # Will be set right after sending
         
         # Populate the dropdown menu
         options = []
         for ts in hours_timestamps:
-            # Note: Discord Select Menu options cannot parse markdown like <t:ts:t>, 
-            # so we use a standard UTC string format for the dropdown label, 
-            # but the actual relative timestamp will show up cleanly in the embed.
             dt_utc = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
             options.append(discord.SelectOption(
                 label=f"{dt_utc.strftime('%H:%M')} UTC (Saturday)",
@@ -51,7 +51,7 @@ class PollView(discord.ui.View):
         self.add_item(PollDropdown(options))
 
     async def update_embed(self, message: discord.Message):
-        # Sort votes to find the current standings
+        self.message = message # Keep track of the message object dynamically
         sorted_votes = sorted(self.votes.items(), key=lambda item: item[1], reverse=True)
         
         embed = discord.Embed(
@@ -68,6 +68,28 @@ class PollView(discord.ui.View):
         embed.set_footer(text="Poll ends in 48 hours.")
         
         await message.edit(embed=embed, view=self)
+
+    # This handles the 48-hour timeout gracefully without breaking the bot!
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+            
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except discord.HTTPException:
+                pass # Prevents crashing if the original poll message was deleted
+        
+        # Determine winning timestamp
+        winning_ts = max(self.votes, key=self.votes.get)
+        
+        # Announce winner
+        await self.ctx.send(f"📊 The poll has ended! The function is scheduled to run on Saturday at: <t:{winning_ts}:F>")
+        
+        # Save to config safely
+        await self.config.target_run_timestamp.set(winning_ts)
+        await self.config.event_has_run.set(False)
+
 
 class PollDropdown(discord.ui.Select):
     def __init__(self, options):
@@ -86,6 +108,7 @@ class PollDropdown(discord.ui.Select):
         view.user_votes[user_id] = chosen_ts
         view.votes[chosen_ts] += 1
         
+        # Using interaction response prevents "Interaction Failed" errors
         await interaction.response.send_message("Your vote has been counted!", ephemeral=True)
         await view.update_embed(interaction.message)
 
