@@ -1079,7 +1079,7 @@ class Hungar(commands.Cog):
     @commands.is_owner() # Or specific permissions
     async def startpoll(self, ctx: commands.Context):
         """Starts the 48-hour event scheduling poll."""
-        hours = get_upcoming_saturday_hours()
+        hours = self.get_upcoming_saturday_hours()
         view = PollView(hours)
         
         # Initial embed build
