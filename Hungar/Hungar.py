@@ -1081,8 +1081,8 @@ class Hungar(commands.Cog):
     async def startpoll(self, ctx: commands.Context):
         """Starts the 48-hour event scheduling poll."""
         hours = self.get_upcoming_saturday_hours()
-        view = PollView(hours)
-        
+        #    def __init__(self, hours_timestamps: list, config, ctx: commands.Context):
+        view = PollView(hours, self.config, ctx)        
         # Initial embed build
         embed = discord.Embed(title="📅 Saturday Event Scheduling Poll", description="Generating options...")
         message = await ctx.send(embed=embed, view=view)
