@@ -411,25 +411,27 @@ class lootbox(commands.Cog):
             embed.add_field(name="Role Overrides", value="*(none)*", inline=False)
     
         await ctx.send(embed=embed)
-
-    @commands.command(name="resetuser")
+    
+    @cooldownset.command(name="resetuser")
     @checks.admin_or_permissions(manage_guild=True)
     async def reset_user_cooldown(self, ctx, user: discord.User):
         """Reset the lootbox cooldown for a specific user."""
-        # Get the openlootbox command object
         open_cmd = self.bot.get_command("openlootbox")
         if not open_cmd:
             await ctx.send("❌ Could not find the `openlootbox` command.")
             return
 
-        # Create a fake message object matching the user to retrieve and reset their specific bucket
-        fake_msg = copy.copy(ctx.message)
-        fake_msg.author = user
-
-        # Reset the per-user dynamic cooldown bucket
-        open_cmd._buckets.get_bucket(fake_msg).reset()
-
-        await ctx.send(f"✅ Successfully reset the `openlootbox` cooldown for {user.mention}.")
+        # Access the underlying CooldownMapping / DynamicCooldownMapping
+        mapping = open_cmd._buckets
+        
+        # discord.py stores active buckets in a dictionary under '_cache'
+        # For BucketType.user, the key is simply the user's integer ID
+        if hasattr(mapping, "_cache") and user.id in mapping._cache:
+            del mapping._cache[user.id]
+            await ctx.send(f"✅ Successfully reset the `openlootbox` cooldown cache for {user.mention}.")
+        else:
+            # If they aren't in the cache, their cooldown isn't active anyway
+            await ctx.send(f"ℹ️ {user.mention} didn't have an active cooldown bucket.")
 
 
 
