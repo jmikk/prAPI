@@ -10,6 +10,7 @@ import os
 from datetime import datetime
 from discord.ext.commands import BucketType
 import discord
+import copy
 
 
 def global_cooldown_check():
