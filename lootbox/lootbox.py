@@ -411,6 +411,25 @@ class lootbox(commands.Cog):
     
         await ctx.send(embed=embed)
 
+    @cooldownset.command(name="resetuser")
+    @checks.admin_or_permissions(manage_guild=True)
+    async def reset_user_cooldown(self, ctx, user: discord.User):
+        """Reset the lootbox cooldown for a specific user."""
+        # Get the openlootbox command object
+        open_cmd = self.bot.get_command("openlootbox")
+        if not open_cmd:
+            await ctx.send("❌ Could not find the `openlootbox` command.")
+            return
+
+        # Create a fake message object matching the user to retrieve and reset their specific bucket
+        fake_msg = copy.copy(ctx.message)
+        fake_msg.author = user
+
+        # Reset the per-user dynamic cooldown bucket
+        open_cmd._buckets.get_bucket(fake_msg).reset()
+
+        await ctx.send(f"✅ Successfully reset the `openlootbox` cooldown for {user.mention}.")
+
 
 
 
