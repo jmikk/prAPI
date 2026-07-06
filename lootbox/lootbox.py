@@ -412,7 +412,7 @@ class lootbox(commands.Cog):
     
         await ctx.send(embed=embed)
     
-    @cooldownset.command(name="resetuser")
+    @commands.command(name="resetuser")
     @checks.admin_or_permissions(manage_guild=True)
     async def reset_user_cooldown(self, ctx, user: discord.User):
         """Reset the lootbox cooldown for a specific user."""
