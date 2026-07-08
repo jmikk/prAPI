@@ -12,14 +12,14 @@ class CardMarket(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=98723498172394, force_registration=True)
         
-        # NOTE: Keeping "ultrarare" without a hyphen so it matches the parsed API string directly.
+        # Setup global settings for global market cross-server compatibility
         default_global = {
             "banned_users": [],
             "channels": {
                 "common": None,
                 "uncommon": None,
                 "rare": None,
-                "ultra-rare": None, 
+                "ultra-rare": None, # Perfectly mapped to the API string format
                 "epic": None,
                 "legendary": None
             }
@@ -36,6 +36,7 @@ class CardMarket(commands.Cog):
         self.bot.loop.create_task(self.session.close())
 
     async def cog_check(self, ctx: commands.Context) -> bool:
+        # Global check: Enforce the custom ad ban list across all commands in this cog
         banned = await self.config.banned_users()
         if ctx.author.id in banned:
             await ctx.send("You are permanently banned from using Card Market commands due to ad violations.", ephemeral=True)
@@ -88,7 +89,8 @@ class CardMarket(commands.Cog):
 
     @_set.command(name="ultrarare")
     async def _ultrarare(self, ctx, channel: discord.TextChannel):
-        await self.config.channels.ultra-rare.set(channel.id)
+        # Maps the user execution command configuration to your ultra-rare backend key
+        await self.config.channels.set_raw("ultra-rare", value=channel.id)
         await ctx.tick()
 
     @_set.command(name="epic")
@@ -124,16 +126,16 @@ class CardMarket(commands.Cog):
             return
 
         if not args or len(args) % 2 != 0:
-            return await ctx.send("Make sure you match every link with a price! Example: `!list <link> <price>`")
+            return await ctx.send("Make sure you match every link with a price! Example: `$list <link> <price>`")
 
+        # Gather tuples of pairs up to 10
         pairs = list(zip(args[0::2], args[1::2]))[:10]
         if not pairs:
             return await ctx.send("No items were parsed.")
 
         await ctx.send(f"Processing {len(pairs)} items... Please stay patient.")
 
-        # This dictionary will group our data fields by their rarity tier
-        # Structure: {"common": [field_dict, field_dict], "legendary": [...]}
+        # Dictionary to store cards categorized by rarity
         grouped_cards = {}
         channels_dict = await self.config.channels()
 
@@ -161,15 +163,15 @@ class CardMarket(commands.Cog):
                 await ctx.send(f"Error reading returned data for Card ID {card_id}.")
                 continue
 
-            # API cleanup ("ultra-rare" format from API comes down natively as "ultrarare")
-            category = card_info.get("CATEGORY", "").lower().replace(" ", "").replace("-", "")
+            # Cleans whitespace but leaves dashes intact so "ultra-rare" perfectly resolves
+            category = card_info.get("CATEGORY", "").lower().replace(" ", "")
             card_name = card_info.get("NAME", f"Card {card_id}")
             market_value = card_info.get("MARKET_VALUE", "N/A")
 
             if category not in grouped_cards:
                 grouped_cards[category] = []
 
-            # Generate field formatting information
+            # Format layout fields to be stored in the lists
             field_name = f"🎴 {card_name}: {link}"
             field_value = (
                 f"**ID:** {card_id}\n"
@@ -180,16 +182,16 @@ class CardMarket(commands.Cog):
 
             grouped_cards[category].append({"name": field_name, "value": field_value})
 
-        # --- Embed Construction & Dispatch Loop ---
+        # --- Single Embed Dispatch System ---
         for category, fields in grouped_cards.items():
             target_channel_id = channels_dict.get(category)
             target_channel = self.bot.get_channel(target_channel_id)
 
             if not target_channel:
-                await ctx.send(f"Unable to dispatch group category ({category}). Target channel is unconfigured.")
+                await ctx.send(f"Unable to route category items ({category}). Target channel is unconfigured.")
                 continue
 
-            # Format user's nation identifier cleanly for the title header
+            # Prettify title string safely
             display_nation = nation.replace("_", " ").title()
             
             embed = discord.Embed(
