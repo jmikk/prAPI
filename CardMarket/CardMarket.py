@@ -206,7 +206,7 @@ class CardMarket(commands.Cog):
                 if category not in grouped_cards:
                     grouped_cards[category] = []
 
-                field_name = f"🎴 {card_name}: {link}"
+                field_name = f"{card_name}: {link}"
                 field_value = (
                     f"**ID:** {card_id}\n"
                     f"**Season:** {season}\n"
