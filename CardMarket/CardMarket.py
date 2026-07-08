@@ -7,6 +7,7 @@ import asyncio
 import random
 import time
 
+
 # --- Helper function to parse card markets XML ---
 def parse_market_data(xml_text):
     """
