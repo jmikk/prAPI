@@ -34,7 +34,7 @@ def parse_market_data(xml_text):
 
         for entry in market_entries:
             entry_type = entry.get("TYPE", "").lower()
-            
+
             try:
                 price_val = float(entry.get("PRICE", -1))
             except ValueError:
@@ -46,6 +46,19 @@ def parse_market_data(xml_text):
                     lowest_ask = price_val
 
     return {"market_value": mv, "lowest_ask": lowest_ask, "category": category}
+
+
+def build_field_value(card: dict) -> str:
+    """
+    Builds the embed field body for a single card, filling in the
+    actual card id, season, market value, and price.
+    """
+    return (
+        f"ID: {card['card_id']}\n"
+        f"Season: {card['season']}\n"
+        f"MV: {card['market_value']}\n"
+        f"Price: {card['price']}"
+    )
 
 
 # --- Persistent View for Refreshing ---
@@ -69,18 +82,18 @@ class MarketRefreshButton(discord.ui.View):
         async with self.cog._market_lock:
             estimated_seconds = len(self.cards_data) * 5
             target_timestamp = int(time.time() + estimated_seconds)
-            
+
             status_msg = await interaction.followup.send(
-                f"🔄 Refreshing listings. Estimated completion: <t:{target_timestamp}:R>...", 
+                f"🔄 Refreshing listings. Estimated completion: <t:{target_timestamp}:R>...",
                 ephemeral=True
             )
-            
+
             valid_cards = []
             headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {self.nation})"}
 
             for idx, card in enumerate(self.cards_data):
                 url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets;cardid={card['card_id']};season={card['season']}"
-                
+
                 try:
                     async with self.cog.session.get(url, headers=headers) as resp:
                         if resp.status != 200:
@@ -97,7 +110,7 @@ class MarketRefreshButton(discord.ui.View):
                 # If there are no asks left on the market, the card sold out
                 if current_lowest_ask is not None:
                     initial_ask = card.get("initial_ask")
-                    
+
                     # Condition: If the current lowest ask is higher than the baseline, remove the field entirely
                     if initial_ask is not None and current_lowest_ask > initial_ask:
                         if idx < len(self.cards_data) - 1:
@@ -128,12 +141,7 @@ class MarketRefreshButton(discord.ui.View):
             for card in self.cards_data:
                 emoji = self.cog.rarity_emojis.get(card["category"], "🎴")
                 field_name = f"{emoji} {card['name']}: {card['link']}"
-                field_value = (
-                    f"ID:\n"
-                    f"Season:\n"
-                    f"MV:\n"
-                    f"Price:"
-                )
+                field_value = build_field_value(card)
                 new_embed.add_field(name=field_name, value=field_value, inline=False)
 
             current_timestamp = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
@@ -155,7 +163,7 @@ class CardMarket(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=98723498172394, force_registration=True)
-        
+
         default_global = {
             "banned_users": [],
             "channels": {
@@ -163,7 +171,7 @@ class CardMarket(commands.Cog):
             }
         }
         default_user = {"main_nation": None}
-        
+
         self.config.register_global(**default_global)
         self.config.register_user(**default_user)
         self.session = aiohttp.ClientSession()
@@ -194,7 +202,7 @@ class CardMarket(commands.Cog):
             return nation
 
         await ctx.send("Welcome! Before making your first listing, please reply with the name of your **Main Cards Nation**:")
-        
+
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel
 
@@ -272,7 +280,7 @@ class CardMarket(commands.Cog):
 
         # Robust, case-insensitive check matching both 'card=' and 'cardid=' URL structures
         links = [token for token in args if re.search(r"card(?:_?id)?=(\d+).*season=(\d+)", token, re.IGNORECASE)]
-        
+
         if len(links) > 10:
             return await ctx.send("❌ Command rejected. You can only list a maximum of 10 cards at a time.")
 
@@ -285,7 +293,7 @@ class CardMarket(commands.Cog):
         async with self._market_lock:
             estimated_seconds = len(links) * 5
             target_timestamp = int(time.time() + estimated_seconds)
-            
+
             status_message = await ctx.send(f"⏳ Processing {len(links)} items. Estimated completion: <t:{target_timestamp}:R>.")
 
             grouped_cards = {}
@@ -297,7 +305,7 @@ class CardMarket(commands.Cog):
                     continue
 
                 card_id, season = match.group(1), match.group(2)
-                
+
                 url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets;cardid={card_id};season={season}"
                 headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {nation})"}
 
@@ -321,7 +329,7 @@ class CardMarket(commands.Cog):
                     "card_id": card_id,
                     "season": season,
                     "price": price_str,
-                    "initial_ask": lowest_ask_val, 
+                    "initial_ask": lowest_ask_val,
                     "link": link,
                     "name": card_name,
                     "category": category,
@@ -352,12 +360,7 @@ class CardMarket(commands.Cog):
                 for card in cards_list:
                     emoji = self.rarity_emojis.get(category, "🎴")
                     field_name = f"{emoji} {card['name']}: {card['link']}"
-                    field_value = (
-                        f"ID:\n"
-                        f"Season:\n"
-                        f"MV:\n"
-                        f"Price:"
-                    )
+                    field_value = build_field_value(card)
                     embed.add_field(name=field_name, value=field_value, inline=False)
 
                 current_timestamp = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
