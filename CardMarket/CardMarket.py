@@ -125,7 +125,7 @@ class CardMarket(commands.Cog):
             return
 
         if not args or len(args) % 2 != 0:
-            return await ctx.send("Malformed syntax. Make sure you match every link with a price! Example: `!list <link> <price>`")
+            return await ctx.send("Make sure you match every link with a price! Example: `$list <link> <price>`")
 
         # Gather tuples of pairs up to 10
         pairs = list(zip(args[0::2], args[1::2]))[:10]
