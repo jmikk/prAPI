@@ -6,6 +6,7 @@ import re
 import asyncio
 import random
 import time
+import itertools
 
 class CardMarket(commands.Cog):
     """NationStates Card Market Listing Cog"""
@@ -145,16 +146,17 @@ class CardMarket(commands.Cog):
         if not nation:
             return
 
-        if not args or len(args) % 2 != 0:
-            return await ctx.send("Make sure you match every link with a price! Example: `$list <link> <price>`")
+        if not args:
+            return await ctx.send("Please provide at least one card link. Example: `$list <link> <price>`")
 
-        pairs = list(zip(args[0::2], args[1::2]))
+        # Automatically pairs parameters. If a trailing price parameter is missing, fill it with "-"
+        # We look for links on every even index (0, 2, 4...) and values/prices on odd indices (1, 3, 5...)
+        links = args[0::2]
+        prices = args[1::2]
+        pairs = list(itertools.zip_longest(links, prices, fillvalue="-"))
         
         if len(pairs) > 10:
             return await ctx.send("❌ Command rejected. You can only list a maximum of 10 cards at a time to protect the server queue.")
-            
-        if not pairs:
-            return await ctx.send("No items were parsed.")
 
         if self._market_lock.locked():
             return await ctx.send("⏳ The market pipeline is currently busy processing another user's request. Please try again shortly.")
@@ -192,9 +194,8 @@ class CardMarket(commands.Cog):
                     await ctx.send(f"❌ Error decoding returned data for Card ID {card_id}.")
                     continue
 
-                # NEW SAFETY CHECK: If card_info is None, the card doesn't exist in the NS database
                 if not card_info:
-                    await ctx.send(f"❌ Card data not found for ID {card_id} (Season {season}). The link may be dead or invalid. Skipping...")
+                    await ctx.send(f"❌ Card data not found for ID {card_id} (Season {season}). Skipping...")
                     if idx < len(pairs) - 1:
                         await asyncio.sleep(5)
                     continue
@@ -206,7 +207,7 @@ class CardMarket(commands.Cog):
                 if category not in grouped_cards:
                     grouped_cards[category] = []
 
-                field_name = f"{card_name}: {link}"
+                field_name = f"🎴 {card_name}: {link}"
                 field_value = (
                     f"**ID:** {card_id}\n"
                     f"**Season:** {season}\n"
