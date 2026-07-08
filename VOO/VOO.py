@@ -406,7 +406,7 @@ class VOO(commands.Cog):
             if nation_clean in shared_q:
                 return
             
-            shared_q.insert(0, nation_clean)
+            shared_q.append(nation_clean)
             current_q_len = len(shared_q)
 
         # Triggers alerts and updates embeds for all guilds with the new queue length
