@@ -35,6 +35,16 @@ class CardMarket(commands.Cog):
         self.session = aiohttp.ClientSession()
         self._market_lock = asyncio.Lock()
 
+        # Custom Pika emoji mapping based on rarity categories
+        self.rarity_emojis = {
+            "common": "<:PikaCommon:123456789012345678>",      # Replace with your actual emoji ID if needed,
+            "uncommon": "<:PikaUC:123456789012345678>",         # or keep raw text if the bot has access to them
+            "rare": "<:PikaRare:123456789012345678>",           # by global name like :PikaRare:
+            "ultra-rare": "<:PikaUR:123456789012345678>",
+            "epic": "<:PikaEpic:123456789012345678>",
+            "legendary": "<:PikaCards:123456789012345678>"
+        }
+
     def cog_unload(self):
         self.bot.loop.create_task(self.session.close())
 
@@ -149,8 +159,6 @@ class CardMarket(commands.Cog):
         if not args:
             return await ctx.send("Please provide at least one card link. Example: `$list <link> <price>`")
 
-        # Automatically pairs parameters. If a trailing price parameter is missing, fill it with "-"
-        # We look for links on every even index (0, 2, 4...) and values/prices on odd indices (1, 3, 5...)
         links = args[0::2]
         prices = args[1::2]
         pairs = list(itertools.zip_longest(links, prices, fillvalue="-"))
@@ -207,7 +215,10 @@ class CardMarket(commands.Cog):
                 if category not in grouped_cards:
                     grouped_cards[category] = []
 
-                field_name = f"🎴 {card_name}: {link}"
+                # Fallback to general custom text format if a unique category isn't matched
+                emoji = self.rarity_emojis.get(category, "🎴")
+
+                field_name = f"{emoji} {card_name}: {link}"
                 field_value = (
                     f"**ID:** {card_id}\n"
                     f"**Season:** {season}\n"
