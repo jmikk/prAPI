@@ -189,7 +189,7 @@ class CardMarket(commands.Cog):
             )
             
             embed.add_field(
-                name=f"🎴 [{card_name}]({link})",
+                name=f"🎴 {card_name}: {link}",
                 value=field_value,
                 inline=False
             )
