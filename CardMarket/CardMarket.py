@@ -8,25 +8,23 @@ import random
 import time
 
 # --- Helper function to parse card markets XML ---
-def parse_market_data(xml_text, target_nation=None):
+def parse_market_data(xml_text):
     """
     Parses the card markets API response.
     Returns a dict with:
       - 'market_value': str
       - 'lowest_ask': float or None (lowest numerical ask across the whole market)
-      - 'has_target_ask': bool (True if target_nation has an active ask listing)
       - 'category': str (Extracted safely from markets endpoint if present)
     """
     try:
         parsed = xmltodict.parse(xml_text)
         card_xml = parsed.get("CARD", {})
     except Exception:
-        return {"market_value": "N/A", "lowest_ask": None, "has_target_ask": False, "category": "common"}
+        return {"market_value": "N/A", "lowest_ask": None, "category": "common"}
 
     mv = card_xml.get("MARKET_VALUE", "N/A")
     category = card_xml.get("CATEGORY", "common").lower().replace(" ", "")
     lowest_ask = None
-    has_target_ask = False
 
     markets_block = card_xml.get("MARKETS")
     if markets_block and "MARKET" in markets_block:
@@ -36,21 +34,18 @@ def parse_market_data(xml_text, target_nation=None):
 
         for entry in market_entries:
             entry_type = entry.get("TYPE", "").lower()
-            entry_nation = entry.get("NATION", "").lower().replace(" ", "_")
             
             try:
                 price_val = float(entry.get("PRICE", -1))
             except ValueError:
                 continue
 
+            # Identify the absolute lowest open ask on the live market
             if entry_type == "ask" and price_val >= 0:
                 if lowest_ask is None or price_val < lowest_ask:
                     lowest_ask = price_val
-                
-                if target_nation and entry_nation == target_nation.lower():
-                    has_target_ask = True
 
-    return {"market_value": mv, "lowest_ask": lowest_ask, "has_target_ask": has_target_ask, "category": category}
+    return {"market_value": mv, "lowest_ask": lowest_ask, "category": category}
 
 
 # --- Persistent View for Refreshing ---
@@ -96,14 +91,14 @@ class MarketRefreshButton(discord.ui.View):
                     valid_cards.append(card)
                     continue
 
-                result = parse_market_data(xml_data, target_nation=self.nation)
+                result = parse_market_data(xml_data)
                 current_lowest_ask = result["lowest_ask"]
 
-                # Remove fields if the specific nation's ask listing is no longer found
-                if result["has_target_ask"] and current_lowest_ask is not None:
+                # If there are no asks left on the market, the card sold out
+                if current_lowest_ask is not None:
                     initial_ask = card.get("initial_ask")
                     
-                    # Remove field all together if current lowest ask is now higher than baseline creation ask
+                    # Condition: If the current lowest ask is higher than the baseline, remove the field entirely
                     if initial_ask is not None and current_lowest_ask > initial_ask:
                         if idx < len(self.cards_data) - 1:
                             await asyncio.sleep(5)
@@ -123,10 +118,10 @@ class MarketRefreshButton(discord.ui.View):
                     await interaction.message.delete()
                 except discord.NotFound:
                     pass
-                await status_msg.edit(content="✅ Listings updated: All empty or modified fields have been cleared!")
+                await status_msg.edit(content="✅ All tracked items have successfully sold or their prices shifted upward!")
                 return
 
-            # Rebuild Embed dynamically
+            # Rebuild Embed
             display_nation = self.nation.replace("_", " ").title()
             new_embed = discord.Embed(title=f"{display_nation} selling:", color=self.user_color)
 
@@ -266,7 +261,7 @@ class CardMarket(commands.Cog):
     @commands.command(name="list")
     async def list_cards(self, ctx: commands.Context, *args):
         """List up to 10 cards to the global market.
-        Format can be just links spaced out: [link] [link] [link]...
+        Format supports complete links spaced out.
         """
         nation = await self._get_or_reg_nation(ctx)
         if not nation:
@@ -275,13 +270,14 @@ class CardMarket(commands.Cog):
         if not args:
             return await ctx.send("Please provide at least one card link. Example: `$list <link>`")
 
-        links = [token for token in args if re.search(r"card=(\d+).*season=(\d+)", token)]
+        # Robust, case-insensitive check matching both 'card=' and 'cardid=' URL structures
+        links = [token for token in args if re.search(r"card(?:_?id)?=(\d+).*season=(\d+)", token, re.IGNORECASE)]
         
         if len(links) > 10:
             return await ctx.send("❌ Command rejected. You can only list a maximum of 10 cards at a time.")
 
         if not links:
-            return await ctx.send("❌ Malformed arguments. No valid card links could be found.")
+            return await ctx.send("❌ Malformed arguments. No valid card ID and Season profiles detected.")
 
         if self._market_lock.locked():
             return await ctx.send("⏳ The market pipeline is currently busy processing another user's request. Please try again shortly.")
@@ -296,7 +292,7 @@ class CardMarket(commands.Cog):
             channels_dict = await self.config.channels()
 
             for idx, link in enumerate(links):
-                match = re.search(r"card=(\d+).*season=(\d+)", link)
+                match = re.search(r"card(?:_?id)?=(\d+).*season=(\d+)", link, re.IGNORECASE)
                 if not match:
                     continue
 
@@ -311,7 +307,7 @@ class CardMarket(commands.Cog):
                         continue
                     xml_data = await resp.text()
 
-                result = parse_market_data(xml_data, target_nation=nation)
+                result = parse_market_data(xml_data)
                 category = result["category"]
                 card_name = f"Card {card_id}"
 
