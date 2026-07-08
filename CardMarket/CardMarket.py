@@ -306,7 +306,7 @@ class CardMarket(commands.Cog):
 
                 card_id, season = match.group(1), match.group(2)
 
-                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets;cardid={card_id};season={season}"
+                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets+info;cardid={card_id};season={season}"
                 headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {nation})"}
 
                 async with self.session.get(url, headers=headers) as resp:
