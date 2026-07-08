@@ -5,7 +5,7 @@ import xmltodict
 import re
 import asyncio
 import random
-import time  # Imported to calculate epochs for the Discord timestamp
+import time
 
 class CardMarket(commands.Cog):
     """NationStates Card Market Listing Cog"""
@@ -32,6 +32,9 @@ class CardMarket(commands.Cog):
         self.config.register_global(**default_global)
         self.config.register_user(**default_user)
         self.session = aiohttp.ClientSession()
+        
+        # Internal in-memory lock to prevent overlapping listing tasks
+        self._market_lock = asyncio.Lock()
 
     def cog_unload(self):
         self.bot.loop.create_task(self.session.close())
@@ -44,6 +47,7 @@ class CardMarket(commands.Cog):
         return True
 
     async def _get_or_reg_nation(self, ctx: commands.Context) -> str:
+        """Helper to fetch or prompt user for their main nation."""
         nation = await self.config.user(ctx.author).main_nation()
         if nation:
             return nation
@@ -123,6 +127,16 @@ class CardMarket(commands.Cog):
             else:
                 await ctx.send("This user is not currently banned.")
 
+    @commands.command(name="cardmarket_force_unlock")
+    @commands.has_any_role("Moderation", "Moderator", "Mod")
+    async def force_unlock(self, ctx: commands.Context):
+        """Manually releases the global API processing lock if it gets stuck."""
+        if self._market_lock.locked():
+            self._market_lock.release()
+            await ctx.send("🔓 The global market queue lock has been manually cleared.")
+        else:
+            await ctx.send("The market queue lock is not currently active.")
+
     # --- Core Listing Command ---
 
     @commands.command(name="list")
@@ -137,96 +151,105 @@ class CardMarket(commands.Cog):
         if not args or len(args) % 2 != 0:
             return await ctx.send("Make sure you match every link with a price! Example: `$list <link> <price>`")
 
-        pairs = list(zip(args[0::2], args[1::2]))[:10]
+        pairs = list(zip(args[0::2], args[1::2]))
+        
+        # Strict hard cap evaluation
+        if len(pairs) > 10:
+            return await ctx.send("❌ Command rejected. You can only list a maximum of 10 cards at a time to protect the server queue.")
+            
         if not pairs:
             return await ctx.send("No items were parsed.")
 
-        # Calculate time estimate (5 seconds per item processing delay)
-        estimated_seconds = len(pairs) * 5
-        target_timestamp = int(time.time() + estimated_seconds)
-        
-        # Fancy relative discord countdown format: <t:epoch:R>
-        await ctx.send(f"⏳ Processing {len(pairs)} items. Estimated completion: <t:{target_timestamp}:R>.")
+        # Check if the global queue lock is currently held by someone else
+        if self._market_lock.locked():
+            return await ctx.send("⏳ The market pipeline is currently busy processing another user's request. Please try again shortly.")
 
-        grouped_cards = {}
-        channels_dict = await self.config.channels()
-
-        for idx, (link, price) in enumerate(pairs):
-            match = re.search(r"card=(\d+).*season=(\d+)", link)
-            if not match:
-                await ctx.send(f"Skipping invalid URL schema: <{link}>")
-                continue
-
-            card_id, season = match.group(1), match.group(2)
+        # Acquire the lock to block other concurrent layout submissions
+        async with self._market_lock:
+            estimated_seconds = len(pairs) * 5
+            target_timestamp = int(time.time() + estimated_seconds)
             
-            url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
-            headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {nation})"}
+            await ctx.send(f"⏳ Processing {len(pairs)} items. Estimated completion: <t:{target_timestamp}:R>.")
 
-            async with self.session.get(url, headers=headers) as resp:
-                if resp.status != 200:
-                    await ctx.send(f"NS API threw an error for Card {card_id} (Status code: {resp.status})")
+            grouped_cards = {}
+            channels_dict = await self.config.channels()
+
+            for idx, (link, price) in enumerate(pairs):
+                match = re.search(r"card=(\d+).*season=(\d+)", link)
+                if not match:
+                    await ctx.send(f"Skipping invalid URL schema: <{link}>")
                     continue
-                xml_data = await resp.text()
 
-            try:
-                parsed = xmltodict.parse(xml_data)
-                card_info = parsed.get("CARD", {})
-            except Exception:
-                await ctx.send(f"Error reading returned data for Card ID {card_id}.")
-                continue
+                card_id, season = match.group(1), match.group(2)
+                
+                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
+                headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {nation})"}
 
-            category = card_info.get("CATEGORY", "").lower().replace(" ", "")
-            card_name = card_info.get("NAME", f"Card {card_id}")
-            market_value = card_info.get("MARKET_VALUE", "N/A")
+                async with self.session.get(url, headers=headers) as resp:
+                    if resp.status != 200:
+                        await ctx.send(f"NS API threw an error for Card {card_id} (Status code: {resp.status})")
+                        continue
+                    xml_data = await resp.text()
 
-            if category not in grouped_cards:
-                grouped_cards[category] = []
+                try:
+                    parsed = xmltodict.parse(xml_data)
+                    card_info = parsed.get("CARD", {})
+                except Exception:
+                    await ctx.send(f"Error reading returned data for Card ID {card_id}.")
+                    continue
 
-            field_name = f"🎴 {card_name}: {link}"
-            field_value = (
-                f"**ID:** {card_id}\n"
-                f"**Season:** {season}\n"
-                f"**MV:** {market_value}\n"
-                f"**Price:** {price}"
-            )
+                category = card_info.get("CATEGORY", "").lower().replace(" ", "")
+                card_name = card_info.get("NAME", f"Card {card_id}")
+                market_value = card_info.get("MARKET_VALUE", "N/A")
 
-            grouped_cards[category].append({"name": field_name, "value": field_value})
+                if category not in grouped_cards:
+                    grouped_cards[category] = []
 
-            # Rate limit guard: Wait 5 seconds before running the next query, unless it's the absolute last item
-            if idx < len(pairs) - 1:
-                await asyncio.sleep(5)
+                field_name = f"🎴 {card_name}: {link}"
+                field_value = (
+                    f"**ID:** {card_id}\n"
+                    f"**Season:** {season}\n"
+                    f"**MV:** {market_value}\n"
+                    f"**Price:** {price}"
+                )
 
-        # --- Seed-Locked Color Generator ---
-        random.seed(ctx.author.id)
-        user_hex_color = random.randint(0, 0xFFFFFF)
-        user_color = discord.Color(user_hex_color)
-        random.seed()
+                grouped_cards[category].append({"name": field_name, "value": field_value})
 
-        # --- Single Embed Dispatch System ---
-        for category, fields in grouped_cards.items():
-            target_channel_id = channels_dict.get(category)
-            target_channel = self.bot.get_channel(target_channel_id)
+                # Strict 5 second delay between consecutive outbound HTTP fetches
+                if idx < len(pairs) - 1:
+                    await asyncio.sleep(5)
 
-            if not target_channel:
-                await ctx.send(f"Unable to route category items ({category}). Target channel is unconfigured.")
-                continue
+            # --- Seed-Locked Color Generator ---
+            random.seed(ctx.author.id)
+            user_hex_color = random.randint(0, 0xFFFFFF)
+            user_color = discord.Color(user_hex_color)
+            random.seed()
 
-            display_nation = nation.replace("_", " ").title()
-            
-            embed = discord.Embed(
-                title=f"{display_nation} selling:",
-                color=user_color
-            )
+            # --- Single Embed Dispatch System ---
+            for category, fields in grouped_cards.items():
+                target_channel_id = channels_dict.get(category)
+                target_channel = self.bot.get_channel(target_channel_id)
 
-            for field in fields:
-                embed.add_field(name=field["name"], value=field["value"], inline=False)
+                if not target_channel:
+                    await ctx.send(f"Unable to route category items ({category}). Target channel is unconfigured.")
+                    continue
 
-            try:
-                await target_channel.send(embed=embed)
-            except discord.Forbidden:
-                await ctx.send(f"I don't have permissions to send messages into <#{target_channel_id}>!")
+                display_nation = nation.replace("_", " ").title()
+                
+                embed = discord.Embed(
+                    title=f"{display_nation} selling:",
+                    color=user_color
+                )
 
-        await ctx.send("✅ Finished processing and grouping your listings!")
+                for field in fields:
+                    embed.add_field(name=field["name"], value=field["value"], inline=False)
+
+                try:
+                    await target_channel.send(embed=embed)
+                except discord.Forbidden:
+                    await ctx.send(f"I don't have permissions to send messages into <#{target_channel_id}>!")
+
+            await ctx.send("✅ Finished processing and grouping your listings!")
 
     async def get_or_reg_nation(self, ctx):
         return await self._get_or_reg_nation(ctx)
