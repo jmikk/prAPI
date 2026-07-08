@@ -16,6 +16,7 @@ def parse_market_data(xml_text):
       - 'market_value': str
       - 'lowest_ask': float or None (lowest numerical ask across the whole market)
       - 'category': str (Extracted safely from markets endpoint if present)
+      - 'name': str (Card name, requires the 'info' shard to be included in the query)
     """
     try:
         parsed = xmltodict.parse(xml_text)
@@ -25,6 +26,7 @@ def parse_market_data(xml_text):
 
     mv = card_xml.get("MARKET_VALUE", "N/A")
     category = card_xml.get("CATEGORY", "common").lower().replace(" ", "")
+    name = card_xml.get("NAME", "N/A")
     lowest_ask = None
 
     markets_block = card_xml.get("MARKETS")
@@ -46,7 +48,7 @@ def parse_market_data(xml_text):
                 if lowest_ask is None or price_val < lowest_ask:
                     lowest_ask = price_val
 
-    return {"market_value": mv, "lowest_ask": lowest_ask, "category": category}
+    return {"market_value": mv, "lowest_ask": lowest_ask, "category": category, "name": name}
 
 
 def build_field_value(card: dict) -> str:
@@ -93,7 +95,7 @@ class MarketRefreshButton(discord.ui.View):
             headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {self.nation})"}
 
             for idx, card in enumerate(self.cards_data):
-                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets;cardid={card['card_id']};season={card['season']}"
+                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets+info;cardid={card['card_id']};season={card['season']}"
 
                 try:
                     async with self.cog.session.get(url, headers=headers) as resp:
@@ -375,7 +377,7 @@ class CardMarket(commands.Cog):
 
                 card_id, season = match.group(1), match.group(2)
 
-                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets;cardid={card_id};season={season}"
+                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets+info;cardid={card_id};season={season}"
                 headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {nation})"}
 
                 async with self.session.get(url, headers=headers) as resp:
