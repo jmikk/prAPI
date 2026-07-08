@@ -13,14 +13,14 @@ def parse_market_data(xml_text, target_nation=None):
     Parses the card markets API response.
     Returns a dict with:
       - 'market_value': str
-      - 'lowest_ask': str (lowest ask across the whole market, or '-' if none)
+      - 'lowest_ask': float or None (lowest numerical ask across the whole market)
       - 'has_target_ask': bool (True if target_nation has an active ask listing)
     """
     try:
         parsed = xmltodict.parse(xml_text)
         card_xml = parsed.get("CARD", {})
     except Exception:
-        return {"market_value": "N/A", "lowest_ask": "-", "has_target_ask": False}
+        return {"market_value": "N/A", "lowest_ask": None, "has_target_ask": False}
 
     mv = card_xml.get("MARKET_VALUE", "N/A")
     lowest_ask = None
@@ -50,8 +50,7 @@ def parse_market_data(xml_text, target_nation=None):
                 if target_nation and entry_nation == target_nation.lower():
                     has_target_ask = True
 
-    lowest_ask_str = f"{lowest_ask:.2f}" if lowest_ask is not None else "-"
-    return {"market_value": mv, "lowest_ask": lowest_ask_str, "has_target_ask": has_target_ask}
+    return {"market_value": mv, "lowest_ask": lowest_ask, "has_target_ask": has_target_ask}
 
 
 # --- Persistent View for Refreshing ---
@@ -97,13 +96,23 @@ class MarketRefreshButton(discord.ui.View):
                     valid_cards.append(card)
                     continue
 
-                # Analyze via our centralized market endpoint parser
                 result = parse_market_data(xml_data, target_nation=self.nation)
+                current_lowest_ask = result["lowest_ask"]
 
-                # If the owner's ask listing is gone, it has been bought or removed
-                if result["has_target_ask"]:
+                # Validation checks:
+                # 1. The user must still have an open ask listing.
+                # 2. If the current market lowest ask is higher than the initial lowest ask, remove the field.
+                if result["has_target_ask"] and current_lowest_ask is not None:
+                    initial_ask = card.get("initial_ask")
+                    
+                    if initial_ask is not None and current_lowest_ask > initial_ask:
+                        # Price went up relative to creation time; filter out and skip appending
+                        if idx < len(self.cards_data) - 1:
+                            await asyncio.sleep(5)
+                        continue
+
                     card["market_value"] = result["market_value"]
-                    card["price"] = result["lowest_ask"]  # Show current lowest ask
+                    card["price"] = f"{current_lowest_ask:.2f}"
                     valid_cards.append(card)
 
                 if idx < len(self.cards_data) - 1:
@@ -116,7 +125,7 @@ class MarketRefreshButton(discord.ui.View):
                     await interaction.message.delete()
                 except discord.NotFound:
                     pass
-                await status_msg.edit(content="✅ Your listed card items have completely sold out or were removed!")
+                await status_msg.edit(content="✅ Listings updated: All remaining fields were cleared out or sold!")
                 return
 
             # Rebuild Embed
@@ -268,7 +277,6 @@ class CardMarket(commands.Cog):
         if not args:
             return await ctx.send("Please provide at least one card link. Example: `$list <link>`")
 
-        # Isolate valid card links (ignore loose text inputs or manual price tokens completely)
         links = [token for token in args if re.search(r"card=(\d+).*season=(\d+)", token)]
         
         if len(links) > 10:
@@ -296,7 +304,6 @@ class CardMarket(commands.Cog):
 
                 card_id, season = match.group(1), match.group(2)
                 
-                # Fetch entirely from the target card markets endpoint
                 url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets;cardid={card_id};season={season}"
                 headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {nation})"}
 
@@ -308,22 +315,26 @@ class CardMarket(commands.Cog):
 
                 result = parse_market_data(xml_data, target_nation=nation)
                 
-                # Use default fallback categorization string naming schemas safely
                 try:
                     parsed = xmltodict.parse(xml_data)
                     category = parsed.get("CARD", {}).get("CATEGORY", "common").lower().replace(" ", "")
-                    card_name = f"Card {card_id}"
                 except Exception:
                     category = "common"
-                    card_name = f"Card {card_id}"
+                
+                card_name = f"Card {card_id}"
 
                 if category not in grouped_cards:
                     grouped_cards[category] = []
 
+                # Convert the numerical lowest ask into a formatted string safely
+                lowest_ask_val = result["lowest_ask"]
+                price_str = f"{lowest_ask_val:.2f}" if lowest_ask_val is not None else "-"
+
                 grouped_cards[category].append({
                     "card_id": card_id,
                     "season": season,
-                    "price": result["lowest_ask"],
+                    "price": price_str,
+                    "initial_ask": lowest_ask_val, # Track numerical price baseline to catch future premium shifts
                     "link": link,
                     "name": card_name,
                     "category": category,
@@ -373,3 +384,6 @@ class CardMarket(commands.Cog):
                     await ctx.send(f"I don't have permissions to send messages into <#{target_channel_id}>!")
 
             await status_message.edit(content="✅ Finished processing and grouping your listings!")
+
+    async def get_or_reg_nation(self, ctx):
+        return await self._get_or_reg_nation(ctx)
