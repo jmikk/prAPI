@@ -36,12 +36,12 @@ class CardMarket(commands.Cog):
 
         # Custom Pika emoji mapping based on rarity categories
         self.rarity_emojis = {
-            "common": "<:PikaCommon:123456789012345678>",
-            "uncommon": "<:PikaUC:123456789012345678>",
-            "rare": "<:PikaRare:123456789012345678>",
-            "ultra-rare": "<:PikaUR:123456789012345678>",
-            "epic": "<:PikaEpic:123456789012345678>",
-            "legendary": "<:PikaCards:123456789012345678>"
+            "common": "<:PikaCommon:769581815643111486>",
+            "uncommon": "<:PikaUC:769581778616451102>",
+            "rare": "<:PikaRare:769581832508801024>",
+            "ultra-rare": "<:PikaUR:769581799931641876>",
+            "epic": "<:PikaEpic:769674361643991070>",
+            "legendary": "<:PikaCards:769701349662654485>"
         }
 
     def cog_unload(self):
