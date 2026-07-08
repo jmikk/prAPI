@@ -102,7 +102,7 @@ class CardMarket(commands.Cog):
         await ctx.tick()
 
     @commands.command(name="add_user_to_banned_list_for_ads")
-    @checks.admin_or_permissions(manage_guild=True)
+    @commands.has_any_role("Moderation", "Moderator", "Mod")
     async def ban_user(self, ctx: commands.Context, user: discord.User):
         """Bans a user globally from using any Card Market commands."""
         async with self.config.banned_users() as banned:
@@ -113,7 +113,7 @@ class CardMarket(commands.Cog):
                 await ctx.send("This user is already banned.")
 
     @commands.command(name="remove_user_from_banned_list_for_ads")
-    @checks.admin_or_permissions(manage_guild=True)
+    @commands.has_any_role("Moderation", "Moderator", "Mod")
     async def unban_user(self, ctx: commands.Context, user: discord.User):
         """Unbans a user globally, allowing them to use Card Market commands again."""
         async with self.config.banned_users() as banned:
