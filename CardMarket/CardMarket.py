@@ -6,7 +6,6 @@ import re
 import asyncio
 import random
 import time
-import itertools
 
 class CardMarket(commands.Cog):
     """NationStates Card Market Listing Cog"""
@@ -37,12 +36,12 @@ class CardMarket(commands.Cog):
 
         # Custom Pika emoji mapping based on rarity categories
         self.rarity_emojis = {
-            "common": "<:PikaCommon:769581815643111486>",      # Replace with your actual emoji ID if needed,
-            "uncommon": "<:PikaUC:769581778616451102>",         # or keep raw text if the bot has access to them
-            "rare": "<:PikaRare:769581832508801024>",           # by global name like :PikaRare:
-            "ultra-rare": "<:PikaUR:769581799931641876>",
-            "epic": "<:PikaEpic:769674361643991070>",
-            "legendary": "<:PikaCards:769701349662654485>"
+            "common": "<:PikaCommon:123456789012345678>",
+            "uncommon": "<:PikaUC:123456789012345678>",
+            "rare": "<:PikaRare:123456789012345678>",
+            "ultra-rare": "<:PikaUR:123456789012345678>",
+            "epic": "<:PikaEpic:123456789012345678>",
+            "legendary": "<:PikaCards:123456789012345678>"
         }
 
     def cog_unload(self):
@@ -150,7 +149,7 @@ class CardMarket(commands.Cog):
     @commands.command(name="list")
     async def list_cards(self, ctx: commands.Context, *args):
         """List up to 10 cards to the global market.
-        Format: [link] [price] [link] [price]...
+        Format can mixed: [link] [price] [link] [link] [price]...
         """
         nation = await self.get_or_reg_nation(ctx)
         if not nation:
@@ -159,12 +158,32 @@ class CardMarket(commands.Cog):
         if not args:
             return await ctx.send("Please provide at least one card link. Example: `$list <link> <price>`")
 
-        links = args[0::2]
-        prices = args[1::2]
-        pairs = list(itertools.zip_longest(links, prices, fillvalue="-"))
+        # --- Dynamic Token Parsing Logic ---
+        pairs = []
+        i = 0
+        while i < len(args):
+            token = args[i]
+            
+            # Use regex to identify if this argument token is a card link
+            if re.search(r"card=\d+.*season=\d+", token):
+                link = token
+                price = "-"
+                
+                # Check if the next argument item exists and is NOT another link (meaning it's a price value)
+                if i + 1 < len(args):
+                    next_token = args[i + 1]
+                    if not re.search(r"card=\d+.*season=\d+", next_token):
+                        price = next_token
+                        i += 1 # Advance past the handled price parameter
+                        
+                pairs.append((link, price))
+            i += 1
         
         if len(pairs) > 10:
             return await ctx.send("❌ Command rejected. You can only list a maximum of 10 cards at a time to protect the server queue.")
+
+        if not pairs:
+            return await ctx.send("❌ Malformed arguments. No valid card links could be isolated from your text request.")
 
         if self._market_lock.locked():
             return await ctx.send("⏳ The market pipeline is currently busy processing another user's request. Please try again shortly.")
@@ -181,7 +200,6 @@ class CardMarket(commands.Cog):
             for idx, (link, price) in enumerate(pairs):
                 match = re.search(r"card=(\d+).*season=(\d+)", link)
                 if not match:
-                    await ctx.send(f"Skipping invalid URL schema: <{link}>")
                     continue
 
                 card_id, season = match.group(1), match.group(2)
@@ -215,7 +233,6 @@ class CardMarket(commands.Cog):
                 if category not in grouped_cards:
                     grouped_cards[category] = []
 
-                # Fallback to general custom text format if a unique category isn't matched
                 emoji = self.rarity_emojis.get(category, "🎴")
 
                 field_name = f"{emoji} {card_name}: {link}"
