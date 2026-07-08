@@ -20,13 +20,11 @@ def parse_market_data(xml_text):
         parsed = xmltodict.parse(xml_text)
         card_xml = parsed.get("CARD", {})
     except Exception:
-        return {"market_value": "N/A", "lowest_ask": None, "category": "common"}
+        return {"market_value": "N/A", "lowest_ask": None, "category": "common", "name": "N/A"}
 
     mv = card_xml.get("MARKET_VALUE", "N/A")
     category = card_xml.get("CATEGORY", "common").lower().replace(" ", "")
     lowest_ask = None
-
-    name = card_xml.get("NAME","N/A")
 
     markets_block = card_xml.get("MARKETS")
     if markets_block and "MARKET" in markets_block:
@@ -47,7 +45,7 @@ def parse_market_data(xml_text):
                 if lowest_ask is None or price_val < lowest_ask:
                     lowest_ask = price_val
 
-    return {"market_value": mv, "lowest_ask": lowest_ask, "category": category, "name": name}
+    return {"market_value": mv, "lowest_ask": lowest_ask, "category": category}
 
 
 def build_field_value(card: dict) -> str:
@@ -170,6 +168,9 @@ class CardMarket(commands.Cog):
             "banned_users": [],
             "channels": {
                 "common": None, "uncommon": None, "rare": None, "ultra-rare": None, "epic": None, "legendary": None
+            },
+            "webhooks": {
+                "common": None, "uncommon": None, "rare": None, "ultra-rare": None, "epic": None, "legendary": None
             }
         }
         default_user = {"main_nation": None}
@@ -256,6 +257,70 @@ class CardMarket(commands.Cog):
         await self.config.channels.legendary.set(channel.id)
         await ctx.tick()
 
+    # --- Webhook Configuration Commands ---
+
+    async def _set_webhook(self, ctx: commands.Context, category: str, url: str = None):
+        if url is None or url.lower() in ("none", "clear", "remove"):
+            await self.config.webhooks.set_raw(category, value=None)
+            await ctx.send(f"🗑️ Webhook cleared for **{category}**. Listings will use the configured channel only.")
+            return
+
+        if not re.match(r"^https://(?:discord|discordapp)\.com/api/webhooks/\d+/.+", url):
+            await ctx.send("❌ That doesn't look like a valid Discord webhook URL.")
+            return
+
+        await self.config.webhooks.set_raw(category, value=url)
+        await ctx.tick()
+
+    @_set.group(name="webhook")
+    async def _webhookset(self, ctx: commands.Context):
+        """Configure card market webhooks per rarity.
+
+        If a webhook is set for a rarity, listings in that rarity will be
+        sent to both the configured channel (with the refresh button) and
+        the webhook (plain embed, no button). Pass `none` to clear a webhook.
+        """
+        pass
+
+    @_webhookset.command(name="common")
+    async def _webhook_common(self, ctx, url: str = None):
+        await self._set_webhook(ctx, "common", url)
+
+    @_webhookset.command(name="uncommon")
+    async def _webhook_uncommon(self, ctx, url: str = None):
+        await self._set_webhook(ctx, "uncommon", url)
+
+    @_webhookset.command(name="rare")
+    async def _webhook_rare(self, ctx, url: str = None):
+        await self._set_webhook(ctx, "rare", url)
+
+    @_webhookset.command(name="ultrarare")
+    async def _webhook_ultrarare(self, ctx, url: str = None):
+        await self._set_webhook(ctx, "ultra-rare", url)
+
+    @_webhookset.command(name="epic")
+    async def _webhook_epic(self, ctx, url: str = None):
+        await self._set_webhook(ctx, "epic", url)
+
+    @_webhookset.command(name="legendary")
+    async def _webhook_legendary(self, ctx, url: str = None):
+        await self._set_webhook(ctx, "legendary", url)
+
+    async def _send_via_webhook(self, url: str, embed: discord.Embed, username: str):
+        """Sends an embed to a Discord webhook URL. Returns (success, error_message)."""
+        try:
+            webhook = discord.Webhook.from_url(url, session=self.session)
+            await webhook.send(embed=embed, username=username)
+        except discord.NotFound:
+            return False, "the webhook no longer exists (was it deleted?)"
+        except discord.Forbidden:
+            return False, "I don't have permission to post to that webhook"
+        except ValueError:
+            return False, "the stored webhook URL is malformed"
+        except Exception as e:
+            return False, str(e)
+        return True, None
+
     @commands.command(name="cardmarket_force_unlock")
     @commands.has_any_role("Moderation", "Moderator", "Mod")
     async def force_unlock(self, ctx: commands.Context):
@@ -300,6 +365,7 @@ class CardMarket(commands.Cog):
 
             grouped_cards = {}
             channels_dict = await self.config.channels()
+            webhooks_dict = await self.config.webhooks()
 
             for idx, link in enumerate(links):
                 match = re.search(r"card(?:_?id)?=(\d+).*season=(\d+)", link, re.IGNORECASE)
@@ -308,7 +374,7 @@ class CardMarket(commands.Cog):
 
                 card_id, season = match.group(1), match.group(2)
 
-                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets+info;cardid={card_id};season={season}"
+                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets;cardid={card_id};season={season}"
                 headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {nation})"}
 
                 async with self.session.get(url, headers=headers) as resp:
@@ -319,7 +385,7 @@ class CardMarket(commands.Cog):
 
                 result = parse_market_data(xml_data)
                 category = result["category"]
-                card_name = f"Card {card_id}"
+                card_name = result["name"] if result.get("name") not in (None, "N/A") else f"Card {card_id}"
 
                 if category not in grouped_cards:
                     grouped_cards[category] = []
@@ -350,10 +416,11 @@ class CardMarket(commands.Cog):
             # --- Single Embed & View Dispatch System ---
             for category, cards_list in grouped_cards.items():
                 target_channel_id = channels_dict.get(category)
-                target_channel = self.bot.get_channel(target_channel_id)
+                target_channel = self.bot.get_channel(target_channel_id) if target_channel_id else None
+                webhook_url = webhooks_dict.get(category)
 
-                if not target_channel:
-                    await ctx.send(f"Unable to route category items ({category}). Target channel is unconfigured.")
+                if not target_channel and not webhook_url:
+                    await ctx.send(f"Unable to route category items ({category}). No channel or webhook is configured.")
                     continue
 
                 display_nation = nation.replace("_", " ").title()
@@ -368,12 +435,19 @@ class CardMarket(commands.Cog):
                 current_timestamp = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
                 embed.set_footer(text=f"Last updated: {current_timestamp}")
 
-                view = MarketRefreshButton(self, nation, user_color, cards_list)
+                # Channel version keeps the interactive refresh button
+                if target_channel:
+                    view = MarketRefreshButton(self, nation, user_color, cards_list)
+                    try:
+                        await target_channel.send(embed=embed, view=view)
+                    except discord.Forbidden:
+                        await ctx.send(f"I don't have permissions to send messages into <#{target_channel_id}>!")
 
-                try:
-                    await target_channel.send(embed=embed, view=view)
-                except discord.Forbidden:
-                    await ctx.send(f"I don't have permissions to send messages into <#{target_channel_id}>!")
+                # Webhook version is a plain embed with no button
+                if webhook_url:
+                    success, err = await self._send_via_webhook(webhook_url, embed.copy(), display_nation)
+                    if not success:
+                        await ctx.send(f"⚠️ Failed to post **{category}** listing to its configured webhook: {err}")
 
             await status_message.edit(content="✅ Finished processing and grouping your listings!")
 
