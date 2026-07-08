@@ -26,6 +26,8 @@ def parse_market_data(xml_text):
     category = card_xml.get("CATEGORY", "common").lower().replace(" ", "")
     lowest_ask = None
 
+    name = card_xml.get("NAME","N/A")
+
     markets_block = card_xml.get("MARKETS")
     if markets_block and "MARKET" in markets_block:
         market_entries = markets_block["MARKET"]
@@ -45,7 +47,7 @@ def parse_market_data(xml_text):
                 if lowest_ask is None or price_val < lowest_ask:
                     lowest_ask = price_val
 
-    return {"market_value": mv, "lowest_ask": lowest_ask, "category": category}
+    return {"market_value": mv, "lowest_ask": lowest_ask, "category": category, "name": name}
 
 
 def build_field_value(card: dict) -> str:
