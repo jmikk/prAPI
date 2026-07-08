@@ -7,16 +7,58 @@ import asyncio
 import random
 import time
 
+# --- Helper function to parse card markets XML ---
+def parse_market_data(xml_text, target_nation=None):
+    """
+    Parses the card markets API response.
+    Returns a dict with:
+      - 'market_value': str
+      - 'lowest_ask': str (lowest ask across the whole market, or '-' if none)
+      - 'has_target_ask': bool (True if target_nation has an active ask listing)
+    """
+    try:
+        parsed = xmltodict.parse(xml_text)
+        card_xml = parsed.get("CARD", {})
+    except Exception:
+        return {"market_value": "N/A", "lowest_ask": "-", "has_target_ask": False}
+
+    mv = card_xml.get("MARKET_VALUE", "N/A")
+    lowest_ask = None
+    has_target_ask = False
+
+    markets_block = card_xml.get("MARKETS")
+    if markets_block and "MARKET" in markets_block:
+        market_entries = markets_block["MARKET"]
+        if isinstance(market_entries, dict):
+            market_entries = [market_entries]
+
+        for entry in market_entries:
+            entry_type = entry.get("TYPE", "").lower()
+            entry_nation = entry.get("NATION", "").lower().replace(" ", "_")
+            
+            try:
+                price_val = float(entry.get("PRICE", -1))
+            except ValueError:
+                continue
+
+            if entry_type == "ask" and price_val >= 0:
+                # Track the absolute lowest ask on the market
+                if lowest_ask is None or price_val < lowest_ask:
+                    lowest_ask = price_val
+                
+                # Check if the specific nation still has an open ask listing
+                if target_nation and entry_nation == target_nation.lower():
+                    has_target_ask = True
+
+    lowest_ask_str = f"{lowest_ask:.2f}" if lowest_ask is not None else "-"
+    return {"market_value": mv, "lowest_ask": lowest_ask_str, "has_target_ask": has_target_ask}
+
+
 # --- Persistent View for Refreshing ---
 
 class MarketRefreshButton(discord.ui.View):
     def __init__(self, cog, nation: str, user_color: discord.Color, cards_data: list):
-        """
-        cards_data shape: [
-            {"card_id": str, "season": str, "price": str, "link": str, "name": str, "category": str, "market_value": str}, ...
-        ]
-        """
-        super().__init__(timeout=None) # Keeps button active until bot restarts
+        super().__init__(timeout=None)
         self.cog = cog
         self.nation = nation
         self.user_color = user_color
@@ -24,7 +66,6 @@ class MarketRefreshButton(discord.ui.View):
 
     @discord.ui.button(label="Refresh Listings", style=discord.ButtonStyle.secondary, custom_id="cm_refresh_btn", emoji="🔄")
     async def refresh(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Acknowledge immediately
         await interaction.response.defer(ephemeral=True)
 
         if self.cog._market_lock.locked():
@@ -35,7 +76,6 @@ class MarketRefreshButton(discord.ui.View):
             estimated_seconds = len(self.cards_data) * 5
             target_timestamp = int(time.time() + estimated_seconds)
             
-            # Send initial progress tracking status token using the dynamic Discord relative timestamp format
             status_msg = await interaction.followup.send(
                 f"🔄 Refreshing listings. Estimated completion: <t:{target_timestamp}:R>...", 
                 ephemeral=True
@@ -53,37 +93,17 @@ class MarketRefreshButton(discord.ui.View):
                             valid_cards.append(card)
                             continue
                         xml_data = await resp.text()
-                        parsed = xmltodict.parse(xml_data)
-                        card_xml = parsed.get("CARD", {})
                 except Exception:
                     valid_cards.append(card)
                     continue
 
-                markets_block = card_xml.get("MARKETS")
-                has_matching_ask = False
+                # Analyze via our centralized market endpoint parser
+                result = parse_market_data(xml_data, target_nation=self.nation)
 
-                if markets_block and "MARKET" in markets_block:
-                    market_entries = markets_block["MARKET"]
-                    if isinstance(market_entries, dict):
-                        market_entries = [market_entries]
-
-                    for entry in market_entries:
-                        entry_type = entry.get("TYPE", "").lower()
-                        entry_nation = entry.get("NATION", "").lower().replace(" ", "_")
-                        try:
-                            entry_price = float(entry.get("PRICE", -1))
-                            target_price = float(card["price"])
-                        except ValueError:
-                            entry_price = entry.get("PRICE")
-                            target_price = card["price"]
-
-                        if entry_type == "ask" and entry_nation == self.nation.lower() and entry_price == target_price:
-                            has_matching_ask = True
-                            # Refresh MV metric concurrently
-                            card["market_value"] = card_xml.get("MARKET_VALUE", card.get("market_value", "N/A"))
-                            break
-
-                if has_matching_ask:
+                # If the owner's ask listing is gone, it has been bought or removed
+                if result["has_target_ask"]:
+                    card["market_value"] = result["market_value"]
+                    card["price"] = result["lowest_ask"]  # Show current lowest ask
                     valid_cards.append(card)
 
                 if idx < len(self.cards_data) - 1:
@@ -91,16 +111,15 @@ class MarketRefreshButton(discord.ui.View):
 
             self.cards_data = valid_cards
 
-            # If all cards sold out, clean up and delete the root embed message container
             if not self.cards_data:
                 try:
                     await interaction.message.delete()
                 except discord.NotFound:
                     pass
-                await status_msg.edit(content="✅ All items checked: Your listed stock has completely sold out!")
+                await status_msg.edit(content="✅ Your listed card items have completely sold out or were removed!")
                 return
 
-            # Rebuild and refresh embed profile
+            # Rebuild Embed
             display_nation = self.nation.replace("_", " ").title()
             new_embed = discord.Embed(title=f"{display_nation} selling:", color=self.user_color)
 
@@ -110,12 +129,11 @@ class MarketRefreshButton(discord.ui.View):
                 field_value = (
                     f"ID:\n"
                     f"Season:\n"
-                    f"**MV:** {card.get('market_value', 'N/A')}\n"
+                    f"MV:\n"
                     f"Price:"
                 )
                 new_embed.add_field(name=field_name, value=field_value, inline=False)
 
-            # Append the dynamic tracking footer metric mapping local time context
             current_timestamp = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
             new_embed.set_footer(text=f"Last updated: {current_timestamp}")
 
@@ -124,7 +142,6 @@ class MarketRefreshButton(discord.ui.View):
             except discord.NotFound:
                 pass
 
-            # Finalize contextual interaction message visibility status
             await status_msg.edit(content="✅ Finished processing and grouping your updated listings!")
 
 
@@ -140,17 +157,10 @@ class CardMarket(commands.Cog):
         default_global = {
             "banned_users": [],
             "channels": {
-                "common": None,
-                "uncommon": None,
-                "rare": None,
-                "ultra-rare": None,
-                "epic": None,
-                "legendary": None
+                "common": None, "uncommon": None, "rare": None, "ultra-rare": None, "epic": None, "legendary": None
             }
         }
-        default_user = {
-            "main_nation": None
-        }
+        default_user = {"main_nation": None}
         
         self.config.register_global(**default_global)
         self.config.register_user(**default_user)
@@ -234,28 +244,6 @@ class CardMarket(commands.Cog):
         await self.config.channels.legendary.set(channel.id)
         await ctx.tick()
 
-    @commands.command(name="add_user_to_banned_list_for_ads")
-    @commands.has_any_role("Moderation", "Moderator", "Mod")
-    async def ban_user(self, ctx: commands.Context, user: discord.User):
-        """Bans a user globally from using any Card Market commands."""
-        async with self.config.banned_users() as banned:
-            if user.id not in banned:
-                banned.append(user.id)
-                await ctx.send(f"🚫 {user.mention} has been added to the ad-ban list.")
-            else:
-                await ctx.send("This user is already banned.")
-
-    @commands.command(name="remove_user_from_banned_list_for_ads")
-    @commands.has_any_role("Moderation", "Moderator", "Mod")
-    async def unban_user(self, ctx: commands.Context, user: discord.User):
-        """Unbans a user globally, allowing them to use Card Market commands again."""
-        async with self.config.banned_users() as banned:
-            if user.id in banned:
-                banned.remove(user.id)
-                await ctx.send(f"✅ {user.mention} has been removed from the ad-ban list.")
-            else:
-                await ctx.send("This user is not currently banned.")
-
     @commands.command(name="cardmarket_force_unlock")
     @commands.has_any_role("Moderation", "Moderator", "Mod")
     async def force_unlock(self, ctx: commands.Context):
@@ -271,55 +259,45 @@ class CardMarket(commands.Cog):
     @commands.command(name="list")
     async def list_cards(self, ctx: commands.Context, *args):
         """List up to 10 cards to the global market.
-        Format can mixed: [link] [price] [link] [link] [price]...
+        Format can be just links spaced out: [link] [link] [link]...
         """
-        nation = await self.get_or_reg_nation(ctx)
+        nation = await self._get_or_reg_nation(ctx)
         if not nation:
             return
 
         if not args:
-            return await ctx.send("Please provide at least one card link. Example: `$list <link> <price>`")
+            return await ctx.send("Please provide at least one card link. Example: `$list <link>`")
 
-        pairs = []
-        i = 0
-        while i < len(args):
-            token = args[i]
-            if re.search(r"card=\d+.*season=\d+", token):
-                link = token
-                price = "-"
-                if i + 1 < len(args):
-                    next_token = args[i + 1]
-                    if not re.search(r"card=\d+.*season=\d+", next_token):
-                        price = next_token
-                        i += 1
-                pairs.append((link, price))
-            i += 1
+        # Isolate valid card links (ignore loose text inputs or manual price tokens completely)
+        links = [token for token in args if re.search(r"card=(\d+).*season=(\d+)", token)]
         
-        if len(pairs) > 10:
-            return await ctx.send("❌ Command rejected. You can only list a maximum of 10 cards at a time to protect the server queue.")
+        if len(links) > 10:
+            return await ctx.send("❌ Command rejected. You can only list a maximum of 10 cards at a time.")
 
-        if not pairs:
-            return await ctx.send("❌ Malformed arguments. No valid card links could be isolated from your text request.")
+        if not links:
+            return await ctx.send("❌ Malformed arguments. No valid card links could be found.")
 
         if self._market_lock.locked():
             return await ctx.send("⏳ The market pipeline is currently busy processing another user's request. Please try again shortly.")
 
         async with self._market_lock:
-            estimated_seconds = len(pairs) * 5
+            estimated_seconds = len(links) * 5
             target_timestamp = int(time.time() + estimated_seconds)
             
-            status_message = await ctx.send(f"⏳ Processing {len(pairs)} items. Estimated completion: <t:{target_timestamp}:R>.")
+            status_message = await ctx.send(f"⏳ Processing {len(links)} items. Estimated completion: <t:{target_timestamp}:R>.")
 
             grouped_cards = {}
             channels_dict = await self.config.channels()
 
-            for idx, (link, price) in enumerate(pairs):
+            for idx, link in enumerate(links):
                 match = re.search(r"card=(\d+).*season=(\d+)", link)
                 if not match:
                     continue
 
                 card_id, season = match.group(1), match.group(2)
-                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
+                
+                # Fetch entirely from the target card markets endpoint
+                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+markets;cardid={card_id};season={season}"
                 headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {nation})"}
 
                 async with self.session.get(url, headers=headers) as resp:
@@ -328,22 +306,16 @@ class CardMarket(commands.Cog):
                         continue
                     xml_data = await resp.text()
 
+                result = parse_market_data(xml_data, target_nation=nation)
+                
+                # Use default fallback categorization string naming schemas safely
                 try:
                     parsed = xmltodict.parse(xml_data)
-                    card_info = parsed.get("CARD")
+                    category = parsed.get("CARD", {}).get("CATEGORY", "common").lower().replace(" ", "")
+                    card_name = f"Card {card_id}"
                 except Exception:
-                    await ctx.send(f"❌ Error decoding returned data for Card ID {card_id}.")
-                    continue
-
-                if not card_info:
-                    await ctx.send(f"❌ Card data not found for ID {card_id} (Season {season}). Skipping...")
-                    if idx < len(pairs) - 1:
-                        await asyncio.sleep(5)
-                    continue
-
-                category = card_info.get("CATEGORY", "").lower().replace(" ", "")
-                card_name = card_info.get("NAME", f"Card {card_id}")
-                market_value = card_info.get("MARKET_VALUE", "N/A")
+                    category = "common"
+                    card_name = f"Card {card_id}"
 
                 if category not in grouped_cards:
                     grouped_cards[category] = []
@@ -351,14 +323,14 @@ class CardMarket(commands.Cog):
                 grouped_cards[category].append({
                     "card_id": card_id,
                     "season": season,
-                    "price": price,
+                    "price": result["lowest_ask"],
                     "link": link,
                     "name": card_name,
                     "category": category,
-                    "market_value": market_value
+                    "market_value": result["market_value"]
                 })
 
-                if idx < len(pairs) - 1:
+                if idx < len(links) - 1:
                     await asyncio.sleep(5)
 
             # --- Seed-Locked Color Generator ---
@@ -390,7 +362,6 @@ class CardMarket(commands.Cog):
                     )
                     embed.add_field(name=field_name, value=field_value, inline=False)
 
-                # Initialize footer setup tracking creation window context
                 current_timestamp = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
                 embed.set_footer(text=f"Last updated: {current_timestamp}")
 
@@ -401,8 +372,4 @@ class CardMarket(commands.Cog):
                 except discord.Forbidden:
                     await ctx.send(f"I don't have permissions to send messages into <#{target_channel_id}>!")
 
-            # Transition original process summary statement into finalized complete text state
             await status_message.edit(content="✅ Finished processing and grouping your listings!")
-
-    async def get_or_reg_nation(self, ctx):
-        return await self._get_or_reg_nation(ctx)
