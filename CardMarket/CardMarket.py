@@ -13,7 +13,7 @@ class MarketRefreshButton(discord.ui.View):
     def __init__(self, cog, nation: str, user_color: discord.Color, cards_data: list):
         """
         cards_data shape: [
-            {"card_id": str, "season": str, "price": str, "link": str, "name": str, "category": str}, ...
+            {"card_id": str, "season": str, "price": str, "link": str, "name": str, "category": str, "market_value": str}, ...
         ]
         """
         super().__init__(timeout=None) # Keeps button active until bot restarts
@@ -24,7 +24,7 @@ class MarketRefreshButton(discord.ui.View):
 
     @discord.ui.button(label="Refresh Listings", style=discord.ButtonStyle.secondary, custom_id="cm_refresh_btn", emoji="🔄")
     async def refresh(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Acknowledge immediately to prevent ephemeral timeouts
+        # Acknowledge immediately
         await interaction.response.defer(ephemeral=True)
 
         if self.cog._market_lock.locked():
@@ -33,7 +33,13 @@ class MarketRefreshButton(discord.ui.View):
 
         async with self.cog._market_lock:
             estimated_seconds = len(self.cards_data) * 5
-            await interaction.followup.send(f"🔄 Refreshing listings. Estimated completion in {estimated_seconds} seconds...", ephemeral=True)
+            target_timestamp = int(time.time() + estimated_seconds)
+            
+            # Send initial progress tracking status token using the dynamic Discord relative timestamp format
+            status_msg = await interaction.followup.send(
+                f"🔄 Refreshing listings. Estimated completion: <t:{target_timestamp}:R>...", 
+                ephemeral=True
+            )
             
             valid_cards = []
             headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {self.nation})"}
@@ -44,7 +50,6 @@ class MarketRefreshButton(discord.ui.View):
                 try:
                     async with self.cog.session.get(url, headers=headers) as resp:
                         if resp.status != 200:
-                            # If individual API fails, retain card temporarily to avoid accidental deletions
                             valid_cards.append(card)
                             continue
                         xml_data = await resp.text()
@@ -54,13 +59,11 @@ class MarketRefreshButton(discord.ui.View):
                     valid_cards.append(card)
                     continue
 
-                # Safely inspect the markets block
                 markets_block = card_xml.get("MARKETS")
                 has_matching_ask = False
 
                 if markets_block and "MARKET" in markets_block:
                     market_entries = markets_block["MARKET"]
-                    # xmltodict packs a single child element as a dict, multiples as a list
                     if isinstance(market_entries, dict):
                         market_entries = [market_entries]
 
@@ -68,39 +71,36 @@ class MarketRefreshButton(discord.ui.View):
                         entry_type = entry.get("TYPE", "").lower()
                         entry_nation = entry.get("NATION", "").lower().replace(" ", "_")
                         try:
-                            # Normalize floating-point strings for precise comparisons (e.g., "2" vs "2.00")
                             entry_price = float(entry.get("PRICE", -1))
                             target_price = float(card["price"])
                         except ValueError:
                             entry_price = entry.get("PRICE")
                             target_price = card["price"]
 
-                        # Check if the listing nation and ask price match your listing parameters
                         if entry_type == "ask" and entry_nation == self.nation.lower() and entry_price == target_price:
                             has_matching_ask = True
-                            # Update MV while checking
+                            # Refresh MV metric concurrently
                             card["market_value"] = card_xml.get("MARKET_VALUE", card.get("market_value", "N/A"))
                             break
 
                 if has_matching_ask:
                     valid_cards.append(card)
 
-                # Queue delay matching NationStates API rate-limit etiquette
                 if idx < len(self.cards_data) - 1:
                     await asyncio.sleep(5)
 
-            # Update tracked metadata reference
             self.cards_data = valid_cards
 
-            # If all cards have sold/cleared, delete original embed message
+            # If all cards sold out, clean up and delete the root embed message container
             if not self.cards_data:
                 try:
                     await interaction.message.delete()
                 except discord.NotFound:
                     pass
+                await status_msg.edit(content="✅ All items checked: Your listed stock has completely sold out!")
                 return
 
-            # Rebuild embed fields with updated list items
+            # Rebuild and refresh embed profile
             display_nation = self.nation.replace("_", " ").title()
             new_embed = discord.Embed(title=f"{display_nation} selling:", color=self.user_color)
 
@@ -115,10 +115,17 @@ class MarketRefreshButton(discord.ui.View):
                 )
                 new_embed.add_field(name=field_name, value=field_value, inline=False)
 
+            # Append the dynamic tracking footer metric mapping local time context
+            current_timestamp = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+            new_embed.set_footer(text=f"Last updated: {current_timestamp}")
+
             try:
                 await interaction.message.edit(embed=new_embed, view=self)
             except discord.NotFound:
                 pass
+
+            # Finalize contextual interaction message visibility status
+            await status_msg.edit(content="✅ Finished processing and grouping your updated listings!")
 
 
 # --- Cog Definition ---
@@ -301,7 +308,7 @@ class CardMarket(commands.Cog):
             estimated_seconds = len(pairs) * 5
             target_timestamp = int(time.time() + estimated_seconds)
             
-            await ctx.send(f"⏳ Processing {len(pairs)} items. Estimated completion: <t:{target_timestamp}:R>.")
+            status_message = await ctx.send(f"⏳ Processing {len(pairs)} items. Estimated completion: <t:{target_timestamp}:R>.")
 
             grouped_cards = {}
             channels_dict = await self.config.channels()
@@ -341,7 +348,6 @@ class CardMarket(commands.Cog):
                 if category not in grouped_cards:
                     grouped_cards[category] = []
 
-                # Append custom data dict structure designed for button components
                 grouped_cards[category].append({
                     "card_id": card_id,
                     "season": season,
@@ -384,7 +390,10 @@ class CardMarket(commands.Cog):
                     )
                     embed.add_field(name=field_name, value=field_value, inline=False)
 
-                # Initialize custom refresh button view mapped with the tracked items
+                # Initialize footer setup tracking creation window context
+                current_timestamp = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+                embed.set_footer(text=f"Last updated: {current_timestamp}")
+
                 view = MarketRefreshButton(self, nation, user_color, cards_list)
 
                 try:
@@ -392,7 +401,8 @@ class CardMarket(commands.Cog):
                 except discord.Forbidden:
                     await ctx.send(f"I don't have permissions to send messages into <#{target_channel_id}>!")
 
-            await ctx.send("✅ Finished processing and grouping your listings!")
+            # Transition original process summary statement into finalized complete text state
+            await status_message.edit(content="✅ Finished processing and grouping your listings!")
 
     async def get_or_reg_nation(self, ctx):
         return await self._get_or_reg_nation(ctx)
