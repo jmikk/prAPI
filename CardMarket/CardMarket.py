@@ -3,6 +3,7 @@ from redbot.core import commands, Config, checks
 import aiohttp
 import xmltodict
 import re
+import asyncio
 
 class CardMarket(commands.Cog):
     """NationStates Card Market Listing Cog"""
@@ -11,14 +12,14 @@ class CardMarket(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=98723498172394, force_registration=True)
         
-        # Setup global settings for global market cross-server compatibility
+        # NOTE: Keeping "ultrarare" without a hyphen so it matches the parsed API string directly.
         default_global = {
             "banned_users": [],
             "channels": {
                 "common": None,
                 "uncommon": None,
                 "rare": None,
-                "ultra-rare": None,
+                "ultra-rare": None, 
                 "epic": None,
                 "legendary": None
             }
@@ -35,7 +36,6 @@ class CardMarket(commands.Cog):
         self.bot.loop.create_task(self.session.close())
 
     async def cog_check(self, ctx: commands.Context) -> bool:
-        # Global check: Enforce the custom ad ban list across all commands in this cog
         banned = await self.config.banned_users()
         if ctx.author.id in banned:
             await ctx.send("You are permanently banned from using Card Market commands due to ad violations.", ephemeral=True)
@@ -118,25 +118,26 @@ class CardMarket(commands.Cog):
     async def list_cards(self, ctx: commands.Context, *args):
         """List up to 10 cards to the global market.
         Format: [link] [price] [link] [price]...
-        Example: !list https://www.nationstates.net/page=deck/card=509581/season=3 50.00
         """
         nation = await self.get_or_reg_nation(ctx)
         if not nation:
             return
 
         if not args or len(args) % 2 != 0:
-            return await ctx.send("Make sure you match every link with a price! Example: `$list <link> <price>`")
+            return await ctx.send("Make sure you match every link with a price! Example: `!list <link> <price>`")
 
-        # Gather tuples of pairs up to 10
         pairs = list(zip(args[0::2], args[1::2]))[:10]
         if not pairs:
             return await ctx.send("No items were parsed.")
 
         await ctx.send(f"Processing {len(pairs)} items... Please stay patient.")
 
-        # Process each card
+        # This dictionary will group our data fields by their rarity tier
+        # Structure: {"common": [field_dict, field_dict], "legendary": [...]}
+        grouped_cards = {}
+        channels_dict = await self.config.channels()
+
         for link, price in pairs:
-            # Extract card id and season using regex
             match = re.search(r"card=(\d+).*season=(\d+)", link)
             if not match:
                 await ctx.send(f"Skipping invalid URL schema: <{link}>")
@@ -144,7 +145,6 @@ class CardMarket(commands.Cog):
 
             card_id, season = match.group(1), match.group(2)
             
-            # Request down to NS API
             url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
             headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {nation})"}
 
@@ -155,58 +155,57 @@ class CardMarket(commands.Cog):
                 xml_data = await resp.text()
 
             try:
-                # Convert XML mapping to dictionary cleanly
                 parsed = xmltodict.parse(xml_data)
                 card_info = parsed.get("CARD", {})
             except Exception:
                 await ctx.send(f"Error reading returned data for Card ID {card_id}.")
                 continue
 
-            category = card_info.get("CATEGORY", "").lower().replace(" ", "")
+            # API cleanup ("ultra-rare" format from API comes down natively as "ultrarare")
+            category = card_info.get("CATEGORY", "").lower().replace(" ", "").replace("-", "")
             card_name = card_info.get("NAME", f"Card {card_id}")
             market_value = card_info.get("MARKET_VALUE", "N/A")
 
-            # Route to respective config channels
-            channels_dict = await self.config.channels()
-            target_channel_id = channels_dict.get(category)
-            target_channel = self.bot.get_channel(target_channel_id)
+            if category not in grouped_cards:
+                grouped_cards[category] = []
 
-            if not target_channel:
-                await ctx.send(f"Unable to route card `{card_name}` ({category}). Target channel is unconfigured.")
-                continue
-
-            # Construct dynamic Custom Embed
-            embed = discord.Embed(
-                title=f"{ctx.author.name} selling:",
-                color=discord.Color.blue()
-            )
-            
+            # Generate field formatting information
+            field_name = f"🎴 {card_name}: {link}"
             field_value = (
                 f"**ID:** {card_id}\n"
                 f"**Season:** {season}\n"
                 f"**MV:** {market_value}\n"
                 f"**Price:** {price}"
             )
+
+            grouped_cards[category].append({"name": field_name, "value": field_value})
+
+        # --- Embed Construction & Dispatch Loop ---
+        for category, fields in grouped_cards.items():
+            target_channel_id = channels_dict.get(category)
+            target_channel = self.bot.get_channel(target_channel_id)
+
+            if not target_channel:
+                await ctx.send(f"Unable to dispatch group category ({category}). Target channel is unconfigured.")
+                continue
+
+            # Format user's nation identifier cleanly for the title header
+            display_nation = nation.replace("_", " ").title()
             
-            embed.add_field(
-                name=f"🎴 {card_name}: {link}",
-                value=field_value,
-                inline=False
+            embed = discord.Embed(
+                title=f"{display_nation} selling:",
+                color=discord.Color.blue()
             )
-            
-            # Grab default flag element if available
-            if "FLAG" in card_info:
-                flag_url = f"https://www.nationstates.net/images/cards/{card_info['FLAG']}"
-                embed.set_thumbnail(url=flag_url)
+
+            for field in fields:
+                embed.add_field(name=field["name"], value=field["value"], inline=False)
 
             try:
                 await target_channel.send(embed=embed)
             except discord.Forbidden:
                 await ctx.send(f"I don't have permissions to send messages into <#{target_channel_id}>!")
 
-        await ctx.send("Finished processing your listings!")
+        await ctx.send("✅ Finished processing and grouping your listings!")
 
-    # Manual internal routing fallback wrapper override
     async def get_or_reg_nation(self, ctx):
-        import asyncio
         return await self._get_or_reg_nation(ctx)
