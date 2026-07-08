@@ -1,0 +1,8 @@
+{
+    "author": "YourName",
+    "name": "CardMarket",
+    "short": "Cross-server NationStates market card sorting tool.",
+    "description": "Allows cross-server deck advertisement with validation logic mapped via NationStates APIs.",
+    "tags": ["nationstates", "cards", "market"],
+    "requirements": ["xmltodict", "aiohttp"]
+}
