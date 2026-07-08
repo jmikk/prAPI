@@ -277,4 +277,122 @@ class CardMarket(commands.Cog):
         i = 0
         while i < len(args):
             token = args[i]
-            if re.search(r"
+            if re.search(r"card=\d+.*season=\d+", token):
+                link = token
+                price = "-"
+                if i + 1 < len(args):
+                    next_token = args[i + 1]
+                    if not re.search(r"card=\d+.*season=\d+", next_token):
+                        price = next_token
+                        i += 1
+                pairs.append((link, price))
+            i += 1
+        
+        if len(pairs) > 10:
+            return await ctx.send("❌ Command rejected. You can only list a maximum of 10 cards at a time to protect the server queue.")
+
+        if not pairs:
+            return await ctx.send("❌ Malformed arguments. No valid card links could be isolated from your text request.")
+
+        if self._market_lock.locked():
+            return await ctx.send("⏳ The market pipeline is currently busy processing another user's request. Please try again shortly.")
+
+        async with self._market_lock:
+            estimated_seconds = len(pairs) * 5
+            target_timestamp = int(time.time() + estimated_seconds)
+            
+            await ctx.send(f"⏳ Processing {len(pairs)} items. Estimated completion: <t:{target_timestamp}:R>.")
+
+            grouped_cards = {}
+            channels_dict = await self.config.channels()
+
+            for idx, (link, price) in enumerate(pairs):
+                match = re.search(r"card=(\d+).*season=(\d+)", link)
+                if not match:
+                    continue
+
+                card_id, season = match.group(1), match.group(2)
+                url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
+                headers = {"User-Agent": f"CardMarketBot (Running by Main Nation: {nation})"}
+
+                async with self.session.get(url, headers=headers) as resp:
+                    if resp.status != 200:
+                        await ctx.send(f"⚠️ NS API threw an error for Card {card_id} (Status code: {resp.status})")
+                        continue
+                    xml_data = await resp.text()
+
+                try:
+                    parsed = xmltodict.parse(xml_data)
+                    card_info = parsed.get("CARD")
+                except Exception:
+                    await ctx.send(f"❌ Error decoding returned data for Card ID {card_id}.")
+                    continue
+
+                if not card_info:
+                    await ctx.send(f"❌ Card data not found for ID {card_id} (Season {season}). Skipping...")
+                    if idx < len(pairs) - 1:
+                        await asyncio.sleep(5)
+                    continue
+
+                category = card_info.get("CATEGORY", "").lower().replace(" ", "")
+                card_name = card_info.get("NAME", f"Card {card_id}")
+                market_value = card_info.get("MARKET_VALUE", "N/A")
+
+                if category not in grouped_cards:
+                    grouped_cards[category] = []
+
+                # Append custom data dict structure designed for button components
+                grouped_cards[category].append({
+                    "card_id": card_id,
+                    "season": season,
+                    "price": price,
+                    "link": link,
+                    "name": card_name,
+                    "category": category,
+                    "market_value": market_value
+                })
+
+                if idx < len(pairs) - 1:
+                    await asyncio.sleep(5)
+
+            # --- Seed-Locked Color Generator ---
+            random.seed(ctx.author.id)
+            user_hex_color = random.randint(0, 0xFFFFFF)
+            user_color = discord.Color(user_hex_color)
+            random.seed()
+
+            # --- Single Embed & View Dispatch System ---
+            for category, cards_list in grouped_cards.items():
+                target_channel_id = channels_dict.get(category)
+                target_channel = self.bot.get_channel(target_channel_id)
+
+                if not target_channel:
+                    await ctx.send(f"Unable to route category items ({category}). Target channel is unconfigured.")
+                    continue
+
+                display_nation = nation.replace("_", " ").title()
+                embed = discord.Embed(title=f"{display_nation} selling:", color=user_color)
+
+                for card in cards_list:
+                    emoji = self.rarity_emojis.get(category, "🎴")
+                    field_name = f"{emoji} {card['name']}: {card['link']}"
+                    field_value = (
+                        f"ID:\n"
+                        f"Season:\n"
+                        f"MV:\n"
+                        f"Price:"
+                    )
+                    embed.add_field(name=field_name, value=field_value, inline=False)
+
+                # Initialize custom refresh button view mapped with the tracked items
+                view = MarketRefreshButton(self, nation, user_color, cards_list)
+
+                try:
+                    await target_channel.send(embed=embed, view=view)
+                except discord.Forbidden:
+                    await ctx.send(f"I don't have permissions to send messages into <#{target_channel_id}>!")
+
+            await ctx.send("✅ Finished processing and grouping your listings!")
+
+    async def get_or_reg_nation(self, ctx):
+        return await self._get_or_reg_nation(ctx)
