@@ -88,7 +88,7 @@ class CardMarket(commands.Cog):
 
     @_set.command(name="ultrarare")
     async def _ultrarare(self, ctx, channel: discord.TextChannel):
-        await self.config.channels.ultrarare.set(channel.id)
+        await self.config.channels.ultra-rare.set(channel.id)
         await ctx.tick()
 
     @_set.command(name="epic")
