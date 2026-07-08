@@ -4,6 +4,8 @@ import aiohttp
 import xmltodict
 import re
 import asyncio
+import random
+import time  # Imported to calculate epochs for the Discord timestamp
 
 class CardMarket(commands.Cog):
     """NationStates Card Market Listing Cog"""
@@ -12,14 +14,13 @@ class CardMarket(commands.Cog):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=98723498172394, force_registration=True)
         
-        # Setup global settings for global market cross-server compatibility
         default_global = {
             "banned_users": [],
             "channels": {
                 "common": None,
                 "uncommon": None,
                 "rare": None,
-                "ultra-rare": None, # Perfectly mapped to the API string format
+                "ultra-rare": None,
                 "epic": None,
                 "legendary": None
             }
@@ -36,7 +37,6 @@ class CardMarket(commands.Cog):
         self.bot.loop.create_task(self.session.close())
 
     async def cog_check(self, ctx: commands.Context) -> bool:
-        # Global check: Enforce the custom ad ban list across all commands in this cog
         banned = await self.config.banned_users()
         if ctx.author.id in banned:
             await ctx.send("You are permanently banned from using Card Market commands due to ad violations.", ephemeral=True)
@@ -44,7 +44,6 @@ class CardMarket(commands.Cog):
         return True
 
     async def _get_or_reg_nation(self, ctx: commands.Context) -> str:
-        """Helper to fetch or prompt user for their main nation."""
         nation = await self.config.user(ctx.author).main_nation()
         if nation:
             return nation
@@ -89,7 +88,6 @@ class CardMarket(commands.Cog):
 
     @_set.command(name="ultrarare")
     async def _ultrarare(self, ctx, channel: discord.TextChannel):
-        # Maps the user execution command configuration to your ultra-rare backend key
         await self.config.channels.set_raw("ultra-rare", value=channel.id)
         await ctx.tick()
 
@@ -114,6 +112,17 @@ class CardMarket(commands.Cog):
             else:
                 await ctx.send("This user is already banned.")
 
+    @commands.command(name="remove_user_from_banned_list_for_ads")
+    @checks.admin_or_permissions(manage_guild=True)
+    async def unban_user(self, ctx: commands.Context, user: discord.User):
+        """Unbans a user globally, allowing them to use Card Market commands again."""
+        async with self.config.banned_users() as banned:
+            if user.id in banned:
+                banned.remove(user.id)
+                await ctx.send(f"✅ {user.mention} has been removed from the ad-ban list.")
+            else:
+                await ctx.send("This user is not currently banned.")
+
     # --- Core Listing Command ---
 
     @commands.command(name="list")
@@ -128,18 +137,21 @@ class CardMarket(commands.Cog):
         if not args or len(args) % 2 != 0:
             return await ctx.send("Make sure you match every link with a price! Example: `$list <link> <price>`")
 
-        # Gather tuples of pairs up to 10
         pairs = list(zip(args[0::2], args[1::2]))[:10]
         if not pairs:
             return await ctx.send("No items were parsed.")
 
-        await ctx.send(f"Processing {len(pairs)} items... Please stay patient.")
+        # Calculate time estimate (5 seconds per item processing delay)
+        estimated_seconds = len(pairs) * 5
+        target_timestamp = int(time.time() + estimated_seconds)
+        
+        # Fancy relative discord countdown format: <t:epoch:R>
+        await ctx.send(f"⏳ Processing {len(pairs)} items. Estimated completion: <t:{target_timestamp}:R>.")
 
-        # Dictionary to store cards categorized by rarity
         grouped_cards = {}
         channels_dict = await self.config.channels()
 
-        for link, price in pairs:
+        for idx, (link, price) in enumerate(pairs):
             match = re.search(r"card=(\d+).*season=(\d+)", link)
             if not match:
                 await ctx.send(f"Skipping invalid URL schema: <{link}>")
@@ -163,7 +175,6 @@ class CardMarket(commands.Cog):
                 await ctx.send(f"Error reading returned data for Card ID {card_id}.")
                 continue
 
-            # Cleans whitespace but leaves dashes intact so "ultra-rare" perfectly resolves
             category = card_info.get("CATEGORY", "").lower().replace(" ", "")
             card_name = card_info.get("NAME", f"Card {card_id}")
             market_value = card_info.get("MARKET_VALUE", "N/A")
@@ -171,7 +182,6 @@ class CardMarket(commands.Cog):
             if category not in grouped_cards:
                 grouped_cards[category] = []
 
-            # Format layout fields to be stored in the lists
             field_name = f"🎴 {card_name}: {link}"
             field_value = (
                 f"**ID:** {card_id}\n"
@@ -182,6 +192,16 @@ class CardMarket(commands.Cog):
 
             grouped_cards[category].append({"name": field_name, "value": field_value})
 
+            # Rate limit guard: Wait 5 seconds before running the next query, unless it's the absolute last item
+            if idx < len(pairs) - 1:
+                await asyncio.sleep(5)
+
+        # --- Seed-Locked Color Generator ---
+        random.seed(ctx.author.id)
+        user_hex_color = random.randint(0, 0xFFFFFF)
+        user_color = discord.Color(user_hex_color)
+        random.seed()
+
         # --- Single Embed Dispatch System ---
         for category, fields in grouped_cards.items():
             target_channel_id = channels_dict.get(category)
@@ -191,12 +211,11 @@ class CardMarket(commands.Cog):
                 await ctx.send(f"Unable to route category items ({category}). Target channel is unconfigured.")
                 continue
 
-            # Prettify title string safely
             display_nation = nation.replace("_", " ").title()
             
             embed = discord.Embed(
                 title=f"{display_nation} selling:",
-                color=discord.Color.blue()
+                color=user_color
             )
 
             for field in fields:
