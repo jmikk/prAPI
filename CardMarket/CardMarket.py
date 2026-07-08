@@ -32,8 +32,6 @@ class CardMarket(commands.Cog):
         self.config.register_global(**default_global)
         self.config.register_user(**default_user)
         self.session = aiohttp.ClientSession()
-        
-        # Internal in-memory lock to prevent overlapping listing tasks
         self._market_lock = asyncio.Lock()
 
     def cog_unload(self):
@@ -47,7 +45,6 @@ class CardMarket(commands.Cog):
         return True
 
     async def _get_or_reg_nation(self, ctx: commands.Context) -> str:
-        """Helper to fetch or prompt user for their main nation."""
         nation = await self.config.user(ctx.author).main_nation()
         if nation:
             return nation
@@ -153,18 +150,15 @@ class CardMarket(commands.Cog):
 
         pairs = list(zip(args[0::2], args[1::2]))
         
-        # Strict hard cap evaluation
         if len(pairs) > 10:
             return await ctx.send("❌ Command rejected. You can only list a maximum of 10 cards at a time to protect the server queue.")
             
         if not pairs:
             return await ctx.send("No items were parsed.")
 
-        # Check if the global queue lock is currently held by someone else
         if self._market_lock.locked():
             return await ctx.send("⏳ The market pipeline is currently busy processing another user's request. Please try again shortly.")
 
-        # Acquire the lock to block other concurrent layout submissions
         async with self._market_lock:
             estimated_seconds = len(pairs) * 5
             target_timestamp = int(time.time() + estimated_seconds)
@@ -187,15 +181,22 @@ class CardMarket(commands.Cog):
 
                 async with self.session.get(url, headers=headers) as resp:
                     if resp.status != 200:
-                        await ctx.send(f"NS API threw an error for Card {card_id} (Status code: {resp.status})")
+                        await ctx.send(f"⚠️ NS API threw an error for Card {card_id} (Status code: {resp.status})")
                         continue
                     xml_data = await resp.text()
 
                 try:
                     parsed = xmltodict.parse(xml_data)
-                    card_info = parsed.get("CARD", {})
+                    card_info = parsed.get("CARD")
                 except Exception:
-                    await ctx.send(f"Error reading returned data for Card ID {card_id}.")
+                    await ctx.send(f"❌ Error decoding returned data for Card ID {card_id}.")
+                    continue
+
+                # NEW SAFETY CHECK: If card_info is None, the card doesn't exist in the NS database
+                if not card_info:
+                    await ctx.send(f"❌ Card data not found for ID {card_id} (Season {season}). The link may be dead or invalid. Skipping...")
+                    if idx < len(pairs) - 1:
+                        await asyncio.sleep(5)
                     continue
 
                 category = card_info.get("CATEGORY", "").lower().replace(" ", "")
@@ -215,7 +216,6 @@ class CardMarket(commands.Cog):
 
                 grouped_cards[category].append({"name": field_name, "value": field_value})
 
-                # Strict 5 second delay between consecutive outbound HTTP fetches
                 if idx < len(pairs) - 1:
                     await asyncio.sleep(5)
 
