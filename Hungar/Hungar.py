@@ -957,7 +957,7 @@ class ActionButton(Button):
             await interaction.response.send_message(f"Choose a zone to **{self.action}** in:", view=view, ephemeral=True)
         else:
             # For Feast, auto-assign to Cornucopia immediately
-            players[user_id]["zone"] = "Cornucopia"
+            players[user_id]["zone"] = {"name": "Cornucopia"}
             await self.cog.config.guild(guild).players.set(players)
 
             await interaction.response.send_message(
@@ -2255,6 +2255,8 @@ class Hungar(commands.Cog):
                         player["stats"][stat] += boost
                         effect = f"🌟 {player['name']} survived the Feast and gained **+{boost} {stat}**!"
                         event_outcomes.append(f"{effect} (Cornucopia)")
+            
+            await self.config.guild(guild).players.set(players)
 
                 
     
