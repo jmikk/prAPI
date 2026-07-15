@@ -108,6 +108,7 @@ class prAPI(commands.Cog):
 
         async with self.session.post("https://www.nationstates.net/cgi-bin/api.cgi", data=prepare_data, headers=prepare_headers) as prepare_response:
             prepare_text = await prepare_response.text()
+            await ctx.send(prepare_text[:1000]
             if prepare_response.status != 200:
                 await ctx.send("Failed to prepare the gift.")
                 await ctx.send(prepare_text)
