@@ -1336,10 +1336,7 @@ First Steps to Jump into the Spring:
 
     [url=https://www.nationstates.net/page=un]Join the World Assembly[/url]
 
-    Endorse our Delegate: [nation]9005[/nation]
-
-    Endorse our Keepers:
-    [nation=islands_of_ventro]Islands of Ventro[/nation]
+    Endorse our Delegate elect: [nation]Xarikistan[/nation]
 
 Joining the World Assembly and endorsing our keepers helps protect [region]The Wellspring[/region] from outside threats and gives us more influence in shaping the world around us. It makes our region stronger, safer, and more united.
 
