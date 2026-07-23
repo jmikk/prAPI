@@ -69,13 +69,15 @@ class NexusCards(commands.Cog):
                 
                 return root, response.headers
 
-    def _calculate_legendary_cost(self, mv: float, season: str) -> int:
+    def _calculate_legendary_cost(self, mv: float, season: str, CTE) -> int:
         """Logic: Up to 50 MV = 10k. Every 25.00 after = +5k. Apply multipliers."""
         if mv <= 50.00:
             base_cost = 10000
         else:
             increments = math.ceil((mv - 50.00) / 25.00)
             base_cost = 10000 + (increments * 5000)
+        if CTE:
+            base_cost = base_cost * 1.5
         
         multipliers = {"1": 4.0, "2": 3.0, "3": 2.0, "4": 1.0, "cte": 1.5}
         mult = multipliers.get(str(season).lower(), 1.0)
@@ -88,8 +90,16 @@ class NexusCards(commands.Cog):
             data[limit_type] = [t for t in data[limit_type] if now - t < one_week]
             return len(data[limit_type]) < max_uses
 
-    # --- Commands ---
+    async def _get_CTE(self, id):
+        try:
+            root, _ = await self._ns_request("https://www.nationstates.net/cgi-bin/api.cgi?nation=" + {id})
+            return False
+        except Error e:
+            return True
+        
 
+    # --- Commands ---
+        
     @commands.command()
     async def pricecheck(self, ctx, card_id: int, season: str):
         """Check the Wellcoin price of a Legendary card before buying."""
@@ -101,7 +111,10 @@ class NexusCards(commands.Cog):
 
         mv = float(root.find(".//MARKET_VALUE").text)
         name = root.find(".//NAME").text
-        cost = self._calculate_legendary_cost(mv, season)
+        id = root.find(".//CARDID").text
+
+        CTE_status = self._get_CTE(id)
+        cost = self._calculate_legendary_cost(mv, season, CTE_status)
 
         embed = discord.Embed(title="Price Evaluation", color=discord.Color.blue())
         embed.add_field(name="Card", value=f"{name} (S{season} #{card_id})", inline=False)
