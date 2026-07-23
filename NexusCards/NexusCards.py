@@ -94,7 +94,7 @@ class NexusCards(commands.Cog):
         try:
             root, _ = await self._ns_request("https://www.nationstates.net/cgi-bin/api.cgi?nation=" + {id})
             return False
-        except Error e:
+        except Error:
             return True
         
 
