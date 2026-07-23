@@ -111,8 +111,7 @@ class NexusCards(commands.Cog):
         mv = float(root.find(".//MARKET_VALUE").text)
         name = root.find(".//NAME").text
         id = root.find(".//CARDID").text
-
-        CTE_status = self._get_CTE(id,ctx=ctx)
+        CTE_status = await self._get_CTE(name,ctx=ctx)
         cost = self._calculate_legendary_cost(mv, season, CTE_status)
 
         embed = discord.Embed(title="Price Evaluation", color=discord.Color.blue())
