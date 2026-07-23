@@ -95,7 +95,7 @@ class NexusCards(commands.Cog):
         root, _ = await self._ns_request(f"https://www.nationstates.net/cgi-bin/api.cgi?nation={id}")
         if root.has("Error"):
             return True
-        else
+        else:
             return False
         
 
