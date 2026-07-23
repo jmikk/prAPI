@@ -1,4 +1,4 @@
-import discord
+Exception as eimport discord
 import asyncio
 import aiohttp
 import time
@@ -94,7 +94,7 @@ class NexusCards(commands.Cog):
         try:
             root, _ = await self._ns_request("https://www.nationstates.net/cgi-bin/api.cgi?nation=" + {id})
             return False
-        except Error:
+        except Exception as e:
             return True
         
 
