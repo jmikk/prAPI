@@ -1,4 +1,4 @@
-Exception as eimport discord
+import discord
 import asyncio
 import aiohttp
 import time
