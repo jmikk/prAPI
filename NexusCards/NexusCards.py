@@ -113,6 +113,7 @@ class NexusCards(commands.Cog):
         mv = float(root.find(".//MARKET_VALUE").text)
         name = root.find(".//NAME").text
         id = root.find(".//CARDID").text
+        
         CTE_status = await self._get_CTE(name,ctx=ctx)
         cost = self._calculate_legendary_cost(mv, season, CTE_status)
 
@@ -252,7 +253,12 @@ class NexusCards(commands.Cog):
             return await ctx.send("Legendary not found in stockpiles. Check out 9005 and The Phoenix of the Spring's deck for the cards you can claim")
 
         mv = float(card_data.find(".//MARKET_VALUE").text)
-        cost = self._calculate_legendary_cost(mv, season)
+        
+        name = root.find(".//NAME").text
+        CTE_status = await self._get_CTE(name,ctx=ctx)
+        
+        cost = self._calculate_legendary_cost(mv, season, CTE_status)
+
         
         bal = await nexus.get_balance(ctx.author)
         if bal < cost:
