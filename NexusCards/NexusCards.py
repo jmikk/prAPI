@@ -90,9 +90,10 @@ class NexusCards(commands.Cog):
             data[limit_type] = [t for t in data[limit_type] if now - t < one_week]
             return len(data[limit_type]) < max_uses
 
-    async def _get_CTE(self, id):
-            root, _ = await self._ns_request("https://www.nationstates.net/cgi-bin/api.cgi?nation=" + {id})
-            return False
+    async def _get_CTE(self, id,ctx):
+        await ctx.send("HERE") 
+        root, _ = await self._ns_request("https://www.nationstates.net/cgi-bin/api.cgi?nation=" + {id})
+        return False
 
         
 
@@ -111,7 +112,7 @@ class NexusCards(commands.Cog):
         name = root.find(".//NAME").text
         id = root.find(".//CARDID").text
 
-        CTE_status = self._get_CTE(id)
+        CTE_status = self._get_CTE(id,ctx=ctx)
         cost = self._calculate_legendary_cost(mv, season, CTE_status)
 
         embed = discord.Embed(title="Price Evaluation", color=discord.Color.blue())
