@@ -91,11 +91,9 @@ class NexusCards(commands.Cog):
             return len(data[limit_type]) < max_uses
 
     async def _get_CTE(self, id):
-        try:
             root, _ = await self._ns_request("https://www.nationstates.net/cgi-bin/api.cgi?nation=" + {id})
             return False
-        except Exception as e:
-            return True
+
         
 
     # --- Commands ---
