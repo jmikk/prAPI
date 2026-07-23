@@ -91,9 +91,8 @@ class NexusCards(commands.Cog):
             data[limit_type] = [t for t in data[limit_type] if now - t < one_week]
             return len(data[limit_type]) < max_uses
 
-    async def _get_CTE(self, id,ctx):
-        await ctx.send("HERE") 
-        root, _ = await self._ns_request("https://www.nationstates.net/cgi-bin/api.cgi?nation=" + {id})
+    async def _get_CTE(self, id, ctx):
+        root, _ = await self._ns_request(f"https://www.nationstates.net/cgi-bin/api.cgi?nation={id}")
         return False
 
         
