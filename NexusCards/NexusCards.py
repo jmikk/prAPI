@@ -93,7 +93,8 @@ class NexusCards(commands.Cog):
 
     async def _get_CTE(self, id, ctx):
         root, _ = await self._ns_request(f"https://www.nationstates.net/cgi-bin/api.cgi?nation={id}")
-        if root.has("Error"):
+        has_error = root.find(".//Error") is not None
+        if has_error:
             return True
         else:
             return False
