@@ -350,8 +350,7 @@ class VOO(commands.Cog):
             
             embed = discord.Embed(
                 title=f"I like to move it move it {nation.replace('_', ' ').title()}",
-                description=f"{nation.replace('_', ' ').title()} has moved!", 
-                color=discord.Color.blue(),
+                description = f"[{nation.replace('_', ' ').title()}](https://www.nationstates.net/nation={nation}) has moved out, farewell and we wish them the best on their journey!"                color=discord.Color.blue(),
             )
             
             if flag_url:
