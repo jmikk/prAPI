@@ -326,8 +326,8 @@ class VOO(commands.Cog):
         rmb_msg = obj.get("rmbMessage") or ""
         is_founding_present = "founding" in obj.get("buckets")
         is_move_present = "region:the_wellspring" in obj.get("buckets", []) and "move" in obj.get("buckets", [])
-        is_wa_event = "member" in obj.get("buckets") and ("admitted" in html.lower() or "applied" in html.lower())
-        
+        is_wa_apply_or_admit = "applied to join the world assembly" in html.lower() or "admitted to the world assembly" in html.lower()        
+     
         m_n_html = NATION_RE.search(html)
         m_n_text = re.search(r"@@([a-z0-9_]+)@@", text, re.I)
         nation = (m_n_html.group(1) if m_n_html else (m_n_text.group(1) if m_n_text else None))
@@ -343,13 +343,18 @@ class VOO(commands.Cog):
 
         
         # --- LOGGING LOGIC --
-
         # Check for World Assembly admission or application events
-        # Check for World Assembly admission or application events
-        if is_wa_event:
+        if is_wa_apply_or_admit:
             # Extract flag from HTML
             flag_match = re.search(r'src="([^"]+)"', html)
             flag_url = f"https://www.nationstates.net{flag_match.group(1)}" if flag_match else None
+            
+            # Extract nation and region safely from the buckets array
+            nation = next((b.split(":")[1] for b in buckets if b.startswith("nation:")), "unknown")
+            region = next((b.split(":")[1] for b in buckets if b.startswith("region:")), "")
+
+            if not "the_wellspring" in region:
+                return
             
             formatted_nation = nation.replace('_', ' ').title()
             nation_link = f"https://www.nationstates.net/nation={nation}"
