@@ -342,49 +342,68 @@ class VOO(commands.Cog):
 
         # --- LOGGING LOGIC --
         if is_move_present:
-            # Check if 'the_wellspring' is the destination by looking at the HTML link structure
-            # The destination region always appears after 'to' in the HTML/text
-            is_moving_in = 'to <a href="region=the_wellspring"' in html
+            text = obj.get("str", "")
             
-            # Extract flag from HTML
-            flag_match = re.search(r'src="([^"]+)"', html)
-            flag_url = f"https://www.nationstates.net{flag_match.group(1)}" if flag_match else None
+            # Extract origin and destination regions using regex from the plain text string
+            # Format: "@@nation@@ relocated from %%origin%% to %%destination%%"
+            move_match = re.search(r"relocated from %%(.*?)%% to %%(.*?)%%", text)
             
-            formatted_nation = nation.replace('_', ' ').title()
-            nation_link = f"https://www.nationstates.net/nation={nation}"
-            
-            if is_moving_in:
-                embed = discord.Embed(
-                    title=f"New Arrival: {formatted_nation}!",
-                    description=f"[{formatted_nation}]({nation_link}) has just moved into **The Wellspring**, welcome them home!",
-                    color=discord.Color.green(),
-                )
+            if move_match:
+                origin_region = move_match.group(1)
+                dest_region = move_match.group(2)
             else:
-                embed = discord.Embed(
-                    title=f"Departure: {formatted_nation}",
-                    description=f"[{formatted_nation}]({nation_link}) has moved out of **The Wellspring**, farewell and safe travels!",
-                    color=discord.Color.orange(),
-                )
-            
-            if flag_url:
-                embed.set_thumbnail(url=flag_url)
-            if region:
-                embed.set_footer(text=f"Other Region: {region.replace('_', ' ').title()}")
+                origin_region = ""
+                dest_region = ""
         
-            for guild in self.bot.guilds:
-                chan_id = await self.config.guild(guild).rmb_log_channel()
-                guild_config = self.config.guild(guild)
-                if chan_id:
-                    target_region = await guild_config.rmb_region_filter()
-                    if target_region and (not region or region.lower() != target_region.lower()):
-                        continue
+            # Check direction relative to "the_wellspring"
+            is_moving_in = (dest_region == "the_wellspring")
+            is_moving_out = (origin_region == "the_wellspring")
         
-                    channel = guild.get_channel(chan_id)
-                    if channel:
-                        try:
-                            await channel.send(embed=embed)
-                        except Exception:
-                            pass
+            # Only proceed if The Wellspring is involved in either direction
+            if is_moving_in or is_moving_out:
+                # Extract flag from HTML
+                flag_match = re.search(r'src="([^"]+)"', html)
+                flag_url = f"https://www.nationstates.net{flag_match.group(1)}" if flag_match else None
+                
+                formatted_nation = nation.replace('_', ' ').title()
+                nation_link = f"https://www.nationstates.net/nation={nation}"
+                
+                if is_moving_in:
+                    embed = discord.Embed(
+                        title=f"New Arrival: {formatted_nation}!",
+                        description=f"[{formatted_nation}]({nation_link}) has just moved into **The Wellspring** from [{origin_region.replace('_', ' ').title()}](https://www.nationstates.net/region={origin_region}), welcome them home!",
+                        color=discord.Color.green(),
+                    )
+                    relevant_region = dest_region
+                else:
+                    embed = discord.Embed(
+                        title=f"Departure: {formatted_nation}",
+                        description=f"[{formatted_nation}]({nation_link}) has moved out of **The Wellspring** to [{dest_region.replace('_', ' ').title()}](https://www.nationstates.net/region={dest_region}), farewell and safe travels!",
+                        color=discord.Color.orange(),
+                    )
+                    relevant_region = origin_region
+                
+                if flag_url:
+                    embed.set_thumbnail(url=flag_url)
+                
+                embed.set_footer(text=f"Region Event: The Wellspring")
+        
+                for guild in self.bot.guilds:
+                    chan_id = await self.config.guild(guild).rmb_log_channel()
+                    guild_config = self.config.guild(guild)
+                    if chan_id:
+                        target_region = await guild_config.rmb_region_filter()
+                        
+                        # If target region filter is set, ensure it matches The Wellspring
+                        if target_region and target_region.lower() != "the_wellspring":
+                            continue
+        
+                        channel = guild.get_channel(chan_id)
+                        if channel:
+                            try:
+                                await channel.send(embed=embed)
+                            except Exception:
+                                pass
                             
         if rmb_msg:
 
