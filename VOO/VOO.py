@@ -28,6 +28,16 @@ REGION_RE = re.compile(r"region=([a-z0-9_]+)", re.I)
 # Added the dash after the underscore
 NATION_RE = re.compile(r"nation=([a-z0-9_-]+)", re.I)
 
+def has_role(role_name: str):
+    """Custom decorator to check if the author has a specific role by name."""
+    async def predicate(ctx: commands.Context):
+        if not ctx.guild:
+            return False
+        # Check if any role matching the name is in the author's roles
+        return any(role.name == role_name for role in ctx.author.roles)
+    
+    return commands.check(predicate)
+
 class VOOControlView(ui.View):
     """Persistent control view with three buttons."""
     def __init__(self, cog: "VigilOfOrigins"):
@@ -621,13 +631,13 @@ class VOO(commands.Cog):
 
     # ---------- Commands ----------
     @commands.group(name="voo")
-    @checks.admin_or_permissions(manage_guild=True)
+    @has_role("Master Artificers")
     async def voo_group(self, ctx: commands.Context):
         """Vigil of Origins controls."""
         pass
 
     @commands.group()
-    @checks.admin_or_can_manage_channel()
+    @checks.admin_or_permissions(manage_guild=True)
     async def sseset(self, ctx):
         """Settings for SSE listener"""
         pass
