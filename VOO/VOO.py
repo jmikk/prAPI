@@ -326,6 +326,8 @@ class VOO(commands.Cog):
         rmb_msg = obj.get("rmbMessage") or ""
         is_founding_present = "founding" in obj.get("buckets")
         is_move_present = "region:the_wellspring" in obj.get("buckets", []) and "move" in obj.get("buckets", [])
+        is_wa_event = "member" in buckets and ("admitted" in text.lower() or "applied" in text.lower())
+
         
         m_n_html = NATION_RE.search(html)
         m_n_text = re.search(r"@@([a-z0-9_]+)@@", text, re.I)
@@ -334,7 +336,7 @@ class VOO(commands.Cog):
         m_r_html = REGION_RE.search(html) if 'REGION_RE' in globals() else None
         m_r_text = re.search(r"%%([a-z0-9_]+)%%", text, re.I)
         region = (m_r_html.group(1) if m_r_html else (m_r_text.group(1) if m_r_text else None))
-
+        
         if not nation:
             return
 
@@ -345,8 +347,8 @@ class VOO(commands.Cog):
 
         # Check for World Assembly admission or application events
         # Check for World Assembly admission or application events
-        is_wa_event = "member" in buckets and ("admitted" in text.lower() or "applied" in text.lower())
-        
+        if text:
+            await channel.send(text.lower())
         if is_wa_event:
             # Extract flag from HTML
             flag_match = re.search(r'src="([^"]+)"', html)
