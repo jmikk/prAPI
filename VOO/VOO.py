@@ -371,14 +371,14 @@ class VOO(commands.Cog):
                 if is_moving_in:
                     embed = discord.Embed(
                         title=f"New Arrival: {formatted_nation}!",
-                        description=f"[{formatted_nation}]({nation_link}) has just moved into **The Wellspring** from [{origin_region.replace('_', ' ').title()}](https://www.nationstates.net/region={origin_region}), welcome them home!",
+                        description=f"[{formatted_nation}]({nation_link}) has just moved into **[The Wellspring](https://www.nationstates.net/region=the_wellspring)** from [{origin_region.replace('_', ' ').title()}](https://www.nationstates.net/region={origin_region}), welcome them home!",
                         color=discord.Color.green(),
                     )
                     relevant_region = dest_region
                 else:
                     embed = discord.Embed(
                         title=f"Departure: {formatted_nation}",
-                        description=f"[{formatted_nation}]({nation_link}) has moved out of **The Wellspring** to [{dest_region.replace('_', ' ').title()}](https://www.nationstates.net/region={dest_region}), farewell and safe travels!",
+                        description=f"[{formatted_nation}]({nation_link}) has moved out of **[The Wellspring](https://www.nationstates.net/region=the_wellspring)** to [{dest_region.replace('_', ' ').title()}](https://www.nationstates.net/region={dest_region}), farewell and safe travels!",
                         color=discord.Color.orange(),
                     )
                     relevant_region = origin_region
