@@ -326,8 +326,7 @@ class VOO(commands.Cog):
         rmb_msg = obj.get("rmbMessage") or ""
         is_founding_present = "founding" in obj.get("buckets")
         is_move_present = "region:the_wellspring" in obj.get("buckets", []) and "move" in obj.get("buckets", [])
-        is_wa_event = "member" in buckets and ("admitted" in text.lower() or "applied" in text.lower())
-
+        is_wa_event = "member" in obj.get("buckets") and ("admitted" in html.lower() or "applied" in html.lower())
         
         m_n_html = NATION_RE.search(html)
         m_n_text = re.search(r"@@([a-z0-9_]+)@@", text, re.I)
@@ -347,8 +346,6 @@ class VOO(commands.Cog):
 
         # Check for World Assembly admission or application events
         # Check for World Assembly admission or application events
-        if text:
-            await channel.send(text.lower())
         if is_wa_event:
             # Extract flag from HTML
             flag_match = re.search(r'src="([^"]+)"', html)
@@ -358,7 +355,7 @@ class VOO(commands.Cog):
             nation_link = f"https://www.nationstates.net/nation={nation}"
             
             # Customize text based on whether they were admitted or applied
-            if "admitted" in text.lower():
+            if "admitted" in html.lower():
                 action_title = "World Assembly Admission"
                 action_desc = f"[{formatted_nation}]({nation_link}) has officially been **admitted to the World Assembly**!"
             else:
