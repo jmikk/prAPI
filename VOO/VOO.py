@@ -325,8 +325,7 @@ class VOO(commands.Cog):
         # Extract the raw message if it exists
         rmb_msg = obj.get("rmbMessage") or ""
         is_founding_present = "founding" in obj.get("buckets")
-        is_move_present = "move" in obj.get("buckets")
-        is_move_in_present = "to %%the_wellspring%%" in obj.get("str")
+        is_move_present = "region:the_wellspring" in obj.get("buckets", []) and "move" in obj.get("buckets", [])        
         
         m_n_html = NATION_RE.search(html)
         m_n_text = re.search(r"@@([a-z0-9_]+)@@", text, re.I)
@@ -341,77 +340,52 @@ class VOO(commands.Cog):
 
         nation_clean = nation.lower()
 
-        # --- LOGGING LOGIC ---
-
-        if is_move_in_present:            
-            # 1. Extract flag from HTML
-            # Look for: src="/images/flags/uploads/darkening_empire__187828t2.png"
+        # --- LOGGING LOGIC --
+        if is_move_present:
+            # Check if 'the_wellspring' is the destination by looking at the HTML link structure
+            # The destination region always appears after 'to' in the HTML/text
+            is_moving_in = 'to <a href="region=the_wellspring"' in html
+            
+            # Extract flag from HTML
             flag_match = re.search(r'src="([^"]+)"', html)
             flag_url = f"https://www.nationstates.net{flag_match.group(1)}" if flag_match else None
             
-            embed = discord.Embed(
-                title=f"I like to move it move it {nation.replace('_', ' ').title()}",
-                description = f"[{nation.replace('_', ' ').title()}](https://www.nationstates.net/nation={nation}) has moved in. Please welcome them with open arms!",
-                color=discord.Color.blue(),
-            )
+            formatted_nation = nation.replace('_', ' ').title()
+            nation_link = f"https://www.nationstates.net/nation={nation}"
+            
+            if is_moving_in:
+                embed = discord.Embed(
+                    title=f"New Arrival: {formatted_nation}!",
+                    description=f"[{formatted_nation}]({nation_link}) has just moved into **The Wellspring**, welcome them home!",
+                    color=discord.Color.green(),
+                )
+            else:
+                embed = discord.Embed(
+                    title=f"Departure: {formatted_nation}",
+                    description=f"[{formatted_nation}]({nation_link}) has moved out of **The Wellspring**, farewell and safe travels!",
+                    color=discord.Color.orange(),
+                )
             
             if flag_url:
                 embed.set_thumbnail(url=flag_url)
             if region:
-                embed.set_footer(text=f"Region: {region.replace('_', ' ').title()}")
-
+                embed.set_footer(text=f"Other Region: {region.replace('_', ' ').title()}")
+        
             for guild in self.bot.guilds:
                 chan_id = await self.config.guild(guild).rmb_log_channel()
                 guild_config = self.config.guild(guild)
                 if chan_id:
-                    # Check if this guild has a specific region filter
                     target_region = await guild_config.rmb_region_filter()
-                    
-                     # If target_region is set, only proceed if it matches the current message
                     if target_region and (not region or region.lower() != target_region.lower()):
                         continue
-
+        
                     channel = guild.get_channel(chan_id)
                     if channel:
                         try:
                             await channel.send(embed=embed)
                         except Exception:
                             pass
-
-        if is_move_present:            
-            # 1. Extract flag from HTML
-            # Look for: src="/images/flags/uploads/darkening_empire__187828t2.png"
-            flag_match = re.search(r'src="([^"]+)"', html)
-            flag_url = f"https://www.nationstates.net{flag_match.group(1)}" if flag_match else None
-            
-            embed = discord.Embed(
-                title=f"I like to move it move it {nation.replace('_', ' ').title()}",
-                description = f"[{nation.replace('_', ' ').title()}](https://www.nationstates.net/nation={nation}) has moved out, farewell and we wish them the best on their journey!",
-                color=discord.Color.blue(),
-            )
-            
-            if flag_url:
-                embed.set_thumbnail(url=flag_url)
-            if region:
-                embed.set_footer(text=f"Region: {region.replace('_', ' ').title()}")
-
-            for guild in self.bot.guilds:
-                chan_id = await self.config.guild(guild).rmb_log_channel()
-                guild_config = self.config.guild(guild)
-                if chan_id:
-                    # Check if this guild has a specific region filter
-                    target_region = await guild_config.rmb_region_filter()
-                    
-                     # If target_region is set, only proceed if it matches the current message
-                    if target_region and (not region or region.lower() != target_region.lower()):
-                        continue
-
-                    channel = guild.get_channel(chan_id)
-                    if channel:
-                        try:
-                            await channel.send(embed=embed)
-                        except Exception:
-                            pass
+                            
         if rmb_msg:
 
             post_match = re.search(r"postid=(\d+)", html)
