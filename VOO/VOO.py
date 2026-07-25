@@ -344,7 +344,8 @@ class VOO(commands.Cog):
         # --- LOGGING LOGIC --
 
         # Check for World Assembly admission or application events
-        is_wa_event = "member" in buckets and any(phrase in text.lower() for phrase in ["admitted to the world assembly", "applied to the world assembly"])
+        # Check for World Assembly admission or application events
+        is_wa_event = "member" in buckets and ("admitted" in text.lower() or "applied" in text.lower())
         
         if is_wa_event:
             # Extract flag from HTML
@@ -360,7 +361,7 @@ class VOO(commands.Cog):
                 action_desc = f"[{formatted_nation}]({nation_link}) has officially been **admitted to the World Assembly**!"
             else:
                 action_title = "World Assembly Application"
-                action_desc = f"[{formatted_nation}]({nation_link}) has **applied to the World Assembly**!"
+                action_desc = f"[{formatted_nation}]({nation_link}) has **applied to join the World Assembly**!"
         
             embed = discord.Embed(
                 title=action_title,
