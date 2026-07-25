@@ -19,7 +19,7 @@ from datetime import timedelta
 
 log = logging.getLogger("red.vigil_of_origins")
 
-FOUNDING_SSE_URL = "https://www.nationstates.net/api/founding+rmb"
+FOUNDING_SSE_URL = "https://www.nationstates.net/api/founding+rmb+move"
 GENERATED_BY = "Vigil_of_origins___by_9005____instance_run_by_By_9005"
 MAX_TG_BATCH = 8
 REGION_RE = re.compile(r"region=([a-z0-9_]+)", re.I)
@@ -325,6 +325,7 @@ class VOO(commands.Cog):
         # Extract the raw message if it exists
         rmb_msg = obj.get("rmbMessage") or ""
         is_founding_present = "founding" in obj.get("buckets")
+        is_move_present = "move" in obj.get("buckets")
         
         m_n_html = NATION_RE.search(html)
         m_n_text = re.search(r"@@([a-z0-9_]+)@@", text, re.I)
@@ -340,6 +341,41 @@ class VOO(commands.Cog):
         nation_clean = nation.lower()
 
         # --- LOGGING LOGIC ---
+
+        if is_move_present:            
+            # 1. Extract flag from HTML
+            # Look for: src="/images/flags/uploads/darkening_empire__187828t2.png"
+            flag_match = re.search(r'src="([^"]+)"', html)
+            flag_url = f"https://www.nationstates.net{flag_match.group(1)}" if flag_match else None
+            
+            embed = discord.Embed(
+                title=f"I like to move it move it {nation.replace('_', ' ').title()}",
+                description=f"{nation.replace('_', ' ').title()} has moved!", 
+                color=discord.Color.blue(),
+            )
+            
+            if flag_url:
+                embed.set_thumbnail(url=flag_url)
+            if region:
+                embed.set_footer(text=f"Region: {region.replace('_', ' ').title()}")
+
+            for guild in self.bot.guilds:
+                chan_id = await self.config.guild(guild).rmb_log_channel()
+                guild_config = self.config.guild(guild)
+                if chan_id:
+                    # Check if this guild has a specific region filter
+                    target_region = await guild_config.rmb_region_filter()
+                    
+                     # If target_region is set, only proceed if it matches the current message
+                    if target_region and (not region or region.lower() != target_region.lower()):
+                        continue
+
+                    channel = guild.get_channel(chan_id)
+                    if channel:
+                        try:
+                            await channel.send(embed=embed)
+                        except Exception:
+                            pass
         if rmb_msg:
 
             post_match = re.search(r"postid=(\d+)", html)
