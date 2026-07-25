@@ -627,7 +627,7 @@ class VOO(commands.Cog):
         pass
 
     @commands.group()
-    @checks.admin_or_permissions(manage_guild=True)
+    @checks.admin_or_can_manage_channel(manage_guild=True)
     async def sseset(self, ctx):
         """Settings for SSE listener"""
         pass
