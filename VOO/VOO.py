@@ -19,7 +19,7 @@ from datetime import timedelta
 
 log = logging.getLogger("red.vigil_of_origins")
 
-FOUNDING_SSE_URL = "https://www.nationstates.net/api/founding+rmb+move"
+FOUNDING_SSE_URL = "https://www.nationstates.net/api/founding+rmb+move+member"
 GENERATED_BY = "Vigil_of_origins___by_9005____instance_run_by_By_9005"
 MAX_TG_BATCH = 8
 REGION_RE = re.compile(r"region=([a-z0-9_]+)", re.I)
@@ -325,7 +325,7 @@ class VOO(commands.Cog):
         # Extract the raw message if it exists
         rmb_msg = obj.get("rmbMessage") or ""
         is_founding_present = "founding" in obj.get("buckets")
-        is_move_present = "region:the_wellspring" in obj.get("buckets", []) and "move" in obj.get("buckets", [])        
+        is_move_present = "region:the_wellspring" in obj.get("buckets", []) and "move" in obj.get("buckets", [])
         
         m_n_html = NATION_RE.search(html)
         m_n_text = re.search(r"@@([a-z0-9_]+)@@", text, re.I)
@@ -340,7 +340,54 @@ class VOO(commands.Cog):
 
         nation_clean = nation.lower()
 
+        
         # --- LOGGING LOGIC --
+
+        # Check for World Assembly admission or application events
+        is_wa_event = "member" in buckets and any(phrase in text.lower() for phrase in ["admitted to the world assembly", "applied to the world assembly"])
+        
+        if is_wa_event:
+            # Extract flag from HTML
+            flag_match = re.search(r'src="([^"]+)"', html)
+            flag_url = f"https://www.nationstates.net{flag_match.group(1)}" if flag_match else None
+            
+            formatted_nation = nation.replace('_', ' ').title()
+            nation_link = f"https://www.nationstates.net/nation={nation}"
+            
+            # Customize text based on whether they were admitted or applied
+            if "admitted" in text.lower():
+                action_title = "World Assembly Admission"
+                action_desc = f"[{formatted_nation}]({nation_link}) has officially been **admitted to the World Assembly**!"
+            else:
+                action_title = "World Assembly Application"
+                action_desc = f"[{formatted_nation}]({nation_link}) has **applied to the World Assembly**!"
+        
+            embed = discord.Embed(
+                title=action_title,
+                description=action_desc,
+                color=discord.Color.green(),
+            )
+            
+            if flag_url:
+                embed.set_thumbnail(url=flag_url)
+            if region:
+                embed.set_footer(text=f"Region: {region.replace('_', ' ').title()}")
+        
+            for guild in self.bot.guilds:
+                chan_id = await self.config.guild(guild).rmb_log_channel()
+                guild_config = self.config.guild(guild)
+                if chan_id:
+                    target_region = await guild_config.rmb_region_filter()
+                    if target_region and (not region or region.lower() != target_region.lower()):
+                        continue
+        
+                    channel = guild.get_channel(chan_id)
+                    if channel:
+                        try:
+                            await channel.send(embed=embed)
+                        except Exception:
+                            pass
+                    
         if is_move_present:
             text = obj.get("str", "")
             
