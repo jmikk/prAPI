@@ -779,7 +779,7 @@ class VOO(commands.Cog):
     @voo_group.command(name="clearqueue")
     async def clear_queue(self, ctx: commands.Context):
         """Clear the entire global shared queue."""
-        await self.config.shared_queue.set([])
+        await self.config.shared_queue.set(queue[:100])        
         await self._refresh_all_embeds()
         await ctx.send("Global shared queue cleared.")
 
