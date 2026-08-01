@@ -462,7 +462,7 @@ class VOO(commands.Cog):
         if not is_founding_present:
             return
         
-        if re.search(r"\d+$", nation_clean):
+        if re.search(r"(\d+|\bM{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\b)$", nation_clean):
             return
         
         if region:
