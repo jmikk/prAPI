@@ -223,16 +223,16 @@ class GiveawayCog(commands.Cog):
         user_claims = await self.config.user(ctx.author).wins()
         if not user_claims:
             return await ctx.send("You have no unclaimed giveaways.")
-
-        for claim in user_claims:
-            success, message = await self.send_gift_card(ctx, claim["cardid"], claim["season"], destination)
-            if success:
-                await ctx.send(f"✅ {message}")
-            else:
-                await ctx.send(f"❌ Error sending {claim['cardid']}: {message}")
-                return
-        
-        await self.config.user(ctx.author).wins.set([])
+            return
+        claim = user_claims[0]
+        success, message = await self.send_gift_card(ctx, claim["cardid"], claim["season"], destination)
+        if success:
+            await ctx.send(f"✅ {message}")
+        else:
+            await ctx.send(f"❌ Error sending {claim['cardid']}: {message}")
+            return
+        await self.config.user(ctx.author).wins.set(user_claims.pop())
+        await ctx.send(f"You have {len(user_claims)} cards left to claim.")
 
     @commands.is_owner()
     @commands.command()
