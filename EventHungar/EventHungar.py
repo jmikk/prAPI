@@ -153,17 +153,17 @@ class MapButton(Button):
             )
 
 class CheckGoldButton(Button):
-    """Button to display the user's current Wellcoins"""
+    """Button to display the user's current Golds"""
 
     def __init__(self, cog):
-        super().__init__(label="Check Wellcoins", style=discord.ButtonStyle.secondary)
+        super().__init__(label="Check Golds", style=discord.ButtonStyle.secondary)
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
         try:
             user_id = interaction.user
             gold = await self.cog.config_gold.user(user_id).master_balance()
-            await interaction.response.send_message(f"You have {gold:,.2f} Wellcoins.", ephemeral=True)
+            await interaction.response.send_message(f"You have {gold:,.2f} Golds.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
@@ -694,12 +694,12 @@ class ViewBidsButton(Button):
                         total_bets += bet_amount
                         member = guild.get_member(int(user_id))
                         display_name = member.nick or member.name if member else f"User {user_id}"
-                        details.append(f"{display_name}: {bet_amount} Wellcoins")
+                        details.append(f"{display_name}: {bet_amount} Golds")
 
                 ai_bets = tribute_bets.get("AI", [])
                 for ai_bet in ai_bets:
                     total_bets += ai_bet["amount"]
-                    details.append(f"{ai_bet['name']}: {ai_bet['amount']} Wellcoins")
+                    details.append(f"{ai_bet['name']}: {ai_bet['amount']} Golds")
 
                 if total_bets > 0:
                     bid_totals[player_id] = total_bets
@@ -724,7 +724,7 @@ class ViewBidsButton(Button):
 
                 all_fields.append({
                     "name": f"#{rank} {tribute_name} (District {district})",
-                    "value": f"Total Bets: {total_bet} Wellcoins\n{details_text}"
+                    "value": f"Total Bets: {total_bet} Golds\n{details_text}"
                 })
 
             if not all_fields:
@@ -1277,7 +1277,7 @@ class EventHungar(commands.Cog):
     @app_commands.command(name="placebet", description="Place a bet on a tribute.")
     @app_commands.describe(
         tribute="Choose a living tribute",
-        amount="Amount of Wellcoins to bet (number or 'all')"
+        amount="Amount of Golds to bet (number or 'all')"
     )
     async def place_bet(self, interaction: Interaction, tribute: str, amount: str):
         guild = interaction.guild
@@ -1307,7 +1307,7 @@ class EventHungar(commands.Cog):
 
         if bet_amount <= 0 or bet_amount > user_gold:
             await interaction.response.send_message(
-                f"❌ You don't have enough Wellcoins. Your balance: {user_gold}", ephemeral=True
+                f"❌ You don't have enough Golds. Your balance: {user_gold}", ephemeral=True
             )
             return
 
@@ -1322,7 +1322,7 @@ class EventHungar(commands.Cog):
 
         await self.config.user(user).bets.set(user_bets)
         await interaction.response.send_message(
-            f"💰 {user.mention} bet **{bet_amount:,.2f} Wellcoins** on **{tribute_data['name']}**!")
+            f"💰 {user.mention} bet **{bet_amount:,.2f} Golds** on **{tribute_data['name']}**!")
 
     @place_bet.autocomplete("tribute")
     async def tribute_autocomplete(self, interaction: Interaction, current: str):
@@ -1940,7 +1940,7 @@ class EventHungar(commands.Cog):
             wb = await self.config_gold.user_from_id(int(winner_id)).master_balance()
             wb += winner_bonus
             await self.config_gold.user_from_id(int(winner_id)).master_balance.set(wb)
-            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** (half of the pot)!")
+            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} Golds** (half of the pot)!")
     
         # Update kill counts for non-NPCs
         for pid, pdata in players.items():
@@ -1955,7 +1955,7 @@ class EventHungar(commands.Cog):
         file = "Hunger_Games.txt"
         async with aiofiles.open(file, mode="a") as f:
             if winner is not None and winner_bonus > 0 and not winner.get("is_npc", False):
-                await f.write(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** from the bets placed on them!\n")
+                await f.write(f"💰 {winner['name']} receives **{winner_bonus} Golds** from the bets placed on them!\n")
     
         # Replace mentions with nicknames in the file (best-effort)
         try:
@@ -2467,14 +2467,14 @@ class EventHungar(commands.Cog):
         await ctx.send(embed=embed, ephemeral=True)
     
     @hunger.command()
-    async def check_wellcoins(self, ctx):
-        """Check your current wellcoins."""
+    async def check_Golds(self, ctx):
+        """Check your current Golds."""
         user_gold = await self.config_gold.user(ctx.author).master_balance()
-        await ctx.send(f"{ctx.author.mention}, you currently have {user_gold} Wellcoins.")
+        await ctx.send(f"{ctx.author.mention}, you currently have {user_gold} Golds.")
 
     @hunger.command()
     async def leaderboard(self, ctx):
-        """Display leaderboards for total kills and Wellcoins."""
+        """Display leaderboards for total kills and Golds."""
         all_users = await self.config.all_users()
         guild_config = await self.config.guild(ctx.guild).all()
         
@@ -2520,7 +2520,7 @@ class EventHungar(commands.Cog):
     @hunger.command()
     @commands.admin()
     async def reset_leaderboard(self, ctx):
-        """Reset all user kill counts and Wellcoins."""
+        """Reset all user kill counts and Golds."""
         all_users = await self.config.all_users()
         for user_id in all_users:
             await self.config.user_from_id(int(user_id)).kill_count.set(0)
@@ -2540,7 +2540,7 @@ class EventHungar(commands.Cog):
             name="1. Sign Up",
             value=(
                 "Use the `!hunger signup` command to join the game. "
-                "You'll be assigned to a random district and given stats like Strength, Defense, Wisdom, Constitution, and HP. Your family is also sent 100 Wellcoins pre-bereavement gift."
+                "You'll be assigned to a random district and given stats like Strength, Defense, Wisdom, Constitution, and HP. Your family is also sent 100 Golds pre-bereavement gift."
             ),
             inline=False
         )
@@ -2587,7 +2587,7 @@ class EventHungar(commands.Cog):
         embed.add_field(
             name="7. Sponsoring",
             value=(
-                "If you just fall in love with one of the tributes you can spend Wellcoins to help them out, use the sponsor button on any day to send a gift into the arena."
+                "If you just fall in love with one of the tributes you can spend Golds to help them out, use the sponsor button on any day to send a gift into the arena."
             ),
             inline=False
         )
@@ -2710,7 +2710,7 @@ class EventHungar(commands.Cog):
             user_gold = await self.config_gold.user(user).master_balance()
             if user_gold < cost:
                 await interaction.response.send_message(
-                    f"❌ You need at least {cost} Wellcoins to sponsor someone. Your balance: {user_gold}", ephemeral=True
+                    f"❌ You need at least {cost} Golds to sponsor someone. Your balance: {user_gold}", ephemeral=True
                 )
                 return
     
@@ -2724,7 +2724,7 @@ class EventHungar(commands.Cog):
             await self.config.guild(guild).players.set(players)
     
             await interaction.response.send_message(
-                f"🎁 **{user.display_name}** sponsored **{tribute_data['name']}** with **+{boost} {stat}** for **{cost} Wellcoins!**",
+                f"🎁 **{user.display_name}** sponsored **{tribute_data['name']}** with **+{boost} {stat}** for **{cost} Golds!**",
                 ephemeral=False
             )
     
