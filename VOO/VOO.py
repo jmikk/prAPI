@@ -461,7 +461,10 @@ class VOO(commands.Cog):
         # --- END LOGGING LOGIC ---
         if not is_founding_present:
             return
-        
+
+        if re.search(r"\d+$", nation_clean):
+            return
+            
         if re.search(r"\s+(?:I{1,3}|IV|V|VI{0,3}|IX|X{1,3})$", nation_clean):
             return
         
