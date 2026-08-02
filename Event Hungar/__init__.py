@@ -1,4 +1,4 @@
-from .Hungar import Hungar
+from .EventHungar import Hungar
 
 
 async def setup(bot):
