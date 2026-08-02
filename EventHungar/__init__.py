@@ -1,5 +1,5 @@
-from .Hungar import Hungar
+from .EventHungar import EventHungar
 
 
 async def setup(bot):
-    await bot.add_cog(Hungar(bot))
+    await bot.add_cog(EventHungar(bot))
