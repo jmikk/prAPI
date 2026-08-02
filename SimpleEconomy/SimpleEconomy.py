@@ -122,6 +122,17 @@ class SimpleEconomy(commands.Cog):
         f"Set **{target.display_name}'s** master_balance to **{amount} gold**."
     )
 
+  @seconset.command(name="resetall")
+  @commands.is_owner()
+  async def seconset_resetall(self, ctx: commands.Context):
+    """Fully reset and wipe every config attached to this cog (Global/Guild/User data)."""
+    await self.config.clear_all()
+    await self.config_gold.clear_all()
+    await ctx.send(
+        "⚠️ **All configurations and user balances** for SimpleEconomy have"
+        " been completely wiped and reset to default."
+    )
+
   @seconset.command(name="settings")
   async def seconset_settings(self, ctx: commands.Context):
     """View current SimpleEconomy settings."""
@@ -142,9 +153,7 @@ class SimpleEconomy(commands.Cog):
         color=discord.Color.blue(),
         timestamp=ctx.message.created_at,
     )
-    embed.add_field(
-        name="System Status", value=status, inline=False
-    )
+    embed.add_field(name="System Status", value=status, inline=False)
     embed.add_field(
         name="Payout Per Message",
         value=f"{data['payout_amount']} gold",
