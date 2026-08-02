@@ -7,7 +7,7 @@ class SimpleEconomy(commands.Cog):
 
   def __init__(self, bot):
     self.bot = bot
-    # Guild-wide settings (toggles, payouts, blacklist)
+    # Guild-wide settings (toggles, payouts, blacklist, starting balance)
     self.config = Config.get_conf(
         self, identifier=9876543210, force_registration=True
     )
@@ -19,15 +19,23 @@ class SimpleEconomy(commands.Cog):
     default_guild = {
         "master_balance": True,  # Toggle for enabling/disabling the payout system
         "payout_amount": 5.0,  # Amount of currency given per message
+        "starting_balance": 0.0,  # Default balance given to users when initialized
         "blacklisted_channels": [],  # List of channel IDs excluded from payouts
     }
 
     default_user = {
-        "master_balance": 0.0,  # User's balance stored in their config
+        "master_balance": None,  # Will use starting_balance if None
     }
 
     self.config.register_guild(**default_guild)
     self.config_gold.register_user(**default_user)
+
+  async def get_user_balance(self, guild: discord.Guild, user: discord.abc.User) -> float:
+    """Helper to fetch balance, falling back to guild starting balance if uninitialized."""
+    bal = await self.config_gold.user(user).master_balance()
+    if bal is None:
+      bal = await self.config.guild(guild).starting_balance()
+    return bal
 
   @commands.Cog.listener()
   async def on_message_without_command(self, message: discord.Message):
@@ -50,8 +58,8 @@ class SimpleEconomy(commands.Cog):
     # Fetch payout amount and add to the user's config master_balance
     amount = await self.config.guild(guild).payout_amount()
     if amount > 0:
-      async with self.config_gold.user(author).master_balance() as balance:
-        balance += amount
+      current_bal = await self.get_user_balance(guild, author)
+      await self.config_gold.user(author).master_balance.set(current_bal + amount)
 
   # --- Balance Command ---
 
@@ -61,7 +69,7 @@ class SimpleEconomy(commands.Cog):
   ):
     """Check your or another user's balance."""
     target = target or ctx.author
-    bal = await self.config_gold.user(target).master_balance()
+    bal = await self.get_user_balance(ctx.guild, target)
     await ctx.send(f"**{target.display_name}'s** Balance: **{bal}** gold")
 
   # --- Administration & Adjustment Commands ---
@@ -93,6 +101,15 @@ class SimpleEconomy(commands.Cog):
     await self.config.guild(ctx.guild).payout_amount.set(amount)
     await ctx.send(f"Per-message payout amount updated to **{amount} gold**.")
 
+  @seconset.command(name="startingbal")
+  async def seconset_startingbal(self, ctx: commands.Context, amount: float):
+    """Set the default starting balance for users."""
+    if amount < 0:
+      await ctx.send("Starting balance cannot be negative.")
+      return
+    await self.config.guild(ctx.guild).starting_balance.set(amount)
+    await ctx.send(f"Default starting balance updated to **{amount} gold**.")
+
   @seconset.command(name="blacklist")
   async def seconset_blacklist(
       self, ctx: commands.Context, channel: discord.TextChannel
@@ -122,16 +139,84 @@ class SimpleEconomy(commands.Cog):
         f"Set **{target.display_name}'s** master_balance to **{amount} gold**."
     )
 
+  @seconset.command(name="pay")
+  @commands.admin_or_permissions(manage_guild=True)
+  async def seconset_pay(
+      self, ctx: commands.Context, target: str, amount: float
+  ):
+    """Pay an individual user or the entire server ('all') a specific amount of gold."""
+    if amount <= 0:
+      await ctx.send("Payout amount must be greater than zero.")
+      return
+
+    if target.lower() == "all":
+      async with ctx.typing():
+        for member in ctx.guild.members:
+          if member.bot:
+            continue
+          current_bal = await self.get_user_balance(ctx.guild, member)
+          await self.config_gold.user(member).master_balance.set(current_bal + amount)
+      await ctx.send(f"Successfully paid **{amount} gold** to all non-bot members in the server!")
+    else:
+      converter = commands.MemberConverter()
+      try:
+        member = await converter.convert(ctx, target)
+      except commands.BadArgument:
+        await ctx.send("Could not find that member. Use a mention/ID or type `all`.")
+        return
+
+      current_bal = await self.get_user_balance(ctx.guild, member)
+      await self.config_gold.user(member).master_balance.set(current_bal + amount)
+      await ctx.send(f"Successfully paid **{amount} gold** to **{member.display_name}**.")
+
   @seconset.command(name="resetall")
   @commands.is_owner()
   async def seconset_resetall(self, ctx: commands.Context):
-    """Fully reset and wipe every config attached to this cog (Global/Guild/User data)."""
-    await self.config.clear_all()
-    await self.config_gold.clear_all()
-    await ctx.send(
-        "⚠️ **All configurations and user balances** for SimpleEconomy have"
-        " been completely wiped and reset to default."
+    """Fully reset and wipe ALL configuration datasets the bot has access to."""
+    class ConfirmView(discord.ui.View):
+      def __init__(self, author: discord.User):
+        super().__init__(timeout=30)
+        self.value = None
+        self.author = author
+
+      @discord.ui.button(label="Confirm Wipe", style=discord.ButtonStyle.danger)
+      async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.author:
+          await interaction.response.send_message("This isn't your confirmation prompt.", ephemeral=True)
+          return
+        self.value = True
+        self.stop()
+
+      @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+      async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.author:
+          await interaction.response.send_message("This isn't your confirmation prompt.", ephemeral=True)
+          return
+        self.value = False
+        self.stop()
+
+    view = ConfirmView(ctx.author)
+    msg = await ctx.send(
+        "⚠️ **DANGER:** You are about to completely wipe **EVERY** config database "
+        "attached to this entire bot across all cogs! This action is irreversible.\n"
+        "Do you want to proceed?",
+        view=view
     )
+
+    await view.wait()
+
+    try:
+      await msg.edit(view=None)
+    except discord.HTTPException:
+      pass
+
+    if view.value is True:
+      async with ctx.typing():
+        # Clears every single config namespace the bot utilizes globally across drivers
+        await Config._driver.clear_all()
+      await ctx.send("🚨 **Complete Bot Wipe Executed:** All configurations and database entries across the bot have been entirely wiped.")
+    else:
+      await ctx.send("Reset operation cancelled.")
 
   @seconset.command(name="settings")
   async def seconset_settings(self, ctx: commands.Context):
@@ -157,6 +242,11 @@ class SimpleEconomy(commands.Cog):
     embed.add_field(
         name="Payout Per Message",
         value=f"{data['payout_amount']} gold",
+        inline=False,
+    )
+    embed.add_field(
+        name="Starting Balance",
+        value=f"{data['starting_balance']} gold",
         inline=False,
     )
     embed.add_field(
