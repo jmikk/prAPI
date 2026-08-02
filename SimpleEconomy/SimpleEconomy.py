@@ -172,7 +172,7 @@ class SimpleEconomy(commands.Cog):
   @seconset.command(name="resetall")
   @commands.is_owner()
   async def seconset_resetall(self, ctx: commands.Context):
-    """Fully reset and wipe ALL configuration datasets the bot has access to."""
+    """Fully reset and wipe all configuration datasets associated with this cog."""
     class ConfirmView(discord.ui.View):
       def __init__(self, author: discord.User):
         super().__init__(timeout=30)
@@ -197,8 +197,8 @@ class SimpleEconomy(commands.Cog):
 
     view = ConfirmView(ctx.author)
     msg = await ctx.send(
-        "⚠️ **DANGER:** You are about to completely wipe **EVERY** config database "
-        "attached to this entire bot across all cogs! This action is irreversible.\n"
+        "⚠️ **DANGER:** You are about to completely wipe all configuration datasets "
+        "and user balances handled by this cog! This action is irreversible.\n"
         "Do you want to proceed?",
         view=view
     )
@@ -212,9 +212,9 @@ class SimpleEconomy(commands.Cog):
 
     if view.value is True:
       async with ctx.typing():
-        # Clears every single config namespace the bot utilizes globally across drivers
-        await Config._driver.clear_all()
-      await ctx.send("🚨 **Complete Bot Wipe Executed:** All configurations and database entries across the bot have been entirely wiped.")
+        await self.config.clear_all()
+        await self.config_gold.clear_all()
+      await ctx.send("🚨 **Reset Complete:** All configurations and user balances for this cog have been successfully wiped.")
     else:
       await ctx.send("Reset operation cancelled.")
 
