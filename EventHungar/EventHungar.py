@@ -1003,7 +1003,7 @@ class ZoneSelect(Select):
         )
 
 
-class Hungar(commands.Cog):
+class EventHungar(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=1234567890)
