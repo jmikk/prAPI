@@ -243,7 +243,7 @@ class NexusCards(commands.Cog):
 
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
         root, _ = await self._ns_request(url, ctx=ctx)
-        await ctx.send(url)
+
         owners = [o.text.lower() for o in root.findall(".//OWNER")]
         if "9005" in owners:        
             found_in = "9005"
@@ -257,6 +257,7 @@ class NexusCards(commands.Cog):
                 locked_cards = await giveaway_cog.get_all_locked_cards()
                 
                 card_key = f"{card_id}_{season}"
+                await ctx.send(locked_cards)
                 if card_key in locked_cards:
                     # Stop or skip the card because it's locked by the giveaway system!
                     return await ctx.send("⚠️ This card is currently claimed or tied up in an active giveaway.")
