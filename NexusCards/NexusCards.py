@@ -243,7 +243,7 @@ class NexusCards(commands.Cog):
 
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
         root, _ = await self._ns_request(url, ctx=ctx)
-        await ctx.send(root.text)
+        await ctx.send(url)
         owners = [o.text.lower() for o in root.findall(".//OWNER")]
         if "9005" in owners:        
             found_in = "9005"
