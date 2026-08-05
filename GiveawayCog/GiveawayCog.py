@@ -14,7 +14,7 @@ class GiveawayCog(commands.Cog):
         self.config = Config.get_conf(self, identifier=9006)
         self.config.register_guild(giveaway_channel=None, log_channel=None,scheduled_giveaways=[],nationname=None, password=None,hostrole=None)
         self.config.register_user(wins=[])
-        self.config.register_global( claimed_cards=[], active_giveaways=[])
+        self.config.register_global(claimed_cards=[], active_giveaways=[])
         self.session = aiohttp.ClientSession()
         self.giveaway_tasks = {}
         #self.scheduler.start()
@@ -156,6 +156,19 @@ class GiveawayCog(commands.Cog):
         embed.add_field(name="Claimed Cards", value=str(claimed) or "None", inline=False)
         embed.add_field(name="Active Giveaways", value=str(giveaways) or "None", inline=False)
         await ctx.send(embed=embed)
+
+    async def get_all_locked_cards(self, guild: discord.guild = None) -> set:
+        """
+        Returns a set of all card keys ('cardid_season') that are currently
+        either claimed or involved in an active giveaway.
+        Can be used externally by other cogs.
+        """
+        claimed = await self.config.claimed_cards()
+        active = await self.config.active_giveaways()
+        
+        # Combine both lists into a set to ensure uniqueness and fast lookup
+        locked_cards = set(claimed).union(set(active))
+        return locked_cards
 
     @commands.command()
     async def showwins(self, ctx):
