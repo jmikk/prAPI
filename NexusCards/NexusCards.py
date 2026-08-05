@@ -255,9 +255,9 @@ class NexusCards(commands.Cog):
             
             if giveaway_cog:
                 locked_cards = await giveaway_cog.get_all_locked_cards()
-                
+                for item in locked_cards:
+                    await ctx.send(item)
                 card_key = f"{card_id}_{season}"
-                await ctx.send(locked_cards)
                 if card_key in locked_cards:
                     # Stop or skip the card because it's locked by the giveaway system!
                     return await ctx.send("⚠️ This card is currently claimed or tied up in an active giveaway.")
