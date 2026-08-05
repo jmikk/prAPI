@@ -247,8 +247,19 @@ class NexusCards(commands.Cog):
         if "9005" in owners:        
             found_in = "9005"
             card_data = root
+        
         elif "the_phoenix_of_the_spring" in owners:
-            return await ctx.send("This card is on the_phoenix_of_the_spring but the good news is 9005 can move it for you as long as it is not part of a giveaway.")
+            # Inside another cog or command:
+            giveaway_cog = self.bot.get_cog("GiveawayCog")
+            
+            if giveaway_cog:
+                locked_cards = await giveaway_cog.get_all_locked_cards()
+                
+                card_key = f"{card_id}_{season}"
+                if card_key in locked_cards:
+                    # Stop or skip the card because it's locked by the giveaway system!
+                    return await ctx.send("⚠️ This card is currently claimed or tied up in an active giveaway.")
+            
         else: 
             return await ctx.send("Legendary not found in stockpiles. Check out 9005 and The Phoenix of the Spring's deck for the cards you can claim")
 
