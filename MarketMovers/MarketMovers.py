@@ -4,15 +4,12 @@ import xml.etree.ElementTree as ET
 import aiohttp
 import discord
 from redbot.core import Config, commands
-from redbot.core.utils.chat_formatting import pagify
-from redbot.core.utils.menus import menu, controls
-from redbot.core.bot import Red
 from discord.ext import tasks
 
 class MarketMovers(commands.Cog):
     """Tracks NationStates card market activity for a competitive leaderboard."""
 
-    def __init__(self, bot: Red):
+    def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=9876543210, force_registration=True)
         
@@ -74,7 +71,6 @@ class MarketMovers(commands.Cog):
                     break
                 
                 oldest_timestamp = None
-                batch_valid = 0
                 
                 for trade in trades:
                     ts_el = trade.find("TIMESTAMP")
@@ -112,8 +108,6 @@ class MarketMovers(commands.Cog):
                         unique_participation_set.add((buyer.text.strip().lower(), c_id, s_id))
                     if seller is not None and seller.text:
                         unique_participation_set.add((seller.text.strip().lower(), c_id, s_id))
-                        
-                    batch_valid += 1
                     
                 if not oldest_timestamp or oldest_timestamp >= current_beforetime:
                     break
@@ -144,7 +138,7 @@ class MarketMovers(commands.Cog):
         hard_stop = await self.config.hard_stop_time()
         
         if not cached_scores:
-            await ctx.send("Leaderboard data is currently compiling or empty. Try forcing an update.")
+            await ctx.send("Leaderboard data is currently compiling or empty. Try forcing an update using `[p]marketmovers refresh`.")
             return
             
         embed = discord.Embed(
@@ -208,5 +202,5 @@ class MarketMovers(commands.Cog):
         await self.update_leaderboard_cache()
 
 
-def setup(bot: Red):
+def setup(bot):
     bot.add_cog(MarketMovers(bot))
