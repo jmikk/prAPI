@@ -783,7 +783,7 @@ class VOO(commands.Cog):
     async def clear_queue(self, ctx: commands.Context):
         """Keep only the first 100 elements in the global shared queue and drop the rest."""
         queue = await self.config.shared_queue()
-        await self.config.shared_queue.set(queue[:100])
+        await self.config.shared_queue.set(queue[100:])
         await self._refresh_all_embeds()
         await ctx.send("Global shared queue trimmed to the first 100 elements.")
 
