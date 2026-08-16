@@ -4,7 +4,6 @@ import xml.etree.ElementTree as ET
 import aiohttp
 import discord
 from redbot.core import Config, commands
-from discord.ext import tasks
 
 class MarketMovers(commands.Cog):
     """Tracks NationStates card market activity for a competitive leaderboard."""
@@ -19,21 +18,6 @@ class MarketMovers(commands.Cog):
             "cached_leaderboard": []
         }
         self.config.register_global(**default_global)
-        
-        # Start the background task loop to run once a day
-        self.daily_market_sync.start()
-
-    def cog_unload(self):
-        self.daily_market_sync.cancel()
-
-    @tasks.loop(hours=24)
-    async def daily_market_sync(self):
-        """Background loop executing once daily to refresh trade data."""
-        await self.update_leaderboard_cache()
-
-    @daily_market_sync.before_loop
-    async def before_daily_sync(self):
-        await self.bot.wait_until_ready()
 
     async def update_leaderboard_cache(self):
         hard_stop = await self.config.hard_stop_time()
@@ -48,7 +32,7 @@ class MarketMovers(commands.Cog):
         
         async with aiohttp.ClientSession() as session:
             page_count = 0
-            while page_count < 25:  # Safety cap for automation
+            while page_count < 25:  # Safety cap
                 page_count += 1
                 url = f"{base_url};limit=1000;beforetime={current_beforetime}"
                 
@@ -138,7 +122,7 @@ class MarketMovers(commands.Cog):
         hard_stop = await self.config.hard_stop_time()
         
         if not cached_scores:
-            await ctx.send("Leaderboard data is currently compiling or empty. Try forcing an update using `[p]marketmovers refresh`.")
+            await ctx.send("Leaderboard data is currently empty. Run `[p]marketmovers refresh` to generate it.")
             return
             
         embed = discord.Embed(
@@ -187,7 +171,6 @@ class MarketMovers(commands.Cog):
                 return
             nations.append(cleaned)
         await ctx.send(f"✅ Added `{nation_name}` to the Market Movers competition!")
-        await self.update_leaderboard_cache()
 
     @mm_nations.command(name="remove")
     async def nations_remove(self, ctx, nation_name: str):
@@ -199,8 +182,8 @@ class MarketMovers(commands.Cog):
                 return
             nations.remove(cleaned)
         await ctx.send(f"🗑️ Removed `{nation_name}` from the competition.")
-        await self.update_leaderboard_cache()
 
 
 def setup(bot):
+    # Must be synchronous (no await)
     bot.add_cog(MarketMovers(bot))
