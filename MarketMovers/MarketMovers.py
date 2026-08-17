@@ -113,6 +113,7 @@ class MarketMovers(commands.Cog):
         await self.config.set_raw("last_updated", value=int(time.time()))
 
     @commands.group()
+    @commands.is_owner()
     async def marketmovers(self, ctx):
         """Market Movers competition management commands."""
         pass
