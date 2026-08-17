@@ -14,7 +14,7 @@ class MarketMovers(commands.Cog):
         
         default_global = {
             "hard_stop_time": 0,  # 0 means all history, or a unix timestamp
-            "target_nations": ["neptunian_military_administration", "eswaria", "vulxo"],
+            "target_nations": [],
             "cached_leaderboard": []
         }
         self.config.register_global(**default_global)
