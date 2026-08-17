@@ -14,8 +14,9 @@ class MarketMovers(commands.Cog):
         
         default_global = {
             "hard_stop_time": 0,  # 0 means all history, or a unix timestamp
-            "target_nations": [],
-            "cached_leaderboard": []
+            "target_nations": ["neptunian_military_administration", "eswaria", "vulxo"],
+            "cached_leaderboard": [],
+            "last_updated": 0     # Tracks epoch time of the last successful refresh
         }
         self.config.register_global(**default_global)
 
@@ -107,8 +108,9 @@ class MarketMovers(commands.Cog):
         scores = {n: tallies[n.strip().lower()] for n in nations}
         sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         
-        # Save cache
+        # Save cache and timestamp
         await self.config.set_raw("cached_leaderboard", value=sorted_scores)
+        await self.config.set_raw("last_updated", value=int(time.time()))
 
     @commands.group()
     async def marketmovers(self, ctx):
@@ -120,6 +122,7 @@ class MarketMovers(commands.Cog):
         """Displays the fancy embed leaderboard for Market Movers."""
         cached_scores = await self.config.get_raw("cached_leaderboard")
         hard_stop = await self.config.hard_stop_time()
+        last_updated = await self.config.get_raw("last_updated")
         
         if not cached_scores:
             await ctx.send("Leaderboard data is currently empty. Run `[p]marketmovers refresh` to generate it.")
@@ -139,7 +142,49 @@ class MarketMovers(commands.Cog):
             leaderboard_text += f"{icon} **{nation}** — `{score}` unique trades\n"
             
         embed.add_field(name="Standings", value=leaderboard_text or "No data available.", inline=False)
-        embed.set_footer(text=f"Time Horizon Boundary Filter: {'None (All time)' if hard_stop == 0 else f'< timestamp {hard_stop}>'}")
+        
+        time_display = f"Never updated" if last_updated == 0 else f"Updated <t:{last_updated}:R>"
+        filter_display = "None (All time)" if hard_stop == 0 else f"< timestamp {hard_stop}>"
+        embed.set_footer(text=f"{time_display} • Time Filter: {filter_display}")
+        
+        await ctx.send(embed=embed)
+
+    @marketmovers.command(name="score")
+    async def mm_score(self, ctx, *, nation_name: str):
+        """Looks up a specific nation's trade score and current rank."""
+        cached_scores = await self.config.get_raw("cached_leaderboard")
+        cleaned_target = nation_name.strip().lower()
+        
+        if not cached_scores:
+            await ctx.send("Leaderboard cache is empty. Run `[p]marketmovers refresh` first.")
+            return
+            
+        found_nation = None
+        found_rank = None
+        found_score = 0
+        
+        for idx, (nation, score) in enumerate(cached_scores, start=1):
+            if nation.lower() == cleaned_target:
+                found_nation = nation
+                found_rank = idx
+                found_score = score
+                break
+                
+        if not found_nation:
+            # Check if it's in target nations at all
+            nations = await self.config.target_nations()
+            if cleaned_target not in [n.lower() for n in nations]:
+                await ctx.send(f"⚠️ `{nation_name}` is not currently on the competing nations roster.")
+            else:
+                await ctx.send(f"⚠️ `{nation_name}` is on the roster, but has `0` recorded trades in the current cache. Try running `[p]marketmovers refresh`.")
+            return
+            
+        embed = discord.Embed(
+            title=f"📊 Score Lookup: {found_nation}",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Rank", value=f"#{found_rank}", inline=True)
+        embed.add_field(name="Unique Trades", value=str(found_score), inline=True)
         
         await ctx.send(embed=embed)
 
@@ -161,8 +206,25 @@ class MarketMovers(commands.Cog):
         """Manage competing nations on the leaderboard."""
         pass
 
+    @mm_nations.command(name="list")
+    async def nations_list(self, ctx):
+        """Lists all nations currently participating in the competition."""
+        nations = await self.config.target_nations()
+        
+        if not nations:
+            await ctx.send("There are currently no nations on the competition roster.")
+            return
+            
+        embed = discord.Embed(
+            title="📋 Participating Nations Roster",
+            description="\n".join([f"• `{n}`" for n in sorted(nations)]),
+            color=discord.Color.green()
+        )
+        embed.set_footer(text=f"Total competitors: {len(nations)}")
+        await ctx.send(embed=embed)
+
     @mm_nations.command(name="add")
-    async def nations_add(self, ctx, nation_name: str):
+    async def nations_add(self, ctx, *, nation_name: str):
         """Add a nation to the competition lineup."""
         async with self.config.target_nations() as nations:
             cleaned = nation_name.strip().lower()
@@ -173,7 +235,7 @@ class MarketMovers(commands.Cog):
         await ctx.send(f"✅ Added `{nation_name}` to the Market Movers competition!")
 
     @mm_nations.command(name="remove")
-    async def nations_remove(self, ctx, nation_name: str):
+    async def nations_remove(self, ctx, *, nation_name: str):
         """Remove a nation from the competition lineup."""
         async with self.config.target_nations() as nations:
             cleaned = nation_name.strip().lower()
@@ -182,8 +244,3 @@ class MarketMovers(commands.Cog):
                 return
             nations.remove(cleaned)
         await ctx.send(f"🗑️ Removed `{nation_name}` from the competition.")
-
-
-def setup(bot):
-    # Must be synchronous (no await)
-    bot.add_cog(MarketMovers(bot))
