@@ -151,11 +151,11 @@ class MarketMovers(commands.Cog):
 
     @marketmovers.command(name="dump")
     async def mm_dump(self, ctx):
-        """Dumps the raw leaderboard text inside a code block for copying."""
+        """Dumps the final leaderboard text and deletes the cached data."""
         cached_scores = await self.config.get_raw("cached_leaderboard")
         
         if not cached_scores:
-            await ctx.send("Leaderboard data is currently empty. Run `[p]marketmovers refresh` first.")
+            await ctx.send("⚠️ The leaderboard cache is already empty.")
             return
             
         dump_lines = ["Rank | Nation | Unique Trades", "-" * 35]
@@ -164,12 +164,15 @@ class MarketMovers(commands.Cog):
             
         full_dump = "\n".join(dump_lines)
         
-        # If the text is too long, output it split safely or as a code block
         if len(full_dump) > 1900:
-            await ctx.send("The dump is too long to send in a single message. Try checking individual scores.")
+            await ctx.send("The dump is too long to output safely in a single message.")
             return
             
-        await ctx.send(f"```text\n{full_dump}\n```")
+        # Clear out (delete) the cached leaderboard and timestamp
+        await self.config.set_raw("cached_leaderboard", value=[])
+        await self.config.set_raw("last_updated", value=0)
+        
+        await ctx.send(f"🗑️ Leaderboard data exported and successfully **deleted** from cache:\n```text\n{full_dump}\n```")
 
     @marketmovers.command(name="score")
     async def mm_score(self, ctx, *, nation_name: str):
