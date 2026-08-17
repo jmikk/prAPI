@@ -149,6 +149,28 @@ class MarketMovers(commands.Cog):
         
         await ctx.send(embed=embed)
 
+    @marketmovers.command(name="dump")
+    async def mm_dump(self, ctx):
+        """Dumps the raw leaderboard text inside a code block for copying."""
+        cached_scores = await self.config.get_raw("cached_leaderboard")
+        
+        if not cached_scores:
+            await ctx.send("Leaderboard data is currently empty. Run `[p]marketmovers refresh` first.")
+            return
+            
+        dump_lines = ["Rank | Nation | Unique Trades", "-" * 35]
+        for idx, (nation, score) in enumerate(cached_scores, start=1):
+            dump_lines.append(f"{idx:<4} | {nation:<20} | {score}")
+            
+        full_dump = "\n".join(dump_lines)
+        
+        # If the text is too long, output it split safely or as a code block
+        if len(full_dump) > 1900:
+            await ctx.send("The dump is too long to send in a single message. Try checking individual scores.")
+            return
+            
+        await ctx.send(f"```text\n{full_dump}\n```")
+
     @marketmovers.command(name="score")
     async def mm_score(self, ctx, *, nation_name: str):
         """Looks up a specific nation's trade score and current rank."""
@@ -171,7 +193,6 @@ class MarketMovers(commands.Cog):
                 break
                 
         if not found_nation:
-            # Check if it's in target nations at all
             nations = await self.config.target_nations()
             if cleaned_target not in [n.lower() for n in nations]:
                 await ctx.send(f"⚠️ `{nation_name}` is not currently on the competing nations roster.")
