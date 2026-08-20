@@ -938,7 +938,6 @@ class VOO(commands.Cog):
 
 
     @commands.command(name="bumpvoo")
-    @checks.admin_or_permissions(manage_guild=True)
     async def bump_voo(self, ctx: commands.Context):
         """Delete and repost the control embed to push it to the bottom."""
         new_msg = await self._bump_control_message(ctx.guild)
