@@ -145,7 +145,7 @@ class StockMarket(commands.Cog):
     def cog_unload(self):
         self.price_updater.cancel()
         
-    @tasks.loop(hours=1)
+    @tasks.loop(hours=8)
     async def price_updater(self):
         self._hourly_start_prices = {}
         async with self.config.stocks() as stocks:
