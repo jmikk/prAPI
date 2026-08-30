@@ -22,6 +22,7 @@ DEFAULT_RANK_MULTIPLIER = 1.0
 BET_SHARE_FACTOR = 5.0
 MIN_SPONSOR_COST = 25
 MAX_SPONSOR_COST = 500000000000
+DISCORD_MESSAGE_SAFE_LIMIT = 1900
 DISCORD_EMBED_SAFE_LIMIT = 5800
 DISCORD_EMBED_TITLE_LIMIT = 256
 DISCORD_EMBED_FIELD_NAME_LIMIT = 256
@@ -1008,7 +1009,7 @@ class ZoneSelect(Select):
         )
 
 
-class EventHungar(commands.Cog):
+class Hungar(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=1234567890)
@@ -1033,6 +1034,10 @@ class EventHungar(commands.Cog):
             bets={},
             kill_count=0,
             zone=""
+        )
+        self.config_gold.register_user(
+            master_balance=0,
+            xp=0
         )
         default_global = {
             "target_run_timestamp": None,
@@ -1327,11 +1332,125 @@ class EventHungar(commands.Cog):
 
         await flush_pending()
 
+    async def _send_day_error_report(self, ctx, error, day_counter):
+        error_name = type(error).__name__
+        message = (
+            f"⚠️ Day {day_counter} hit an error and will be skipped. "
+            f"The game will continue to the next day.\n`{error_name}: {error}`"
+        )
+        await ctx.send(self._discord_trim(message, DISCORD_MESSAGE_SAFE_LIMIT))
+
+        error_details = traceback.format_exc()
+        for start in range(0, len(error_details), DISCORD_MESSAGE_SAFE_LIMIT):
+            chunk = error_details[start:start + DISCORD_MESSAGE_SAFE_LIMIT]
+            await ctx.send(f"```py\n{chunk}\n```")
+
+    def _format_leaderboard_user(self, guild, user_id):
+        member = guild.get_member(int(user_id)) if guild and str(user_id).isdigit() else None
+        if member:
+            return member.mention
+        return f"<@{user_id}>"
+
+    def _format_number(self, value):
+        try:
+            if float(value).is_integer():
+                return f"{int(value):,}"
+            return f"{float(value):,.2f}"
+        except (TypeError, ValueError):
+            return str(value)
+
+    def _build_top_embed(self, guild, economy_users):
+        gold_rows = []
+        xp_rows = []
+
+        for user_id, data in economy_users.items():
+            gold = data.get("master_balance", 0) or 0
+            xp = data.get("xp", 0) or 0
+            if gold > 0:
+                gold_rows.append((user_id, gold))
+            if xp > 0:
+                xp_rows.append((user_id, xp))
+
+        gold_rows.sort(key=lambda row: row[1], reverse=True)
+        xp_rows.sort(key=lambda row: row[1], reverse=True)
+
+        gold_text = "\n".join(
+            f"**{idx}.** {self._format_leaderboard_user(guild, user_id)} — `{self._format_number(gold)}` Golds"
+            for idx, (user_id, gold) in enumerate(gold_rows[:10], start=1)
+        )
+        xp_text = "\n".join(
+            f"**{idx}.** {self._format_leaderboard_user(guild, user_id)} — `{self._format_number(xp)}` EXP"
+            for idx, (user_id, xp) in enumerate(xp_rows[:10], start=1)
+        )
+
+        embed = discord.Embed(
+            title="🏆 Top Players",
+            description="The richest players and highest EXP totals.",
+            color=discord.Color.gold()
+        )
+        embed.add_field(name="💰 Top Golds", value=gold_text or "No Gold data yet.", inline=False)
+        embed.add_field(name="⭐ Top EXP", value=xp_text or "No EXP data yet.", inline=False)
+        return embed
+
+    @commands.command(name="top")
+    @commands.guild_only()
+    async def top_players(self, ctx):
+        """Show the top 10 players by Golds and EXP."""
+        await self._send_top_leaderboard(ctx)
+
+    async def _send_top_leaderboard(self, ctx):
+        economy_users = await self.config_gold.all_users()
+        await ctx.send(embed=self._build_top_embed(ctx.guild, economy_users))
+
+    @commands.command(name="endevent", aliases=["end_event"])
+    @commands.guild_only()
+    @commands.admin()
+    async def end_event(self, ctx):
+        """Convert all positive Golds into EXP and zero those balances."""
+        await self._end_event_conversion(ctx)
+
+    async def _end_event_conversion(self, ctx):
+        economy_users = await self.config_gold.all_users()
+        converted_users = 0
+        converted_total = 0
+
+        for user_id, data in economy_users.items():
+            gold = data.get("master_balance", 0) or 0
+            if gold <= 0:
+                continue
+
+            xp = data.get("xp", 0) or 0
+            await self.config_gold.user_from_id(user_id).xp.set(xp + gold)
+            await self.config_gold.user_from_id(user_id).master_balance.set(0)
+            converted_users += 1
+            converted_total += gold
+            data["xp"] = xp + gold
+            data["master_balance"] = 0
+
+        embed = self._build_top_embed(ctx.guild, economy_users)
+        embed.title = "🏁 Event Ended"
+        embed.description = (
+            f"Converted `{self._format_number(converted_total)}` Golds into EXP "
+            f"for `{converted_users}` players."
+        )
+        await ctx.send(embed=embed)
+
     @commands.guild_only()
     @commands.group()
     async def hunger(self, ctx):
         """Commands for managing the Hunger Games."""
         pass
+
+    @hunger.command(name="top")
+    async def hunger_top_players(self, ctx):
+        """Show the top 10 players by Golds and EXP."""
+        await self._send_top_leaderboard(ctx)
+
+    @hunger.command(name="endevent", aliases=["end_event"])
+    @commands.admin()
+    async def hunger_end_event(self, ctx):
+        """Convert all positive Golds into EXP and zero those balances."""
+        await self._end_event_conversion(ctx)
 
     def _tribute_score(self, p):
         s = p.get("stats", {})
@@ -1792,7 +1911,17 @@ class EventHungar(commands.Cog):
                 day_start = datetime.fromisoformat(config["day_start"])
                 day_duration = timedelta(seconds=config["day_duration"])
                 if datetime.utcnow() - day_start >= day_duration:
-                    await self.process_day(ctx)
+                    previous_day_counter = config.get("day_counter", 0)
+                    try:
+                        await self.process_day(ctx)
+                    except Exception as e:
+                        config = await self.config.guild(guild).all()
+                        current_day_counter = config.get("day_counter", previous_day_counter)
+                        if current_day_counter <= previous_day_counter:
+                            current_day_counter = previous_day_counter + 1
+                            await self.config.guild(guild).day_counter.set(current_day_counter)
+                        await self._send_day_error_report(ctx, e, current_day_counter)
+
                     if await self.isOneLeft(guild):
                         await self.endGame(ctx)
                         break
