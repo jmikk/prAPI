@@ -22,6 +22,11 @@ DEFAULT_RANK_MULTIPLIER = 1.0
 BET_SHARE_FACTOR = 5.0
 MIN_SPONSOR_COST = 25
 MAX_SPONSOR_COST = 500000000000
+DISCORD_EMBED_SAFE_LIMIT = 5800
+DISCORD_EMBED_TITLE_LIMIT = 256
+DISCORD_EMBED_FIELD_NAME_LIMIT = 256
+DISCORD_EMBED_FIELD_VALUE_LIMIT = 1024
+DISCORD_EMBED_FIELD_LIMIT = 25
 
 def calc_sponsor_cost(day: int, score: float, rank: int, bet_share: float) -> int:
     base = 10 + (day * 5) + (score / 2.0)
@@ -153,17 +158,17 @@ class MapButton(Button):
             )
 
 class CheckGoldButton(Button):
-    """Button to display the user's current Golds"""
+    """Button to display the user's current Wellcoins"""
 
     def __init__(self, cog):
-        super().__init__(label="Check Golds", style=discord.ButtonStyle.secondary)
+        super().__init__(label="Check Wellcoins", style=discord.ButtonStyle.secondary)
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
         try:
             user_id = interaction.user
             gold = await self.cog.config_gold.user(user_id).master_balance()
-            await interaction.response.send_message(f"You have {gold:,.2f} Golds.", ephemeral=True)
+            await interaction.response.send_message(f"You have {gold:,.2f} Wellcoins.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {e}", ephemeral=True)
 
@@ -694,12 +699,12 @@ class ViewBidsButton(Button):
                         total_bets += bet_amount
                         member = guild.get_member(int(user_id))
                         display_name = member.nick or member.name if member else f"User {user_id}"
-                        details.append(f"{display_name}: {bet_amount} Golds")
+                        details.append(f"{display_name}: {bet_amount} Wellcoins")
 
                 ai_bets = tribute_bets.get("AI", [])
                 for ai_bet in ai_bets:
                     total_bets += ai_bet["amount"]
-                    details.append(f"{ai_bet['name']}: {ai_bet['amount']} Golds")
+                    details.append(f"{ai_bet['name']}: {ai_bet['amount']} Wellcoins")
 
                 if total_bets > 0:
                     bid_totals[player_id] = total_bets
@@ -724,7 +729,7 @@ class ViewBidsButton(Button):
 
                 all_fields.append({
                     "name": f"#{rank} {tribute_name} (District {district})",
-                    "value": f"Total Bets: {total_bet} Golds\n{details_text}"
+                    "value": f"Total Bets: {total_bet} Wellcoins\n{details_text}"
                 })
 
             if not all_fields:
@@ -1003,7 +1008,7 @@ class ZoneSelect(Select):
         )
 
 
-class EventHungar(commands.Cog):
+class Hungar(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=1234567890)
@@ -1218,6 +1223,110 @@ class EventHungar(commands.Cog):
         except FileNotFoundError:
             return [f"NPC {i+1}" for i in range(100)]  # Fallback if file is missing
 
+    def _discord_trim(self, text, limit):
+        text = str(text)
+        if len(text) <= limit:
+            return text
+        return f"{text[:max(0, limit - 3)]}..."
+
+    def _zone_sort_key(self, zone_name):
+        if zone_name == "Announcements":
+            return (0, zone_name)
+        if zone_name == "Cornucopia":
+            return (2, zone_name)
+        return (1, zone_name)
+
+    def _split_report_line(self, line, limit=DISCORD_EMBED_FIELD_VALUE_LIMIT):
+        line = str(line)
+        if len(line) <= limit:
+            return [line]
+
+        chunks = []
+        remaining = line
+        while remaining:
+            split_at = remaining.rfind(" ", 0, limit)
+            if split_at <= 0:
+                split_at = limit
+            chunks.append(remaining[:split_at].strip())
+            remaining = remaining[split_at:].strip()
+        return chunks
+
+    def _chunk_zone_events(self, events):
+        chunks = []
+        current = ""
+
+        for event in events:
+            for line in self._split_report_line(f"- {event}"):
+                proposed = f"{current}\n{line}" if current else line
+                if len(proposed) > DISCORD_EMBED_FIELD_VALUE_LIMIT:
+                    if current:
+                        chunks.append(current)
+                    current = line
+                else:
+                    current = proposed
+
+        if current:
+            chunks.append(current)
+        return chunks or ["No events reported."]
+
+    def _build_zone_report_embeds(self, zone_name, events):
+        title_base = f"Zone Report: {zone_name}"
+        field_chunks = self._chunk_zone_events(events)
+        embeds = []
+        embed = None
+        embed_total = 0
+
+        for field_number, chunk in enumerate(field_chunks, 1):
+            field_name = "Events" if field_number == 1 else f"Events, continued {field_number}"
+            field_name = self._discord_trim(field_name, DISCORD_EMBED_FIELD_NAME_LIMIT)
+
+            needs_new_embed = (
+                embed is None
+                or len(embed.fields) >= DISCORD_EMBED_FIELD_LIMIT
+                or embed_total + len(field_name) + len(chunk) > DISCORD_EMBED_SAFE_LIMIT
+            )
+
+            if needs_new_embed:
+                title = title_base
+                if embeds:
+                    title = f"{title_base} (continued {len(embeds) + 1})"
+                title = self._discord_trim(title, DISCORD_EMBED_TITLE_LIMIT)
+                embed = discord.Embed(title=title, color=discord.Color.orange())
+                embeds.append(embed)
+                embed_total = len(title)
+
+            embed.add_field(name=field_name, value=chunk, inline=False)
+            embed_total += len(field_name) + len(chunk)
+
+        return embeds
+
+    async def _send_zone_report_embeds(self, ctx, zone_sorted_events, report_file):
+        pending_embeds = []
+
+        async def flush_pending():
+            nonlocal pending_embeds
+            while pending_embeds:
+                await ctx.send(embed=pending_embeds.pop(0))
+
+        for zone_name in sorted(zone_sorted_events.keys(), key=self._zone_sort_key):
+            processed_events = []
+            await report_file.write(f"Zone Report: {zone_name}\n")
+
+            for event in zone_sorted_events[zone_name]:
+                if zone_name == "Distortion Field":
+                    event_words = event.split()
+                    random.shuffle(event_words)
+                    event = " ".join(event_words)
+
+                processed_events.append(event)
+                await report_file.write(f"{event}\n")
+
+            pending_embeds.extend(self._build_zone_report_embeds(zone_name, processed_events))
+
+            await flush_pending()
+
+        await flush_pending()
+
     @commands.guild_only()
     @commands.group()
     async def hunger(self, ctx):
@@ -1277,7 +1386,7 @@ class EventHungar(commands.Cog):
     @app_commands.command(name="placebet", description="Place a bet on a tribute.")
     @app_commands.describe(
         tribute="Choose a living tribute",
-        amount="Amount of Golds to bet (number or 'all')"
+        amount="Amount of Wellcoins to bet (number or 'all')"
     )
     async def place_bet(self, interaction: Interaction, tribute: str, amount: str):
         guild = interaction.guild
@@ -1307,7 +1416,7 @@ class EventHungar(commands.Cog):
 
         if bet_amount <= 0 or bet_amount > user_gold:
             await interaction.response.send_message(
-                f"❌ You don't have enough Golds. Your balance: {user_gold}", ephemeral=True
+                f"❌ You don't have enough Wellcoins. Your balance: {user_gold}", ephemeral=True
             )
             return
 
@@ -1322,7 +1431,7 @@ class EventHungar(commands.Cog):
 
         await self.config.user(user).bets.set(user_bets)
         await interaction.response.send_message(
-            f"💰 {user.mention} bet **{bet_amount:,.2f} Golds** on **{tribute_data['name']}**!")
+            f"💰 {user.mention} bet **{bet_amount:,.2f} Wellcoins** on **{tribute_data['name']}**!")
 
     @place_bet.autocomplete("tribute")
     async def tribute_autocomplete(self, interaction: Interaction, current: str):
@@ -1706,7 +1815,7 @@ class EventHungar(commands.Cog):
 
     async def announce_new_day(self, ctx, guild):
         """Announce the start of a new day and ping alive players."""
-        await ctx.send("https://i.imgur.com/QBQ6W0u.jpeg")
+        await ctx.send("https://i.imgur.com/gtCA6wO.png")
         config = await self.config.guild(guild).all()
         players = config["players"]
         current_day = config.get("day_counter", -1)
@@ -1940,7 +2049,7 @@ class EventHungar(commands.Cog):
             wb = await self.config_gold.user_from_id(int(winner_id)).master_balance()
             wb += winner_bonus
             await self.config_gold.user_from_id(int(winner_id)).master_balance.set(wb)
-            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} Golds** (half of the pot)!")
+            await ctx.send(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** (half of the pot)!")
     
         # Update kill counts for non-NPCs
         for pid, pdata in players.items():
@@ -1955,7 +2064,7 @@ class EventHungar(commands.Cog):
         file = "Hunger_Games.txt"
         async with aiofiles.open(file, mode="a") as f:
             if winner is not None and winner_bonus > 0 and not winner.get("is_npc", False):
-                await f.write(f"💰 {winner['name']} receives **{winner_bonus} Golds** from the bets placed on them!\n")
+                await f.write(f"💰 {winner['name']} receives **{winner_bonus} Wellcoins** from the bets placed on them!\n")
     
         # Replace mentions with nicknames in the file (best-effort)
         try:
@@ -2362,30 +2471,9 @@ class EventHungar(commands.Cog):
                 zone_sorted_events.setdefault(zone_name, []).append(line)
 
             file = "Hunger_Games.txt"
-            # Sort so Announcements is always last
+            # Sort reports in a predictable order.
             async with aiofiles.open(file, mode="a") as f:
-                def zone_sort_key(z):
-                    if z == "Announcements":
-                        return (0, z)
-                    elif z == "Cornucopia":
-                        return (2, z)
-                    return (1, z)
-                    
-#                for zone_name in sorted(zone_sorted_events.keys(), key=lambda z: (z == "Announcements", z)):
-
-                for zone_name in sorted(zone_sorted_events.keys(), key=zone_sort_key):
-                    await ctx.send(f"# __**Zone Report: {zone_name}**__")
-                    await f.write(f"Zone Report: {zone_name}\n")
-
-            
-                    for event in zone_sorted_events[zone_name]:
-                        if zone_name == "Distortion Field":
-                            event_words = event.split()
-                            random.shuffle(event_words)
-                            event = ' '.join(event_words)
-            
-                        await ctx.send(event)
-                        await f.write(event)
+                await self._send_zone_report_embeds(ctx, zone_sorted_events, f)
 
         else:
             await ctx.send("The day passed quietly.")
@@ -2467,14 +2555,14 @@ class EventHungar(commands.Cog):
         await ctx.send(embed=embed, ephemeral=True)
     
     @hunger.command()
-    async def check_Golds(self, ctx):
-        """Check your current Golds."""
+    async def check_wellcoins(self, ctx):
+        """Check your current wellcoins."""
         user_gold = await self.config_gold.user(ctx.author).master_balance()
-        await ctx.send(f"{ctx.author.mention}, you currently have {user_gold} Golds.")
+        await ctx.send(f"{ctx.author.mention}, you currently have {user_gold} Wellcoins.")
 
     @hunger.command()
     async def leaderboard(self, ctx):
-        """Display leaderboards for total kills and Golds."""
+        """Display leaderboards for total kills and Wellcoins."""
         all_users = await self.config.all_users()
         guild_config = await self.config.guild(ctx.guild).all()
         
@@ -2520,7 +2608,7 @@ class EventHungar(commands.Cog):
     @hunger.command()
     @commands.admin()
     async def reset_leaderboard(self, ctx):
-        """Reset all user kill counts and Golds."""
+        """Reset all user kill counts and Wellcoins."""
         all_users = await self.config.all_users()
         for user_id in all_users:
             await self.config.user_from_id(int(user_id)).kill_count.set(0)
@@ -2540,7 +2628,7 @@ class EventHungar(commands.Cog):
             name="1. Sign Up",
             value=(
                 "Use the `!hunger signup` command to join the game. "
-                "You'll be assigned to a random district and given stats like Strength, Defense, Wisdom, Constitution, and HP. Your family is also sent 100 Golds pre-bereavement gift."
+                "You'll be assigned to a random district and given stats like Strength, Defense, Wisdom, Constitution, and HP. Your family is also sent 100 Wellcoins pre-bereavement gift."
             ),
             inline=False
         )
@@ -2587,7 +2675,7 @@ class EventHungar(commands.Cog):
         embed.add_field(
             name="7. Sponsoring",
             value=(
-                "If you just fall in love with one of the tributes you can spend Golds to help them out, use the sponsor button on any day to send a gift into the arena."
+                "If you just fall in love with one of the tributes you can spend Wellcoins to help them out, use the sponsor button on any day to send a gift into the arena."
             ),
             inline=False
         )
@@ -2710,7 +2798,7 @@ class EventHungar(commands.Cog):
             user_gold = await self.config_gold.user(user).master_balance()
             if user_gold < cost:
                 await interaction.response.send_message(
-                    f"❌ You need at least {cost} Golds to sponsor someone. Your balance: {user_gold}", ephemeral=True
+                    f"❌ You need at least {cost} Wellcoins to sponsor someone. Your balance: {user_gold}", ephemeral=True
                 )
                 return
     
@@ -2724,7 +2812,7 @@ class EventHungar(commands.Cog):
             await self.config.guild(guild).players.set(players)
     
             await interaction.response.send_message(
-                f"🎁 **{user.display_name}** sponsored **{tribute_data['name']}** with **+{boost} {stat}** for **{cost} Golds!**",
+                f"🎁 **{user.display_name}** sponsored **{tribute_data['name']}** with **+{boost} {stat}** for **{cost} Wellcoins!**",
                 ephemeral=False
             )
     
@@ -2813,4 +2901,3 @@ class EventHungar(commands.Cog):
 
 
     
-
