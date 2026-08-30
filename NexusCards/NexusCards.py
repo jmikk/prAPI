@@ -97,6 +97,19 @@ class NexusCards(commands.Cog):
             return False
         else: 
             return True
+
+    def _card_key(self, card_id, season):
+        return f"{card_id}_{season}"
+
+    async def _get_giveaway_locked_cards(self, guild=None):
+        giveaway_cog = self.bot.get_cog("GiveawayCog")
+        if giveaway_cog and hasattr(giveaway_cog, "get_all_locked_cards"):
+            return await giveaway_cog.get_all_locked_cards(guild)
+        return set()
+
+    async def _is_giveaway_locked(self, card_id, season, guild=None):
+        locked_cards = await self._get_giveaway_locked_cards(guild)
+        return self._card_key(card_id, season) in locked_cards
         
 
     # --- Commands ---
@@ -153,10 +166,15 @@ class NexusCards(commands.Cog):
         root, _ = await self._ns_request(deck_url, ctx=ctx)
         
         cards = root.findall(".//CARD")
-        eligible = [c for c in cards if c.find("CATEGORY").text.lower() != "legendary"]
+        locked_cards = await self._get_giveaway_locked_cards(ctx.guild)
+        eligible = [
+            c for c in cards
+            if c.find("CATEGORY").text.lower() != "legendary"
+            and self._card_key(c.find("CARDID").text, c.find("SEASON").text) not in locked_cards
+        ]
         
         if not eligible: 
-            return await ctx.send("No eligible cards found in 9005.")
+            return await ctx.send("No eligible cards found in 9005 that are not part of a giveaway.")
 
         target = random.choice(eligible)
         card_id = target.find("CARDID").text
@@ -235,6 +253,9 @@ class NexusCards(commands.Cog):
 
         if not await self._check_weekly_limit(ctx.author, "legendary_uses", 1):
             return await ctx.send("Limit: 1 Legendary per week.")
+
+        if await self._is_giveaway_locked(card_id, season, ctx.guild):
+            return await ctx.send("That card is part of a giveaway or is waiting to be claimed, so it cannot be bought right now.")
 
         sources_to_check = ["9005","the_phoenix_of_the_spring"]
         source_creds = await self.config.source_nations()
