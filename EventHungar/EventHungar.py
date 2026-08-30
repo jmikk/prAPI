@@ -1236,7 +1236,7 @@ class Hungar(commands.Cog):
 
     def _zone_sort_key(self, zone_name):
         if zone_name == "Announcements":
-            return (0, zone_name)
+            return (2, zone_name)
         if zone_name == "Cornucopia":
             return (2, zone_name)
         return (1, zone_name)
