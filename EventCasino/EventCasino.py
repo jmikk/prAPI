@@ -8,7 +8,7 @@ from redbot.core.commands import cooldown, BucketType
 from datetime import datetime, timedelta
 
 
-class EventCasino(commands.Cog):
+class Casino(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=False)
@@ -29,6 +29,8 @@ class EventCasino(commands.Cog):
     }
 
         default_user = {
+        "master_balance": 0,
+        "xp": 0,
         "history": []
     }
     
@@ -51,6 +53,43 @@ class EventCasino(commands.Cog):
         await self._decrease_regional_debt(amount * .01)
         return new_balance
 
+    def _empty_casino_stats(self):
+        return {
+            game: {"plays": 0, "bet": 0.0, "payout": 0.0, "lost": 0.0, "net": 0.0}
+            for game in ("coinflip", "dice", "slots", "roulette")
+        }
+
+    async def _collect_casino_stats(self):
+        stats = self._empty_casino_stats()
+        all_users = await self.config.all_users()
+
+        for user_data in all_users.values():
+            for entry in user_data.get("history", []):
+                game = entry.get("game")
+                if game not in stats:
+                    continue
+
+                try:
+                    bet = float(entry.get("bet", 0.0) or 0.0)
+                    payout = float(entry.get("payout", 0.0) or 0.0)
+                except (TypeError, ValueError):
+                    continue
+
+                if bet <= 0:
+                    continue
+
+                stats[game]["plays"] += 1
+                stats[game]["bet"] += bet
+
+                if payout > 0:
+                    stats[game]["payout"] += payout
+                    stats[game]["net"] += payout
+                else:
+                    stats[game]["lost"] += bet
+                    stats[game]["net"] -= bet
+
+        return stats
+
 
 
     @commands.command()
@@ -58,6 +97,10 @@ class EventCasino(commands.Cog):
     async def coinflip(self, ctx, bet: float, call: str = None):
         """Flip a coin with animated message updates. You can call Heads or Tails, but it does not affect the odds."""
        
+        if bet > 50000:
+            await ctx.send("Bet to big please bet under 2857")
+            return
+            
         bet2 = bet
         balance = await self.get_balance(ctx.author)
         if not call:
@@ -124,6 +167,10 @@ class EventCasino(commands.Cog):
     @cooldown(1, 3, BucketType.guild)
     async def dice(self, ctx, bet: float):
         """Roll dice against the house with animated graphics."""
+
+        if bet > 50000:
+            await ctx.send("Sorry your bet is over the max allowed try betting less than 50,000")
+            return 
             
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
@@ -171,6 +218,9 @@ class EventCasino(commands.Cog):
     async def slots(self, ctx, bet: float):
         """Play a 3x3 slot machine with emojis and live message updates."""
 
+        if bet > 2857:
+            await ctx.send("Bet to big try betting lesss than 2857")
+            return
             
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
@@ -233,6 +283,10 @@ class EventCasino(commands.Cog):
     @cooldown(1, 3, BucketType.guild)
     async def roulette(self, ctx, bet: float, call: str):
         """Play roulette. Bet on a number (0-36), red, black, even, or odd."""
+
+        if bet > 2857:
+                await ctx.send("Bet to big please bet under 2857")
+                return
             
         balance = await self.get_balance(ctx.author)
         if bet <= 0 or bet > balance:
@@ -363,46 +417,65 @@ class EventCasino(commands.Cog):
     @commands.command()
     async def casinostats(self, ctx):
         """Display casino stats: total bets, payouts, expected return, and hot/cold status."""
-        
-        # Expected ER (i.e., house payout rate, can be adjusted)
         expected_returns = {
-            "coinflip": 0.48,  # Expected ER = 48%
-            "dice": 0.416,     # Expected ER = 41.6%
-            "slots": 0.85,     # Estimated ER = 85%
-            "roulette": 0.473  # Expected ER = 47.3%
+            "coinflip": 0.48,
+            "dice": 0.416,
+            "slots": 0.85,
+            "roulette": 0.473
         }
-    
-        embed = discord.Embed(title="🎰 Casino Stats Report", color=discord.Color.purple())
-        total_net = 0
-    
-        for game in self.total_bets:
-            total_bet = self.total_bets[game]
-            total_payout = self.total_payouts[game]
-    
-            if total_bet == 0:
-                actual_er = 0.0
+
+        stats = await self._collect_casino_stats()
+        embed = discord.Embed(
+            title="🎰 Casino Stats Report",
+            description="Lifetime totals from saved player gambling history.",
+            color=discord.Color.purple()
+        )
+        total_house_net = 0.0
+        total_bet_all = 0.0
+        total_payout_all = 0.0
+
+        for game, game_stats in stats.items():
+            total_bet = game_stats["bet"]
+            total_payout = game_stats["payout"]
+            total_lost = game_stats["lost"]
+            plays = game_stats["plays"]
+            actual_return = total_payout / total_bet if total_bet else 0.0
+            expected_return = expected_returns.get(game, 0.0)
+            house_net = total_lost - total_payout
+            total_house_net += house_net
+            total_bet_all += total_bet
+            total_payout_all += total_payout
+
+            if plays == 0:
+                status = "No plays"
+            elif actual_return >= expected_return + 0.05:
+                status = "🔥 Hot"
+            elif actual_return <= expected_return - 0.05:
+                status = "❄️ Cold"
             else:
-                actual_er = total_payout / total_bet  # Real return percentage
-            
-            expected_er = expected_returns[game]
-            net = total_bet - total_payout
-            total_net += net
-    
-            # Status based on comparison
-            status = "🔥 Hot" if actual_er + 30 > expected_er else "❄️ Cold"
-    
+                status = "⚖️ Normal"
+
             embed.add_field(
                 name=f"{game.capitalize()} {status}",
                 value=(
+                    f"🎲 **Plays**: {plays:,}\n"
                     f"💰 **Total Bet**: {total_bet:,.2f}\n"
-                    f"🏆 **Total Payout**: {total_payout:,.2f}\n"
-                    f"📊 **Actual Payout %**: {actual_er:.2%}\n"
-                    f"📉 **House Net**: {net:,.2f}"
+                    f"🏆 **Total Payouts**: {total_payout:,.2f}\n"
+                    f"💥 **Total Lost**: {total_lost:,.2f}\n"
+                    f"📊 **Actual Return**: {actual_return:.2%}\n"
+                    f"📈 **Expected Return**: {expected_return:.2%}\n"
+                    f"📉 **House Net**: {house_net:,.2f}"
                 ),
                 inline=False
             )
-    
-        embed.set_footer(text=f"🧮 Total House Profit: {total_net:,.2f} WellCoins")
+
+        overall_return = total_payout_all / total_bet_all if total_bet_all else 0.0
+        embed.set_footer(
+            text=(
+                f"Total House Profit: {total_house_net:,.2f} WellCoins "
+                f"| Overall Return: {overall_return:.2%}"
+            )
+        )
         await ctx.send(embed=embed)
     
     @commands.command()
@@ -565,73 +638,3 @@ class EventCasino(commands.Cog):
         current = await self._get_regional_debt()
         await self._set_regional_debt(max(0.0, current - float(amount)))
 
-    @commands.command()
-    @checks.admin_or_permissions(manage_guild=True)
-    async def casino_monthly_report(self, ctx, month: str = None):
-        """
-        Close and post the monthly casino report and settle finances.
-        Usage:
-          [p]casino_monthly_report            -> closes current month if nonzero, else previous
-          [p]casino_monthly_report 2025-10    -> closes that specific month (YYYY-MM)
-        """
-        monthly = await self.config.monthly_net()
-    
-        if month:
-            target_month = month
-        else:
-            current_key = self._month_key()
-            prev_key = self._prev_month_key()
-            # Prefer current month if it has activity; otherwise fall back to previous month.
-            target_month = current_key if abs(float(monthly.get(current_key, 0.0))) > 0 else prev_key
-    
-        house_net = float(monthly.get(target_month, 0.0))
-        starting_debt = await self._get_regional_debt()
-    
-        actions = []
-        distribution_total = 0.0
-        distributed_each = 0.0
-        eligible_count = 0
-    
-        if house_net < 0:
-           pass
-        elif house_net > 0:
-            # Casino profited: pay down debt first
-            profit = house_net * .10
-            if starting_debt > 0:
-                await self._decrease_regional_debt(profit)
-                actions.append(f"💳 Paid down regional debt by **{profit:,.2f}** WC.")
-        else:
-            actions.append("ℹ️ House net was exactly 0. No changes applied.")
-    
-        ending_debt = await self._get_regional_debt()
-    
-        # Zero this month so it can't be applied twice
-        monthly[target_month] = 0.0
-        await self.config.monthly_net.set(monthly)
-    
-        embed = discord.Embed(
-            title=f"🏦 Casino Monthly Report — {target_month}",
-            color=discord.Color.gold()
-        )
-        embed.add_field(name="House Net (month)", value=f"{house_net:,.2f} WC", inline=True)
-        embed.add_field(name="Debt (start → end)", value=f"{starting_debt:,.2f} → {ending_debt:,.2f} WC", inline=True)
-    
-        if distribution_total > 0:
-            embed.add_field(
-                name="Profit Distribution",
-                value=f"Total: {distribution_total:,.2f} WC\nRecipients: {eligible_count}\nEach: {distributed_each:,.2f} WC",
-                inline=False
-            )
-    
-        embed.add_field(
-            name="Applied Actions",
-            value="\n".join(actions) if actions else "None",
-            inline=False
-        )
-        embed.set_footer(text="Monthly ledger has been settled and reset for this period.")
-        await ctx.send(embed=embed)
-
-
-    
-
-    
