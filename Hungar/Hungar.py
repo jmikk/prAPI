@@ -22,6 +22,12 @@ DEFAULT_RANK_MULTIPLIER = 1.0
 BET_SHARE_FACTOR = 5.0
 MIN_SPONSOR_COST = 25
 MAX_SPONSOR_COST = 500000000000
+DISCORD_EMBED_SAFE_LIMIT = 5800
+DISCORD_EMBED_TITLE_LIMIT = 256
+DISCORD_EMBED_FIELD_NAME_LIMIT = 256
+DISCORD_EMBED_FIELD_VALUE_LIMIT = 1024
+DISCORD_EMBED_FIELD_LIMIT = 25
+DISCORD_EMBEDS_PER_MESSAGE_LIMIT = 10
 
 def calc_sponsor_cost(day: int, score: float, rank: int, bet_share: float) -> int:
     base = 10 + (day * 5) + (score / 2.0)
@@ -1218,6 +1224,112 @@ class Hungar(commands.Cog):
         except FileNotFoundError:
             return [f"NPC {i+1}" for i in range(100)]  # Fallback if file is missing
 
+    def _discord_trim(self, text, limit):
+        text = str(text)
+        if len(text) <= limit:
+            return text
+        return f"{text[:max(0, limit - 3)]}..."
+
+    def _zone_sort_key(self, zone_name):
+        if zone_name == "Announcements":
+            return (0, zone_name)
+        if zone_name == "Cornucopia":
+            return (2, zone_name)
+        return (1, zone_name)
+
+    def _split_report_line(self, line, limit=DISCORD_EMBED_FIELD_VALUE_LIMIT):
+        line = str(line)
+        if len(line) <= limit:
+            return [line]
+
+        chunks = []
+        remaining = line
+        while remaining:
+            split_at = remaining.rfind(" ", 0, limit)
+            if split_at <= 0:
+                split_at = limit
+            chunks.append(remaining[:split_at].strip())
+            remaining = remaining[split_at:].strip()
+        return chunks
+
+    def _chunk_zone_events(self, events):
+        chunks = []
+        current = ""
+
+        for event in events:
+            for line in self._split_report_line(f"- {event}"):
+                proposed = f"{current}\n{line}" if current else line
+                if len(proposed) > DISCORD_EMBED_FIELD_VALUE_LIMIT:
+                    if current:
+                        chunks.append(current)
+                    current = line
+                else:
+                    current = proposed
+
+        if current:
+            chunks.append(current)
+        return chunks or ["No events reported."]
+
+    def _build_zone_report_embeds(self, zone_name, events):
+        title_base = f"Zone Report: {zone_name}"
+        field_chunks = self._chunk_zone_events(events)
+        embeds = []
+        embed = None
+        embed_total = 0
+
+        for field_number, chunk in enumerate(field_chunks, 1):
+            field_name = "Events" if field_number == 1 else f"Events, continued {field_number}"
+            field_name = self._discord_trim(field_name, DISCORD_EMBED_FIELD_NAME_LIMIT)
+
+            needs_new_embed = (
+                embed is None
+                or len(embed.fields) >= DISCORD_EMBED_FIELD_LIMIT
+                or embed_total + len(field_name) + len(chunk) > DISCORD_EMBED_SAFE_LIMIT
+            )
+
+            if needs_new_embed:
+                title = title_base
+                if embeds:
+                    title = f"{title_base} (continued {len(embeds) + 1})"
+                title = self._discord_trim(title, DISCORD_EMBED_TITLE_LIMIT)
+                embed = discord.Embed(title=title, color=discord.Color.orange())
+                embeds.append(embed)
+                embed_total = len(title)
+
+            embed.add_field(name=field_name, value=chunk, inline=False)
+            embed_total += len(field_name) + len(chunk)
+
+        return embeds
+
+    async def _send_zone_report_embeds(self, ctx, zone_sorted_events, report_file):
+        pending_embeds = []
+
+        async def flush_pending():
+            nonlocal pending_embeds
+            while pending_embeds:
+                await ctx.send(embeds=pending_embeds[:DISCORD_EMBEDS_PER_MESSAGE_LIMIT])
+                pending_embeds = pending_embeds[DISCORD_EMBEDS_PER_MESSAGE_LIMIT:]
+
+        for zone_name in sorted(zone_sorted_events.keys(), key=self._zone_sort_key):
+            processed_events = []
+            await report_file.write(f"Zone Report: {zone_name}\n")
+
+            for event in zone_sorted_events[zone_name]:
+                if zone_name == "Distortion Field":
+                    event_words = event.split()
+                    random.shuffle(event_words)
+                    event = " ".join(event_words)
+
+                processed_events.append(event)
+                await report_file.write(f"{event}\n")
+
+            pending_embeds.extend(self._build_zone_report_embeds(zone_name, processed_events))
+
+            if len(pending_embeds) >= DISCORD_EMBEDS_PER_MESSAGE_LIMIT:
+                await flush_pending()
+
+        await flush_pending()
+
     @commands.guild_only()
     @commands.group()
     async def hunger(self, ctx):
@@ -2362,30 +2474,9 @@ class Hungar(commands.Cog):
                 zone_sorted_events.setdefault(zone_name, []).append(line)
 
             file = "Hunger_Games.txt"
-            # Sort so Announcements is always last
+            # Sort reports in a predictable order.
             async with aiofiles.open(file, mode="a") as f:
-                def zone_sort_key(z):
-                    if z == "Announcements":
-                        return (0, z)
-                    elif z == "Cornucopia":
-                        return (2, z)
-                    return (1, z)
-                    
-#                for zone_name in sorted(zone_sorted_events.keys(), key=lambda z: (z == "Announcements", z)):
-
-                for zone_name in sorted(zone_sorted_events.keys(), key=zone_sort_key):
-                    await ctx.send(f"# __**Zone Report: {zone_name}**__")
-                    await f.write(f"Zone Report: {zone_name}\n")
-
-            
-                    for event in zone_sorted_events[zone_name]:
-                        if zone_name == "Distortion Field":
-                            event_words = event.split()
-                            random.shuffle(event_words)
-                            event = ' '.join(event_words)
-            
-                        await ctx.send(event)
-                        await f.write(event)
+                await self._send_zone_report_embeds(ctx, zone_sorted_events, f)
 
         else:
             await ctx.send("The day passed quietly.")
@@ -2813,4 +2904,3 @@ class Hungar(commands.Cog):
 
 
     
-
