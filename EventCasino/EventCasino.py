@@ -8,7 +8,7 @@ from redbot.core.commands import cooldown, BucketType
 from datetime import datetime, timedelta
 
 
-class Casino(commands.Cog):
+class EventCasino(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(None, identifier=345678654456, force_registration=False)
