@@ -27,7 +27,6 @@ DISCORD_EMBED_TITLE_LIMIT = 256
 DISCORD_EMBED_FIELD_NAME_LIMIT = 256
 DISCORD_EMBED_FIELD_VALUE_LIMIT = 1024
 DISCORD_EMBED_FIELD_LIMIT = 25
-DISCORD_EMBEDS_PER_MESSAGE_LIMIT = 10
 
 def calc_sponsor_cost(day: int, score: float, rank: int, bet_share: float) -> int:
     base = 10 + (day * 5) + (score / 2.0)
@@ -1307,8 +1306,7 @@ class Hungar(commands.Cog):
         async def flush_pending():
             nonlocal pending_embeds
             while pending_embeds:
-                await ctx.send(embeds=pending_embeds[:DISCORD_EMBEDS_PER_MESSAGE_LIMIT])
-                pending_embeds = pending_embeds[DISCORD_EMBEDS_PER_MESSAGE_LIMIT:]
+                await ctx.send(embed=pending_embeds.pop(0))
 
         for zone_name in sorted(zone_sorted_events.keys(), key=self._zone_sort_key):
             processed_events = []
@@ -1325,8 +1323,7 @@ class Hungar(commands.Cog):
 
             pending_embeds.extend(self._build_zone_report_embeds(zone_name, processed_events))
 
-            if len(pending_embeds) >= DISCORD_EMBEDS_PER_MESSAGE_LIMIT:
-                await flush_pending()
+            await flush_pending()
 
         await flush_pending()
 
