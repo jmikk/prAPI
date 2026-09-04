@@ -138,6 +138,8 @@ class GiveawayCog(commands.Cog):
             return await ctx.send("You have no unclaimed giveaways.")
             return
         claim = user_claims[0]
+        id = claim["cardid"]
+        season = claim["season"]
         success, message = await self.send_gift_card(ctx, claim["cardid"], claim["season"], destination)
         if success:
             await ctx.send(f"✅ {message}")
@@ -146,6 +148,11 @@ class GiveawayCog(commands.Cog):
             return
         await self.config.user(ctx.author).wins.set(user_claims.pop())
         await ctx.send(f"You have {len(user_claims)} cards left to claim.")
+        card_key = f"{id}_{season}"
+        active = await self.config.active_giveaways()
+        if card_key in active:
+            active.remove(card_key)
+            await self.config.active_giveaways.set(active)
 
     @commands.is_owner()
     @commands.command()
@@ -230,6 +237,8 @@ class GiveawayCog(commands.Cog):
             self.giveaway_tasks[message.id] = task
     
             await ctx.send(f"Giveaway started in {channel.mention} and will end <t:{int(end_time.timestamp())}:R>.")
+            await self.config.active_giveaways.set(active)
+
             
     
         except Exception as e:
