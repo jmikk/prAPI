@@ -19,106 +19,6 @@ class GiveawayCog(commands.Cog):
         self.giveaway_tasks = {}
         #self.scheduler.start()
 
-    async def cog_unload(self):
-        await self.session.close()
-        self.scheduler.cancel()
-
-
-    async def cog_load(self):
-        self.scheduler.start()
-
-    def cog_unload(self):
-        self.scheduler.cancel()
-
-    @tasks.loop(hours=12)
-    async def scheduler(self):
-        now = datetime.utcnow()  # ← Fix: define 'now'
-        for guild in self.bot.guilds:
-            scheduled = await self.config.guild(guild).scheduled_giveaways()
-            updated = []
-            for giveaway in scheduled:
-                start_time = datetime.fromisoformat(giveaway['start_time'])
-                if now >= start_time and not giveaway['started']:
-                    await self.run_giveaway(giveaway, guild)
-                    giveaway['started'] = True
-                updated.append(giveaway)
-            await self.config.guild(guild).scheduled_giveaways.set(updated)        
-            
-    def next_weekday(self, d, weekday):
-        days_ahead = weekday - d.weekday()
-        if days_ahead <= 0:
-            days_ahead += 7
-        return d + timedelta(days=days_ahead)
-
-    async def run_giveaway(self, giveaway, guild):
-        try:
-            nationname = await self.config.guild(guild).nationname()
-            cards = await self.fetch_deck(nationname)
-            legendary_cards = [c for c in cards if c["category"] == "legendary"]
-    
-            claimed = await self.config.claimed_cards()
-            active = await self.config.active_giveaways()
-            available_cards = [c for c in legendary_cards if f"{c['cardid']}_{c['season']}" not in claimed and f"{c['cardid']}_{c['season']}" not in active]
-    
-            if not available_cards:
-                return
-    
-            # Sort by market value
-            available_cards.sort(key=lambda x: float(x["market_value"]))
-            count = len(available_cards)
-            selected_card = None
-    
-            if giveaway["value_tier"] == "low":
-                selected_card = random.choice(available_cards[:max(1, count // 4)])
-            elif giveaway["value_tier"] == "mid":
-                selected_card = random.choice(available_cards[count // 4 : 3 * count // 4])
-            elif giveaway["value_tier"] == "high":
-                selected_card = random.choice(available_cards[3 * count // 4 :])
-            else:
-                selected_card = random.choice(available_cards)
-    
-            # Mark as active
-            card_key = f"{selected_card['cardid']}_{selected_card['season']}"
-            active.append(card_key)
-            await self.config.active_giveaways.set(active)
-    
-            # Fetch full card info
-            card_data = await self.fetch_card_info(selected_card["cardid"], selected_card["season"])
-            if not card_data:
-                return
-    
-            # Build role
-            role = guild.get_role(giveaway["role_id"]) if giveaway["role_id"] else None
-            role_id = role.id if role else None
-    
-            # Giveaway timing
-            end_time = datetime.utcnow() + timedelta(days=giveaway["length_days"])
-            card_link = f"https://www.nationstates.net/page=deck/card={selected_card['cardid']}/season={selected_card['season']}"
-            channel_id = await self.config.guild(guild).giveaway_channel()
-            if not channel_id:
-                return
-            channel = guild.get_channel(channel_id)
-    
-            view = GiveawayButtonView(role_id, card_data, card_link, role, end_time)
-            message = await channel.send(embed=view.create_embed(), view=view)
-            view.message = message
-    
-            task = self.bot.loop.create_task(self.end_giveaway(message, view, end_time))
-            self.giveaway_tasks[message.id] = task
-    
-            giveaway["started"] = True
-    
-            log_channel_id = await self.config.guild(guild).log_channel()
-            log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
-            if log_channel:
-                await log_channel.send(f"Auto giveaway started for {card_data['name']} in {channel.mention}. Ends <t:{int(end_time.timestamp())}:R>.")
-    
-        except Exception as e:
-            log_channel_id = await self.config.guild(guild).log_channel()
-            log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
-            if log_channel:
-                await log_channel.send(f"Error in auto giveaway: {e}")
-
     async def log_error(self, ctx, error):
         log_channel_id = await self.config.guild(ctx.guild).log_channel()
         log_channel = ctx.guild.get_channel(log_channel_id) if log_channel_id else None
@@ -330,6 +230,7 @@ class GiveawayCog(commands.Cog):
             self.giveaway_tasks[message.id] = task
     
             await ctx.send(f"Giveaway started in {channel.mention} and will end <t:{int(end_time.timestamp())}:R>.")
+            
     
         except Exception as e:
             await self.log_error(ctx, str(e))
