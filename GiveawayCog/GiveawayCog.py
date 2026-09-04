@@ -237,7 +237,11 @@ class GiveawayCog(commands.Cog):
             self.giveaway_tasks[message.id] = task
     
             await ctx.send(f"Giveaway started in {channel.mention} and will end <t:{int(end_time.timestamp())}:R>.")
+            card_key = f"{card_id}_{season}"
+            active = await self.config.active_giveaways()
+            active.add(card_key)
             await self.config.active_giveaways.set(active)
+            
 
             
     
