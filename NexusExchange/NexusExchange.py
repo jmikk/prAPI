@@ -1454,6 +1454,8 @@ Helpful Resources:
                     lost_role += 1
                 
                 Vis_role = 1098673447640518746
+                Vis_role = ctx.guild.get_role(Vis_role)
+
                 if Vis_role not in user.roles:
                     await user.add_roles(Vis_role)                    
     
