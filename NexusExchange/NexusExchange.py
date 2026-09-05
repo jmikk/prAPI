@@ -1445,15 +1445,17 @@ Helpful Resources:
             is_resident = any(nation in resendents for nation in linked_nations)
     
             if is_resident:
-
                 if role not in user.roles:
                     await user.add_roles(role)
                     gained_role += 1
             else:
-                # Remove role if they have it but no endorsed nation
                 if role in user.roles:
                     await user.remove_roles(role)
                     lost_role += 1
+                
+                Vis_role = 1098673447640518746
+                if Vis_role not in user.roles:
+                    await user.add_roles(Vis_role)                    
     
         await ctx.send(f"✅ {gained_role} users gained the resident Role.\n❌ {lost_role} users lost the resident Role.")
 
