@@ -80,7 +80,7 @@ class NexusCards(commands.Cog):
         if CTE:
             base_cost = base_cost * 1.5
         
-        multipliers = {"1": 4.0, "2": 3.0, "3": 2.0, "4": 1.0, "cte": 1.5}
+        multipliers = {"1": 4.0, "2": 3.0, "3": 2.0, "4": 1.0, "cte": 1.5, "backed": 1.5}
         mult = multipliers.get(str(season).lower(), 1.0)
         return int(base_cost * mult)
 
@@ -90,6 +90,10 @@ class NexusCards(commands.Cog):
         async with self.config.user(user).all() as data:
             data[limit_type] = [t for t in data[limit_type] if now - t < one_week]
             return len(data[limit_type]) < max_uses
+    
+    async def _get_backed(self, id, season, ctx):
+        root, _ = await self._ns_request(f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+trades;cardid=1;season=1;limit=30")
+
 
     async def _get_CTE(self, id, ctx):
         root, _ = await self._ns_request(f"https://www.nationstates.net/cgi-bin/api.cgi?nation={id}")
