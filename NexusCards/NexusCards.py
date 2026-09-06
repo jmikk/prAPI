@@ -81,6 +81,7 @@ class NexusCards(commands.Cog):
         
         
         multipliers = {"1": 4.0, "2": 3.0, "3": 2.0, "4": 1.0, "cte": 1.5, "backed": 1.5}
+       
         if CTE:
             base_cost = multipliers.get("cte") * base_cost
         if BACKED:
