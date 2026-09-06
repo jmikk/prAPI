@@ -320,16 +320,13 @@ class NexusCards(commands.Cog):
             return await ctx.send("That card is part of a giveaway or is waiting to be claimed, so it cannot be bought right now.")
 
         sources_to_check = ["the_phoenix_of_the_spring"]
-        await ctx.send("HERE1")
         source_creds = await self.config.source_nations()
-        await ctx.send("HERE2")
         found_in = None
         card_data = None
 
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
         root, _ = await self._ns_request(url, ctx=ctx)
         owners = [o.text.lower() for o in root.findall(".//OWNER")]
-        await ctx.send("HERE")
         if "the_phoenix_of_the_spring" in owners:
             found_in = "the_phoenix_of_the_spring"
             card_data = root
