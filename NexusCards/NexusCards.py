@@ -70,19 +70,39 @@ class NexusCards(commands.Cog):
                 
                 return root, response.headers
 
-    def _calculate_legendary_cost(self, mv: float, season: str, CTE) -> int:
+    def _calculate_legendary_cost(self, mv: float, season: str, CTE, BACKED) -> int:
         """Logic: Up to 50 MV = 10k. Every 25.00 after = +5k. Apply multipliers."""
         if mv <= 50.00:
             base_cost = 10000
         else:
             increments = math.ceil((mv - 50.00) / 25.00)
             base_cost = 10000 + (increments * 5000)
-        if CTE:
-            base_cost = base_cost * 1.5
+        
         
         multipliers = {"1": 4.0, "2": 3.0, "3": 2.0, "4": 1.0, "cte": 1.5, "backed": 1.5}
-        mult = multipliers.get(str(season).lower(), 1.0)
+        if CTE:
+            base_cost = multipliers.get(cte) * base_cost
+        if BACKED:
+            base_cost = multipliers.get(backed) * base_cost
+
+        mult = multipliers.get(str(season).lower(), 1000000.0)
         return int(base_cost * mult)
+
+    
+    def _calculate_nonlegendary_cost(self, mv: float, season: str, CTE, BACKED) -> int:
+        
+        base_cost = mv * 170
+        
+        
+        multipliers = {"1": 3.0, "2": 2.5, "3": 2.0, "4": 1.0, "cte": 1.3, "backed": 1.3}
+        if CTE:
+            base_cost = multipliers.get(cte) * base_cost
+        if BACKED:
+            base_cost = multipliers.get(backed) * base_cost
+
+        mult = multipliers.get(str(season).lower(), 10000000.0)
+        return int(base_cost * mult)
+    
 
     async def _check_weekly_limit(self, user: discord.Member, limit_type: str, max_uses: int):
         now = time.time()
@@ -92,7 +112,38 @@ class NexusCards(commands.Cog):
             return len(data[limit_type]) < max_uses
     
     async def _get_backed(self, id, season, ctx):
-        root, _ = await self._ns_request(f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+trades;cardid=1;season=1;limit=30")
+        root, _ = await self._ns_request(f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+trades;cardid={id};season={season};limit=100")
+
+        trades = []
+        for t in root.findall(".//TRADE"):
+          buyer = t.find("BUYER").text
+          price = t.find("PRICE").text
+          timestamp = int(t.find("TIMESTAMP").text)
+          trades.append({"buyer": buyer, "price": price, "timestamp": timestamp})
+        
+        # Sort trades by timestamp in descending order (newest first)
+        trades.sort(key=lambda x: x["timestamp"], reverse=True)
+        
+        # Filter out trades that have no price set (empty or whitespace)
+        priced_trades = [
+            t for t in trades if t["price"] is not None and t["price"].strip() != ""
+        ]
+        
+        # Take the last 20 priced trades (or fewer if total priced trades < 20)
+        last_20_priced = priced_trades[:20]
+        
+        # Count how many times each buyer appears
+        buyer_counts = Counter(t["buyer"] for t in last_20_priced)
+        
+        # Check if any buyer appears 3 or more times
+        frequent_buyers = {
+            buyer: count for buyer, count in buyer_counts.items() if count >= 3
+        }
+        
+        if frequent_buyers:
+          return True
+        else:
+          return False
 
 
     async def _get_CTE(self, id, ctx):
@@ -132,7 +183,12 @@ class NexusCards(commands.Cog):
         id = root.find(".//CARDID").text
         
         CTE_status = await self._get_CTE(name,ctx=ctx)
-        cost = self._calculate_legendary_cost(mv, season, CTE_status)
+        BACKED = await self._get_backed(card_id, season, ctx)
+        if root.find(".//CATEGORY") == "legendary":
+            cost = self._calculate_legendary_cost(mv, season, CTE_status,BACKED)
+        else:
+            cost = self._calculate_nonlegendary_cost(mv, season, CTE_status,BACKED)
+
 
         embed = discord.Embed(title="Price Evaluation", color=discord.Color.blue())
         embed.add_field(name="Card", value=f"{name} (S{season} #{card_id})", inline=False)
@@ -261,7 +317,7 @@ class NexusCards(commands.Cog):
         if await self._is_giveaway_locked(card_id, season, ctx.guild):
             return await ctx.send("That card is part of a giveaway or is waiting to be claimed, so it cannot be bought right now.")
 
-        sources_to_check = ["9005","the_phoenix_of_the_spring"]
+        sources_to_check = ["the_phoenix_of_the_spring"]
         source_creds = await self.config.source_nations()
         found_in = None
         card_data = None
@@ -269,20 +325,19 @@ class NexusCards(commands.Cog):
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
         root, _ = await self._ns_request(url, ctx=ctx)
         owners = [o.text.lower() for o in root.findall(".//OWNER")]
-        if "9005" in owners:        
+        if "the_phoenix_of_the_spring" in owners:
             found_in = "9005"
             card_data = root
-        elif "the_phoenix_of_the_spring" in owners:
-            return await ctx.send("This card is on the_phoenix_of_the_spring but the good news is 9005 can move it for you as long as it is not part of a giveaway.")
         else: 
-            return await ctx.send("Legendary not found in stockpiles. Check out 9005 and The Phoenix of the Spring's deck for the cards you can claim")
+            return await ctx.send("Legendary not found in stockpiles. Check out The Phoenix of the Spring's deck for the cards you can claim")
 
         mv = float(card_data.find(".//MARKET_VALUE").text)
         
         name = root.find(".//NAME").text
         CTE_status = await self._get_CTE(name,ctx=ctx)
+        BACKED = await self._get_backed(card_id,season,ctx)
         
-        cost = self._calculate_legendary_cost(mv, season, CTE_status)
+        cost = self._calculate_legendary_cost(mv, season, CTE_status,BACKED)
 
         
         bal = await nexus.get_balance(ctx.author)
