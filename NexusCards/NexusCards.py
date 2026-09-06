@@ -82,9 +82,9 @@ class NexusCards(commands.Cog):
         
         multipliers = {"1": 4.0, "2": 3.0, "3": 2.0, "4": 1.0, "cte": 1.5, "backed": 1.5}
         if CTE:
-            base_cost = multipliers.get(cte) * base_cost
+            base_cost = multipliers.get("cte") * base_cost
         if BACKED:
-            base_cost = multipliers.get(backed) * base_cost
+            base_cost = multipliers.get("backed") * base_cost
 
         mult = multipliers.get(str(season).lower(), 1000000.0)
         return int(base_cost * mult)
@@ -97,9 +97,9 @@ class NexusCards(commands.Cog):
         
         multipliers = {"1": 3.0, "2": 2.5, "3": 2.0, "4": 1.0, "cte": 1.3, "backed": 1.3}
         if CTE:
-            base_cost = multipliers.get(cte) * base_cost
+            base_cost = multipliers.get("cte") * base_cost
         if BACKED:
-            base_cost = multipliers.get(backed) * base_cost
+            base_cost = multipliers.get("backed") * base_cost
 
         mult = multipliers.get(str(season).lower(), 10000000.0)
         return int(base_cost * mult)
