@@ -328,8 +328,9 @@ class NexusCards(commands.Cog):
         root, _ = await self._ns_request(url, ctx=ctx)
         owners = [o.text.lower() for o in root.findall(".//OWNER")]
         if "the_phoenix_of_the_spring" in owners:
-            found_in = "9005"
+            found_in = "the_phoenix_of_the_spring"
             card_data = root
+            await ctx.send("I found the card let me check your balance if you can afford it")
         else: 
             return await ctx.send("Legendary not found in stockpiles. Check out The Phoenix of the Spring's deck for the cards you can claim")
 
