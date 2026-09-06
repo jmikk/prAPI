@@ -179,6 +179,7 @@ class lootbox(commands.Cog):
         #await ctx.send(recipient)
         season = await self.config.season()
         nationname = await self.config.nationName()
+        await ctx.send(nationname)
         #await ctx.send(nationname)
         categories = await self.config.categories()
         useragent = await self.config.useragent()
