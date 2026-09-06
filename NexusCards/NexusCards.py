@@ -327,6 +327,7 @@ class NexusCards(commands.Cog):
         url = f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+info+owners;cardid={card_id};season={season}"
         root, _ = await self._ns_request(url, ctx=ctx)
         owners = [o.text.lower() for o in root.findall(".//OWNER")]
+        await ctx.send("HERE")
         if "the_phoenix_of_the_spring" in owners:
             found_in = "the_phoenix_of_the_spring"
             card_data = root
