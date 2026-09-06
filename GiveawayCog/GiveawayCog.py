@@ -149,10 +149,10 @@ class GiveawayCog(commands.Cog):
         await self.config.user(ctx.author).wins.set(user_claims.pop())
         await ctx.send(f"You have {len(user_claims)} cards left to claim.")
         card_key = f"{id}_{season}"
-        active = await self.config.active_giveaways()
+        active = await self.config.global.active_giveaways()
         if card_key in active:
             active.remove(card_key)
-            await self.config.active_giveaways.set(active)
+            await self.config.global.active_giveaways.set(active)
 
     @commands.is_owner()
     @commands.command()
@@ -238,13 +238,11 @@ class GiveawayCog(commands.Cog):
     
             await ctx.send(f"Giveaway started in {channel.mention} and will end <t:{int(end_time.timestamp())}:R>.")
             card_key = f"{card_id}_{season}"
-            active = await self.config.active_giveaways()
-            active.add(card_key)
-            await self.config.active_giveaways.set(active)
             
-
-            
-    
+            active = await self.config.global.active_giveaways()
+            active.append(card_key)
+            await self.config.global.active_giveaways.set(active)
+        
         except Exception as e:
             await self.log_error(ctx, str(e))
     
