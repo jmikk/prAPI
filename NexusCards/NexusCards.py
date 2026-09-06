@@ -320,7 +320,9 @@ class NexusCards(commands.Cog):
             return await ctx.send("That card is part of a giveaway or is waiting to be claimed, so it cannot be bought right now.")
 
         sources_to_check = ["the_phoenix_of_the_spring"]
+        await ctx.send("HERE1")
         source_creds = await self.config.source_nations()
+        await ctx.send("HERE2")
         found_in = None
         card_data = None
 
