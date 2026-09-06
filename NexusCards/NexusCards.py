@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 import random
 from typing import Optional, List, Dict, Tuple
 from redbot.core import commands, Config, checks
+from collections import Counter
 
 class NexusCards(commands.Cog):
     """Purchase cards from 9005 and The Phoenix of the Spring using Wellcoins."""
