@@ -114,38 +114,45 @@ class NexusCards(commands.Cog):
             return len(data[limit_type]) < max_uses
     
     async def _get_backed(self, id, season, ctx):
-        root, _ = await self._ns_request(f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+trades;cardid={id};season={season};limit=100")
-
-        trades = []
-        for t in root.findall(".//TRADE"):
-          buyer = t.find("BUYER").text
-          price = t.find("PRICE").text
-          timestamp = int(t.find("TIMESTAMP").text)
-          trades.append({"buyer": buyer, "price": price, "timestamp": timestamp})
-        
-        # Sort trades by timestamp in descending order (newest first)
-        trades.sort(key=lambda x: x["timestamp"], reverse=True)
-        
-        # Filter out trades that have no price set (empty or whitespace)
-        priced_trades = [
-            t for t in trades if t["price"] is not None and t["price"].strip() != ""
-        ]
-        
-        # Take the last 20 priced trades (or fewer if total priced trades < 20)
-        last_20_priced = priced_trades[:20]
-        
-        # Count how many times each buyer appears
-        buyer_counts = Counter(t["buyer"] for t in last_20_priced)
-        
-        # Check if any buyer appears 3 or more times
-        frequent_buyers = {
-            buyer: count for buyer, count in buyer_counts.items() if count >= 3
-        }
-        
-        if frequent_buyers:
-          return True
-        else:
-          return False
+            root, _ = await self._ns_request(f"https://www.nationstates.net/cgi-bin/api.cgi?q=card+trades;cardid={id};season={season};limit=100")
+            
+            # Parse Market Value (MV) safely
+            mv_elem = root.find("MARKET_VALUE")
+            mv = float(mv_elem.text) if mv_elem is not None and mv_elem.text and mv_elem.text.strip() != "" else 0.0
+            
+            trades = []
+            for t in root.findall(".//TRADE"):
+                buyer = t.find("BUYER").text
+                price = t.find("PRICE").text
+                timestamp = int(t.find("TIMESTAMP").text)
+                trades.append({"buyer": buyer, "price": price, "timestamp": timestamp})
+            
+            # Sort trades by timestamp in descending order (newest first)
+            trades.sort(key=lambda x: x["timestamp"], reverse=True)
+            
+            # Filter trades that have a valid price and are at or above MV
+            valid_trades = []
+            for t in trades:
+                if t["price"] is not None and t["price"].strip() != "":
+                    try:
+                        price_val = float(t["price"])
+                        if price_val >= mv:
+                            valid_trades.append(t)
+                    except ValueError:
+                        continue
+            
+            # Take the last 20 valid trades (or fewer if total valid trades < 20)
+            last_20_valid = valid_trades[:20]
+            
+            # Count how many times each buyer appears
+            buyer_counts = Counter(t["buyer"] for t in last_20_valid)
+            
+            # Check if any buyer appears 3 or more times
+            frequent_buyers = {
+                buyer: count for buyer, count in buyer_counts.items() if count >= 3
+            }
+            
+            return bool(frequent_buyers)
 
 
     async def _get_CTE(self, id, ctx):
