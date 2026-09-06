@@ -186,8 +186,8 @@ class NexusCards(commands.Cog):
         
         CTE_status = await self._get_CTE(name,ctx=ctx)
         BACKED = await self._get_backed(card_id, season, ctx)
-        await ctx.send(root.find(".//CATEGORY"))
-        if root.find(".//CATEGORY") == "legendary":
+        await ctx.send(root.find(".//CATEGORY").text)
+        if root.find(".//CATEGORY").text == "legendary":
             cost = self._calculate_legendary_cost(mv, season, CTE_status,BACKED)
         else:
             cost = self._calculate_nonlegendary_cost(mv, season, CTE_status,BACKED)
