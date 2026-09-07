@@ -300,3 +300,46 @@ class Alchemy(commands.Cog):
         embed.set_footer(text="Experiment with /brew, /eat, and discover rare effects to level up!")
 
         await interaction.response.send_message(embed=embed)
+
+# --- Slash Command: How to Play Guide ---
+    @app_commands.command(name="howtoplay", description="Learn how to forage, brew, eat, and level up in the realm of Alchemy!")
+    async def howtoplay(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="📖 Alchemist's Handbook: How to Play",
+            description="Welcome to the realm of alchemy! Here is how you can experiment, discover rare concoctions, and climb the leaderboards.",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="🌿 1. Foraging Ingredients (`/randomingredient`)",
+            value="Don't know what ingredients to use? Use `/randomingredient` to scout the wilderness and generate a unique ingredient name complete with hidden properties.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🍽️ 2. Tasting & Eating (`/eat`)",
+            value="Take a bold bite out of any ingredient name using `/eat`. This will publicly reveal its primary **common effect** and grant you a small bit of `+15 EXP`.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🧪 3. Brewing Potions (`/brew`)",
+            value="Combine **2 to 4 unique ingredient text seeds** using `/brew` to test their properties. If they share a common property, you'll successfully craft a potion! *(Note: There is a short 5-second cooldown between brews).*",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📈 4. Levels & EXP",
+            value="• **Eating:** +15 EXP\n• **Failed Brews:** +30 EXP *(Valuable practice!)*\n• **Successful Brews:** Scaled bonus based on effect rarity (Common, Rare, Epic, Legendary)\n• **First Discoveries:** Massive `+500 EXP` bonus for being the first person in the server to discover a unique recipe!",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🏆 5. Leaderboard (`/leaderboard`)",
+            value="Climb the ranks by gaining EXP and leveling up. Each level requires progressively more experience than the last. Use `/leaderboard` to check your standing against other alchemists!",
+            inline=False
+        )
+
+        embed.set_footer(text="May your mixtures be potent and your explosions minimal!")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=False)
