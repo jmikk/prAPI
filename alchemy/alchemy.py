@@ -4,7 +4,7 @@ from pathlib import Path
 import discord
 from redbot.core import app_commands, commands, Config
 
-class alchemy(commands.Cog):
+class Alchemy(commands.Cog):
     """Skyrim-style Alchemy game with file-based configuration, custom string names, and public alerts."""
 
     def __init__(self, bot):
@@ -23,6 +23,7 @@ class alchemy(commands.Cog):
         self.path = Path(__file__).parent
         self.effects_data = self.load_json("effects.json")
         self.words_data = self.load_json("ingredient_words.json")
+        self.effect_lines_data = self.load_json("Effect_lines.json")
 
     def load_json(self, filename: str):
         file_path = self.path / filename
@@ -36,10 +37,8 @@ class alchemy(commands.Cog):
         clean_seed = seed_text.strip().lower()
         rng = random.Random(clean_seed)
         
-        # Use the exact user string (properly capitalized) as the ingredient name
         name = seed_text.strip().title()
         
-        # Pick 1 effect from each tier using the file pools
         effects = [
             rng.choice(self.effects_data.get("common", ["Restore Health"])),
             rng.choice(self.effects_data.get("rare", ["Fortify Attack"])),
@@ -69,12 +68,10 @@ class alchemy(commands.Cog):
         adjectives = self.words_data.get("adjectives", ["Mystic"])
         nouns = self.words_data.get("nouns", ["Herb"])
         
-        # Pick a random combo
         adj = random.choice(adjectives)
         noun = random.choice(nouns)
         generated_name = f"{adj} {noun}"
         
-        # Evaluate its effects so the user can see what it does
         name, effects = self.generate_ingredient(generated_name)
         
         embed = discord.Embed(
@@ -93,6 +90,12 @@ class alchemy(commands.Cog):
         name, effects = self.generate_ingredient(ingredient)
         common_effect = effects[0]  # First effect is common
 
+        # Pick a random flavor line from Effect_lines.json and format it with the effect
+        tasting_templates = self.effect_lines_data.get("tasting_lines", [
+            "Their tongue tingles as they realize this ingredient possesses the **{effect}** property."
+        ])
+        tasting_message = random.choice(tasting_templates).format(effect=common_effect)
+
         embed = discord.Embed(
             title="🍽️ Experimental Tasting",
             description=f"{interaction.user.mention} takes a bold bite out of **{name}**...",
@@ -100,11 +103,10 @@ class alchemy(commands.Cog):
         )
         embed.add_field(
             name="👅 Effect Discovered!", 
-            value=f"Their tongue tingles as they realize this ingredient possesses the **{common_effect}** property.", 
+            value=tasting_message, 
             inline=False
         )
         
-        # Public response as requested
         await interaction.response.send_message(embed=embed)
 
     # --- Slash Command: Brew Potion ---
@@ -123,7 +125,7 @@ class alchemy(commands.Cog):
         ing3: str = None, 
         ing4: str = None
     ):
-        await interaction.response.defer(thinking=False) # Public processing
+        await interaction.response.defer(thinking=False)
 
         seeds = [s for s in [ing1, ing2, ing3, ing4] if s]
         if len(seeds) < 2:
