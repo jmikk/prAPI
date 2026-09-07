@@ -1,0 +1,18 @@
+{
+    "common": [
+        "Restore Health", "Restore Magicka", "Restore Stamina", 
+        "Fearsome Odor", "Weakness to Fire", "Resistance to Frost"
+    ],
+    "rare": [
+        "Fortify Attack", "Invisibility", "Paralysis", 
+        "Lingering Damage Health", "Regenerate Magicka", "Silence"
+    ],
+    "epic": [
+        "Damage Maximum Magicka", "Cure Disease", "Waterbreathing", 
+        "Fortify Enchanting", "Drain Health", "Detect Life"
+    ],
+    "legendary": [
+        "Absorb Health", "Total Invulnerability", "Resurrect Mind", 
+        "Banish Daedra", "Timestop", "Godhood Catalyst"
+    ]
+}
