@@ -1,5 +1,5 @@
-from .alchemy import alchemy
+from .Alchemy import Alchemy
 
 
 async def setup(bot):
-    await bot.add_cog(alchemy(bot))
+    await bot.add_cog(Alchemy(bot))
