@@ -318,13 +318,13 @@ class Alchemy(commands.Cog):
         
         embed.add_field(
             name="🍽️ 2. Tasting & Eating (`/eat`)",
-            value="Take a bold bite out of any ingredient name using `/eat`. This will publicly reveal its primary **common effect** and grant you a small bit of `+15 EXP`.",
+            value="Take a bold bite out of any ingredient name using `/eat`. This will reveal its primary **common effect** and grant you a small bit of `+15 EXP`.",
             inline=False
         )
         
         embed.add_field(
             name="🧪 3. Brewing Potions (`/brew`)",
-            value="Combine **2 to 4 unique ingredient text seeds** using `/brew` to test their properties. If they share a common property, you'll successfully craft a potion! *(Note: There is a short 5-second cooldown between brews).*",
+            value="Combine **2 to 4 unique ingredient ** using `/brew` to test their properties. If they share a common property, you'll successfully craft a potion! *(Note: There is a short 5-second cooldown between brews).*",
             inline=False
         )
         
