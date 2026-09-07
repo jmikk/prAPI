@@ -4,7 +4,7 @@ from pathlib import Path
 import discord
 from redbot.core import app_commands, commands, Config
 
-class Alchemy(commands.Cog):
+class alchemy(commands.Cog):
     """Skyrim-style Alchemy game with file-based configuration, custom string names, and public alerts."""
 
     def __init__(self, bot):
