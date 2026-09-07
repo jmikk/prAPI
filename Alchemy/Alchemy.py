@@ -225,7 +225,7 @@ class Alchemy(commands.Cog):
             await self.config.guild(interaction.guild).discovered_potions.set(discovered_list)
             
             # Massive EXP bonus for server-first discovery!
-            rarity_bonus += 500
+            rarity_bonus += 1000
             embed.add_field(name="🏆 Milestone", value="**First Time Discovery in this Realm! (+500 Bonus EXP)**", inline=False)
 
             alert_chan_id = guild_data["alert_channel"]
