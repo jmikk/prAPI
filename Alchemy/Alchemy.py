@@ -5,7 +5,7 @@ import discord
 from redbot.core import app_commands, commands, Config
 
 class Alchemy(commands.Cog):
-    """Skyrim-style Alchemy game with EXP levels, scaling actions, file configuration, and lightweight leaderboard."""
+    """Skyrim-style Alchemy game with EXP levels, cooldowns, file configuration, and lightweight leaderboard."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -52,14 +52,13 @@ class Alchemy(commands.Cog):
 
     # --- Leveling Math Helpers ---
     def get_level_and_progress(self, exp: int):
-        """Calculates level using an escalating curve where each level takes longer."""
         level = 1
-        exp_needed = 100  # EXP required to reach level 2
+        exp_needed = 100
         
         while exp >= exp_needed:
             exp -= exp_needed
             level += 1
-            exp_needed = int(exp_needed * 1.35)  # Each level scales up by 35%
+            exp_needed = int(exp_needed * 1.35)
             
         return level, exp, exp_needed
 
@@ -72,7 +71,7 @@ class Alchemy(commands.Cog):
             players[user_id_str] = {"name": user.display_name, "exp": 0, "unlocked": []}
 
         players[user_id_str]["exp"] += amount
-        players[user_id_str]["name"] = user.display_name  # Keep name updated
+        players[user_id_str]["name"] = user.display_name
         await self.config.guild(guild).players.set(players)
 
     # --- Configuration Commands ---
@@ -116,7 +115,6 @@ class Alchemy(commands.Cog):
         name, effects = self.generate_ingredient(ingredient)
         common_effect = effects[0]
 
-        # Give a small amount of EXP for tasting/eating
         await self.add_exp(interaction.guild, interaction.user, 15)
 
         tasting_templates = self.effect_lines_data.get("tasting_lines", [
@@ -134,27 +132,39 @@ class Alchemy(commands.Cog):
         
         await interaction.response.send_message(embed=embed)
 
-    # --- Slash Command: Brew Potion ---
-    @app_commands.command(name="brew", description="Mix up to 4 custom ingredient text seeds to brew a potion!")
+    # --- Slash Command: Brew Potion (With 5-second Cooldown & Minimum 2 Ingredients) ---
+    @app_commands.command(name="brew", description="Mix 2 to 4 custom ingredient text seeds to brew a potion!")
     @app_commands.describe(
         ing1="First ingredient",
-        ing2="Second ingredient (optional)",
+        ing2="Second ingredient",
         ing3="Third ingredient (optional)",
         ing4="Fourth ingredient (optional)"
     )
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: i.user.id) # 5-second cooldown per user
     async def brew(
         self, 
         interaction: discord.Interaction, 
         ing1: str, 
-        ing2: str = None, 
+        ing2: str, 
         ing3: str = None, 
         ing4: str = None
     ):
         await interaction.response.defer(thinking=False)
 
-        seeds = [s for s in [ing1, ing2, ing3, ing4] if s]
+        # Clean and gather seeds, removing duplicates to prevent trying to brew with the exact same ingredient multiple times
+        raw_seeds = [ing1, ing2, ing3, ing4]
+        seeds = []
+        seen = set()
+        for s in raw_seeds:
+            if s:
+                cleaned = s.strip().lower()
+                if cleaned not in seen:
+                    seen.add(cleaned)
+                    seeds.append(s.strip())
+
+        # Strict requirement: Must have at least 2 unique ingredients
         if len(seeds) < 2:
-            await interaction.followup.send("❌ You need to mix at least **2 ingredients** to brew a potion!")
+            await interaction.followup.send("❌ You must provide at least **2 unique ingredients** to brew a potion! You cannot mix an ingredient with itself.", ephemeral=True)
             return
 
         ingredients = []
@@ -173,7 +183,6 @@ class Alchemy(commands.Cog):
 
         # Handle Failed Brew
         if not shared_effects:
-            # Failing awards slightly more EXP than eating (e.g., 30 EXP) for effort
             exp_gained = 30
             await self.add_exp(interaction.guild, interaction.user, exp_gained)
 
@@ -187,7 +196,6 @@ class Alchemy(commands.Cog):
         potion_effects = sorted(list(shared_effects))
         potion_name = f"Potion of {' & '.join(potion_effects)}"
         
-        # Determine base EXP scaling based on what tiers are present in the shared effects
         rarity_bonus = 50
         all_effects_pool = self.effects_data
         for eff in shared_effects:
@@ -203,7 +211,7 @@ class Alchemy(commands.Cog):
         embed.color = discord.Color.green()
         embed.add_field(name="Result", value=f"✨ **Successfully brewed {potion_name}!**", inline=False)
 
-        # Check First Discovery & Track Unlocked Unique Potions for Player
+        # Check First Discovery & Track Unlocked Unique Potions
         guild_data = await self.config.guild(interaction.guild).all()
         discovered_list = guild_data["discovered_potions"]
         players = guild_data["players"]
@@ -215,7 +223,6 @@ class Alchemy(commands.Cog):
         is_first_ever_server_discovery = potion_name not in discovered_list
         user_unlocked = players[user_id_str]["unlocked"]
         
-        # Only grant big EXP the *first time this specific user* makes this unique potion
         if potion_name not in user_unlocked:
             user_unlocked.append(potion_name)
             players[user_id_str]["unlocked"] = user_unlocked
@@ -224,8 +231,7 @@ class Alchemy(commands.Cog):
             discovered_list.append(potion_name)
             await self.config.guild(interaction.guild).discovered_potions.set(discovered_list)
             
-            # Massive EXP bonus for server-first discovery!
-            rarity_bonus += 1000
+            rarity_bonus += 500
             embed.add_field(name="🏆 Milestone", value="**First Time Discovery in this Realm! (+500 Bonus EXP)**", inline=False)
 
             alert_chan_id = guild_data["alert_channel"]
@@ -239,11 +245,21 @@ class Alchemy(commands.Cog):
                     )
                     await channel.send(embed=alert_embed)
 
-        # Commit final EXP
         await self.add_exp(interaction.guild, interaction.user, rarity_bonus)
         embed.set_footer(text=f"✨ Successfully brewed! +{rarity_bonus} EXP gained.")
 
         await interaction.followup.send(embed=embed)
+
+    # Cooldown Error Handler for Brew
+    @brew.error
+    async def brew_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        if isinstance(error, app_commands.CommandOnCooldown):
+            await interaction.response.send_message(
+                f"⏳ The alchemy table is still settling! Please wait **{error.retry_after:.1f} seconds** before brewing again.",
+                ephemeral=True
+            )
+        else:
+            raise error
 
     # --- Slash Command: Leaderboard (Ranked by Level) ---
     @app_commands.command(name="leaderboard", description="View the top alchemists in the realm ranked by their level and EXP!")
@@ -255,7 +271,6 @@ class Alchemy(commands.Cog):
             await interaction.response.send_message("🧪 No one has brewed any potions or eaten ingredients yet! Use `/brew` or `/eat`.", ephemeral=False)
             return
 
-        # Pre-calculate levels for sorting
         processed_players = []
         for user_id, data in players.items():
             lvl, cur_exp, req_exp = self.get_level_and_progress(data["exp"])
@@ -267,7 +282,6 @@ class Alchemy(commands.Cog):
                 "req_exp": req_exp
             })
 
-        # Sort primarily by Level (descending), then by total EXP (descending)
         sorted_players = sorted(processed_players, key=lambda x: (x["level"], x["exp"]), reverse=True)
 
         embed = discord.Embed(
